@@ -1,0 +1,45 @@
+#include <nativedaw/v2/EngineCommands.h>
+#include <fstream>
+#include <iostream>
+#include <thread>
+#if JUCE_MAC || JUCE_LINUX
+#include <sys/resource.h>
+#include <csignal>
+#endif
+using namespace ndaw::v2;
+namespace ndaw::v2 {
+class RecordingTestAccess {
+public:
+    static te::HostedAudioDeviceInterface& host(Commands& c){auto& dm=c.engine.getDeviceManager();auto& h=dm.getHostedAudioDeviceInterface();te::HostedAudioDeviceInterface::Parameters p;p.sampleRate=48000;p.blockSize=256;p.inputChannels=2;p.outputChannels=2;h.initialise(p);dm.setAllWaveInputsToNumChannels(1);for(auto* i:dm.getWaveInputDevices()){i->setEnabled(true);i->setMonitorMode(te::InputDevice::MonitorMode::off);i->setOutputFormat("WAV file");i->setBitDepth(24);i->setRecordTriggerDb(-60);}return h;}
+};
+}
+namespace {
+int checks=0;
+void check(bool b,const char* s){if(!b)throw std::runtime_error(s);++checks;std::cout<<"PASS "<<s<<std::endl;}
+void settle(int ms=90){juce::MessageManager::getInstance()->runDispatchLoopUntil(ms);}
+template<class F>void fails(F f,const char* s){bool failed=false;try{f();}catch(const std::exception&){failed=true;}check(failed,s);}
+Json op(const char* c,Json a){return {{"command",c},{"args",a}};}
+Json run(Commands& c,Json o){return c.commit(c.makePlan("human",o));}
+struct Feed {
+    explicit Feed(te::HostedAudioDeviceInterface& h):thread([this,&h]{juce::AudioBuffer<float> b(2,256);juce::MidiBuffer midi;int64_t pos=0;while(!done){for(int ch=0;ch<2;++ch)for(int i=0;i<256;++i)b.setSample(ch,i,float(.1*std::sin(2*juce::MathConstants<double>::pi*(ch?400:1000)*(pos+i)/48000.)));h.processBlock(b,midi);pos+=256;juce::Thread::sleep(2);}}){}
+    ~Feed(){done=true;thread.join();}std::atomic<bool> done{false};std::thread thread;
+};
+juce::AudioBuffer<float> audio(const juce::File& f){juce::WavAudioFormat w;std::unique_ptr<juce::AudioFormatReader> r(w.createReaderFor(new juce::FileInputStream(f),true));check(r!=nullptr,"recorded WAV reader valid");juce::AudioBuffer<float> b(r->numChannels,int(r->lengthInSamples));check(r->read(&b,0,b.getNumSamples(),0,true,true),"recorded PCM readable");return b;}
+}
+int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
+    auto dir=juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("ndaw-record-"+juce::Uuid().toString());dir.createDirectory();Commands c(false);auto& hosted=RecordingTestAccess::host(c);Feed feed(hosted);settle();auto inputs=c.deviceStatus()["inputs"];check(inputs.size()==2,"SDK exposes two real hosted input channels for deterministic test only");
+    std::string left=inputs[0]["id"],right=inputs[1]["id"];auto create=run(c,Json::array({op("track.create",{{"name","Mic A"},{"type","audio"},{"ref","$a"}}),op("track.create",{{"name","Mic B"},{"type","audio"},{"ref","$b"}}),op("track.input",{{"track","$a"},{"device",left}}),op("track.arm",{{"track","$a"},{"enabled",true}}),op("track.input",{{"track","$b"},{"device",right}}),op("track.arm",{{"track","$b"},{"enabled",true}})}));settle();auto tracks=c.query()["tracks"];std::string a=tracks[0]["id"],b=tracks[1]["id"];
+    check(tracks[0]["input"]["armed"]&&tracks[1]["input"]["armed"]&&tracks[0]["input"]["available"],"two tracks armed through one native Plan");check(!tracks[0]["input"]["monitoring"].get<bool>(),"input monitoring defaults off");
+    auto monitor=run(c,Json::array({op("track.input",{{"track",b},{"device",left}}),op("track.monitor",{{"track",a},{"mode","auto"}}),op("track.monitor",{{"track",b},{"mode","off"}})}));settle();check(c.query()["tracks"][0]["input"]["monitoring"]&&!c.query()["tracks"][1]["input"]["monitoring"].get<bool>(),"shared input has independent native monitoring per destination");check(c.deviceStatus()["output_peak"].get<double>()>.09,"Auto monitoring sends actual input PCM to the output");c.undo(monitor["plan_id"]);settle();check(c.query()["tracks"][1]["input"]["device"]==right&&!c.query()["tracks"][0]["input"]["monitoring"].get<bool>(),"I/O Undo restores assignments and monitor modes");check(c.deviceStatus()["output_peak"].get<double>()<1e-6,"Off monitoring actually silences the input output path");c.redo();settle();check(c.query()["tracks"][1]["input"]["device"]==left,"I/O Redo restores shared assignment");c.undo();settle();
+    auto snapshot=c.query();fails([&]{c.makePlan("human",Json::array({op("track.input",{{"track",a},{"device","invented"}})}));},"invented input rejected before commit");check(c.query()==snapshot,"invalid input Plan leaves state unchanged");fails([&]{c.record(dir.getChildFile("missing"));},"recording directory must be real writable directory");
+    auto began=juce::Time::getMillisecondCounterHiRes();auto start=c.record(dir);settle(220);tracks=c.query()["tracks"];check(c.query()["recording"].get<bool>()&&start["targets"].size()==2,"native transport actually records two armed tracks");auto f=juce::File(juce::String(tracks[0]["input"]["recording_file"].get<std::string>()));auto bytes=f.getSize();settle(420);check(f.getSize()>bytes&&bytes>100,"native disk writer grows WAV during recording rather than after Stop");fails([&]{c.seek(0);},"seek rejected during recording");fails([&]{c.save(dir.getChildFile("during.tracktionedit"));},"save rejected during recording");fails([&]{c.makePlan("human",Json::array({op("track.gain",{{"track",a},{"db",-3}})}));},"overlapping edit rejected during capture");c.stop();auto receipt=c.query()["last_recording"];check(receipt["state"]=="committed"&&receipt["files"].size()==2&&!c.query()["recording"].get<bool>(),"Stop validates both actual files and emits success receipt");auto elapsed=juce::Time::getMillisecondCounterHiRes()-began;tracks=c.query()["tracks"];check(tracks[0]["clips"].size()==1&&tracks[1]["clips"].size()==1,"native recordings become real Edit clips");std::vector<juce::File> files;std::vector<std::string> hashes;
+    for(const auto& file:receipt["files"]){auto path=juce::File(juce::String(file["path"].get<std::string>()));auto pcm=audio(path);check(file["channels"]==1&&file["pcm_bits"]==24&&file["sample_rate"]==48000,"recorded physical channel format is mono 24-bit 48 kHz");double rms=pcm.getRMSLevel(0,256,pcm.getNumSamples()-512);check(std::abs(rms-.1/std::sqrt(2.))<3e-4,"recorded PCM preserves known signal level");int crosses=0;for(int n=257;n<pcm.getNumSamples()-256;++n)if(pcm.getSample(0,n-1)<=0&&pcm.getSample(0,n)>0)++crosses;double hz=crosses*48000./(pcm.getNumSamples()-512);double expected=files.empty()?1000:400;check(std::abs(hz-expected)<2,"each captured track preserves its actual input channel frequency");files.push_back(path);hashes.push_back(Commands::mediaHash(path));}
+    check(std::abs(receipt["files"][0]["frames"].get<int64_t>()-receipt["files"][1]["frames"].get<int64_t>())<=256,"parallel recordings finish within one fixed 256-frame block budget");
+    c.undo(receipt["plan_id"]);check(c.query()["tracks"][0]["clips"].empty()&&c.query()["tracks"][1]["clips"].empty(),"one Undo removes both captured clips");for(int i=0;i<2;++i)check(files[i].existsAsFile()&&Commands::mediaHash(files[i])==hashes[i],"Undo retains recorded source file unchanged");c.redo();check(c.query()["tracks"][0]["clips"]==tracks[0]["clips"],"Redo restores original clip IDs and media references");
+    auto saved=dir.getChildFile("record.tracktionedit");c.save(saved);{Commands reopened(false);reopened.open(saved);auto q=reopened.query();check(q["tracks"][0]["clips"]==tracks[0]["clips"]&&q["tracks"][0]["input"]["device"]==left,"reopen preserves clips and unavailable original input reference");auto rendered=reopened.render(dir.getChildFile("export.wav"),0,q["length_samples"]);check(rendered["audio_verified"]&&rendered["peak"].get<double>()>.01,"recorded project actually exports audible PCM");}
+#if JUCE_MAC || JUCE_LINUX
+    run(c,Json::array({op("track.arm",{{"track",b},{"enabled",false}})}));c.seek(0);struct rlimit oldLimit;getrlimit(RLIMIT_FSIZE,&oldLimit);auto oldSignal=std::signal(SIGXFSZ,SIG_IGN);struct rlimit small=oldLimit;small.rlim_cur=32768;
+    auto faulty=c.record(dir);setrlimit(RLIMIT_FSIZE,&small);settle(900);setrlimit(RLIMIT_FSIZE,&oldLimit);std::signal(SIGXFSZ,oldSignal);if(c.query()["recording"].get<bool>())c.stop();auto failed=c.query()["last_recording"];check(failed["state"]=="failed"&&!failed["error"].get<std::string>().empty(),"real OS file-size write failure produces failed receipt, never success");check(!c.query()["recording"].get<bool>()&&c.query()["recording_capture"].is_null(),"actual writer failure stops transport and ends recording transaction");if(!failed["clips"].empty()){c.undo(failed["plan_id"]);c.redo();check(c.query()["last_recording"]["state"]=="failed","Redo cannot turn a failed recording receipt into success");}
+#endif
+    Json result={{"result","passed"},{"checks",checks},{"receipt",receipt},{"elapsed_ms",elapsed},{"scope","actual SDK recording graph/writer with known hosted PCM test input; hardware microphone and RT safety require separate verification"}};if(argc>1){std::ofstream out(argv[1]);out<<result.dump(2);}std::cout<<result.dump(2)<<std::endl;c.stop();return 0;
+}catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<std::endl;return 1;}}

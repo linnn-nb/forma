@@ -1,0 +1,191 @@
+#pragma once
+#include <tracktion_engine/tracktion_engine.h>
+#include <json.hpp>
+#include <nativedaw/v2/Scope.h>
+#include <nativedaw/v2/PluginScanning.h>
+#include <map>
+namespace ndaw::v2 {
+namespace te = tracktion::engine;
+using Json = nlohmann::json;
+// L1 owns all mutable Edit access. Callers receive facts, never mutable objects.
+class OutputProbe;
+class RecordingTestAccess;
+class AudioDeviceTestAccess;
+class PluginEditorWindows;
+class NativePluginStates;
+class Commands : private juce::Timer, private te::ParameterChangeHandler::UserChangeListener {
+public:
+    explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
+    ~Commands();
+    Json query() const;
+    static Json registry();
+    static Json processorCatalog();
+    Json refreshPluginInventory(const juce::File& directory=juce::File{});
+    Json pluginInventory()const;
+    Json makePlan(const std::string& actor, Json operations) const;
+    Json preview(const Json&) const;
+    Json commit(const Json&, bool accepted = false,const Scope& scope = {});
+    Json review(const Json&,const Scope&) const;
+    std::string sessionToken() const;
+    Json undo(const std::string& expectedPlan = {});
+    Json redo();
+    Json render(const juce::File&, int64_t start, int64_t end);
+    Json save(const juce::File&);
+    void open(const juce::File&);
+    void play();
+    void stop();
+    void seek(int64_t);
+    Json deviceStatus() const;
+    Json outputMeters() const;
+    Json outputMeterControl(const std::string&,const Json&);
+    Json audioDevices(bool rescan=false) const;
+    Json audioCapabilities(const Json&) const;
+    Json audioDeviceControl(const Json&);
+    static std::string inputPermission();
+    static void requestInputPermission(std::function<void(bool)>);
+    Json configureInput(const std::string& deviceName);
+    Json record(const juce::File& directory);
+    Json configureMidiDevice(const std::string& direction,const std::string& device,bool enabled);
+    Json midiKeyboard(const std::string& track,int pitch,int velocity,bool noteOn);
+    Json automationQuery(const std::string& track) const;
+    Json automationCurveSamples(const std::string& track,const std::string& parameter,int64_t end,int count=256) const;
+    Json automationControl(const std::string& command,const Json& args);
+    Json parameterControl(const std::string& command,const Json& args);
+    Json pluginEditorControl(const std::string& command,const Json& args);
+    Json pluginEditorQuery()const;
+    Json nativeStateControl(const std::string&,const Json&);
+
+    int64_t sampleAtBeat(double) const;
+    Json musicalGrid(int64_t start,int64_t end,double division=1) const;
+    static Json analyse(const juce::File&);
+    static std::string mediaHash(const juce::File&);
+    Json legacyReports() const;
+private:
+    friend class NativePluginStates;
+    std::unique_ptr<NativePluginStates> nativeStates;
+    void captureNativeStates()const;
+    void nativeStateOwned(bool);
+    void checkThread() const;
+    te::AudioTrack* track(const std::string&) const;
+    te::Track* domainTrack(const std::string&) const;
+    static void registerHierarchyCommands(Json&);
+    Json hierarchyQuery(te::Track&) const;
+    Json validateHierarchyPlan(const Json&) const;
+    void executeHierarchyOperation(const std::string&,const Json&);
+    te::Plugin* processor(const std::string&) const;
+    Json externalDescriptor(const std::string&)const;
+    bool mayLoadExternal(te::ExternalPlugin&)const;
+    void closePluginEditors(bool all=false);
+    bool nativePluginEditorOpen(const std::string&)const;
+    std::unique_ptr<PluginEditorWindows> pluginEditors;
+    void validateExternalRuntime()const;void synchroniseExternalParameters(te::ExternalPlugin* only=nullptr);bool reconcileExternalPreparation(te::AutomatableParameter&);
+    Json externalInventory=Json::object();std::map<std::string,double> externalPreparedRates;
+    struct ExternalParameterLayout {std::vector<juce::AudioProcessorParameter*> identities;std::string signature;};
+    std::map<std::string,ExternalParameterLayout> externalParameterLayouts;
+    bool externalLayoutChanged(te::ExternalPlugin&);
+    static void registerProcessorCommands(Json&);
+    Json processorQuery(te::AudioTrack&) const;
+    void validateProcessorOperation(const std::string&, const Json&) const;
+    void executeProcessorOperation(const std::string&, const Json&, Json&);
+    static void registerRoutingCommands(Json&);
+    Json routingQuery(te::AudioTrack&) const;
+    void validateRoutingPlan(const Json&,const Json&) const;
+    void createAux(te::AudioTrack&, Json&);
+    void captureRoutingAssignments();
+    void restoreRoutingAssignments();
+    void executeRoutingOperation(const std::string&, const Json&, Json&);
+    te::AuxSendPlugin* send(const std::string&) const;
+    void setParameterValue(te::Plugin&, te::AutomatableParameter&, float,juce::NotificationType=juce::dontSendNotification);
+    struct ParameterWriteGuard {
+        explicit ParameterWriteGuard(Commands& c):owner(c){++owner.ownedParameterWrites;owner.nativeStateOwned(true);}
+        ~ParameterWriteGuard(){owner.nativeStateOwned(false);--owner.ownedParameterWrites;}
+        Commands& owner;
+    };
+    int ownedParameterWrites=0;
+    bool requestParameterChange(te::AutomatableParameter&,float,juce::NotificationType) override;
+    bool requestParameterGesture(te::AutomatableParameter&,bool) override;
+    static void registerParameterCommands(Json&);
+    void beginParameterCapture();
+    void finishParameterCapture(bool interrupted=false);
+    void endParameterGestures();
+    Json parameterCapture=nullptr,lastParameterCapture=nullptr,parameterFailure=nullptr;
+    std::map<std::string,te::AutomatableParameter::Ptr> parameterGestures;
+    std::string parameterSource="sdk-parameter";
+    bool parameterTransactionStarted=false;
+    friend class ParameterTestAccess;
+    static void registerMusicCommands(Json&);
+    std::string trackType(te::AudioTrack&) const;
+    void createMusicTrack(te::AudioTrack&,const std::string&,Json&);
+    te::MidiClip* midiClip(const std::string&) const;
+    Json musicQuery() const;
+    Json midiQuery(te::MidiClip&) const;
+    void initialiseMusicIDs(juce::UndoManager* = nullptr);
+    Json validateMusicPlan(const Json&) const;
+    void executeMusicOperation(const std::string&,const Json&,Json&,std::map<std::string,std::string>&);
+    static void registerAutomationCommands(Json&);
+    te::AutomatableParameter* automationParameter(const std::string& track,const std::string& parameter) const;
+    void validateAutomationPlan(const Json&) const;
+    void executeAutomationOperation(const std::string&,const Json&,Json&);
+    void initialiseAutomationIDs(juce::UndoManager* = nullptr);
+    void beginAutomationCapture();
+    void finishAutomationCapture();
+    Json capture=nullptr,lastCapture=nullptr;
+    std::map<std::string,te::AutomatableParameter::Ptr> gestures;
+    std::set<std::string> deferredWriteGestures;
+    std::map<std::string,std::pair<juce::ValueTree,float>> touchCurves;
+    friend class AudioDeviceTestAccess;
+    friend class RecordingTestAccess;
+    static void registerRecordingCommands(Json&);
+    void validateRecordingPlan(const Json&) const;
+    void executeRecordingOperation(const std::string&,const Json&);
+    Json recordingQuery(te::AudioTrack&) const;
+    void restoreInputAssignments();
+    void finishRecordingCapture(bool unexpected = false);
+    static void registerAudioDeviceCommands(Json&);
+    bool nativeDeviceManagerStarted=false;
+    Json audioConfiguration=nullptr;
+    bool audioConfigurationPending()const{return !audioConfiguration.is_null()&&audioConfiguration.value("state",std::string{})=="preparing";}
+    void finishAudioConfiguration();
+    uint64_t audioDeviceGeneration()const;
+    juce::AudioDeviceManager::AudioDeviceSetup audioDesired,audioPrevious;
+    double audioConfigurationStarted=0,audioConfigurationStable=0;
+    uint64_t audioConfigurationGeneration=0,audioConfigurationFrames=0;
+    Json midiDevices() const;
+    void releaseMidiKeys();
+    void finishMidiConfiguration();
+    Json midiConfiguration=nullptr;
+    double midiConfigurationStarted=0;
+    struct HeldKey { std::shared_ptr<te::MidiInputDevice> device; int pitch; };
+    std::vector<HeldKey> heldMidiKeys;
+    struct MidiRecordSettings { std::shared_ptr<te::MidiInputDevice> device; bool merge,replace,expression; te::QuantisationType quantisation; };
+    std::vector<MidiRecordSettings> midiRecordSettings;
+    void timerCallback() override;
+    Json recordingCapture=nullptr,lastRecording=nullptr;
+    juce::File recordingDirectory;
+    std::string recordingError;
+    te::WaveAudioClip* audioClip(const std::string&) const;
+    static void registerClipCommands(Json&);
+    Json audioClipQuery(te::WaveAudioClip&) const;
+    Json validateClipPlan(const Json&) const;
+    void executeClipOperation(const std::string&,const Json&,Json&,std::map<std::string,std::string>&);
+    static void registerLegacyCommands(Json&);
+    Json prepareLegacy(const juce::File&) const;
+    Json validateLegacyOperation(const Json&) const;
+    void executeLegacyOperation(const Json&,Json&);
+    Json assessScope(const Json&,const Scope&,const Json&) const;
+    void bumpRevision();
+    te::Engine engine;
+    OutputProbe* outputProbe = nullptr;
+    std::unique_ptr<te::Edit> edit;
+    // The command layer owns transaction boundaries for the entire Edit lifetime.
+    std::unique_ptr<te::Edit::UndoTransactionInhibitor> undoBoundaryInhibitor;
+    juce::ValueTree metadata;
+    std::string sessionID=juce::Uuid().toString().toStdString();
+    uint64_t revision = 0;
+    struct Receipt { std::string fingerprint; Json result; };
+    std::map<std::string, Receipt> receipts;
+    std::vector<std::string> history;
+    size_t historyCursor = 0;
+    static constexpr double timelineRate = 48000;
+};
+}

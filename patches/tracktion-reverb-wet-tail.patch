@@ -1,0 +1,25 @@
+diff --git a/modules/tracktion_engine/plugins/effects/tracktion_Reverb.cpp b/modules/tracktion_engine/plugins/effects/tracktion_Reverb.cpp
+index 75134e2..fc342c7 100644
+--- a/modules/tracktion_engine/plugins/effects/tracktion_Reverb.cpp
++++ b/modules/tracktion_engine/plugins/effects/tracktion_Reverb.cpp
+@@ -130,8 +130,8 @@ void ReverbPlugin::applyToBuffer (const PluginRenderContext& fc)
+ 
+             float* const right = fc.destBuffer->getWritePointer (1, fc.bufferStartSample);
+ 
+-            if (outputSilent && isSilent (left, num) && isSilent (right, num))
+-                return;
++            // A silent output block can precede pending comb delays in a wet-only bus.
++            // Advance the network and parameter smoothing even when the input is silent.
+ 
+             reverb.processStereo (left, right, num);
+ 
+@@ -139,8 +139,7 @@ void ReverbPlugin::applyToBuffer (const PluginRenderContext& fc)
+         }
+         else
+         {
+-            if (outputSilent && isSilent (left, num))
+-                return;
++            // Silence at output does not prove that the delay network is empty.
+ 
+             reverb.processMono (left, num);
+ 

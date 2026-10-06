@@ -1,0 +1,47 @@
+diff --git a/modules/tracktion_engine/plugins/effects/tracktion_FourOscPlugin.cpp b/modules/tracktion_engine/plugins/effects/tracktion_FourOscPlugin.cpp
+index 5285ed6..418a8ed 100644
+--- a/modules/tracktion_engine/plugins/effects/tracktion_FourOscPlugin.cpp
++++ b/modules/tracktion_engine/plugins/effects/tracktion_FourOscPlugin.cpp
+@@ -1393,12 +1393,7 @@ void FourOscPlugin::flushPluginStateToValueTree()
+ {
+     juce::ScopedValueSetter<bool> svs (flushingState, true);
+ 
+-    auto um = getUndoManager();
+-
+     auto vt = state.getChildWithName (IDs::MODMATRIX);
+-    if (vt.isValid())
+-        state.removeChild (vt, um);
+-
+     auto mm = juce::ValueTree (IDs::MODMATRIX);
+ 
+     for (const auto& itr : modMatrix)
+@@ -1408,16 +1403,24 @@ void FourOscPlugin::flushPluginStateToValueTree()
+             if (itr.second.depths[s] >= -1.0f)
+             {
+                 auto mmi = juce::ValueTree (IDs::MODMATRIXITEM);
+-                mmi.setProperty (IDs::modParam, itr.first->paramID, um);
+-                mmi.setProperty (IDs::modItem, modulationSourceToID ((ModSource)s), um);
+-                mmi.setProperty (IDs::modDepth, itr.second.depths[s], um);
++                mmi.setProperty (IDs::modParam, itr.first->paramID, nullptr);
++                mmi.setProperty (IDs::modItem, modulationSourceToID ((ModSource)s), nullptr);
++                mmi.setProperty (IDs::modDepth, itr.second.depths[s], nullptr);
+ 
+-                mm.addChild (mmi, -1, um);
++                mm.addChild (mmi, -1, nullptr);
+             }
+         }
+     }
+ 
+-    state.addChild (mm, -1, um);
++    // Flushing identical cached state is not an edit. In particular, an empty
++    // default matrix must not create an anonymous Undo transaction on Save.
++    if (! vt.isEquivalentTo (mm) && (vt.isValid() || mm.getNumChildren() != 0))
++    {
++        auto um = getUndoManager();
++        if (vt.isValid())
++            state.removeChild (vt, um);
++        state.addChild (mm, -1, um);
++    }
+ 
+     Plugin::flushPluginStateToValueTree(); // Add any parameter values that are being modified
+ }

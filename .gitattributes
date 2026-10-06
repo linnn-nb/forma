@@ -1,0 +1,3 @@
+
+# Keep the locked JUCE CRLF patch bytes intact.
+patches/juce-au-parameter-cache.patch -text whitespace=-blank-at-eol,cr-at-eol

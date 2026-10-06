@@ -1,0 +1,14 @@
+--- a/modules/juce_audio_processors_headless/format_types/juce_AudioUnitPluginFormatImpl.h
++++ b/modules/juce_audio_processors_headless/format_types/juce_AudioUnitPluginFormatImpl.h
+@@ -1732,6 +1732,11 @@
+                                                                             label,
+                                                                             (info.get().flags & kAudioUnitParameterFlag_ValuesHaveStrings) != 0);
+ 
++                    // Rebuilding host parameters must expose the actual native
++                    // values, not factory defaults. Tracktion refreshes this list
++                    // after deferred processor/rate/state notifications.
++                    parameter->syncCachedValue();
++
+                     paramIDToParameter.emplace (ids[i], parameter.get());
+ 
+                     if (info.get().flags & kAudioUnitParameterFlag_HasClump)

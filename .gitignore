@@ -1,0 +1,7 @@
+.deps/
+.tools/
+build*/
+dist/
+*.dSYM/
+evidence/
+.DS_Store

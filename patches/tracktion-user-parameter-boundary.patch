@@ -1,0 +1,107 @@
+diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.cpp b/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.cpp
+index 83a5b78..7803628 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.cpp
++++ b/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.cpp
+@@ -1457,6 +1457,9 @@ void AutomatableParameter::setParameterValue (float value, bool isFollowingCurve
+ 
+ void AutomatableParameter::setParameter (float value, juce::NotificationType nt)
+ {
++    if (! getEdit().getParameterChangeHandler().requestParameterChange (*this, value, nt))
++        return;
++
+     currentParameterValue = value;
+     setParameterValue (value, false);
+ 
+@@ -1559,6 +1562,9 @@ void AutomatableParameter::updateToFollowCurve (TimePosition time)
+ 
+ void AutomatableParameter::parameterChangeGestureBegin()
+ {
++    if (! getEdit().getParameterChangeHandler().requestParameterGesture (*this, true))
++        return;
++
+     jassert(gestureCount == 0);
+     gestureCount++;
+ 
+@@ -1593,6 +1599,9 @@ void AutomatableParameter::parameterChangeGestureBegin()
+ 
+ void AutomatableParameter::parameterChangeGestureEnd()
+ {
++    if (! getEdit().getParameterChangeHandler().requestParameterGesture (*this, false))
++        return;
++
+     gestureCount--;
+     jassert(gestureCount == 0);
+ 
+diff --git a/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.cpp b/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.cpp
+index 2e7bada..e590b5e 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.cpp
++++ b/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.cpp
+@@ -14,6 +14,37 @@ ParameterChangeHandler::ParameterChangeHandler (Edit& e) : edit (e)
+ {
+ }
+ 
++void ParameterChangeHandler::setUserChangeListener (UserChangeListener* l)
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    userChangeListener.store (l, std::memory_order_release);
++}
++
++bool ParameterChangeHandler::requestParameterChange (AutomatableParameter& p, float value, juce::NotificationType nt)
++{
++    if (auto* l = userChangeListener.load (std::memory_order_acquire))
++    {
++        // Reject off-thread writes before touching the Edit; no lock, allocation or IO.
++        auto* mm = juce::MessageManager::getInstanceWithoutCreating();
++        if (mm == nullptr || ! mm->isThisTheMessageThread())
++            return false;
++        return l->requestParameterChange (p, value, nt);
++    }
++    return true;
++}
++
++bool ParameterChangeHandler::requestParameterGesture (AutomatableParameter& p, bool beginning)
++{
++    if (auto* l = userChangeListener.load (std::memory_order_acquire))
++    {
++        auto* mm = juce::MessageManager::getInstanceWithoutCreating();
++        if (mm == nullptr || ! mm->isThisTheMessageThread())
++            return false;
++        return l->requestParameterGesture (p, beginning);
++    }
++    return true;
++}
++
+ void ParameterChangeHandler::addListener (Listener& l)
+ {
+     std::unique_lock sl (listenerListLock);
+diff --git a/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.h b/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.h
+index 1a7b7aa..1d771c9 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.h
++++ b/modules/tracktion_engine/model/automation/tracktion_ParameterChangeHandler.h
+@@ -27,6 +27,18 @@ public:
+         virtual void pluginParameterChanged (AutomatableParameter&, bool isFollowingAutomation) = 0;
+     };
+ 
++    // NativeDAW: single Edit owner intercepts user writes before any undo action.
++    // Automation/modifier stream updates never enter this message-thread boundary.
++    struct UserChangeListener
++    {
++        virtual ~UserChangeListener() = default;
++        virtual bool requestParameterChange (AutomatableParameter&, float, juce::NotificationType) = 0;
++        virtual bool requestParameterGesture (AutomatableParameter&, bool beginning) = 0;
++    };
++    void setUserChangeListener (UserChangeListener*);
++    bool requestParameterChange (AutomatableParameter&, float, juce::NotificationType);
++    bool requestParameterGesture (AutomatableParameter&, bool beginning);
++
+     void addListener (Listener&);
+     void removeListener (Listener&);
+ 
+@@ -84,6 +96,7 @@ public:
+ 
+ private:
+     //==============================================================================
++    std::atomic<UserChangeListener*> userChangeListener { nullptr };
+     Edit& edit;
+     int pendingActionId = -1;
+     bool enabled = true;

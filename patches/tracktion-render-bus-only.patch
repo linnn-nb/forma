@@ -1,0 +1,19 @@
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
+index e37d1e4..320a9a0 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
+@@ -2186,7 +2186,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+         }
+ 
+         if (auto node = createNodeForTrack (*t, params))
++        {
++            // Bus-only tracks participate in sends, but their direct signal must
++            // not be summed into the render output (same policy as playback).
++            if (getTrackOutput (*t)->outputsToNone())
++                node = makeNode<SinkNode> (std::move (node));
++
+             trackNodes.push_back (std::move (node));
++        }
+     }
+ 
+     auto sumNode = std::make_unique<SummingNode> (std::move (trackNodes));

@@ -1,0 +1,15 @@
+diff --git a/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp b/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
+index 5011615..0b23933 100644
+--- a/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
++++ b/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
+@@ -291,7 +291,9 @@ void DeviceManager::initialise (int defaultNumInputs, int defaultNumOutputs)
+ 
+     loadSettings();
+     finishedInitialising = true;
+-    rescanMidiDeviceList();
++    // Finish the initial MIDI inventory before an Edit can start playback.
++    // A deferred first scan releases active playback graphs.
++    applyNewMidiDeviceList();
+     rescanWaveDeviceList();
+     updateNumCPUs();
+ 

@@ -1,0 +1,54 @@
+diff --git a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
+index c0675a3..315ed4c 100644
+--- a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
++++ b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
+@@ -190,6 +190,14 @@ bool InputDeviceInstance::isLivePlayEnabled (const Track& t) const
+         if (dest->targetID != t.itemID)
+             continue;
+ 
++        // NativeDAW keeps monitoring per destination, so a shared physical input
++        // can record several tracks without forcing every destination to monitor.
++        if (dest->state.hasProperty ("ndaw_monitor"))
++        {
++            const auto mode = dest->state["ndaw_monitor"].toString();
++            return mode == "on" || (mode == "auto" && isRecordingEnabled (t.itemID));
++        }
++
+         switch (owner.getMonitorMode())
+         {
+             case InputDevice::MonitorMode::on:          return true;
+@@ -204,7 +212,7 @@ bool InputDeviceInstance::isLivePlayEnabled (const Track& t) const
+ void InputDeviceInstance::valueTreePropertyChanged (juce::ValueTree& v, const juce::Identifier& id)
+ {
+     if (v.getParent() == state)
+-        if (id == IDs::armed || id == IDs::targetID)
++        if (id == IDs::armed || id == IDs::targetID || id == juce::Identifier ("ndaw_monitor"))
+             handleDestinationChange (EditItemID::fromVar (v[IDs::targetID]),
+                                      id == IDs::targetID);
+ }
+diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
+index 55cefed..5baa7da 100644
+--- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
++++ b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
+@@ -39,7 +39,10 @@ public:
+ 
+     void handleAsyncUpdate() override
+     {
+-        TransportControl::stopAllTransports (engine, false, false);
++        // Surface an actual writer failure before stopping; retained partial media
++    // must never be reported as a successful recording. This runs on the message thread.
++    engine.getUIBehaviour().showWarningMessage ("Audio recording failed to write to disk; retained files may be partial");
++    TransportControl::stopAllTransports (engine, false, false);
+         engine.getUIBehaviour().showWarningMessage (TRANS("Recording error - disk space is getting dangerously low!"));
+     }
+ 
+@@ -2065,6 +2068,9 @@ void WaveInputRecordingThread::run()
+ void WaveInputRecordingThread::timerCallback()
+ {
+     stopTimer();
++    // Surface an actual writer failure before stopping; retained partial media
++    // must never be reported as a successful recording. This runs on the message thread.
++    engine.getUIBehaviour().showWarningMessage ("Audio recording failed to write to disk; retained files may be partial");
+     TransportControl::stopAllTransports (engine, false, false);
+ }
+ 
