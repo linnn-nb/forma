@@ -34,6 +34,13 @@ public:
         setColour(juce::PopupMenu::backgroundColourId,base());
     }
     juce::Font getTextButtonFont(juce::TextButton&,int height) override {return juce::FontOptions(float(std::min(13,height-4)));}
+    juce::Component* getParentComponentForMenuOptions(const juce::PopupMenu::Options& options) override {
+        // Keep application menus in their owning window, including remote
+        // desktop/accessibility capture. Do not embed third-party editor menus.
+        if(auto* parent=options.getParentComponent())return parent;
+        if(auto* target=options.getTargetComponent())return target->getTopLevelComponent();
+        return nullptr;
+    }
 };
 
 // Both workspaces use these controls. Every edit is submitted to the same L1 Writer.
