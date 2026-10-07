@@ -1,11 +1,11 @@
 # 下一步
 
-结论：M0 通过；M1 人工缺口保留。M2 已有可构建的生产 stdio/socket、预览确认、提交/取消和 Undo，含分页、请求键/断线恢复及完整 Release 44/44 回归已验证；完整 M1/M2 仍待桌面验收，不改变里程碑完成标准。
+结论：M0 通过；M2 指定外部 Agent 演示已在 2026-10-07 实测：生产 MCP 查询与规划、GUI 确认、CoreAudio 播放、一次 Undo、真实 WAV 校验。恢复副本的桌面保存/取消/恢复也已执行。完整 M1 制作与 M3–M6 未完成。
 
-1. 下一项明确任务：桌面解锁后，Codex 通过生产 MCP 读取所选人声，生成新混响 Aux Plan，GUI 接受、实际播放试听、停止并一次撤销；记录真实回执与关键截图。使用 MCP_WORKFLOW.md。未解锁时不重复大量 CLI 来冒充该流程。
-2. 按 AUDIO_DEVICE_WORKFLOW.md / PLUGIN_WORKFLOW.md 补齐 M1 人工录音、MIDI、路由、效果器、自动化、保存重开和导出验收；通过后才删除架构 §9 的退役代码。
-3. M2 完整验收后进入 M3：扩展现有基础测量为多 tap/时间事件/artifact 服务，先完成 Master 削波定位和流媒体交付检查；M4–M6 及后续平台/发布范围保留。
+1. 下一项明确任务：按 AUDIO_DEVICE_WORKFLOW.md / PLUGIN_WORKFLOW.md 补齐 M1 实体麦克风多轨录音、MIDI 输入、效果器/路由/自动化与保存重开工作流。按实际设备授权处理，不能以合成语音或组件测试代替实体录音。M1 通过后删除架构 §9 的退役模块。
+2. M3 首个可演示增量：Master 指定区间离线分析、削波时间事件和可点击定位，再扩展 LUFS-S/M、其他 tap 与处理链/媒体哈希失效。流媒体交付 Check 随实际分析结果验收。
+3. 继续 M4 扩展、M5 ACE-Step、M6 Playlist/Comp 等迁移；之后完善 AI 面板、Windows、视频、环绕声、发行与耐久。
 
-网关余项：跨连接真实本轮回执与保存后核对已接通；完整 WAL/未保存崩溃恢复、自动保存和持久 Undo 尚未实现；分页已验证 128/256/512 轨道，插件密集查询、原生状态捕获/预检时限、输出背压压力和真实客户端兼容性仍待验证。工程/实时/插件长期资格的既有差距见 DEPENDENCIES_AND_BLOCKERS.md。
+当前开发应用：`build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`；MCP bridge：应用包 `Contents/Helpers/forma-mcp`。本机可打开 `evidence/M2/desktop-234c0b0284/M2-with-reverb.tracktionedit` 试听候选；干声基线和真实 WAV 同目录。测试素材是明确标识的本地合成语音，未上传。
 
-开发应用：`build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`；MCP bridge：应用包 `Contents/Helpers/forma-mcp`。每个可构建步骤提交 Git；本轮不打 DMG。
+既有缺口继续保留：SDK 实时锁/分配、监听 RTT、设备拔插、耐久、未知私有插件状态、多输出/侧链、大型工程预检及背压、媒体重定位、逐事务 WAL、活动录音恢复与持久 Undo。停止状态副本见 RECOVERY_WORKFLOW.md，实际证据见 VERIFICATION.md。每个可构建步骤提交 Git；本轮不打 DMG。

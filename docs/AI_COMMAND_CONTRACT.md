@@ -240,6 +240,19 @@ MCP 工具 API 0.3.0 的规划必须携带调用方 request_key；本地旧 SDK 
 
 query.request → query_request 由 registry 生成。只读查询真实执行回执不授予所有权。已撤销连接的成功事务可由相同本地 Scope 的新授权获取原 Plan，不重写原 actor；提交重试只返回实际状态。外部 Undo 永远显示确认卡片，后续人工历史仍受保护。断线未提交键保留取消状态；请求表 4096、活跃 Plan 64、确认卡片 16，超限报错不静默淘汰。
 
-成功键审计保存在 NATIVEDAW/REQUEST_AUDIT（schema 1），在 Undo 外维护防重放标记，不新增工程事务或 revision。保存后的 committed/undone 仅为未受信任的历史数据；重开清空当前回执/Undo，query_request 返回 recovery_requires_review 和空 receipt，自动重放旧键拒绝。未保存崩溃、WAL、自动保存及持久 Undo 尚未完成。
+成功键审计保存在 NATIVEDAW/REQUEST_AUDIT（schema 1），在 Undo 外维护防重放标记，不新增工程事务或 revision。保存后的 committed/undone 仅为未受信任的历史数据；重开清空当前回执/Undo，query_request 返回 recovery_requires_review 和空 receipt，自动重放旧键拒绝。工程恢复副本同样只恢复历史标记。逐事务 WAL、活动录音/保存间隔内的崩溃恢复及持久 Undo 尚未完成。
 
 代码：RequestIdentity.h、RequestRecovery.cpp、EngineCommands、CommandQueue、QueryCommands、McpSession、Workspace；测试：RequestRecoveryTests（并发/权限/人机交错/重开/损坏/4096键）、McpWorkspaceTests（生产 stdio/socket、原生卡片、实际湿声 PCM 和撤销）。亲手操作与预算见 MCP_WORKFLOW.md。
+
+## 工程恢复控制（M1-RECOVERY-01）
+
+注册 `session.recovery.configure/capture/list/restore/cancel`：execution=control、actor=human、permission=local_gui、reversible=false。MCP 不生成这些编辑工具，不能放进外部 Plan；背景代码不获取可写 Edit。`recoveryStatus` 只返回缓存的真实状态和回执，`busy`/`saving`/`restoring` 不等于成功。
+
+configure 参数 enabled 与 interval_seconds（整数 10–600），偏好有实际写入回执。capture 在 message thread 停止/无手势/原生状态已捕获时 flush/copy Edit，后台写入新 XML 与 manifest；save 的 revision 是捕获时的实际版本，之后的人工操作可以继续，不伪称已一起保存。
+
+restore 参数 id（32 位小写十六进制）、sha256、base_revision、session_token。参数不接受 accepted、actor、任意路径或权限。GUI 单独查看预览并点击确认后调用；工作线程读入目标精确字节并核验，再保存当前状态的独立副本。message thread 在本地取消代次、会话、revision、设备/手势状态与原生插件变化均通过检查后才切换。同一个 Engine 接管新的 Edit；清空当前 Undo/回执、关闭监听、换 session token，GUI 撤回 MCP/命令文件授权并保持原网关路径。失败不切换；cancel 阻止尚未执行的切换，已完成的备份保留。
+
+单后台作业、64 MiB 单副本、1024 份/4 GiB 目录预算，无自动删除。文件同步与硬链接/rename 复用现有原子存储；操作系统磁盘调用不能抢占，退出可能等待正在执行的 I/O。只恢复工程状态，不恢复云权限、AI 任务、Undo 或音频验证结果。实现、测试与人工步骤见 RECOVERY_WORKFLOW.md。
+
+
+恢复状态中的 receipt_current_session 指明保存/恢复回执是否属于当前 session token；打开其他工程后保留原始回执供核对，但状态回到 idle，不把旧工程操作显示为新工程已保存或已恢复。

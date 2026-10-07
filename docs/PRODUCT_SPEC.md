@@ -1,10 +1,14 @@
 # 产品范围 v2
 
-结论：复用Tracktion Engine，当前补齐 M1 验收并推进 M2；M0 已通过，完整产品和真实 Agent 桌面流程尚未验收。Pro Tools仅为交互参考。
+结论：复用 Tracktion Engine；M0 已通过，M2 指定外部 Agent 桌面演示已实测，完整 M1 制作与 M3–M6 尚未完成。Pro Tools 仅为交互参考。
+
+最新验收（M2-DESKTOP-01）：Codex 查询生产 MCP 的实际选区和路由，生成一个四操作 Plan；GUI 确认后新建纯湿 Reverb Aux 和 Post 发送，原输出保持；CoreAudio 实际播放，一次 GUI Undo 恢复原工程，真实导出 PCM 与基线逐位相同。使用本地合成语音，不代表麦克风录音、表演质量或主观音质验收。恢复副本也完成桌面保存、取消、确认和只读权限重置。证据与边界见 VERIFICATION.md。
+
+最新增量（M1-RECOVERY-01）：原生菜单提供自动恢复副本、选择预览、人工确认与取消。工程副本取得真实校验/写盘回执，恢复前备份当前状态，冲突保留人工新操作；恢复后外部权限回到只读。64 轨道真实 Edit、相对媒体、PCM 一致与强制退出恢复已自动验证，完整 WAL、活动录音恢复与持久 Undo 未完成。亲手操作见 RECOVERY_WORKFLOW.md。
 
 最新增量（M2-QUERY-01）：同一 registry 生成只读摘要和分页工具，查询轨道、片段、发送、插件参数、MIDI、Tempo/拍号和自动化点；工程版本变更拒绝续页，省略明细有真实计数。128/256/512 轨道枚举通过，修复 SDK 默认 400 Track 创建上限；不声明同等轨数的播放容量。写入、试听和完整人工验收状态不因此改变。
 
-此前增量（M2-MCP-01）：生产 MCP stdio/socket 查询、注册表生成工具、Plan 预检、本地确认提交、取消与 Undo 已接通。GUI 读取同一 Edit，人工 Undo/Redo 后 Agent 状态同步；断开回收授权。实际协议、原生确认回调、WAV 与 PCM 撤销恢复已自动验证；完整模型/桌面试听验收待解锁。使用见 MCP_WORKFLOW.md。
+此前增量（M2-MCP-01）：生产 MCP stdio/socket 查询、注册表生成工具、Plan 预检、本地确认提交、取消与 Undo 已接通。GUI 读取同一 Edit，人工 Undo/Redo 后 Agent 状态同步；断开回收授权。实际协议、原生确认回调、WAV 与 PCM 撤销恢复已自动验证；当时桌面锁定，新增实测见 M2-DESKTOP-01。使用见 MCP_WORKFLOW.md。
 
 此前增量（M1-METER-01）：Mix 接通真实左右设备输出电平、峰值保持、独立 OVER 与音频回调确认复位。单声道/无设备/过期回调均如实显示；不改工程与 Undo，不冒充 True Peak 或 LUFS。自动回归通过，桌面人工验收仍待执行。代码/测试与边界见 VERIFICATION.md。
 

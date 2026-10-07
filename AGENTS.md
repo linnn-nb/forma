@@ -13,4 +13,4 @@
 - 每个可构建步骤提交 Git；证据只保留 evidence/<milestone>/summary.md 与关键输出；里程碑验收才打包。
 - 付费、上传音频、系统安全修改、覆盖用户原始文件须授权。公开发布须用户明确授权。仓库重构和已授权依赖无需重复询问。
 
-入口：docs/PRODUCT_SPEC.md、docs/AI_COMMAND_CONTRACT.md、docs/M0_REPORT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/MCP_WORKFLOW.md。
+入口：docs/PRODUCT_SPEC.md、docs/AI_COMMAND_CONTRACT.md、docs/M0_REPORT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/MCP_WORKFLOW.md、docs/RECOVERY_WORKFLOW.md。

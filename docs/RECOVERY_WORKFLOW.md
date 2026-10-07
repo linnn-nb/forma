@@ -28,4 +28,4 @@ L1：`src/v2/SessionRecovery.cpp`（捕获、版本检查、恢复控制）、`R
 
 测试编号 `M1-RECOVERY-01`：`tests/v2/SessionRecoveryTests.cpp`、`RecoveryWorkspaceTests.cpp`。固定 64 轨道工程含音频、MIDI、EQ、Aux 与自动化；验证对象恢复、144000 帧/48 kHz/24-bit/双声道实际渲染、解码 PCM 一致、原文件哈希、自动计时、损坏与孤立文件、真实 OS 写入失败、并发人工编辑、取消、相对媒体、历史请求标记和真实子进程 SIGKILL 后恢复。原生组件回调验证菜单、预览、确认、权限撤回与恢复后的新 Undo。
 
-实施前预算：该固定工程 message-thread 捕获 <1 秒、普通后台作业 <5 秒、3 秒音频渲染 <10 秒；结果见 `docs/VERIFICATION.md` 和本地 `evidence/M1/summary.md`。不以这些自动测试代替物理点击、主观试听或完整 M1/M2 验收。
+实施前预算：该固定工程 message-thread 捕获 <1 秒、普通后台作业 <5 秒、3 秒音频渲染 <10 秒；结果见 `docs/VERIFICATION.md` 和本地 `evidence/M1/summary.md`。2026-10-07 的实际桌面流程另外验证保存副本、人工静音、预览取消、确认恢复、当前状态备份、旧连接撤回和新连接只读；恢复后导出 PCM 与干声基线逐位相同。测试使用本地合成语音，完整 M1 制作和主观听感仍待验收。

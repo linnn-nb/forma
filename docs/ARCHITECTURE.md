@@ -1,7 +1,7 @@
 # NativeDAW 架构 v2
 
 日期：2026-10-05
-状态：M0 可行性关口已通过（2026-10-06），按本架构进入 M1；具体证据与未完成约束见 M0_REPORT.md
+状态：M0 关口通过（2026-10-06）；M1 完整制作待验收；M2 指定外部 Agent 桌面演示已实测（2026-10-07）。具体证据与未完成约束见 VERIFICATION.md。
 
 ## 0. 定位与前提
 
@@ -80,6 +80,8 @@
 
 ### 3.3 命令注册表
 
+**工程恢复副本（M1-RECOVERY-01）**：L1 在停止状态 flush/copy 同一 Edit，后台单作业只处理脱离工程的 ValueTree，使用新文件原子写入和 manifest 校验回执。恢复是 local_gui 控制：预览绑定 session/revision/校验和，目标校验和当前工程备份成功后，message thread 再检查版本并接管已核验状态。恢复前后原媒体不覆盖，恢复创建新会话并撤回 Agent 写权限；历史键不能冒充本轮回执。自动间隔、目录预算、取消与失败均可见。不是逐事务 WAL、持久 Undo 或活动录音恢复；具体资格见 RECOVERY_WORKFLOW.md / VERIFICATION.md。
+
 每个命令定义：id、参数 JSON Schema、单位、目标对象、前置条件、权限、风险等级、可逆性、影响范围、结果格式、测试 ID。命令清单由 `ndaw commands` 输出，同一份清单直接生成 MCP 工具描述。
 
 查询也进入 registry（execution=query），不能被放入编辑 Plan。query.summary / query.objects 在 L1 message thread 读取同一 Edit；MCP 生成 query_session_summary / query_objects，按 session_token/revision 分页，拒绝混合编辑快照。共享输出/发送/参数/自动化事实函数，不将实时 Transport 或自动化观察值包装为不可变快照。完整边界见 MCP_WORKFLOW.md。
@@ -154,7 +156,7 @@ my-vocal-chain/
 - 权限模式沿用现有设计：只读、先预览再提交、在明确范围内自动执行低风险任务。在 GUI 中，对 MCP 客户端的每个提交请求显示待确认卡片。
 - **这条路径解决了 AI 端到端测试的阻塞**：Codex、Claude、Cursor 等外部 Agent 本身就是真实模型，通过 MCP 驱动正在运行的 NativeDAW，不需要下载本地模型。
 
-**M2 开发落地（2026-10-07）**：`forma-mcp` stdio bridge 转接应用内 Unix socket，不创建第二个 Engine。McpSession 从 L1 registry 生成工具，客户端只持有不透明 CommandQueue::Client；所有 Edit 写入与确认仍在 message thread。默认只读，菜单可选择预览；每个 MCP commit/undo 都显示本地卡片。断开/改权限/重开撤回未提交计划，人工 Undo/Redo 在每个请求入口同步实际状态。自动化协议/原生组件/PCM 已验证，完整 M1/M2 人工及模型验收仍未通过。使用与预算见 [MCP_WORKFLOW.md](MCP_WORKFLOW.md)。 工具 API 0.3.0 的 request_key 由 L1 绑定原请求及本地 Scope，支持断线查询/恢复真实本轮回执；成功审计标记随 Edit 保存，重开只作未受信任的核对依据，不能恢复权限、Undo 或伪称当前成功。完整崩溃/WAL 恢复未实现。
+**M2 开发落地（2026-10-07）**：`forma-mcp` stdio bridge 转接应用内 Unix socket，不创建第二个 Engine。McpSession 从 L1 registry 生成工具，客户端只持有不透明 CommandQueue::Client；所有 Edit 写入与确认仍在 message thread。默认只读，菜单可选择预览；每个 MCP commit/undo 都显示本地卡片。断开/改权限/重开撤回未提交计划，人工 Undo/Redo 在每个请求入口同步实际状态。自动化协议/原生组件/PCM 已验证；2026-10-07 Codex 通过生产 MCP、桌面确认、CoreAudio 播放与一次 GUI Undo 完成指定 M2 演示，合成语音的真实 WAV 撤销 PCM 与基线一致。完整 M1 实体录音/MIDI及制作仍待验收。使用与预算见 [MCP_WORKFLOW.md](MCP_WORKFLOW.md)。 工具 API 0.3.0 的 request_key 由 L1 绑定原请求及本地 Scope，支持断线查询/恢复真实本轮回执；成功审计标记随 Edit 保存，重开只作未受信任的核对依据，不能恢复权限、Undo 或伪称当前成功。完整崩溃/WAL 恢复未实现。
 
 ### 6.2 内置 AI 面板（次路径）
 
