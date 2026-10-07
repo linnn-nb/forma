@@ -82,6 +82,8 @@
 
 每个命令定义：id、参数 JSON Schema、单位、目标对象、前置条件、权限、风险等级、可逆性、影响范围、结果格式、测试 ID。命令清单由 `ndaw commands` 输出，同一份清单直接生成 MCP 工具描述。
 
+查询也进入 registry（execution=query），不能被放入编辑 Plan。query.summary / query.objects 在 L1 message thread 读取同一 Edit；MCP 生成 query_session_summary / query_objects，按 session_token/revision 分页，拒绝混合编辑快照。共享输出/发送/参数/自动化事实函数，不将实时 Transport 或自动化观察值包装为不可变快照。完整边界见 MCP_WORKFLOW.md。
+
 M1 需要的最小命令集：
 
 - 轨道：新建（audio/midi/instrument/aux/folder/vca）、删除、重命名、排序、着色、输入输出、录音待命、监听模式、mute、solo、solo safe。

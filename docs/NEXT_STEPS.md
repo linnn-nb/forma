@@ -6,6 +6,6 @@
 2. 按 AUDIO_DEVICE_WORKFLOW.md / PLUGIN_WORKFLOW.md 补齐 M1 人工录音、MIDI、路由、效果器、自动化、保存重开和导出验收；通过后才删除架构 §9 的退役代码。
 3. M2 完整验收后进入 M3：扩展现有基础测量为多 tap/时间事件/artifact 服务，先完成 Master 削波定位和流媒体交付检查；M4–M6 及后续平台/发布范围保留。
 
-网关余项：跨连接与崩溃幂等恢复账本；大型工程查询分页/预检时限、输出背压压力、真实 MCP 客户端兼容性。工程/实时/插件长期资格的既有差距见 DEPENDENCIES_AND_BLOCKERS.md。
+网关余项：跨连接与崩溃幂等恢复账本；分页已验证 128/256/512 轨道，插件密集查询、原生状态捕获/预检时限、输出背压压力和真实客户端兼容性仍待验证。工程/实时/插件长期资格的既有差距见 DEPENDENCIES_AND_BLOCKERS.md。
 
 开发应用：`build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`；MCP bridge：应用包 `Contents/Helpers/forma-mcp`。每个可构建步骤提交 Git；本轮不打 DMG。

@@ -61,6 +61,7 @@ add_subdirectory(third_party/tracktion_engine)
 add_library(ndaw_ebur128 STATIC third_party/libebur128/ebur128/ebur128.c)
 target_include_directories(ndaw_ebur128 PUBLIC third_party/libebur128/ebur128)
 add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePluginStates.cpp src/v2/PluginEditorCommands.cpp src/v2/ExternalCommands.cpp src/v2/PluginScanning.cpp src/v2/PluginScanStorage.cpp src/v2/CommandQueue.cpp src/v2/McpSession.cpp src/v2/McpGateway.cpp src/v2/Scope.cpp src/v2/ParameterCommands.cpp src/v2/LegacyImport.cpp src/v2/ClipCommands.cpp src/v2/EngineCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/QueryCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -343,6 +344,12 @@ target_sources(ndaw_mcp_tests PRIVATE tests/v2/McpTests.cpp)
 target_link_libraries(ndaw_mcp_tests PRIVATE ndaw_engine)
 add_test(NAME tracktion_mcp_protocol COMMAND ndaw_mcp_tests "${CMAKE_SOURCE_DIR}/evidence/M2/protocol-tests.json")
 set_tests_properties(tracktion_mcp_protocol PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_query_tests PRODUCT_NAME "ndaw_query_tests")
+target_sources(ndaw_query_tests PRIVATE tests/v2/QueryTests.cpp)
+target_link_libraries(ndaw_query_tests PRIVATE ndaw_engine)
+add_test(NAME tracktion_paged_project_queries COMMAND ndaw_query_tests "${CMAKE_SOURCE_DIR}/evidence/M2/query-tests.json")
+set_tests_properties(tracktion_paged_project_queries PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 if(NOT WIN32)
   juce_add_console_app(ndaw_mcp_workspace_tests PRODUCT_NAME "ndaw_mcp_workspace_tests")

@@ -25,7 +25,7 @@
 
 1. 导入本地人声、接受导入预览，停止播放并选中该轨。
 2. 给外部 Agent 发请求：「把选中人声发送到新建的混响 Aux，原输出路由不变。」
-3. Agent 用 `query_session` 读取实际选区、轨道 ID、输出、工程版本和权限，再查询注册表。它用 `plan_edits` 将创建 Aux、插入真实纯湿 Reverb、Solo Safe、Post 发送组成一个 Plan；源轨 ID 来自查询。初始发送可采用可检查的 −12 dB，音色选择由用户试听决定。
+3. Agent 用 `query_session_summary` 读取实际选区、工程版本、session_token 和权限，再用 `query_objects` 找到所选轨道的输出、发送及真实插件。小工程仍可用完整 `query_session`。它用 `plan_edits` 将创建 Aux、插入真实纯湿 Reverb、Solo Safe、Post 发送组成一个 Plan；源轨 ID 来自查询。初始发送可采用可检查的 −12 dB，音色选择由用户试听决定。
 4. Agent 调用 `commit_plan` 后只会得到 `awaiting_confirmation`。GUI 卡片显示真实 actor、操作和预检；本地点击「接受并提交」或「取消」。接受后 Agent 用 `query_plan` 获取真实回执。
 5. 点回到开头和播放，在 Mix 查看实际发送/返回并试听。停止后，一次 GUI Undo 撤销整笔创建；Agent 的 `query_plan` 应显示 `undone`。也可让 Agent 请求 `undo_plan`，再本地点击「确认撤销」。
 
@@ -34,6 +34,7 @@
 | 工具 | 作用 |
 |---|---|
 | `query_session` / `query_commands` | 查询实际工程、选区、路由、枚举参数、revision、授权及注册表 |
+| `query_session_summary` / `query_objects` | 不展开全部事件的摘要，以及按工程版本分页的真实对象查询；定义来自 L1 registry |
 | `plan.<command_id>` | 由 L1 注册表生成的单命令规划工具 |
 | `plan_edits` | 按指定版本预检一笔最多 64 操作的事务，可用本 Plan 的 `$ref` |
 | `preview_plan` / `query_plan` | 重新预检或查询实际事务、确认卡片及最近请求结果 |
@@ -41,6 +42,22 @@
 | `cancel_plan` | 撤回尚未提交的 Plan 或待确认 Undo；已执行编辑留在历史中 |
 
 未知工具是协议错误；已注册工具的参数、权限、失效目标等错误返回 `isError=true` 和具体失败信息。`planned`、`awaiting_confirmation`、`committed`、`undone`、`rejected`、`cancelled`、`failed` 含义不同。回执未做音频核验时 `audio_verified=false`；本次测试的离线声音证据不能冒充每笔用户编辑都已试听。
+
+## 工程分页查询
+
+先调用 `query_session_summary`，取真实 `session_token` 和 `revision`。然后调用 `query_objects`，传入 `collection`、该 token、`base_revision`，可选 `offset` 和 `limit`（默认 32，1–64）。响应的 `total`、`items`、`next_offset` 必须一起读取；`next_offset=null` 才到末尾。摘要里的 ID 必须来自实际查询。
+
+| collection | target / parameter |
+|---|---|
+| tracks / tempos / meters | 不传 target |
+| clips / plugins / sends / automation_lanes | 实际轨道 ID |
+| parameters | 实际插件实例 ID；不包括私有状态解读 |
+| midi_notes / midi_controllers | 实际 MIDI Clip ID；返回源节拍和工程采样位置，Controller 的 raw_value 是 SDK 单位 |
+| automation_points | 实际轨道 ID + 已查询的 lane ID（parameter）；音量/VCA 的 value 是 dB，native_value 保留 SDK 原值 |
+
+轨道、Clip、插件和自动化 lane 摘要显示真实明细数量。每页 items 最多 256 KiB；达到字节预算时少返回一些对象，并给出准确续页位置。单个对象超预算明确失败，不截断字符串。工程版本改变时丢弃已收集页并重新查询摘要；重开工程即使 ID 相同也拒绝旧 token。录音、自动化写入、参数手势或插件私有状态等待期间拒绝混合编辑页。自动化的 current_value/display 和 Transport 是查询时的实时事实，不受静态 revision 保证。
+
+专项固定负载：128/256/512 个真实轨道、512 个 MIDI 音符和 64 个自动化点；每次 MCP 查询 <2 秒、fixture <120 秒。另以保存的测试工程注入大段元数据核验字节续页/单对象失败；真实录制的 CC/Pitch Bend 和实际 stdio/socket 也覆盖查询。它们证明对象查询，不证明同等轨数的播放、UI 或 DSP 容量。SDK 默认 400 Track 上限已由正式 EngineBehaviour 配置取消，保留整数索引空间；其余 SDK 数量与实时资源策略见依赖文档。
 
 ## 边界与预算
 

@@ -4,9 +4,9 @@
 namespace ndaw::v2 {
 namespace {
 void require(bool condition,const char* reason) {if(!condition)throw std::runtime_error(reason);}
-bool supported(te::Plugin& plugin) {
-    return dynamic_cast<te::EqualiserPlugin*>(&plugin) || dynamic_cast<te::CompressorPlugin*>(&plugin)
-        || dynamic_cast<te::ExternalPlugin*>(&plugin) || dynamic_cast<te::ReverbPlugin*>(&plugin) || dynamic_cast<te::DelayPlugin*>(&plugin) || dynamic_cast<te::FourOscPlugin*>(&plugin);
+bool supported(const te::Plugin& plugin) {
+    return dynamic_cast<const te::EqualiserPlugin*>(&plugin) || dynamic_cast<const te::CompressorPlugin*>(&plugin)
+        || dynamic_cast<const te::ExternalPlugin*>(&plugin) || dynamic_cast<const te::ReverbPlugin*>(&plugin) || dynamic_cast<const te::DelayPlugin*>(&plugin) || dynamic_cast<const te::FourOscPlugin*>(&plugin);
 }
 Json property(const char* type) {return {{"type",type}};}
 struct ExternalParameterAction final:juce::UndoableAction{
@@ -67,16 +67,40 @@ te::Plugin* Commands::processor(const std::string& id) const {
             if(p->itemID.toString().toStdString()==id && supported(*p))return p;
     return nullptr;
 }
+bool Commands::commandProcessor(const te::Plugin& plugin) {return supported(plugin);}
+Json Commands::parameterQuery(te::Plugin& plugin,te::AutomatableParameter& p) const {
+    Json result{{"id",p.paramID.toStdString()},{"name",p.getParameterName().toStdString()},
+        {"value",p.getCurrentExplicitValue()},{"current_value",p.getCurrentValue()},
+        {"minimum",p.valueRange.start},{"maximum",p.valueRange.end},
+        {"interval",p.valueRange.interval},{"skew",p.valueRange.skew},{"unit",p.getLabel().toStdString()},
+        {"display",p.getCurrentValueAsStringWithLabel().toStdString()},{"automatable",true}};
+    if(dynamic_cast<te::ExternalPlugin*>(&plugin)) {
+        result["unit_mapping"]="native Tracktion normalized range; formatted text is not a plain-unit conversion";
+        result["identity_scope"]="Tracktion persisted parameter ID, format adapter index for AU/VST3";
+    }
+    return result;
+}
+Json Commands::processorSummary(te::Plugin& plugin) const {
+    Json result{{"id",plugin.itemID.toString().toStdString()},{"type",plugin.getPluginType().toStdString()},
+        {"name",plugin.getName().toStdString()},{"bypassed",!plugin.isEnabled()},
+        {"parameter_count",plugin.getAutomatableParameters().size()},{"detail_collection","parameters"}};
+    if(auto* ext=dynamic_cast<te::ExternalPlugin*>(&plugin)) {
+        result["external"]={{"descriptor",ext->state.getProperty("ndaw_external_descriptor").toString().toStdString()},
+            {"format",ext->desc.pluginFormatName.toStdString()},{"version",ext->desc.version.toStdString()},
+            {"manufacturer",ext->desc.manufacturerName.toStdString()},
+            {"loaded",ext->getAudioPluginInstance()!=nullptr},{"initialising",ext->isInitialisingAsync()},
+            {"load_error",ext->getLoadError().toStdString()},{"latency_seconds",ext->getLatencySeconds()},
+            {"private_state_interpreted",false}};
+    }
+    if(auto* delay=dynamic_cast<te::DelayPlugin*>(&plugin))result["delay_time_ms"]=delay->lengthMs.get();
+    return result;
+}
 Json Commands::processorQuery(te::AudioTrack& track) const {
     Json plugins=Json::array();
     for(auto* plugin:track.pluginList) {
         if(!supported(*plugin))continue;
         Json parameters=Json::array();
-        for(auto* p:plugin->getAutomatableParameters())
-            parameters.push_back({{"id",p->paramID.toStdString()},{"name",p->getParameterName().toStdString()},
-                {"value",p->getCurrentExplicitValue()},{"current_value",p->getCurrentValue()},{"minimum",p->valueRange.start},{"maximum",p->valueRange.end},
-                {"interval",p->valueRange.interval},{"skew",p->valueRange.skew},{"unit",p->getLabel().toStdString()},
-                {"display",p->getCurrentValueAsStringWithLabel().toStdString()},{"automatable",true}});
+        for(auto* p:plugin->getAutomatableParameters()) parameters.push_back(parameterQuery(*plugin,*p));
         Json result{{"id",plugin->itemID.toString().toStdString()},{"type",plugin->getPluginType().toStdString()},
             {"name",plugin->getName().toStdString()},{"bypassed",!plugin->isEnabled()},{"parameters",parameters}};
         if(auto* ext=dynamic_cast<te::ExternalPlugin*>(plugin)){

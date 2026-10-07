@@ -18,6 +18,9 @@ public:
     explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
     ~Commands();
     Json query() const;
+    Json querySummary(const std::string& selectedTrack={},const std::string& selectedClip={}) const;
+    Json queryObjects(const Json&) const;
+    static constexpr size_t maximumQueryPageBytes=256*1024;
     static Json registry();
     static Json processorCatalog();
     Json refreshPluginInventory(const juce::File& directory=juce::File{});
@@ -86,10 +89,15 @@ private:
     bool externalLayoutChanged(te::ExternalPlugin&);
     static void registerProcessorCommands(Json&);
     Json processorQuery(te::AudioTrack&) const;
+    static bool commandProcessor(const te::Plugin&);
+    Json parameterQuery(te::Plugin&,te::AutomatableParameter&) const;
+    Json processorSummary(te::Plugin&) const;
     void validateProcessorOperation(const std::string&, const Json&) const;
     void executeProcessorOperation(const std::string&, const Json&, Json&);
     static void registerRoutingCommands(Json&);
     Json routingQuery(te::AudioTrack&) const;
+    Json outputQuery(te::AudioTrack&) const;
+    Json sendQuery(te::AudioTrack&,te::AuxSendPlugin&) const;
     void validateRoutingPlan(const Json&,const Json&) const;
     void createAux(te::AudioTrack&, Json&);
     void captureRoutingAssignments();
@@ -124,6 +132,8 @@ private:
     Json validateMusicPlan(const Json&) const;
     void executeMusicOperation(const std::string&,const Json&,Json&,std::map<std::string,std::string>&);
     static void registerAutomationCommands(Json&);
+    Json automationLaneQuery(te::AutomatableParameter&) const;
+    Json automationPointQuery(te::AutomatableParameter&,int) const;
     te::AutomatableParameter* automationParameter(const std::string& track,const std::string& parameter) const;
     void validateAutomationPlan(const Json&) const;
     void executeAutomationOperation(const std::string&,const Json&,Json&);
@@ -170,6 +180,7 @@ private:
     Json validateClipPlan(const Json&) const;
     void executeClipOperation(const std::string&,const Json&,Json&,std::map<std::string,std::string>&);
     static void registerLegacyCommands(Json&);
+    static void registerQueryCommands(Json&);
     Json prepareLegacy(const juce::File&) const;
     Json validateLegacyOperation(const Json&) const;
     void executeLegacyOperation(const Json&,Json&);

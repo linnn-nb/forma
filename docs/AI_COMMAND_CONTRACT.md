@@ -224,3 +224,12 @@ socket 接受后异步申请不透明 Client；待派发授权最多 8，活跃�
 测试覆盖协议生命周期、错误/恶意字段、预算、异步派发与取消、真实 stdio 子进程、原生确认回调、Aux/纯湿混响/发送、实际 WAV 声音及 PCM 撤销恢复、人工 Redo 后的外部 Undo、快断连/暂停派发的授权回收、重开与停服。测试使用明确已知信号，不冒充真实人声或模型选择。完整模型→桌面确认→主观试听验收待解锁。
 
 代码：McpGateway/McpSession/McpStdio、CommandQueue、EngineCommands::transactionStatus、Workspace。测试：McpTests（93 项）、McpWorkspaceTests（67 项）。接口、协议来源、预算和亲手步骤见 [MCP_WORKFLOW.md](MCP_WORKFLOW.md)。
+
+
+## M2 对象查询（M2-QUERY-01）
+
+L1 registry 增加 execution=query 的 query.summary / query.objects，包含 Schema、工具名、队列入口和测试编号；MCP 自动生成只读工具，查询命令不能进入编辑 Plan。query_session_summary 验证实际 GUI 选区并返回 L1 revision/token、数量、Transport 和原生数量配置，不展开所有 notes/parameters。query_objects 在 message thread 捕获未归并的人工状态后校验 token/revision，并按 collection 返回最多 64 条、256 KiB items；字节续页不丢对象，单对象超预算明确失败。更换工程、编辑、Undo/Redo 均使旧分页失效；写入捕获或私有状态等待时拒绝混合编辑页。实时 Transport、自动化 current_value/display 是观察值，不是静态版本快照。
+
+轨道输出、发送、参数及自动化点复用 GUI/full-query 的同一事实函数；MIDI 时间显式保留源节拍与工程采样位置。只读查询不修改 Edit、Undo 或媒体，也不输出虚假 audio_verified。ReadOnly 可以查询，不能规划或提交；客户端不能借 Schema 传入 actor、授权或接受状态。Plan 入口检查版本改用摘要，避免仅检查 revision 就展开整份工程；实际预检/模块哈希仍可能同步且不可抢占。
+
+代码：QueryCommands、MixCommands::parameterQuery、RoutingCommands::outputQuery/sendQuery、AutomationCommands::automationLaneQuery/automationPointQuery、CommandQueue、McpSession。测试：QueryTests（54 项、128/256/512 轨道）、MidiRecordingTests（实际 CC/Pitch Bend 页）、McpWorkspaceTests（真实 stdio/socket）。不是模型或物理 GUI/试听资格。

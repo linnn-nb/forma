@@ -54,10 +54,16 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
     Json execute(QueueJob& j){
         valid(j.client,j.generation);const auto& args=j.args;auto& c=*owner;
         if(j.method=="query"){fields(args,{});auto q=c.query();q["session_token"]=c.sessionToken();q["permission"]=j.client->scope.json();q["client_id"]=j.client->id;q["actor"]=j.client->actor;q["selection"]={{"track",nullptr},{"clip",nullptr}};for(const auto& t:q["tracks"]){if(t["id"]==selectedTrack)q["selection"]["track"]=selectedTrack;for(const auto& clip:t["clips"])if(clip["id"]==selectedClip)q["selection"]["clip"]=selectedClip;}return {{"status","completed"},{"result",q}};}
+        if(j.method=="summary"||j.method=="objects"){
+            if(j.method=="summary")fields(args,{});
+            auto result=j.method=="summary"?c.querySummary(selectedTrack,selectedClip):c.queryObjects(args);
+            result["session_token"]=c.sessionToken();result["permission"]=j.client->scope.json();result["client_id"]=j.client->id;result["actor"]=j.client->actor;
+            return {{"status","completed"},{"result",std::move(result)}};
+        }
         if(j.method=="registry"){fields(args,{});return {{"status","completed"},{"result",c.registry()}};}
         if(j.method=="plan"){
             fields(args,{"operations","base_revision"});require(j.client->scope.mode!=Permission::ReadOnly,"read-only permission cannot plan edits");
-            require(args["base_revision"].is_number_integer()&&args["base_revision"].get<uint64_t>()==c.query()["revision"].get<uint64_t>(),"revision conflict before planning");
+            require(args["base_revision"].is_number_integer()&&args["base_revision"].get<uint64_t>()==c.querySummary()["revision"].get<uint64_t>(),"revision conflict before planning");
             require(plans.size()<64,"plan retention limit; close unused client plans");
             auto p=c.makePlan(j.client->actor,args["operations"]);auto preview=c.review(p,j.client->scope);const std::string id=p["plan_id"];
             plans.emplace(id,PlanRecord{p,preview,nullptr,j.client,j.generation,"planned",{}});
@@ -138,7 +144,7 @@ CommandQueue::Ticket CommandQueue::Client::submit(const std::string& method,Json
     auto fail=[&](const char* why){j->finish({{"status","failed"},{"error",why}});return ticket;};
     if(timeoutMs<1||timeoutMs>30000)return fail("timeout must be 1..30000 ms");
     if(!principal||!principal->active.load())return fail("client revoked or missing");
-    if(method!="query"&&method!="registry"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
+    if(method!="query"&&method!="summary"&&method!="objects"&&method!="registry"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
     try{j->bytes=j->args.dump().size();}catch(const std::exception&){return fail("request payload is not valid UTF-8 JSON");}if(j->bytes>maximumPayloadBytes)return fail("request payload exceeds 256 KiB");
     j->generation=principal->generation.load();j->deadline=j->submitted+std::chrono::milliseconds(timeoutMs);auto s=queue.lock();if(!s)return fail("queue closed");bool wake=false;
     {std::lock_guard lock(s->mutex);if(s->closed)return fail("queue closed");if(s->jobs.size()>=capacity||s->bytes+j->bytes>1024*1024)return fail("queue capacity reached");s->jobs.push_back(j);s->bytes+=j->bytes;if(!s->scheduled){s->scheduled=true;wake=true;}}

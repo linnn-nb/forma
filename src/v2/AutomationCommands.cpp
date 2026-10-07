@@ -41,15 +41,27 @@ void Commands::initialiseAutomationIDs(juce::UndoManager* um) {
         auto& curve=a->getCurve();for(int i=0;i<curve.getNumPoints();++i){auto point=curve.state.getChild(i);if(!point.hasProperty("ndaw_id"))point.setProperty("ndaw_id",juce::Uuid().toString(),um);}
     }
 }
+Json Commands::automationLaneQuery(te::AutomatableParameter& a) const {
+    const auto [lo,hi]=range(a);auto& curve=a.getCurve();
+    return {{"id",laneID(a)},{"owner",a.getOwnerID().toString().toStdString()},{"parameter",a.paramID.toStdString()},
+        {"name",a.getPluginAndParamName().toStdString()},{"minimum",lo},{"maximum",hi},
+        {"unit",fader(a)?"dB":a.getLabel().toStdString()},{"value",toValue(a,a.getCurrentValue())},
+        {"explicit_value",toValue(a,a.getCurrentExplicitValue())},
+        {"display",a.getCurrentValueAsStringWithLabel().toStdString()},
+        {"timebase",curve.timeBase==te::AutomationCurve::TimeBase::time?"samples":"beats"},
+        {"recording",a.isCurrentlyRecording()}};
+}
+Json Commands::automationPointQuery(te::AutomatableParameter& a,int index) const {
+    auto& curve=a.getCurve();auto point=curve.getPoint(index);
+    return {{"id",curve.state.getChild(index).getProperty("ndaw_id").toString().toStdString()},
+        {"position_samples",std::llround(curve.getPointTime(index).inSeconds()*timelineRate)},
+        {"value",toValue(a,point.value)},{"native_value",point.value},{"curve",point.curve}};
+}
 Json Commands::automationQuery(const std::string& target) const {
     checkThread();auto* t=domainTrack(target);require(t!=nullptr,"automation track not found");Json lanes=Json::array();
     for(auto* p:t->pluginList)for(auto* a:p->getAutomatableParameters()){
-        const auto [lo,hi]=range(*a);Json points=Json::array();auto& curve=a->getCurve();
-        for(int i=0;i<curve.getNumPoints();++i){auto point=curve.getPoint(i);points.push_back({{"id",curve.state.getChild(i).getProperty("ndaw_id").toString().toStdString()},
-            {"position_samples",std::llround(curve.getPointTime(i).inSeconds()*timelineRate)},{"value",toValue(*a,point.value)},{"native_value",point.value},{"curve",point.curve}});}
-        lanes.push_back({{"id",laneID(*a)},{"owner",p->itemID.toString().toStdString()},{"parameter",a->paramID.toStdString()},{"name",a->getPluginAndParamName().toStdString()},
-            {"minimum",lo},{"maximum",hi},{"unit",fader(*a)?"dB":a->getLabel().toStdString()},{"value",toValue(*a,a->getCurrentValue())},{"explicit_value",toValue(*a,a->getCurrentExplicitValue())},
-            {"display",a->getCurrentValueAsStringWithLabel().toStdString()},{"timebase",curve.timeBase==te::AutomationCurve::TimeBase::time?"samples":"beats"},{"recording",a->isCurrentlyRecording()},{"points",points}});
+        Json points=Json::array();for(int i=0;i<a->getCurve().getNumPoints();++i)points.push_back(automationPointQuery(*a,i));
+        auto lane=automationLaneQuery(*a);lane["points"]=std::move(points);lanes.push_back(std::move(lane));
     }
     return {{"track",target},{"revision",revision},{"mode",te::toString(t->automationMode.get()).toStdString()},{"lanes",lanes},{"capture",capture}};
 }

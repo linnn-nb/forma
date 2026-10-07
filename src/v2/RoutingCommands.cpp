@@ -28,20 +28,26 @@ te::AuxSendPlugin* Commands::send(const std::string& target) const {
         if(p->itemID.toString().toStdString()==target)if(auto* s=dynamic_cast<te::AuxSendPlugin*>(p))return s;
     return nullptr;
 }
-Json Commands::routingQuery(te::AudioTrack& t) const {
-    const auto* returned=aux(t);Json output;
+Json Commands::outputQuery(te::AudioTrack& t) const {
     auto& out=t.getOutput();
-    if(auto* dest=out.getDestinationTrack())output={{"target",id(*dest)},{"name",dest->getName().toStdString()},{"kind","track"}};
-    else if(out.outputsToNone())output={{"target","none"},{"name","None"},{"kind","none"}};
-    else output={{"target",out.usesDefaultAudioOut()?"master":(out.getOutputDevice(false)?out.getOutputDevice(false)->getDeviceID():out.getOutputDeviceID()).toStdString()},{"name",out.getDescriptiveOutputName().toStdString()},{"kind","device"}};
+    if(auto* dest=out.getDestinationTrack())return {{"target",id(*dest)},{"name",dest->getName().toStdString()},{"kind","track"}};
+    if(out.outputsToNone())return {{"target","none"},{"name","None"},{"kind","none"}};
+    return {{"target",out.usesDefaultAudioOut()?"master":(out.getOutputDevice(false)?out.getOutputDevice(false)->getDeviceID():out.getOutputDeviceID()).toStdString()},
+        {"name",out.getDescriptiveOutputName().toStdString()},{"kind","device"}};
+}
+Json Commands::sendQuery(te::AudioTrack& t,te::AuxSendPlugin& s) const {
+    Json targets=Json::array();
+    for(auto* dest:te::getAudioTracks(*edit))
+        if(auto* r=aux(*dest);r && r->getNumOutputChannelsGivenInputs(2)>0 && r->busNumber.get()==s.getBusNumber())targets.push_back(id(*dest));
+    return {{"id",s.itemID.toString().toStdString()},{"target",targets.size()==1?targets[0]:Json(nullptr)},
+        {"targets",targets},{"bus",s.getBusNumber()},{"db",s.getGainDb()},{"position",position(t,s)},{"enabled",s.isEnabled()}};
+}
+Json Commands::routingQuery(te::AudioTrack& t) const {
     Json sends=Json::array();
-    for(auto* p:t.pluginList)if(auto* s=dynamic_cast<te::AuxSendPlugin*>(p)) {
-        Json targets=Json::array();for(auto* dest:te::getAudioTracks(*edit))if(auto* r=aux(*dest);r && r->getNumOutputChannelsGivenInputs(2)>0 && r->busNumber.get()==s->getBusNumber())targets.push_back(id(*dest));
-        sends.push_back({{"id",s->itemID.toString().toStdString()},{"target",targets.size()==1?targets[0]:Json(nullptr)},
-            {"targets",targets},{"bus",s->getBusNumber()},{"db",s->getGainDb()},{"position",position(t,*s)},{"enabled",s->isEnabled()}});
-    }
-    Json facts={{"type",trackType(t)},{"output",output},{"sends",sends}};
-    if(returned)facts["aux_bus"]=returned->busNumber.get();return facts;
+    for(auto* p:t.pluginList)if(auto* s=dynamic_cast<te::AuxSendPlugin*>(p))sends.push_back(sendQuery(t,*s));
+    Json facts={{"type",trackType(t)},{"output",outputQuery(t)},{"sends",sends}};
+    if(auto* returned=aux(t))facts["aux_bus"]=returned->busNumber.get();
+    return facts;
 }
 void Commands::validateRoutingPlan(const Json& operations,const Json& trackDiff) const {
     // Model both direct outputs and send edges, including objects created earlier in

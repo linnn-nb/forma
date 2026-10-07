@@ -109,6 +109,13 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;std::signal(S
     {
         Wire readonly(argv[2],endpoint.getFullPathName().toStdString());initialize(readonly);auto q=data(tool(readonly,"query_session"))["result"];
         check(q["tracks"]==w.query()["tracks"]&&q["selection"]["track"]==track&&q["permission"]["mode"]=="read_only","stdio Agent query reads running Workspace facts and actual selection");
+        auto summary=data(tool(readonly,"query_session_summary"))["result"];
+        check(summary["selection"]==q["selection"]&&summary["revision"]==q["revision"]&&summary["counts"]["tracks"]==q["tracks"].size()&&!summary.contains("tracks"),"production stdio compact query shares actual GUI selection without expanding the Edit");
+        auto pageArgs=Json{{"collection","tracks"},{"session_token",summary["session_token"]},{"base_revision",summary["revision"]},{"limit",1}};
+        auto page=data(tool(readonly,"query_objects",pageArgs))["result"];
+        check(page["items"].size()==1&&page["items"][0]["id"]==track&&page["items"][0]["output"]==q["tracks"][0]["output"]&&page["next_offset"].is_null(),"actual socket and stdio enumerate bounded native track facts");
+        pageArgs["collection"]="clips";pageArgs["target"]=track;
+        check(data(tool(readonly,"query_objects",pageArgs))["result"]["items"][0]["id"]==q["tracks"][0]["clips"][0]["id"],"production stdio drilldown resolves a real imported clip");
         check(tool(readonly,"plan.track.gain",{{"base_revision",q["revision"]},{"args",{{"track",track},{"db",-6}}}})["result"]["isError"]&&!find(w,"plan.accept"),"read-only stdio grant cannot open an edit card");
     }
     until([&]{return w.queryCommandQueueStatus()["clients"]==1;});check(w.queryCommandQueueStatus()["plans"]==0,"disconnect releases readonly client and retained plans");

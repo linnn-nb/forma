@@ -16,6 +16,7 @@ public:
 private:
     enum Phase {Fresh,Negotiated,Ready,Closed};Phase phase=Fresh;
     CommandQueue::Client client;Json definitions;
+    std::map<std::string,std::string> queryMethods;
     struct Pending {Json id;CommandQueue::Ticket ticket;};
     std::map<std::string,Pending> pending;
     static Json error(const Json& id,int code,const std::string& message);

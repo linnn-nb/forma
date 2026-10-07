@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include <limits>
 #include "PluginEditorWindows.h"
 #include "NativePluginStates.h"
 #include "OutputProbe.h"
@@ -49,6 +50,14 @@ struct GainAction final : juce::UndoableAction {
     te::Edit& edit; te::EditItemID id; float before,after;
 };
 struct Behaviour : te::EngineBehaviour {
+    te::EditLimits getEditLimits() override {
+        auto limits=te::EditLimits{};
+        // Native track indices are signed ints. Reserve arithmetic headroom for
+        // SDK clipboard offsets instead of inheriting its product default (400).
+        // This is a representation bound, not a qualified playback capacity.
+        limits.maxNumTracks=std::numeric_limits<int>::max()/4;
+        return limits;
+    }
     std::function<bool(te::ExternalPlugin&)> externalAllowed;
     bool shouldLoadPlugin(te::ExternalPlugin& p) override{return externalAllowed&&externalAllowed(p)&&te::EngineBehaviour::shouldLoadPlugin(p);}
     bool shouldOpenAudioInputByDefault() override { return false; }
@@ -160,6 +169,7 @@ Json Commands::registry() {
     result.push_back({{"id","audio.meters.reset"},{"schema",{{"type","object"},{"properties",Json::object()},{"additionalProperties",false}}},{"execution","control"},{"actor","human"},{"permission","local_gui"},{"risk","low"},{"reversible",false},{"live",true},{"test","M1-METER-01"}});
     registerClipCommands(result);
     registerLegacyCommands(result);
+    registerQueryCommands(result);
     return result;
 }
 Json Commands::query() const {
