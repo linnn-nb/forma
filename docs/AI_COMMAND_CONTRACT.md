@@ -275,6 +275,8 @@ MCP 由注册表生成 plan.session.range.set/clear，沿用 actor、版本、�
 
 ## M3 测量入口
 
-`execution=analysis` 注册项生成 analyze_master / analyze_delivery / query_analysis / cancel_analysis，不能放入编辑 Plan。队列身份、Scope 和本地会话仍由 L1 授予；只读权限允许有预算的本地离线测量。提交的 session/revision 在快照准备前核验，受理/progress 与最终实际测量回执分开；跨客户端不能取消。GUI 定位是本地控制，版本、链和完整媒体哈希通过后才调用原生 seek。分析记录不是 Undo 编辑，也不自动授予媒体上传或外部写文件权限。范围、固定预算与源媒体核验方式见 ANALYSIS_WORKFLOW.md。
+M3-SOURCE-01：注册表增加只读 `analyze_source_clip`，经同一队列绑定客户端身份与实际 session/revision/clip ID。输入为原生 source_start_frame/source_end_frame，不接受任意 path；分页 clips 查询给出真实媒体帧数、采样率、源偏移和映射支持状态。原始媒体、范围和规范化 detector profile 组成 SHA256 描述，分别记录测量 revision 与当前 mapping_revision；源事件帧不会因人工 move/trim/split/gain 而重写。当前 clip 视图与定位前完整 SHA256/版本/可见性校验共用 L1，过期目标拒绝；循环/warp/自动 Tempo/反向定位不可用。单作业/暂停/取消共用 Master 预算，原生进度无法估算时返回 null。静音是数值门限段、瞬态是能量候选，不报告呼吸或表演质量。代码和测试见 ANALYSIS_WORKFLOW.md；分析本身不进编辑 Undo，重开不恢复保存记录为新成功。
+
+`execution=analysis` 注册项生成 analyze_master / analyze_delivery / analyze_source_clip / query_analysis / cancel_analysis，不能放入编辑 Plan。队列身份、Scope 和本地会话仍由 L1 授予；只读权限允许有预算的本地离线测量。提交的 session/revision 在快照准备前核验，受理/progress 与最终实际测量回执分开；跨客户端不能取消。GUI 定位是本地控制，版本、链和完整媒体哈希通过后才调用原生 seek。分析记录不是 Undo 编辑，也不自动授予媒体上传或外部写文件权限。范围、固定预算与源媒体核验方式见 ANALYSIS_WORKFLOW.md。
 
 `analyze_delivery` 的可选 profile 仅允许五个注册字段；先规范化并校验有限数值和范围，再准备快照。同值整数/小数、正负零与显式/省略默认值规范化为同一条件。request_key 的目的/范围/版本/规范化 profile 必须一致，最近或活跃同键重试不产生第二次渲染。receipt.delivery 记录条件及 SHA256 和四项真实结果；completed 与 passed 分别表示测量完成和条件满足，failed/indeterminate/needs_review 必须如实保留。末尾只检查区间内 100 ms，不能用 passed 宣称完整尾音、导出文件或平台认证。尚无 M4 扩展安装/运行入口，不能将本项内建 Check 冒充 Lua 扩展系统。

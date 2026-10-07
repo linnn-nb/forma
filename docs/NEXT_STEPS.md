@@ -1,12 +1,12 @@
 # 下一步
 
-最新交付：364c79e 增加可配置 Master 交付检查，64e116e 规范化同值条件，ab79b86 修复旧工程 Redo 实际增益丢失。GUI 和 MCP 使用同一真实测量，条件/范围/目的绑定幂等指纹。最终 Release 构建和 55/55 完整回归通过（413.46 秒），真实桌面/模型回执见 VERIFICATION.md。M3 仍是部分实现。
+最新交付：16c5cbc 增加原始源片段分析、静音门限段、瞬态候选及当前片段定位；da05f23 修复拆分浮点边界及同名片段选择。完整 Release 构建通过；16c5cbc 全量 57/57（426.62 秒），最终修复后的源及共享 Master/交付专项 6/6 通过（8.93 +51.92 秒）。Codex 正式 MCP、生产桌面及独立 PCM 核验已完成，详见 VERIFICATION.md。M3 仍是部分实现。
 
-亲手试：启动最新 build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app，打开本机 evidence/M3/desktop-delivery/M3-delivery-demo.tracktionedit。停止工程，在「视图 → Master 分析 / 削波定位…」输入 [24000,192000)，点击「流媒体交付检查」；默认条件通过，将 TP 上限设 -15 后重新检查为未通过。演示素材为明确标识的 1 kHz 合成 PCM，播放时请按测试信号试听；不是音乐制作或麦克风验收。保存记录重开不冒充新成功，需要重新分析。普通媒体也可按实际范围检查，每次最多 5 分钟。操作与边界见 ANALYSIS_WORKFLOW.md。
+亲手试：最新 build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app 已打开源分析面板。可打开本机 evidence/M3/desktop-source/M3-source-demo.tracktionedit，选择右半片段 [2.250000 –4.500000 秒]，在「视图 → 音频分析 / 交付检查…」切到「原始源片段」，输入原生源帧 [4410,88200)，重新分析；两个瞬态定位到 2.25 /3.25 秒，首段静音明确不可定位。自有 44.1 kHz 脉冲 PCM 用于数值/映射验证，不是实体录音或主观听感验收。重开必须重新分析，不把保存记录当新成功。Master 交付检查仍在同一面板可用，详细步骤见 ANALYSIS_WORKFLOW.md。
 
-下一项明确任务：先补 M3 源片段 tap 与静音/瞬态区间、源时间到工程时间映射；随后轨道插入前后/Bus tap 和连续响度。新增 Check 的末尾只测区间内 100 ms，完整混响/延迟尾音仍待实现，不能将本项作为完整交付验收。M4 Lua 扩展系统与其 Recipe/Check 尚未实现。
+下一项明确任务：实现 M3 轨道插入前后/Bus tap，先定义实际路由、插件链哈希与失效条件，并固定前/后已知 PCM 对照预算；复用现有单 worker/取消/播放优先机制，GUI 与 MCP 共用同一 L1 入口。随后补齐连续响度。Clip FX 后、范围外完整尾音、导出文件交付校验未完成；M4 Lua 扩展系统与 Recipe/Check、M5 ACE-Step、M6 专业流程继续在范围内。
 
-本轮生产桌面已执行：Codex 经正式 stdio/socket MCP 查询实际工程并测量，GUI 显示通过/未通过；增益变化使旧证据失效，首个真实风险事件点击定位到采样 24006，一次 Undo 恢复 -12 dB；重新检查通过并另存新工程，原媒体哈希保持。最终应用已重开同一演示，重新分析当前 r4 并取得 passed；保持停止/只读/空历史，供用户亲手操作。真实 MCP 及独立 PCM 预测见 evidence/M3/desktop-delivery/verification.json /final-reopen-mcp.json。没有新增主观听感、实体输入或实时可靠性资格。
+本轮生产桌面：源原生帧保持，move/trim/split 后更新真实 clip 视图；修复后的应用重开演示 r5，再测同范围得到 3 静音/2 瞬态，点击源帧 55125 实际定位工程采样 156000。GUI move r6 →一次 Undo r7，原 artifact/事件/current=true 保持，右半位置恢复 108000。应用停止/只读，停在源分析结果页，只有刚才人工移动的 Redo；测试 MCP helper 已退出。源媒体哈希不变，生产请求、独立预测和故障记录在 evidence/M3/desktop-source/。没有新增听感、实体输入或实时可靠性资格。
 
 完整 M1：实体麦克风多轨、外部 MIDI 与完整制作尚未验收；系统授权未解决前不冒充通过。桌面工具禁止操作 UserNotificationCenter，不能另用系统技术绕过。M0 通过；指定 M2 Codex 混响 Aux 流程已实测；M3 完整资格与 M4–M6 未完成，M1 gate 前不退役 v1。
 

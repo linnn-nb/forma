@@ -1,5 +1,21 @@
 # 验证状态
 
+## M3-SOURCE-01（2026-10-07–08）
+
+结论：16c5cbc 增加原始源片段 tap、静音门限段、瞬态能量候选和当前 clip 映射，完整 Release 构建及 57/57 CTest 通过（426.62 秒）。da05f23 修正 SDK 拆分偏移的浮点边界缝隙及同名片段的界面区分，最终完整构建通过；源专项 2/2（8.93 秒）：后端 68 项、原生 36 项；共享 Master/交付专项 4/4（51.92 秒）通过。修复后的生产桌面、Codex 正式 MCP 与独立 PCM 核验也通过。首个 57 项与修复后的 6 项分别记录，没有宣称最终修复后重跑全量。
+
+数值与事务：44.1/48/96 kHz 原始 float32 已知双声道脉冲，非零帧范围，Peak/RMS/相关度容差 1e-12、所有静音边界与候选起点独立预测逐帧验证。20 秒密集 PCM 检查 100 静音/100 瞬态、128 保留/72 省略；间隔条件、不可用映射、真实作业取消（≤2 秒）与单 worker 拒绝通过。44.1 kHz 原生帧到 48 kHz 原生 Transport 的 move/trim/split/Undo/Redo、增益后原始证据保持、过期映射拒绝、只读 MCP、保存重开、同大小/mtime 媒体变更的深哈希拒绝均通过。源片段不经过任何效果器或增益，不能解释 Master 声音变化。
+
+原生构件：实际按钮和字段回调执行真实 PCM 和 L1 编辑。拆分后候选可在右半片段定位，裁掉起点不可定位；GUI Undo/Redo 改变视图而非证据；错误 profile 保留当前回执和失败解释，取消返回 cancelled。区间输入和 tooltip 分清原生源帧/工程采样。映射线性固定 speed 的公式已测试，伸缩声音、循环/warp/反向/自动 Tempo 映射未资格。静音是门限段、瞬态为能量估计，不声称呼吸识别或表演判断。
+
+现场初段：Codex 经正式包内 forma-mcp /运行中的应用 Unix socket，查询实际 session/revision/选中 clip 和 native rate/frame count，再提交只读 analyze_source_clip。自有明确标识的 PCM16 /44.1 kHz /3 秒源范围 [4410,88200) 实际读 83790 帧，artifact 0292aff1e2014a62a99b05be4c7d4a33 /47.642792 ms，Peak 0.5、RMS 0.00244280560020、相关度 -1、3 静音/2 瞬态。GUI 首个候选点击实际 12000 采样；人工 move 到 96000 后同一 artifact/原生帧保持，mapping_revision=2，点击实际 108000；trim 至 [100800,216000)、split 于 108000 后返回真实右半 clip 1017 和当前 source offset。GUI 另存自有 M3-source-demo.tracktionedit，未覆盖用户原件。没有模型替身、音频上传、DMG 或新增依赖。
+
+修复后的现场：正式应用重开自有演示，r5、1 轨/2 片段、-12 dB、停止、只读、空 Undo/Redo；query_analysis 实际 idle/null，保存记录没有被当成新成功。Codex 查询真实右半 1017 后重新分析同范围，artifact ad5439ca9ec044dc859b7d853ff7f648 /44.520917 ms。GUI 第一静音段禁用、两个同名片段用工程范围区分；点击源帧 55125 候选，实际 Transport 156000 /00:03.250。GUI 将右半移到 144000（r6），一次 Undo 恢复 108000（r7）；同一 artifact/源事件/current=true 保持，映射版本真实为 5/6/7。独立 wave 解码核对 Peak/RMS/相关度、3 个静音边界、2 个脉冲起点、媒体 SHA256 与正式回执一致；不把候选窗口或听感当确定事实。实际 MCP 最大 32.045666 ms /5 秒预算，测量最大 47.642792 ms /12 秒预算，不是实时性能或大工程容量资格。
+
+发现与修复：初次测试文件编译的 Writer stream 类型/MCP 头文件及 receive/ready API 不匹配，按锁定 SDK/现有协议修正；取消 fixture 缺少必需 name/position，修正输入。GUI 首次 move 输入未触发焦点，刷新还原为 0；加入实际焦点回调并严格核验已提交起点，没有改变期望位置或容差。生产 SDK split offset=.24999999999999992，静音末边界可能与右半形成数 ULP 交集；da05f23 只将接近整数原生帧的表示误差吸附（max(1e-8 frame,4 ULP)），保持有意义的分数帧，新增断言拒绝虚假一采样静音，同时保留真正边界瞬态。下拉框增加工程范围，使同名片段可区分。现场 query_analysis 一次误传其 schema 不支持的 session_token，真实拒绝 unknown analysis field；按实际空参数 schema 纠正并取得成功回执，失败原记录保留。文件选择器一次 CUA -10005 /尺寸 0 瞬态错误，重新读树后可用，未绕过工具或修改系统权限。保留全部失败输出，不把修复推测当通过。
+
+本机关键证据：evidence/M3/source-build-full.log /source-ctest-full.log 为 16c5cbc；source-boundary-build.log /source-boundary-ctest.log、source-analysis-tests.json /source-workspace-tests.json、source-final-build.log /source-master-regression-final.log 为 da05f23；生产请求/回执、独立 verify-receipts.py /verification.json 与演示工程在 desktop-source/。关键画面已由桌面工具展示，没有保存 PNG。应用 SHA256 782ef70a575ba5e68b4bd2486159056c54f359ed42e81fd2cb80b455a0251db1；目前停在 r7 的源分析结果面板，可亲手点击定位，测试 MCP helper 已退出。完整 M3 未完成：轨道插入前后/Bus/Clip FX 后、连续响度及分析压力/听感资格保留；完整 M1 实体制作、M4–M6 和发布继续未完成。
+
 ## M3-DELIVERY-01（2026-10-07）
 
 结论：可配置 Master 交付检查已接通真实 Tracktion 浮点渲染、生产 MCP 与原生界面。364c79e 为功能提交，64e116e 规范化同值数值条件，ab79b86 修复旧工程 Redo 的实际参数丢失。最新完整 Release 构建通过；ab79b86 的 55/55 完整回归通过（413.46 秒），交付后端/原生专项分别 14.19 /10.45 秒。完整 M3 未完成，不以本项替代其他 tap point、连续响度、静音/瞬态和实体制作验收。
@@ -66,7 +82,7 @@
 | M2：stdio/socket 查询与注册表生成的工具 | McpStdio / Gateway / Session；McpTests | 自动化已验证；当前固定协议版本与 macOS 平台 |
 | M2：规划、权限、GUI 确认、提交、取消及真实历史 | CommandQueue / EngineCommands / Workspace；McpTests、McpWorkspaceTests；M2-DESKTOP-01 | 自动化及 Codex 外部模型、实际桌面确认和一次 Undo 已实测 |
 | M2：声音与非破坏性结果 | McpWorkspaceTests；M2-DESKTOP-01 实际 48 kHz/24-bit/2 ch WAV、655852 帧、CoreAudio 播放、Undo PCM 比较 | 已知信号和合成语音的真实结果已验证；主观音质、演唱表演或真实麦克风录音未评定 |
-| M3：多 tap 分析服务与可定位事件 | Analysis 已有单/双声道 Peak/RMS/LUFS-I/True Peak 基础测量 | 部分基础；LUFS-S/M、事件/时间定位、tap 选择和 artifact 失效机制未实现 |
+| M3：Master /原始源片段分析与可定位事件 | AudioAnalysis /MasterAnalysis /SourceFeatures /SourceMapping /AnalysisPanel；M3 Master、交付和源专项 | Master /源 tap、M/S 网格最大值、风险事件、源静音/瞬态候选及映射/失效已接通；轨道前后/Bus/Clip FX 后、连续曲线与完整 M3 未完成 |
 | M4–M6：扩展、ACE-Step、专业工作流迁移 | 见架构里程碑；v1 行为规格保留 | 尚未完成，不移出范围 |
 | Windows、视频、环绕声、发行、耐久与全实时约束 | 依赖与阻塞文档 | 后续正式范围，未验证 |
 

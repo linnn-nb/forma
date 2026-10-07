@@ -108,9 +108,11 @@ M1 需要的最小命令集：
 - **Artifact**：每份结果记录媒体哈希、对象 ID、时间范围、tap point、处理链状态哈希、分析器版本和参数。处理链状态哈希由插件 ID、参数和旁通状态计算得出；处理链一变，旧结果自动失效。
 - **调度**：用低优先级工作线程池执行，可暂停、可取消；播放或录音期间自动降速，保证实时音频优先。
 
-**M3 首个实现（M3-MASTER-01）**：L1 MasterAnalysis 从停止状态的同一 Edit 准备 render-only 快照，复用同一个 Engine；L2 低优先级线程驱动已准备的原生图并测量 float32 PCM。启动/查询/取消由注册表生成 MCP 工具，原生菜单可定位实际超满刻度事件。媒体、链哈希、版本和区间绑定；改变工程后失效，定位前复核源 SHA256，保存的分析引用不冒充新会话成功。测量与编辑 Undo 分离。当前只实现 Master；LUFS-M/S 为 100 ms 网格最大值，削波事件是 abs(sample)>=1 的风险区间。完整边界与固定预算见 [ANALYSIS_WORKFLOW.md](ANALYSIS_WORKFLOW.md)，其他 tap point、静音/瞬态及实机 M3 验收未完成。
+**M3 首个实现（M3-MASTER-01）**：L1 MasterAnalysis 从停止状态的同一 Edit 准备 render-only 快照，复用同一个 Engine；L2 低优先级线程驱动已准备的原生图并测量 float32 PCM。启动/查询/取消由注册表生成 MCP 工具，原生菜单可定位实际超满刻度事件。媒体、链哈希、版本和区间绑定；改变工程后失效，定位前复核源 SHA256，保存的分析引用不冒充新会话成功。测量与编辑 Undo 分离。该首增量只实现 Master；LUFS-M/S 为 100 ms 网格最大值，削波事件是 abs(sample)>=1 的风险区间。完整边界与固定预算见 [ANALYSIS_WORKFLOW.md](ANALYSIS_WORKFLOW.md)，后续源增量见下文；轨道/Bus tap 和完整 M3 未完成。
 
 **交付条件（M3-DELIVERY-01）**：L1 绑定范围/版本/规范化 profile 和幂等请求指纹，同一真实 Master 渲染的 L2 结果送入纯规则 DeliveryCheck；GUI 和 MCP 返回同一四项结果及条件 SHA256。测量完成不代表条件通过，支持 failed/indeterminate/needs_review。末尾只测区间内最后 100 ms，活跃信号需人工复核，安静信号不证明完整混响尾音。不是导出文件/平台认证，也不是尚未完成的 L3 Lua 扩展运行时。
+
+**原始源片段（M3-SOURCE-01）**：L1 解析真实 WaveAudioClip/getOriginalFile，L2 在同一预算 worker 直接解码原始 PCM，不准备图/新 Edit。原生 source frame 证据绑定媒体/范围/条件哈希；未包含 Clip FX/gain/track/master 链，相关编辑不使原始证据失效。message thread 只读当前 clip 视图，返回线性 offset/speed 映射和 mapping_revision；GUI 选择视图定位前由 L1 复核媒体 SHA256、当前版本与事件可见性，循环/warp/反向/自动 Tempo 明确不支持映射。源与 Master 的缓存范围不同，不能以一次 raw 测量解释混音变化。静音与瞬态候选为数值测量/估计，非呼吸/表演判断。SourceAnalysisTests /SourceWorkspaceTests 和固定预算见 ANALYSIS_WORKFLOW.md；轨道/Bus/Clip FX 后及完整 M3 仍未完成。
 
 ## 5. L3 扩展运行时
 

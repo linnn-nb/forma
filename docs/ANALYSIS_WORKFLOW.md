@@ -1,20 +1,36 @@
 # 音频分析与定位
 
+结论：Master 分析与交付检查、原始源片段测量和当前片段定位已有自动化与生产桌面证据。16c5cbc 完整 Release 构建与 57/57 回归通过；da05f23 修复拆分边界和同名片段选择后，完整构建、源专项 2/2 与共享 Master/交付专项 4/4 通过。Codex 经正式 MCP 完成源分析，GUI 移动/拆分/点击定位与 Undo 后原始证据保持，独立 PCM 核验通过。详细结果见 VERIFICATION.md。轨道插入前后、Bus、Clip FX 后、连续响度曲线及完整 M3 尚未完成。
+
 ## 源片段增量验收预算（M3-SOURCE-01）
 
 本轮新增原始源片段 tap、静音门限区间和瞬态候选。实施前固定：44.1/48/96 kHz 双声道已知脉冲、非零源起始帧，Peak/RMS/相关度误差 ≤1e-12；静音边界和候选起点必须与独立 PCM 预测逐帧相同。原生 44.1 kHz 帧映射到 48 kHz 工程，移动/修剪/拆分/Undo/Redo 必须定位到已知位置，过期映射必须拒绝。单次真实作业 ≤12 秒，MCP 回复 ≤5 秒，源专项 ≤90 秒、原生界面专项 ≤60 秒；取消验证 ≤2 秒，事件与映射上限各 128，原单 worker/300 秒范围/60 秒墙钟预算保持。后台测试、生产桌面和外部模型操作分别记录，尚未执行的项目不写通过。
 
-结论：Master 浮点渲染、测量、MCP 和原生事件定位已接通；M3-DELIVERY-01 在此基础上增加可配置交付条件和末尾 100 ms 的真实测量。生产桌面与 Codex 外部 MCP 流程已实测，自动化结果见 VERIFICATION.md。完整 M3 未完成：其他 tap point、静音/瞬态和连续响度曲线仍待实现。
-
 ## 亲手试
 
 1. 退出旧进程，启动最新 `build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`，导入音频或打开已有工程，停止播放。
-2. 「视图 → Master 分析 / 削波定位…」。已有时间选区会填入输入框；也可输入起止**工程采样位置**（48 kHz），结束位置不包含在范围内。当前一次最多 5 分钟，超限明确拒绝。
+2. 「视图 → 音频分析 / 交付检查…」，选择 Master。已有时间选区会填入输入框；也可输入起止**工程采样位置**（48 kHz），结束位置不包含在范围内。当前一次最多 5 分钟，超限明确拒绝。
 3. 点击「分析 Master」，等待真实 `completed` 回执。显示 Sample Peak、RMS、LUFS-I、400 ms Momentary /3 s Short-term 的最大值、True Peak、立体声相关度、实际超过满刻度的事件和来源。
 4. 有事件时点击「定位」，原生 Transport 移到其真实起点并返回 Edit；没有事件时不会虚构事件。调整增益/插件等使 revision 改变后，旧结果变为历史快照，定位禁用；重新打开面板并分析当前版本。
 5. 「取消分析」等到 `cancelled` 才算停止。关闭面板保留后台作业；之后播放/录音会让作业暂停，停止后继续。暂停仍计入 60 秒墙钟预算。
 
 离线风险分析可检查较高增益，不要求播放过载信号。测量不代表主观听感检查。
+
+## 原始源片段（M3-SOURCE-01）
+
+在 Edit 选择音频片段，打开上述面板，切到「原始源片段」。真实片段下拉框和默认覆盖范围来自 L1 查询；范围单位为原文件采样率下的整数帧，不是工程 48 kHz 位置。也可输入原始媒体中其他范围，仍不得超出文件或 300 秒预算。循环、自动 Tempo、warp、反向片段默认显示整份原始媒体，当前位置映射不可用。点击「分析源片段」取得实际回执；原始媒体直接解码，不创建第二个 Edit/Engine，不经过 Clip FX、Clip Gain、轨道或 Master 插入。
+
+本机可打开 `evidence/M3/desktop-source/M3-source-demo.tracktionedit`：自有 44.1 kHz 双声道脉冲 PCM 在 48 kHz 工程中已移动、修剪和拆分。选择工程范围 `[2.250000 – 4.500000 秒]` 的右半片段，输入原生源帧 `[4410,88200)`，重新分析。第一静音段在右半片段不可定位，两个瞬态分别定位到 2.25 /3.25 秒（108000 /156000 工程采样）。同名片段用工程范围区分。此素材与桌面验收用于数值、映射和事务验证，不是麦克风实录或主观音质验收。
+
+静音是所有声道 abs(sample) ≤门限的连续原生帧区间，满足最短时长才报告。默认 -60 dBFS /100 ms；有限范围 -120…-12 dBFS /20…10000 ms。瞬态是估计：5 ms 均方窗相对前 20 ms 的能量上升，默认最低峰值 -36 dBFS、上升 12 dB、间隔 50 ms；前 20 ms 预热和最后不足窗不判定。它不识别呼吸，也不判断演唱表演质量。每族最多保留 64 个候选，合并原始超满刻度区间后最多显示 128 段，总数和省略数仍准确。
+
+源测量记录真实媒体 SHA256、native frame 范围、分析器/条件版本、条件 SHA256 和 raw processing descriptor hash。移动、修剪、拆分、复制或轨道/片段增益改变不会重新解释原始 PCM；存储的源帧保持，`query_analysis` 返回当前 `mapping_revision` 和同路径源媒体的实际 clip ID 视图（最多 128，报告省略数）。当前线性映射逆算 SDK `(clip-relative time + offset) × speed ratio`；固定变速有纯映射公式测试，尚无变速声音资格。循环/自动变速/warp/反向定位明确不可用，不虚构范围。
+
+选择「定位到当前片段」后点击事件，L1 核验当前 revision、媒体完整哈希、事件在片段内可见，才 seek 到实际 48 kHz 工程位置。拆分后的事件可定位到新的右半片段；已裁掉的瞬态起点不会被移动到片段边缘。静音/超满刻度区间允许与当前片段取交集，并返回 `cropped`。过期映射冲突需刷新面板；原始证据不随 GUI 刷新重写。播放时暂时禁用定位，停止后可继续；媒体/会话变化仍使结果失效。分析不增加编辑历史，人工编辑的 Undo/Redo 独立生效。
+
+MCP `analyze_source_clip`：必需 `session_token`、`base_revision`、实际 `clip` ID、`source_start_frame`、`source_end_frame`、`request_key`；可选五个 detector `profile` 字段（见注册 Schema）。`query_objects(collection=clips)` 返回原生 `source_sample_rate` /`source_frames` /`source_offset_seconds` /`speed_ratio` /`source_mapping_available`，Agent 据此查询证据和规划范围；不能提交任意路径或上传。源和 Master 共用一个 worker、取消和墙钟预算；源分析 pending 的 `progress_available=false` /`progress=null`，不伪造百分比。已受理不等于分析完成，必须查询真实 terminal receipt。
+
+代码：SourceFeatures /SourceMapping /AudioAnalysis（L2）、MasterAnalysis /CommandQueue /QueryCommands（L1）、AnalysisPanel /Workspace（L5）。测试：SourceAnalysisTests 覆盖 44.1/48/96 kHz 已知 PCM、密集候选/间隔/省略数、取消和单 worker、真实 Edit move/trim/split/Undo/Redo、只读生产 MCP、保存重开、同大小/mtime 媒体变更的深哈希拒绝；SourceWorkspaceTests 覆盖实际原生控件、当前右半选择/定位、错误保留、取消和 Master 入口回切。它们不代替生产桌面、真实模型或主观听感验收。
 
 ## 可配置交付检查（M3-DELIVERY-01）
 

@@ -1,6 +1,6 @@
 # 产品范围 v2
 
-M3 最新：Master 浮点区间分析、Peak/RMS/LUFS-I 与 M/S 网格最大值/True Peak、相关度、超满刻度风险事件、来源失效、MCP 与原生定位已接通。新增可配置交付检查，逐项检查响度、峰值、超满刻度与末尾 100 ms 电平；GUI 与生产 MCP 现场流程已执行，条件通过不代表完整尾音或平台认证。其他 tap point、静音/瞬态、连续响度曲线与完整 M3 验收未完成；边界见 ANALYSIS_WORKFLOW.md。
+M3 最新：Master 分析、可配置交付检查与原始源片段分析已有自动和生产桌面证据。16c5cbc 增加源 tap、静音门限段、瞬态能量候选和当前片段定位，完整回归 57/57；da05f23 修复拆分边界和同名片段选择，最终完整构建及受影响专项 6/6 通过。源证据保持原生帧，移动/修剪/拆分和 Undo/Redo 只更新映射；GUI 与 MCP 共用实际测量，Codex 正式 MCP 操作、桌面定位与撤销已实测。轨道插入前后/Bus/Clip FX 后、连续响度和完整 M3 未完成；候选不代表呼吸或表演判断。边界见 ANALYSIS_WORKFLOW.md。
 
 本轮增量（M1-PAN-01）：Edit/Mix 可直接设置真实声像，Mix 可选择原生 Pan Law；GUI 和 Agent 共用可预览、可撤销的 L1 命令。Read/Touch/Latch/Write 声像曲线、单/双声道实际 PCM、EQ/压缩/混响 Aux/发送/MIDI 组合与保存重开有专项；完整 M1 与实体听感仍待验收。亲手试见 PAN_WORKFLOW.md。
 
