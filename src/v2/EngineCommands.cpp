@@ -163,6 +163,7 @@ Json Commands::registry() {
     registerParameterCommands(result);
     registerRoutingCommands(result);
     registerMusicCommands(result);
+    registerTimelineCommands(result);
     registerHierarchyCommands(result);
     registerAutomationCommands(result);
     registerRecordingCommands(result);
@@ -198,7 +199,7 @@ Json Commands::query() const {
         tracks.back()["input"]=recordingQuery(*t);
         tracks.back().update(hierarchyQuery(*t));
     }
-    return {{"audio_configuration",audioConfiguration},{"native_plugin_states",nativeStates?nativeStates->query():Json(nullptr)},{"parameter_capture",parameterCapture},{"last_parameter_capture",lastParameterCapture},{"parameter_failure",parameterFailure},{"revision",revision},{"recording",edit->getTransport().isRecording()},{"recording_capture",recordingCapture},{"last_recording",lastRecording},{"automation_capture",capture},{"last_automation_capture",lastCapture},{"music",musicQuery()},{"master_gain_db",edit->getMasterVolumePlugin()->getVolumeDb()},{"master_pan_law",int(edit->getMasterVolumePlugin()->getPanLaw())},{"timeline_sample_rate",timelineRate},{"tracks",tracks},
+    return {{"session_token",sessionToken()},{"time_selection",timelineRange()},{"audio_configuration",audioConfiguration},{"native_plugin_states",nativeStates?nativeStates->query():Json(nullptr)},{"parameter_capture",parameterCapture},{"last_parameter_capture",lastParameterCapture},{"parameter_failure",parameterFailure},{"revision",revision},{"recording",edit->getTransport().isRecording()},{"recording_capture",recordingCapture},{"last_recording",lastRecording},{"automation_capture",capture},{"last_automation_capture",lastCapture},{"music",musicQuery()},{"master_gain_db",edit->getMasterVolumePlugin()->getVolumeDb()},{"master_pan_law",int(edit->getMasterVolumePlugin()->getPanLaw())},{"timeline_sample_rate",timelineRate},{"tracks",tracks},
         {"length_samples",std::llround(edit->getLength().inSeconds()*timelineRate)},
         {"position_samples",std::llround(edit->getTransport().getPosition().inSeconds()*timelineRate)},
         {"playing",edit->getTransport().isPlaying()},{"can_undo",historyCursor>0&&bool(metadata.getChildWithProperty("plan_id",juce::String(history.at(historyCursor-1))).getProperty("reversible",true))},{"can_redo",historyCursor<history.size()}};
@@ -277,6 +278,8 @@ Json Commands::preview(const Json& plan) const {
         if(cmd=="session.import_legacy") {
             require(ops.size()==1,"legacy import must be one standalone Plan operation");
             legacyDiff.push_back(validateLegacyOperation(a));
+        } else if(cmd=="session.range.set"||cmd=="session.range.clear") {
+            // Full ordered range preview below, backed by the Edit metadata.
         } else if (cmd=="track.create") {
             const auto ref=a.at("ref").get<std::string>();
             require(ref.starts_with("$") && ref.size()>1 && refs.insert(ref).second, "invalid or duplicate local track reference");
@@ -314,13 +317,14 @@ Json Commands::preview(const Json& plan) const {
         }
         diff.push_back({{"command",cmd},{"change",a}});
     }
+    const auto rangeDiff=validateTimelinePlan(ops);
     const auto trackDiff=validateHierarchyPlan(ops);
     const auto clipDiff=validateClipPlan(ops);
     validateRecordingPlan(ops);
     validateAutomationPlan(ops);
     validateRoutingPlan(ops,trackDiff);
     const auto midiDiff=validateMusicPlan(ops);
-    return {{"plan_id",plan.at("plan_id")},{"base_revision",revision},{"changes",diff},{"audio_verified",false},{"clip_changes",clipDiff},{"track_changes",trackDiff},{"midi_changes",midiDiff},{"legacy_imports",legacyDiff}};
+    return {{"plan_id",plan.at("plan_id")},{"base_revision",revision},{"changes",diff},{"audio_verified",false},{"time_selection_changes",rangeDiff},{"clip_changes",clipDiff},{"track_changes",trackDiff},{"midi_changes",midiDiff},{"legacy_imports",legacyDiff}};
 }
 void Commands::bumpRevision() { ++revision; metadata.setProperty("revision",juce::int64(revision),nullptr); }
 Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
@@ -356,6 +360,8 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
             const auto cmd=op.at("command").get<std::string>(); const auto& a=op.at("args");
             if(cmd=="session.import_legacy") {
                 executeLegacyOperation(a,objects);
+            } else if(cmd=="session.range.set"||cmd=="session.range.clear") {
+                executeTimelineOperation(cmd,a);
             } else if (cmd=="track.create") {
                 const auto type=a.value("type",std::string("audio"));
                 te::Track::Ptr t;
@@ -459,7 +465,7 @@ void Commands::stop() { checkThread();endParameterGestures();{ParameterWriteGuar
     if(recordingWasActive)recordingCapture["end_samples"]=std::llround(edit->getTransport().getPosition().inSeconds()*timelineRate);
     edit->getTransport().stop(false,false);finishAutomationCapture();if(recordingWasActive)finishRecordingCapture();
 } }captureNativeStates(); }
-void Commands::seek(int64_t sample) { checkThread();require(parameterCapture.is_null(),"finish native parameter gesture before seeking");ParameterWriteGuard parameterGuard(*this); require(recordingCapture.is_null(),"stop recording before seeking"); require(capture.is_null(),"stop automation writing before seeking");require(sample>=0,"negative position"); edit->getTransport().setPosition(tracktion::TimePosition::fromSeconds(sample/timelineRate)); }
+void Commands::seek(int64_t sample) { checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");require(parameterCapture.is_null(),"finish native parameter gesture before seeking");ParameterWriteGuard parameterGuard(*this); require(recordingCapture.is_null(),"stop recording before seeking"); require(capture.is_null(),"stop automation writing before seeking");require(sample>=0&&sample<=std::llround(te::Edit::maximumLength*timelineRate),"position outside session range"); edit->getTransport().setPosition(tracktion::TimePosition::fromSeconds(sample/timelineRate)); }
 Json Commands::deviceStatus() const {
     checkThread(); auto& dm=engine.getDeviceManager(); auto* d=dm.deviceManager.getCurrentAudioDevice(); const auto s=dm.getCPUStatistics();
     Json j{{"available",d!=nullptr},{"driver_running",d&&d->isPlaying()},{"cpu_fraction",dm.getCpuUsage()},{"callbacks",s.numRuns},

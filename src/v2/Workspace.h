@@ -148,6 +148,7 @@ public:
         g.fillAll(base());g.setColour(juce::Colour(0xff29333f));g.fillRect(0,0,getWidth(),32);g.setFont(juce::FontOptions(11));g.setColour(juce::Colour(0xffb9c8d8));g.drawText(text("TRACKS / 轨道"),12,0,210,32,juce::Justification::left);
         for(size_t i=0;i<facts.value("tracks",Json::array()).size();++i){g.setColour(juce::Colour(facts["tracks"][i]["id"]==selected?0xff21313d:0xff1c2530));g.fillRect(250,32+int(i)*144,getWidth()-250,143);}
         for(const auto& line:grid){int x=250+int(line["samples"].get<int64_t>()/48000./duration()*(getWidth()-262));bool bar=line["bar_line"];g.setColour(juce::Colour(bar?0xff536575:0xff303b49));g.drawVerticalLine(x,32,float(getHeight()));if(bar){g.setColour(juce::Colour(0xffacbbcc));g.drawText(juce::String(line["bar"].get<int>())+" |",x+4,0,50,30,juce::Justification::left);}}
+        if(auto range=facts.value("time_selection",Json(nullptr));!range.is_null()){const auto left=250+int(range["start_samples"].get<int64_t>()/48000./duration()*(getWidth()-262)),right=250+int(range["end_samples"].get<int64_t>()/48000./duration()*(getWidth()-262));g.setColour(accent().withAlpha(.14f));g.fillRect(left,0,std::max(1,right-left),getHeight());g.setColour(accent());g.drawVerticalLine(left,0,float(getHeight()));g.drawVerticalLine(right,0,float(getHeight()));}
         for(size_t i=0;i<facts.value("tracks",Json::array()).size();++i){int y=32+int(i)*144;const auto& t=facts["tracks"][i];g.setColour(juce::Colour(0xff33404e));g.drawHorizontalLine(y+143,0,float(getWidth()));
             for(const auto& c:t["clips"]){auto rect=clipRect(c,int(i));double start=c["start_samples"].get<int64_t>()/48000.,length=c["length_samples"].get<int64_t>()/48000.;
                 g.setColour(trackColour(t).darker(t["audible"].get<bool>()?.45f:.8f));g.fillRoundedRectangle(rect.toFloat(),3);g.setColour(t["audible"].get<bool>()?juce::Colour(0xffa2dcd6):juce::Colour(0xff738995));
@@ -304,6 +305,7 @@ private:
 #include "PluginLibrary.h"
 #include "RecoveryPanel.h"
 #include "NewSessionPanel.h"
+#include "TimelinePanel.h"
 
 class Workspace final : public juce::Component,private juce::Timer,public juce::MenuBarModel,public juce::FileDragAndDropTarget {
     friend class ndaw::v2::AudioDeviceTestAccess;
@@ -319,7 +321,7 @@ public:
         commandButton.setComponentID("command.menu");commandButton.onClick=[this]{getMenuForIndex(3,{}).showMenuAsync(juce::PopupMenu::Options().withTargetComponent(commandButton).withParentComponent(this),[safe=juce::Component::SafePointer<Workspace>(this)](int id){if(safe&&id)safe->menuItemSelected(id,3);});};
         setLookAndFeel(&theme);setWantsKeyboardFocus(true);clipPanel.onClose=[this]{selectedClip.clear();refresh();};clipPanel.onError=[this](auto error){message(text("未执行：")+text(error));};
         piano.onError=[this](const auto& error){message(text("未执行：")+text(error));};
-        for(auto* c:std::initializer_list<juce::Component*>{&menu,&editView,&mixView,&newTrack,&importButton,&openButton,&saveButton,&exportButton,&editButton,&mixButton,&returnButton,&stopButton,&playButton,&undoButton,&redoButton,&counter,&device,&status,&pluginType,&insertButton,&pluginChoice,&bypassButton,&editorButton,&removeButton,&stateStatus,&stateRetryButton,&stateRestoreButton,&programIndex,&programButton,&parameterView,&previewText,&acceptButton,&rejectButton,&routingView,&insertTab,&routingTab,&groupTab,&groupView,&autoTab,&autoView,&recordView,&recordTab,&recordButton,&piano,&pianoButton,&trackType,&bpm,&meter,&applyMusic,&musicPosition,&clipPanel,&commandButton,&audioSettingsButton})addAndMakeVisible(c);
+        for(auto* c:std::initializer_list<juce::Component*>{&menu,&editView,&mixView,&newTrack,&importButton,&openButton,&saveButton,&exportButton,&editButton,&mixButton,&returnButton,&stopButton,&playButton,&undoButton,&redoButton,&counter,&device,&status,&pluginType,&insertButton,&pluginChoice,&bypassButton,&editorButton,&removeButton,&stateStatus,&stateRetryButton,&stateRestoreButton,&programIndex,&programButton,&parameterView,&previewText,&acceptButton,&rejectButton,&routingView,&insertTab,&routingTab,&groupTab,&groupView,&autoTab,&autoView,&recordView,&recordTab,&recordButton,&piano,&pianoButton,&trackType,&bpm,&meter,&applyMusic,&musicPosition,&clipPanel,&commandButton,&audioSettingsButton,&rangeButton})addAndMakeVisible(c);
         editView.setViewedComponent(&editArea,false);mixView.setViewedComponent(&mixArea,false);parameterView.setViewedComponent(&parameters,false);routingView.setViewedComponent(&routing,false);routingView.setScrollBarsShown(true,false);groupView.setViewedComponent(&grouping,false);groupView.setScrollBarsShown(true,false);autoView.setViewedComponent(&automation,false);autoView.setScrollBarsShown(true,false);recordView.setViewedComponent(&recording,false);recordView.setScrollBarsShown(true,false);
         editView.setScrollBarsShown(true,false);mixView.setScrollBarsShown(false,true);parameterView.setScrollBarsShown(true,false);
         for(const auto& p:Commands::processorCatalog())pluginType.addItem(text(p["name"].get<std::string>()),pluginType.getNumItems()+1);pluginType.setSelectedId(1,juce::dontSendNotification);
@@ -337,7 +339,8 @@ public:
         importButton.onClick=[this]{choose(false,[this](const auto& f){prepareImport(f);});};
         openButton.onClick=[this]{choose(false,[this](const auto& f){openSession(f);},"*.tracktionedit;*.ndaw");};
         saveButton.onClick=[this]{choose(true,[this](const auto& f){invoke([&]{commands.save(f);sessionName=f.getFileName();message(text("已另存工程 · ")+sessionName);});},"*.tracktionedit");};
-        exportButton.onClick=[this]{choose(true,[this](const juce::File& f){invoke([&]{auto r=commands.render(f,0,facts["length_samples"]);message(text("已生成并校验 WAV · ")+juce::String(r["frames"].get<int64_t>())+text(" 帧 · ")+(r["lufs_i"].is_number()?juce::String(r["lufs_i"].get<double>(),2):text("静音"))+" LUFS-I");});},"*.wav");};
+        exportButton.onClick=[this]{chooseExport(false);};
+        rangeButton.setComponentID("timeline.range.open");rangeButton.onClick=[this]{showTimelineRange();};
         recordButton.setComponentID("transport.record");recordTab.setComponentID("inspector.recording");recordTab.onClick=[this]{recordInspector=true;autoInspector=false;groupInspector=false;routingInspector=false;refresh();};recordButton.onClick=[this]{invoke([&]{commands.record(recordDirectory);message(text("正在原生录音 · 音频写盘 / MIDI 事件捕获"));});};
         playButton.onClick=[this]{invoke([&]{commands.play();});};stopButton.onClick=[this]{invoke([&]{
             bool wasRecording=!commands.query()["recording_capture"].is_null();commands.stop();auto q=commands.query();
@@ -374,7 +377,15 @@ public:
         recoveryIndicator.setComponentID("recovery.status");recoveryIndicator.setFont(juce::FontOptions(11));addAndMakeVisible(recoveryIndicator);
         setSize(1440,880);refresh();startTimerHz(20);
     }
-    ~Workspace() override {stopTimer();newSessionPanel.reset();recoveryPanel.reset();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
+    ~Workspace() override {stopTimer();timelinePanel.reset();newSessionPanel.reset();recoveryPanel.reset();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
+    void chooseExport(bool selection){invoke([&]{const auto request=commands.exportRequest(selection);choose(true,[this,request](const juce::File& f){invoke([&]{auto r=commands.renderRequest(f,request);message(text("已生成并校验 WAV · ")+juce::String(r["frames"].get<int64_t>())+text(" 帧 · ")+(r["lufs_i"].is_number()?juce::String(r["lufs_i"].get<double>(),2):text("静音"))+" LUFS-I");});},"*.wav");});}
+    void showTimelineRange(){invoke([&]{
+        if(!timelinePanel){timelinePanel=std::make_unique<TimelinePanel>([this](const auto& command,const auto& args,const auto& binding){
+            auto snapshot=commands.query();if(binding["session_token"]!=commands.sessionToken()||binding["base_revision"]!=snapshot["revision"])throw std::runtime_error("project changed; read current version before applying");
+            if(command=="seek")commands.seek(args.at("position_samples"));else{auto plan=commands.makePlan("human",Json::array({operation(command,args)}));plan["session_token"]=binding["session_token"];plan["base_revision"]=binding["base_revision"];commands.commit(plan);}
+            refresh();return commands.query();},[this]{return commands.query();},[this]{timelinePanel->setVisible(false);grabKeyboardFocus();},[this]{chooseExport(true);});addChildComponent(*timelinePanel);}
+        timelinePanel->bind(commands.query());timelinePanel->setBounds(getLocalBounds());timelinePanel->setVisible(true);timelinePanel->toFront(true);
+    });}
     void showNewSession(){invoke([&]{
         commands.recoveryControl("session.recovery.start",Json::object());
         if(!newSessionPanel){newSessionPanel=std::make_unique<NewSessionPanel>(
@@ -509,7 +520,7 @@ public:
     juce::StringArray getMenuBarNames() override {return {text("文件"),text("编辑"),text("视图"),text("命令")};}
     juce::PopupMenu getMenuForIndex(int index,const juce::String&) override {
         juce::PopupMenu p;p.setLookAndFeel(&theme);if(index==0){p.addItem(41,text("新建工程…   ⌘N"),!facts.value("playing",false)&&facts["parameter_capture"].is_null());p.addSeparator();p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
-        if(index==1){p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
+        if(index==1){p.addItem(42,text("定位与时间选区…"));p.addSeparator();p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
         if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));}
         if(index==3){p.addItem(26,text("从本地 JSON 请求编辑…"),!commandFileBusy&&pending.is_null());p.addSeparator();p.addItem(21,text("只读分析"),true,commandScope.mode==Permission::ReadOnly);p.addItem(22,text("先预览再提交"),true,commandScope.mode==Permission::Preview);
             p.addItem(23,text("自动低风险 · 当前轨道"),!selected.empty());p.addItem(24,text("自动低风险 · 当前片段与时间"),!(pianoMode?piano.viewedClip():selectedAudioClip()).is_null());p.addSeparator();p.addItem(25,text("取消请求 / 撤回当前授权"),commandFileBusy||!pendingConfirmation.empty());
@@ -518,13 +529,14 @@ public:
         return p;
     }
     void menuItemSelected(int id,int) override {
-        if(id==41){showNewSession();return;}if(id==40){showRecovery();return;}
+        if(id==42){showTimelineRange();return;}if(id==41){showNewSession();return;}if(id==40){showRecovery();return;}
         if(id==30||id==31){startMcp(id==30?Permission::ReadOnly:Permission::Preview);return;}if(id==32){stopMcp();return;}if(id==33){showMcpInfo();return;}
         if(id==14){showAudioSettings();return;}if(id==13){showPluginLibrary();return;}if(id>=21&&id<=24){setCommandPermission(id==21?Permission::ReadOnly:id==22?Permission::Preview:Permission::ScopedLowRisk,id==24);return;}
         if(id==25){cancelCurrentCommand();return;}if(id==26){choose(false,[this](const auto& f){importCommandFile(f);},"*.json");return;}if(id==11){choose(false,[this](const auto& f){prepareLegacyImport(f);},"*.ndaw");return;}if(id==12){showLegacyReport();return;}juce::TextButton* b=nullptr;switch(id){case 1:b=&importButton;break;case 2:b=&openButton;break;case 3:b=&saveButton;break;case 4:b=&exportButton;break;case 5:trackType.setSelectedId(1,juce::dontSendNotification);b=&newTrack;break;case 6:b=&undoButton;break;case 7:b=&redoButton;break;case 8:b=&editButton;break;case 9:b=&mixButton;break;case 10:b=&pianoButton;break;}if(b&&b->isEnabled())b->triggerClick();}
     bool isInterestedInFileDrag(const juce::StringArray& files) override {return files.size()==1;}
     void filesDropped(const juce::StringArray& files,int,int) override {auto file=juce::File(files[0]);if(file.hasFileExtension("json"))importCommandFile(file);else prepareImport(file);}
     bool keyPressed(const juce::KeyPress& key) override {
+        if(timelinePanel&&timelinePanel->isVisible()){if(key==juce::KeyPress::escapeKey){timelinePanel->setVisible(false);grabKeyboardFocus();return true;}return false;}
         if(newSessionPanel&&newSessionPanel->isVisible()){if(key==juce::KeyPress::escapeKey){newSessionPanel->cancelAndClose();return true;}return false;}
         if(recoveryPanel&&recoveryPanel->isVisible()){if(key==juce::KeyPress::escapeKey){recoveryPanel->setVisible(false);grabKeyboardFocus();return true;}return false;}
         if(audioSettings&&audioSettings->isVisible()){if(key==juce::KeyPress::escapeKey){closeAudioSettings();return true;}return false;}
@@ -544,12 +556,13 @@ public:
         g.setColour(juce::Colour(0xff101821));g.fillRect(getWidth()-218,103,202,6);g.setColour(db>=0?juce::Colour(0xffe0756b):accent());g.fillRect(getWidth()-218,103,int(std::clamp((db+60)/60.,0.,1.)*202),6);
     }
     void resized() override {
+        if(timelinePanel)timelinePanel->setBounds(getLocalBounds());
         if(newSessionPanel)newSessionPanel->setBounds(getLocalBounds());
         if(pluginLibrary)pluginLibrary->setBounds(8,168,getWidth()-16,getHeight()-205);
         menu.setBounds(0,0,getWidth(),28);trackType.setBounds(12,39,86,28);int x=106;for(auto* b:{&newTrack,&importButton,&openButton,&saveButton,&exportButton}){b->setBounds(x,39,100,28);x+=108;}
         commandButton.setBounds(654,39,142,28);editButton.setBounds(getWidth()-310,39,92,28);mixButton.setBounds(getWidth()-210,39,92,28);pianoButton.setBounds(getWidth()-110,39,98,28);
         x=12;for(auto* b:{&returnButton,&stopButton,&playButton,&recordButton,&undoButton,&redoButton}){b->setBounds(x,83,64,29);x+=72;}
-        counter.setBounds(448,76,196,39);bpm.setBounds(654,83,62,28);meter.setBounds(726,83,68,28);applyMusic.setBounds(804,83,70,28);device.setBounds(12,124,285,32);audioSettingsButton.setBounds(305,126,111,28);musicPosition.setBounds(428,124,getWidth()-450,32);
+        counter.setBounds(448,76,196,39);rangeButton.setBounds(428,126,116,28);bpm.setBounds(654,83,62,28);meter.setBounds(726,83,68,28);applyMusic.setBounds(804,83,70,28);device.setBounds(12,124,285,32);audioSettingsButton.setBounds(305,126,111,28);musicPosition.setBounds(550,124,getWidth()-572,32);
         int right=getWidth()-332,areaHeight=getHeight()-197;bool clipDock=!selectedClip.empty()&&!mix&&!pianoMode;int dockHeight=clipDock?182:0;editView.setBounds(0,168,right,areaHeight-dockHeight);clipPanel.setBounds(0,getHeight()-29-dockHeight,right,dockHeight);clipPanel.setVisible(clipDock);mixView.setBounds(0,168,right,areaHeight);piano.setBounds(0,168,right,areaHeight);
         editView.setVisible(!mix&&!pianoMode);mixView.setVisible(mix&&!pianoMode);piano.setVisible(pianoMode);
         editArea.setSize(std::max(600,right-14),std::max(areaHeight-dockHeight,32+editArea.visibleRows()*144));
@@ -645,7 +658,7 @@ private:
         if(recovery.value("available",false)){auto phase=recovery.value("state",std::string{});recoveryIndicator.setText(text(phase=="failed"?"恢复副本写入/读取失败":phase=="deferred"?"恢复副本保存延期":phase=="saved"?"恢复副本已保存":phase=="restored"?"已恢复工程 · 请另存":phase=="created"?"新工程 · 请另存":recovery.value("busy",false)?"正在处理恢复副本":recovery.value("enabled",false)?"自动恢复副本开启":"自动恢复副本关闭"),juce::dontSendNotification);}else recoveryIndicator.setText({},juce::dontSendNotification);
         const auto audio=commands.audioDevices();const auto& receipt=audio["last_configuration"];
         if(!receipt.is_null()){auto tag=receipt.value("id",std::string{})+receipt.value("state",std::string{});if(tag!=lastAudioReceipt){lastAudioReceipt=tag;if(receipt["state"]=="verified")message(text("实际音频设备与引擎准备已核验"));else if(receipt["state"]=="failed")message(text("设备配置失败：")+text(receipt.value("error",std::string{})));else if(receipt["state"]=="preparing")message(text("实际设备正在准备 · 等待音频回调回执"));}}
-        facts=commands.query();waves.update(facts);bool found=false;for(const auto& t:facts["tracks"])found|=t["id"]==selected;
+        facts=commands.query();if(timelinePanel&&timelinePanel->isVisible())timelinePanel->update(facts);waves.update(facts);bool found=false;for(const auto& t:facts["tracks"])found|=t["id"]==selected;
         if(!found){selected=facts["tracks"].empty()?"":facts["tracks"].back()["id"].get<std::string>();pluginSelection=0;lastPluginIDs.clear();}
         const bool playing=facts["playing"].get<bool>()||(facts["audio_configuration"].is_object()&&facts["audio_configuration"].value("state",std::string{})=="preparing"),parameterEditing=!facts["parameter_capture"].is_null();undoButton.setEnabled(facts["can_undo"].get<bool>()&&!playing&&!parameterEditing);redoButton.setEnabled(facts["can_redo"].get<bool>()&&!playing&&!parameterEditing);
         for(auto* b:{&newTrack,&importButton,&openButton,&saveButton,&exportButton,&applyMusic})b->setEnabled(!playing&&!parameterEditing);trackType.setEnabled(!playing&&!parameterEditing);bpm.setEnabled(!playing&&!parameterEditing);meter.setEnabled(!playing&&!parameterEditing);playButton.setEnabled(!playing&&!parameterEditing);
@@ -679,6 +692,7 @@ private:
     void chooseRecordingDirectory(){chooser=std::make_unique<juce::FileChooser>(text("选择录音目录 · 只创建新录音，不覆盖已有文件"),recordDirectory,"*");chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[safe=juce::Component::SafePointer<Workspace>(this)](const auto& c){if(safe&&c.getResult().isDirectory()){safe->recordDirectory=c.getResult();safe->refresh();}});}
     std::string lastAudioReceipt;uint64_t audioSettingsEpoch=0,lastMeterRequest=0;std::unique_ptr<AudioDevicePanel> audioSettings;
     std::unique_ptr<PluginLibrary> pluginLibrary;std::string pluginLibraryTrack,pluginLibrarySession;
+    std::unique_ptr<TimelinePanel> timelinePanel;juce::TextButton rangeButton{text("定位 / 选区…")};
     bool newSessionRequested=false;std::unique_ptr<NewSessionPanel> newSessionPanel;std::unique_ptr<RecoveryPanel> recoveryPanel;std::string workspaceSession;juce::Label recoveryIndicator;
     bool programDraft=false;std::string programTarget;
     Theme theme;Commands commands;CommandQueue commandQueue{commands};std::unique_ptr<McpGateway> mcp;juce::File mcpEndpoint;juce::ThreadPool commandFiles{1};CommandQueue::Client commandClient;Scope commandScope;Json lastCommandResult=nullptr;std::string pendingConfirmation;bool commandFileBusy=false;juce::File recordDirectory;Json facts=Json::object(),deviceFacts=Json::object(),pending=nullptr;std::string selected,selectedClip,lastPluginIDs,lastMusicMap;int pluginSelection=0;bool reportShowing=false,mix=false,recordInspector=false,routingInspector=false,groupInspector=false,autoInspector=false,pianoMode=false;juce::String sessionName="Untitled";

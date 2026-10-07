@@ -39,6 +39,9 @@ public:
     Json undo(const std::string& expectedPlan = {});
     Json redo();
     Json render(const juce::File&, int64_t start, int64_t end);
+    Json timelineRange() const;
+    Json exportRequest(bool selection) const;
+    Json renderRequest(const juce::File&,const Json&);
     Json save(const juce::File&);
     Json recoveryStatus() const;
     Json recoveryControl(const std::string&,const Json&);
@@ -136,6 +139,9 @@ private:
     std::string parameterSource="sdk-parameter";
     bool parameterTransactionStarted=false;
     friend class ParameterTestAccess;
+    static void registerTimelineCommands(Json&);
+    Json validateTimelinePlan(const Json&) const;
+    void executeTimelineOperation(const std::string&,const Json&);
     static void registerMusicCommands(Json&);
     std::string trackType(te::AudioTrack&) const;
     void createMusicTrack(te::AudioTrack&,const std::string&,Json&);
