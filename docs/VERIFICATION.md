@@ -1,6 +1,6 @@
 # 验证状态
 
-结论：M0 通过；M1 仍缺完整实体录音/MIDI与制作验收。2026-10-07，Codex 已完成指定 M2 生产 MCP→GUI 确认→CoreAudio 播放→一次 Undo→实际 WAV 校验，停止状态恢复副本也完成桌面操作。恢复源码 `3e64f04` 完整 Release 构建及 46/46 回归通过（315.32 秒）；之后权限/界面各有相关 3/3，最新会话状态修复 `f2bd183` 构建及相关 4/4 通过（39.62 秒）。没有将专项结果称为完整产品或主观音质验收。
+结论：M0 通过；完整 M1 制作、实体麦克风和外部 MIDI 控制器仍待验收。2026-10-07，新建工程源码 `2a30534` 完整 Release 构建及 47/47 回归通过（332.74 秒）；实际桌面完成独立新建、屏幕键盘实录、整段 Undo/Redo、保存重开、CoreAudio 回放和真实 WAV。键盘显示修复 `760fc9e` 构建及相关 4/4 通过（15.94 秒）；录音状态修复 `644a978` 构建及相关 4/4 通过（16.04 秒），桌面空 MIDI 捕获如实显示未收到事件。指定 M2 外部 Agent 演示和停止状态恢复副本已有实测；没有将专项结果称为完整产品或主观音质验收。
 
 本仓库分发源码；本机 `evidence/`、媒体和构建产物不公开。下列测试结果是本机记录，不自动赋予其他机器资格。M1 详细历史保存在 [VERIFICATION_v2_M1](history/VERIFICATION_v2_M1.md)，旧 v1 见 history/VERIFICATION_v1.md。
 
@@ -9,12 +9,33 @@
 | M0：Edit 导入、播放、L1 增益及 Undo/Redo、真实渲染与测量 | EngineCommands / Analysis；M0Tests；[M0_REPORT](M0_REPORT.md) | 关口已验证，不代表完整产品 |
 | M1：Edit/Mix、轨道/路由、内置处理器、自动化、录音、MIDI、旧工程导入、AU/VST3 | 各 L1 Commands、Workspace；tests/v2 的 M1 套件；M1 历史记录 | 部分实现与专项已验证；实体设备、全工作流与可靠性缺口保留 |
 | M1：停止状态自动恢复副本、人工确认/取消、写入故障与冲突 | SessionRecovery / RecoveryStore / RecoveryPanel / Workspace；SessionRecoveryTests、RecoveryWorkspaceTests | 自动化与本机桌面保存/恢复、权限撤回和 PCM 一致已验证；活动录音、WAL、间隔内未写入、持久 Undo 未资格 |
+| M1：独立新建工程、旧 Plan 会话隔离 | SessionRecovery / NewSessionPanel / Workspace / EngineCommands / QueryCommands；NewSessionTests 34 项；M1-NEW-01 | 自动化与实际桌面已验证；先校验备份再换 Edit，不是可撤销的工程编辑 |
 | M2：stdio/socket 查询与注册表生成的工具 | McpStdio / Gateway / Session；McpTests | 自动化已验证；当前固定协议版本与 macOS 平台 |
 | M2：规划、权限、GUI 确认、提交、取消及真实历史 | CommandQueue / EngineCommands / Workspace；McpTests、McpWorkspaceTests；M2-DESKTOP-01 | 自动化及 Codex 外部模型、实际桌面确认和一次 Undo 已实测 |
 | M2：声音与非破坏性结果 | McpWorkspaceTests；M2-DESKTOP-01 实际 48 kHz/24-bit/2 ch WAV、655852 帧、CoreAudio 播放、Undo PCM 比较 | 已知信号和合成语音的真实结果已验证；主观音质、演唱表演或真实麦克风录音未评定 |
 | M3：多 tap 分析服务与可定位事件 | Analysis 已有单/双声道 Peak/RMS/LUFS-I/True Peak 基础测量 | 部分基础；LUFS-S/M、事件/时间定位、tap 选择和 artifact 失效机制未实现 |
 | M4–M6：扩展、ACE-Step、专业工作流迁移 | 见架构里程碑；v1 行为规格保留 | 尚未完成，不移出范围 |
 | Windows、视频、环绕声、发行、耐久与全实时约束 | 依赖与阻塞文档 | 后续正式范围，未验证 |
+
+## M1-NEW-01
+
+源码 `2a30534` 完整 Release 构建、47/47 CTest 通过（332.74 秒）。新建测试 34 项、4.83 秒，固定 32 轨道含音频/MIDI/EQ/Aux/send/自动化及 96 BPM/3/4；未降低负载。message-thread 捕获 2.129 ms，3 秒/48 kHz/双声道的两次实际渲染 529.063 / 527.780 ms。预算在实施前写入 NEW_SESSION_WORKFLOW.md：捕获 <1 秒、普通后台作业 <5 秒、实际渲染 <10 秒、专项 <60 秒。
+
+真实 Edit/Undo、校验文件与 PCM、备份恢复、新建后保存重开、旧会话 Plan（即使 revision 相同）、取消、人工插入修改、真实 OS 目录写入失败均通过。新建共享既有单后台 I/O 作业；GUI 确认立即撤回外部写权限，新的 token 再次撤回。失败不换 Edit，旧媒体不覆盖。初次测试错误地要求 Master dB 浮点值严格等于零；实际 -2.384185791015625e-7 dB 已按 1e-6 dB 容差核验，120 BPM/4/4 未改变，失败日志保留。
+
+实际桌面：打开已有混响工程 → 文件/新建工程 → 确认备份 → 零轨道、120 BPM、4/4、r1；随后新增音轨和 FourOsc 乐器轨，选择 NativeDAW Keyboard/待命/Auto 监听/专用录音目录，点击录音并演奏。得到一个新 MIDI 片段、三个音符（74/76/79、力度 112），保留原空 MIDI 片段；回执 files=[]，没有把 MIDI 冒充麦克风录音。一次 GUI Undo 只移除新片段，Redo 恢复相同 ID 与事件。
+
+原生另存 `M1-new-midi.tracktionedit` 并重开：ID、音高、力度、采样位置和时长一致；节拍 double 的 XML 往返最大差 3.553e-15，以 1e-12 节拍容差比较，未声称 JSON 逐字一致或非确定性 FourOsc 音频逐位一致。新 token、只读 Agent 和清空的 Undo 均有生产 MCP 查询回执。解除录音待命后，MacBook Pro 扬声器 48 kHz/512 frames 回放，Mix 真实输出峰值保持 L/R 约 -19.3 dBFS；不代替用户主观试听。
+
+实际 GUI WAV：675840 帧 / 14.08 秒 / 48 kHz / 24-bit / 双声道；独立 Python PCM 解码核对格式、时长与 42168 个非零样本；Peak 0.1084214449、RMS 0.0059856990，libebur128 实测 -30.8754 LUFS-I / -19.2911 dBTP。不是流媒体合规、完整尾音或响度匹配资格。
+
+桌面另发现屏幕键盘采用 C3 标记 MIDI 60，而钢琴卷帘采用 C4；`760fc9e` 用官方 JUCE API 统一到 C4 并启用音域滚动。完整 Release 构建与新建/录音/音符/变换工作区相关 4/4 通过（15.94 秒），实际重开界面已显示 C4/C5。没有在该显示修改后重跑完整 47 项。
+
+`644a978` 按实际录音回执修正底部状态：MIDI-only 校验事件，音频校验文件/片段，空捕获明确无事件/无片段/无历史；未知状态不显示成功。完整 Release 构建与新建/基础 GUI/音频录音/MIDI 录音工作区 4/4 通过（16.04 秒）。随后在正式桌面重新打开上述工程，不弹键录音并停止；MCP 回执 outcome/state=no_events、clips/files=[]，原两个 MIDI 片段仍在、Undo/Redo 均不可用，两个状态区域都显示未收到事件。再解除待命，另存 `M1-midi-playback.tracktionedit` 供直接回放；不重写原文件。没有把两次专项说成新完整 47 项。
+
+麦克风：GUI 选择 MacBook Pro 麦克风后等待 macOS 授权回执。Computer Use 明确禁止操作 UserNotificationCenter，已请用户亲自允许，未绕过或修改系统权限；实体音频多轨实录和外部 MIDI 控制器未执行。CLI 测试授权不等于 GUI 应用授权。
+
+本机记录：evidence/M1/build-new-session-full.log、ctest-new-session-full.log、new-session-tests.json、build-keyboard-octave.log、ctest-keyboard-octave.log、build-recording-receipt-label.log、ctest-recording-receipt-label.log；桌面在 desktop-new-recording-88e6042ce9/mcp-receipts.json、final-empty-capture-receipt.json、wav-independent-verification.json、工程与实际 WAV。关键 GUI 截图由本轮桌面工具显示，媒体/证据不公开、不打 DMG；停止状态工程副本的旧限制继续保留。
 
 ## M2-QUERY-01
 
