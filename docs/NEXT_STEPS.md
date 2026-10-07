@@ -1,15 +1,15 @@
 # 下一步
 
-最新交付：16c5cbc 增加原始源片段分析、静音门限段、瞬态候选及当前片段定位；da05f23 修复拆分浮点边界及同名片段选择。完整 Release 构建通过；16c5cbc 全量 57/57（426.62 秒），最终修复后的源及共享 Master/交付专项 6/6 通过（8.93 +51.92 秒）。Codex 正式 MCP、生产桌面及独立 PCM 核验已完成，详见 VERIFICATION.md。M3 仍是部分实现。
+当前交付：M3-TAP-01 接通真实轨道插入前后/Bus 测量，GUI 与只读 MCP 使用同一 L1；保留原路由/发送/合成器，排除无关设备输出及 Master。41d58bd 为功能，8e70394 修正 EQ/Delay Read 曲线缓存误失效；曲线 Undo 保留显式基值。完整构建通过；首次全量59/60（677.48秒），新建测试等待修复60e6927后专项1/1（4.83秒），未重跑全量。轨道/曲线/原生专项57/25/29项均通过；Mac锁定，新的生产桌面与外部Codex tap未验收。详细证据见 VERIFICATION.md。
 
-亲手试：最新 build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app 已打开源分析面板。可打开本机 evidence/M3/desktop-source/M3-source-demo.tracktionedit，选择右半片段 [2.250000 –4.500000 秒]，在「视图 → 音频分析 / 交付检查…」切到「原始源片段」，输入原生源帧 [4410,88200)，重新分析；两个瞬态定位到 2.25 /3.25 秒，首段静音明确不可定位。自有 44.1 kHz 脉冲 PCM 用于数值/映射验证，不是实体录音或主观听感验收。重开必须重新分析，不把保存记录当新成功。Master 交付检查仍在同一面板可用，详细步骤见 ANALYSIS_WORKFLOW.md。
+亲手试：打开 build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app，在「视图 → 音频分析 / 交付检查…」选择实际轨道和插入前/插入后/Bus，输入工程采样区间后分析。post 在推子前，Bus 在推子后，均不含 Master；人工增益/插件编辑使旧 processed 结果过期，重新分析取得当前证据。详细步骤和固定预算见 ANALYSIS_WORKFLOW.md。源片段与 Master/交付入口仍在同一面板。
 
-下一项明确任务：实现 M3 轨道插入前后/Bus tap，先定义实际路由、插件链哈希与失效条件，并固定前/后已知 PCM 对照预算；复用现有单 worker/取消/播放优先机制，GUI 与 MCP 共用同一 L1 入口。随后补齐连续响度。Clip FX 后、范围外完整尾音、导出文件交付校验未完成；M4 Lua 扩展系统与 Recipe/Check、M5 ACE-Step、M6 专业流程继续在范围内。
+桌面可用时先补 M3-TAP-01 生产 Codex MCP、GUI 回执/人工编辑/Undo 和保存重开验收；准备自有 PCM 在 evidence/M3/desktop-tap/，没有将准备文件当成功证据。
 
-本轮生产桌面：源原生帧保持，move/trim/split 后更新真实 clip 视图；修复后的应用重开演示 r5，再测同范围得到 3 静音/2 瞬态，点击源帧 55125 实际定位工程采样 156000。GUI move r6 →一次 Undo r7，原 artifact/事件/current=true 保持，右半位置恢复 108000。应用停止/只读，停在源分析结果页，只有刚才人工移动的 Redo；测试 MCP helper 已退出。源媒体哈希不变，生产请求、独立预测和故障记录在 evidence/M3/desktop-source/。没有新增听感、实体输入或实时可靠性资格。
+下一项不受桌面阻塞的任务：将静音门限和瞬态候选测量扩展到实际处理后 tap，统一工程采样事件定位；补齐连续 LUFS-M/S 曲线与范围外尾音/导出文件校验。先固定数值/时限预算，验证 GUI 与 MCP 的同一回执，再做分析并发/图准备和背压压力。完整 M3 通过后进入 M4 Lua 扩展包与权限、Recipe/Check；M5 ACE-Step、M6 Playlist/Comp/分组/Punch/Loop/Spot 保持范围。
 
-完整 M1：实体麦克风多轨、外部 MIDI 与完整制作尚未验收；系统授权未解决前不冒充通过。桌面工具禁止操作 UserNotificationCenter，不能另用系统技术绕过。M0 通过；指定 M2 Codex 混响 Aux 流程已实测；M3 完整资格与 M4–M6 未完成，M1 gate 前不退役 v1。
+边界：硬件 Insert、含混 pre 边界与无临时插件槽明确拒绝；动态 PDC/sidechain、真实第三方分析链和单/多声道尚未资格。选区离线反馈历史服从 SDK 预热，不保证与零点持续回放相同；未知插件自动化缓存可能保守失效。取消不能抢占卡住的插件、系统 I/O 或 message-thread 图准备；同步深哈希和大图响应性仍需处理。
 
-继续保留：SDK 实时锁/分配、PDC/监听 RTT、deadline/XRUN、AI 并发与耐久、大型工程预检/分析背压、同步导出取消、媒体重定位、逐事务 WAL、活动录音恢复和持久 Undo。设备重配初次回归出现实际驱动未确认/停止回调，复测通过也不能证明驱动可靠性；见 VERIFICATION.md。
+完整 M1 gate 未通过：实体麦克风多轨、外部 MIDI 和完整制作待验收；应用开发身份和系统授权仍以实际回执为准，不修改 TCC 或绕过桌面工具。M0 通过；M2 指定 Codex 混响 Aux 桌面流程已实测；M3 部分、M4–M6 和发行未完成，M1 gate 前不退役 v1。
 
-应用路径维持内部 NativeDAW 名称，正式窗口为 Forma Studio；MCP bridge 在包内 Contents/Helpers/forma-mcp。每个可构建步骤提交 Git，里程碑完整验收前不打包 DMG。
+继续保留 SDK 实时锁/分配、监听 RTT、deadline/XRUN、AI 并发/耐久、设备断开连续性、媒体重定位、逐事务 WAL、活动录音恢复与持久 Undo。开发源码可推 GitHub，应用仍是本地构建，里程碑完整验收前不打包 DMG。包内 bridge 为 Contents/Helpers/forma-mcp。

@@ -1,5 +1,21 @@
 # 验证状态
 
+## M3-TAP-01（2026-10-08）
+
+结论：41d58bd 实现轨道插入前后/Bus 真正原生图测量，8e70394 修复已核对的 VolumeAndPan/EQ/Delay Read 缓存误失效，完整 Release 构建成功。8e70394 首次完整 CTest 为 **59/60，677.48 秒**；失败为新建工程 GUI 测试在异步恢复完成后的下一次 50 ms 刷新前检查按钮。60e6927 仅修正测试为观察真实控件，在既有五秒预算内等待；该专项 **1/1，4.83 秒、34 项**通过。应用二进制未因此改动，**没有再次执行完整 60 项**，不把分开执行写成一次全量通过。
+
+新专项：tracktion_track_analysis **57 项 /111.55 秒**、tracktion_track_analysis_plugin_curves **25 项 /60.85 秒**、tracktion_native_track_analysis **29 项 /26.77 秒**均在上述完整回归内通过。原后端/插件专项各 120 秒、原生专项 60 秒与每作业 12 秒预算未放宽；实际后端单作业最大 8999.860083 ms，插件专项 8696.595875 ms。前一次原两项曾 2/2 /70.43 秒，最终记录以本次真实结果为准；差异尚不构成稳定实时性能资格。
+
+音频与事务：48 kHz /双声道 /3 秒已知真实 float32，工程 [24013,120013) 精确 96000 帧。Clip Gain、实际 EQ、fader、pre/post Send、Aux/direct 并行路由、Solo/mute 和实际 FourOsc MIDI 保留；无关设备输出与 Master 排除。Peak/RMS 对独立 PCM/已知增益以及正式 24-bit WAV 的容差保持 3e-6。EQ/Delay Read、Volume Read、延迟 Undo 基值恢复、证据失效、幂等/取消、原生 GUI 超峰事件定位、只读真实 MCP Session/队列、保存重开/媒体哈希保持均通过。原生回调与协议测试不代替生产窗口或外部 Codex 实测。完整回归的声像、自动化、旧工程、AU/VST3 音频/状态、真实设备重配、MCP 与恢复测试通过；实体麦克风/外部 MIDI 和完整制作 gate 仍未通过。
+
+发现与修复：首个构建使用禁用的 ReWire 类型和不存在的 TrackInsertPoint 默认构造，按锁定 SDK 修正；EQ fixture 用错 type，改为实际 4bandEq。异步 Read 会更新 attached backing 值但不增加 human revision，现只忽略已核对插件的非空曲线缓存属性，保留曲线、版本、其他参数与 opaque 状态。Undo 删除曲线后原先留下最后读值，L1 UndoableAction 现在保留并恢复显式基值。扩展 Delay 校验首次把选区图当成零点连续反馈历史，Peak 0.799954 对错误预测 0.799992，严格失败保留；SDK NodeRenderContext 有块预热/重置，改用同选区正式导出对照而非声称连续历史等价，原数值容差不变。插件专项独立使用已声明的 120 秒预算，不缩减原轨道负载。首次全量新建按钮失败保留，测试等待修复没有修改生产实现或放宽五秒预算。
+
+现场：CUA 打开最新正式应用返回 **Mac locked**。本轮生产 GUI、真实外部 Codex 的 analyze_track、试听与现场保存重开**未执行**，没有截图或生产回执；不以追加 CLI 替代。desktop-tap 中的自有 PCM 和验证脚本只是下轮准备，未运行 MCP 客户端/独立验收，不算成功证据。没有残留测试/MCP 进程，未改系统权限、上传音频或打包 DMG。
+
+代码/需求关联：MasterAnalysis /CommandQueue（L1 渲染协调和生成 MCP analyze_track）、AutomationCommands（曲线显式基值事务）、AudioAnalysis（L2 PCM）、AnalysisPanel /Workspace（L5 原生入口）；测试 TrackAnalysisTests /TrackAnalysisWorkspaceTests 与 NewSessionTests 的真实就绪观察。预算、操作步骤与信号位置见 ANALYSIS_WORKFLOW.md /AI_COMMAND_CONTRACT.md。
+
+本机关键日志：tap-build-full.log /tap-ctest-full.log；track-analysis-tests.json /track-analysis-plugin-curves-tests.json /track-analysis-workspace-tests.json；tap-new-session-build.log /tap-new-session-recheck.log。保留首轮失败 tap-ctest-first.log /tap-ctest-second.log /tap-ctest-diagnostic.log /tap-ctest-normalized.log /tap-ctest-plugin-curves.log；构建/恢复修复输出 tap-build-undo-base.log /tap-ctest-undo-base.log /tap-ctest-plugin-final.log。应用 SHA256 **c8b8243c5e26ef7b5db98e1b2e70e4ca4305572ac30a1baffcc07ed911196885**。无新增依赖、SDK 补丁或第二 Engine。硬件 Insert、无空槽/含混 pre 边界明确拒绝；动态 PDC/sidechain、第三方 tap 链、单/多声道、Clip FX 单独边界、处理后静音/瞬态、连续响度和压力待验证/实现，完整 M3、M4–M6 与发行未完成。
+
 ## M3-SOURCE-01（2026-10-07–08）
 
 结论：16c5cbc 增加原始源片段 tap、静音门限段、瞬态能量候选和当前 clip 映射，完整 Release 构建及 57/57 CTest 通过（426.62 秒）。da05f23 修正 SDK 拆分偏移的浮点边界缝隙及同名片段的界面区分，最终完整构建通过；源专项 2/2（8.93 秒）：后端 68 项、原生 36 项；共享 Master/交付专项 4/4（51.92 秒）通过。修复后的生产桌面、Codex 正式 MCP 与独立 PCM 核验也通过。首个 57 项与修复后的 6 项分别记录，没有宣称最终修复后重跑全量。
