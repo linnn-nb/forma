@@ -47,14 +47,24 @@ void core(const juce::File& folder){
 }
 juce::Component* find(juce::Component& p,const juce::String& id){if(!p.isVisible())return nullptr;if(p.getComponentID()==id)return &p;for(auto* child:p.getChildren())if(auto* result=find(*child,id))return result;return nullptr;}
 juce::Button* button(juce::Component& p,const juce::String& id){auto* b=dynamic_cast<juce::Button*>(find(p,id));if(!b||!b->isEnabled())throw std::runtime_error("new-session button missing or disabled: "+id.toStdString());return b;}
+juce::Button* readyButton(ndaw::desktop::Workspace& w,const juce::String& id){
+    // Recovery completion and the Workspace's next 50 ms UI refresh are
+    // separate events. Observe the actual enabled control, without extending
+    // the existing five-second async budget or calling private callbacks.
+    const auto began=std::chrono::steady_clock::now();
+    while(true){if(auto* b=dynamic_cast<juce::Button*>(find(w,id));b&&b->isEnabled()){
+        metrics.push_back({{"case","new_session_control_ready"},{"control",id.toStdString()},{"elapsed_ms",std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-began).count()}});return b;}
+        if(std::chrono::steady_clock::now()-began>std::chrono::seconds(5))throw std::runtime_error("new-session UI readiness exceeds fixed five-second budget: "+w.queryRecovery().dump());pump();
+    }
+}
 void click(juce::Component& p,const juce::String& id){button(p,id)->triggerClick();pump();}
 void ui(const juce::File& folder){
     ndaw::desktop::Workspace w(false,std::make_unique<Storage>(folder));w.setVisible(true);w.setSize(1120,700);click(w,"track.create");const auto before=w.query()["tracks"];
-    w.menuItemSelected(41,0);idle([&]{return w.queryRecovery();});pump();check(find(w,"session.new.panel")&&button(w,"session.new.confirm"),"File New opens real versioned local preview at minimum window size");
+    w.menuItemSelected(41,0);idle([&]{return w.queryRecovery();});check(find(w,"session.new.panel")&&readyButton(w,"session.new.confirm"),"File New opens real versioned local preview at minimum window size");
     click(w,"session.new.cancel");check(!find(w,"session.new.panel")&&w.query()["tracks"]==before,"cancelled GUI preview leaves the project and history unchanged");
     w.menuItemSelected(41,0);pump();auto* name=dynamic_cast<juce::TextEditor*>(find(w,"session.new.name"));check(name!=nullptr,"native new-session name is editable");name->setText("GUI recording session",false);
     w.startMcp(Permission::Preview,folder.getChildFile("gateway/socket"));const auto token=w.queryRecovery()["session_token"];
-    button(w,"session.new.confirm")->onClick();check(w.queryRecovery()["busy"]&&w.queryRecovery()["session_token"]==token&&w.queryMcpStatus()["permission"]["mode"]=="read_only","GUI local confirmation revokes external writing immediately, before backup completes");idle([&]{return w.queryRecovery();});pump();
+    readyButton(w,"session.new.confirm")->onClick();check(w.queryRecovery()["busy"]&&w.queryRecovery()["session_token"]==token&&w.queryMcpStatus()["permission"]["mode"]=="read_only","GUI local confirmation revokes external writing immediately, before backup completes");idle([&]{return w.queryRecovery();});pump();
     check(w.queryRecovery()["state"]=="created"&&w.query()["tracks"].empty()&&!find(w,"session.new.panel")&&w.queryRecovery()["catalog"]["entries"].size()==1,"actual production callbacks switch only after backup and close the preview");
     check(!w.query()["can_undo"].get<bool>()&&w.queryMcpStatus()["permission"]["mode"]=="read_only","old Undo and external Preview are not carried into new Edit");click(w,"track.create");check(w.query()["tracks"].size()==1&&w.query()["can_undo"],"ordinary native track creation works in the new session");click(w,"history.undo");check(w.query()["tracks"].empty(),"new-session human Undo operates only on its own new history");
     w.showNewSession();pump();w.setSize(1600,1000);pump();check(find(w,"session.new.confirm")->getBounds().getWidth()>0&&find(w,"session.new.panel")->getBounds()==w.getLocalBounds(),"new-session preview resizes with actual workspace");
