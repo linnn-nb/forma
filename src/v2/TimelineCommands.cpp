@@ -1,8 +1,15 @@
-#include <nativedaw/v2/EngineCommands.h>
+#include "TimelineState.h"
+#include <charconv>
 namespace ndaw::v2 {
 namespace {
 void require(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
 int64_t maximum(){return std::llround(te::Edit::maximumLength*48000);}
+int64_t savedSample(const juce::var& value){
+    require(value.isInt()||value.isInt64()||value.isString(),"saved selection position must be an integer");
+    const auto text=value.toString().toStdString();int64_t number=0;
+    const auto [end,error]=std::from_chars(text.data(),text.data()+text.size(),number);
+    require(error==std::errc{}&&end==text.data()+text.size(),"invalid saved selection integer");return number;
+}
 void validateRange(int64_t first,int64_t last){require(first>=0&&last>first&&last<=maximum(),"invalid half-open session sample range");}
 }
 void Commands::registerTimelineCommands(Json& registry){
@@ -13,12 +20,13 @@ void Commands::registerTimelineCommands(Json& registry){
         registry.push_back({{"id",command},{"schema",{{"type","object"},{"properties",properties},{"required",required},{"additionalProperties",false}}},{"permission","edit"},{"risk","low"},{"reversible",true},{"live",false},{"test","M1-RANGE-01"},{"units",{{"time","half-open [start_samples,end_samples) in the 48000 Hz session timebase; independent of device sample rate and tempo"}}}});
     }
 }
-Json Commands::timelineRange()const{
-    checkThread();if(!metadata.hasProperty("range_start_samples")&&!metadata.hasProperty("range_end_samples"))return nullptr;
+Json readTimelineState(const juce::ValueTree& metadata){
+    if(!metadata.hasProperty("range_start_samples")&&!metadata.hasProperty("range_end_samples"))return nullptr;
     require(metadata.hasProperty("range_start_samples")&&metadata.hasProperty("range_end_samples"),"incomplete saved time selection");
-    const int64_t first=juce::int64(metadata.getProperty("range_start_samples")),last=juce::int64(metadata.getProperty("range_end_samples"));validateRange(first,last);
-    return {{"start_samples",first},{"end_samples",last},{"length_samples",last-first},{"timebase","session_samples"},{"sample_rate",timelineRate}};
+    const auto first=savedSample(metadata.getProperty("range_start_samples")),last=savedSample(metadata.getProperty("range_end_samples"));validateRange(first,last);
+    return {{"start_samples",first},{"end_samples",last},{"length_samples",last-first},{"timebase","session_samples"},{"sample_rate",48000}};
 }
+Json Commands::timelineRange()const{checkThread();return readTimelineState(metadata);}
 Json Commands::validateTimelinePlan(const Json& ops)const{
     auto before=timelineRange();Json changes=Json::array();size_t index=0;
     for(const auto& op:ops){const std::string cmd=op["command"];if(cmd=="session.range.set"||cmd=="session.range.clear"){

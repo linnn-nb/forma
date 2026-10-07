@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "TimelineState.h"
 #include <limits>
 #include "PluginEditorWindows.h"
 #include "NativePluginStates.h"
@@ -526,6 +527,7 @@ void Commands::open(const juce::File& source) {
 }
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate) {
     checkThread();require(candidate!=nullptr,"invalid Edit replacement");
+    readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     auto newInhibitor=std::make_unique<te::Edit::UndoTransactionInhibitor>(*candidate);
     closePluginEditors(true);if(nativeStates)nativeStates->reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr);
     externalPreparedRates.clear();externalParameterLayouts.clear();
