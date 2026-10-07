@@ -272,3 +272,7 @@ session.range.set 参数 start_samples/end_samples（整数），session.range.c
 MCP 由注册表生成 plan.session.range.set/clear，沿用 actor、版本、幂等和 GUI 确认。它是全局操作；有界轨道/时间权限暂时拒绝，未加入自动低风险白名单。
 
 本地 exportRequest(selection) 捕获 mode、session_token、base_revision、start_samples、end_samples。文件对话框返回后 renderRequest 对比完整绑定；范围、任意人工编辑或切换工程使旧请求失效。要求停止播放、录音和参数手势。真实 Master 渲染按帧数校验并测量，回执包含 range、文件哈希、格式、响度和 audio_verified。文件副作用不进入 Undo；已有路径不能覆盖。常规按钮导出完整工程，选区面板导出指定范围，不自动追加尾音。详见 TIME_SELECTION_WORKFLOW.md。
+
+## M3 测量入口
+
+`execution=analysis` 注册项生成 analyze_master / query_analysis / cancel_analysis，不能放入编辑 Plan。队列身份、Scope 和本地会话仍由 L1 授予；只读权限允许有预算的本地离线测量。提交的 session/revision 在快照准备前核验，作业返回 started/progress 与最终实际测量回执分开；跨客户端不能取消。GUI 定位是本地控制，版本、链和完整媒体哈希通过后才调用原生 seek。分析记录不是 Undo 编辑，也不自动授予媒体上传或外部写文件权限。范围、固定预算与 源媒体核验方式见 ANALYSIS_WORKFLOW.md。

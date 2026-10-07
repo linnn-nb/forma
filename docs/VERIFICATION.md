@@ -1,5 +1,20 @@
 # 验证状态
 
+## M3-MASTER-01（2026-10-07）
+
+结论：00e5b1a /1e4de04 完整 Release 构建和最终 53/53 CTest 通过（354.25 秒）。新增两个专项覆盖 46 项音频/事务/MCP 检查、21 项原生构件检查；最终完整回归中分别耗时 18.87 /6.19 秒。M3 为部分实现，生产桌面锁定，现场窗口、真实模型 M3 操作及听感未执行；不能用 native callbacks 的自动化通过替代。
+
+实现：L1 在同一 Engine 内从停止的 Edit 准备 render-only 快照，L2 background QoS 工作线程驱动原生图和测量。Master 临时 32-bit float 保留超过满刻度信号，固定采样范围与插件链/媒体/版本/对象 ID 绑定。GUI「视图 → Master 分析 / 削波定位…」可输入区间、取消、点击真实事件定位原生 Transport；修改增益使旧证据失效、定位禁用，测量不增加 Undo/revision。NATIVEDAW 保存最近派生记录，重开不恢复为当前成功。注册表生成只读 MCP analyze_master /query_analysis /cancel_analysis，协议与队列实际执行，未指定任意输出路径或网络操作。
+
+音频事实：真实增益 +6 dB 的 10 Hz 双声道 PCM，区间 [24013,168013) 精确渲染 144000 帧；Peak 1.596209883690 /4.06179991 dBFS，True Peak 4.06965000 dBTP，RMS（线性）1.128690850264，LUFS-I -20.40658900，实际超满刻度 81900 帧 /60 段。所有边界均与源 PCM × 已知增益的独立预测精确相同。1 kHz 双声道 -20 dBFS 对 -20 LUFS ±0.05 /-20 dBTP ±0.02、RMS/相关度 1e-12、静音/短窗口及 128 事件省略计数通过。超过 abs(sample)>=1 是整数导出削波风险，不能证明原媒体已经失真；LUFS-M/S 为 100 ms 网格最大值，True Peak 未逐事件定位。
+
+并发/故障：旧版本、人工混音修改、取消、错误范围、越权取消和 unknown path 均拒绝；同一活跃请求重试保留实际 job ID。源 PCM 字节变化即使保持大小/mtime，定位前完整 SHA256 也拒绝并永久失效 artifact。实时优先专项使用独立低电平制作路径：暂停分析时实际 CoreAudio output_frames 从 9728 到 18944，output_maximum=0.05047658085823059；停止后实际分析继续完成。原始文件哈希保持；此项不证明 deadline/XRUN、监听 RTT、真实麦克风/MIDI、第三方插件压力或耐久。
+
+首次完整回归 52/53（440.10 秒）：tracktion_native_audio_devices 在真实驱动重配中停止回调，返回 failed /rollback failed，触发 DEVICE RESTORE FAILED，未隐瞒或降低要求。单项复测通过（8.98 秒），最终同负载完整回归 53/53（354.25 秒）；间歇驱动失败原因未确认，复测不能构成硬件可靠性证明。新增专项曾暴露 1.5e-12 RMS 累加差及 SDK 异类节点重排误失效，使用补偿双精度和保留语义顺序的状态规范化修复；原数值容差未降低。初次编译修复显式 JSON/string 转换。
+
+预算：1 worker、60 秒墙钟（包括暂停）、300 秒范围、2 MiB 规范化状态、4096 源引用、252 KiB 回执、128 展示事件。取消/预算不能抢占阻塞的进程内插件、系统 I/O 或图准备；定位深哈希仍同步，大工程 GUI 时限与压力未资格。其余 tap point、静音/瞬态、连续响度、交付 Check、M3 生产模型/窗口验收未完成；下一项为流媒体交付检查。应用 SHA256 e87cd4438d013ff0f001e6edade8386821b4f7d212ff1052c3ccee79e8c14e9f；本机证据 evidence/M3/summary.md，源代码和测试见 ANALYSIS_WORKFLOW.md。
+
+
 ## M1-PAN-01
 
 结论：源码 efdb8ba 完整 Release 构建与 51/51 CTest 通过（327.47 秒），18f3c52 增加实际声像与 Pan Law。PanTests / PanWorkspaceTests 专项为 95 /28 项；固定 3 秒、48 kHz、24-bit、单/双声道与 3e-6 稳态 PCM 容差，24 次真实渲染。Read、Touch、Latch、Write 原生设备录写、返回/保持声音、整段 Undo/Redo、稳定曲线 ID、权限、旧版本与删除目标均通过。混合工程含 EQ、压缩、纯湿 Reverb Aux、Post 发送、声像曲线与可编辑 FourOsc MIDI；原输出保留、保存重开、MIDI 静音后的确定性 PCM 一致。预算没有降低；合成器未声明音频逐位一致。

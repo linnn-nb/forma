@@ -1,5 +1,7 @@
 # 产品范围 v2
 
+M3 最新：Master 浮点区间分析、Peak/RMS/LUFS-I 与 M/S 网格最大值/True Peak、相关度、超满刻度风险事件、来源失效、MCP 与原生定位已接通。其他 tap point、静音/瞬态、交付检查与现场验收未完成；边界见 ANALYSIS_WORKFLOW.md。
+
 本轮增量（M1-PAN-01）：Edit/Mix 可直接设置真实声像，Mix 可选择原生 Pan Law；GUI 和 Agent 共用可预览、可撤销的 L1 命令。Read/Touch/Latch/Write 声像曲线、单/双声道实际 PCM、EQ/压缩/混响 Aux/发送/MIDI 组合与保存重开有专项；完整 M1 与实体听感仍待验收。亲手试见 PAN_WORKFLOW.md。
 
 本轮增量（M1-REC-02）：统一所有待命轨的录音就绪检查，缺失输入仍能关闭监听和取消待命，处理停滞产生真实失败和部分文件回执；实际输入设备与低延迟资格继续单独验收。操作与预先预算见 RECORDING_READINESS.md。
