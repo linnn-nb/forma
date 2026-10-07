@@ -63,7 +63,13 @@ void SessionRecovery::capture(bool forced){
 }
 void SessionRecovery::timerCallback(){owner.checkThread();poll();if(initialized&&enabled&&!job.valid()&&now()-lastAttempt>=interval*1000.)capture(false);}
 Json SessionRecovery::status() const {
-    owner.checkThread();return {{"available",true},{"enabled",enabled},{"interval_seconds",interval},{"busy",job.valid()},{"state",phase},{"reason",reason},{"error",error},{"directory",directory.getFullPathName().toStdString()},{"catalog",catalog},{"receipt",receipt},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"snapshot_only",true},{"media_copied",false},{"undo_restored",false}};
+    owner.checkThread();const auto session=owner.sessionToken();bool current=false;
+    if(phase=="restored")current=receipt.is_object()&&receipt.value("session_token",std::string{})==session;
+    if(phase=="saved")current=receipt.is_object()&&receipt.contains("snapshot")&&receipt["snapshot"].value("session_token",std::string{})==session;
+    // Retain the genuine receipt for review, but never describe a subsequently
+    // opened Edit as saved/restored by an operation on the previous session.
+    const auto state=(phase=="saved"||phase=="restored")&&!current?std::string("idle"):phase;
+    return {{"available",true},{"enabled",enabled},{"interval_seconds",interval},{"busy",job.valid()},{"state",state},{"reason",reason},{"error",error},{"directory",directory.getFullPathName().toStdString()},{"catalog",catalog},{"receipt",receipt},{"receipt_current_session",current},{"session_token",session},{"revision",owner.revision},{"snapshot_only",true},{"media_copied",false},{"undo_restored",false}};
 }
 Json SessionRecovery::control(const std::string& command,const Json& args){
     owner.checkThread();require(args.is_object(),"recovery arguments must be an object");
