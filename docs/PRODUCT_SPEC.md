@@ -1,8 +1,10 @@
 # 产品范围 v2
 
-结论：复用Tracktion Engine，当前推进M1；M0已通过，完整产品及MCP/真实Agent尚未验收。Pro Tools仅为交互参考。
+结论：复用Tracktion Engine，当前补齐 M1 验收并推进 M2；M0 已通过，完整产品和真实 Agent 桌面流程尚未验收。Pro Tools仅为交互参考。
 
-最新增量（M1-METER-01）：Mix 接通真实左右设备输出电平、峰值保持、独立 OVER 与音频回调确认复位。单声道/无设备/过期回调均如实显示；不改工程与 Undo，不冒充 True Peak 或 LUFS。自动回归通过，桌面人工验收仍待执行。代码/测试与边界见 VERIFICATION.md。
+最新增量（M2-MCP-01）：生产 MCP stdio/socket 查询、注册表生成工具、Plan 预检、本地确认提交、取消与 Undo 已接通。GUI 读取同一 Edit，人工 Undo/Redo 后 Agent 状态同步；断开回收授权。实际协议、原生确认回调、WAV 与 PCM 撤销恢复已自动验证；完整模型/桌面试听验收待解锁。使用见 MCP_WORKFLOW.md。
+
+此前增量（M1-METER-01）：Mix 接通真实左右设备输出电平、峰值保持、独立 OVER 与音频回调确认复位。单声道/无设备/过期回调均如实显示；不改工程与 Undo，不冒充 True Peak 或 LUFS。自动回归通过，桌面人工验收仍待执行。代码/测试与边界见 VERIFICATION.md。
 
 此前增量（M1-DEVICE-02）：真实 AU/VST3 在44.1/96 kHz设备重配后的参数、DSP、Program、撤销与保存恢复已通过54项专项；修复JUCE默认值覆盖，L1合并原生元数据回声；完整M1人工验收仍待执行。代码/测试与边界见VERIFICATION.md。
 
@@ -16,7 +18,7 @@
 
 旧 .ndaw schema 1–7 经统一 Plan 导入真实片段、增益、Aux/发送/输出和隔离 Master 子混音；可撤销、保存重开、播放和导出。完整原始数据、ID 映射、未映射字段及可用的插件状态字节随工程保存。仅播放活动 Playlist；Comp/分组、旧插件/限制器等继续保留待实现，处理链不完整先静音。媒体仍引用原目录。实机波形移动、边缘修剪与 Undo 已验证，关闭此前坐标手势缺口。M1 仍未整体验收。
 
-基础制作能力复用 Tracktion Engine；AI、扩展和界面通过统一命令层合作。M0 已通过，当前推进 M1，不以旧版 Pro Tools 全量对齐为门槛。
+基础制作能力复用 Tracktion Engine；AI、扩展和界面通过统一命令层合作。M0 已通过，M1 人工缺口保留；M2 网关自动化已接通，不以旧版 Pro Tools 全量对齐为门槛。
 
 里程碑与验收完整定义见 [架构](ARCHITECTURE.md) 第 10 节。依次完成 M0 可行性、M1 基础 DAW、M2 外部 Agent、M3 分析、M4 扩展、M5 ACE-Step、M6 Playlist/Comp 等工作流；之后完善 AI 面板、Windows、视频、环绕声、发布与耐久测试。
 

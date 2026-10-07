@@ -10,7 +10,7 @@ Plan 包含 plan_id、actor、base_revision、idempotency_key 和操作数组。
 
 L1 持有生命周期级 UndoTransactionInhibitor；SDK 派生更新归入最近 Plan。增益用 UndoableAction 调用真实 SDK setter。未知原生事务或选择撤销早于后续事务时拒绝推进历史，避免假成功。
 
-human 可执行普通编辑；agent:/extension: 使用受信任的本地授权：Preview 要求确认，ScopedLowRisk 只自动执行已授权对象/命令/区间内的低风险操作。外部客户端不能传入 actor、Scope 或 accepted；尚无 MCP 协议入口。回执包含 actor、plan_id、revision、对象 ID、重放标记和状态；没有音频验证时 audio_verified=false。
+human 可执行普通编辑；agent:/extension: 使用受信任的本地授权：Preview 要求确认，ScopedLowRisk 只自动执行已授权对象/命令/区间内的低风险操作。外部客户端不能传入 actor、Scope 或 accepted；MCP 入口复用此边界，详见本文 M2 段落。回执包含 actor、plan_id、revision、对象 ID、重放标记和状态；没有音频验证时 audio_verified=false。
 
 幂等相同内容重试返回原回执，Undo 后重试不复活工程；相同键不同内容拒绝。回执账本目前仅内存；打开工程清空本轮历史。保存/导出拒绝覆盖现有目标，先写暂存文件，再以硬链接发布新名字；不宣称崩溃耐久或外部副作用完全可撤销。
 
@@ -70,7 +70,7 @@ record(directory) 从停止开始，至少一条已待命且实际可用的音�
 
 ## 待实现（M1/M2）
 
-权限 Scope、持久日志与幂等恢复、后台投递队列、第三方窗口/实体控制器捕获资格、插件非参数私有状态捕获、交错历史恢复，以及由同一注册表生成的 MCP 工具/GUI 确认卡片。完整命令集见 ARCHITECTURE.md §3.3。
+持久日志与幂等恢复、实体控制器/私有预设捕获资格、交错历史恢复和真实模型完整桌面验收。Scope、后台队列、注册表生成的 MCP 工具和确认卡片已有实现，状态见各节。完整命令集见 ARCHITECTURE.md §3.3。
 
 真实模型调用、音频证据服务、扩展权限和 Provider 运行预算分别按 M2–M5 接通；当前没有聊天宏或模拟模型输出。
 
@@ -124,7 +124,7 @@ query 的 controller_events 公开实际 SDK type/raw_value/metadata/source_beat
 
 ## 人工参数写入前边界（M1-HUMAN-01）
 
-SDK 的 setParameter / parameterChangeGestureBegin / End 通过已记录的 tracktion-user-parameter-boundary.patch，在写入前交给当前 Edit 唯一的 L1 owner。外部入口原调用停止，L1 以 ownership guard 重入实际 SDK setter；既有 Plan、Undo/Redo、保存、渲染及自动化写入不重复捕获。自动化/Modifier 的 stream 更新不走此人工入口，不增加 revision。无 listener 的其他 SDK 使用方式保持原行为；非 message thread 请求在 Edit 写入前拒绝，不分配、不加锁、不投递后台任务。后台投递队列仍未实现。
+SDK 的 setParameter / parameterChangeGestureBegin / End 通过已记录的 tracktion-user-parameter-boundary.patch，在写入前交给当前 Edit 唯一的 L1 owner。外部入口原调用停止，L1 以 ownership guard 重入实际 SDK setter；既有 Plan、Undo/Redo、保存、渲染及自动化写入不重复捕获。自动化/Modifier 的 stream 更新不走此人工入口，不增加 revision。无 listener 的其他 SDK 使用方式保持原行为；非 message thread 请求在 Edit 写入前拒绝，不分配、不加锁、不投递后台任务。后台请求通过 L1 CommandQueue 投递，不在原生参数通知线程修改 Edit。
 
 注册 parameter.gesture.begin/value/end 控制命令（plugin/parameter/value），仅供 human，不能放进 Plan；只允许真实枚举的实例/参数与原生范围。检查器连续拖动直接生效，所有变化合成一个 human:UUID Undo 事务，记录 source=gui-parameter。SDK 控制器/参数直接请求记 source=sdk-parameter，不能据此声称已验证实体设备或理解插件私有状态。
 
@@ -155,7 +155,7 @@ CommandQueue 在 message thread 上由 L1 持有 Commands；受信任的界面�
 {"operations":[{"command":"track.create","args":{"name":"Reverb","type":"aux","ref":"$verb"}},{"command":"plugin.insert","args":{"track":"$verb","type":"reverb","wet_only":true}}]}
 ~~~
 
-接受后两项成为一笔事务；拒绝不改变工程。MCP stdio/socket、模型真实端到端、外部能力和持久幂等账本仍待后续里程碑。
+接受后两项成为一笔事务；拒绝不改变工程。MCP stdio/socket 已接通；真实模型完整桌面验收、外部能力和持久幂等账本仍待验证/实现。
 
 
 ## M1 外部插件（M1-EXT-01）
@@ -211,3 +211,16 @@ query.audio_configuration 与 audioDevices.last_configuration 提供真实状态
 `audio.meters.reset` 注册为 local_gui/human、低风险 control、非 Edit Undo；无参数。L1 只发布复位代次，不写实时内存。返回 pending；下一音频回调清除历史峰值，并按当前真实样本重新累计，reset_applied 回执后 UI 才显示已复位。持续过载会再次亮起；无设备时拒绝，不增加 revision 或撤销历史。后台不能直接调用，Plan 不能承载这项控制。
 
 代码：src/v2/OutputProbe.h、EngineCommands.cpp、Workspace.h；测试：OutputMeterTests.cpp（生产 tap 数值/透明性、并发查询/复位、C++ 分配/释放监测）、AudioDeviceTests.cpp（真实 CoreAudio 双声道与 GUI 回调）、WorkspaceTests.cpp（无设备状态）。预先固定本机 Release 单模块预算：2ch/128帧/48 kHz，10,000 次，p99 < 回调周期的 2%（53.333 μs）；不代表全引擎 callback deadline、耐久或物理听感资格。
+
+
+## M2 MCP 网关（M2-MCP-01）
+
+结论：生产 stdio bridge + Unix socket 已接通 GUI 里的同一 Edit。工具由 registry 的 plan 命令生成；local_gui/control 不导出为可编辑工具。query_session 返回实际 selection、revision、session_token、client_id 和本地分配的 actor/Scope，clientInfo 的名称不决定身份。
+
+plan_edits / plan.<id> 必须提供 base_revision；解析、预检、提交仍由 L1 message-thread 队列执行。commit_plan 在 MCP Preview 下只创建确认卡片；Agent 无 resolve/accepted 入口。query_plan 区分实际事务 receipt 和 last_request_result，每个请求都核对人工 Undo/Redo 后的真实事务状态。cancel_plan 撤回未执行 Plan 或待确认 Undo；不能假装撤销已执行编辑。Undo 仍检查最新历史，不能覆盖后续人工操作。
+
+socket 接受后异步申请不透明 Client；待派发授权最多 8，活跃连接最多 4。断开、停网关、改权限、重开 Edit 都撤回未提交卡片和请求；已提交 Edit 历史保留。MCP 不持有 Edit 或确认 resolver；bridge 不启动 Engine。默认启动只读，重开工程恢复只读，本地菜单可选预览。当前连接内幂等与 Undo 重放已测；跨连接和崩溃恢复账本未实现，不暴露虚假恢复回执。
+
+测试覆盖协议生命周期、错误/恶意字段、预算、异步派发与取消、真实 stdio 子进程、原生确认回调、Aux/纯湿混响/发送、实际 WAV 声音及 PCM 撤销恢复、人工 Redo 后的外部 Undo、快断连/暂停派发的授权回收、重开与停服。测试使用明确已知信号，不冒充真实人声或模型选择。完整模型→桌面确认→主观试听验收待解锁。
+
+代码：McpGateway/McpSession/McpStdio、CommandQueue、EngineCommands::transactionStatus、Workspace。测试：McpTests（93 项）、McpWorkspaceTests（67 项）。接口、协议来源、预算和亲手步骤见 [MCP_WORKFLOW.md](MCP_WORKFLOW.md)。

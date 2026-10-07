@@ -1,8 +1,9 @@
 # 依赖与阻塞 v2
 
-结论：M0通过；M1基础功能、本轮真实输出电平和40项回归已可构建，完整M1人工验收仍未执行。桌面锁定时继续已授权的MCP查询/预览开发；M1缺口保留，M2确认/试听验收也需桌面。实时/耐久、未知私有状态与真实模型未验收。
+结论：M0 通过；M1 自动化基础保留，完整人工验收未通过。M2 stdio/socket 已接通并通过协议、原生组件与真实 PCM 专项；完整模型/桌面试听仍被 Mac 锁定阻塞，已请求手动解锁。继续保留实时/耐久与专业工作流差距。
 
-- 本轮无新增依赖/SDK补丁。生产 OutputProbe 固定128声道、锁自由发布、C++分配/释放专项为0；只是该模块资格，SDK与插件实时锁/分配差距不变。样本峰值不等于True Peak；输出限幅前tap不等于离线Master分析，M3继续待实现。
+- M2 无新增依赖/SDK 补丁；stdio bridge 不启动第二个音频引擎。MCP 预算/权限与断连边界见 MCP_WORKFLOW.md。
+- 前轮输出电平无新增依赖/SDK补丁。生产 OutputProbe 固定128声道、锁自由发布、C++分配/释放专项为0；只是该模块资格，SDK与插件实时锁/分配差距不变。样本峰值不等于True Peak；输出限幅前tap不等于离线Master分析，M3继续待实现。
 - Tracktion GPLv3+：0d4d77c8c9defa6ec2aec6454f634e77bbd13f98；JUCE 8.0.13/AGPLv3：37c894f83d379179b2070d437ccd0f1cd9af9576。JUCE 8.0.12不兼容原因见M0_REPORT.md。无新增依赖；新增 juce-au-parameter-cache.patch，修复真实 AU 参数列表刷新默认值覆写。CMake 拒绝非锁定源文件或非记录修改；CRLF补丁字节保持不变。原文件 SHA-256 6fe239ff03e64773d1c82b1f0612b052ff1c74ee7eabefb228e1544bd3c8ae3d；结果 6e1ca5bccb7f133980ae8b4dc4183453b1770f700ae88ed95dca8e6a53f6fe12。正反应用实际核验见 juce-au-patch-reproducibility.json。
 - CMake逐字核对六份已提交补丁：user-parameter-boundary、recording-status、render-bus-only、initial-midi-scan、four-osc-flush、reverb-wet-tail。子模块modified仅为这些已记录差异，不提交新的指针。保存空事务、录音失败、混响尾音与None输出原生图问题的证据见VERIFICATION.md。
 - libebur128 1.2.6/MIT：67b33abe1558160ed76ada1322329b0e9e058b02；nlohmann/json 3.11.3/MIT的下载和SHA-256锁定。Lua/sol2、ACE-Step适配在后续里程碑接入，不提前报告已实现。
@@ -14,7 +15,7 @@
 - 原生音频设置和录音输入共用L1控制：实际能力校验、停播/停监听、明确物理通道、真实回调准备、一次回退、偏好重启恢复。当前CoreAudio后端内切换；Windows、设备热拔插、本轮真实 AU+VST3 双插件的设备重配/音频/历史通过，插件密集压力、实际麦克风声音和硬件RTT未资格。打开驱动调用不可抢占，准备超时不冒充硬件API时限。
 - 音频/MIDI录音与CC/Pitch Bend捕获已接通；实体麦克风/MIDI和完整CC编辑器待验收。监听、音频录音与自动化写入的合并事务尚未实现。
 - 旧.ndaw基础导入保留完整原始数据/未映射字段；M6的Playlist/Comp/分组、旧插件/限制器尚未迁移。媒体重定位、完整高级片段编辑、发送声像、布局持久化与SDK数量/资源策略仍未完成。空白或完全无Master图导出明确失败。时间线SDK上界48小时。
-- L1后台队列、Scope、JSON预览/确认已接通，单笔预检及模块哈希仍可能同步读取磁盘，不能声明大工程UI时限或可抢占事务。持久幂等/恢复账本、MCP和真实模型回执尚未实现。
-- 开发应用仅本地试用；Windows、签名公证、完整SBOM、更新/卸载与发布后置。v1-legacy-engine保留旧实现；旧产物在~/Archive/NativeDAW-legacy-artifacts/，M1验收后退役旧模块。目标文字已在AGENTS.md更新，工具无法替换尚未结束的旧目标，不伪称完成。
+- L1后台队列、Scope、JSON预览/确认已接通，单笔预检及模块哈希仍可能同步读取磁盘，不能声明大工程UI时限或可抢占事务。生产 MCP 已接通，连接内实际回执与 GUI Undo/Redo 同步已验证；持久幂等/恢复账本、跨连接恢复和完整真实模型桌面验收仍未完成。
+- Forma Studio 源码已公开在 GitHub linnn-nb/forma；开发应用仍仅本地构建，不是安装发行版。Windows、签名公证、完整 SBOM、更新/卸载后置。v1-legacy-engine 与内部完整历史仅在本地保留，旧产物在 ~/Archive/NativeDAW-legacy-artifacts/，M1 验收后退役旧模块。
 
-下一项：解锁后验收 M1；已请求用户决定是否保留人工验收缺口先推进 M2。尚无该决策，不自行改变里程碑顺序。未知私有状态继续列为差距。
+下一项：解锁后执行完整 M1/M2 桌面与声音验收；M2 工程推进不将尚未通过的里程碑改成完成。大型工程查询/预检与背压压力、未知私有状态和 Windows 继续列为差距。

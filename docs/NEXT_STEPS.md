@@ -1,11 +1,11 @@
 # 下一步
 
-结论：M0通过；M1基础功能、真实插件重配和输出电平已可构建并通过自动回归，完整M1仍待人工验收；MCP/真实模型未执行。
+结论：M0 通过；M1 人工缺口保留。M2 已有可构建的生产 stdio/socket、预览确认、提交/取消和 Undo，专项已验证；完整 M1/M2 仍待桌面验收，不改变里程碑完成标准。
 
-1. 下一项工程任务：接通M2 MCP stdio与本地socket的查询/Plan预览，工具由L1注册表生成，复用已有队列、Scope和确认卡片。这是已授权的仓库开发，不再因此前可选的顺序问题反复停工；M0–M6验收顺序和未通过状态保持。
-2. 桌面解锁后补M1：按 AUDIO_DEVICE_WORKFLOW.md / PLUGIN_WORKFLOW.md 亲手演示录音、MIDI、路由、效果器、自动化、Mix输出电平、保存重开与导出。实体声音记实际结果，不重复CLI替代验收。
-3. M2提交验收：Codex通过真实MCP新建混响Aux、保留人声原输出→GUI确认→试听→撤销。桌面/实体环境未可用时，协议测试只作自动化证据，不宣称端到端完成。M1验收后删除架构§9退役代码；M3–M6验收顺序不变。
+1. 下一项明确任务：桌面解锁后，Codex 通过生产 MCP 读取所选人声，生成新混响 Aux Plan，GUI 接受、实际播放试听、停止并一次撤销；记录真实回执与关键截图。使用 MCP_WORKFLOW.md。未解锁时不重复大量 CLI 来冒充该流程。
+2. 按 AUDIO_DEVICE_WORKFLOW.md / PLUGIN_WORKFLOW.md 补齐 M1 人工录音、MIDI、路由、效果器、自动化、保存重开和导出验收；通过后才删除架构 §9 的退役代码。
+3. M2 完整验收后进入 M3：扩展现有基础测量为多 tap/时间事件/artifact 服务，先完成 Master 削波定位和流媒体交付检查；M4–M6 及后续平台/发布范围保留。
 
-差距：SDK实时锁与资源限额、设备断开/RTT/耐久、插件密集重配、未知私有状态/Program自动化/动态参数重排、侧链/多输出；短播放和单模块微测量不是可靠性认证。Windows与发布后置。
+网关余项：跨连接与崩溃幂等恢复账本；大型工程查询分页/预检时限、输出背压压力、真实 MCP 客户端兼容性。工程/实时/插件长期资格的既有差距见 DEPENDENCIES_AND_BLOCKERS.md。
 
-开发版：build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app。功能源码64ac4b1，加严专项a2e35d1；本轮40/40回归，20项电平专项连续20次通过。不打DMG；无新依赖、上传、付费、模型下载或公开发布。
+开发应用：`build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`；MCP bridge：应用包 `Contents/Helpers/forma-mcp`。每个可构建步骤提交 Git；本轮不打 DMG。

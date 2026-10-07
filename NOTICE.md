@@ -6,4 +6,4 @@ This public repository distributes source code, not an installer or production r
 
 The selected JUCE source contains the VST3 SDK and AU support; M0 does not claim hosted-plugin qualification. Tracktion/JUCE also include third-party codecs, graph libraries, stretch algorithms, graphics and fonts, whose notices are retained in the dependency source trees and local package. A full shipped-component SBOM remains a release task.
 
-NativeDAW is the internal project and current application name; Forma Studio is the public product name. Pro Tools is only a workflow reference; no Avid affiliation, endorsement, proprietary code, branding or hardware equivalence is asserted.
+NativeDAW is the internal project, application bundle and build name; Forma Studio is the public product name and window title. Pro Tools is only a workflow reference; no Avid affiliation, endorsement, proprietary code, branding or hardware equivalence is asserted.

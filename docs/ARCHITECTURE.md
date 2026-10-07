@@ -152,6 +152,8 @@ my-vocal-chain/
 - 权限模式沿用现有设计：只读、先预览再提交、在明确范围内自动执行低风险任务。在 GUI 中，对 MCP 客户端的每个提交请求显示待确认卡片。
 - **这条路径解决了 AI 端到端测试的阻塞**：Codex、Claude、Cursor 等外部 Agent 本身就是真实模型，通过 MCP 驱动正在运行的 NativeDAW，不需要下载本地模型。
 
+**M2 开发落地（2026-10-07）**：`forma-mcp` stdio bridge 转接应用内 Unix socket，不创建第二个 Engine。McpSession 从 L1 registry 生成工具，客户端只持有不透明 CommandQueue::Client；所有 Edit 写入与确认仍在 message thread。默认只读，菜单可选择预览；每个 MCP commit/undo 都显示本地卡片。断开/改权限/重开撤回未提交计划，人工 Undo/Redo 在每个请求入口同步实际状态。自动化协议/原生组件/PCM 已验证，完整 M1/M2 人工及模型验收仍未通过。使用与预算见 [MCP_WORKFLOW.md](MCP_WORKFLOW.md)。
+
 ### 6.2 内置 AI 面板（次路径）
 
 - 复用同一套工具定义。Provider 适配器支持 Ollama 和 OpenAI 兼容接口，模型名可配置。
