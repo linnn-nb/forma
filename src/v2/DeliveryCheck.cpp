@@ -20,6 +20,10 @@ Json normaliseProfile(const Json& input){
         else require(finite(i.value())&&i.value().get<double>()>=rule["minimum"].get<double>()&&i.value().get<double>()<=rule["maximum"].get<double>(),"delivery threshold outside supported finite range");
         output[i.key()]=i.value();
     }
+    // Canonicalise numeric representation too: JSON 1 and 1.0 express the same
+    // finite condition. Omitted defaults and explicitly supplied defaults must
+    // produce the same profile/request SHA256, independent of the client.
+    for(auto i=output.begin();i!=output.end();++i)if(i.value().is_number()){const auto value=i.value().get<double>();i.value()=value==0?0.:value;}
     return output;
 }
 Json evaluate(const Json& measured,const Json& requested){
