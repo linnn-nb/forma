@@ -1,10 +1,16 @@
 #include <nativedaw/v2/SourceMapping.h>
 namespace ndaw::v2::analysis {
+namespace {
+// SDK time is double seconds. An exact frame boundary can round a few ULPs
+// below its native integer after trim/split. Do not invent a one-sample view
+// from that representational sliver; preserve meaningful fractional frames.
+double boundary(double frame){const auto integer=std::round(frame);const auto tolerance=std::max(1e-8,4*std::numeric_limits<double>::epsilon()*std::abs(frame));return std::abs(frame-integer)<=tolerance?integer:frame;}
+}
 Json projectSourceEvent(const Json& event,const Json& mapping){
     if(!mapping.value("available",false))return nullptr;
     const double rate=mapping.at("source_sample_rate"),speed=mapping.at("speed_ratio"),offset=mapping.at("source_offset_seconds");
     const int64_t clipStart=mapping.at("start_samples"),clipEnd=mapping.at("end_samples");
-    const double sourceBegin=offset*rate,sourceEnd=(offset+(clipEnd-clipStart)*speed/48000.)*rate;
+    const double sourceBegin=boundary(offset*rate),sourceEnd=boundary((offset+(clipEnd-clipStart)*speed/48000.)*rate);
     const double originalBegin=event.at("source_start_frame"),originalEnd=event.at("source_end_frame");
     if(!std::isfinite(rate)||!std::isfinite(speed)||!std::isfinite(offset)||rate<=0||speed<=0||clipEnd<=clipStart)return nullptr;
     if(event.at("kind")=="transient_candidate"&&(originalBegin<sourceBegin||originalBegin>=sourceEnd))return nullptr;
