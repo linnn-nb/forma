@@ -11,7 +11,7 @@ public:
         inputLabel.setText(text("TRACK INPUT · 轨道输入"),juce::dontSendNotification);monitorLabel.setText(text("MONITOR · 每轨监听"),juce::dontSendNotification);keyLabel.setText(text("屏幕键盘 · C4–C6 · 实际 MIDI 输入"),juce::dontSendNotification);
         direction.addItem(text("输入"),1);direction.addItem(text("输出"),2);direction.setSelectedId(1,juce::dontSendNotification);direction.setComponentID("recording.midi_direction");
         hardware.setComponentID("recording.hardware");enable.setComponentID("recording.enable_input");input.setComponentID("recording.input");arm.setComponentID("track.arm");monitor.setComponentID("recording.monitor");folder.setComponentID("recording.directory");path.setComponentID("recording.path");detail.setComponentID("recording.detail");keys.setComponentID("recording.midi_keyboard");
-        keys.setAvailableRange(60,84);keys.setKeyWidth(20);keys.setScrollButtonsVisible(false);keyState.addListener(this);
+        keys.setAvailableRange(60,84);keys.setOctaveForMiddleC(4);keys.setKeyWidth(20);keys.setScrollButtonsVisible(true);keyState.addListener(this);
         monitor.addItem(text("Off · 关闭"),1);monitor.addItem(text("Auto · 待命时监听"),2);monitor.addItem(text("On · 一直监听"),3);arm.setClickingTogglesState(true);arm.setColour(juce::TextButton::buttonOnColourId,juce::Colour(0xffad4549));
         direction.onChange=[this]{lastHardware.clear();selectedHardware.clear();update(facts,deviceFacts,sessionFacts,directory);};
         hardware.onChange=[this]{int n=hardware.getSelectedId()-1;if(n>=0&&n<int(hardwareIDs.size()))selectedHardware=hardwareIDs[n];refreshEnable();};
