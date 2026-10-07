@@ -1,4 +1,5 @@
 #include <nativedaw/v2/CommandQueue.h>
+#include <nativedaw/v2/RequestIdentity.h>
 #include <deque>
 #include <mutex>
 #include <chrono>
@@ -32,7 +33,12 @@ struct QueueJob {
 struct QueueState:std::enable_shared_from_this<QueueState> {
     struct PlanRecord {Json plan,preview,result=nullptr;std::shared_ptr<QueueClientState> client;uint64_t generation;std::string state="planned",confirmation;};
     struct Confirmation {std::string plan;bool undo=false;};
-    explicit QueueState(Commands& c):owner(&c){}
+    struct RequestRecord {
+        std::string fingerprint,scopeHash,planID,state="cancelled";
+        std::weak_ptr<QueueClientState> client;
+        uint64_t generation=0;
+    };
+    explicit QueueState(Commands& c):owner(&c),ledgerSession(c.sessionToken()){}
     std::mutex mutex;
     std::deque<std::shared_ptr<QueueJob>> jobs;
     size_t bytes=0;
@@ -42,6 +48,8 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
     std::map<std::string,std::shared_ptr<QueueClientState>> clients;
     std::map<std::string,PlanRecord> plans;
     std::map<std::string,Confirmation> confirmations;
+    std::map<std::string,RequestRecord> requests;
+    std::string ledgerSession;
     std::string selectedTrack,selectedClip;
     uint64_t executed=0,expired=0;
     void valid(const std::shared_ptr<QueueClientState>& c,uint64_t generation){
@@ -51,8 +59,69 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
     PlanRecord& owned(const std::shared_ptr<QueueClientState>& c,const Json& args){
         auto it=plans.find(args.at("plan_id").get<std::string>());require(it!=plans.end()&&it->second.client==c,"plan not owned by this client");valid(c,it->second.generation);return it->second;
     }
+    void syncSession(){
+        if(ledgerSession!=owner->sessionToken()){
+            plans.clear();confirmations.clear();requests.clear();ledgerSession=owner->sessionToken();
+        }
+    }
+    Json requestStatus(const std::string& key,const std::shared_ptr<QueueClientState>& client){
+        auto recovery=owner->requestRecovery(key);auto found=requests.find(key);
+        if(recovery["state"]=="recovery_requires_review")return {{"status","recovery_requires_review"},{"request_key",key},{"receipt",nullptr},{"trusted_current_run",false},{"historical_marker",recovery["historical_marker"]},{"owned",false}};
+        const bool live=recovery["trusted_current_run"].get<bool>();
+        if(found==requests.end()){
+            if(!live)return {{"status","failed"},{"request_key",key},{"error","unknown request_key"},{"receipt",nullptr}};
+            return {{"status",recovery["state"]},{"request_key",key},{"plan_id",recovery["plan"]["plan_id"]},{"receipt",recovery["receipt"]},{"trusted_current_run",true},{"owned",false}};
+        }
+        auto& record=found->second;auto plan=plans.find(record.planID);
+        if(live)record.state=recovery["state"];
+        else if(plan!=plans.end()){
+            if(!plan->second.client->active.load()||plan->second.generation!=plan->second.client->generation.load()){
+                plan->second.state="failed";plan->second.result={{"status","failed"},{"error","permission changed; original plan invalidated"}};
+            }
+            record.state=plan->second.state;
+        }
+        const bool owned=plan!=plans.end()&&plan->second.client==client&&plan->second.generation==client->generation.load();
+        return {{"status",record.state},{"request_key",key},{"plan_id",record.planID},
+            {"receipt",live?recovery["receipt"]:Json(nullptr)},{"trusted_current_run",live},{"owned",owned},
+            {"confirmation_id",owned&&!plan->second.confirmation.empty()?Json(plan->second.confirmation):Json(nullptr)},
+            {"last_request_result",plan==plans.end()?Json(nullptr):plan->second.result}};
+    }
+    Json replayPlan(const std::string& key,QueueJob& j,const std::string& fingerprint,const std::string& scopeHash){
+        auto recovery=owner->requestRecovery(key);auto it=requests.find(key);
+        if(recovery["state"]=="recovery_requires_review"){
+            require(recovery["historical_marker"]["request_fingerprint"]==fingerprint,"request_key reused with different content");
+            throw std::runtime_error("saved request history requires review; query_request and inspect the Edit before starting a new intention");
+        }
+        const bool live=recovery["trusted_current_run"].get<bool>();
+        if(it==requests.end()&&!live)return nullptr;
+        if(it==requests.end()){
+            require(requests.size()<Commands::maximumRequestRecords,"request retention capacity reached");
+            const auto& p=recovery["plan"];
+            it=requests.emplace(key,RequestRecord{p["request_fingerprint"],p["request_scope_hash"],p["plan_id"],recovery["state"],{},0}).first;
+        }
+        auto& record=it->second;
+        require(record.fingerprint==fingerprint,"request_key reused with different content");
+        require(record.scopeHash==scopeHash,"request recovery requires the same locally granted scope");
+        auto previous=record.client.lock();
+        if(previous&&previous->active.load()){
+            require(previous==j.client,"request is owned by another active client");
+            valid(previous,record.generation);
+            auto plan=plans.find(record.planID);require(plan!=plans.end(),"request Plan unavailable");
+            auto result=requestStatus(key,j.client);result["plan"]=plan->second.plan;result["preview"]=plan->second.preview;
+            result["replayed"]=true;result["preview_is_current"]=false;return result;
+        }
+        if(!live){auto result=requestStatus(key,j.client);result["replayed"]=true;return result;}
+        require(plans.size()<64,"plan retention limit; close unused client plans");
+        auto p=recovery["plan"];auto state=recovery["state"].get<std::string>();
+        Json context{{"original_actor",p["actor"]},{"live_receipt",recovery["receipt"]},
+            {"current_local_permission",j.client->scope.json()},{"original_preview_available",false}};
+        plans.emplace(record.planID,PlanRecord{p,context,recovery["receipt"],j.client,j.generation,state,{}});
+        record.client=j.client;record.generation=j.generation;record.state=state;
+        auto result=requestStatus(key,j.client);result["plan"]=p;result["preview"]=nullptr;
+        result["replayed"]=true;result["recovered"]=true;result["preview_is_current"]=false;return result;
+    }
     Json execute(QueueJob& j){
-        valid(j.client,j.generation);const auto& args=j.args;auto& c=*owner;
+        syncSession();valid(j.client,j.generation);const auto& args=j.args;auto& c=*owner;
         if(j.method=="query"){fields(args,{});auto q=c.query();q["session_token"]=c.sessionToken();q["permission"]=j.client->scope.json();q["client_id"]=j.client->id;q["actor"]=j.client->actor;q["selection"]={{"track",nullptr},{"clip",nullptr}};for(const auto& t:q["tracks"]){if(t["id"]==selectedTrack)q["selection"]["track"]=selectedTrack;for(const auto& clip:t["clips"])if(clip["id"]==selectedClip)q["selection"]["clip"]=selectedClip;}return {{"status","completed"},{"result",q}};}
         if(j.method=="summary"||j.method=="objects"){
             if(j.method=="summary")fields(args,{});
@@ -61,13 +130,25 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
             return {{"status","completed"},{"result",std::move(result)}};
         }
         if(j.method=="registry"){fields(args,{});return {{"status","completed"},{"result",c.registry()}};}
+        if(j.method=="request_status"){fields(args,{"request_key"});return requestStatus(requestKey(args["request_key"]),j.client);}
         if(j.method=="plan"){
-            fields(args,{"operations","base_revision"});require(j.client->scope.mode!=Permission::ReadOnly,"read-only permission cannot plan edits");
+            if(args.contains("request_key"))fields(args,{"operations","base_revision","request_key"});else fields(args,{"operations","base_revision"});
+            require(j.client->scope.mode!=Permission::ReadOnly,"read-only permission cannot plan edits");
+            const auto key=args.contains("request_key")?requestKey(args["request_key"]):std::string{};
+            const auto fingerprint=requestDigest(Json{{"base_revision",args["base_revision"]},{"operations",args["operations"]}});
+            const auto scopeHash=requestDigest(j.client->scope.json());
+            if(!key.empty()){
+                auto replay=replayPlan(key,j,fingerprint,scopeHash);if(!replay.is_null())return replay;
+                require(requests.size()<Commands::maximumRequestRecords,"request retention capacity reached; start a new session explicitly");
+            }
             require(args["base_revision"].is_number_integer()&&args["base_revision"].get<uint64_t>()==c.querySummary()["revision"].get<uint64_t>(),"revision conflict before planning");
             require(plans.size()<64,"plan retention limit; close unused client plans");
-            auto p=c.makePlan(j.client->actor,args["operations"]);auto preview=c.review(p,j.client->scope);const std::string id=p["plan_id"];
+            auto p=c.makePlan(j.client->actor,args["operations"]);
+            if(!key.empty()){p["request_key"]=key;p["request_fingerprint"]=fingerprint;p["request_scope_hash"]=scopeHash;}
+            auto preview=c.review(p,j.client->scope);const std::string id=p["plan_id"];
             plans.emplace(id,PlanRecord{p,preview,nullptr,j.client,j.generation,"planned",{}});
-            return {{"status","planned"},{"plan",p},{"preview",preview}};
+            if(!key.empty())requests.emplace(key,RequestRecord{fingerprint,scopeHash,id,"planned",j.client,j.generation});
+            return {{"status","planned"},{"plan",p},{"preview",preview},{"replayed",false},{"preview_is_current",true}};
         }
         fields(args,{"plan_id"});auto& record=owned(j.client,args);
         // Human Undo/Redo can happen independently of this queue. Reconcile at
@@ -144,7 +225,7 @@ CommandQueue::Ticket CommandQueue::Client::submit(const std::string& method,Json
     auto fail=[&](const char* why){j->finish({{"status","failed"},{"error",why}});return ticket;};
     if(timeoutMs<1||timeoutMs>30000)return fail("timeout must be 1..30000 ms");
     if(!principal||!principal->active.load())return fail("client revoked or missing");
-    if(method!="query"&&method!="summary"&&method!="objects"&&method!="registry"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
+    if(method!="query"&&method!="summary"&&method!="objects"&&method!="registry"&&method!="request_status"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
     try{j->bytes=j->args.dump().size();}catch(const std::exception&){return fail("request payload is not valid UTF-8 JSON");}if(j->bytes>maximumPayloadBytes)return fail("request payload exceeds 256 KiB");
     j->generation=principal->generation.load();j->deadline=j->submitted+std::chrono::milliseconds(timeoutMs);auto s=queue.lock();if(!s)return fail("queue closed");bool wake=false;
     {std::lock_guard lock(s->mutex);if(s->closed)return fail("queue closed");if(s->jobs.size()>=capacity||s->bytes+j->bytes>1024*1024)return fail("queue capacity reached");s->jobs.push_back(j);s->bytes+=j->bytes;if(!s->scheduled){s->scheduled=true;wake=true;}}
@@ -160,6 +241,7 @@ void CommandQueue::revoke(const std::string& id){
     messageThread();auto c=state->clients.at(id);c->active=false;++c->generation;
     {std::lock_guard lock(state->mutex);for(auto i=state->jobs.begin();i!=state->jobs.end();)if((*i)->client==c){auto j=*i;state->bytes-=j->bytes;i=state->jobs.erase(i);j->finish({{"status","cancelled"},{"error","client revoked before execution"}});}else ++i;}
     for(auto i=state->confirmations.begin();i!=state->confirmations.end();)if(state->plans.at(i->second.plan).client==c)i=state->confirmations.erase(i);else ++i;
+    for(auto& [_,r]:state->requests)if(r.client.lock()==c){auto p=state->plans.find(r.planID);if(p!=state->plans.end())r.state=p->second.state=="planned"||p->second.state=="awaiting_confirmation"?"cancelled":p->second.state;}
     std::erase_if(state->plans,[&](const auto& entry){return entry.second.client==c;});state->clients.erase(id);
 }
 void CommandQueue::setSelection(const std::string& track,const std::string& clip){messageThread();require(track.size()<=256&&clip.size()<=256,"selection ID too long");state->selectedTrack=track;state->selectedClip=clip;}
@@ -177,11 +259,11 @@ Json CommandQueue::resolve(const std::string& id,bool accepted){
         return {{"status",p.state},{"receipt",p.result}};
     }catch(const std::exception& e){if(!action.undo)p.state="failed";p.result={{"status","failed"},{"error",e.what()}};return p.result;}
 }
-Json CommandQueue::status() const {messageThread();std::lock_guard lock(state->mutex);return {{"queued",state->jobs.size()},{"queued_bytes",state->bytes},{"closed",state->closed},{"executed",state->executed},{"expired",state->expired},{"capacity",capacity},{"clients",state->clients.size()},{"plans",state->plans.size()},{"confirmations",state->confirmations.size()}};}
+Json CommandQueue::status() const {messageThread();std::lock_guard lock(state->mutex);return {{"queued",state->jobs.size()},{"queued_bytes",state->bytes},{"closed",state->closed},{"executed",state->executed},{"expired",state->expired},{"capacity",capacity},{"clients",state->clients.size()},{"plans",state->plans.size()},{"confirmations",state->confirmations.size()},{"request_records",state->requests.size()},{"request_capacity",Commands::maximumRequestRecords}};}
 void CommandQueue::shutdown(){
     messageThread();std::deque<std::shared_ptr<QueueJob>> jobs;
     {std::lock_guard lock(state->mutex);state->closed=true;state->scheduled=false;state->owner=nullptr;state->bytes=0;jobs.swap(state->jobs);}
-    for(auto& [_,c]:state->clients)c->active=false;state->confirmations.clear();state->plans.clear();
+    for(auto& [_,c]:state->clients)c->active=false;state->confirmations.clear();state->plans.clear();state->requests.clear();
     for(auto& j:jobs)j->finish({{"status","cancelled"},{"error","queue shutdown before execution"}});
 }
 }

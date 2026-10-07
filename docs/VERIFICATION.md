@@ -1,6 +1,6 @@
 # 验证状态
 
-结论：M0 关口已通过；M1 仍缺完整人工验收。本轮对象查询源码 `90afd3b` 的完整 Release 构建通过，自动回归 43/43 通过（291.18 秒，2026-10-07）。Mac 锁定，物理点击/试听和完整真实 Agent 演示未执行，不能写成 M2 已验收。
+结论：M0 关口已通过；M1 仍缺完整人工验收。对象查询源码 `90afd3b` 完整 Release 与 43/43 回归通过（291.18 秒）；本轮 M2 请求恢复的应用构建和 3/3 专项通过（32.00 秒，2026-10-07），完整回归待执行。Mac 锁定，物理点击/试听和完整真实 Agent 演示未执行，不能写成 M2 已验收。
 
 本仓库分发源码；本机 `evidence/`、媒体和构建产物不公开。下列测试结果是本机记录，不自动赋予其他机器资格。M1 详细历史保存在 [VERIFICATION_v2_M1](history/VERIFICATION_v2_M1.md)，旧 v1 见 history/VERIFICATION_v1.md。
 
@@ -38,4 +38,14 @@
 
 ## 必须保留的验收缺口
 
-完整 M1 人工多轨制作、真实麦克风/MIDI、完整 Codex→MCP→GUI 确认→试听→撤销；持久幂等/恢复账本和跨连接恢复；大型工程查询/预检时限与背压压力；实体控制器、未知私有插件通知、侧链/多输出；SDK 回调锁/分配、设备拔插/监听 RTT/长时间录放；Windows 和发行资格均未完成。下一项按 NEXT_STEPS 推进，不能以绿色测试替代这些验收。
+完整 M1 人工多轨制作、真实麦克风/MIDI、完整 Codex→MCP→GUI 确认→试听→撤销；完整持久幂等/WAL/未保存崩溃恢复；大型工程查询/预检时限与背压压力；实体控制器、未知私有插件通知、侧链/多输出；SDK 回调锁/分配、设备拔插/监听 RTT/长时间录放；Windows 和发行资格均未完成。下一项按 NEXT_STEPS 推进，不能以绿色测试替代这些验收。
+
+## M2-RECOVERY-01
+
+工具 API 0.3.0 要求规划 request_key；跨连接实际回执恢复、原 actor 保留、人工历史与确认仍受保护。Release 应用构建及最终专项 3/3 通过（32.00 秒）：恢复 63 项、协议 93 项/60 工具、生产 stdio/socket 工作区 105 项。固定 4096 键循环 12005.13 ms，低于实施前的 120 秒预算；普通协议最大往返 51.76 ms，低于 5 秒；六次 144000 帧实际渲染均低于 10 秒。完整回归待执行。
+
+保存 committed/undone 标记、重开不伪称成功/持久 Undo、重复历史记录及审计上限均覆盖。真实混响发送断线恢复后没有新增重复 Aux/send；原输出、湿声尾音和 Undo 后解码 PCM 一致通过。只是已知信号和原生控件回调资格，不是模型/桌面/主观试听验收。
+
+记录：evidence/M2/recovery-tests.json、workspace-tests.json、ctest-recovery-focused.log、build-recovery-schema-fix.log、ctest-recovery-schema-fix.log；代码与边界见 AI_COMMAND_CONTRACT.md / MCP_WORKFLOW.md。完整 WAL、自动保存、未保存崩溃恢复、持久 Undo 和大型预检/背压仍未完成。
+
+失败保留在 ctest-recovery-xml-schema-failure.log：新增严格 schema 类型检查拒绝了有效的 Tracktion XML（其 ValueTree 属性读取为字符串）；已按锁定 JUCE 的真实读取规则接受整数 1 或规范字符串 "1"，继续拒绝其他值与重复审计树。最终专项覆盖真实保存重开及网关队列重建。

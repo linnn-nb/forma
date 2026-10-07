@@ -543,6 +543,7 @@ private:
     void showCommandCard(const Json& card) {
         pending=card["plan"];pendingConfirmation=card["id"];reportShowing=true;acceptButton.setButtonText(card["kind"]=="undo"?text("确认撤销"):text("接受并提交"));
         auto out=text(card["kind"]=="undo"?"\u547d\u4ee4\u64a4\u9500 \u00b7 \u5f85\u786e\u8ba4\n\n":"外部 Agent / 命令 · 待确认\n\n")+text(card["actor"].get<std::string>())+text("\n\u5de5\u7a0b\u7248\u672c\uff1a")+text(pending["base_revision"].dump())+text("\n\n");
+        if(pending["actor"]!=card["actor"])out+=text("原事务发起者：")+text(pending["actor"].get<std::string>())+text("\n当前连接仅请求撤销；原事务身份保留。\n\n");
         if(card["kind"]=="undo")out+=text("\u64a4\u9500\u8fd9\u7b14\u4e8b\u52a1\u3002\u5176\u540e\u82e5\u6709\u4eba\u5de5\u64cd\u4f5c\uff0c\u63d0\u4ea4\u65f6\u5c06\u62d2\u7edd\u8986\u76d6\u3002\n\n");
         for(const auto& op:pending["operations"]){out+=text(op["command"].get<std::string>())+"\n";
             const auto& a=op["args"];if(a.contains("track"))out+=text("\u8f68\u9053\uff1a")+trackName(a["track"])+"\n";

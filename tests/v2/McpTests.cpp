@@ -14,7 +14,7 @@ std::vector<Json> receive(McpSession& s,const std::string& line){std::vector<Jso
 std::vector<Json> receive(McpSession& s,const Json& j){return receive(s,j.dump());}
 std::vector<Json> ready(McpSession& s){std::vector<Json> out;std::thread worker([&]{out=s.ready();});worker.join();return out;}
 Json call(McpSession& s,const Json& j){auto out=receive(s,j);auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);while(out.empty()){if(std::chrono::steady_clock::now()>deadline)throw std::runtime_error("MCP dispatch exceeded five-second test budget");pump();out=ready(s);}check(out.size()==1&&out[0]["id"]==j["id"],"MCP response matches request identity");return out[0];}
-Json tool(McpSession& s,const char* name,Json args=Json::object()){static int id=100;return call(s,rpc(id++,"tools/call",{{"name",name},{"arguments",args}}));}
+Json tool(McpSession& s,const char* name,Json args=Json::object()){static int id=100;if((std::string(name)=="plan_edits"||std::string(name).starts_with("plan."))&&!args.contains("request_key"))args["request_key"]="protocol-"+std::to_string(id);return call(s,rpc(id++,"tools/call",{{"name",name},{"arguments",args}}));}
 Json data(const Json& j){return j.at("result").at("structuredContent");}
 void initialize(McpSession& s,const char* version="2025-11-25"){
     auto r=call(s,rpc(1,"initialize",{{"protocolVersion",version},{"capabilities",Json::object()},{"clientInfo",{{"name","human-not-an-authority"},{"version","1"}}}}));

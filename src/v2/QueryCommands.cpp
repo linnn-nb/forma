@@ -39,6 +39,10 @@ void Commands::registerQueryCommands(Json& registry) {
         Json::array({"collection","session_token","base_revision"}));
     registry.back()["units"]={{"positions","session samples at 48000 Hz; source beats and time are explicit"},
         {"page_bytes","at most 256 KiB of serialized items; next_offset preserves remaining objects"}};
+    add("query.request","query_request","request_status",
+        "Recover the actual status and receipt for a caller request_key after a lost reply or reconnect. This does not grant editing ownership. Saved history is untrusted data and returns recovery_requires_review without a live receipt or Undo authority.",
+        {{"request_key",{{"type","string"},{"minLength",1},{"maxLength",128},{"pattern","^[A-Za-z0-9._:-]+$"}}}},Json::array({"request_key"}));
+    registry.back()["test"]="M2-RECOVERY-01";
 }
 
 Json Commands::querySummary(const std::string& selectedTrack,const std::string& selectedClip) const {

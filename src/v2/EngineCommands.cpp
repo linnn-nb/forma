@@ -330,6 +330,7 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
         result["state"] = metadata.getChildWithProperty("plan_id",juce::String(plan.at("plan_id").get<std::string>())).isValid()?"committed":"undone";
         return result;
     }
+    validateRequestCommit(plan);
     auto reviewed=review(plan,scope);
     require(plan.at("actor")=="human" || accepted || reviewed["permission"]["automatic_allowed"].get<bool>(),"preview acceptance required");
     if(edit->getTransport().isPlaying())
@@ -417,7 +418,7 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
     bumpRevision();
     closePluginEditors();if(nativeStates)nativeStates->sync(true);history.resize(historyCursor); history.push_back(plan.at("plan_id")); ++historyCursor;
     Json result{{"plan_id",plan.at("plan_id")},{"actor",plan.at("actor")},{"revision",revision},{"objects",objects},{"state","committed"},{"replayed",false},{"audio_verified",false}};
-    receipts.emplace(key,Receipt{fingerprint,result}); return result;
+    receipts.emplace(key,Receipt{fingerprint,result});storeRequestAudit(plan,"committed"); return result;
 }
 Json Commands::transactionStatus(const std::string& id)const {
     checkThread();captureNativeStates();
@@ -432,7 +433,7 @@ Json Commands::undo(const std::string& expected) {
     edit->getTransport().freePlaybackContext();
     require(edit->getUndoManager().undo(),"Tracktion Undo failed"); --historyCursor;if(nativeStates)nativeStates->historyState(id,"undone");if(!lastParameterCapture.is_null()&&lastParameterCapture["plan_id"]==id)lastParameterCapture["state"]="undone";if(!lastCapture.is_null()&&lastCapture["plan_id"]==id)lastCapture["state"]="undone"; bumpRevision();
     closePluginEditors();if(nativeStates)nativeStates->sync(true);restoreRoutingAssignments();restoreInputAssignments();if(!lastRecording.is_null()&&lastRecording["plan_id"]==id)lastRecording["state"]="undone";
-    return {{"plan_id",id},{"revision",revision},{"state","undone"}};
+    updateRequestAudit(id,"undone");return {{"plan_id",id},{"revision",revision},{"state","undone"}};
 }
 Json Commands::redo() {
     checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");captureNativeStates();require(!nativeStates||(!nativeStates->query()["pending"].get<bool>()&&nativeStates->query()["failure"].is_null()),"resolve uncaptured native state before Redo");require(parameterCapture.is_null(),"finish native parameter gesture before Redo");ParameterWriteGuard parameterGuard(*this); require(!edit->getTransport().isPlaying(),"stop playback before Redo"); require(historyCursor<history.size(),"nothing to redo");
@@ -441,7 +442,7 @@ Json Commands::redo() {
     edit->getTransport().freePlaybackContext();
     require(edit->getUndoManager().redo(),"Tracktion Redo failed"); ++historyCursor;if(nativeStates)nativeStates->historyState(id,"committed");if(!lastParameterCapture.is_null()&&lastParameterCapture["plan_id"]==id)lastParameterCapture["state"]="committed";if(!lastCapture.is_null()&&lastCapture["plan_id"]==id)lastCapture["state"]="committed"; bumpRevision();
     closePluginEditors();if(nativeStates)nativeStates->sync(true);restoreRoutingAssignments();restoreInputAssignments();if(!lastRecording.is_null()&&lastRecording["plan_id"]==id)lastRecording["state"]=lastRecording.value("outcome",std::string("success"))=="failed"?"failed":"committed";
-    return {{"plan_id",id},{"revision",revision},{"state","committed"}};
+    updateRequestAudit(id,"committed");return {{"plan_id",id},{"revision",revision},{"state","committed"}};
 }
 void Commands::play() { checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");captureNativeStates();require(parameterCapture.is_null(),"finish native parameter gesture before Play");ParameterWriteGuard parameterGuard(*this); require(engine.getDeviceManager().deviceManager.getCurrentAudioDevice()!=nullptr,"audio device unavailable");if(edit->getTransport().isPlaying())return;validateExternalRuntime();
     beginAutomationCapture();try {edit->getTransport().play(false);}catch(...){finishAutomationCapture();throw;}

@@ -14,7 +14,7 @@ Forma Studio reuses the Tracktion Engine for the audio foundation and focuses or
 
 - The M0 prototype has imported and played audio through Tracktion Engine, created and edited tracks through the command layer, exercised Undo/Redo, and rendered audio for loudness and peak measurement.
 - The M1 development build contains working slices of Edit/Mix, audio playback and rendering, MIDI/instrument editing, routing, built-in effects, automation, recording workflows and AU/VST3 hosting. Each feature has its own documented verification boundary; the whole M1 workstation has not passed manual acceptance.
-- M2 now provides stdio/socket MCP queries, registry-generated query/planning tools, version-checked object pages, native confirmation cards, cancellation and Undo. Protocol, native component callbacks and rendered PCM have automated coverage. Full external-agent desktop acceptance remains pending.
+- M2 now provides stdio/socket MCP queries, registry-generated query/planning tools, version-checked object pages, native confirmation cards, cancellation and Undo, caller request keys and reconnection recovery of live receipts. Saved history requires review after reopening. Protocol, native component callbacks and rendered PCM have automated coverage. Full external-agent desktop acceptance remains pending.
 - M3 audio intelligence, M4 extensions, M5 generation adapters and M6 advanced editing workflows remain in development.
 - The primary platform is macOS on Apple Silicon. Windows is planned, not verified.
 

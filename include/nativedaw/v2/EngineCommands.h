@@ -31,6 +31,10 @@ public:
     Json review(const Json&,const Scope&) const;
     std::string sessionToken() const;
     Json transactionStatus(const std::string&) const;
+    // A live receipt is authoritative. Saved markers are untrusted history and
+    // never grant permission, restore Undo or authorize replay after reopening.
+    Json requestRecovery(const std::string& requestKey) const;
+    static constexpr size_t maximumRequestRecords=4096;
     Json undo(const std::string& expectedPlan = {});
     Json redo();
     Json render(const juce::File&, int64_t start, int64_t end);
@@ -186,6 +190,10 @@ private:
     void executeLegacyOperation(const Json&,Json&);
     Json assessScope(const Json&,const Scope&,const Json&) const;
     void bumpRevision();
+    Json requestAudit() const;
+    void validateRequestCommit(const Json&) const;
+    void storeRequestAudit(const Json&,const std::string&);
+    void updateRequestAudit(const std::string& planID,const std::string&);
     te::Engine engine;
     OutputProbe* outputProbe = nullptr;
     std::unique_ptr<te::Edit> edit;

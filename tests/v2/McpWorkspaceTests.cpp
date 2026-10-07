@@ -73,7 +73,7 @@ void initialize(Wire& wire){
     auto r=call(wire,rpc(1,"initialize",{{"protocolVersion","2025-11-25"},{"capabilities",Json::object()},{"clientInfo",{{"name","MCP integration test"},{"version","1"}}}}));
     check(r["result"]["serverInfo"]["name"]=="Forma Studio","socket/stdio lifecycle uses the production server");wire.send(Json{{"jsonrpc","2.0"},{"method","notifications/initialized"}}.dump()+"\n");
 }
-Json tool(Wire& wire,const char* name,Json args=Json::object()){static int id=100;return call(wire,rpc(id++,"tools/call",{{"name",name},{"arguments",args}}));}
+Json tool(Wire& wire,const char* name,Json args=Json::object()){static int id=100;if((std::string(name)=="plan_edits"||std::string(name).starts_with("plan."))&&!args.contains("request_key"))args["request_key"]="workspace-"+std::to_string(id);return call(wire,rpc(id++,"tools/call",{{"name",name},{"arguments",args}}));}
 Json data(const Json& r){return r.at("result").at("structuredContent");}
 Json op(const char* c,Json a){return {{"command",c},{"args",a}};}
 void fixture(const juce::File& file){
@@ -119,7 +119,7 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;std::signal(S
         check(tool(readonly,"plan.track.gain",{{"base_revision",q["revision"]},{"args",{{"track",track},{"db",-6}}}})["result"]["isError"]&&!find(w,"plan.accept"),"read-only stdio grant cannot open an edit card");
     }
     until([&]{return w.queryCommandQueueStatus()["clients"]==1;});check(w.queryCommandQueueStatus()["plans"]==0,"disconnect releases readonly client and retained plans");
-    w.startMcp(Permission::Preview,endpoint);Json accepted;Json renders=Json::array();
+    w.startMcp(Permission::Preview,endpoint);Json accepted;Json renders=Json::array();Json recoveryEvidence=Json::object();
     {
         Wire wire(argv[2],endpoint.getFullPathName().toStdString());initialize(wire);auto q=data(tool(wire,"query_session"))["result"];
         auto base=directory.getChildFile("before.wav");auto b=McpTestAccess::render(w,base);renders.push_back(b);check(b["frames"]==144000&&b["render_ms"].get<double>()<10000&&tail(base)<1e-7,"baseline real PCM has no artificial reverb tail");
@@ -143,6 +143,62 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;std::signal(S
         auto disconnect=data(tool(wire,"plan.track.rename",{{"base_revision",w.query()["revision"]},{"args",{{"track",track},{"name","Disconnected"}}}}));tool(wire,"commit_plan",{{"plan_id",disconnect["plan"]["plan_id"]}});until([&]{return find(w,"plan.accept")!=nullptr;});
     }
     until([&]{return w.queryCommandQueueStatus()["clients"]==1&&!find(w,"plan.accept");});check(w.query()["tracks"]==original&&w.queryCommandQueueStatus()["plans"]==0,"stdio EOF withdraws uncommitted cards and all retained client plans");
+    {
+        const auto baseline=directory.getChildFile("reconnect-before.wav");auto baselineRender=McpTestAccess::render(w,baseline);renders.push_back(baselineRender);
+        check(baselineRender["render_ms"].get<double>()<10000,"reconnect baseline render meets the fixed ten-second budget");
+        Json body,planID;std::string originalActor;
+        {
+            Wire disconnected(argv[2],endpoint.getFullPathName().toStdString());initialize(disconnected);
+            auto facts=data(tool(disconnected,"query_session_summary"))["result"];
+            body={{"request_key","voice-reverb-reconnect"},{"base_revision",facts["revision"]},
+                {"operations",Json::array({op("track.create",{{"name","Recovered Reverb"},{"type","aux"},{"ref","$return"}}),
+                    op("plugin.insert",{{"track","$return"},{"type","reverb"},{"wet_only",true}}),
+                    op("send.create",{{"track",track},{"target","$return"},{"db",-12},{"position","post"}})})}};
+            auto plan=data(tool(disconnected,"plan_edits",body));planID=plan["plan"]["plan_id"];originalActor=plan["plan"]["actor"];
+            tool(disconnected,"commit_plan",{{"plan_id",planID}});until([&]{return find(w,"plan.accept")!=nullptr;});click(w,"plan.accept");
+            // Disconnect before the Agent queries its execution receipt.
+        }
+        until([&]{return w.queryCommandQueueStatus()["clients"]==1;});const auto processed=w.query()["tracks"];
+        check(processed.size()==2&&processed[0]["sends"].size()==1&&processed[0]["output"]==original[0]["output"],"lost commit receipt leaves one real reverb return/send and preserves output");
+        {
+            Wire recovered(endpoint.getFullPathName().toStdString());initialize(recovered);
+            auto receipt=data(tool(recovered,"query_request",{{"request_key","voice-reverb-reconnect"}}));
+            check(receipt["status"]=="committed"&&receipt["receipt"]["actor"]==originalActor&&!receipt["owned"].get<bool>(),"new socket reads actual original receipt without inheriting edit ownership");
+            auto replay=data(tool(recovered,"plan_edits",body));
+            check(replay["recovered"]&&replay["owned"]&&replay["plan"]["plan_id"]==planID&&replay["plan"]["actor"]==originalActor&&w.query()["tracks"]==processed,"socket retry of identical old intention recovers Plan without duplicating Aux or send");
+            auto wet=directory.getChildFile("reconnect-wet.wav");auto render=McpTestAccess::render(w,wet);
+            renders.push_back(render);
+            check(render["render_ms"].get<double>()<10000&&tail(wet)>1e-7,"recovered transaction retains real wet PCM within render budget");
+            tool(recovered,"undo_plan",{{"plan_id",planID}});until([&]{return find(w,"plan.accept")!=nullptr;});
+            auto* report=dynamic_cast<juce::TextEditor*>(find(w,"legacy.report"));
+            check(report&&report->getText().contains(juce::String(originalActor))&&report->getText().contains("原事务发起者"),"reconnected Undo card exposes original actor and current requester");
+            click(w,"plan.accept");check(data(tool(recovered,"query_request",{{"request_key","voice-reverb-reconnect"}}))["status"]=="undone"&&w.query()["tracks"]==original,"local confirmation undoes recovered compound transaction exactly once");
+            const auto restored=directory.getChildFile("reconnect-restored.wav");auto restoredRender=McpTestAccess::render(w,restored);renders.push_back(restoredRender);
+            check(restoredRender["render_ms"].get<double>()<10000,"reconnect Undo render meets the fixed ten-second budget");
+            check(pcmHash(baseline)==pcmHash(restored),"Undo after reconnect restores bit-identical actual decoded PCM");
+            recoveryEvidence={{"request_key",body["request_key"]},{"plan_id",planID},{"original_actor",originalActor},
+                {"baseline_pcm_hash",pcmHash(baseline)},{"restored_pcm_hash",pcmHash(restored)},{"wet_tail_rms",tail(wet)}};
+        }
+        until([&]{return w.queryCommandQueueStatus()["clients"]==1;});
+        {
+            Wire afterUndo(argv[2],endpoint.getFullPathName().toStdString());initialize(afterUndo);
+            check(data(tool(afterUndo,"plan_edits",body))["status"]=="undone"&&w.query()["tracks"]==original,"second reconnect retry cannot resurrect a human-undone send or Aux");
+        }
+        until([&]{return w.queryCommandQueueStatus()["clients"]==1;});
+        Json abandoned={{"request_key","lost-plan-reply"},{"base_revision",w.query()["revision"]},{"args",{{"track",track},{"name","Never committed"}}}};
+        {
+            Wire lost(argv[2],endpoint.getFullPathName().toStdString());initialize(lost);
+            lost.send(rpc(778,"tools/call",{{"name","plan.track.rename"},{"arguments",abandoned}}).dump()+"\n");
+            until([&]{return w.queryCommandQueueStatus()["plans"]==1;});
+            // Intentionally never read the planning reply.
+        }
+        until([&]{return w.queryCommandQueueStatus()["clients"]==1&&w.queryCommandQueueStatus()["plans"]==0;});
+        {
+            Wire again(endpoint.getFullPathName().toStdString());initialize(again);auto retry=tool(again,"plan.track.rename",abandoned);
+            check(!retry["result"]["isError"].get<bool>()&&data(retry)["status"]=="cancelled"&&w.query()["tracks"]==original&&!find(w,"plan.accept"),"lost uncommitted planning reply remains cancelled after new socket retry");
+        }
+        until([&]{return w.queryCommandQueueStatus()["clients"]==1;});
+    }
     for(int i=0;i<24;++i){{Wire immediate(endpoint.getFullPathName().toStdString());}pump(5);}
     until([&]{return w.queryCommandQueueStatus()["clients"]==1&&w.queryMcpStatus()["clients"]==0;});check(w.queryCommandQueueStatus()["clients"]==1,"rapid disconnects before/after async grants do not exhaust sixteen queue clients");
     {
@@ -171,9 +227,11 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;std::signal(S
     }
     {
         Wire renewed(argv[2],endpoint.getFullPathName().toStdString());initialize(renewed);check(data(tool(renewed,"query_session"))["result"]["permission"]["mode"]=="read_only","new stdio connection can query the reopened Edit");
+        auto marker=data(tool(renewed,"query_request",{{"request_key","voice-reverb-reconnect"}}));
+        check(marker["status"]=="recovery_requires_review"&&marker["receipt"].is_null()&&!marker["trusted_current_run"].get<bool>()&&marker["historical_marker"]["state"]=="undone","production stdio saved history requires review and cannot claim a current execution receipt");
     }
     w.stopMcp();pump(50);check(w.queryMcpStatus()["state"]=="disabled"&&!endpoint.existsAsFile()&&w.queryCommandQueueStatus()["clients"]==1,"native stop removes endpoint and revokes every external lease");
     check(Commands::mediaHash(source)==mediaHash,"MCP operations preserve original audio media");
-    Json summary{{"result","passed"},{"checks",checks},{"slowest_round_trip_ms",slowest},{"accepted",accepted},{"renders",renders},{"scope","production stdio bridge, Unix socket, GUI card callbacks, real Edit/Undo and actual offline WAV; no model or physical desktop audition claim"}};
+    Json summary{{"result","passed"},{"checks",checks},{"slowest_round_trip_ms",slowest},{"accepted",accepted},{"renders",renders},{"recovery",recoveryEvidence},{"scope","production stdio bridge, Unix socket, GUI card callbacks, real Edit/Undo and actual offline WAV; no model or physical desktop audition claim"}};
     if(argc>1){std::ofstream out(argv[1]);out<<summary.dump(2);}std::cout<<summary.dump(2)<<std::endl;directory.deleteRecursively();return 0;
 } catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<std::endl;return 1;}}

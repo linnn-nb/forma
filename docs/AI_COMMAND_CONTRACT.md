@@ -12,7 +12,7 @@ L1 持有生命周期级 UndoTransactionInhibitor；SDK 派生更新归入最近
 
 human 可执行普通编辑；agent:/extension: 使用受信任的本地授权：Preview 要求确认，ScopedLowRisk 只自动执行已授权对象/命令/区间内的低风险操作。外部客户端不能传入 actor、Scope 或 accepted；MCP 入口复用此边界，详见本文 M2 段落。回执包含 actor、plan_id、revision、对象 ID、重放标记和状态；没有音频验证时 audio_verified=false。
 
-幂等相同内容重试返回原回执，Undo 后重试不复活工程；相同键不同内容拒绝。回执账本目前仅内存；打开工程清空本轮历史。保存/导出拒绝覆盖现有目标，先写暂存文件，再以硬链接发布新名字；不宣称崩溃耐久或外部副作用完全可撤销。
+幂等相同内容重试返回原回执，Undo 后重试不复活工程；相同键不同内容拒绝。当前执行回执仍仅内存；request_key 成功审计标记随 Edit 保存，重开必须核对，不能当成执行回执或 Undo 历史。保存/导出拒绝覆盖现有目标，先写暂存文件，再以硬链接发布新名字；不宣称崩溃耐久或外部副作用完全可撤销。
 
 ## 已实现的 M1 增量
 
@@ -217,9 +217,9 @@ query.audio_configuration 与 audioDevices.last_configuration 提供真实状态
 
 结论：生产 stdio bridge + Unix socket 已接通 GUI 里的同一 Edit。工具由 registry 的 plan 命令生成；local_gui/control 不导出为可编辑工具。query_session 返回实际 selection、revision、session_token、client_id 和本地分配的 actor/Scope，clientInfo 的名称不决定身份。
 
-plan_edits / plan.<id> 必须提供 base_revision；解析、预检、提交仍由 L1 message-thread 队列执行。commit_plan 在 MCP Preview 下只创建确认卡片；Agent 无 resolve/accepted 入口。query_plan 区分实际事务 receipt 和 last_request_result，每个请求都核对人工 Undo/Redo 后的真实事务状态。cancel_plan 撤回未执行 Plan 或待确认 Undo；不能假装撤销已执行编辑。Undo 仍检查最新历史，不能覆盖后续人工操作。
+plan_edits / plan.<id> 必须提供 request_key 和 base_revision；解析、预检、提交仍由 L1 message-thread 队列执行。commit_plan 在 MCP Preview 下只创建确认卡片；Agent 无 resolve/accepted 入口。query_plan 区分实际事务 receipt 和 last_request_result，每个请求都核对人工 Undo/Redo 后的真实事务状态。cancel_plan 撤回未执行 Plan 或待确认 Undo；不能假装撤销已执行编辑。Undo 仍检查最新历史，不能覆盖后续人工操作。
 
-socket 接受后异步申请不透明 Client；待派发授权最多 8，活跃连接最多 4。断开、停网关、改权限、重开 Edit 都撤回未提交卡片和请求；已提交 Edit 历史保留。MCP 不持有 Edit 或确认 resolver；bridge 不启动 Engine。默认启动只读，重开工程恢复只读，本地菜单可选预览。当前连接内幂等与 Undo 重放已测；跨连接和崩溃恢复账本未实现，不暴露虚假恢复回执。
+socket 接受后异步申请不透明 Client；待派发授权最多 8，活跃连接最多 4。断开、停网关、改权限、重开 Edit 都撤回未提交卡片和请求；已提交 Edit 历史保留。MCP 不持有 Edit 或确认 resolver；bridge 不启动 Engine。默认启动只读，重开工程恢复只读，本地菜单可选预览。连接内幂等与跨连接实际回执恢复见 M2-RECOVERY-01；完整崩溃恢复账本未实现，不暴露虚假恢复回执。
 
 测试覆盖协议生命周期、错误/恶意字段、预算、异步派发与取消、真实 stdio 子进程、原生确认回调、Aux/纯湿混响/发送、实际 WAV 声音及 PCM 撤销恢复、人工 Redo 后的外部 Undo、快断连/暂停派发的授权回收、重开与停服。测试使用明确已知信号，不冒充真实人声或模型选择。完整模型→桌面确认→主观试听验收待解锁。
 
@@ -233,3 +233,13 @@ L1 registry 增加 execution=query 的 query.summary / query.objects，包含 Sc
 轨道输出、发送、参数及自动化点复用 GUI/full-query 的同一事实函数；MIDI 时间显式保留源节拍与工程采样位置。只读查询不修改 Edit、Undo 或媒体，也不输出虚假 audio_verified。ReadOnly 可以查询，不能规划或提交；客户端不能借 Schema 传入 actor、授权或接受状态。Plan 入口检查版本改用摘要，避免仅检查 revision 就展开整份工程；实际预检/模块哈希仍可能同步且不可抢占。
 
 代码：QueryCommands、MixCommands::parameterQuery、RoutingCommands::outputQuery/sendQuery、AutomationCommands::automationLaneQuery/automationPointQuery、CommandQueue、McpSession。测试：QueryTests（54 项、128/256/512 轨道）、MidiRecordingTests（实际 CC/Pitch Bend 页）、McpWorkspaceTests（真实 stdio/socket）。不是模型或物理 GUI/试听资格。
+
+## 请求身份与恢复（M2-RECOVERY-01）
+
+MCP 工具 API 0.3.0 的规划必须携带调用方 request_key；本地旧 SDK 的无键调用仍可用，但无跨连接保证。L1 对原 base_revision/operations 的标准 JSON 求 SHA-256，并由宿主写入 request_fingerprint、request_scope_hash；工具不能注入这两者、actor、accepted 或 Scope。8 次并发同键共享一个 Plan；改 body、活动外部所有者、授权代次或 Scope 不符明确拒绝。
+
+query.request → query_request 由 registry 生成。只读查询真实执行回执不授予所有权。已撤销连接的成功事务可由相同本地 Scope 的新授权获取原 Plan，不重写原 actor；提交重试只返回实际状态。外部 Undo 永远显示确认卡片，后续人工历史仍受保护。断线未提交键保留取消状态；请求表 4096、活跃 Plan 64、确认卡片 16，超限报错不静默淘汰。
+
+成功键审计保存在 NATIVEDAW/REQUEST_AUDIT（schema 1），在 Undo 外维护防重放标记，不新增工程事务或 revision。保存后的 committed/undone 仅为未受信任的历史数据；重开清空当前回执/Undo，query_request 返回 recovery_requires_review 和空 receipt，自动重放旧键拒绝。未保存崩溃、WAL、自动保存及持久 Undo 尚未完成。
+
+代码：RequestIdentity.h、RequestRecovery.cpp、EngineCommands、CommandQueue、QueryCommands、McpSession、Workspace；测试：RequestRecoveryTests（并发/权限/人机交错/重开/损坏/4096键）、McpWorkspaceTests（生产 stdio/socket、原生卡片、实际湿声 PCM 和撤销）。亲手操作与预算见 MCP_WORKFLOW.md。
