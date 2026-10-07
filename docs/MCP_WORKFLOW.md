@@ -82,6 +82,6 @@
 - 同 UID 的 peer 才可连接，专用目录 0700/socket 0600。最多 4 客户端、8 待派发授权、每连接 8 在途请求；输入 256 KiB/深度 64、输出队列 8 MiB；握手、不完整消息、发送背压 5 秒。L1 请求沿用 10 秒队列截止。单笔 message-thread 查询/预检不可抢占，不承诺大型工程 GUI 的硬时限。
 - stdin/stdout 只承载逐行 UTF-8 JSON-RPC，错误写 stderr；不自动重连，不开放 TCP、上传、安装、付费服务、任意代码执行或硬件配置。
 
-协议固定核验 [MCP 2025-11-25 lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)、[stdio/custom transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)、[tools/errors](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)，核验日期 2026-10-07。支持协商 2025-03-26、2025-06-18、2025-11-25；未知版本返回支持版本，由客户端决定是否继续。不声称已支持更新的协议或每个客户端实现。
+协议固定核验 [MCP 2025-11-25 lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)、[stdio/custom transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)、[tools/errors](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)，核验日期 2026-10-07（本轮重新读取工具结果与生命周期规范，保持固定版本）。支持协商 2025-03-26、2025-06-18、2025-11-25；未知版本返回支持版本，由客户端决定是否继续。不声称已支持更新的协议或每个客户端实现。
 
 代码：`McpGateway.cpp`、`McpSession.cpp`、`McpStdio.cpp`、`CommandQueue.cpp`、`Workspace.h`。测试：`McpTests.cpp`、`McpWorkspaceTests.cpp`、`RequestRecoveryTests.cpp`；结果与剩余验收见 [VERIFICATION](VERIFICATION.md)。
