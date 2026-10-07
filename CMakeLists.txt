@@ -60,7 +60,7 @@ add_subdirectory(third_party/tracktion_engine)
 # libebur128 1.2.6 has an obsolete root minimum; compile its unmodified C sources directly.
 add_library(ndaw_ebur128 STATIC third_party/libebur128/ebur128/ebur128.c)
 target_include_directories(ndaw_ebur128 PUBLIC third_party/libebur128/ebur128)
-add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePluginStates.cpp src/v2/PluginEditorCommands.cpp src/v2/ExternalCommands.cpp src/v2/PluginScanning.cpp src/v2/PluginScanStorage.cpp src/v2/CommandQueue.cpp src/v2/Scope.cpp src/v2/ParameterCommands.cpp src/v2/LegacyImport.cpp src/v2/ClipCommands.cpp src/v2/EngineCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
+add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePluginStates.cpp src/v2/PluginEditorCommands.cpp src/v2/ExternalCommands.cpp src/v2/PluginScanning.cpp src/v2/PluginScanStorage.cpp src/v2/CommandQueue.cpp src/v2/McpSession.cpp src/v2/McpGateway.cpp src/v2/Scope.cpp src/v2/ParameterCommands.cpp src/v2/LegacyImport.cpp src/v2/ClipCommands.cpp src/v2/EngineCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -81,7 +81,7 @@ juce_add_console_app(ndaw PRODUCT_NAME "ndaw")
 target_sources(ndaw PRIVATE src/v2/CLI.cpp)
 target_link_libraries(ndaw PRIVATE ndaw_engine)
 # Test reports are ignored artifacts; a fresh checkout must provide their parents.
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/evidence/M0" "${CMAKE_SOURCE_DIR}/evidence/M1")
+file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/evidence/M0" "${CMAKE_SOURCE_DIR}/evidence/M1" "${CMAKE_SOURCE_DIR}/evidence/M2")
 enable_testing()
 add_test(NAME tracktion_engine_probe COMMAND ndaw)
 set_tests_properties(tracktion_engine_probe PROPERTIES TIMEOUT 30 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
@@ -328,3 +328,28 @@ target_sources(ndaw_audio_device_plugin_tests PRIVATE tests/v2/AudioDevicePlugin
 target_link_libraries(ndaw_audio_device_plugin_tests PRIVATE ndaw_engine)
 add_test(NAME tracktion_audio_devices_with_native_plugins COMMAND ndaw_audio_device_plugin_tests "${CMAKE_SOURCE_DIR}/evidence/M1/audio-device-plugin-tests.json")
 set_tests_properties(tracktion_audio_devices_with_native_plugins PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure;DEVICE RESTORE FAILED")
+
+# The stdio entry point forwards to the desktop socket; it has no audio engine.
+add_executable(forma_mcp src/v2/McpStdio.cpp)
+set_target_properties(forma_mcp PROPERTIES OUTPUT_NAME "forma-mcp")
+target_include_directories(forma_mcp PRIVATE .deps)
+add_dependencies(NativeDAW forma_mcp)
+if(APPLE)
+  add_custom_command(TARGET NativeDAW POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:forma_mcp>" "$<TARGET_BUNDLE_DIR:NativeDAW>/Contents/Helpers/forma-mcp")
+endif()
+
+juce_add_console_app(ndaw_mcp_tests PRODUCT_NAME "ndaw_mcp_tests")
+target_sources(ndaw_mcp_tests PRIVATE tests/v2/McpTests.cpp)
+target_link_libraries(ndaw_mcp_tests PRIVATE ndaw_engine)
+add_test(NAME tracktion_mcp_protocol COMMAND ndaw_mcp_tests "${CMAKE_SOURCE_DIR}/evidence/M2/protocol-tests.json")
+set_tests_properties(tracktion_mcp_protocol PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+if(NOT WIN32)
+  juce_add_console_app(ndaw_mcp_workspace_tests PRODUCT_NAME "ndaw_mcp_workspace_tests")
+  target_sources(ndaw_mcp_workspace_tests PRIVATE tests/v2/McpWorkspaceTests.cpp)
+  target_include_directories(ndaw_mcp_workspace_tests PRIVATE src/v2)
+  target_link_libraries(ndaw_mcp_workspace_tests PRIVATE ndaw_engine)
+  add_dependencies(ndaw_mcp_workspace_tests forma_mcp)
+  add_test(NAME tracktion_mcp_native_workspace COMMAND ndaw_mcp_workspace_tests "${CMAKE_SOURCE_DIR}/evidence/M2/workspace-tests.json" "$<TARGET_FILE:forma_mcp>")
+  set_tests_properties(tracktion_mcp_native_workspace PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+endif()

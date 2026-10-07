@@ -42,6 +42,7 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
     std::map<std::string,std::shared_ptr<QueueClientState>> clients;
     std::map<std::string,PlanRecord> plans;
     std::map<std::string,Confirmation> confirmations;
+    std::string selectedTrack,selectedClip;
     uint64_t executed=0,expired=0;
     void valid(const std::shared_ptr<QueueClientState>& c,uint64_t generation){
         require(c&&c->active.load(),"client revoked");require(c->session==owner->sessionToken(),"session changed; request a new local grant");
@@ -52,7 +53,7 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
     }
     Json execute(QueueJob& j){
         valid(j.client,j.generation);const auto& args=j.args;auto& c=*owner;
-        if(j.method=="query"){fields(args,{});auto q=c.query();q["session_token"]=c.sessionToken();q["permission"]=j.client->scope.json();return {{"status","completed"},{"result",q}};}
+        if(j.method=="query"){fields(args,{});auto q=c.query();q["session_token"]=c.sessionToken();q["permission"]=j.client->scope.json();q["client_id"]=j.client->id;q["actor"]=j.client->actor;q["selection"]={{"track",nullptr},{"clip",nullptr}};for(const auto& t:q["tracks"]){if(t["id"]==selectedTrack)q["selection"]["track"]=selectedTrack;for(const auto& clip:t["clips"])if(clip["id"]==selectedClip)q["selection"]["clip"]=selectedClip;}return {{"status","completed"},{"result",q}};}
         if(j.method=="registry"){fields(args,{});return {{"status","completed"},{"result",c.registry()}};}
         if(j.method=="plan"){
             fields(args,{"operations","base_revision"});require(j.client->scope.mode!=Permission::ReadOnly,"read-only permission cannot plan edits");
@@ -63,10 +64,27 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
             return {{"status","planned"},{"plan",p},{"preview",preview}};
         }
         fields(args,{"plan_id"});auto& record=owned(j.client,args);
+        // Human Undo/Redo can happen independently of this queue. Reconcile at
+        // every request boundary, not just when an Agent explicitly polls status.
+        const auto actual=c.transactionStatus(record.plan["plan_id"]);
+        if(actual["state"]!="not_committed")record.state=actual["state"];
         if(j.method=="preview"){auto p=c.review(record.plan,j.client->scope);return {{"status","previewed"},{"plan",record.plan},{"preview",p}};}
+        if(j.method=="plan_status"){
+            return {{"status",record.state},{"plan_id",record.plan["plan_id"]},{"confirmation_id",record.confirmation.empty()?Json(nullptr):Json(record.confirmation)},{"receipt",actual["state"]=="not_committed"?record.result:actual},{"last_request_result",record.result}};
+        }
         require(j.client->scope.mode!=Permission::ReadOnly,"read-only permission cannot edit or undo");
+        if(j.method=="cancel"){
+            if(actual["state"]!="not_committed"){
+                auto card=confirmations.find(record.confirmation);
+                require(card!=confirmations.end()&&card->second.undo,"committed transaction cannot be cancelled; request Undo");
+                confirmations.erase(card);record.confirmation.clear();record.state=actual["state"];
+                return {{"status","cancelled"},{"kind","undo_request"},{"plan_id",record.plan["plan_id"]},{"receipt",actual}};
+            }
+            if(!record.confirmation.empty())confirmations.erase(record.confirmation);
+            record.confirmation.clear();record.state="cancelled";record.result={{"status","cancelled"},{"plan_id",record.plan["plan_id"]}};return record.result;
+        }
         if(j.method=="commit"){
-            require(record.state!="rejected"&&record.state!="failed","plan is terminal; create a new plan");
+            require(record.state!="rejected"&&record.state!="failed"&&record.state!="cancelled","plan is terminal; create a new plan");
             if(record.state=="committed"||record.state=="undone"){auto r=c.commit(record.plan,true,j.client->scope);record.state=r["state"];return {{"status",r["state"]},{"receipt",r}};}
             auto p=c.review(record.plan,j.client->scope);
             if(p["permission"]["automatic_allowed"].get<bool>()){
@@ -120,7 +138,7 @@ CommandQueue::Ticket CommandQueue::Client::submit(const std::string& method,Json
     auto fail=[&](const char* why){j->finish({{"status","failed"},{"error",why}});return ticket;};
     if(timeoutMs<1||timeoutMs>30000)return fail("timeout must be 1..30000 ms");
     if(!principal||!principal->active.load())return fail("client revoked or missing");
-    if(method!="query"&&method!="registry"&&method!="plan"&&method!="preview"&&method!="commit"&&method!="undo")return fail("unknown queue method");
+    if(method!="query"&&method!="registry"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
     try{j->bytes=j->args.dump().size();}catch(const std::exception&){return fail("request payload is not valid UTF-8 JSON");}if(j->bytes>maximumPayloadBytes)return fail("request payload exceeds 256 KiB");
     j->generation=principal->generation.load();j->deadline=j->submitted+std::chrono::milliseconds(timeoutMs);auto s=queue.lock();if(!s)return fail("queue closed");bool wake=false;
     {std::lock_guard lock(s->mutex);if(s->closed)return fail("queue closed");if(s->jobs.size()>=capacity||s->bytes+j->bytes>1024*1024)return fail("queue capacity reached");s->jobs.push_back(j);s->bytes+=j->bytes;if(!s->scheduled){s->scheduled=true;wake=true;}}
@@ -138,6 +156,7 @@ void CommandQueue::revoke(const std::string& id){
     for(auto i=state->confirmations.begin();i!=state->confirmations.end();)if(state->plans.at(i->second.plan).client==c)i=state->confirmations.erase(i);else ++i;
     std::erase_if(state->plans,[&](const auto& entry){return entry.second.client==c;});state->clients.erase(id);
 }
+void CommandQueue::setSelection(const std::string& track,const std::string& clip){messageThread();require(track.size()<=256&&clip.size()<=256,"selection ID too long");state->selectedTrack=track;state->selectedClip=clip;}
 Json CommandQueue::pending(){
     messageThread();Json result=Json::array();for(auto i=state->confirmations.begin();i!=state->confirmations.end();){auto& p=state->plans.at(i->second.plan);
         try{state->valid(p.client,p.generation);}catch(const std::exception& e){p.state="failed";p.result={{"status","failed"},{"error",e.what()}};p.confirmation.clear();i=state->confirmations.erase(i);continue;}
@@ -152,7 +171,7 @@ Json CommandQueue::resolve(const std::string& id,bool accepted){
         return {{"status",p.state},{"receipt",p.result}};
     }catch(const std::exception& e){if(!action.undo)p.state="failed";p.result={{"status","failed"},{"error",e.what()}};return p.result;}
 }
-Json CommandQueue::status() const {messageThread();std::lock_guard lock(state->mutex);return {{"queued",state->jobs.size()},{"queued_bytes",state->bytes},{"closed",state->closed},{"executed",state->executed},{"expired",state->expired},{"capacity",capacity}};}
+Json CommandQueue::status() const {messageThread();std::lock_guard lock(state->mutex);return {{"queued",state->jobs.size()},{"queued_bytes",state->bytes},{"closed",state->closed},{"executed",state->executed},{"expired",state->expired},{"capacity",capacity},{"clients",state->clients.size()},{"plans",state->plans.size()},{"confirmations",state->confirmations.size()}};}
 void CommandQueue::shutdown(){
     messageThread();std::deque<std::shared_ptr<QueueJob>> jobs;
     {std::lock_guard lock(state->mutex);state->closed=true;state->scheduled=false;state->owner=nullptr;state->bytes=0;jobs.swap(state->jobs);}

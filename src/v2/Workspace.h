@@ -1,6 +1,8 @@
 #pragma once
 #include <nativedaw/v2/EngineCommands.h>
 #include "CommandFileJob.h"
+#include <nativedaw/v2/McpGateway.h>
+namespace ndaw::v2 {class McpTestAccess;}
 
 namespace ndaw::desktop {
 using namespace ndaw::v2;
@@ -296,6 +298,7 @@ private:
 
 class Workspace final : public juce::Component,private juce::Timer,public juce::MenuBarModel,public juce::FileDragAndDropTarget {
     friend class ndaw::v2::AudioDeviceTestAccess;
+    friend class ndaw::v2::McpTestAccess;
 public:
     explicit Workspace(bool openDevice=true,std::unique_ptr<te::PropertyStorage> storage={}):commands(openDevice,std::move(storage)),waves([this]{editArea.repaint();}),
         editArea(writer(),[this](auto id){select(id);},[this](auto sample){invoke([&]{commands.seek(sample);});},waves,[this](auto id){piano.showClip(id);pianoMode=true;mix=false;refresh();},[this](auto id){selectAudioClip(id);},clipWriter()),
@@ -351,7 +354,7 @@ public:
         audioSettingsButton.setComponentID("audio.settings.open");audioSettingsButton.onClick=[this]{showAudioSettings();};
         setSize(1440,880);refresh();startTimerHz(20);
     }
-    ~Workspace() override {stopTimer();audioSettings.reset();pluginLibrary.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
+    ~Workspace() override {stopTimer();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
     Json query() const {return commands.query();}
     Json queryAudioDevices()const{return commands.audioDevices();}
     void closeAudioSettings(){++audioSettingsEpoch;if(audioSettings)audioSettings->setVisible(false);grabKeyboardFocus();}
@@ -387,7 +390,7 @@ public:
         message(text("\u63d2\u4ef6\u63d2\u5165\u9884\u89c8 \u00b7 \u5de5\u7a0b\u672a\u4fee\u6539"));refresh();
     }
     Json queryAutomation(const std::string& target) const {return commands.automationQuery(target);}
-    void openSession(const juce::File& f) {if(f.hasFileExtension("ndaw")){prepareLegacyImport(f);return;}reportShowing=false;invoke([&]{commands.open(f);resetCommandClient({});selected.clear();selectedClip.clear();pending=nullptr;sessionName=f.getFileName();message(text("工程已重开 · 本轮撤销历史从此开始"));});}
+    void openSession(const juce::File& f) {if(f.hasFileExtension("ndaw")){prepareLegacyImport(f);return;}reportShowing=false;invoke([&]{commands.open(f);if(mcp){mcp.reset();Scope readonly;readonly.mode=Permission::ReadOnly;mcp=std::make_unique<McpGateway>(commandQueue,mcpEndpoint,readonly);}resetCommandClient({});selected.clear();selectedClip.clear();pending=nullptr;sessionName=f.getFileName();message(text("工程已重开 · 本轮撤销历史从此开始"));});}
     void prepareImport(const juce::File& f) {
         if(!pendingConfirmation.empty()||commandFileBusy){message(text("先接受或取消当前命令请求，再打开新的预览"));return;}
         if(f.hasFileExtension("ndaw")){prepareLegacyImport(f);return;}reportShowing=false;invoke([&]{pending=commands.makePlan("human",Json::array({operation("track.create",{{"name",f.getFileNameWithoutExtension().toStdString()},{"ref","$import"}}),
@@ -435,6 +438,19 @@ public:
     // Local file ingress exercises the production queue; it is not an AI provider.
     Json queryCommandResult()const {return lastCommandResult;}
     Json queryCommandPermission()const {return commandScope.json();}
+    Json queryMcpStatus()const {return mcp?mcp->status():Json{{"state","disabled"}};}
+    Json queryCommandQueueStatus()const {return commandQueue.status();}
+    void startMcp(Permission mode,const juce::File& endpoint=McpGateway::defaultEndpoint()) {
+        invoke([&]{if(mode==Permission::ScopedLowRisk)throw std::runtime_error("MCP requires GUI preview confirmation");mcp.reset();Scope grant;grant.mode=mode;mcpEndpoint=endpoint;mcp=std::make_unique<McpGateway>(commandQueue,endpoint,grant);syncCommandCards();message(mode==Permission::ReadOnly?text("MCP 已连接 · 只读查询；编辑请求会拒绝"):text("MCP 已连接 · 外部 Agent 的提交与撤销需本地确认"));});
+    }
+    void stopMcp(){invoke([&]{mcp.reset();syncCommandCards();message(text("MCP 已停止 · 未提交请求和授权已撤回，已提交编辑保留"));});}
+    void showMcpInfo(){
+        if(!pending.is_null())return;
+        reportShowing=true;auto state=queryMcpStatus();
+        auto helper=juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory().getSiblingFile("Helpers").getChildFile("forma-mcp");
+        previewText.setText(text("外部 Agent · MCP\n\n")+text(state.dump(2))+text("\n\nstdio 命令：\n")+helper.getFullPathName()+text("\n\n1. 在命令菜单选 MCP 只读或预览。\n2. MCP 客户端启动以上命令。\n3. query_session 查询实际对象，plan_edits 生成预览，commit_plan 请求确认。\n4. 本地接受后可试听，一次 Undo 撤销。\n\n权限更改或重开工程后重新连接。未提交计划不跨断开保存；不要盲目重复编辑。"));refresh();
+    }
+
     void setCommandPermission(Permission mode,bool clipOnly=false) {
         invoke([&]{Scope grant;grant.mode=mode;
             if(mode==Permission::ScopedLowRisk){grant.commands=Scope::defaultCommands();
@@ -465,10 +481,13 @@ public:
         if(index==1){p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
         if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));}
         if(index==3){p.addItem(26,text("从本地 JSON 请求编辑…"),!commandFileBusy&&pending.is_null());p.addSeparator();p.addItem(21,text("只读分析"),true,commandScope.mode==Permission::ReadOnly);p.addItem(22,text("先预览再提交"),true,commandScope.mode==Permission::Preview);
-            p.addItem(23,text("自动低风险 · 当前轨道"),!selected.empty());p.addItem(24,text("自动低风险 · 当前片段与时间"),!(pianoMode?piano.viewedClip():selectedAudioClip()).is_null());p.addSeparator();p.addItem(25,text("取消请求 / 撤回当前授权"),commandFileBusy||!pendingConfirmation.empty());}
+            p.addItem(23,text("自动低风险 · 当前轨道"),!selected.empty());p.addItem(24,text("自动低风险 · 当前片段与时间"),!(pianoMode?piano.viewedClip():selectedAudioClip()).is_null());p.addSeparator();p.addItem(25,text("取消请求 / 撤回当前授权"),commandFileBusy||!pendingConfirmation.empty());
+            auto m=queryMcpStatus();auto mode=m.contains("permission")?m["permission"].value("mode",std::string{}):std::string{};
+            p.addSeparator();p.addItem(30,text("MCP · 只读连接"),true,mode=="read_only");p.addItem(31,text("MCP · 预览与确认提交"),true,mode=="preview");p.addItem(32,text("停止 MCP / 撤回 Agent 授权"),bool(mcp));p.addItem(33,text("MCP 配置与状态…"),pending.is_null());}
         return p;
     }
     void menuItemSelected(int id,int) override {
+        if(id==30||id==31){startMcp(id==30?Permission::ReadOnly:Permission::Preview);return;}if(id==32){stopMcp();return;}if(id==33){showMcpInfo();return;}
         if(id==14){showAudioSettings();return;}if(id==13){showPluginLibrary();return;}if(id>=21&&id<=24){setCommandPermission(id==21?Permission::ReadOnly:id==22?Permission::Preview:Permission::ScopedLowRisk,id==24);return;}
         if(id==25){cancelCurrentCommand();return;}if(id==26){choose(false,[this](const auto& f){importCommandFile(f);},"*.json");return;}if(id==11){choose(false,[this](const auto& f){prepareLegacyImport(f);},"*.ndaw");return;}if(id==12){showLegacyReport();return;}juce::TextButton* b=nullptr;switch(id){case 1:b=&importButton;break;case 2:b=&openButton;break;case 3:b=&saveButton;break;case 4:b=&exportButton;break;case 5:trackType.setSelectedId(1,juce::dontSendNotification);b=&newTrack;break;case 6:b=&undoButton;break;case 7:b=&redoButton;break;case 8:b=&editButton;break;case 9:b=&mixButton;break;case 10:b=&pianoButton;break;}if(b&&b->isEnabled())b->triggerClick();}
     bool isInterestedInFileDrag(const juce::StringArray& files) override {return files.size()==1;}
@@ -522,8 +541,8 @@ private:
         commandButton.setButtonText(commandScope.mode==Permission::ReadOnly?text("\u547d\u4ee4 \u00b7 \u53ea\u8bfb"):commandScope.mode==Permission::Preview?text("\u547d\u4ee4 \u00b7 \u9884\u89c8"):text("\u547d\u4ee4 \u00b7 \u8303\u56f4"));
     }
     void showCommandCard(const Json& card) {
-        pending=card["plan"];pendingConfirmation=card["id"];reportShowing=true;
-        auto out=text(card["kind"]=="undo"?"\u547d\u4ee4\u64a4\u9500 \u00b7 \u5f85\u786e\u8ba4\n\n":"\u672c\u5730\u547d\u4ee4 \u00b7 \u5f85\u786e\u8ba4\n\n")+text(card["actor"].get<std::string>())+text("\n\u5de5\u7a0b\u7248\u672c\uff1a")+text(pending["base_revision"].dump())+text("\n\n");
+        pending=card["plan"];pendingConfirmation=card["id"];reportShowing=true;acceptButton.setButtonText(card["kind"]=="undo"?text("确认撤销"):text("接受并提交"));
+        auto out=text(card["kind"]=="undo"?"\u547d\u4ee4\u64a4\u9500 \u00b7 \u5f85\u786e\u8ba4\n\n":"外部 Agent / 命令 · 待确认\n\n")+text(card["actor"].get<std::string>())+text("\n\u5de5\u7a0b\u7248\u672c\uff1a")+text(pending["base_revision"].dump())+text("\n\n");
         if(card["kind"]=="undo")out+=text("\u64a4\u9500\u8fd9\u7b14\u4e8b\u52a1\u3002\u5176\u540e\u82e5\u6709\u4eba\u5de5\u64cd\u4f5c\uff0c\u63d0\u4ea4\u65f6\u5c06\u62d2\u7edd\u8986\u76d6\u3002\n\n");
         for(const auto& op:pending["operations"]){out+=text(op["command"].get<std::string>())+"\n";
             const auto& a=op["args"];if(a.contains("track"))out+=text("\u8f68\u9053\uff1a")+trackName(a["track"])+"\n";
@@ -533,7 +552,7 @@ private:
         previewText.setText(out);
     }
     void finishCommandConfirmation(bool accepted) {
-        auto result=commandQueue.resolve(pendingConfirmation,accepted);lastCommandResult=result;pendingConfirmation.clear();pending=nullptr;reportShowing=false;
+        auto result=commandQueue.resolve(pendingConfirmation,accepted);lastCommandResult=result;pendingConfirmation.clear();pending=nullptr;reportShowing=false;acceptButton.setButtonText(text("接受计划"));
         message(result["status"]=="committed"?text("\u547d\u4ee4\u5df2\u63d0\u4ea4 \u00b7 \u4e00\u6b21 Undo \u6574\u4f53\u64a4\u9500"):result["status"]=="undone"?text("\u547d\u4ee4\u4e8b\u52a1\u5df2\u64a4\u9500"):result["status"]=="rejected"?text("\u5df2\u62d2\u7edd\u8bf7\u6c42 \u00b7 \u5de5\u7a0b\u672a\u4fee\u6539"):text("\u547d\u4ee4\u672a\u63d0\u4ea4\uff1a")+text(result.value("error",std::string{})));
     }
     static juce::String legacyReportText(const Json& r,bool preview){
@@ -599,9 +618,17 @@ private:
         const auto& music=facts["music"];musicPosition.setText(text("小节 / 拍 ")+juce::String(music["bar"].get<int>())+" | "+juce::String(music["beat"].get<double>(),2)+text("    当前 ")+juce::String(music["bpm"].get<double>(),2)+" BPM   "+juce::String(music["numerator"].get<int>())+"/"+juce::String(music["denominator"].get<int>())+text("    起始 Tempo / 拍号：上方应用"),juce::dontSendNotification);
         if(music["tempos"].dump()+music["meters"].dump()!=lastMusicMap){lastMusicMap=music["tempos"].dump()+music["meters"].dump();bpm.setText(juce::String(music["tempos"][0]["bpm"].get<double>(),2),false);const auto m=juce::String(music["meters"][0]["numerator"].get<int>())+"/"+juce::String(music["meters"][0]["denominator"].get<int>());int item=0;for(int i=0;i<meter.getNumItems();++i)if(meter.getItemText(i)==m)item=meter.getItemId(i);if(!item){item=meter.getNumItems()+1;meter.addItem(m,item);}meter.setSelectedId(item,juce::dontSendNotification);}
         auto selectedAudio=selectedAudioClip();if(selectedAudio.is_null())selectedClip.clear();clipPanel.update(selectedAudio,selected,facts["revision"],facts["position_samples"],playing);
-        editArea.update(facts,selected,commands.musicalGrid(0,std::llround(std::max(10.,facts["length_samples"].get<int64_t>()/48000.*1.05)*48000)),selectedClip);mixArea.update(facts,selected,d);piano.update(selectedTrack(),facts["revision"],playing,music["position_beats"]);refreshInspector();resized();repaint();
+        editArea.update(facts,selected,commands.musicalGrid(0,std::llround(std::max(10.,facts["length_samples"].get<int64_t>()/48000.*1.05)*48000)),selectedClip);mixArea.update(facts,selected,d);piano.update(selectedTrack(),facts["revision"],playing,music["position_beats"]);auto selectedMidi=pianoMode?piano.viewedClip():Json(nullptr);commandQueue.setSelection(selected,!selectedMidi.is_null()?selectedMidi["id"].get<std::string>():selectedClip);refreshInspector();resized();repaint();
     }
-    void timerCallback() override {if(pending.is_null()&&!commandFileBusy){auto cards=commandQueue.pending();if(!cards.empty())showCommandCard(cards[0]);}refresh();if(!facts["last_recording"].is_null()&&facts["last_recording"]["state"]=="failed")message(text("录音失败：")+text(facts["last_recording"]["error"].get<std::string>()));}
+    void syncCommandCards(){
+        auto cards=commandQueue.pending();
+        if(!pendingConfirmation.empty()){
+            bool found=false;for(const auto& card:cards)found|=card["id"]==pendingConfirmation;
+            if(!found){pending=nullptr;pendingConfirmation.clear();reportShowing=false;acceptButton.setButtonText(text("接受计划"));message(text("待确认请求已撤回 · 工程保留实际状态"));}
+        }
+        if(pending.is_null()&&!commandFileBusy&&!cards.empty())showCommandCard(cards[0]);
+    }
+    void timerCallback() override {syncCommandCards();refresh();if(!facts["last_recording"].is_null()&&facts["last_recording"]["state"]=="failed")message(text("录音失败：")+text(facts["last_recording"]["error"].get<std::string>()));}
     void choose(bool writing,std::function<void(const juce::File&)> action,const juce::String& filter="*.wav;*.aiff;*.flac") {
         chooser=std::make_unique<juce::FileChooser>(writing?text("保存到新文件（现有文件不会被覆盖）"):text("选择本地文件"),juce::File{},filter);
         chooser->launchAsync((writing?juce::FileBrowserComponent::saveMode:juce::FileBrowserComponent::openMode)|juce::FileBrowserComponent::canSelectFiles,
@@ -611,7 +638,7 @@ private:
     std::string lastAudioReceipt;uint64_t audioSettingsEpoch=0,lastMeterRequest=0;std::unique_ptr<AudioDevicePanel> audioSettings;
     std::unique_ptr<PluginLibrary> pluginLibrary;std::string pluginLibraryTrack,pluginLibrarySession;
     bool programDraft=false;std::string programTarget;
-    Theme theme;Commands commands;CommandQueue commandQueue{commands};juce::ThreadPool commandFiles{1};CommandQueue::Client commandClient;Scope commandScope;Json lastCommandResult=nullptr;std::string pendingConfirmation;bool commandFileBusy=false;juce::File recordDirectory;Json facts=Json::object(),deviceFacts=Json::object(),pending=nullptr;std::string selected,selectedClip,lastPluginIDs,lastMusicMap;int pluginSelection=0;bool reportShowing=false,mix=false,recordInspector=false,routingInspector=false,groupInspector=false,autoInspector=false,pianoMode=false;juce::String sessionName="Untitled";
+    Theme theme;Commands commands;CommandQueue commandQueue{commands};std::unique_ptr<McpGateway> mcp;juce::File mcpEndpoint;juce::ThreadPool commandFiles{1};CommandQueue::Client commandClient;Scope commandScope;Json lastCommandResult=nullptr;std::string pendingConfirmation;bool commandFileBusy=false;juce::File recordDirectory;Json facts=Json::object(),deviceFacts=Json::object(),pending=nullptr;std::string selected,selectedClip,lastPluginIDs,lastMusicMap;int pluginSelection=0;bool reportShowing=false,mix=false,recordInspector=false,routingInspector=false,groupInspector=false,autoInspector=false,pianoMode=false;juce::String sessionName="Untitled";
     Waveforms waves;EditArea editArea;MixArea mixArea;ParameterRows parameters;RoutingPanel routing;GroupingPanel grouping;RecordingPanel recording;AutomationPanel automation;ClipPanel clipPanel;PianoRoll piano;juce::Viewport editView,mixView,parameterView,routingView,groupView,autoView,recordView;
     juce::MenuBarComponent menu{this};juce::TextButton newTrack{text("新增轨道")},importButton{text("导入音频")},openButton{text("打开工程")},saveButton{text("另存工程")},exportButton{text("导出 WAV")},editButton{"EDIT"},mixButton{"MIX"},
         returnButton{"|<"},stopButton{text("停止")},playButton{text("播放")},recordButton{text("● 录音")},undoButton{"Undo"},redoButton{"Redo"},insertButton{text("插入")},bypassButton{text("旁通")},editorButton{text("插件窗口")},removeButton{text("移除")},stateRetryButton{text("重试读取")},stateRestoreButton{text("还原已知状态")},programButton{text("切换 Program")},acceptButton{text("接受计划")},rejectButton{text("取消")};

@@ -27,6 +27,7 @@ public:
     Json commit(const Json&, bool accepted = false,const Scope& scope = {});
     Json review(const Json&,const Scope&) const;
     std::string sessionToken() const;
+    Json transactionStatus(const std::string&) const;
     Json undo(const std::string& expectedPlan = {});
     Json redo();
     Json render(const juce::File&, int64_t start, int64_t end);

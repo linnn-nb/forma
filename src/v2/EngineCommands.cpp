@@ -409,6 +409,11 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
     Json result{{"plan_id",plan.at("plan_id")},{"actor",plan.at("actor")},{"revision",revision},{"objects",objects},{"state","committed"},{"replayed",false},{"audio_verified",false}};
     receipts.emplace(key,Receipt{fingerprint,result}); return result;
 }
+Json Commands::transactionStatus(const std::string& id)const {
+    checkThread();captureNativeStates();
+    for(const auto& [_,receipt]:receipts)if(receipt.result.value("plan_id",std::string{})==id){auto out=receipt.result;out["state"]=metadata.getChildWithProperty("plan_id",juce::String(id)).isValid()?"committed":"undone";out["current_revision"]=revision;return out;}
+    return {{"plan_id",id},{"state","not_committed"},{"current_revision",revision}};
+}
 Json Commands::undo(const std::string& expected) {
     checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");captureNativeStates();require(!nativeStates||(!nativeStates->query()["pending"].get<bool>()&&nativeStates->query()["failure"].is_null()),"resolve uncaptured native state before Undo");require(parameterCapture.is_null(),"finish native parameter gesture before Undo");ParameterWriteGuard parameterGuard(*this); require(!edit->getTransport().isPlaying(),"stop playback before Undo");
     require(historyCursor>0,"nothing to undo"); const auto id=history.at(historyCursor-1);require(bool(metadata.getChildWithProperty("plan_id",juce::String(id)).getProperty("reversible",true)),"latest human state recovery is irreversible; use a saved snapshot or make a new edit");

@@ -33,6 +33,7 @@ public:
     Client connect(const std::string& actor,const Scope& scope={});
     void grant(const std::string& client,const Scope&);
     void revoke(const std::string& client);
+    void setSelection(const std::string& track,const std::string& clip={});
     Json pending();
     Json resolve(const std::string& confirmationID,bool accepted);
     Json status() const;
