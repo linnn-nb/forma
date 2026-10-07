@@ -14,6 +14,7 @@ class AudioDeviceTestAccess;
 class PluginEditorWindows;
 class NativePluginStates;
 class SessionRecovery;
+class MasterAnalysis;
 class Commands : private juce::Timer, private te::ParameterChangeHandler::UserChangeListener {
 public:
     explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
@@ -74,8 +75,13 @@ public:
     Json musicalGrid(int64_t start,int64_t end,double division=1) const;
     static Json analyse(const juce::File&);
     static std::string mediaHash(const juce::File&);
+    Json analysisControl(const std::string&,const Json&,const std::string& actor="human");
+    Json analysisStatus();
     Json legacyReports() const;
 private:
+    friend class MasterAnalysis;
+    std::unique_ptr<MasterAnalysis> masterAnalysis;
+    static void registerAnalysisCommands(Json&);
     friend class SessionRecovery;
     std::unique_ptr<SessionRecovery> recovery;
     std::pair<juce::ValueTree,Json> recoverySnapshot();

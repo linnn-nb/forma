@@ -1,3 +1,4 @@
+#include "MasterAnalysis.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "OutputProbe.h"
 #include "NativePluginStates.h"
@@ -120,6 +121,7 @@ Json Commands::record(const juce::File& directory){
     // silently edit an existing MIDI clip.
     std::set<std::string> configured;
     for(const auto& target:targets){auto* t=track(target);auto q=recordingQuery(*t);std::string device=q["device"];if(q["kind"]=="midi"&&configured.insert(device).second){auto d=engine.getDeviceManager().findMidiInputDeviceForID(juce::String(device));require(d&&d->recordingEnabled,"MIDI recording disabled");midiRecordSettings.push_back({d,d->mergeRecordings,d->replaceExistingClips,d->recordToNoteAutomation,d->quantisation});d->mergeRecordings=false;d->replaceExistingClips=false;d->recordToNoteAutomation=false;d->quantisation=te::QuantisationType();}}
+    if(masterAnalysis)masterAnalysis->prioritizePlayback(true);
     try {edit->getTransport().record(false,false);}catch(const std::exception& e){recordingError=e.what();edit->getTransport().stop(false,false);finishRecordingCapture();throw;}
     bool success=edit->getTransport().isRecording();for(const auto& target:targets){auto* t=track(target);auto q=recordingQuery(*t);success&=q["recording"].get<bool>()&&(q["kind"]=="midi"||!q["recording_file"].get<std::string>().empty());}
     if(!success){edit->getTransport().stop(false,false);if(recordingError.empty())recordingError="Tracktion did not start all armed inputs";finishRecordingCapture();throw std::runtime_error(recordingError);}

@@ -1,3 +1,4 @@
+#include "MasterAnalysis.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "TimelineState.h"
 #include <limits>
@@ -135,7 +136,7 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     edit->getParameterChangeHandler().setUserChangeListener(this);
     nativeStates=std::make_unique<NativePluginStates>(*this);nativeStates->sync();
 }
-Commands::~Commands() { recovery.reset();stopTimer(); stop();closePluginEditors(true);nativeStates.reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr); undoBoundaryInhibitor.reset(); edit.reset(); }
+Commands::~Commands() { masterAnalysis.reset();recovery.reset();stopTimer(); stop();closePluginEditors(true);nativeStates.reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr); undoBoundaryInhibitor.reset(); edit.reset(); }
 void Commands::checkThread() const {
     require(juce::MessageManager::getInstance()->isThisTheMessageThread(), "Edit commands require the message thread");
 }
@@ -174,6 +175,7 @@ Json Commands::registry() {
     registerClipCommands(result);
     registerLegacyCommands(result);
     registerQueryCommands(result);
+    registerAnalysisCommands(result);
     registerRecoveryCommands(result);
     return result;
 }
@@ -459,6 +461,7 @@ Json Commands::redo() {
     updateRequestAudit(id,"committed");return {{"plan_id",id},{"revision",revision},{"state","committed"}};
 }
 void Commands::play() { checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");captureNativeStates();require(parameterCapture.is_null(),"finish native parameter gesture before Play");ParameterWriteGuard parameterGuard(*this); require(engine.getDeviceManager().deviceManager.getCurrentAudioDevice()!=nullptr,"audio device unavailable");if(edit->getTransport().isPlaying())return;validateExternalRuntime();
+    if(masterAnalysis)masterAnalysis->prioritizePlayback(true);
     beginAutomationCapture();try {edit->getTransport().play(false);}catch(...){finishAutomationCapture();throw;}
 }
 void Commands::stop() { checkThread();endParameterGestures();{ParameterWriteGuard parameterGuard(*this); releaseMidiKeys(); if(edit){
@@ -532,6 +535,7 @@ void Commands::open(const juce::File& source) {
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate) {
     checkThread();require(candidate!=nullptr,"invalid Edit replacement");
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
+    if(masterAnalysis)masterAnalysis->reset();
     auto newInhibitor=std::make_unique<te::Edit::UndoTransactionInhibitor>(*candidate);
     closePluginEditors(true);if(nativeStates)nativeStates->reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr);
     externalPreparedRates.clear();externalParameterLayouts.clear();
