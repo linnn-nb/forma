@@ -1,6 +1,7 @@
 #include "MasterAnalysis.h"
 #include "NativePluginStates.h"
 #include <nativedaw/v2/AudioAnalysis.h>
+#include <nativedaw/v2/DeliveryCheck.h>
 #if JUCE_MAC
 #include <pthread.h>
 #endif
@@ -67,6 +68,7 @@ struct MasterAnalysis::Job {
                 result=analysis::measure(pcm,binding.at("start_samples"),control);
                 require(result["frames"].get<int64_t>()==binding["end_samples"].get<int64_t>()-binding["start_samples"].get<int64_t>(),"analysis render frame count mismatch");
                 require(result["file_float"].get<bool>()&&result["file_bits"]==32,"analysis renderer did not produce float32 PCM");
+                if(binding["purpose"]=="delivery")result["delivery"]=delivery::evaluate(result,binding.at("delivery_profile"));
                 require(hashes(sources,control)==sources,"source media changed during analysis");
                 CheckedStream stream(pcm,control);result["render_sha256"]=juce::SHA256(stream).toHexString().toStdString();result["media"]=sources;result["media_validation"]="SHA256 before/after render; size/mtime while querying; deep SHA256 before locate";result["binding"]=binding;result["state"]="completed";result["elapsed_ms"]=now()-started;result["artifact_id"]=binding["artifact_id"];
                 require(result.dump().size()<=Commands::maximumQueryPageBytes-4096,"analysis artifact exceeds the current 252 KiB receipt budget");
@@ -116,17 +118,20 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
         bool valid=false;try{valid=current(receipt,true);}catch(...){receipt["invalidated"]=true;throw;}if(!valid)receipt["invalidated"]=true;
         require(valid,"analysis is stale; measure the current project before locating");const auto index=integer(args.at("event_id"));require(index<int64_t(receipt.at("events").size()),"analysis event unavailable");owner.seek(receipt["events"][size_t(index)]["start_samples"]);return {{"state","located"},{"event",receipt["events"][size_t(index)]},{"artifact_id",receipt["artifact_id"]}};
     }
-    require(command=="master","unknown analysis control");fields(args,{"session_token","base_revision","start_samples","end_samples","request_key"});
+    require(command=="master"||command=="delivery","unknown analysis control");if(command=="delivery")fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","profile"});else fields(args,{"session_token","base_revision","start_samples","end_samples","request_key"});
     require(args.at("session_token")==owner.sessionToken()&&integer(args.at("base_revision"))==int64_t(owner.revision),"analysis version conflict");
     require(args.at("request_key").is_string()&&!args["request_key"].get<std::string>().empty()&&args["request_key"].get<std::string>().size()<=128,"analysis request_key required, maximum 128 bytes");
     const auto start=integer(args.at("start_samples")),end=integer(args.at("end_samples"));require(end>start&&end-start<=300*48000&&end<=std::llround(te::Edit::maximumLength*48000),"analysis range must be positive and at most 300 seconds");
-    if(job){require(job->actor==actor&&job->binding["request_key"]==args["request_key"]&&job->binding["start_samples"]==start&&job->binding["end_samples"]==end,"one analysis job is already running");return status();}
-    if(receipt.is_object()&&receipt["binding"]["request_key"]==args["request_key"]){require(receipt["binding"]["actor"]==actor&&receipt["binding"]["start_samples"]==start&&receipt["binding"]["end_samples"]==end&&receipt["binding"]["revision"]==owner.revision,"analysis key reused with different intent");return status();}
+    const auto profile=command=="delivery"?delivery::normaliseProfile(args.value("profile",Json::object())):Json(nullptr);
+    const auto intent=Json{{"session_token",owner.sessionToken()},{"revision",owner.revision},{"start_samples",start},{"end_samples",end},{"purpose",command},{"profile",profile}}.dump();
+    const auto intentHash=juce::SHA256(intent.data(),intent.size()).toHexString().toStdString();
+    if(job){require(job->actor==actor&&job->binding["request_key"]==args["request_key"]&&job->binding["start_samples"]==start&&job->binding["end_samples"]==end&&job->binding["request_fingerprint"]==intentHash,"one analysis job is already running or retry differs from its original intent");return status();}
+    if(receipt.is_object()&&receipt["binding"]["request_key"]==args["request_key"]){require(receipt["binding"]["actor"]==actor&&receipt["binding"]["start_samples"]==start&&receipt["binding"]["end_samples"]==end&&receipt["binding"]["revision"]==owner.revision&&receipt["binding"]["request_fingerprint"]==intentHash,"analysis key reused with different intent");return status();}
     require(!owner.edit->getTransport().isPlaying()&&owner.recordingCapture.is_null()&&owner.capture.is_null()&&owner.parameterCapture.is_null()&&!owner.audioConfigurationPending(),"stop transport and finish gestures before preparing analysis");
     owner.captureNativeStates();require(!owner.nativeStates||(!owner.nativeStates->query()["pending"].get<bool>()&&owner.nativeStates->query()["failure"].is_null()),"resolve native plugin state before analysis");owner.validateExternalRuntime();
     auto captured=owner.recoverySnapshot();
     auto work=std::make_unique<Job>();work->actor=actor;
-    work->binding={{"artifact_id",juce::Uuid().toString().toStdString()},{"request_key",args["request_key"]},{"actor",actor},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"tap_point","master"},{"object_id","master"},{"start_samples",start},{"end_samples",end},{"timeline_sample_rate",48000},{"processing_chain_hash",chainHash()},{"created_utc",juce::Time::getCurrentTime().toISO8601(true).toStdString()}};
+    work->binding={{"artifact_id",juce::Uuid().toString().toStdString()},{"request_key",args["request_key"]},{"actor",actor},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"purpose",command},{"request_fingerprint",intentHash},{"delivery_profile",profile},{"tap_point","master"},{"object_id","master"},{"start_samples",start},{"end_samples",end},{"timeline_sample_rate",48000},{"processing_chain_hash",chainHash()},{"created_utc",juce::Time::getCurrentTime().toISO8601(true).toStdString()}};
     work->sources=Json::array();
     for(auto* track:te::getAudioTracks(*owner.edit))for(auto* clip:track->getClips())if(auto* audio=dynamic_cast<te::WaveAudioClip*>(clip)){auto facts=owner.audioClipQuery(*audio);const std::string path=facts.at("path");const juce::File file(juce::String{path});require(file.existsAsFile(),"analysis source media missing");work->sources.push_back({{"clip_id",clip->itemID.toString().toStdString()},{"track_id",track->itemID.toString().toStdString()},{"path",path},{"bytes",file.getSize()},{"modified_ms",file.getLastModificationTime().toMilliseconds()}});}
     require(work->sources.size()<=4096,"analysis source count exceeds current 4096-clip budget");
@@ -145,6 +150,8 @@ void Commands::registerAnalysisCommands(Json& registry){
     const Json string{{"type","string"},{"minLength",1},{"maxLength",128}},integer{{"type","integer"},{"minimum",0},{"maximum",int64_t(9007199254740991)}};
     auto add=[&](const char* id,const char* tool,const char* method,const char* description,Json properties,Json required){registry.push_back({{"id",id},{"execution","analysis"},{"tool_name",tool},{"queue_method",method},{"description",description},{"permission","read"},{"risk","none"},{"reversible",false},{"schema",{{"type","object"},{"properties",properties},{"required",required},{"additionalProperties",false}}},{"test","M3-MASTER-01"}});};
     add("analysis.master","analyze_master","analysis_master","Prepare a stopped Edit snapshot and asynchronously measure its Master range. Local-only float32 render; no upload or edit. Poll query_analysis for the actual receipt. Positions are half-open session samples at 48 kHz, maximum 300 seconds; a live request_key retry must be identical.",{{"session_token",string},{"base_revision",integer},{"start_samples",integer},{"end_samples",integer},{"request_key",string}},Json::array({"session_token","base_revision","start_samples","end_samples","request_key"}));
+    add("analysis.delivery","analyze_delivery","analysis_delivery","Asynchronously measure the actual stopped Master range and evaluate explicit LUFS-I/True Peak/full-scale/ending-level criteria. This is local evidence, not an export, platform certification or proof of complete effect tails. Poll query_analysis; a completed measurement may have failed/indeterminate/review criteria. Example defaults are -14 LUFS +/-1 and -1 dBTP; profile is configurable. Retry the same key with identical purpose/range/profile.",{{"session_token",string},{"base_revision",integer},{"start_samples",integer},{"end_samples",integer},{"request_key",string},{"profile",delivery::profileSchema()}},Json::array({"session_token","base_revision","start_samples","end_samples","request_key"}));
+    registry.back()["test"]="M3-DELIVERY-01";
     add("analysis.status","query_analysis","analysis_status","Read actual analysis progress, provenance and bounded full-scale exceedance events. current=false means stale or transport is playing; never use stale events for an edit. Exceedance is clipping risk, not proof of damage in original media.",Json::object(),Json::array());
     add("analysis.cancel","cancel_analysis","analysis_cancel","Cancel your own pending analysis by actual artifact_id. Await the terminal cancelled receipt; cancellation cannot make an analysis successful.",{{"artifact_id",string}},Json::array({"artifact_id"}));
 }

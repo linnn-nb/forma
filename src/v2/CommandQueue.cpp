@@ -129,8 +129,8 @@ struct QueueState:std::enable_shared_from_this<QueueState> {
             result["session_token"]=c.sessionToken();result["permission"]=j.client->scope.json();result["client_id"]=j.client->id;result["actor"]=j.client->actor;
             return {{"status","completed"},{"result",std::move(result)}};
         }
-        if(j.method=="analysis_master"||j.method=="analysis_status"||j.method=="analysis_cancel"){
-            const auto method=j.method=="analysis_master"?"master":j.method=="analysis_status"?"status":"cancel";
+        if(j.method=="analysis_master"||j.method=="analysis_delivery"||j.method=="analysis_status"||j.method=="analysis_cancel"){
+            const auto method=j.method=="analysis_master"?"master":j.method=="analysis_delivery"?"delivery":j.method=="analysis_status"?"status":"cancel";
             return {{"status","completed"},{"result",c.analysisControl(method,args,j.client->actor+":"+j.client->id)}};
         }
         if(j.method=="registry"){fields(args,{});return {{"status","completed"},{"result",c.registry()}};}
@@ -229,7 +229,7 @@ CommandQueue::Ticket CommandQueue::Client::submit(const std::string& method,Json
     auto fail=[&](const char* why){j->finish({{"status","failed"},{"error",why}});return ticket;};
     if(timeoutMs<1||timeoutMs>30000)return fail("timeout must be 1..30000 ms");
     if(!principal||!principal->active.load())return fail("client revoked or missing");
-    if(method!="analysis_master"&&method!="analysis_status"&&method!="analysis_cancel"&&method!="query"&&method!="summary"&&method!="objects"&&method!="registry"&&method!="request_status"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
+    if(method!="analysis_delivery"&&method!="analysis_master"&&method!="analysis_status"&&method!="analysis_cancel"&&method!="query"&&method!="summary"&&method!="objects"&&method!="registry"&&method!="request_status"&&method!="plan"&&method!="preview"&&method!="plan_status"&&method!="commit"&&method!="undo"&&method!="cancel")return fail("unknown queue method");
     try{j->bytes=j->args.dump().size();}catch(const std::exception&){return fail("request payload is not valid UTF-8 JSON");}if(j->bytes>maximumPayloadBytes)return fail("request payload exceeds 256 KiB");
     j->generation=principal->generation.load();j->deadline=j->submitted+std::chrono::milliseconds(timeoutMs);auto s=queue.lock();if(!s)return fail("queue closed");bool wake=false;
     {std::lock_guard lock(s->mutex);if(s->closed)return fail("queue closed");if(s->jobs.size()>=capacity||s->bytes+j->bytes>1024*1024)return fail("queue capacity reached");s->jobs.push_back(j);s->bytes+=j->bytes;if(!s->scheduled){s->scheduled=true;wake=true;}}
