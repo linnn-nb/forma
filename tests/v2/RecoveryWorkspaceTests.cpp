@@ -23,7 +23,9 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{Scratch s
     click(w,"recovery.cancel");check(!accept->isEnabled()&&w.queryRecovery().at("session_token")==token,"cancelled preview cannot switch current session");
     click(w,"recovery.close");click(w,"track.create");check(w.query()["tracks"].size()==2,"human continues editing without the recovery panel");
     auto endpoint=scratch.path.getChildFile("gateway/socket");w.startMcp(Permission::Preview,endpoint);check(w.queryMcpStatus()["permission"]["mode"]=="preview","test gateway has a real Preview grant before recovery");
-    w.menuItemSelected(40,0);pump();click(w,"recovery.preview");click(w,"recovery.accept");idle(w);s=w.queryRecovery();
+    w.menuItemSelected(40,0);pump();click(w,"recovery.preview");accept=dynamic_cast<juce::Button*>(find(w,"recovery.accept"));check(accept&&accept->isEnabled(),"actual local restore confirmation is available");accept->onClick();
+    check(w.queryRecovery()["busy"]&&w.queryRecovery()["session_token"]==token&&w.queryMcpStatus()["permission"]["mode"]=="read_only"&&w.queryMcpStatus()["endpoint"]==endpoint.getFullPathName().toStdString(),"local restore confirmation revokes writing immediately before asynchronous recovery completes or the Edit switches");
+    idle(w);s=w.queryRecovery();
     check(s["state"]=="restored"&&w.query()["tracks"].size()==1&&w.queryRecovery().at("session_token")!=token,"production GUI restores the selected actual one-track state");
     check(!w.query()["can_undo"].get<bool>()&&s["catalog"]["entries"].size()==2,"pre-recovery two-track state is backed up and persistent Undo is not invented");
     check(w.queryMcpStatus()["permission"]["mode"]=="read_only","session recovery revokes external Preview grant and restarts MCP read-only");
