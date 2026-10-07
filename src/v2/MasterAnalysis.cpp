@@ -25,13 +25,20 @@ std::string fingerprint(juce::ValueTree state){
     std::function<Json(const juce::XmlElement&)> canonical=[&](const auto& node){
         Json properties=Json::object(),collections=Json::object();
         for(int i=0;i<node.getNumAttributes();++i)properties[node.getAttributeName(i).toStdString()]=node.getAttributeValue(i).toStdString();
-        // VolumeAndPan's attached SDK values asynchronously follow their curves
-        // even while stopped. A curve-driven display value is not a new edit;
-        // keep the complete curve and revision, rather than hashing its sampled
-        // volume/pan cache. Empty curves still hash the actual base values.
-        if(node.hasTagName("PLUGIN")&&node.getStringAttribute("type")==te::VolumeAndPanPlugin::xmlTypeName)
+        // These exact mappings are the attachToCurrentValue bindings in the
+        // locked SDK VolumeAndPan, Equaliser and Delay sources. Only nonempty
+        // curves own a sampled cache: preserve the complete curve and revision,
+        // all other properties and opaque external plugin state. Empty curves
+        // still hash explicit bases. Unknown plugins remain conservative.
+        static const std::map<std::string,std::map<std::string,std::string>> curveCaches={
+            {te::VolumeAndPanPlugin::xmlTypeName,{{"volume","volume"},{"master volume","volume"},{"pan","pan"},{"master pan","pan"}}},
+            {te::EqualiserPlugin::xmlTypeName,{{"Low-pass freq","loFreq"},{"Low-pass gain","loGain"},{"Low-pass Q","loQ"},{"Mid freq 1","midFreq1"},{"Mid gain 1","midGain1"},{"Mid Q 1","midQ1"},{"Mid freq 2","midFreq2"},{"Mid gain 2","midGain2"},{"Mid Q 2","midQ2"},{"High-pass freq","hiFreq"},{"High-pass gain","hiGain"},{"High-pass Q","hiQ"}}},
+            {te::DelayPlugin::xmlTypeName,{{"feedback","feedback"},{"mix proportion","mix"}}}
+        };
+        auto cache=curveCaches.find(node.getStringAttribute("type").toStdString());
+        if(node.hasTagName("PLUGIN")&&cache!=curveCaches.end())
             for(auto* child=node.getFirstChildElement();child;child=child->getNextElement())if(child->hasTagName("AUTOMATIONCURVE")&&child->getNumChildElements()>0){
-                const auto id=child->getStringAttribute("paramID");if(id=="volume"||id=="master volume")properties.erase("volume");if(id=="pan"||id=="master pan")properties.erase("pan");
+                auto property=cache->second.find(child->getStringAttribute("paramID").toStdString());if(property!=cache->second.end())properties.erase(property->second);
             }
         for(auto* child=node.getFirstChildElement();child;child=child->getNextElement()){
             auto kind=child->getTagName().toStdString();if(kind=="TRACK"||kind=="FOLDERTRACK")kind="TRACK_ORDER";
@@ -224,7 +231,7 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
     owner.captureNativeStates();require(!owner.nativeStates||(!owner.nativeStates->query()["pending"].get<bool>()&&owner.nativeStates->query()["failure"].is_null()),"resolve native plugin state before analysis");owner.validateExternalRuntime();
     auto captured=owner.recoverySnapshot();
     auto work=std::make_unique<Job>();work->actor=actor;
-    work->binding={{"artifact_id",juce::Uuid().toString().toStdString()},{"request_key",args["request_key"]},{"actor",actor},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"purpose",command},{"request_fingerprint",intentHash},{"delivery_profile",profile},{"tap_point",tapPoint},{"object_id",trackTap?trackID:"master"},{"start_samples",start},{"end_samples",end},{"timeline_sample_rate",48000},{"processing_chain_hash",chainHash()},{"chain_hash_scope","entire committed Edit; curve-driven VolumeAndPan display values normalized; conservative invalidation"},{"created_utc",juce::Time::getCurrentTime().toISO8601(true).toStdString()}};
+    work->binding={{"artifact_id",juce::Uuid().toString().toStdString()},{"request_key",args["request_key"]},{"actor",actor},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"purpose",command},{"request_fingerprint",intentHash},{"delivery_profile",profile},{"tap_point",tapPoint},{"object_id",trackTap?trackID:"master"},{"start_samples",start},{"end_samples",end},{"timeline_sample_rate",48000},{"processing_chain_hash",chainHash()},{"chain_hash_scope","entire committed Edit; known VolumeAndPan/EQ/Delay curve-driven caches normalized; conservative invalidation"},{"created_utc",juce::Time::getCurrentTime().toISO8601(true).toStdString()}};
     work->sources=Json::array();
     for(auto* track:te::getAudioTracks(*owner.edit))for(auto* clip:track->getClips())if(auto* audio=dynamic_cast<te::WaveAudioClip*>(clip)){auto facts=owner.audioClipQuery(*audio);const std::string path=facts.at("path");const juce::File file(juce::String{path});require(file.existsAsFile(),"analysis source media missing");work->sources.push_back({{"clip_id",clip->itemID.toString().toStdString()},{"track_id",track->itemID.toString().toStdString()},{"path",path},{"bytes",file.getSize()},{"modified_ms",file.getLastModificationTime().toMilliseconds()}});}
     require(work->sources.size()<=4096,"analysis source count exceeds current 4096-clip budget");

@@ -8,7 +8,7 @@
 
 ## 轨道与 Bus 增量验收预算（M3-TAP-01，实施前）
 
-固定 48 kHz /双声道 /3 秒真实 PCM，非零工程范围；信号经过 Clip Gain、实际 EQ/Delay、轨道推子、pre/post 发送和 Aux 返回。分别测量插入前、插入后（均推子前）与 Bus 输出（推子后），Peak/RMS 与独立 PCM/既有正式渲染的误差 ≤3e-6，已知削波边界逐帧相同，测量不得改变活动工程、历史或原始媒体。上游直接路由与 Aux 发送、旁通、自动化、MIDI 合成器和后续人工改动的失效分别验证；不把 Master 渲染改名为轨道证据。每次作业 ≤12 秒，MCP 回复 ≤5 秒，后端专项 ≤120 秒、原生构件专项 ≤60 秒，单 worker/300 秒范围/60 秒墙钟不变。桌面与真实 Agent 另行记录；未执行不写通过。
+固定 48 kHz /双声道 /3 秒真实 PCM，非零工程范围；信号经过 Clip Gain、实际 EQ/Delay、轨道推子、pre/post 发送和 Aux 返回。分别测量插入前、插入后（均推子前）与 Bus 输出（推子后），Peak/RMS 与独立 PCM/既有正式渲染的误差 ≤3e-6，已知削波边界逐帧相同，测量不得改变活动工程、历史或原始媒体。上游直接路由与 Aux 发送、旁通、自动化、MIDI 合成器和后续人工改动的失效分别验证；不把 Master 渲染改名为轨道证据。每次作业 ≤12 秒，MCP 回复 ≤5 秒，后端专项 ≤120 秒、原生构件专项 ≤60 秒，单 worker/300 秒范围/60 秒墙钟不变。桌面与真实 Agent 另行记录；未执行不写通过。新增 EQ/Delay 曲线与正式 WAV 对照采用同一真实 PCM 的独立专项，固定每作业 12 秒、专项 120 秒；原轨道后端 120 秒与原生构件 60 秒不变，完整回归分别列出，不合并或降低标准。
 
 ## 亲手试
 
@@ -19,6 +19,21 @@
 5. 「取消分析」等到 `cancelled` 才算停止。关闭面板保留后台作业；之后播放/录音会让作业暂停，停止后继续。暂停仍计入 60 秒墙钟预算。
 
 离线风险分析可检查较高增益，不要求播放过载信号。测量不代表主观听感检查。
+
+## 轨道插入前后与 Bus（M3-TAP-01）
+
+同一面板选择「轨道插入前」「轨道插入后」或「Bus 输出」，再选择实际音频/乐器/MIDI/Aux 轨。范围采用工程 48 kHz 整数采样，点击「分析轨道 / Bus」。源片段、轨道和 Master 的入口共用一套真实状态/取消机制；交付条件只在 Master 生效，轨道页不冒充交付认证。
+
+- 插入前包含源片段处理、Clip Gain、输入合成器或 Aux 返回，位于第一个轨道效果器前。若插件排列使输入返回出现在效果器之后，明确拒绝这个含混边界。
+- 插入后位于实际 VolumeAndPan 前，包含此前效果器和 pre 发送位置，排除轨道推子/声像。Bus 位于目标插件链末端，包含推子/声像及 post 发送位置。三者均不包含 Master 插入；回执列出实际目标、插件边界索引、before_plugin_id 和是否含推子。
+- L1 在同一个 Engine 的离线 Edit 快照追加实际 AuxReturn 捕获轨，在目标边界插入一个原生 AuxSend。原轨道间直接路由、原发送/返回、合成器保持连通；原来的直接设备输出在快照内改为 None sink，捕获轨是唯一设备输出，避免混入无关轨。快照不会安装进活动工程，不增加编辑 revision/Undo；帮助轨不保存。
+- 捕获轨 Solo Safe；原来的 mute/solo 语义仍影响音频。路由 Folder 的输入可经原图参与，Folder/VCA 自身没有可选择的音频 tap。原图存在硬件 Insert 时拒绝离线测量。SDK 每轨默认 16 插件槽，目标需要一个临时空槽，满槽明确拒绝，不静默删插件。
+- Artifact 绑定完整已提交 Edit 的保守链哈希、目标 ID、tap 描述 SHA256、媒体与范围。锁定 SDK 的 VolumeAndPan/EQ/Delay 非空 Read 曲线会改变 attached 显示缓存，哈希仅排除其**已核对的缓存属性**；完整曲线/点、revision、其他状态及第三方 opaque blob 仍保留。空曲线继续哈希实际基值。其他插件的自动化缓存尚未资格，可能保守失效，不能报告所有插件都支持本流程。
+- 创建/修改/删除曲线的 L1 事务保留显式基值，Undo 移除曲线后恢复原基值，避免保留最后读到的值。测量自身不创建 Undo；调整人工推子会使已测轨道回执过期，一次 Undo 只撤销人工编辑，重新测量才是当前证据。
+
+MCP `analyze_track` 必需 session_token、base_revision、track、tap_point、start_samples、end_samples、request_key；tap_point 只允许 track_pre_inserts /track_post_inserts /bus。目标必须是实际 ID，不能传任意输出路径。相同最近/活跃请求重试保留真实作业，不同目标/边界/范围复用同键拒绝。收到 pending 后必须 query_analysis 得到实际 terminal receipt；只读权限可测量，无上传。原生定位使用实际事件工程采样位置，分析暂停/失效时不可定位。
+
+代码与验收：L1 MasterAnalysis /AutomationCommands /CommandQueue，L2 AudioAnalysis，L5 AnalysisPanel /Workspace；TrackAnalysisTests 检查 Clip Gain、实际 EQ/Delay、推子、pre/post 发送、直接路由+Aux、Solo/mute、Read/Undo、实际 FourOsc MIDI、正式 24-bit WAV 对照、只读 MCP/幂等/取消/保存重开；TrackAnalysisWorkspaceTests 检查实际原生回调、真实事件定位、人工增益与 Undo 分离和取消。数值预算保持上述 M3-TAP-01，不把后台构件测试当生产桌面验收。选区离线图使用 SDK 的块预热，反馈/混响历史不保证与从工程零点连续回放相同；正式 WAV 对照只资格相同选区。动态插件 PDC/sidechain、真实第三方链、单/多声道、图准备压力与实时 deadline/XRUN 尚未资格。
 
 ## 原始源片段（M3-SOURCE-01）
 
@@ -56,7 +71,7 @@ MCP `analyze_delivery` 使用与 `analyze_master` 相同的五个必需参数，
 
 - `Commands::analysisControl` 是唯一入口。`MasterAnalysis` 属于 **L1 渲染协调器**：message thread 从同一 Edit flush/copy，使用**同一个 Engine**创建 `forRendering` 快照与准备图；不调用停掉全部 Transport 的同步导出辅助函数。原工程不被分析作业修改。
 - `analysis::measure` 是 L2，只接收脱离工程的 PCM 文件。macOS 工作线程使用 background QoS；浮点 WAV 保留超过 1 的信号。渲染、哈希与测量均不进入实时回调。图与快照在 message thread 回收。
-- 注册表生成 `analyze_master`、`analyze_delivery`、`query_analysis`、`cancel_analysis`，经同一 `CommandQueue` / stdio/socket MCP。只读客户端允许获取本地证据，不能用字段指定输出路径、上传、改变身份或修改工程。
+- 注册表生成 `analyze_master`、`analyze_delivery`、`analyze_source_clip`、`analyze_track`、`query_analysis`、`cancel_analysis`，经同一 `CommandQueue` / stdio/socket MCP。只读客户端允许获取本地证据，不能用字段指定输出路径、上传、改变身份或修改工程。
 - `analyze_master` 参数：`session_token`、`base_revision`、`start_samples`、`end_samples`、`request_key`；当前活跃/最近请求的相同重试共享作业或回执。返回工具调用回执只表示已受理，必须查询 `result.state` / `result.receipt`；`busy=true` 不表示测量成功。
 - `cancel_analysis` 的 `artifact_id` 必须来自实际 pending 请求；仅发起客户端或本地 GUI 能取消。重连客户端能读结果，不能冒充之前客户端的取消身份。断开 MCP 不自动取消已受理分析，可从 GUI 明确取消。
 - Artifact 绑定实际 session、revision、Master、采样区间、clip/track ID、源媒体 SHA256、渲染 SHA256、规范化处理链状态 SHA256、时间、分析器版本和参数。规范化忽略 cursor/审计/时间戳及无音频含义的异类节点排列，保留插件顺序及音轨/文件夹顺序。

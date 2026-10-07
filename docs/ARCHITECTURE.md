@@ -108,11 +108,13 @@ M1 需要的最小命令集：
 - **Artifact**：每份结果记录媒体哈希、对象 ID、时间范围、tap point、处理链状态哈希、分析器版本和参数。处理链状态哈希由插件 ID、参数和旁通状态计算得出；处理链一变，旧结果自动失效。
 - **调度**：用低优先级工作线程池执行，可暂停、可取消；播放或录音期间自动降速，保证实时音频优先。
 
-**M3 首个实现（M3-MASTER-01）**：L1 MasterAnalysis 从停止状态的同一 Edit 准备 render-only 快照，复用同一个 Engine；L2 低优先级线程驱动已准备的原生图并测量 float32 PCM。启动/查询/取消由注册表生成 MCP 工具，原生菜单可定位实际超满刻度事件。媒体、链哈希、版本和区间绑定；改变工程后失效，定位前复核源 SHA256，保存的分析引用不冒充新会话成功。测量与编辑 Undo 分离。该首增量只实现 Master；LUFS-M/S 为 100 ms 网格最大值，削波事件是 abs(sample)>=1 的风险区间。完整边界与固定预算见 [ANALYSIS_WORKFLOW.md](ANALYSIS_WORKFLOW.md)，后续源增量见下文；轨道/Bus tap 和完整 M3 未完成。
+**M3 首个实现（M3-MASTER-01）**：L1 MasterAnalysis 从停止状态的同一 Edit 准备 render-only 快照，复用同一个 Engine；L2 低优先级线程驱动已准备的原生图并测量 float32 PCM。启动/查询/取消由注册表生成 MCP 工具，原生菜单可定位实际超满刻度事件。媒体、链哈希、版本和区间绑定；改变工程后失效，定位前复核源 SHA256，保存的分析引用不冒充新会话成功。测量与编辑 Undo 分离。该首增量只实现 Master；LUFS-M/S 为 100 ms 网格最大值，削波事件是 abs(sample)>=1 的风险区间。完整边界与固定预算见 [ANALYSIS_WORKFLOW.md](ANALYSIS_WORKFLOW.md)，后续源增量见下文；该首增量时尚无轨道/Bus tap；当前实现见 M3-TAP-01，完整 M3 仍未完成。
 
 **交付条件（M3-DELIVERY-01）**：L1 绑定范围/版本/规范化 profile 和幂等请求指纹，同一真实 Master 渲染的 L2 结果送入纯规则 DeliveryCheck；GUI 和 MCP 返回同一四项结果及条件 SHA256。测量完成不代表条件通过，支持 failed/indeterminate/needs_review。末尾只测区间内最后 100 ms，活跃信号需人工复核，安静信号不证明完整混响尾音。不是导出文件/平台认证，也不是尚未完成的 L3 Lua 扩展运行时。
 
-**原始源片段（M3-SOURCE-01）**：L1 解析真实 WaveAudioClip/getOriginalFile，L2 在同一预算 worker 直接解码原始 PCM，不准备图/新 Edit。原生 source frame 证据绑定媒体/范围/条件哈希；未包含 Clip FX/gain/track/master 链，相关编辑不使原始证据失效。message thread 只读当前 clip 视图，返回线性 offset/speed 映射和 mapping_revision；GUI 选择视图定位前由 L1 复核媒体 SHA256、当前版本与事件可见性，循环/warp/反向/自动 Tempo 明确不支持映射。源与 Master 的缓存范围不同，不能以一次 raw 测量解释混音变化。静音与瞬态候选为数值测量/估计，非呼吸/表演判断。SourceAnalysisTests /SourceWorkspaceTests 和固定预算见 ANALYSIS_WORKFLOW.md；轨道/Bus/Clip FX 后及完整 M3 仍未完成。
+**原始源片段（M3-SOURCE-01）**：L1 解析真实 WaveAudioClip/getOriginalFile，L2 在同一预算 worker 直接解码原始 PCM，不准备图/新 Edit。原生 source frame 证据绑定媒体/范围/条件哈希；未包含 Clip FX/gain/track/master 链，相关编辑不使原始证据失效。message thread 只读当前 clip 视图，返回线性 offset/speed 映射和 mapping_revision；GUI 选择视图定位前由 L1 复核媒体 SHA256、当前版本与事件可见性，循环/warp/反向/自动 Tempo 明确不支持映射。源与 Master 的缓存范围不同，不能以一次 raw 测量解释混音变化。静音与瞬态候选为数值测量/估计，非呼吸/表演判断。SourceAnalysisTests /SourceWorkspaceTests 和固定预算见 ANALYSIS_WORKFLOW.md；Clip FX 单独边界与完整 M3 仍未完成；轨道/Bus 当前实现见下文。
+
+**轨道与 Bus（M3-TAP-01）**：L1 在同一 Engine 的 detached render Edit 追加原生 AuxReturn 捕获轨，并在真实目标插件边界插入 AuxSend。保留原轨间路由/原发送/合成器，原直接设备输出成为 None sink，捕获轨 Solo Safe/唯一设备输出；活动 Edit 不修改，帮助轨不保存。pre 在源/合成器/返回后首 FX 前，post 在实际 VolumeAndPan 前，Bus 在目标链末，均排除 Master。回执绑定实际目标/边界描述及完整 Edit 的保守哈希。仅规范化已核对 SDK VolumeAndPan/EQ/Delay 非空曲线的 sampled cache，完整曲线、revision、其他/opaque 状态保持；空曲线仍绑定基值。曲线编辑事务保留显式基值，Undo 移除曲线后恢复，防止异步 Read 留下错误基值。硬件 Insert、含混输入排列或无临时插件槽明确拒绝；动态 PDC/旁链/第三方链/多声道资格未完成。选区反馈历史服从 SDK 离线预热，不宣称与工程零点持续回放相同。MCP analyze_track、GUI 和专项共用同一 L1 入口，见 ANALYSIS_WORKFLOW.md。
 
 ## 5. L3 扩展运行时
 

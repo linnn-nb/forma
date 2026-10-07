@@ -89,6 +89,8 @@ target_sources(ndaw_track_analysis_tests PRIVATE tests/v2/TrackAnalysisTests.cpp
 target_link_libraries(ndaw_track_analysis_tests PRIVATE ndaw_engine)
 add_test(NAME tracktion_track_analysis COMMAND ndaw_track_analysis_tests "${CMAKE_SOURCE_DIR}/evidence/M3/track-analysis-tests.json")
 set_tests_properties(tracktion_track_analysis PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+add_test(NAME tracktion_track_analysis_plugin_curves COMMAND ndaw_track_analysis_tests "${CMAKE_SOURCE_DIR}/evidence/M3/track-analysis-plugin-curves-tests.json" plugin-curves)
+set_tests_properties(tracktion_track_analysis_plugin_curves PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 juce_add_console_app(ndaw_track_analysis_workspace_tests PRODUCT_NAME "ndaw_track_analysis_workspace_tests")
 target_sources(ndaw_track_analysis_workspace_tests PRIVATE tests/v2/TrackAnalysisWorkspaceTests.cpp)
 target_include_directories(ndaw_track_analysis_workspace_tests PRIVATE src/v2)
