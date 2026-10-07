@@ -4,6 +4,8 @@
 #include <nativedaw/v2/DeliveryCheck.h>
 #include <nativedaw/v2/SourceFeatures.h>
 #include <nativedaw/v2/SourceMapping.h>
+#include <set>
+#include <limits>
 #if JUCE_MAC
 #include <pthread.h>
 #endif
@@ -23,6 +25,14 @@ std::string fingerprint(juce::ValueTree state){
     std::function<Json(const juce::XmlElement&)> canonical=[&](const auto& node){
         Json properties=Json::object(),collections=Json::object();
         for(int i=0;i<node.getNumAttributes();++i)properties[node.getAttributeName(i).toStdString()]=node.getAttributeValue(i).toStdString();
+        // VolumeAndPan's attached SDK values asynchronously follow their curves
+        // even while stopped. A curve-driven display value is not a new edit;
+        // keep the complete curve and revision, rather than hashing its sampled
+        // volume/pan cache. Empty curves still hash the actual base values.
+        if(node.hasTagName("PLUGIN")&&node.getStringAttribute("type")==te::VolumeAndPanPlugin::xmlTypeName)
+            for(auto* child=node.getFirstChildElement();child;child=child->getNextElement())if(child->hasTagName("AUTOMATIONCURVE")&&child->getNumChildElements()>0){
+                const auto id=child->getStringAttribute("paramID");if(id=="volume"||id=="master volume")properties.erase("volume");if(id=="pan"||id=="master pan")properties.erase("pan");
+            }
         for(auto* child=node.getFirstChildElement();child;child=child->getNextElement()){
             auto kind=child->getTagName().toStdString();if(kind=="TRACK"||kind=="FOLDERTRACK")kind="TRACK_ORDER";
             if(!collections.contains(kind))collections[kind]=Json::array();collections[kind].push_back(canonical(*child));
@@ -41,6 +51,41 @@ public:
 private:juce::FileInputStream stream;analysis::Control control;
 };
 Json hashes(const Json& sources,const analysis::Control& control){Json out=Json::array();for(auto source:sources){const juce::File file(juce::String{source["path"].get<std::string>()});require(file.existsAsFile(),"analysis source media missing");const auto size=file.getSize(),mtime=file.getLastModificationTime().toMilliseconds();if(source.contains("bytes"))require(source["bytes"]==size&&source["modified_ms"]==mtime,"source changed since snapshot capture");CheckedStream stream(file,control);source["sha256"]=juce::SHA256(stream).toHexString().toStdString();require(size==file.getSize()&&mtime==file.getLastModificationTime().toMilliseconds(),"source changed while hashing");source["bytes"]=size;source["modified_ms"]=mtime;out.push_back(std::move(source));}return out;}
+// L1-only transformation of a detached render Edit. An actual SDK send/return
+// samples the chosen plugin boundary; all original routing stays connected.
+// Original device outputs become sinks so unrelated tracks are not summed into
+// the measurement. This is never installed in the active playback Edit.
+Json prepareTrackTap(te::Edit& snapshot,const std::string& trackID,const std::string& tap){
+    te::AudioTrack* target=nullptr;std::set<int> used;
+    for(auto* track:te::getAudioTracks(snapshot)){
+        if(track->itemID.toString().toStdString()==trackID)target=track;
+        for(auto* plugin:track->pluginList){
+            if(auto* s=dynamic_cast<te::AuxSendPlugin*>(plugin))used.insert(s->getBusNumber());
+            if(auto* r=dynamic_cast<te::AuxReturnPlugin*>(plugin))used.insert(r->busNumber.get());
+            require(!dynamic_cast<te::InsertPlugin*>(plugin),"offline tap cannot certify hardware inserts");
+        }
+    }
+    require(target,"analysis audio/instrument/Aux track not found");
+    const auto fader=target->pluginList.indexOf(target->getVolumePlugin());require(fader>=0,"track tap requires an actual VolumeAndPan boundary");
+    int boundary=tap=="bus"?target->pluginList.size():fader;
+    if(tap=="track_pre_inserts"){
+        boundary=0;bool effectSeen=false;
+        for(int i=0;i<fader;++i){auto* plugin=target->pluginList[i];
+            const bool input=plugin->isSynth()||dynamic_cast<te::AuxReturnPlugin*>(plugin);
+            if(input){require(!effectSeen,"pre-insert boundary ambiguous: effect/send precedes instrument or Aux return");boundary=i+1;}
+            else if(!dynamic_cast<te::LevelMeterPlugin*>(plugin))effectSeen=true;
+        }
+    }
+    const auto before=boundary<target->pluginList.size()?target->pluginList[boundary]->itemID.toString().toStdString():std::string{};
+    require(target->pluginList.size()<snapshot.engine.getEngineBehaviour().getEditLimits().maxPluginsOnTrack,"track tap needs one temporary SDK plugin slot in the render snapshot");
+    int bus=0;while(used.contains(bus)){require(bus<std::numeric_limits<int>::max(),"analysis bus IDs exhausted");++bus;}
+    auto capture=snapshot.insertNewAudioTrack(te::TrackInsertPoint::getEndOfTracks(snapshot),nullptr,false);require(capture!=nullptr,"analysis capture track creation failed");capture->setName("Forma offline tap");capture->setSoloIsolate(true);
+    auto returned=snapshot.getPluginCache().createNewPlugin(te::AuxReturnPlugin::xmlTypeName,{});require(returned!=nullptr,"analysis return creation failed");dynamic_cast<te::AuxReturnPlugin&>(*returned).busNumber=bus;capture->pluginList.insertPlugin(returned,0,nullptr);require(capture->pluginList.contains(returned.get()),"analysis return insertion failed");
+    auto sent=snapshot.getPluginCache().createNewPlugin(te::AuxSendPlugin::xmlTypeName,{});require(sent!=nullptr,"analysis tap creation failed");auto& send=dynamic_cast<te::AuxSendPlugin&>(*sent);send.busNumber=bus;send.gain->setParameter(te::decibelsToVolumeFaderPosition(0.f),juce::dontSendNotification);target->pluginList.insertPlugin(sent,boundary,nullptr);require(target->pluginList.contains(sent.get()),"analysis tap insertion failed");
+    for(auto* track:te::getAllTracks(snapshot))if(track!=capture.get())if(auto* output=te::getTrackOutput(*track);output&&!output->getDestinationTrack())output->setOutputToNone();
+    capture->getOutput().setOutputToDefaultDevice(false);
+    return {{"method","native AuxSend/AuxReturn in isolated render snapshot"},{"tap_point",tap},{"track_id",trackID},{"track_name",target->getName().toStdString()},{"plugin_boundary_index",boundary},{"before_plugin_id",before.empty()?Json(nullptr):Json(before)},{"master_included",false},{"fader_included",tap=="bus"},{"upstream_routes_and_sends_preserved",true},{"active_edit_modified",false},{"time_domain","session samples at 48000 Hz"}};
+}
 }
 struct MasterAnalysis::Job {
     std::unique_ptr<te::Edit> snapshot;
@@ -155,15 +200,16 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
         }else{require(!args.contains("clip_id")&&!args.contains("base_revision"),"Master location does not take source mapping fields");owner.seek(event["start_samples"]);}
         return {{"state","located"},{"event",event},{"artifact_id",receipt["artifact_id"]}};
     }
-    require(command=="master"||command=="delivery"||command=="source","unknown analysis control");if(command=="source")fields(args,{"session_token","base_revision","clip","source_start_frame","source_end_frame","request_key","profile"});else if(command=="delivery")fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","profile"});else fields(args,{"session_token","base_revision","start_samples","end_samples","request_key"});
+    require(command=="master"||command=="delivery"||command=="source"||command=="track","unknown analysis control");if(command=="source")fields(args,{"session_token","base_revision","clip","source_start_frame","source_end_frame","request_key","profile"});else if(command=="track")fields(args,{"session_token","base_revision","track","tap_point","start_samples","end_samples","request_key"});else if(command=="delivery")fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","profile"});else fields(args,{"session_token","base_revision","start_samples","end_samples","request_key"});
     require(args.at("session_token")==owner.sessionToken()&&integer(args.at("base_revision"))==int64_t(owner.revision),"analysis version conflict");
     require(args.at("request_key").is_string()&&!args["request_key"].get<std::string>().empty()&&args["request_key"].get<std::string>().size()<=128,"analysis request_key required, maximum 128 bytes");
-    const bool raw=command=="source";Json sourceFacts=nullptr;te::WaveAudioClip* sourceClip=nullptr;
+    const bool raw=command=="source",trackTap=command=="track";Json sourceFacts=nullptr;te::WaveAudioClip* sourceClip=nullptr;std::string tapPoint="master",trackID;
+    if(trackTap){require(args.at("track").is_string()&&args.at("tap_point").is_string(),"track tap requires actual track ID and registered tap_point");trackID=args.at("track");tapPoint=args.at("tap_point");require(owner.track(trackID),"analysis audio/instrument/Aux track not found");require(tapPoint=="track_pre_inserts"||tapPoint=="track_post_inserts"||tapPoint=="bus","unsupported track tap_point");}
     const auto start=integer(args.at(raw?"source_start_frame":"start_samples")),end=integer(args.at(raw?"source_end_frame":"end_samples"));
     if(raw){require(args.at("clip").is_string(),"source clip ID required");sourceClip=owner.audioClip(args["clip"]);require(sourceClip!=nullptr,"source audio clip not found");sourceFacts=owner.audioClipQuery(*sourceClip);const double rate=sourceFacts["source_sample_rate"];require(rate>=8000&&rate<=192000&&end>start&&end<=sourceFacts["source_frames"].get<int64_t>()&&end-start<=rate*300,"source range outside media or 300 second budget");}
     else require(end>start&&end-start<=300*48000&&end<=std::llround(te::Edit::maximumLength*48000),"analysis range must be positive and at most 300 seconds");
     const auto profile=raw?analysis::sourceProfile(args.value("profile",Json::object())):command=="delivery"?delivery::normaliseProfile(args.value("profile",Json::object())):Json(nullptr);
-    const auto intent=Json{{"session_token",owner.sessionToken()},{"revision",owner.revision},{"begin",start},{"end",end},{"clip",raw?args.at("clip"):Json(nullptr)},{"purpose",command},{"profile",profile}}.dump();
+    const auto intent=Json{{"session_token",owner.sessionToken()},{"revision",owner.revision},{"begin",start},{"end",end},{"clip",raw?args.at("clip"):Json(nullptr)},{"track",trackTap?Json(trackID):Json(nullptr)},{"tap_point",trackTap?Json(tapPoint):Json(nullptr)},{"purpose",command},{"profile",profile}}.dump();
     const auto intentHash=juce::SHA256(intent.data(),intent.size()).toHexString().toStdString();
     if(job){require(job->actor==actor&&job->binding["request_key"]==args["request_key"]&&job->binding["request_fingerprint"]==intentHash,"one analysis job is already running or retry differs from its original intent");return status();}
     if(receipt.is_object()&&receipt["binding"]["request_key"]==args["request_key"]){require(receipt["binding"]["actor"]==actor&&receipt["binding"]["revision"]==owner.revision&&receipt["binding"]["request_fingerprint"]==intentHash,"analysis key reused with different intent");return status();}
@@ -178,17 +224,18 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
     owner.captureNativeStates();require(!owner.nativeStates||(!owner.nativeStates->query()["pending"].get<bool>()&&owner.nativeStates->query()["failure"].is_null()),"resolve native plugin state before analysis");owner.validateExternalRuntime();
     auto captured=owner.recoverySnapshot();
     auto work=std::make_unique<Job>();work->actor=actor;
-    work->binding={{"artifact_id",juce::Uuid().toString().toStdString()},{"request_key",args["request_key"]},{"actor",actor},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"purpose",command},{"request_fingerprint",intentHash},{"delivery_profile",profile},{"tap_point","master"},{"object_id","master"},{"start_samples",start},{"end_samples",end},{"timeline_sample_rate",48000},{"processing_chain_hash",chainHash()},{"created_utc",juce::Time::getCurrentTime().toISO8601(true).toStdString()}};
+    work->binding={{"artifact_id",juce::Uuid().toString().toStdString()},{"request_key",args["request_key"]},{"actor",actor},{"session_token",owner.sessionToken()},{"revision",owner.revision},{"purpose",command},{"request_fingerprint",intentHash},{"delivery_profile",profile},{"tap_point",tapPoint},{"object_id",trackTap?trackID:"master"},{"start_samples",start},{"end_samples",end},{"timeline_sample_rate",48000},{"processing_chain_hash",chainHash()},{"chain_hash_scope","entire committed Edit; curve-driven VolumeAndPan display values normalized; conservative invalidation"},{"created_utc",juce::Time::getCurrentTime().toISO8601(true).toStdString()}};
     work->sources=Json::array();
     for(auto* track:te::getAudioTracks(*owner.edit))for(auto* clip:track->getClips())if(auto* audio=dynamic_cast<te::WaveAudioClip*>(clip)){auto facts=owner.audioClipQuery(*audio);const std::string path=facts.at("path");const juce::File file(juce::String{path});require(file.existsAsFile(),"analysis source media missing");work->sources.push_back({{"clip_id",clip->itemID.toString().toStdString()},{"track_id",track->itemID.toString().toStdString()},{"path",path},{"bytes",file.getSize()},{"modified_ms",file.getLastModificationTime().toMilliseconds()}});}
     require(work->sources.size()<=4096,"analysis source count exceeds current 4096-clip budget");
     const auto editFile=owner.edit->editFileRetriever?owner.edit->editFileRetriever():juce::File{};
     te::Edit::Options options{owner.engine,std::move(captured.first),owner.edit->getProjectItemRef()};options.role=te::Edit::forRendering;options.numAudioTracks=0;options.editFileRetriever=[editFile]{return editFile;};
     work->snapshot=te::Edit::createEdit(std::move(options));require(work->snapshot!=nullptr,"analysis snapshot creation failed");
+    if(trackTap){work->binding["tap_configuration"]=prepareTrackTap(*work->snapshot,trackID,tapPoint);const auto descriptor=work->binding["tap_configuration"].dump();work->binding["tap_configuration_sha256"]=juce::SHA256(descriptor.data(),descriptor.size()).toHexString().toStdString();}
     work->directory=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("forma-analysis",{},false);require(work->directory.createDirectory().wasOk(),"analysis temporary storage unavailable");work->pcm=work->directory.getChildFile("master-float.wav");
     work->renderStatus=std::make_unique<te::Edit::ScopedRenderStatus>(*work->snapshot,false);
-    te::Renderer::Parameters p(*work->snapshot);p.destFile=work->pcm;p.audioFormat=&work->wav;p.bitDepth=32;p.sampleRateForAudio=48000;p.canRenderInMono=false;p.useMasterPlugins=true;p.tracksToDo=te::toBitSet(te::getAllTracks(*work->snapshot));p.time={tracktion::TimePosition::fromSeconds(start/48000.),tracktion::TimePosition::fromSeconds(end/48000.)};
-    work->task=std::make_unique<te::Renderer::RenderTask>("Forma Master analysis",p,&work->progress,nullptr);auto* flag=work.get();work->task->setCancellationCheck([flag]{return flag->cancel.load()||flag->expired();});
+    te::Renderer::Parameters p(*work->snapshot);p.destFile=work->pcm;p.audioFormat=&work->wav;p.bitDepth=32;p.sampleRateForAudio=48000;p.canRenderInMono=false;p.useMasterPlugins=!trackTap;p.tracksToDo=te::toBitSet(te::getAllTracks(*work->snapshot));p.time={tracktion::TimePosition::fromSeconds(start/48000.),tracktion::TimePosition::fromSeconds(end/48000.)};
+    work->task=std::make_unique<te::Renderer::RenderTask>(trackTap?"Forma track tap analysis":"Forma Master analysis",p,&work->progress,nullptr);auto* flag=work.get();work->task->setCancellationCheck([flag]{return flag->cancel.load()||flag->expired();});
     receipt=nullptr;job=std::move(work);job->launch();phase="hashing";return status();
 }
 Json Commands::analysisControl(const std::string& cmd,const Json& args,const std::string& actor){checkThread();if(!masterAnalysis)masterAnalysis=std::make_unique<MasterAnalysis>(*this);return masterAnalysis->control(cmd,args,actor);}
@@ -201,6 +248,8 @@ void Commands::registerAnalysisCommands(Json& registry){
     registry.back()["test"]="M3-DELIVERY-01";
     add("analysis.source","analyze_source_clip","analysis_source","Decode an actual audio clip's original local media without clip FX/gain, track inserts or Master processing. Positions are native source-file frames, NOT session samples. Measure raw PCM and detect contiguous low-level intervals and estimated short-time energy-rise candidates. These are not breath or performance-quality judgements. Poll query_analysis for actual evidence and CURRENT clip mappings; move/trim/split do not shift the stored source frames. Loop/auto-tempo/warp/reverse mappings are explicitly unavailable. Maximum 300 seconds; no arbitrary path or upload.",{{"session_token",string},{"base_revision",integer},{"clip",string},{"source_start_frame",integer},{"source_end_frame",integer},{"request_key",string},{"profile",analysis::sourceProfileSchema()}},Json::array({"session_token","base_revision","clip","source_start_frame","source_end_frame","request_key"}));
     registry.back()["test"]="M3-SOURCE-01";
+    add("analysis.track","analyze_track","analysis_track","Asynchronously measure a real audio/instrument/Aux track boundary through native Tracktion sends in a render-only snapshot. track_pre_inserts is after clip FX/input sum and instruments/Aux returns but before track effects/fader; track_post_inserts is after effects before VolumeAndPan; bus is the end of the track chain, including fader/pan. Preserve upstream routes, sends, sidechains and original mute/solo semantics; exclude Master and other direct outputs. Half-open session samples at 48 kHz, maximum 300 seconds; actual track ID required. One worker, no upload or active-Edit change. Poll query_analysis; processing revisions invalidate evidence.",{{"session_token",string},{"base_revision",integer},{"track",string},{"tap_point",{{"type","string"},{"enum",{"track_pre_inserts","track_post_inserts","bus"}}}},{"start_samples",integer},{"end_samples",integer},{"request_key",string}},Json::array({"session_token","base_revision","track","tap_point","start_samples","end_samples","request_key"}));
+    registry.back()["test"]="M3-TAP-01";
     add("analysis.status","query_analysis","analysis_status","Read actual analysis progress, provenance and bounded events. Raw source artifacts retain native file frames across move/trim/split and gain/insert edits, with CURRENT mapping_revision and clip views; Master artifacts invalidate on processing changes. current=false means stale or transport is playing; never use stale events for an edit. Source pending progress is unavailable, not a fabricated percentage. Full-scale exceedance is clipping risk, not proof of original damage.",Json::object(),Json::array());
     add("analysis.cancel","cancel_analysis","analysis_cancel","Cancel your own pending analysis by actual artifact_id. Await the terminal cancelled receipt; cancellation cannot make an analysis successful.",{{"artifact_id",string}},Json::array({"artifact_id"}));
 }

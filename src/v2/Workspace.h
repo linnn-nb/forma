@@ -407,7 +407,7 @@ public:
     void chooseExport(bool selection){invoke([&]{const auto request=commands.exportRequest(selection);choose(true,[this,request](const juce::File& f){invoke([&]{auto r=commands.renderRequest(f,request);message(text("已生成并校验 WAV · ")+juce::String(r["frames"].get<int64_t>())+text(" 帧 · ")+(r["lufs_i"].is_number()?juce::String(r["lufs_i"].get<double>(),2):text("静音"))+" LUFS-I");});},"*.wav");});}
     void showAnalysis(){invoke([&]{
         if(!analysisPanel){analysisPanel=std::make_unique<AnalysisPanel>([this](const auto& method,const auto& args){auto result=commands.analysisControl(method,args);if(method=="locate"){mix=false;pianoMode=false;refresh();}return result;},[this]{analysisPanel->setVisible(false);grabKeyboardFocus();});addChildComponent(*analysisPanel);}
-        auto context=commands.query();context["analysis_selected_clip"]=selectedClip;analysisPanel->bind(context,commands.analysisStatus());analysisPanel->setBounds(getLocalBounds());analysisPanel->setVisible(true);analysisPanel->toFront(true);
+        auto context=commands.query();context["analysis_selected_clip"]=selectedClip;context["analysis_selected_track"]=selected;analysisPanel->bind(context,commands.analysisStatus());analysisPanel->setBounds(getLocalBounds());analysisPanel->setVisible(true);analysisPanel->toFront(true);
     });}
     Json queryAnalysis(){return commands.analysisStatus();}
     void showTimelineRange(){invoke([&]{

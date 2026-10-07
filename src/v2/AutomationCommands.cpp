@@ -1,6 +1,15 @@
 #include <nativedaw/v2/EngineCommands.h>
 namespace ndaw::v2 {
 namespace {
+// Native curve readback can asynchronously replace a plugin's attached display
+// value. Keep the explicit base at the transaction boundary so removing the
+// curve with Undo cannot leave that last sampled automation value as the base.
+struct CurveBaseAction final:juce::UndoableAction {
+    explicit CurveBaseAction(te::AutomatableParameter& parameter):edit(parameter.getEdit()),owner(parameter.getOwnerID()),id(parameter.paramID),base(parameter.getCurrentExplicitValue()){}
+    bool perform()override{return restore();}bool undo()override{return restore();}int getSizeInUnits()override{return 1;}
+    bool restore(){if(auto plugin=edit.getPluginCache().getPluginFor(owner))if(auto parameter=plugin->getAutomatableParameterByID(id)){parameter->updateStream();parameter->setParameter(base,juce::dontSendNotification);return true;}return false;}
+    te::Edit& edit;te::EditItemID owner;juce::String id;float base;
+};
 void require(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
 std::string laneID(te::AutomatableParameter& p){return p.getOwnerID().toString().toStdString()+"::"+p.paramID.toStdString();}
 bool fader(te::AutomatableParameter& p){return (dynamic_cast<te::VolumeAndPanPlugin*>(p.getPlugin())&&p.paramID.contains("volume")) || dynamic_cast<te::VCAPlugin*>(p.getPlugin());}
@@ -93,6 +102,7 @@ void Commands::validateAutomationPlan(const Json& operations) const {
 void Commands::executeAutomationOperation(const std::string& cmd,const Json& args,Json& objects) {
     auto* t=domainTrack(args.at("track"));require(t!=nullptr,"automation target disappeared");if(cmd=="automation.mode"){t->automationMode=*te::automationModeFromString(juce::String(args.at("mode").get<std::string>()));return;}
     auto* a=automationParameter(args.at("track"),args.at("parameter"));require(a!=nullptr,"automation parameter disappeared");auto& curve=a->getCurve();auto* um=&edit->getUndoManager();
+    require(um->perform(new CurveBaseAction(*a)),"automation base transaction preparation failed");
     // Curves drive the wrapped native DSP independently of its explicit base.
     // Restore that base after curve Undo, including when the last point disappears.
     if(dynamic_cast<te::ExternalPlugin*>(a->getPlugin()))setParameterValue(*a->getPlugin(),*a,a->getCurrentExplicitValue());
