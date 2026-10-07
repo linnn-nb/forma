@@ -1,5 +1,15 @@
 # 验证状态
 
+## M1-PAN-01
+
+结论：源码 efdb8ba 完整 Release 构建与 51/51 CTest 通过（327.47 秒），18f3c52 增加实际声像与 Pan Law。PanTests / PanWorkspaceTests 专项为 95 /28 项；固定 3 秒、48 kHz、24-bit、单/双声道与 3e-6 稳态 PCM 容差，24 次真实渲染。Read、Touch、Latch、Write 原生设备录写、返回/保持声音、整段 Undo/Redo、稳定曲线 ID、权限、旧版本与删除目标均通过。混合工程含 EQ、压缩、纯湿 Reverb Aux、Post 发送、声像曲线与可编辑 FourOsc MIDI；原输出保留、保存重开、MIDI 静音后的确定性 PCM 一致。预算没有降低；合成器未声明音频逐位一致。
+
+生产桌面：Edit 将 instrument 2 改 L50，Mix 同步；选择中心 −3 dB 后两次 Undo 恢复 C/Linear。Codex 经生产 MCP 读取真实 ID，在 r24 规划两操作，GUI 接受后 r25 为 R50/中心 −3 dB；一次 GUI Undo r26 同时恢复，query_plan 实际为 undone。注册表生成的 plan.track.pan 对 .004 请求显示实际吸附 0，未提交。Redo 后另存 M1-pan-candidate.tracktionedit，重开 r28 后真实查询仍是 .5/center_3db、2 轨/2 片段、原输出和选区 [408000,576000)；新 token、只读权限、空 Undo/Redo。之后恢复最初副本，C/Linear、r20、位置 485175、停止、只读，原工程不覆盖。
+
+原生选区导出与独立解码：168000 帧、48 kHz、24-bit、2 ch，42165 个非零样本，Peak 0.09994769096、RMS 0.00848921932；左右 RMS 0.00459433286 /0.01109169937。独立 CLI libebur128 为 -33.88569 LUFS-I / -19.99523 dBTP，WAV SHA256 3806e34fe30cd17ca25f3df70aa07dd9d33e518f066c3452c6676d795a25bf64。证据在 evidence/M1/desktop-pan/；关键画面由桌面工具展示，未保存 PNG。本轮没有新增实时播放或麦克风实录/听感资格；GUI 再次显示麦克风尚未授权。
+
+初次专项暴露测试断言问题：JUCE slider 居中为约 2e-17；Read 离线末值与重开后的播放位置观察值不同。分别以 1e-10 GUI 数值和原定 3e-6 PCM 容差核验，持久 base/law/曲线单独严格核对，没有改音频容差。首轮全量为 50/51（359.11 秒），时间选区旧测试假定 15 ms 消息切片送达异步 click，改为等待实际回调且一秒上限；专项复测通过，完整 51 项在 efdb8ba 上重新运行并通过。首次两个 JUCE 测试编译类型/重载错误也保留原日志，修正后才构建运行。没有新增依赖、SDK 补丁或第二套引擎。最终日志 pan-build-full-final.log / pan-ctest-full-final.log，保留首轮失败和修复过程。应用 SHA256 af5133692923d9efc595ee98c8553820651ef789405584e739a83e2f01744e82。
+
 ## M1-REC-02
 
 结论：源码 d8d91db 完整 Release 构建通过，49/49 CTest 通过（326.57 秒）；录音就绪专项 43 项 /5.59 秒。两路 48 kHz /256 帧已知 PCM 的旧多轨测试和 RMS 3e-4、同步差 ≤256 帧标准未降低。新增检查覆盖全部待命轨、关闭监听/取消待命、缺失设备重开、原生 GUI Undo/Redo、MCP 摘要一致和省略阻塞计数。代码 RecordingCommands.cpp /RecordingPanel.h /Workspace.h /QueryCommands.cpp；测试 RecordingReadinessTests.cpp 和既有录音/MIDI专项。
@@ -20,6 +30,7 @@
 | M1：Edit/Mix、轨道/路由、内置处理器、自动化、录音、MIDI、旧工程导入、AU/VST3 | 各 L1 Commands、Workspace；tests/v2 的 M1 套件；M1 历史记录 | 部分实现与专项已验证；实体设备、全工作流与可靠性缺口保留 |
 | M1：停止状态自动恢复副本、人工确认/取消、写入故障与冲突 | SessionRecovery / RecoveryStore / RecoveryPanel / Workspace；SessionRecoveryTests、RecoveryWorkspaceTests | 自动化与本机桌面保存/恢复、权限撤回和 PCM 一致已验证；活动录音、WAL、间隔内未写入、持久 Undo 未资格 |
 | M1：独立新建工程、旧 Plan 会话隔离 | SessionRecovery / NewSessionPanel / Workspace / EngineCommands / QueryCommands；NewSessionTests 34 项；M1-NEW-01 | 自动化与实际桌面已验证；先校验备份再换 Edit，不是可撤销的工程编辑 |
+| M1：声像与实际 Pan Law、真实四模式曲线、混合 FX/Aux/MIDI 制作 | PanCommands / Workspace / QueryCommands；PanTests 95 项、PanWorkspaceTests 28 项；M1-PAN-01 | 自动化与正式桌面/MCP 提交、整笔撤销、保存重开和选区 WAV 已验证；发送声像、立体声双旋钮、MIDI CC10、实体控制器与听感未资格 |
 | M1：精确定位、持久时间选区、版本绑定区间导出 | TimelineCommands / TimelineState / TimelinePanel / Workspace；TimelineTests 54 项；M1-RANGE-01 | 自动化和本机桌面已验证；真实 Master WAV，范围外尾音不自动扩展；同步渲染响应性与取消未改造 |
 | M2：stdio/socket 查询与注册表生成的工具 | McpStdio / Gateway / Session；McpTests | 自动化已验证；当前固定协议版本与 macOS 平台 |
 | M2：规划、权限、GUI 确认、提交、取消及真实历史 | CommandQueue / EngineCommands / Workspace；McpTests、McpWorkspaceTests；M2-DESKTOP-01 | 自动化及 Codex 外部模型、实际桌面确认和一次 Undo 已实测 |
@@ -28,7 +39,7 @@
 | M4–M6：扩展、ACE-Step、专业工作流迁移 | 见架构里程碑；v1 行为规格保留 | 尚未完成，不移出范围 |
 | Windows、视频、环绕声、发行、耐久与全实时约束 | 依赖与阻塞文档 | 后续正式范围，未验证 |
 
-## M1-RANGE-01（最新）
+## M1-RANGE-01（此前）
 
 源码 985ff8f 完整构建、48/48 CTest 通过，324.53 秒。日志 range-build-validation.log / range-ctest-full.log；专项 54 项、2.83 秒。预先固定 2 秒双声道信号、非零起点、10 秒渲染预算与 PCM 容差 2e-5，未改变负载：24013–71971 导出 47958 帧、483.77 ms，逐样本最大误差 0；24000–72000 导出 48000 帧、482.40 ms。真实格式、LUFS-I/True Peak、有序 Plan、Undo/Redo、Tempo 后范围、过期请求、跨会话、权限、整数溢出、损坏保存字段、文件冲突与生产 GUI/MCP 回调均通过。
 

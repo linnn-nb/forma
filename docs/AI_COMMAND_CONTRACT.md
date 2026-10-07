@@ -16,6 +16,8 @@ human 可执行普通编辑；agent:/extension: 使用受信任的本地授权�
 
 ## 已实现的 M1 增量
 
+`track.pan(track,value)` 用原生 setter 与 UndoableAction 设置 -1…+1 的音频 Pan/Balance；[-0.005,0.005] 原生吸附零。`track.pan_law(track,law)` 只在停止时写入六种实际 SDK 设置。预览的 `pan_changes` 按操作顺序给出 before/after、setting/effective law 和 requested_value，不虚构 MIDI CC10 或立体声旋转。查询的 `base_pan` 为显式值，`pan` 为当前观察值；曲线的 Read 播放禁止静态覆盖，Touch/Latch/Write 经既有 gesture 捕获。GUI Edit/Mix 与 MCP 自动生成的 `plan.track.pan` 共用注册表与事务，新命令不扩大自动执行白名单。Folder/VCA 无声像；范围、删除引用、版本、权限、保存恢复和真实 PCM 见 PAN_WORKFLOW.md / PanTests / PanWorkspaceTests，M1-PAN-01。
+
 录音就绪快照 `recording_readiness` 同时由完整查询和 MCP 摘要返回，检查所有待命轨；最多列出 8 项阻塞和 256 字符轨名，`blockers_total` / `name_truncated` 明确省略，原始对象仍可分页查询。`ready` 只代表当前前置条件；目录/空间在开始时检查，实际捕获/写盘由独立回执确认。输入查询区分 `availability_reason`、请求的 armed/monitor 与实际 monitoring/recording。不可用输入允许 `track.arm(false)` / `track.monitor(off)`，开启监听必须重新核验可用设备。500 ms 处理帧停滞由 message-thread 20 Hz 检查，停止并保留 failed 部分媒体回执；不是实时 deadline 保证。测试 M1-REC-02、边界见 RECORDING_READINESS.md。
 
 track.mute / track.solo / track.solo_safe 使用 SDK setter 与 UndoableAction，支持播放中切换。plugin.insert / parameter / bypass / remove 操作真实 EQ、压缩、混响、延迟；参数只来自 query 中实例的实际参数 ID、范围和格式化值，不支持虚构参数。Delay 的时间是 SDK 非自动化属性，以 plugin.delay_time（1–2000 ms）独立控制。
