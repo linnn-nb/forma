@@ -315,7 +315,7 @@ public:
             [this](double beat){return commands.sampleAtBeat(beat);},[this](int64_t start,int64_t end,double snap){return commands.musicalGrid(start,end,snap);},
             [this](const auto& cmd,Json args,uint64_t revision){prepareMidiTransform(cmd,args,revision);}) {
         commandClient=commandQueue.connect("agent:command-file",commandScope);
-        commandButton.setComponentID("command.menu");commandButton.onClick=[this]{getMenuForIndex(3,{}).showMenuAsync(juce::PopupMenu::Options().withTargetComponent(commandButton),[safe=juce::Component::SafePointer<Workspace>(this)](int id){if(safe&&id)safe->menuItemSelected(id,3);});};
+        commandButton.setComponentID("command.menu");commandButton.onClick=[this]{getMenuForIndex(3,{}).showMenuAsync(juce::PopupMenu::Options().withTargetComponent(commandButton).withParentComponent(this),[safe=juce::Component::SafePointer<Workspace>(this)](int id){if(safe&&id)safe->menuItemSelected(id,3);});};
         setLookAndFeel(&theme);setWantsKeyboardFocus(true);clipPanel.onClose=[this]{selectedClip.clear();refresh();};clipPanel.onError=[this](auto error){message(text("未执行：")+text(error));};
         piano.onError=[this](const auto& error){message(text("未执行：")+text(error));};
         for(auto* c:std::initializer_list<juce::Component*>{&menu,&editView,&mixView,&newTrack,&importButton,&openButton,&saveButton,&exportButton,&editButton,&mixButton,&returnButton,&stopButton,&playButton,&undoButton,&redoButton,&counter,&device,&status,&pluginType,&insertButton,&pluginChoice,&bypassButton,&editorButton,&removeButton,&stateStatus,&stateRetryButton,&stateRestoreButton,&programIndex,&programButton,&parameterView,&previewText,&acceptButton,&rejectButton,&routingView,&insertTab,&routingTab,&groupTab,&groupView,&autoTab,&autoView,&recordView,&recordTab,&recordButton,&piano,&pianoButton,&trackType,&bpm,&meter,&applyMusic,&musicPosition,&clipPanel,&commandButton,&audioSettingsButton})addAndMakeVisible(c);
@@ -489,7 +489,7 @@ public:
     }
     juce::StringArray getMenuBarNames() override {return {text("文件"),text("编辑"),text("视图"),text("命令")};}
     juce::PopupMenu getMenuForIndex(int index,const juce::String&) override {
-        juce::PopupMenu p;if(index==0){p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
+        juce::PopupMenu p;p.setLookAndFeel(&theme);if(index==0){p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
         if(index==1){p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
         if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));}
         if(index==3){p.addItem(26,text("从本地 JSON 请求编辑…"),!commandFileBusy&&pending.is_null());p.addSeparator();p.addItem(21,text("只读分析"),true,commandScope.mode==Permission::ReadOnly);p.addItem(22,text("先预览再提交"),true,commandScope.mode==Permission::Preview);
