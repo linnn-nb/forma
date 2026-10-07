@@ -1,6 +1,6 @@
 # 验证状态
 
-结论：M0 通过；完整 M1 制作、实体麦克风和外部 MIDI 控制器仍待验收。2026-10-07，新建工程源码 `2a30534` 完整 Release 构建及 47/47 回归通过（332.74 秒）；实际桌面完成独立新建、屏幕键盘实录、整段 Undo/Redo、保存重开、CoreAudio 回放和真实 WAV。键盘显示修复 `760fc9e` 构建及相关 4/4 通过（15.94 秒）；录音状态修复 `644a978` 构建及相关 4/4 通过（16.04 秒），桌面空 MIDI 捕获如实显示未收到事件。指定 M2 外部 Agent 演示和停止状态恢复副本已有实测；没有将专项结果称为完整产品或主观音质验收。
+结论：M0 通过；完整 M1 制作、实体麦克风和外部 MIDI 控制器仍待验收。2026-10-07，最新源码 985ff8f 完整 Release 构建与 48/48 回归通过（324.53 秒）；时间选区专项 54 项，桌面定位、Undo/Redo、真实选区 WAV 与保存重开已验证。既有新建、MIDI、插件、自动化、设备与网关套件一并重跑；指定 M2 外部 Agent 演示和停止状态恢复副本已有实测。未宣称完整产品、实体录音或主观音质验收。
 
 本仓库分发源码；本机 `evidence/`、媒体和构建产物不公开。下列测试结果是本机记录，不自动赋予其他机器资格。M1 详细历史保存在 [VERIFICATION_v2_M1](history/VERIFICATION_v2_M1.md)，旧 v1 见 history/VERIFICATION_v1.md。
 
@@ -10,6 +10,7 @@
 | M1：Edit/Mix、轨道/路由、内置处理器、自动化、录音、MIDI、旧工程导入、AU/VST3 | 各 L1 Commands、Workspace；tests/v2 的 M1 套件；M1 历史记录 | 部分实现与专项已验证；实体设备、全工作流与可靠性缺口保留 |
 | M1：停止状态自动恢复副本、人工确认/取消、写入故障与冲突 | SessionRecovery / RecoveryStore / RecoveryPanel / Workspace；SessionRecoveryTests、RecoveryWorkspaceTests | 自动化与本机桌面保存/恢复、权限撤回和 PCM 一致已验证；活动录音、WAL、间隔内未写入、持久 Undo 未资格 |
 | M1：独立新建工程、旧 Plan 会话隔离 | SessionRecovery / NewSessionPanel / Workspace / EngineCommands / QueryCommands；NewSessionTests 34 项；M1-NEW-01 | 自动化与实际桌面已验证；先校验备份再换 Edit，不是可撤销的工程编辑 |
+| M1：精确定位、持久时间选区、版本绑定区间导出 | TimelineCommands / TimelineState / TimelinePanel / Workspace；TimelineTests 54 项；M1-RANGE-01 | 自动化和本机桌面已验证；真实 Master WAV，范围外尾音不自动扩展；同步渲染响应性与取消未改造 |
 | M2：stdio/socket 查询与注册表生成的工具 | McpStdio / Gateway / Session；McpTests | 自动化已验证；当前固定协议版本与 macOS 平台 |
 | M2：规划、权限、GUI 确认、提交、取消及真实历史 | CommandQueue / EngineCommands / Workspace；McpTests、McpWorkspaceTests；M2-DESKTOP-01 | 自动化及 Codex 外部模型、实际桌面确认和一次 Undo 已实测 |
 | M2：声音与非破坏性结果 | McpWorkspaceTests；M2-DESKTOP-01 实际 48 kHz/24-bit/2 ch WAV、655852 帧、CoreAudio 播放、Undo PCM 比较 | 已知信号和合成语音的真实结果已验证；主观音质、演唱表演或真实麦克风录音未评定 |
@@ -17,7 +18,15 @@
 | M4–M6：扩展、ACE-Step、专业工作流迁移 | 见架构里程碑；v1 行为规格保留 | 尚未完成，不移出范围 |
 | Windows、视频、环绕声、发行、耐久与全实时约束 | 依赖与阻塞文档 | 后续正式范围，未验证 |
 
-## M1-NEW-01
+## M1-RANGE-01（最新）
+
+源码 985ff8f 完整构建、48/48 CTest 通过，324.53 秒。日志 range-build-validation.log / range-ctest-full.log；专项 54 项、2.83 秒。预先固定 2 秒双声道信号、非零起点、10 秒渲染预算与 PCM 容差 2e-5，未改变负载：24013–71971 导出 47958 帧、483.77 ms，逐样本最大误差 0；24000–72000 导出 48000 帧、482.40 ms。真实格式、LUFS-I/True Peak、有序 Plan、Undo/Redo、Tempo 后范围、过期请求、跨会话、权限、整数溢出、损坏保存字段、文件冲突与生产 GUI/MCP 回调均通过。
+
+桌面打开已有真实键盘 MIDI/FourOsc 工程，设置 [408000,576000)、定位到 408000（8.5 秒）。一次 GUI Undo 后生产 MCP 查询 time_selection=null；Redo 恢复完全相同的范围。原生选区导出实际 168000 帧 / 3.5 秒 / 48 kHz / 24-bit / 2 ch WAV，独立 Python PCM 解码 42168 个非零样本，Peak 0.1088478565、RMS 0.0120057022；libebur128 -30.8753 LUFS-I / -19.2516 dBTP。FourOsc 未宣称音频逐位一致。原生另存并重开后 MCP 实际查询仍是上述范围，2 轨道/2 片段、r19、停止、只读权限；重开后历史不可撤销，未伪称持久 Undo。桌面输入在工具提示用户改变应用后结束，保留用户当前播放位置。
+
+产物和实际回执在本机 evidence/M1/desktop-time-selection-985ff8f/，关键截图在本轮桌面工具回执中，未伪称已保存截图文件。应用二进制 SHA256：6eb3952ed683a1bd9d25af00f5ed565f3c755bf37e41dbf8d01eb0249cd173a8。没有新增依赖或 SDK 补丁；物理麦克风、外部 MIDI 控制器、监听 RTT、长时耐久与完整 M1 / M3–M6 保留为未完成。
+
+## M1-NEW-01（此前）
 
 源码 `2a30534` 完整 Release 构建、47/47 CTest 通过（332.74 秒）。新建测试 34 项、4.83 秒，固定 32 轨道含音频/MIDI/EQ/Aux/send/自动化及 96 BPM/3/4；未降低负载。message-thread 捕获 2.129 ms，3 秒/48 kHz/双声道的两次实际渲染 529.063 / 527.780 ms。预算在实施前写入 NEW_SESSION_WORKFLOW.md：捕获 <1 秒、普通后台作业 <5 秒、实际渲染 <10 秒、专项 <60 秒。
 

@@ -41,3 +41,7 @@
 已接通：实际 SDK Program 数量/索引/名称查询，检查器切换，经 plugin.program Plan 提交并撤销；插件自身改变 Program 时由 L1 捕获 opaque 快照和 human 事务，旧 Plan 失效。播放期间只标记待捕获，不读取原始状态。状态读取失败阻止后续规划、保存、导出与 Undo/Redo；可明确重试或恢复已知快照，恢复形成明确的人工历史屏障，不伪称能撤销丢失的未知状态；多个插件错误各自保留，逐个恢复。Program 索引不代表已接入插件的私有预设浏览器。
 
 代码：NativePluginStates.cpp、MixCommands.cpp、ParameterCommands.cpp、EngineCommands.cpp、Workspace.h；自动化：PrivateStateTests.cpp、ExternalWorkspaceTests.cpp；实际资格与未验收边界见 VERIFICATION.md。实际非参数通知有接收实现，但本机资格尚未覆盖会发出该通知的真实私有预设操作。未报告、同索引私有预设和动态参数重排继续未验证。
+
+## 时间选区与精确定位（M1-RANGE-01）
+
+原生「编辑 / 定位与时间选区…」和顶部入口支持工程采样/秒输入；同一 L1 Plan 保存范围并可撤销，重开恢复。范围显示在 Edit 时间线，精确定位使用原生 Transport。选区 WAV 与全工程 WAV 分别操作，文件对话框绑定版本，成功状态依赖真实文件与 PCM 格式/帧数/测量回执。实现和边界见 TIME_SELECTION_WORKFLOW.md，验证见 VERIFICATION.md。不代表循环/Punch 或 M3 多 tap 事件分析已经完成。

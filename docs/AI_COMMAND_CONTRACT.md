@@ -260,3 +260,11 @@ restore 参数 id（32 位小写十六进制）、sha256、base_revision、sessi
 ## 新建独立工程（M1-NEW-01）
 
 session.new 属于 human/local_gui 控制，参数 name（1–128 UTF-8 字节，无控制字符）、base_revision 与 session_token。本地预览确认后撤回 Agent 写权限，先保存当前停止工程的校验恢复副本，后台回执成功且会话/版本未改变才在 message thread 建立独立空白 Edit。取消、磁盘失败和期间人工编辑保留当前工程；完成回执包含 previous_session_backup、实际新 token/revision，audio_verified=false。新会话的 Undo/Redo 与执行回执清空，旧恢复标记不冒充当前成功。名称存入 NATIVEDAW/session_name，query.summary 可读。创建本身不是编辑 Undo；可通过保留副本恢复。不会覆盖媒体/旧文件；硬件设置保留，媒体不复制，名称不是文件路径。见 NEW_SESSION_WORKFLOW.md。
+
+## 工程时间选区与绑定导出（M1-RANGE-01）
+
+session.range.set 参数 start_samples/end_samples（整数），session.range.clear 无参数。time_selection 与对象选择 selection.track/clip 分离，属于 Edit NATIVEDAW 状态，采用 [start,end) 和 48000 Hz 工程基准，上限是 Tracktion maximumLength 的 48 小时，无选区为 null。time_selection_changes 包含有序 operation_index 和 before/after；一笔 Plan 一次 Undo。Tempo 变化不移动范围。保存字段的格式、完整性和越界在替换 Edit 前校验，损坏文件保留当前工程。
+
+MCP 由注册表生成 plan.session.range.set/clear，沿用 actor、版本、幂等和 GUI 确认。它是全局操作；有界轨道/时间权限暂时拒绝，未加入自动低风险白名单。
+
+本地 exportRequest(selection) 捕获 mode、session_token、base_revision、start_samples、end_samples。文件对话框返回后 renderRequest 对比完整绑定；范围、任意人工编辑或切换工程使旧请求失效。要求停止播放、录音和参数手势。真实 Master 渲染按帧数校验并测量，回执包含 range、文件哈希、格式、响度和 audio_verified。文件副作用不进入 Undo；已有路径不能覆盖。常规按钮导出完整工程，选区面板导出指定范围，不自动追加尾音。详见 TIME_SELECTION_WORKFLOW.md。
