@@ -24,6 +24,7 @@ public:
     static constexpr size_t maximumQueryPageBytes=256*1024;
     static Json registry();
     static Json processorCatalog();
+    static Json panLawCatalog();
     Json refreshPluginInventory(const juce::File& directory=juce::File{});
     Json pluginInventory()const;
     Json makePlan(const std::string& actor, Json operations) const;
@@ -90,6 +91,10 @@ private:
     te::AudioTrack* track(const std::string&) const;
     te::Track* domainTrack(const std::string&) const;
     static void registerHierarchyCommands(Json&);
+    static void registerPanCommands(Json&);
+    Json panQuery(te::AudioTrack&) const;
+    Json validatePanPlan(const Json&) const;
+    void executePanOperation(const std::string&,const Json&);
     Json hierarchyQuery(te::Track&) const;
     Json validateHierarchyPlan(const Json&) const;
     void executeHierarchyOperation(const std::string&,const Json&);

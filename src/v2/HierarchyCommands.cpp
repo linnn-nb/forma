@@ -40,14 +40,15 @@ Json Commands::hierarchyQuery(te::Track& t) const {
     Json facts={{"automation_mode",te::toString(t.automationMode.get()).toStdString()},{"parent",t.getParentTrack()?id(*t.getParentTrack()):"root"},{"depth",depth},{"children",members},{"edit_hidden",hidden},{"collapsed",bool(t.state.getProperty("ndaw_collapsed",false))}};
     int order=0;for(auto* sibling:te::getAllTracks(*edit))if(sibling!=&t&&sibling->getParentTrack()==t.getParentTrack()&&(dynamic_cast<te::AudioTrack*>(sibling)||dynamic_cast<te::FolderTrack*>(sibling))){if(sibling->state.getParent().indexOf(sibling->state)<t.state.getParent().indexOf(t.state))++order;}
     facts["order_index"]=order;facts["colour"]=t.getColour().isTransparent()?Json(nullptr):Json("#"+t.getColour().toDisplayString(false).toStdString());
-    if(auto* a=dynamic_cast<te::AudioTrack*>(&t)) {facts["gain_db"]=a->getVolumePlugin()->getVolumeDb();facts["base_gain_db"]=te::volumeFaderPositionToDB(a->getVolumePlugin()->volParam->getCurrentExplicitValue());facts["automation_volume_points"]=a->getVolumePlugin()->volParam->getCurve().getNumPoints();facts["capabilities"]={{"gain",true},{"audio_routing",true},{"clips",true},{"group",false}};return facts;}
+    if(auto* a=dynamic_cast<te::AudioTrack*>(&t)) {facts["gain_db"]=a->getVolumePlugin()->getVolumeDb();facts["base_gain_db"]=te::volumeFaderPositionToDB(a->getVolumePlugin()->volParam->getCurrentExplicitValue());facts["automation_volume_points"]=a->getVolumePlugin()->volParam->getCurve().getNumPoints();facts.update(panQuery(*a));facts["capabilities"]={{"gain",true},{"pan",true},{"audio_routing",true},{"clips",true},{"group",false}};return facts;}
     auto* f=dynamic_cast<te::FolderTrack*>(&t);require(f!=nullptr,"unsupported domain track");auto* v=f->getVCAPlugin();
     // Organisational folders contain no audio processor. VCA uses the SDK's real
     // parent-to-member fader linkage; it does not rewrite member parameters.
     facts.update(Json{{"id",id(t)},{"name",t.getName().toStdString()},{"type",v?"vca":"folder"},{"gain_db",v?Json(v->getVolumeDb()):Json(nullptr)},
         {"base_gain_db",v?Json(te::volumeFaderPositionToDB(v->volParam->getCurrentExplicitValue())):Json(nullptr)},{"automation_volume_points",v?v->volParam->getCurve().getNumPoints():0},{"pan_law",nullptr},{"mute",t.isMuted(false)},{"solo",t.isSolo(false)},{"solo_safe",t.isSoloIsolate(false)},{"audible",t.shouldBePlayed()},
         {"clips",Json::array()},{"plugins",Json::array()},{"sends",Json::array()},{"output",{{"kind","control"},{"target","none"},{"name",v?"VCA · member faders":"Folder · organisation"}}},
-        {"capabilities",{{"gain",v!=nullptr},{"audio_routing",false},{"clips",false},{"group",true}}}});
+        {"pan",nullptr},{"base_pan",nullptr},{"pan_law_setting",nullptr},{"pan_law_effective",nullptr},{"automation_pan_points",0},
+        {"capabilities",{{"gain",v!=nullptr},{"pan",false},{"audio_routing",false},{"clips",false},{"group",true}}}});
     if(v)facts["vca"]={{"id",v->itemID.toString().toStdString()},{"law","Tracktion fader-position offset"},{"membership","hierarchical; descendants"}};
     return facts;
 }
@@ -98,6 +99,7 @@ Json Commands::validateHierarchyPlan(const Json& operations) const {
         } else if(cmd=="track.rename"){validName(a.at("name"));n.facts["name"]=a.at("name");}
         else if(cmd=="track.collapsed")require(groupType(n.type),"only Folder/VCA can collapse");
         else if(cmd=="track.gain")require(n.type!="folder","organisational Folder has no gain control");
+        else if(cmd=="track.pan"||cmd=="track.pan_law")require(!groupType(n.type),"Folder/VCA has no audio panner");
         else if(cmd=="clip.import" || (cmd=="plugin.insert"||cmd=="plugin.external.insert") || cmd=="track.output" || cmd=="send.create" || cmd=="midi.clip.create")require(!groupType(n.type),"Folder/VCA has no audio routing, inserts or clips");
         ++serial;
     }

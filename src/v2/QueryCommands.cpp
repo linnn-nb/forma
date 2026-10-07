@@ -141,7 +141,7 @@ Json Commands::queryObjects(const Json& args) const {
                 {"collapsed",bool(t.state.getProperty("ndaw_collapsed",false))},
                 {"clip_count",audio?audio->getClips().size():0},{"plugin_count",0},{"send_count",0}};
             if(audio) {
-                facts["gain_db"]=audio->getVolumePlugin()->getVolumeDb();facts["pan"]=audio->getVolumePlugin()->getPan();
+                facts["gain_db"]=audio->getVolumePlugin()->getVolumeDb();facts.update(panQuery(*audio));
                 facts["output"]=outputQuery(*audio);facts["input"]=recordingQuery(*audio);
                 for(auto* plugin:audio->pluginList) {
                     if(commandProcessor(*plugin))facts["plugin_count"]=facts["plugin_count"].get<int>()+1;

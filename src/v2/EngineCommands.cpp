@@ -166,6 +166,7 @@ Json Commands::registry() {
     registerMusicCommands(result);
     registerTimelineCommands(result);
     registerHierarchyCommands(result);
+    registerPanCommands(result);
     registerAutomationCommands(result);
     registerRecordingCommands(result);
     registerAudioDeviceCommands(result);
@@ -320,12 +321,13 @@ Json Commands::preview(const Json& plan) const {
     }
     const auto rangeDiff=validateTimelinePlan(ops);
     const auto trackDiff=validateHierarchyPlan(ops);
+    const auto panDiff=validatePanPlan(ops);
     const auto clipDiff=validateClipPlan(ops);
     validateRecordingPlan(ops);
     validateAutomationPlan(ops);
     validateRoutingPlan(ops,trackDiff);
     const auto midiDiff=validateMusicPlan(ops);
-    return {{"plan_id",plan.at("plan_id")},{"base_revision",revision},{"changes",diff},{"audio_verified",false},{"time_selection_changes",rangeDiff},{"clip_changes",clipDiff},{"track_changes",trackDiff},{"midi_changes",midiDiff},{"legacy_imports",legacyDiff}};
+    return {{"plan_id",plan.at("plan_id")},{"base_revision",revision},{"changes",diff},{"audio_verified",false},{"time_selection_changes",rangeDiff},{"clip_changes",clipDiff},{"track_changes",trackDiff},{"pan_changes",panDiff},{"midi_changes",midiDiff},{"legacy_imports",legacyDiff}};
 }
 void Commands::bumpRevision() { ++revision; metadata.setProperty("revision",juce::int64(revision),nullptr); }
 Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
@@ -343,13 +345,13 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
     require(plan.at("actor")=="human" || accepted || reviewed["permission"]["automatic_allowed"].get<bool>(),"preview acceptance required");
     if(edit->getTransport().isPlaying())
         for(const auto& op:plan.at("operations"))
-            require(isTrackFlag(op.at("command")) || op.at("command")=="track.gain","stop playback before structural edits");
+            require(isTrackFlag(op.at("command")) || op.at("command")=="track.gain" || op.at("command")=="track.pan","stop playback before structural edits");
     ParameterWriteGuard parameterGuard(*this);
     captureRoutingAssignments();
     // Stopping alone may retain a monitoring graph. Retire it before mutating an effect
     // (notably Delay length, whose SDK DSP can otherwise grow its buffer in process).
     for(const auto& op:plan.at("operations"))
-        if(op.at("command")=="session.import_legacy" || op.at("command").get<std::string>().starts_with("clip.") || (op.at("command")=="track.gain"&&!edit->getTransport().isPlaying()) || op.at("command").get<std::string>().starts_with("automation.") || op.at("command").get<std::string>().starts_with("plugin.") || op.at("command").get<std::string>().starts_with("send.") || op.at("command")=="track.output" || op.at("command")=="track.create" || op.at("command")=="track.parent" || op.at("command")=="track.order" || op.at("command")=="track.delete" || op.at("command")=="track.input" || op.at("command")=="track.arm" || op.at("command")=="track.monitor" || op.at("command").get<std::string>().starts_with("midi.") || op.at("command")=="tempo.set" || op.at("command")=="meter.set") {edit->getTransport().freePlaybackContext();break;}
+        if(op.at("command")=="session.import_legacy" || op.at("command").get<std::string>().starts_with("clip.") || ((op.at("command")=="track.gain"||op.at("command")=="track.pan")&&!edit->getTransport().isPlaying()) || op.at("command")=="track.pan_law" || op.at("command").get<std::string>().starts_with("automation.") || op.at("command").get<std::string>().starts_with("plugin.") || op.at("command").get<std::string>().starts_with("send.") || op.at("command")=="track.output" || op.at("command")=="track.create" || op.at("command")=="track.parent" || op.at("command")=="track.order" || op.at("command")=="track.delete" || op.at("command")=="track.input" || op.at("command")=="track.arm" || op.at("command")=="track.monitor" || op.at("command").get<std::string>().starts_with("midi.") || op.at("command")=="tempo.set" || op.at("command")=="meter.set") {edit->getTransport().freePlaybackContext();break;}
     releaseMidiKeys();
     te::Edit::UndoTransactionInhibitor inhibitor(*edit);
     auto& um=edit->getUndoManager();
@@ -409,6 +411,8 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
                 if (cmd=="track.gain") {
                     // Wrap the real SDK setter: changing its backing ValueTree alone does not update the parameter's base value.
                     require(um.perform(new GainAction(*edit,t->itemID,hierarchyQuery(*t).value("base_gain_db",0.f),a.at("db").get<float>())),"gain operation failed");
+                } else if(cmd=="track.pan"||cmd=="track.pan_law") {
+                    auto resolved=a;resolved["track"]=t->itemID.toString().toStdString();executePanOperation(cmd,resolved);
                 } else if(isTrackFlag(cmd)) {
                     require(um.perform(new TrackFlagAction(*edit,*t,cmd,a.at("enabled"))),"track control operation failed");
                 } else if(cmd=="plugin.insert"||cmd=="plugin.external.insert") {
