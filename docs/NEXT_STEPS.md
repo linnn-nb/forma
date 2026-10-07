@@ -1,17 +1,11 @@
 # 下一步
 
-最新交付：985ff8f 已实现持久时间选区、精确定位、版本绑定选区 WAV；完整构建与 48/48（324.53 秒）、专项 54 项、原生文件导出/保存重开已通过。打开本机 evidence/M1/desktop-time-selection-985ff8f/M1-selected-midi.tracktionedit，顶部「定位 / 选区…」读取 [408000,576000)。现有应用仍开着，保留用户当前播放位置。
+最新交付：d8d91db 统一录音就绪、修复缺失输入不能关闭监听/取消待命、增加处理停滞失败和部分录音保留。Release 构建与 49/49（326.57 秒）、专项 43 项、生产桌面和 MCP 状态核对通过。当前应用已重开原工程副本；选 instrument 2 →「录音」即可亲手试。时间选区与真实区间导出仍已验证。
 
-下一项：解除实体麦克风的系统授权阻塞后完成 M1 多轨录音、效果器/路由/自动化与保存重开的完整制作验收；在等待期间补齐 M1 停止状态和低延迟监听的设备状态处理。M3 复用已验证的区间请求，先做 Master 削波事件与点击定位，不能把本轮基础区间测量当成 M3 完成。
+下一项明确工程任务：继续 M1 真实制作链路，串联内置效果器、发送、自动化和 MIDI，导出并校验 WAV、保存重开；同步完成尚缺的实体麦克风多轨实录。系统授权仍显示尚未授权；Computer Use 禁止操作 UserNotificationCenter，已请用户亲自允许，不能绕过。等待期间可推进不依赖麦克风的 M3 Master 指定区间削波事件、测量与点击定位。
 
-结论：M0 通过；M2 指定外部 Agent 演示已在 2026-10-07 实测：生产 MCP 查询与规划、GUI 确认、CoreAudio 播放、一次 Undo、真实 WAV 校验。恢复副本的桌面保存/取消/恢复也已执行。完整 M1 制作与 M3–M6 未完成。
+M0 通过；M2 指定外部 Codex 流程已实测：真实查询和混响 Aux 计划、GUI 确认、CoreAudio 播放、Undo 和 PCM 校验。完整 M1 与 M3–M6 未完成。M1 gate 前保留 v1 模块；不将屏幕 MIDI、hosted PCM 故障注入或静态 ready 当成实体录音、实际拔插、RTT 和耐久资格。
 
-1. 下一项明确任务：完成 M1 实体麦克风多轨录音，再串联效果器/路由/自动化与保存重开。实际桌面选择 MacBook Pro 麦克风后停在 macOS 授权回执；桌面工具明确禁止操作 UserNotificationCenter，已请用户亲自允许，未绕过。用户确认后重新应用输入设置，核验真实回调再录音。屏幕键盘 MIDI 实录、Undo/Redo、WAV 和重开已通过，不替代外部 MIDI 控制器。M1 通过后删除架构 §9 的退役模块。
-2. M3 首个可演示增量：Master 指定区间离线分析、削波时间事件和可点击定位，再扩展 LUFS-S/M、其他 tap 与处理链/媒体哈希失效。流媒体交付 Check 随实际分析结果验收。
-3. 继续 M4 扩展、M5 ACE-Step、M6 Playlist/Comp 等迁移；之后完善 AI 面板、Windows、视频、环绕声、发行与耐久。
+应用：`build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`；MCP bridge：包内 `Contents/Helpers/forma-mcp`。本轮保留原工程的副本在本机 `evidence/M1/desktop-recording-readiness/before-update.tracktionedit`，2 轨 /2 片段、三个原 MIDI 音符、位置 485175、选区 [408000,576000)。麦克风和外部 MIDI 控制器仍待实录。
 
-当前开发应用：`build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`；MCP bridge：应用包 `Contents/Helpers/forma-mcp`。本机可打开 `evidence/M2/desktop-234c0b0284/M2-with-reverb.tracktionedit` 试听候选；干声基线和真实 WAV 同目录。测试素材是明确标识的本地合成语音，未上传。
-
-新建/MIDI 演示：菜单「文件 / 新建工程…」，或打开本机 `evidence/M1/desktop-new-recording-88e6042ce9/M1-midi-playback.tracktionedit`；该工程有三个实际录入音符和 FourOsc，已解除待命；音符在约 9 秒处。操作边界见 NEW_SESSION_WORKFLOW.md；不包含麦克风录音。
-
-既有缺口继续保留：SDK 实时锁/分配、监听 RTT、设备拔插、耐久、未知私有插件状态、多输出/侧链、大型工程预检及背压、媒体重定位、逐事务 WAL、活动录音恢复与持久 Undo。停止状态副本见 RECOVERY_WORKFLOW.md，实际证据见 VERIFICATION.md。每个可构建步骤提交 Git；本轮不打 DMG。
+后续按架构推进 M3 分析、M4 扩展、M5 ACE-Step、M6 Playlist/Comp/Punch/Loop/Spot；之后完善 AI 面板、Windows、视频、多声道与发行。旧的实时锁/分配、大型工程预检/背压、同步导出响应性/取消、媒体重定位、逐事务 WAL、活动录音恢复和持久 Undo 缺口继续见 DEPENDENCIES_AND_BLOCKERS.md。

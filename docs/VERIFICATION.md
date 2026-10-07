@@ -1,5 +1,15 @@
 # 验证状态
 
+## M1-REC-02
+
+结论：源码 d8d91db 完整 Release 构建通过，49/49 CTest 通过（326.57 秒）；录音就绪专项 43 项 /5.59 秒。两路 48 kHz /256 帧已知 PCM 的旧多轨测试和 RMS 3e-4、同步差 ≤256 帧标准未降低。新增检查覆盖全部待命轨、关闭监听/取消待命、缺失设备重开、原生 GUI Undo/Redo、MCP 摘要一致和省略阻塞计数。代码 RecordingCommands.cpp /RecordingPanel.h /Workspace.h /QueryCommands.cpp；测试 RecordingReadinessTests.cpp 和既有录音/MIDI专项。
+
+停供真实 hosted 测试回调时，设备仍报告 running；新增固定 500 ms 处理帧看门狗在 message thread 判失败。实际记录停滞 508.65 ms，测试观测停止 623.89 ms，低于事前 1000 ms 上限。25,600 帧部分 WAV 可读，RMS 0.0707141988；Undo 保留原文件和哈希，Redo 保持 failed，恢复供给后明确重新录音成功。该测试是已知信号故障注入，不是实体接口拔插、实际 RTT、deadline 或耐久资格；GUI 线程阻塞仍可延迟检查。
+
+桌面使用同一正式应用和生产 forma-mcp：保存当前工程副本再重启构建；保留 2 轨 /2 MIDI 片段、播放位置 485175 与选区 [408000,576000)。原生待命后 r21 就绪；停用实际 NativeDAW Keyboard 后 r23 明确未就绪，MCP 查询输入仍 armed/auto，但 available/monitoring=false。实际 GUI 关闭监听、取消待命形成 r24/r25；Undo 两次 r27 保留请求且不伪称监控，Redo 两次 r29 恢复 Off。原引用和片段保持，最后重新启用端口并重开副本，恢复最初 Off/Auto、停止、只读和空 Undo。只是屏幕 MIDI 端口/设备状态的桌面验收；本轮未新增真实麦克风或外部 MIDI 实录。
+
+记录：evidence/M1/recording-readiness-build-final.log、recording-readiness-ctest-full.log、recording-readiness-tests.json；桌面回执与副本在 desktop-recording-readiness/，关键画面由桌面工具展示，未保存 PNG。首次新测试目标未重新配置 CMake，已配置并构建；中途补上输入类型前置检查后中断旧回归，保留 recording-readiness-ctest-interrupted-for-type-guard.log，最终 49 项在最终源码构建上重新跑完。目录/空间仍在开始时检查，静态 ready 不保证持续磁盘或回调；全 M1 和 M3–M6 未完成。
+
 结论：M0 通过；完整 M1 制作、实体麦克风和外部 MIDI 控制器仍待验收。2026-10-07，最新源码 985ff8f 完整 Release 构建与 48/48 回归通过（324.53 秒）；时间选区专项 54 项，桌面定位、Undo/Redo、真实选区 WAV 与保存重开已验证。既有新建、MIDI、插件、自动化、设备与网关套件一并重跑；指定 M2 外部 Agent 演示和停止状态恢复副本已有实测。未宣称完整产品、实体录音或主观音质验收。
 
 本仓库分发源码；本机 `evidence/`、媒体和构建产物不公开。下列测试结果是本机记录，不自动赋予其他机器资格。M1 详细历史保存在 [VERIFICATION_v2_M1](history/VERIFICATION_v2_M1.md)，旧 v1 见 history/VERIFICATION_v1.md。
