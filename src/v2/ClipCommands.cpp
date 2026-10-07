@@ -28,7 +28,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c)const{
     const bool editable=!c.isLooping()&&!c.isGrouped()&&!c.getAutoTempo()&&!c.getAutoPitch()&&!c.getWarpTime()&&!c.getIsReversed()&&std::abs(c.getSpeedRatio()-1)<1e-9;
     return {{"path",f.getFullPathName().toStdString()},{"source_sample_rate",info.sampleRate},{"source_frames",int64_t(info.lengthInSamples)},
         {"source_offset_samples",sample(p.getOffset().inSeconds())},{"source_offset_seconds",p.getOffset().inSeconds()*c.getSpeedRatio()},
-        {"speed_ratio",c.getSpeedRatio()},{"gain_db",c.getGainDB()},{"fade_in_samples",sample(c.getFadeIn().inSeconds())},{"fade_out_samples",sample(c.getFadeOut().inSeconds())},
+        {"speed_ratio",c.getSpeedRatio()},{"source_mapping_available",!c.isLooping()&&!c.getAutoTempo()&&!c.getWarpTime()&&!c.getIsReversed()&&std::isfinite(c.getSpeedRatio())&&c.getSpeedRatio()>0},{"gain_db",c.getGainDB()},{"fade_in_samples",sample(c.getFadeIn().inSeconds())},{"fade_out_samples",sample(c.getFadeOut().inSeconds())},
         {"fade_in_curve",curveName(c.getFadeInType())},{"fade_out_curve",curveName(c.getFadeOutType())},{"locked",bool(c.state.getProperty("ndaw_locked",false))},
         {"legacy_media_available",bool(c.state.getProperty("ndaw_legacy_media_available",true))},{"legacy_id",c.state.getProperty("ndaw_legacy_id").toString().toStdString()},{"legacy_source_id",c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},{"editable_audio",editable},{"parent_clip",c.state.getProperty("ndaw_parent_clip").toString().toStdString()},{"origin",c.state.getProperty("ndaw_origin","import").toString().toStdString()}};
 }

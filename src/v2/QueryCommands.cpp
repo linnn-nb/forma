@@ -171,6 +171,8 @@ Json Commands::queryObjects(const Json& args) const {
             if(auto* wave=dynamic_cast<te::WaveAudioClip*>(&clip)) {
                 facts["path"]=wave->getOriginalFile().getFullPathName().toStdString();facts["gain_db"]=wave->getGainDB();
                 facts["source_offset_seconds"]=position.getOffset().inSeconds()*wave->getSpeedRatio();facts["speed_ratio"]=wave->getSpeedRatio();
+                const auto info=te::AudioFile(edit->engine,wave->getOriginalFile()).getInfo();facts["source_sample_rate"]=info.sampleRate;facts["source_frames"]=int64_t(info.lengthInSamples);
+                facts["source_mapping_available"]=!wave->isLooping()&&!wave->getAutoTempo()&&!wave->getWarpTime()&&!wave->getIsReversed()&&std::isfinite(wave->getSpeedRatio())&&wave->getSpeedRatio()>0;
                 facts["locked"]=bool(wave->state.getProperty("ndaw_locked",false));
             }
             return facts;

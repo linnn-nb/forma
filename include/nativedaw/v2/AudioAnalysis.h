@@ -8,5 +8,6 @@ struct Control {
     std::function<bool()> cancelled = [] { return false; };
     std::function<void()> yield = [] {};
 };
-Json measure(const juce::File&, int64_t sessionStart, const Control& = {});
+struct FrameRange {int64_t begin=0,end=-1;};
+Json measure(const juce::File&, int64_t sessionStart, const Control& = {}, FrameRange = {}, const Json& sourceFeatures=nullptr);
 }

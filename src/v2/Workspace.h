@@ -1,5 +1,6 @@
 #pragma once
 #include <nativedaw/v2/EngineCommands.h>
+#include <nativedaw/v2/SourceMapping.h>
 #include "CommandFileJob.h"
 #include <nativedaw/v2/McpGateway.h>
 namespace ndaw::v2 {class McpTestAccess;}
@@ -406,7 +407,7 @@ public:
     void chooseExport(bool selection){invoke([&]{const auto request=commands.exportRequest(selection);choose(true,[this,request](const juce::File& f){invoke([&]{auto r=commands.renderRequest(f,request);message(text("已生成并校验 WAV · ")+juce::String(r["frames"].get<int64_t>())+text(" 帧 · ")+(r["lufs_i"].is_number()?juce::String(r["lufs_i"].get<double>(),2):text("静音"))+" LUFS-I");});},"*.wav");});}
     void showAnalysis(){invoke([&]{
         if(!analysisPanel){analysisPanel=std::make_unique<AnalysisPanel>([this](const auto& method,const auto& args){auto result=commands.analysisControl(method,args);if(method=="locate"){mix=false;pianoMode=false;refresh();}return result;},[this]{analysisPanel->setVisible(false);grabKeyboardFocus();});addChildComponent(*analysisPanel);}
-        analysisPanel->bind(commands.query(),commands.analysisStatus());analysisPanel->setBounds(getLocalBounds());analysisPanel->setVisible(true);analysisPanel->toFront(true);
+        auto context=commands.query();context["analysis_selected_clip"]=selectedClip;analysisPanel->bind(context,commands.analysisStatus());analysisPanel->setBounds(getLocalBounds());analysisPanel->setVisible(true);analysisPanel->toFront(true);
     });}
     Json queryAnalysis(){return commands.analysisStatus();}
     void showTimelineRange(){invoke([&]{
@@ -551,7 +552,7 @@ public:
     juce::PopupMenu getMenuForIndex(int index,const juce::String&) override {
         juce::PopupMenu p;p.setLookAndFeel(&theme);if(index==0){p.addItem(41,text("新建工程…   ⌘N"),!facts.value("playing",false)&&facts["parameter_capture"].is_null());p.addSeparator();p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
         if(index==1){p.addItem(42,text("定位与时间选区…"));p.addSeparator();p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
-        if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));p.addItem(43,text("Master 分析 / 削波定位…"));}
+        if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));p.addItem(43,text("音频分析 / 交付检查…"));}
         if(index==3){p.addItem(26,text("从本地 JSON 请求编辑…"),!commandFileBusy&&pending.is_null());p.addSeparator();p.addItem(21,text("只读分析"),true,commandScope.mode==Permission::ReadOnly);p.addItem(22,text("先预览再提交"),true,commandScope.mode==Permission::Preview);
             p.addItem(23,text("自动低风险 · 当前轨道"),!selected.empty());p.addItem(24,text("自动低风险 · 当前片段与时间"),!(pianoMode?piano.viewedClip():selectedAudioClip()).is_null());p.addSeparator();p.addItem(25,text("取消请求 / 撤回当前授权"),commandFileBusy||!pendingConfirmation.empty());
             auto m=queryMcpStatus();auto mode=m.contains("permission")?m["permission"].value("mode",std::string{}):std::string{};
