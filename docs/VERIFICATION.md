@@ -1,5 +1,21 @@
 # 验证状态
 
+## M3-DELIVERY-01（2026-10-07）
+
+结论：可配置 Master 交付检查已接通真实 Tracktion 浮点渲染、生产 MCP 与原生界面。364c79e 为功能提交，64e116e 规范化同值数值条件，ab79b86 修复旧工程 Redo 的实际参数丢失。最新完整 Release 构建通过；ab79b86 的 55/55 完整回归通过（413.46 秒），交付后端/原生专项分别 14.19 /10.45 秒。完整 M3 未完成，不以本项替代其他 tap point、连续响度、静音/瞬态和实体制作验收。
+
+实现与测试：DeliveryCheck 是 L2 纯规则，使用实际 Master PCM 的 LUFS-I /True Peak /超满刻度帧 /末尾 100 ms 电平；L1 绑定目的、会话版本、采样区间、媒体和处理链 SHA256、规范化条件和请求指纹。整数/小数同值、正负零和省略默认值不会重复渲染，同键换条件/目的拒绝。GUI 使用同一入口，可取消，显示通过/未通过/待判断/需复核；编辑输入框不改写旧回执。delivery_tests 最新 41 项，原生 delivery_workspace 22 项，原 Master 的 46 /21 项检查和原数值容差保持。末尾安静不能证明完整效果尾音；没有交付文件或平台认证，三项 certified 标志均为 false。详细预算和代码/测试关联见 ANALYSIS_WORKFLOW.md /AI_COMMAND_CONTRACT.md。
+
+生产桌面与真实 Agent：Codex 通过正式包内 forma-mcp 的 stdio/应用 Unix socket，先读实际 ID、版本和范围，再提交只读分析；没有模型替身。自有明确标识的 1 kHz 双声道 PCM16 /48 kHz /4 秒、末尾 500 ms 静音，在工程 [24000,192000) 渲染 168000 帧。默认条件通过，LUFS-I -14.2162904964、TP -14.0001827588 dBTP、RMS -17.6800128654 dBFS；GUI 将 TP 上限设 -15 后真实 completed/failed，同一测量在 MCP 可查询。GUI 增益改 +6 后旧证据 current=false；重新测得 +3.9998172564 dBFS、78000 超满刻度帧 /6000 段，展示 128 /省略 5872，首段 [24006,24019) 点击实际 Transport 到 24006。独立原 PCM × 已知增益预测精确核对全部展示边界。一次 GUI Undo 恢复 -12 dB、旧证据失效，新检查通过；另存新演示工程，原媒体 SHA256 不变。未播放过载信号，也未新增主观听感或真实麦克风/MIDI资格。
+
+现场预算结果：MCP 最大真实回复 29.626209 ms（事前 5 秒），分析最大 4885.513625 ms（4 秒测试素材的事前 12 秒）。这不是大型工程、实时 deadline/XRUN 或往返延迟资格。真实回执与独立验证在本机 evidence/M3/desktop-delivery/；M3-delivery-demo.tracktionedit 可亲手打开，重开后保存记录不冒充当前成功，须重新分析。关键画面由桌面工具展示，没有保存 PNG。本轮桌面可用；旧章节的锁屏记述属于前轮历史。
+
+失败与修复：初次交付专项两个 fixture 误用了超过 +6 dB 的轨道增益和错误的导入默认增益 Undo 预期，修正测试输入/预期后 4/4 分析专项通过（67.03 秒），保留首轮输出。首个完整回归 54/55（424.59 秒），旧 .ndaw 原生 Redo 失败；单项复测和重复运行复现。差异是实际轨道 -6 dB 恢复为近 0 dB，非截图或按钮状态误判。导入已改用与普通编辑共用的稳定 ID GainAction /PanAction /TrackFlagAction，同一事务内重放原生 setter；新增三轮延迟 GUI Undo/Redo 严格比较 ID、增益、声像、路由和保留报告。修复后导入后端 81 项、原生 21 项通过；新交付后端 41 项与 Master 后端一并专项 4/4（47.20 秒）。没有降低既有 PCM、工程相等或性能预算。
+
+最终应用重新打开演示工程：r4、实际一轨/一片段、-12 dB、停止、只读权限、空 Undo/Redo；再次 GUI 检查得到当前新 artifact 0bad3cd941054fc4b54c4f17d659998b /4577.879542 ms /passed，正式 MCP 查询与画面一致，源 SHA256 保持。没有把保存回执或持久 Undo 冒充新成功；当前应用保留在检查结果页面。回执 final-reopen-mcp.json，关键截图已由工具展示。
+
+本机日志：delivery-build-full.log /delivery-ctest-specialised-final.log 为 364c79e；delivery-ctest-full.log 为首次 54/55；delivery-legacy-diagnostic-repeat.log 为真实参数差异；delivery-final-build.log /delivery-final-specialised.log /delivery-final-ctest-full.log 对应 ab79b86。最终应用 SHA256 04c04e738f6fb4c9203cc904fc649f66f7eed08101037d0b7c8401e6abdd3beb。没有新增依赖、SDK 补丁、第二引擎、DMG 或音频上传。M1 实体制作、M3 剩余范围、M4–M6 和发行仍未完成。
+
 ## M3-MASTER-01（2026-10-07）
 
 结论：00e5b1a /1e4de04 完整 Release 构建和最终 53/53 CTest 通过（354.25 秒）。新增两个专项覆盖 46 项音频/事务/MCP 检查、21 项原生构件检查；最终完整回归中分别耗时 18.87 /6.19 秒。M3 为部分实现，生产桌面锁定，现场窗口、真实模型 M3 操作及听感未执行；不能用 native callbacks 的自动化通过替代。

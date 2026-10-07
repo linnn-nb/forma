@@ -1,6 +1,6 @@
 # Master 分析与定位
 
-结论：Master 浮点渲染、测量、MCP 和原生事件定位已接通；M3-DELIVERY-01 在此基础上增加可配置交付条件和末尾 100 ms 的真实测量。自动化结果见 VERIFICATION.md，完整 M3 及现场验收未完成。其他 tap point、静音/瞬态和连续响度曲线仍待实现。
+结论：Master 浮点渲染、测量、MCP 和原生事件定位已接通；M3-DELIVERY-01 在此基础上增加可配置交付条件和末尾 100 ms 的真实测量。生产桌面与 Codex 外部 MCP 流程已实测，自动化结果见 VERIFICATION.md。完整 M3 未完成：其他 tap point、静音/瞬态和连续响度曲线仍待实现。
 
 ## 亲手试
 
@@ -24,7 +24,7 @@
 - 优先返回 `failed`，其次 `indeterminate`，其次 `needs_review`，全部要求满足才是 `passed`。作业的 `completed` 只表示测量成功，条件可同时是未通过。
 - 安静末尾不能证明混响/延迟尾音完整。目前没有范围外 look-ahead 或效果器尾音模拟，`tail_truncation_certified=false`；没有产生交付文件，也没有校验导出文件，`export_file_certified=false`；`platform_certified=false`。
 
-MCP `analyze_delivery` 使用与 `analyze_master` 相同的五个必需参数，可额外带 `profile` 对象（`target_lufs`、`lufs_tolerance`、`true_peak_ceiling_dbtp`、`expect_silent_ending`、`ending_peak_ceiling_dbfs`）。按 `query_analysis` 取得真实 `receipt.delivery`。范围、目的、规范化条件、会话版本共同形成请求指纹，同一最近/活跃 request_key 改条件或改用途会拒绝。条件 SHA256 随回执保存，源与处理链仍按原流程校验。该工具只读、本地、无上传及任意输出路径。
+MCP `analyze_delivery` 使用与 `analyze_master` 相同的五个必需参数，可额外带 `profile` 对象（`target_lufs`、`lufs_tolerance`、`true_peak_ceiling_dbtp`、`expect_silent_ending`、`ending_peak_ceiling_dbfs`）。按 `query_analysis` 取得真实 `receipt.delivery`。范围、目的、规范化条件、会话版本共同形成请求指纹，同一最近/活跃 request_key 改条件或改用途会拒绝；整数/小数同值、正负零和显式/省略默认值得到相同规范化条件，不重复渲染。条件 SHA256 随回执保存，源与处理链仍按原流程校验。该工具只读、本地、无上传及任意输出路径。
 
 实施前固定验收预算：已知 1 kHz 双声道测试为 4 秒/48 kHz/float32，独立已知峰值误差 ≤0.02 dB、含 500 ms 静音末尾的整体响度目标 ±1 LU、RMS 转换误差 ≤1e-12；原 Master 的更严格连续信号 ±0.05 LUFS 标准不变。每个原生分析 ≤12 秒，每次 MCP 回复 ≤5 秒，新增两个专项各 ≤60 秒；不降低既有 300 秒范围/60 秒墙钟/单 worker 预算。新检查使用真实 PCM /原生渲染与原生按钮回调；桌面演示和真实外部模型验收独立记录。
 
@@ -51,4 +51,7 @@ MCP `analyze_delivery` 使用与 `analyze_master` 相同的五个必需参数，
 
 - `tests/v2/AnalysisTests.cpp`：已知浮点超峰、精确区间、RMS 1e-12、相关度 1e-12、1 kHz 双声道 -20 dBFS 对 -20 LUFS ±0.05 /-20 dBTP ±0.02、真实 Master 增益与独立源码 PCM 预测的每个事件边界、版本/媒体故障、取消、重开、只读 MCP、实际 CoreAudio 播放优先与恢复。
 - `tests/v2/AnalysisWorkspaceTests.cpp`：原生按钮/slider 回调，真实导入/渲染回执，GUI 事件定位、失效禁用、Undo 分离与取消；不是屏幕实机验收。
-- 专项和完整回归的实际结果见 `VERIFICATION.md`；本机精简证据为 `evidence/M3/summary.md`。未执行的现场演示、真实第三方分析链压力和听感检查继续保留。
+- `tests/v2/DeliveryTests.cpp` / `DeliveryWorkspaceTests.cpp`：真实 PCM、四项条件、静音/不足窗口/NaN、原生 Master 渲染、条件指纹、只读 MCP、原生控件、错误保持与一次 Undo。M3-DELIVERY-01 的自动化不替代现场制作。
+- 专项和完整回归的实际结果见 `VERIFICATION.md`；本机精简证据为 `evidence/M3/summary.md`。尚未覆盖真实第三方分析链压力、实体输入和听感检查。
+
+2026-10-07 现场增量已执行：Codex 经正式包内 forma-mcp /应用 Unix socket，查询实际 session/revision、clip ID 和范围，发起只读 analyze_delivery，取得真实 passed 回执并在 GUI 显示。GUI 将 TP 条件改为 -15 dBTP 后 completed /failed；人工增益改 +6 dB 后旧证据失效，Codex 重新测得 78000 超满刻度帧/6000 段，点击首段实际定位到 24006。一次 GUI Undo 恢复 -12 dB，重新检查通过并另存新工程。素材为明确标识的自有 1 kHz 合成 PCM，不是麦克风或音乐听感；显示的 128 个边界均与独立原 PCM × 已知增益预测一致。证据 `evidence/M3/desktop-delivery/verification.json` / `mcp-receipts.jsonl`；关键画面已由桌面工具展示。可以打开同目录 `M3-delivery-demo.tracktionedit` 亲手试，重开后需要重新分析，不将保存记录当新回执。
