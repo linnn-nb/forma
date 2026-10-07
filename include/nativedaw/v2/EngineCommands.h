@@ -13,6 +13,7 @@ class RecordingTestAccess;
 class AudioDeviceTestAccess;
 class PluginEditorWindows;
 class NativePluginStates;
+class SessionRecovery;
 class Commands : private juce::Timer, private te::ParameterChangeHandler::UserChangeListener {
 public:
     explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
@@ -39,6 +40,8 @@ public:
     Json redo();
     Json render(const juce::File&, int64_t start, int64_t end);
     Json save(const juce::File&);
+    Json recoveryStatus() const;
+    Json recoveryControl(const std::string&,const Json&);
     void open(const juce::File&);
     void play();
     void stop();
@@ -69,6 +72,12 @@ public:
     static std::string mediaHash(const juce::File&);
     Json legacyReports() const;
 private:
+    friend class SessionRecovery;
+    std::unique_ptr<SessionRecovery> recovery;
+    std::pair<juce::ValueTree,Json> recoverySnapshot();
+    void restoreRecoveryState(juce::ValueTree,const std::string&,uint64_t);
+    void adoptEdit(std::unique_ptr<te::Edit>);
+    static void registerRecoveryCommands(Json&);
     friend class NativePluginStates;
     std::unique_ptr<NativePluginStates> nativeStates;
     void captureNativeStates()const;

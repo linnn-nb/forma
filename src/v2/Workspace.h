@@ -295,6 +295,7 @@ private:
 #include "PianoRoll.h"
 #include "ClipPanel.h"
 #include "PluginLibrary.h"
+#include "RecoveryPanel.h"
 
 class Workspace final : public juce::Component,private juce::Timer,public juce::MenuBarModel,public juce::FileDragAndDropTarget {
     friend class ndaw::v2::AudioDeviceTestAccess;
@@ -352,11 +353,15 @@ public:
         bypassButton.setComponentID("plugin.bypass");removeButton.setComponentID("plugin.remove");status.setComponentID("workspace.status");
         pluginType.setComponentID("plugin.type");pluginChoice.setComponentID("plugin.choice");
         audioSettingsButton.setComponentID("audio.settings.open");audioSettingsButton.onClick=[this]{showAudioSettings();};
+        workspaceSession=commands.sessionToken();if(openDevice)commands.recoveryControl("session.recovery.start",Json::object());
+        recoveryIndicator.setComponentID("recovery.status");recoveryIndicator.setFont(juce::FontOptions(11));addAndMakeVisible(recoveryIndicator);
         setSize(1440,880);refresh();startTimerHz(20);
     }
-    ~Workspace() override {stopTimer();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
+    ~Workspace() override {stopTimer();recoveryPanel.reset();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
     Json query() const {return commands.query();}
     Json queryAudioDevices()const{return commands.audioDevices();}
+    Json queryRecovery()const{return commands.recoveryStatus();}
+    void showRecovery(){invoke([&]{commands.recoveryControl("session.recovery.start",Json::object());if(!recoveryPanel){recoveryPanel=std::make_unique<RecoveryPanel>([this](const std::string& id,const Json& args){return commands.recoveryControl(id,args);},[this]{recoveryPanel->setVisible(false);grabKeyboardFocus();});addChildComponent(*recoveryPanel);}recoveryPanel->update(commands.recoveryStatus());recoveryPanel->setVisible(true);recoveryPanel->setBounds(getLocalBounds());recoveryPanel->toFront(true);});}
     void closeAudioSettings(){++audioSettingsEpoch;if(audioSettings)audioSettings->setVisible(false);grabKeyboardFocus();}
     void showAudioSettings(){
         invoke([&]{++audioSettingsEpoch;if(!audioSettings){audioSettings=std::make_unique<AudioDevicePanel>([this](bool scan){return commands.audioDevices(scan);},[this](const Json& args){return commands.audioCapabilities(args);},
@@ -477,7 +482,7 @@ public:
     }
     juce::StringArray getMenuBarNames() override {return {text("文件"),text("编辑"),text("视图"),text("命令")};}
     juce::PopupMenu getMenuForIndex(int index,const juce::String&) override {
-        juce::PopupMenu p;if(index==0){p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
+        juce::PopupMenu p;if(index==0){p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
         if(index==1){p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
         if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));}
         if(index==3){p.addItem(26,text("从本地 JSON 请求编辑…"),!commandFileBusy&&pending.is_null());p.addSeparator();p.addItem(21,text("只读分析"),true,commandScope.mode==Permission::ReadOnly);p.addItem(22,text("先预览再提交"),true,commandScope.mode==Permission::Preview);
@@ -487,12 +492,14 @@ public:
         return p;
     }
     void menuItemSelected(int id,int) override {
+        if(id==40){showRecovery();return;}
         if(id==30||id==31){startMcp(id==30?Permission::ReadOnly:Permission::Preview);return;}if(id==32){stopMcp();return;}if(id==33){showMcpInfo();return;}
         if(id==14){showAudioSettings();return;}if(id==13){showPluginLibrary();return;}if(id>=21&&id<=24){setCommandPermission(id==21?Permission::ReadOnly:id==22?Permission::Preview:Permission::ScopedLowRisk,id==24);return;}
         if(id==25){cancelCurrentCommand();return;}if(id==26){choose(false,[this](const auto& f){importCommandFile(f);},"*.json");return;}if(id==11){choose(false,[this](const auto& f){prepareLegacyImport(f);},"*.ndaw");return;}if(id==12){showLegacyReport();return;}juce::TextButton* b=nullptr;switch(id){case 1:b=&importButton;break;case 2:b=&openButton;break;case 3:b=&saveButton;break;case 4:b=&exportButton;break;case 5:trackType.setSelectedId(1,juce::dontSendNotification);b=&newTrack;break;case 6:b=&undoButton;break;case 7:b=&redoButton;break;case 8:b=&editButton;break;case 9:b=&mixButton;break;case 10:b=&pianoButton;break;}if(b&&b->isEnabled())b->triggerClick();}
     bool isInterestedInFileDrag(const juce::StringArray& files) override {return files.size()==1;}
     void filesDropped(const juce::StringArray& files,int,int) override {auto file=juce::File(files[0]);if(file.hasFileExtension("json"))importCommandFile(file);else prepareImport(file);}
     bool keyPressed(const juce::KeyPress& key) override {
+        if(recoveryPanel&&recoveryPanel->isVisible()){if(key==juce::KeyPress::escapeKey){recoveryPanel->setVisible(false);grabKeyboardFocus();return true;}return false;}
         if(audioSettings&&audioSettings->isVisible()){if(key==juce::KeyPress::escapeKey){closeAudioSettings();return true;}return false;}
         if(key==juce::KeyPress::spaceKey){invoke([&]{if(facts["playing"].get<bool>())commands.stop();else commands.play();});return true;}
         if(key.getModifiers().isCommandDown()) {auto c=juce::CharacterFunctions::toLowerCase(key.getTextCharacter());if(c=='z')menuItemSelected(key.getModifiers().isShiftDown()?7:6,0);else if(c=='i')menuItemSelected(1,0);else if(c=='o')menuItemSelected(2,0);else if(c=='s')menuItemSelected(3,0);else if(c=='e'&&key.getModifiers().isShiftDown())menuItemSelected(4,0);else return false;return true;}return false;
@@ -532,7 +539,8 @@ public:
         previewText.setBounds(right+16,getHeight()-246,300,164);acceptButton.setBounds(right+16,getHeight()-72,142,30);rejectButton.setBounds(right+168,getHeight()-72,148,30);
         if(legacyView){previewText.setBounds(right+16,274,300,std::max(100,getHeight()-356));for(auto* c:std::initializer_list<juce::Component*>{&pluginType,&insertButton,&pluginChoice,&bypassButton,&editorButton,&removeButton,&stateStatus,&stateRetryButton,&stateRestoreButton,&programIndex,&programButton,&parameterView,&routingView,&groupView,&autoView,&recordView})c->setVisible(false);}
         if(audioSettings&&audioSettings->isVisible())audioSettings->setBounds(getLocalBounds());
-        previewText.setVisible(preview||legacyView);acceptButton.setVisible(preview);rejectButton.setVisible(preview||legacyView);rejectButton.setButtonText(legacyView&&!preview?text("关闭报告"):text("取消"));status.setBounds(12,getHeight()-27,getWidth()-24,24);
+        if(recoveryPanel&&recoveryPanel->isVisible())recoveryPanel->setBounds(getLocalBounds());
+        previewText.setVisible(preview||legacyView);acceptButton.setVisible(preview);rejectButton.setVisible(preview||legacyView);rejectButton.setButtonText(legacyView&&!preview?text("关闭报告"):text("取消"));status.setBounds(12,getHeight()-27,getWidth()-320,24);recoveryIndicator.setBounds(getWidth()-300,getHeight()-27,288,24);
     }
 private:
     void resetCommandClient(const Scope& scope) {
@@ -602,6 +610,9 @@ private:
         groupTab.setToggleState(groupInspector,juce::dontSendNotification);autoTab.setToggleState(autoInspector,juce::dontSendNotification);insertTab.setToggleState(!routingInspector&&!groupInspector&&!autoInspector,juce::dontSendNotification);routingTab.setToggleState(routingInspector,juce::dontSendNotification);
     }
     void refresh() {
+        if(workspaceSession!=commands.sessionToken()){workspaceSession=commands.sessionToken();if(mcp)startMcp(Permission::ReadOnly,mcpEndpoint);Scope readOnly;readOnly.mode=Permission::ReadOnly;resetCommandClient(readOnly);selected.clear();selectedClip.clear();pending=nullptr;pendingConfirmation.clear();reportShowing=false;programDraft=false;if(pluginLibrary)pluginLibrary->setVisible(false);message(text("已切换工程会话 · Agent 授权回到只读"));}
+        const auto recovery=commands.recoveryStatus();if(recoveryPanel&&recoveryPanel->isVisible())recoveryPanel->update(recovery);
+        if(recovery.value("available",false)){auto phase=recovery.value("state",std::string{});recoveryIndicator.setText(text(phase=="failed"?"恢复副本写入/读取失败":phase=="deferred"?"恢复副本保存延期":phase=="saved"?"恢复副本已保存":phase=="restored"?"已恢复工程 · 请另存":recovery.value("busy",false)?"正在处理恢复副本":recovery.value("enabled",false)?"自动恢复副本开启":"自动恢复副本关闭"),juce::dontSendNotification);}else recoveryIndicator.setText({},juce::dontSendNotification);
         const auto audio=commands.audioDevices();const auto& receipt=audio["last_configuration"];
         if(!receipt.is_null()){auto tag=receipt.value("id",std::string{})+receipt.value("state",std::string{});if(tag!=lastAudioReceipt){lastAudioReceipt=tag;if(receipt["state"]=="verified")message(text("实际音频设备与引擎准备已核验"));else if(receipt["state"]=="failed")message(text("设备配置失败：")+text(receipt.value("error",std::string{})));else if(receipt["state"]=="preparing")message(text("实际设备正在准备 · 等待音频回调回执"));}}
         facts=commands.query();waves.update(facts);bool found=false;for(const auto& t:facts["tracks"])found|=t["id"]==selected;
@@ -638,6 +649,7 @@ private:
     void chooseRecordingDirectory(){chooser=std::make_unique<juce::FileChooser>(text("选择录音目录 · 只创建新录音，不覆盖已有文件"),recordDirectory,"*");chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[safe=juce::Component::SafePointer<Workspace>(this)](const auto& c){if(safe&&c.getResult().isDirectory()){safe->recordDirectory=c.getResult();safe->refresh();}});}
     std::string lastAudioReceipt;uint64_t audioSettingsEpoch=0,lastMeterRequest=0;std::unique_ptr<AudioDevicePanel> audioSettings;
     std::unique_ptr<PluginLibrary> pluginLibrary;std::string pluginLibraryTrack,pluginLibrarySession;
+    std::unique_ptr<RecoveryPanel> recoveryPanel;std::string workspaceSession;juce::Label recoveryIndicator;
     bool programDraft=false;std::string programTarget;
     Theme theme;Commands commands;CommandQueue commandQueue{commands};std::unique_ptr<McpGateway> mcp;juce::File mcpEndpoint;juce::ThreadPool commandFiles{1};CommandQueue::Client commandClient;Scope commandScope;Json lastCommandResult=nullptr;std::string pendingConfirmation;bool commandFileBusy=false;juce::File recordDirectory;Json facts=Json::object(),deviceFacts=Json::object(),pending=nullptr;std::string selected,selectedClip,lastPluginIDs,lastMusicMap;int pluginSelection=0;bool reportShowing=false,mix=false,recordInspector=false,routingInspector=false,groupInspector=false,autoInspector=false,pianoMode=false;juce::String sessionName="Untitled";
     Waveforms waves;EditArea editArea;MixArea mixArea;ParameterRows parameters;RoutingPanel routing;GroupingPanel grouping;RecordingPanel recording;AutomationPanel automation;ClipPanel clipPanel;PianoRoll piano;juce::Viewport editView,mixView,parameterView,routingView,groupView,autoView,recordView;

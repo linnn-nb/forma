@@ -2,6 +2,7 @@
 #include <limits>
 #include "PluginEditorWindows.h"
 #include "NativePluginStates.h"
+#include "SessionRecovery.h"
 #include "OutputProbe.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <filesystem>
@@ -133,7 +134,7 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     edit->getParameterChangeHandler().setUserChangeListener(this);
     nativeStates=std::make_unique<NativePluginStates>(*this);nativeStates->sync();
 }
-Commands::~Commands() { stopTimer(); stop();closePluginEditors(true);nativeStates.reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr); undoBoundaryInhibitor.reset(); edit.reset(); }
+Commands::~Commands() { recovery.reset();stopTimer(); stop();closePluginEditors(true);nativeStates.reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr); undoBoundaryInhibitor.reset(); edit.reset(); }
 void Commands::checkThread() const {
     require(juce::MessageManager::getInstance()->isThisTheMessageThread(), "Edit commands require the message thread");
 }
@@ -170,6 +171,7 @@ Json Commands::registry() {
     registerClipCommands(result);
     registerLegacyCommands(result);
     registerQueryCommands(result);
+    registerRecoveryCommands(result);
     return result;
 }
 Json Commands::query() const {
@@ -513,6 +515,10 @@ void Commands::open(const juce::File& source) {
     checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");require(parameterCapture.is_null(),"finish native parameter gesture before opening");ParameterWriteGuard parameterGuard(*this); require(source.existsAsFile(),"Edit file missing"); stop();
     auto xml=juce::XmlDocument::parse(source); require(xml && xml->hasTagName("EDIT"),"invalid Edit XML");
     auto candidate=te::loadEditFromFile(engine,source); require(candidate!=nullptr,"invalid Edit file");
+    adoptEdit(std::move(candidate));
+}
+void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate) {
+    checkThread();require(candidate!=nullptr,"invalid Edit replacement");
     auto newInhibitor=std::make_unique<te::Edit::UndoTransactionInhibitor>(*candidate);
     closePluginEditors(true);if(nativeStates)nativeStates->reset();edit->getParameterChangeHandler().setUserChangeListener(nullptr);
     externalPreparedRates.clear();externalParameterLayouts.clear();
