@@ -63,7 +63,7 @@ Json Commands::querySummary(const std::string& selectedTrack,const std::string& 
     const auto limits=engine.getEngineBehaviour().getEditLimits();
     const bool available=!edit->getTransport().isRecording()&&recordingCapture.is_null()&&capture.is_null()
         &&parameterCapture.is_null()&&!audioConfigurationPending()&&(native.is_null()||!native["pending"].get<bool>());
-    return {{"revision",revision},{"session_token",sessionToken()},{"selection",std::move(selection)},
+    return {{"revision",revision},{"session_token",sessionToken()},{"session_name",metadata.getProperty("session_name","Untitled").toString().toStdString()},{"selection",std::move(selection)},
         {"counts",{{"tracks",tracks.size()},{"audio_tracks",audioCount},{"clips",clipCount},
             {"tempos",tempo.getTempos().size()},{"meters",tempo.getTimeSigs().size()}}},
         {"timeline_sample_rate",timelineRate},{"position_samples",samples(now)},

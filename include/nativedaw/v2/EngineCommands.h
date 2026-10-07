@@ -76,6 +76,7 @@ private:
     std::unique_ptr<SessionRecovery> recovery;
     std::pair<juce::ValueTree,Json> recoverySnapshot();
     void restoreRecoveryState(juce::ValueTree,const std::string&,uint64_t);
+    void createNewSession(const std::string&,const std::string&,uint64_t);
     void adoptEdit(std::unique_ptr<te::Edit>);
     static void registerRecoveryCommands(Json&);
     friend class NativePluginStates;

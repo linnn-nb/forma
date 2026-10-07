@@ -225,7 +225,7 @@ Json Commands::makePlan(const std::string& actor, Json ops) const {
             if(cmd=="clip.split"||cmd=="clip.copy")hashes[a.at("ref")]=a["media_hash"];
         }
     }
-    Json plan{{"plan_id",juce::Uuid().toString().toStdString()},{"actor",actor},{"base_revision",revision},
+    Json plan{{"plan_id",juce::Uuid().toString().toStdString()},{"actor",actor},{"session_token",sessionToken()},{"base_revision",revision},
         {"idempotency_key",juce::Uuid().toString().toStdString()},{"operations",ops}};
     preview(plan);
     return plan;
@@ -237,6 +237,7 @@ Json Commands::preview(const Json& plan) const {
     require(recordingCapture.is_null(),"audio recording active; stop before editing Plans");
     require(capture.is_null(),"automation write pass active; stop before editing Plans");
     require(plan.is_object(), "invalid plan");
+    require(plan.at("session_token")==sessionToken(),"session changed; discard the old Plan and query the current session");
     require(plan.at("base_revision").is_number_unsigned() || plan.at("base_revision").is_number_integer(), "invalid revision");
     require(plan.at("base_revision").get<uint64_t>() == revision, "revision conflict");
     const auto actor = plan.at("actor").get<std::string>();

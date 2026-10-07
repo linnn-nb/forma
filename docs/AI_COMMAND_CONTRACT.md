@@ -6,7 +6,7 @@
 
 track.create / clip.import / track.gain 由 ndaw commands 输出 JSON Schema、单位、权限类别、风险、可逆性和测试 ID。Edit 私有且只在 message thread 操作；后台直接调用会拒绝。
 
-Plan 包含 plan_id、actor、base_revision、idempotency_key 和操作数组。采样位置为 48 kHz 时间域整数，增益为 dB。Dry-run 检查全部操作、目标、范围、媒体 SHA-256，不改 Edit；提交整体成为一个命名 UndoManager 事务。Revision 在提交/Undo/Redo 递增；陈旧计划整体拒绝。
+Plan 包含 plan_id、actor、session_token、base_revision、idempotency_key 和操作数组。采样位置为 48 kHz 时间域整数，增益为 dB。Dry-run 检查全部操作、目标、范围、媒体 SHA-256，不改 Edit；提交整体成为一个命名 UndoManager 事务。Revision 在提交/Undo/Redo 递增；陈旧计划整体拒绝。session_token 在 L1 创建时绑定实际 Edit 会话；切换工程后，即使 revision 或对象 ID 相同，旧 Plan 也拒绝。
 
 L1 持有生命周期级 UndoTransactionInhibitor；SDK 派生更新归入最近 Plan。增益用 UndoableAction 调用真实 SDK setter。未知原生事务或选择撤销早于后续事务时拒绝推进历史，避免假成功。
 
@@ -256,3 +256,7 @@ restore 参数 id（32 位小写十六进制）、sha256、base_revision、sessi
 
 
 恢复状态中的 receipt_current_session 指明保存/恢复回执是否属于当前 session token；打开其他工程后保留原始回执供核对，但状态回到 idle，不把旧工程操作显示为新工程已保存或已恢复。
+
+## 新建独立工程（M1-NEW-01）
+
+session.new 属于 human/local_gui 控制，参数 name（1–128 UTF-8 字节，无控制字符）、base_revision 与 session_token。本地预览确认后撤回 Agent 写权限，先保存当前停止工程的校验恢复副本，后台回执成功且会话/版本未改变才在 message thread 建立独立空白 Edit。取消、磁盘失败和期间人工编辑保留当前工程；完成回执包含 previous_session_backup、实际新 token/revision，audio_verified=false。新会话的 Undo/Redo 与执行回执清空，旧恢复标记不冒充当前成功。名称存入 NATIVEDAW/session_name，query.summary 可读。创建本身不是编辑 Undo；可通过保留副本恢复。不会覆盖媒体/旧文件；硬件设置保留，媒体不复制，名称不是文件路径。见 NEW_SESSION_WORKFLOW.md。

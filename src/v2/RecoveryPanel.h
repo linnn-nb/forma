@@ -25,7 +25,7 @@ public:
         previewButton.setEnabled(!busy&&selection.getSelectedId()>0&&rows.at(selection.getSelectedId()-1).value("status",std::string{})!="invalid");
         bool current=!preview.is_null()&&preview["session_token"]==facts["session_token"]&&preview["base_revision"]==facts["revision"];
         accept.setEnabled(!busy&&current);cancel.setEnabled(busy||!preview.is_null());
-        const auto phase=facts.value("state",std::string{});std::string message=phase=="saved"?"恢复副本已写入并取得校验回执":phase=="restored"?"已恢复为新会话；请试听，使用另存工程保存":phase=="cancelled"?"恢复切换已取消；已写入的副本保留":phase=="failed"?"未完成："+facts.value("error",std::string{}):phase=="deferred"?"保存延期："+facts.value("reason",std::string{}):phase=="idle"?"就绪 · 仅在停止状态保存工程变化":"正在处理 · "+phase;
+        const auto phase=facts.value("state",std::string{});std::string message=phase=="saved"?"恢复副本已写入并取得校验回执":phase=="restored"?"已恢复为新会话；请试听，使用另存工程保存":phase=="created"?"新工程已建立；上一工程的恢复副本保留在清单中":phase=="cancelled"?"恢复切换已取消；已写入的副本保留":phase=="failed"?"未完成："+facts.value("error",std::string{}):phase=="deferred"?"保存延期："+facts.value("reason",std::string{}):phase=="idle"?"就绪 · 仅在停止状态保存工程变化":"正在处理 · "+phase;
         if(phase=="saved"&&facts["receipt"].contains("snapshot"))message+=" · r"+facts["receipt"]["snapshot"]["revision"].dump();outcome.setText(text(message),juce::dontSendNotification);
         if(!preview.is_null()&&!current)outcome.setText(text("工程在预览后发生变化，请重新查看预览。"),juce::dontSendNotification);
         location.setText(text(facts.value("directory",std::string{})),juce::dontSendNotification);

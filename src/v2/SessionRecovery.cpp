@@ -48,6 +48,16 @@ void SessionRecovery::poll(){
         }catch(const std::exception& e){phase="failed";error=e.what();work.result["state"]="failed";work.result["error"]=error;receipt=work.result;}
         return;
     }
+    if(state=="new_ready"){
+        if(jobGeneration!=generation){work.result["state"]="cancelled";work.result["reason"]="new session cancelled; completed backup retained";receipt=work.result;phase="cancelled";return;}
+        try{
+            owner.createNewSession(work.result.at("name"),work.session,work.revision);
+            work.result["state"]="created";work.result["session_token"]=owner.sessionToken();work.result["revision"]=owner.revision;
+            work.result["undo_restored"]=false;work.result["audio_verified"]=false;
+            receipt=work.result;phase="created";
+        }catch(const std::exception& e){phase="failed";error=e.what();work.result["state"]="failed";work.result["error"]=error;receipt=work.result;}
+        return;
+    }
     phase="idle";receipt=work.result;
 }
 void SessionRecovery::capture(bool forced){
@@ -64,11 +74,11 @@ void SessionRecovery::capture(bool forced){
 void SessionRecovery::timerCallback(){owner.checkThread();poll();if(initialized&&enabled&&!job.valid()&&now()-lastAttempt>=interval*1000.)capture(false);}
 Json SessionRecovery::status() const {
     owner.checkThread();const auto session=owner.sessionToken();bool current=false;
-    if(phase=="restored")current=receipt.is_object()&&receipt.value("session_token",std::string{})==session;
+    if(phase=="restored"||phase=="created")current=receipt.is_object()&&receipt.value("session_token",std::string{})==session;
     if(phase=="saved")current=receipt.is_object()&&receipt.contains("snapshot")&&receipt["snapshot"].value("session_token",std::string{})==session;
     // Retain the genuine receipt for review, but never describe a subsequently
     // opened Edit as saved/restored by an operation on the previous session.
-    const auto state=(phase=="saved"||phase=="restored")&&!current?std::string("idle"):phase;
+    const auto state=(phase=="saved"||phase=="restored"||phase=="created")&&!current?std::string("idle"):phase;
     return {{"available",true},{"enabled",enabled},{"interval_seconds",interval},{"busy",job.valid()},{"state",state},{"reason",reason},{"error",error},{"directory",directory.getFullPathName().toStdString()},{"catalog",catalog},{"receipt",receipt},{"receipt_current_session",current},{"session_token",session},{"revision",owner.revision},{"snapshot_only",true},{"media_copied",false},{"undo_restored",false}};
 }
 Json SessionRecovery::control(const std::string& command,const Json& args){
@@ -85,6 +95,21 @@ Json SessionRecovery::control(const std::string& command,const Json& args){
         start([path,value]{recovery::settings(path,value);return Work{{{"state","configured"},{"settings",value}}};},"configuring");return status();
     }
     require(!job.valid(),"wait for recovery I/O to finish");
+    if(command=="session.new"){
+        fields({"name","base_revision","session_token"});
+        require(args.at("name").is_string(),"new session name must be text");
+        const auto raw=args.at("name").get<std::string>();
+        require(!raw.empty()&&raw.size()<=128&&std::none_of(raw.begin(),raw.end(),[](unsigned char ch){return ch<32||ch==127;})&&juce::CharPointer_UTF8::isValidString(raw.data(),int(raw.size())),"session name must be 1..128 UTF-8 bytes without control characters");
+        const auto name=juce::String::fromUTF8(raw.data(),int(raw.size())).trim().toStdString();require(!name.empty(),"session name cannot be blank");
+        require(args.at("base_revision").is_number_integer()&&args.at("session_token").is_string(),"invalid new-session preview");
+        require(args.at("base_revision")==Json(owner.revision)&&args.at("session_token")==owner.sessionToken(),"current session changed; review the new-session preview again");
+        auto current=owner.recoverySnapshot();const auto path=directory;const auto session=owner.sessionToken();const auto revision=owner.revision;
+        require(args.at("base_revision")==Json(revision)&&args.at("session_token")==session,"native edits changed the preview; review again");
+        start([path,current=std::move(current),session,revision,name]()mutable{
+            auto backup=recovery::write(path,{std::move(current.first),std::move(current.second)});
+            return Work{{{"state","new_ready"},{"name",name},{"previous_session_backup",backup},{"catalog",recovery::list(path)}},{},session,revision};
+        },"creating");return status();
+    }
     if(command=="session.recovery.capture"){fields({});capture(true);return status();}
     if(command=="session.recovery.list"){fields({});const auto path=directory;start([path]{return Work{{{"state","listed"},{"catalog",recovery::list(path)}}};},"listing");return status();}
     if(command=="session.recovery.restore"){
@@ -111,6 +136,9 @@ void Commands::registerRecoveryCommands(Json& registry){
     add("session.recovery.configure",{{"enabled",{{"type","boolean"}}},{"interval_seconds",{{"type","integer"},{"minimum",10},{"maximum",600}}}},"low");
     for(auto* id:{"session.recovery.capture","session.recovery.list","session.recovery.cancel"})add(id,Json::object(),"low");
     add("session.recovery.restore",{{"id",{{"type","string"},{"pattern","^[0-9a-f]{32}$"}}},{"sha256",{{"type","string"},{"pattern","^[0-9a-f]{64}$"}}},{"base_revision",{{"type","integer"},{"minimum",0}}},{"session_token",{{"type","string"},{"minLength",1}}}},"high");
+    add("session.new",{{"name",{{"type","string"},{"minLength",1},{"maxLength",128}}},{"base_revision",{{"type","integer"},{"minimum",0}}},{"session_token",{{"type","string"},{"minLength",1}}}},"high");
+    registry.back()["test"]="M1-NEW-01";
+    registry.back()["description"]="Local confirmation only: durably back up the stopped current Edit before creating an independent empty session. A session switch is not an Undo transaction; use the retained recovery snapshot to return.";
 }
 std::pair<juce::ValueTree,Json> Commands::recoverySnapshot(){
     checkThread();const auto began=now();
@@ -126,8 +154,18 @@ std::pair<juce::ValueTree,Json> Commands::recoverySnapshot(){
     for(auto* t:te::getAudioTracks(*edit))for(auto* clip:t->getClips())if(auto* wave=dynamic_cast<te::WaveAudioClip*>(clip))if(const auto original=wave->getOriginalFile();original!=juce::File{})sources[wave->itemID.toString()]=original.getFullPathName();
     std::function<void(juce::ValueTree)> map=[&](juce::ValueTree node){if(auto found=sources.find(node.getProperty(te::IDs::id).toString());found!=sources.end()&&node.hasProperty(te::IDs::source))node.setProperty(te::IDs::source,found->second,nullptr);for(auto child:node)map(child);};map(detached);
     auto name=te::EditFileOperations(*edit).getEditFile().getFileNameWithoutExtension().toStdString();
+    if(name.empty())name=metadata.getProperty("session_name","Untitled").toString().toStdString();
     Json meta{{"id",juce::Uuid().toString().removeCharacters("-").toStdString()},{"session_token",sessionToken()},{"revision",revision},{"name",name.empty()?"Untitled":name},{"snapshot_capture_ms",now()-began}};
     return {detached,meta};
+}
+void Commands::createNewSession(const std::string& name,const std::string& session,uint64_t expected){
+    checkThread();recoverySnapshot();require(sessionToken()==session&&revision==expected,"newer native edits were retained; review new session again");
+    ParameterWriteGuard guard(*this);releaseMidiKeys();
+    auto candidate=te::createEmptyEdit(engine,{});require(candidate!=nullptr,"new Edit could not be created");
+    for(auto* t:te::getAudioTracks(*candidate))candidate->deleteTrack(t);
+    candidate->getMasterVolumePlugin()->setPanLaw(te::PanLawLinear);candidate->getMasterVolumePlugin()->setVolumeDb(0);
+    auto info=candidate->state.getOrCreateChildWithName("NATIVEDAW",nullptr);info.setProperty("schema",2,nullptr);info.setProperty("revision",juce::int64(0),nullptr);info.setProperty("session_name",juce::String(name),nullptr);
+    adoptEdit(std::move(candidate));
 }
 void Commands::restoreRecoveryState(juce::ValueTree state,const std::string& session,uint64_t expected){
     checkThread();recoverySnapshot();require(sessionToken()==session&&revision==expected,"newer native edits were retained; review recovery again");ParameterWriteGuard guard(*this);releaseMidiKeys();
