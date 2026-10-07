@@ -332,6 +332,14 @@ Json Commands::preview(const Json& plan) const {
     return {{"plan_id",plan.at("plan_id")},{"base_revision",revision},{"changes",diff},{"audio_verified",false},{"time_selection_changes",rangeDiff},{"clip_changes",clipDiff},{"track_changes",trackDiff},{"pan_changes",panDiff},{"midi_changes",midiDiff},{"legacy_imports",legacyDiff}};
 }
 void Commands::bumpRevision() { ++revision; metadata.setProperty("revision",juce::int64(revision),nullptr); }
+void Commands::performTrackGain(te::Track& track,float db) {
+    // Parameter setters also change SDK base values outside ValueTree Undo.
+    // Re-run the setter against the stable ID when a deleted track is recreated.
+    require(edit->getUndoManager().perform(new GainAction(*edit,track.itemID,hierarchyQuery(track).value("base_gain_db",0.f),db)),"gain operation failed");
+}
+void Commands::performTrackFlag(te::Track& track,const std::string& command,bool enabled) {
+    require(edit->getUndoManager().perform(new TrackFlagAction(*edit,track,command,enabled)),"track flag operation failed");
+}
 Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
     checkThread();captureNativeStates();
     scope.validate();require(scope.mode!=Permission::ReadOnly,"read-only permission cannot commit edits");
@@ -412,11 +420,11 @@ Json Commands::commit(const Json& plan, bool accepted,const Scope& scope) {
                 require(t!=nullptr,"target disappeared");
                 if (cmd=="track.gain") {
                     // Wrap the real SDK setter: changing its backing ValueTree alone does not update the parameter's base value.
-                    require(um.perform(new GainAction(*edit,t->itemID,hierarchyQuery(*t).value("base_gain_db",0.f),a.at("db").get<float>())),"gain operation failed");
+                    performTrackGain(*t,a.at("db").get<float>());
                 } else if(cmd=="track.pan"||cmd=="track.pan_law") {
                     auto resolved=a;resolved["track"]=t->itemID.toString().toStdString();executePanOperation(cmd,resolved);
                 } else if(isTrackFlag(cmd)) {
-                    require(um.perform(new TrackFlagAction(*edit,*t,cmd,a.at("enabled"))),"track control operation failed");
+                    performTrackFlag(*t,cmd,a.at("enabled").get<bool>());
                 } else if(cmd=="plugin.insert"||cmd=="plugin.external.insert") {
                     auto resolved=a;resolved["track"]=t->itemID.toString().toStdString();executeProcessorOperation(cmd,resolved,objects);
                 } else throw std::runtime_error("unhandled command");

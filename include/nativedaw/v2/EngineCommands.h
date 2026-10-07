@@ -220,6 +220,8 @@ private:
     Json prepareLegacy(const juce::File&) const;
     Json validateLegacyOperation(const Json&) const;
     void executeLegacyOperation(const Json&,Json&);
+    void performTrackGain(te::Track&,float);
+    void performTrackFlag(te::Track&,const std::string&,bool);
     Json assessScope(const Json&,const Scope&,const Json&) const;
     void bumpRevision();
     Json requestAudit() const;
