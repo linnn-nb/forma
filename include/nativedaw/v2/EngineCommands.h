@@ -170,6 +170,8 @@ private:
     void validateRecordingPlan(const Json&) const;
     void executeRecordingOperation(const std::string&,const Json&);
     Json recordingQuery(te::AudioTrack&) const;
+    std::string inputAvailability(const te::InputDevice*) const;
+    Json recordingReadiness() const;
     void restoreInputAssignments();
     void finishRecordingCapture(bool unexpected = false);
     static void registerAudioDeviceCommands(Json&);
@@ -192,6 +194,9 @@ private:
     std::vector<MidiRecordSettings> midiRecordSettings;
     void timerCallback() override;
     Json recordingCapture=nullptr,lastRecording=nullptr;
+    static constexpr double recordingStallBudgetMs=500;
+    double recordingLastProgress=0;
+    uint64_t recordingProgressFrames=0;
     juce::File recordingDirectory;
     std::string recordingError;
     te::WaveAudioClip* audioClip(const std::string&) const;

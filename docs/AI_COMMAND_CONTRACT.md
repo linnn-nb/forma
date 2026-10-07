@@ -16,6 +16,8 @@ human 可执行普通编辑；agent:/extension: 使用受信任的本地授权�
 
 ## 已实现的 M1 增量
 
+录音就绪快照 `recording_readiness` 同时由完整查询和 MCP 摘要返回，检查所有待命轨；最多列出 8 项阻塞和 256 字符轨名，`blockers_total` / `name_truncated` 明确省略，原始对象仍可分页查询。`ready` 只代表当前前置条件；目录/空间在开始时检查，实际捕获/写盘由独立回执确认。输入查询区分 `availability_reason`、请求的 armed/monitor 与实际 monitoring/recording。不可用输入允许 `track.arm(false)` / `track.monitor(off)`，开启监听必须重新核验可用设备。500 ms 处理帧停滞由 message-thread 20 Hz 检查，停止并保留 failed 部分媒体回执；不是实时 deadline 保证。测试 M1-REC-02、边界见 RECORDING_READINESS.md。
+
 track.mute / track.solo / track.solo_safe 使用 SDK setter 与 UndoableAction，支持播放中切换。plugin.insert / parameter / bypass / remove 操作真实 EQ、压缩、混响、延迟；参数只来自 query 中实例的实际参数 ID、范围和格式化值，不支持虚构参数。Delay 的时间是 SDK 非自动化属性，以 plugin.delay_time（1–2000 ms）独立控制。
 
 效果器结构与普通参数 Plan 操作要求停止播放，并先释放保留的播放图，避免延迟时间变更在回调内扩容。参数历史采用前/后基值同步动作包围 SDK 的 CachedValue 动作；同步在 Undo/Redo 事务内执行，恢复存储值与实际 DSP 基值，不产生额外人工事务。插入在推子之前。数值、历史和保存恢复见 tests/v2/ProcessorTests.cpp；不等同于第三方插件或完整自动化验收。

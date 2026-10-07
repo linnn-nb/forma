@@ -1,4 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "OutputProbe.h"
+#include "NativePluginStates.h"
 namespace ndaw::v2 {
 namespace {
 void require(bool b,const char* s){if(!b)throw std::runtime_error(s);}
@@ -10,9 +12,56 @@ void Commands::registerRecordingCommands(Json& r){
     auto add=[&](const char* cmd,Json props){auto required=Json::array();for(auto it=props.begin();it!=props.end();++it)required.push_back(it.key());r.push_back({{"id",cmd},{"schema",{{"type","object"},{"properties",props},{"required",required},{"additionalProperties",false}}},{"risk","low"},{"permission","edit"},{"reversible",true},{"live",false},{"test","M1-REC-01"}});};
     Json string={{"type","string"}};add("track.input",{{"track",string},{"device",string}});add("track.arm",{{"track",string},{"enabled",{{"type","boolean"}}}});add("track.monitor",{{"track",string},{"mode",{{"type","string"},{"enum",{"off","auto","on"}}}}});
 }
+std::string Commands::inputAvailability(const te::InputDevice* input) const {
+    if(!input)return "missing";
+    if(!input->isEnabled())return "disabled";
+    if(input->getDeviceType()!=te::InputDevice::waveDevice)return "ready";
+    auto* device=engine.getDeviceManager().deviceManager.getCurrentAudioDevice();
+    if(!device||!device->isOpen()||!device->isPlaying())return "clock_unavailable";
+    const auto* wave=dynamic_cast<const te::WaveInputDevice*>(input);
+    if(!wave||wave->getChannels().isEmpty())return "inactive_channels";
+    const auto active=device->getActiveInputChannels();
+    for(const auto& channel:wave->getChannels())
+        if(channel.indexInDevice<0||!active[channel.indexInDevice])return "inactive_channels";
+    return "ready";
+}
 Json Commands::recordingQuery(te::AudioTrack& t) const {
-    auto device=stored(t,"ndaw_input","none");auto* i=instance(*edit,device);auto* d=engine.getDeviceManager().findInputDeviceForID(juce::String(device));const bool available=d&&d->isEnabled();const bool keyboard=d&&d->isMidi()&&(d->getName()=="NativeDAW Keyboard"||(dynamic_cast<te::MidiInputDevice*>(d)&&te::HostedAudioDeviceInterface::isHostedMidiInputDevice(*static_cast<te::MidiInputDevice*>(d))));
-    return {{"screen_keyboard",keyboard},{"kind",trackType(t)=="audio"?"audio":"midi"},{"device",device},{"name",available?d->getName().toStdString():device=="none"?"None":"Missing input: "+device},{"available",available},{"armed",bool(t.state.getProperty("ndaw_armed",false))},{"monitor",stored(t,"ndaw_monitor","off")},{"monitoring",available&&i&&i->isLivePlayEnabled(t)},{"recording",available&&i&&i->isRecording(t.itemID)},{"recording_file",available&&i?i->getRecordingFile(t.itemID).getFullPathName().toStdString():""}};
+    auto device=stored(t,"ndaw_input","none");auto* i=instance(*edit,device);auto* d=engine.getDeviceManager().findInputDeviceForID(juce::String(device));
+    const auto reason=device=="none"?std::string("unassigned"):inputAvailability(d);const bool available=reason=="ready";
+    const bool keyboard=d&&d->isMidi()&&(d->getName()=="NativeDAW Keyboard"||(dynamic_cast<te::MidiInputDevice*>(d)&&te::HostedAudioDeviceInterface::isHostedMidiInputDevice(*static_cast<te::MidiInputDevice*>(d))));
+    auto* clock=engine.getDeviceManager().deviceManager.getCurrentAudioDevice();const bool running=clock&&clock->isOpen()&&clock->isPlaying();
+    return {{"screen_keyboard",keyboard},{"kind",trackType(t)=="audio"?"audio":"midi"},{"device",device},{"name",d?d->getName().toStdString():device=="none"?"None":"Missing input: "+device},{"available",available},{"availability_reason",reason},{"armed",bool(t.state.getProperty("ndaw_armed",false))},{"monitor",stored(t,"ndaw_monitor","off")},{"monitoring",available&&running&&i&&i->isLivePlayEnabled(t)},{"recording",available&&running&&i&&i->isRecording(t.itemID)},{"recording_file",available&&i?i->getRecordingFile(t.itemID).getFullPathName().toStdString():""}};
+}
+Json Commands::recordingReadiness() const {
+    Json blockers=Json::array();size_t total=0,armed=0,available=0;
+    auto block=[&](const char* code,const char* message,te::Track* target=nullptr){
+        ++total;if(blockers.size()<8){const auto name=target?target->getName():juce::String{};
+            blockers.push_back({{"code",code},{"message",message},{"track",target?Json(id(*target)):Json(nullptr)},
+                {"name",name.substring(0,256).toStdString()},{"name_truncated",name.length()>256}});
+        }
+    };
+    if(edit->getTransport().isPlaying()||!recordingCapture.is_null()||!capture.is_null())block("transport_active","Stop transport and active capture first");
+    if(audioConfigurationPending())block("audio_preparing","Wait for audio device preparation");
+    if(!midiConfiguration.is_null()&&midiConfiguration.value("state",std::string{})=="requested")block("midi_preparing","Wait for MIDI configuration");
+    if(!parameterCapture.is_null())block("parameter_gesture","Finish the native parameter gesture");
+    if(nativeStates){auto state=nativeStates->query();if(state["pending"].get<bool>()||!state["failure"].is_null())block("native_state","Resolve pending or failed native plugin state");}
+    auto* clock=engine.getDeviceManager().deviceManager.getCurrentAudioDevice();const bool running=clock&&clock->isOpen()&&clock->isPlaying();
+    if(!running)block("clock_unavailable","Audio device must be open and running");
+    if(edit->getTransport().looping||edit->recordingPunchInOut)block("linear_only","Punch/Loop recording is not yet qualified");
+    for(auto* target:te::getAllTracks(*edit)){
+        if(target->automationMode!=te::AutomationMode::read)block("automation_mode","Recording currently requires Read automation",target);
+        auto* t=dynamic_cast<te::AudioTrack*>(target);if(!t||!bool(t->state.getProperty("ndaw_armed",false)))continue;
+        ++armed;const auto q=recordingQuery(*t);const auto type=trackType(*t);
+        auto* input=engine.getDeviceManager().findInputDeviceForID(juce::String(q["device"].get<std::string>()));
+        const bool compatible=input&&(type=="audio"?input->getDeviceType()==te::InputDevice::waveDevice:(type=="midi"||type=="instrument")&&input->isMidi()&&!input->isTrackDevice());
+        if(!q["available"].get<bool>())block("input_unavailable","An armed input is missing, disabled or has inactive channels",t);
+        else if(!compatible)block("input_incompatible","An armed input is incompatible with its track",t);
+        else if(auto* midi=dynamic_cast<te::MidiInputDevice*>(input);midi&&!midi->recordingEnabled)block("midi_recording_disabled","MIDI recording is disabled for an armed input",t);
+        else ++available;
+    }
+    if(armed==0)block("no_armed_tracks","Choose an input and arm at least one track");
+    return {{"ready",total==0},{"clock_running",running},{"armed_tracks",armed},{"available_armed_tracks",available},
+        {"blockers",blockers},{"blockers_total",total},{"disk_check","on_start"},{"processing_stall_budget_ms",recordingStallBudgetMs}};
 }
 void Commands::validateRecordingPlan(const Json& ops) const {
     std::map<std::string,std::string> inputs,types;
@@ -21,9 +70,10 @@ void Commands::validateRecordingPlan(const Json& ops) const {
         if(cmd=="track.create"){std::string key=a.at("ref");types[key]=a.value("type",std::string("audio"));inputs[key]="none";continue;}
         if(cmd!="track.input"&&cmd!="track.arm"&&cmd!="track.monitor")continue;
         std::string key=a.at("track");require(types.contains(key)&&(types[key]=="audio"||types[key]=="midi"||types[key]=="instrument"),"input requires an audio, MIDI or instrument track");
-        if(cmd=="track.input"){std::string device=a.at("device");auto* d=engine.getDeviceManager().findInputDeviceForID(juce::String(device));require(device=="none"||(d&&(types[key]=="audio"?d->getDeviceType()==te::InputDevice::waveDevice:d->isMidi()&&!d->isTrackDevice())&&d->isEnabled()),"input unavailable or incompatible with track type");inputs[key]=device;}
-        else if(cmd=="track.arm"){if(a.at("enabled").get<bool>())require(inputs[key]!="none"&&engine.getDeviceManager().findInputDeviceForID(juce::String(inputs[key]))!=nullptr&&engine.getDeviceManager().findInputDeviceForID(juce::String(inputs[key]))->isEnabled(),"choose an available input before arming");}
-        else {std::string mode=a.at("mode");require(mode=="off"||mode=="auto"||mode=="on","unsupported monitor mode");require(mode=="off"||inputs[key]!="none","choose input before monitoring");}
+        auto usable=[&](const std::string& device){auto* d=engine.getDeviceManager().findInputDeviceForID(juce::String(device));return device!="none"&&d&&(types[key]=="audio"?d->getDeviceType()==te::InputDevice::waveDevice:d->isMidi()&&!d->isTrackDevice())&&inputAvailability(d)=="ready";};
+        if(cmd=="track.input"){std::string device=a.at("device");require(device=="none"||usable(device),"input unavailable or incompatible with track type");inputs[key]=device;}
+        else if(cmd=="track.arm"){if(a.at("enabled").get<bool>())require(usable(inputs[key]),"choose an available compatible input before arming");}
+        else {std::string mode=a.at("mode");require(mode=="off"||mode=="auto"||mode=="on","unsupported monitor mode");require(mode=="off"||usable(inputs[key]),"choose an available compatible input before monitoring");}
     }
 }
 void Commands::executeRecordingOperation(const std::string& cmd,const Json& a){
@@ -56,7 +106,7 @@ Json Commands::configureInput(const std::string& deviceName){
     args["base_setup_hash"]=devices["setup_hash"];return audioDeviceControl(args);
 }
 Json Commands::record(const juce::File& directory){
-    checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");require(parameterCapture.is_null(),"finish native parameter gesture first");ParameterWriteGuard parameterGuard(*this);require(!edit->getTransport().isPlaying()&&capture.is_null()&&recordingCapture.is_null(),"start recording from stopped transport");require(midiConfiguration.is_null()||midiConfiguration.value("state",std::string{})!="requested","wait for MIDI configuration");require(engine.getDeviceManager().deviceManager.getCurrentAudioDevice()!=nullptr,"audio device unavailable");
+    checkThread();captureNativeStates();const auto readiness=recordingReadiness();if(!readiness["ready"].get<bool>())throw std::runtime_error("Record preflight: "+readiness["blockers"][0]["message"].get<std::string>());ParameterWriteGuard parameterGuard(*this);require(!edit->getTransport().isPlaying()&&capture.is_null()&&recordingCapture.is_null(),"start recording from stopped transport");require(midiConfiguration.is_null()||midiConfiguration.value("state",std::string{})!="requested","wait for MIDI configuration");require(engine.getDeviceManager().deviceManager.getCurrentAudioDevice()!=nullptr,"audio device unavailable");
     require(directory.isDirectory()&&directory.hasWriteAccess(),"choose a writable recording directory");require(directory.getBytesFreeOnVolume()>64*1024*1024,"less than 64 MiB free for recording");
     for(auto* t:te::getAllTracks(*edit))require(t->automationMode==te::AutomationMode::read,"recording currently requires Read automation; simultaneous automation writing is pending");
     restoreInputAssignments();Json targets=Json::array(),existing=Json::array();
@@ -73,9 +123,20 @@ Json Commands::record(const juce::File& directory){
     try {edit->getTransport().record(false,false);}catch(const std::exception& e){recordingError=e.what();edit->getTransport().stop(false,false);finishRecordingCapture();throw;}
     bool success=edit->getTransport().isRecording();for(const auto& target:targets){auto* t=track(target);auto q=recordingQuery(*t);success&=q["recording"].get<bool>()&&(q["kind"]=="midi"||!q["recording_file"].get<std::string>().empty());}
     if(!success){edit->getTransport().stop(false,false);if(recordingError.empty())recordingError="Tracktion did not start all armed inputs";finishRecordingCapture();throw std::runtime_error(recordingError);}
-    recordingCapture["state"]="recording";bumpRevision();startTimerHz(20);return recordingCapture;
+    recordingCapture["state"]="recording";recordingCapture["processing_stall_budget_ms"]=recordingStallBudgetMs;recordingLastProgress=juce::Time::getMillisecondCounterHiRes();recordingProgressFrames=outputProbe?outputProbe->frames.load(std::memory_order_relaxed):0;bumpRevision();startTimerHz(20);return recordingCapture;
 }
-void Commands::timerCallback(){finishAudioConfiguration();captureNativeStates();finishMidiConfiguration();if(!recordingCapture.is_null()){if(!edit->getTransport().isRecording())finishRecordingCapture(true);else for(const auto& target:recordingCapture["targets"]){auto* t=track(target);if(!t||!recordingQuery(*t)["available"].get<bool>()){recordingError="Armed input disappeared during recording";stop();break;}}}}
+void Commands::timerCallback(){
+    finishAudioConfiguration();captureNativeStates();finishMidiConfiguration();if(recordingCapture.is_null())return;
+    if(!edit->getTransport().isRecording()){finishRecordingCapture(true);return;}
+    auto fail=[&](const char* code,const char* error){recordingCapture["failure_code"]=code;recordingError=error;stop();};
+    auto* clock=engine.getDeviceManager().deviceManager.getCurrentAudioDevice();
+    if(!clock||!clock->isOpen()||!clock->isPlaying()){fail("clock_unavailable","Audio device stopped during recording; files may be partial");return;}
+    for(const auto& target:recordingCapture["targets"]){auto* t=track(target);if(!t||!recordingQuery(*t)["available"].get<bool>()){fail("input_unavailable","Armed input disappeared during recording; files may be partial");return;}}
+    const auto frames=outputProbe?outputProbe->frames.load(std::memory_order_relaxed):0;
+    const auto now=juce::Time::getMillisecondCounterHiRes();
+    if(frames!=recordingProgressFrames){recordingProgressFrames=frames;recordingLastProgress=now;}
+    else if(now-recordingLastProgress>=recordingStallBudgetMs){recordingCapture["observed_stall_ms"]=now-recordingLastProgress;fail("processing_stalled","Audio processing stopped advancing during recording; files may be partial");}
+}
 void Commands::finishRecordingCapture(bool unexpected){
     stopTimer();if(recordingCapture.is_null())return;checkThread();if(unexpected&&recordingError.empty())recordingError="Recording stopped unexpectedly; files may be partial";
     auto receipt=recordingCapture;receipt.erase("existing_clips");if(!receipt.contains("end_samples"))receipt["end_samples"]=std::llround(edit->getTransport().getPosition().inSeconds()*timelineRate);receipt["files"]=Json::array();receipt["clips"]=Json::array();
