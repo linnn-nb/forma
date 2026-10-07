@@ -1,6 +1,6 @@
 # 验证状态
 
-结论：M0 关口已通过；M1 仍缺完整人工验收。M2 网关源码 `c75c370` 的完整 Release 构建通过，自动回归 42/42 通过（290.76 秒，2026-10-07）。Mac 锁定，物理点击/试听和完整真实 Agent 演示未执行，不能写成 M2 已验收。
+结论：M0 关口已通过；M1 仍缺完整人工验收。本轮对象查询源码 `90afd3b` 的完整 Release 构建通过，自动回归 43/43 通过（291.18 秒，2026-10-07）。Mac 锁定，物理点击/试听和完整真实 Agent 演示未执行，不能写成 M2 已验收。
 
 本仓库分发源码；本机 `evidence/`、媒体和构建产物不公开。下列测试结果是本机记录，不自动赋予其他机器资格。M1 详细历史保存在 [VERIFICATION_v2_M1](history/VERIFICATION_v2_M1.md)，旧 v1 见 history/VERIFICATION_v1.md。
 
@@ -17,13 +17,13 @@
 
 ## M2-QUERY-01
 
-专项 4/4 通过（24.82 秒，2026-10-07），完整回归待本轮执行。QueryTests 54 项、协议 93 项、原生工作区 73 项通过；工具清单现在为 59 项。实际录制的 CC/Pitch Bend 分页同时在 MIDI 录音专项通过。源码/测试位置见 AI_COMMAND_CONTRACT.md。
+专项 4/4 通过（24.82 秒，2026-10-07）；其后完整 Release 构建及回归 43/43 通过（291.18 秒）。源码 `90afd3b`。QueryTests 54 项、协议 93 项、原生工作区 73 项通过；工具清单现在为 59 项。实际录制的 CC/Pitch Bend 分页同时在 MIDI 录音专项通过。源码/测试位置见 AI_COMMAND_CONTRACT.md。
 
-固定 128/256/512 原生轨道分别读取 4/8/16 页，总计 6.63/14.71/27.91 ms；本次最大 MCP 调用 2.75 ms，含 512 MIDI 音符和 64 自动化点的 fixture 初始化 2.14 秒。符合预先记录的每调用 <2 秒、初始化 <120 秒预算。字节预算使用真实测试工程的大段元数据注入核验，续页保留原字符串，单对象超预算明确失败。测试验证实际对象、参数/音符/自动化 ID、时间映射、原始媒体、Undo/history 不变；覆盖版本/换工程/活动手势/权限注入与 stdio/socket。
+完整回归中的固定 128/256/512 原生轨道分别读取 4/8/16 页，总计 8.37/14.90/25.86 ms；最大 MCP 调用 2.84 ms，含 512 MIDI 音符和 64 自动化点的 fixture 初始化 2.27 秒。符合预先记录的每调用 <2 秒、初始化 <120 秒预算。字节预算使用真实测试工程的大段元数据注入核验，续页保留原字符串，单对象超预算明确失败。测试验证实际对象、参数/音符/自动化 ID、时间映射、原始媒体、Undo/history 不变；覆盖版本/换工程/活动手势/权限注入与 stdio/socket。
 
 首次失败发生在 512 轨道构造：Tracktion 默认 400 Track。已通过正式 EngineBehaviour::getEditLimits 去除此默认限制，未改依赖提交或降低测试负载；保留 `ctest-query-track-limit-failure.log`。只读枚举通过不等于 512 轨道的 GUI、播放/DSP、RTT 或耐久资格。旧 SDK 其他数量上限与完整 M1/M2 人工缺口仍保留。
 
-记录：evidence/M2/query-tests.json、ctest-query.log、build-query-tests.log。本机桌面仍锁定，已再次请求解锁；本轮无物理点击、主观试听或完整模型验收。
+记录：evidence/M2/query-tests.json、ctest-query.log、ctest-query-full.log、build-query-tests.log、build-query-full.log。本机桌面仍锁定，已再次请求解锁；本轮无物理点击、主观试听或完整模型验收。
 
 ## 原 M2-MCP-01
 
