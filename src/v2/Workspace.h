@@ -339,7 +339,16 @@ public:
         saveButton.onClick=[this]{choose(true,[this](const auto& f){invoke([&]{commands.save(f);sessionName=f.getFileName();message(text("已另存工程 · ")+sessionName);});},"*.tracktionedit");};
         exportButton.onClick=[this]{choose(true,[this](const juce::File& f){invoke([&]{auto r=commands.render(f,0,facts["length_samples"]);message(text("已生成并校验 WAV · ")+juce::String(r["frames"].get<int64_t>())+text(" 帧 · ")+(r["lufs_i"].is_number()?juce::String(r["lufs_i"].get<double>(),2):text("静音"))+" LUFS-I");});},"*.wav");};
         recordButton.setComponentID("transport.record");recordTab.setComponentID("inspector.recording");recordTab.onClick=[this]{recordInspector=true;autoInspector=false;groupInspector=false;routingInspector=false;refresh();};recordButton.onClick=[this]{invoke([&]{commands.record(recordDirectory);message(text("正在原生录音 · 音频写盘 / MIDI 事件捕获"));});};
-        playButton.onClick=[this]{invoke([&]{commands.play();});};stopButton.onClick=[this]{invoke([&]{bool wasRecording=!commands.query()["recording_capture"].is_null();commands.stop();auto q=commands.query();if(wasRecording&&!q["last_recording"].is_null())message(q["last_recording"]["state"]=="failed"?text("录音失败：")+text(q["last_recording"]["error"].get<std::string>()):text("录音已停止 · 实际文件已校验 · 可整段撤销"));});};returnButton.onClick=[this]{invoke([&]{commands.seek(0);});};
+        playButton.onClick=[this]{invoke([&]{commands.play();});};stopButton.onClick=[this]{invoke([&]{
+            bool wasRecording=!commands.query()["recording_capture"].is_null();commands.stop();auto q=commands.query();
+            if(wasRecording&&!q["last_recording"].is_null()){
+                const auto& receipt=q["last_recording"];const auto state=receipt["state"].get<std::string>();
+                if(state=="failed")message(text("录音失败：")+text(receipt["error"].get<std::string>()));
+                else if(state=="no_events")message(text("未收到 MIDI 事件 · 未创建片段或历史"));
+                else if(state=="committed")message(receipt["files"].empty()?text("MIDI 录音已停止 · 事件已校验 · 可整段撤销"):text("录音已停止 · 文件与片段已校验 · 可整段撤销"));
+                else message(text("录音已停止 · 请查看录音回执"));
+            }
+        });};returnButton.onClick=[this]{invoke([&]{commands.seek(0);});};
         undoButton.onClick=[this]{invoke([&]{commands.undo();if(reportShowing&&pendingConfirmation.empty()){if(commands.legacyReports().empty())reportShowing=false;else showLegacyReport();}message(text("已撤销上一项事务"));});};redoButton.onClick=[this]{invoke([&]{commands.redo();if(reportShowing&&pendingConfirmation.empty())showLegacyReport();message(text("已重做上一项事务"));});};
         editButton.onClick=[this]{pianoMode=false;mix=false;resized();refresh();};mixButton.onClick=[this]{pianoMode=false;mix=true;resized();refresh();};pianoButton.onClick=[this]{pianoMode=true;mix=false;refresh();};pianoButton.setComponentID("view.piano");
         insertTab.onClick=[this]{recordInspector=false;routingInspector=false;groupInspector=false;autoInspector=false;refresh();};routingTab.onClick=[this]{recordInspector=false;routingInspector=true;groupInspector=false;autoInspector=false;refresh();};groupTab.onClick=[this]{recordInspector=false;routingInspector=false;groupInspector=true;autoInspector=false;refresh();};groupTab.setComponentID("inspector.group");autoTab.setComponentID("inspector.automation");autoTab.onClick=[this]{recordInspector=false;autoInspector=true;groupInspector=false;routingInspector=false;refresh();};
