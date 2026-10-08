@@ -133,6 +133,11 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {240, "Zoomer · Normal / Single", "缩放", juce::KeyPress::F5Key},
+        {241, "Zoomer · Normal", "缩放"},
+        {242, "Zoomer · Single（一次后返回原工具）", "缩放"},
+        {243, "返回上一缩放", "缩放", 'e', cmd | juce::ModifierKeys::altModifier},
+        {244, "水平显示编辑选区", "缩放", 'f', juce::ModifierKeys::altModifier},
         {230, "切换所选轨道录音待命", "录音", 'r', shift},
         {231, "切换所选轨道输入监听", "录音", 'i', shift},
         {232, "所选轨道监听 Off", "录音"},
@@ -288,7 +293,10 @@ void Workspace::initialiseCommandManager()
                 refresh();
             });
     };
+    editArea.onZoomGesture = [this](Json request, std::string session, uint64_t revision)
+    { commitZoomGesture(request, session, revision); };
     editArea.onViewChange = [this](Json patch) { setView(std::move(patch)); };
+    editingControls.onZoomFit = [this] { commandManager.invokeDirectly(103, false); };
     piano.connect(commandManager);
     commandManager.commandStatusChanged();
 }
@@ -496,6 +504,19 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) &&
                          std::any_of(selection.objects.begin(), selection.objects.end(),
                                      [](const auto& o) { return o["kind"] == "automation_point"; });
+            if (id >= 240 && id <= 244)
+            {
+                active = !mix;
+                const auto view = commands.uiState();
+                if (id == 243)
+                    active = active && !view["zoom_state"]["history"].empty();
+                if (id == 244)
+                    active = active && !facts.value("time_selection", Json(nullptr)).is_null();
+                if (id == 240 || id == 241 || id == 242)
+                    info.setTicked(id == 240   ? ZoomGesture::isTool(view["edit_tool"])
+                                   : id == 242 ? view["edit_tool"] == "zoom_single"
+                                               : view["edit_tool"] == "zoomer");
+            }
             if (id >= 230 && id <= 235)
             {
                 active = canRecordingCommand(id);
@@ -517,6 +538,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= 240 && id <= 244)
+    {
+        executeZoomCommand(id);
+        return true;
+    }
     if (id >= 230 && id <= 235)
     {
         executeRecordingCommand(id);
@@ -764,6 +790,16 @@ void Workspace::setView(Json patch)
     invoke(
         [&]
         {
+            const auto old = commands.uiState();
+            if (patch.contains("span_samples") && patch["span_samples"] != old["span_samples"])
+            {
+                auto state = patch.value("zoom_state", old["zoom_state"]);
+                state["history"].push_back(
+                    {{"start_samples", old["start_samples"]}, {"span_samples", old["span_samples"]}});
+                if (state["history"].size() > 16)
+                    state["history"].erase(state["history"].begin());
+                patch["zoom_state"] = state;
+            }
             commands.updateUiState(patch, commands.sessionToken());
             message(text("视图已更新 · 随工程保存 · 编辑历史保持"));
         });

@@ -243,13 +243,14 @@ int main(int argc, char** argv)
         juce::ValueTree meta("NATIVEDAW"), ui("UI");
         auto old = view;
         old.erase("edit_views");
-        for (const auto* key : {"rulers", "main_time_scale", "timecode_fps", "track_heights", "zoom_presets", "track_views"})
+        for (const auto* key : {"rulers", "main_time_scale", "timecode_fps", "track_heights", "zoom_presets",
+                                "track_views", "zoom_state"})
             old.erase(key);
         old["ui_schema"] = 3;
         ui.setProperty("json", juce::String(old.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 8 &&
+        check(migrated["ui_schema"] == 9 &&
                   migrated["edit_views"] ==
                       Json({{"io", false}, {"inserts", false}, {"sends", false}, {"comments", false}}) &&
                   migrated["object_selection"] == old["object_selection"],

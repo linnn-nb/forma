@@ -170,7 +170,7 @@ int main(int argc, char** argv)
             b->triggerClick();
             pump();
         };
-        check(w.queryView()["ui_schema"] == 8 && w.queryView()["track_heights"].empty() &&
+        check(w.queryView()["ui_schema"] == 9 && w.queryView()["track_heights"].empty() &&
                   w.queryView()["zoom_presets"].size() == 5,
               "new UI defaults have seven-schema sparse heights and five usable presets");
         select(id);
@@ -327,11 +327,12 @@ int main(int argc, char** argv)
         old.erase("track_heights");
         old.erase("zoom_presets");
         old.erase("track_views");
+        old.erase("zoom_state");
         juce::ValueTree metadata("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(old.dump()), nullptr);
         metadata.addChild(ui, -1, nullptr);
         const auto migrated = readUiState(metadata);
-        check(migrated["ui_schema"] == 8 && migrated["rulers"] == old["rulers"] &&
+        check(migrated["ui_schema"] == 9 && migrated["rulers"] == old["rulers"] &&
                   migrated["edit_views"] == old["edit_views"] && migrated["track_heights"].empty(),
               "complete schema6 migrates existing rulers and columns without invented height overrides");
         old.erase("row_height");
@@ -372,7 +373,7 @@ int main(int argc, char** argv)
         Json report{
             {"result", "passed"},
             {"checks", checks},
-            {"ui_schema", 8},
+            {"ui_schema", 9},
             {"media_sha256", hash},
             {"render_peak", beforePcm.getMagnitude(0, 0, 96000)},
             {"render_maximum_error", error},

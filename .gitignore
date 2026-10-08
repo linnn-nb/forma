@@ -26,3 +26,5 @@ evidence/U/*
 !evidence/U/rulers-tests.json
 
 !evidence/U/presentation-tests.json
+
+!evidence/U/zoomer-tests.json

@@ -2,12 +2,41 @@
 #include "EditingModel.h"
 namespace ndaw::desktop
 {
+class ZoomToolButton final : public juce::TextButton
+{
+public:
+    std::function<void()> onFit;
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        if (e.getNumberOfClicks() < 2)
+            juce::TextButton::mouseDown(e);
+    }
+    void mouseUp(const juce::MouseEvent& e) override
+    {
+        if (e.getNumberOfClicks() < 2)
+            juce::TextButton::mouseUp(e);
+    }
+    void mouseDoubleClick(const juce::MouseEvent& e) override
+    {
+        if (!e.mods.isPopupMenu() && onFit)
+            onFit();
+    }
+};
 class EditingControls final : public juce::Component
 {
 public:
     EditingControls()
     {
         setComponentID("edit.controls");
+        addAndMakeVisible(zoomer);
+        zoomer.setToggleable(true);
+        zoomer.onFit = [this]
+        {
+            if (onZoomFit)
+                onZoomFit();
+        };
+        zoomer.setTooltip(
+            text("F5 · Normal / Single Zoom；点按居中放大，拖范围，Option返回上一缩放；双击按钮显示工程"));
         for (auto* b :
              {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &pencil, &back, &forward, &split})
             addAndMakeVisible(b);
@@ -53,6 +82,8 @@ public:
                                                                          {&forward, editCommand::nudgeForward},
                                                                          {&pencil, 218},
                                                                          {&split, editCommand::split}};
+        zoomer.setComponentID("ui.command:240");
+        zoomer.setCommandToTrigger(&manager, 240, true);
         for (auto [button, id] : bindings)
         {
             button->setComponentID("ui.command:" + juce::String(id));
@@ -62,6 +93,10 @@ public:
     void update(const Json& view)
     {
         updating = true;
+        zoomer.setToggleState(view["edit_tool"] == "zoomer" || view["edit_tool"] == "zoom_single",
+                              juce::dontSendNotification);
+        single = view["edit_tool"] == "zoom_single";
+        resized();
         for (size_t i = 0; i < divisions.size(); ++i)
             if (view["grid_beats"] == divisions[i])
                 division.setSelectedId(int(i + 1), juce::dontSendNotification);
@@ -82,18 +117,28 @@ public:
     void resized() override
     {
         auto r = getLocalBounds();
-        const bool compact = getWidth() < 715;
-        const int toolWidth = compact ? 31 : 43;
-        for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{{&shuffle, 50},
-                                                                                   {&slip, 44},
-                                                                                   {&spot, 44},
-                                                                                   {&grid, 44},
+        const bool compact = getWidth() < 758;
+        zoomer.setButtonText(text(compact ? (single ? "Z¹" : "Z") : (single ? "缩放¹" : "缩放")));
+        shuffle.setButtonText(compact ? "Shfl" : "Shuffle");
+        trim.setButtonText(text(compact ? "裁" : "修剪"));
+        selector.setButtonText(text(compact ? "选" : "选择"));
+        grabber.setButtonText(text(compact ? "移" : "移动"));
+        pencil.setButtonText(text(compact ? "画" : "画笔"));
+        const int toolWidth = compact ? 29 : 43;
+        for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{{&shuffle, compact ? 44 : 50},
+                                                                                   {&slip, compact ? 40 : 44},
+                                                                                   {&spot, compact ? 40 : 44},
+                                                                                   {&grid, compact ? 40 : 44},
                                                                                    {&trim, toolWidth},
                                                                                    {&selector, toolWidth},
                                                                                    {&grabber, toolWidth},
-                                                                                   {&smart, compact ? 42 : 48},
+                                                                                   {&smart, compact ? 40 : 48},
                                                                                    {&pencil, compact ? 39 : 44}})
+        {
+            if (button == &trim)
+                zoomer.setBounds(r.removeFromLeft(compact ? 28 : 43).reduced(1, 0));
             button->setBounds(r.removeFromLeft(width).reduced(1, 0));
+        }
         division.setBounds(r.removeFromLeft(compact ? 90 : 100).reduced(2, 0));
         nudge.setBounds(r.removeFromLeft(compact ? 90 : 118).reduced(2, 0));
         back.setBounds(r.removeFromLeft(25).reduced(1, 0));
@@ -101,8 +146,11 @@ public:
         split.setBounds(r.removeFromLeft(44).reduced(1, 0));
     }
     std::function<void(Json)> onSettings;
+    std::function<void()> onZoomFit;
 
 private:
+    ZoomToolButton zoomer;
+    bool single = false;
     juce::TextButton shuffle{"Shuffle"}, slip{"Slip"}, spot{"Spot"}, grid{"Grid"}, selector{text("选择")},
         grabber{text("移动")}, trim{text("修剪")}, smart{text("Smart")}, pencil{text("画笔")}, back{text("−")},
         forward{"+"}, split{text("拆分")};

@@ -34,6 +34,8 @@ Edit列：在「视图→Edit Window Views」独立打开I/O、Inserts A–E、S
 
 轨高/颜色：点Edit轨道头右侧「⋮」选高度或颜色，拖轨道头底边调高；Control+↑/↓调所选轨道，Control+Option+↑/↓按比例调全部。Mix同一菜单可改颜色，⌘Z/⌘⇧Z整笔撤销/重做；高度是视图设置，随工程保存、不占编辑Undo。Control+Option+C循环轨道颜色，所有命令可改键位。
 
+Zoomer：F5循环Normal/Single，点击时间线居中放大、拖范围适配；Single完成后返回原工具。Option点击或⌘⌥E返回上一缩放，OptionF显示编辑选区，ControlCommand在标尺临时缩放；双击缩放工具显示全工程。视口和最多16条历史随工程保存，不占编辑Undo；只支持水平缩放，Scrubber及高级显示缩放仍待实现。
+
 缩放预设：五个按钮或View→Zoom Presets，Control+1…5召回，Control+Shift+1…5/Shift点击保存当前水平缩放，右键存取。预设随工程保存，召回保持光标锚点；不保存完整工作区，也不改变原音频。
 
 轨道备注：点Edit Comments列或Mix通道底部，或⌘⌥C打开多行编辑；⌘Return应用，Esc取消，留空清除，⌘Z/⌘⇧Z撤销重做。备注随工程保存，开关与快捷键可自定义；需停止播放，当前最多4096字符。

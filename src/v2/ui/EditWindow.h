@@ -7,6 +7,7 @@
 #include "Rulers.h"
 #include "EditingModel.h"
 #include "AutomationLane.h"
+#include "ZoomGesture.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -45,6 +46,9 @@ public:
             drag = nullptr;
         if (!resizeTrack.empty() && resizeSession != value.value("session_token", std::string{}))
             cancelHeightPreview();
+        if (zoomGesture.active && (zoomGesture.session != value.value("session_token", std::string{}) ||
+                                   zoomGesture.revision != value.value("revision", uint64_t(0))))
+            zoomGesture.cancel();
         facts = value;
         facts["tracks"] = Json::array();
         for (const auto& t : value["tracks"])
@@ -183,6 +187,7 @@ public:
                 {
                     auto b = std::make_unique<juce::TextButton>();
                     b->setComponentID("clip.select:" + text(id));
+                    b->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool), false);
                     b->onClick = [this, id, owner = t["id"].get<std::string>()]
                     {
                         if (onClipSelection)
@@ -231,6 +236,11 @@ public:
                     cancelHeightPreview();
                     break;
                 }
+        if (zoomGesture.active)
+            for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
+                                    "track_heights", "track_views"})
+                if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
+                    zoomGesture.cancel();
         view = value;
         resized();
         repaint();
@@ -241,10 +251,14 @@ public:
         {
             drag = nullptr;
             dragged = false;
+            zoomGesture.cancel();
         }
         editing = tools;
+        for (auto& [id, header] : headers)
+            header->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool), false);
         selection = selectedObjects;
     }
+    std::function<void(Json, std::string, uint64_t)> onZoomGesture;
     std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
     std::function<void(std::string, int)> onRecordingCommand;
     std::function<void(std::string, juce::Component&)> onMonitorMenu;
@@ -516,6 +530,18 @@ public:
                        getWidth() - timelineLeft() - 40, 26, juce::Justification::centred);
         }
     }
+    bool cancelZoomGesture()
+    {
+        if (!zoomGesture.active)
+            return false;
+        zoomGesture.cancel();
+        repaint();
+        return true;
+    }
+    void paintOverChildren(juce::Graphics& g) override
+    {
+        zoomGesture.paint(g, coordinates(), rulerHeight(), getHeight() - 16);
+    }
     void resized() override
     {
         rowOffsets.clear();
@@ -587,6 +613,8 @@ public:
                     break;
                 }
         }
+        if (ZoomGesture::isTool(editing.tool) && e.x >= timelineLeft())
+            cursor = juce::MouseCursor::CrosshairCursor;
         setMouseCursor(cursor);
     }
     void mouseExit(const juce::MouseEvent&) override
@@ -612,6 +640,16 @@ public:
             return;
         const auto axis = coordinates();
         const int row = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
+        // macOS Ctrl-left-click is also a popup gesture; the documented Cmd+Ctrl ruler chord wins.
+        const bool rulerZoom =
+            e.y < rulerHeight() && e.mods.isCommandDown() && e.mods.isCtrlDown() && e.mods.isLeftButtonDown();
+        if (rulerZoom || (!e.mods.isPopupMenu() && ZoomGesture::isTool(editing.tool) && e.y >= rulerHeight() &&
+                          rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows()))
+        {
+            zoomGesture.begin(e, axis, facts, !ZoomGesture::isTool(editing.tool));
+            repaint();
+            return;
+        }
         const auto point = snapped(axis.sampleAt(e.x), e.mods);
         if (e.y >= rulerHeight() &&
             (editing.tool == "pencil" || (editing.tool != "selector" && row < int(trackIDs.size()) &&
@@ -758,6 +796,12 @@ public:
     }
     void mouseDrag(const juce::MouseEvent& e) override
     {
+        if (zoomGesture.active)
+        {
+            zoomGesture.move(e);
+            repaint();
+            return;
+        }
         if (drag.is_null())
             return;
         const auto maximum = std::llround(te::Edit::maximumLength * 48000);
@@ -822,6 +866,14 @@ public:
     }
     void mouseUp(const juce::MouseEvent&) override
     {
+        if (zoomGesture.active)
+        {
+            const auto request = zoomGesture.finish();
+            repaint();
+            if (onZoomGesture)
+                onZoomGesture(request, zoomGesture.session, zoomGesture.revision);
+            return;
+        }
         if (drag.is_null())
             return;
         auto captured = drag;
@@ -1049,6 +1101,7 @@ private:
     std::function<void(const std::string&, Json, uint64_t)> clipWrite;
     EditingModel editing;
     SelectionModel selection;
+    ZoomGesture zoomGesture;
     Json view = Json::object();
     Json facts = Json::object(), grid = Json::array(), drag = nullptr;
     std::string selected, selectedClip;

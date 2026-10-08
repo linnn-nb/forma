@@ -137,9 +137,7 @@ void Workspace::executePresentationCommand(int id)
                     const auto max = std::llround(te::Edit::maximumLength * 48000);
                     const auto anchor = std::clamp(facts["position_samples"].get<int64_t>(), start, start + old);
                     const auto first = anchor - std::llround((anchor - start) * double(span) / old);
-                    commands.updateUiState(
-                        {{"start_samples", std::clamp(first, int64_t(0), max - span)}, {"span_samples", span}},
-                        commands.sessionToken());
+                    setView({{"start_samples", std::clamp(first, int64_t(0), max - span)}, {"span_samples", span}});
                     message(text("缩放预设已召回 · 编辑历史保持"));
                 }
                 return;

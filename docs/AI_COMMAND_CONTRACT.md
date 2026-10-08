@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+## 水平Zoomer视图（U-P0-ZOOMER-01）
+
+ApplicationCommandManager 240–244与Edit本地手势统一进入L1 updateUiState，只有视图写入，不生成领域Plan、不增revision、不占工程Undo。手势捕获session/revision；参数/坐标/工具/布局冲突取消，提交再次核对。schema9 zoom_state含return_tool和最多16个{start_samples,span_samples}历史，span≥480且在工程范围内；未知/损坏状态整笔拒绝。Single只允许返回已实现的非Zoomer工具；旧完整schema8迁移为空历史，保留旧轨道视图/键位。全局命令状态查询只读；新默认键只补新增命令，保留人工改键与解绑。没有新增MCP工具、音频模型或直接Edit写入；历史恢复不重新把当前视口入栈。
+
 ## 本地录音轨道头（U-P0-RECORDING-HEADERS-01）
 
 GUI命令230–235仅复用已有track.arm/track.monitor；不注册新MCP工具。按钮/菜单/键位生成actor=human、当前session/revision的Plan；available事实决定开启资格，缺失设备仅可关闭，L1提交时再次校验。选择或点击范围构成一笔事务，最多64目标，超限整笔拒绝；Off/Auto/On对应真实模式，Auto不包含PT Punch切换。菜单先检查版本再单次派发，只有commit回执后显示提交；实际监听和录音灯读原生查询。

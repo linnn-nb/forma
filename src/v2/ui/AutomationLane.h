@@ -157,7 +157,7 @@ public:
         if (e.getNumberOfClicks() > 1)
             return;
         grabKeyboardFocus();
-        if (editing.tool == "selector" && onRangeEvent)
+        if ((editing.tool == "selector" || editing.tool == "zoomer" || editing.tool == "zoom_single") && onRangeEvent)
         {
             rangeGesture = true;
             onRangeEvent(0, e);

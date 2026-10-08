@@ -129,6 +129,9 @@ private:
     void showTrackMonitorMenu(const std::string&, juce::Component&);
     Json recordingTargets = nullptr;
     std::string recordingAnchor;
+    void executeZoomCommand(int);
+    void commitZoomGesture(Json, const std::string&, uint64_t);
+    void restoreZoom();
     Json cachedAutomation(const std::string&);
     void setTrackView(const std::string&, const std::string&);
     void executeAutomationViewCommand(int);

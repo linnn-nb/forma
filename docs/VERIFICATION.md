@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-ZOOMER-01：原生水平缩放工具（2026-10-09；增量）
+
+结论：工具栏/菜单/可改F5接通Normal与Single Zoom。点按以原始鼠标采样位置居中、水平span减半；拖范围显示本地黄色预览，松手适配该范围，Grid不改变缩放范围。Single完成后返回原工具；Option点击或CommandOptionE返回上一缩放，OptionF显示真实Edit时间选区，ControlCommand在标尺临时缩放，双击工具按钮显示全工程。四种宽度1120/1189/1300/1600的控件边界通过，窄窗使用短标题。
+
+实现：`src/v2/ui/ZoomGesture.h`只保留本地手势；`WorkspaceZoom.cpp`/ApplicationCommandManager 240–244共用L1 updateUiState。schema9的zoom_state保存原工具与最多16个水平视口；完整旧schema8及此前版本明确迁移，未知/不完整/越界状态拒绝且不部分写入。T/R、全工程、滚轮与预设召回共用缩放历史；滚动不单独入栈。视图不增工程revision、不进工程Undo，不承诺Undo跨重开；音频片段、时间/对象选区、参数和媒体保持。Escape、工具/布局/视口/版本/会话冲突取消草稿，自动化子泳道转交缩放，片段标题不截获Zoomer手势。
+
+验证：正式Release及独立预览固定本地签名strict/deep通过；受影响CTest **10通过、0失败，59.79秒**。随后仅补强测试为左右声道均比较，Zoomer专项 **1通过、0失败，8.08秒**；生产代码与签名二进制未变。`tests/v2/ZoomerWorkspaceTests.cpp` **151检查**（含命令/逐控件检查，不是151个制作流程）：实际Tracktion两次渲染48kHz/24-bit/双声道、96000帧非零PCM，解码最大误差 **0**、源SHA256保持；实际增益和选区Undo跳过缩放；新Workspace恢复工具/视口/历史/自定义键位，Single返回原Pencil；旧版迁移与严格拒绝、16条预算、真实自动化子组件/片段标题和双击按钮均覆盖。最终机器结果`evidence/U/zoomer-tests.json`。本轮仅相关回归，没有全量或新的耐久/实时性能资格；链接器报告既有重复静态库警告，无构建错误。
+
+修复：macOS Control左键也被JUCE识别为popup，原条件挡住ControlCommand标尺入口，现优先处理该明确左键组合。复查发现双击按钮回调未接通且旧测试恰处全工程视图；已绑定共享103命令，测试强制从20000帧局部视口双击后变为105600帧全工程，防止空回调假通过。另按实际整数鼠标坐标/native浮点增益修正测试预期；片段标题命中测试先返回可见范围，不把屏外控件当生产缺失。
+
+官方依据：Reference Guide 2026.4印刷861–866、881–884页，本地PDF与SHA见UI_PARITY.md，核验2026-10-09。差异：目前只做水平缩放，最小480个工程采样；Command垂直框选缩放、Control连续水平/垂直、波形/MIDI显示幅度、Overview快捷粒度、Zoom Toggle和完整Fit Tracks仍未实现。Scrubber没有新增占位控件：SDK setUserDragging是短段循环，setSpeedCompensation限±10%，均不能直接当PT按拖速正反向试听；真实路径与差异继续待实现/实测。
+
+桌面工具明确Mac锁定，物理鼠标/键位、截图、试听与应用实际退出重开未执行；组件新Workspace重开不替代桌面验收。本轮自有预览进程已清理，最新预览刷新后未启动，用户原窗口保留。解锁后打开`build-v2-tracktion/FormaZoomerPreview.app`，导入音频，F5选择缩放、点/拖、Option返回，再F5选Single、CommandOptionE/OptionF，双击工具显示全工程；另存新工程重开。预览可执行文件SHA256 `8ec96341d6cdb5107164e02763cd6033a784ed0a6da400228a90707395b4a6ba`；正式可执行文件SHA256 `6fa2ff41cd04c8a68436e21c0ba60740aa9a6a02251d718d5709179fb36329fa`。完整U＋P0未完成，不进P1，不打DMG；下一项真实Scrub试听与剩余缩放/选区交互。
+
 ## U-P0-RECORDING-HEADERS-01：Edit/Mix 录音待命与输入监听（2026-10-09；增量）
 
 结论：音频、MIDI、乐器轨道头接入真实R/I控制；Aux/Folder/VCA不显示伪录音能力。按钮、菜单与可改Shift+R/Shift+I共用ApplicationCommandManager 230–235，复用已有L1 track.arm/track.monitor，一次操作一个human Plan/Undo。CommandOptionR打开真实输入检查器；I右键选择Off、Auto（待命时）、On。单击只操作目标；全局键操作当前所选可录轨，Option点击操作全部可录轨、OptionShift点击操作已选可录轨。多轨开启时任何一个输入不可用整笔拒绝；最多64目标，超限整体拒绝，不静默截断。

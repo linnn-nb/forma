@@ -8,6 +8,7 @@
 
 | 行为 | 官方依据 | Forma 实现与差异 | 状态 |
 |---|---|---|---|
+| Zoomer Normal / Single与临时缩放 | Reference Guide 2026.4印刷861–866、881–884页（2026-10-09本地核验） | F5循环、点击减半居中、原始范围适配、Single返回原工具、Option/CommandOptionE上一缩放、OptionF真实选区、ControlCommand标尺临时入口、双击全工程；共享命令/可改键/schema9重开，16条视图历史不进工程Undo。水平最小480采样；无垂直/连续/波形MIDI幅度/Overview/Zoom Toggle。Scrubber仍待实际路径，SDK短段循环不冒充拖速正反向 | U-P0-ZOOMER-01：151检查、相关10/10、真实PCM误差0；GUI锁屏未验收；完整行为部分 |
 | 轨道参数视图 | Reference Guide 2026.4印刷页339–342，Track View selector/Changing Track Views；2026-10-09核验 | `ui/TrackHeader.h`读实际参数；`WorkspaceAutomation.cpp`提供Control−片段/音量与ControlCommand←/→，稳定lane ID保存，移除插件保留不可用引用，恢复后重现。无Edit组/所有轨联动，MIDI公共Notes/Clips切换未实现 | 部分；原生组件与重开测试通过，桌面待测 |
 | 自动化点与Pencil | Reference Guide印刷页1573–1574/1576，Drawing Automation/Using Grabber/Pencil；2026-10-09核验 | `ui/AutomationLane.h`使用实际SDK插值采样，真实点拖动/增删/Pencil自由绘制/Selector共享范围，经L1一次Undo、实际PCM与保存重开。CommandF10选择画笔（现有F10保留预备拍）；32点/64操作超限整体拒绝，256点显示近似。多形状/稀疏化/多点/剪贴板/Trim等未做 | 部分；相关10通过0失败，布局2通过0失败；GUI/试听未执行 |
 | Edit 与 Mix 分工 | Reference 第12章，254–257页 | 已拆 `ui/EditWindow.h`、`ui/MixWindow.h`；原生工具栏/走带/双计数器/两种标尺/侧栏已接通；完整工具与窗口仍待补齐 | 部分 |

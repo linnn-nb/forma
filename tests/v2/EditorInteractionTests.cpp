@@ -185,7 +185,7 @@ int main(int argc, char** argv)
         juce::ValueTree metadata("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(old.dump()), nullptr);
         metadata.addChild(ui, -1, nullptr);
-        check(readUiState(metadata)["ui_schema"] == 8 && readUiState(metadata)["span_samples"] == old["span_samples"],
+        check(readUiState(metadata)["ui_schema"] == 9 && readUiState(metadata)["span_samples"] == old["span_samples"],
               "previous eight-field UI subtree migrates without discarding viewport");
         old.erase("start_samples");
         ui.setProperty("json", text(old.dump()), nullptr);

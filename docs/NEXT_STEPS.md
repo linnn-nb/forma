@@ -1,9 +1,9 @@
 # 下一步
 
-结论：U-P0-RECORDING-HEADERS-01已接通Edit/Mix真实R/I与Off/Auto/On；单轨/多轨Undo、缺失设备恢复、保存新Workspace重开及自定义快捷键通过。Release/固定验签通过；受影响9通过0失败，45.83秒；73专项检查包含真实PCM监控和两轨磁盘录音，不代替实体制作。完整U＋P0未完成，不进P1，M2/M3冻结、M4/M5暂缓。
+结论：U-P0-ZOOMER-01接通Normal/Single、点击/范围、上一缩放、真实选区适配、ControlCommand标尺入口和双击全工程；schema9保存工具/视口/最多16条历史，视图不污染工程Undo/revision。Release/固定验签、受影响10通过0失败、59.79秒，151专项检查和非零96000帧PCM误差0通过。完整U＋P0未完成，不进P1，M2/M3冻结、M4/M5暂缓。
 
-亲手试：打开`build-v2-tracktion/FormaRecordingHeadersPreview.app`，新增音频轨；CommandOptionR打开输入设置，选实际设备输入与录音目录，R待命、I监听，I右键选择Off/Auto（待命时）/On。ShiftR/ShiftI作用当前所选可录轨，键位可改；录音/Stop，CommandZ/CommandShiftZ、另存新工程重开。缺失设备保留引用，仅允许关闭；Option全部和OptionShift所选的物理点击待实测。
+亲手试：解锁后打开`build-v2-tracktion/FormaZoomerPreview.app`，导入音频；F5选Normal，点击/拖范围，Option点击返回；再F5选Single并点击，工具回到此前选项。CommandOptionE上一缩放，先Selector选范围再OptionF，ControlCommand点/拖标尺临时缩放，双击缩放工具显示全工程。另存新工程重开工具/历史与键位；CommandZ只撤销实际编辑。桌面工具明确Mac锁定，本轮无截图/物理键位/试听/实际退出重开；自有预览进程结束，最新预览未启动。
 
-下一项明确工程任务：先查官方Zoomer/Scrubber行为，再补时间线缩放工具与真实Scrub音频路径；实际编辑保持L1、Undo、保存/键位规则。解锁后补本轮鼠标/物理键盘/实际退出重开/试听和截图。本轮工具明确Mac锁定，预览仅生成未启动，不重复CLI替代。
+下一项明确工程任务：接入真实Scrub试听路径，先验证SDK拖拽短循环的实际PCM与完整图/监听安全边界；按官方逐项实现并明确按拖速正反向、点击轨道与Shift选区差异，不把短循环或±10%速度补偿冒充完整Scrubber。随后补剩余U＋P0缩放与选区交互；解锁后补真实桌面验收与截图。
 
-保留缺口：Auto不是PT Punch自动切换，不能播放中待命；录音组、Separate Record/Play Faders和实体麦克风/MIDI待资格。自动化高级模式/多点/剪贴板与Pencil其他形状、MIDI公共视图、Fit/波形音符缩放、Main单位/标尺排序/Tempo和Meter编辑/预后卷、F–J与完整组属性未完成。Undo不跨重开；Windows、耐久和发行未验收。用户亲手确认完整U＋P0后再进P1，无本轮DMG。
+保留缺口：垂直/连续缩放、波形/MIDI幅度、Zoom Toggle/Overview/Fit Tracks、主单位联动/Tempo与Meter编辑/预后卷、自动化高级模式/多点/剪贴板、MIDI公共视图、F–J/完整组属性。R/I Auto仅待命监听，非PT Punch切换；不能播放中待命、实体麦克风/MIDI未资格。Undo不跨重开；Windows、耐久和发行未验收。用户确认完整U＋P0后才进入P1，本轮无DMG。
