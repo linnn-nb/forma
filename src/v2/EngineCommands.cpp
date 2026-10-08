@@ -512,7 +512,7 @@ Json Commands::outputMeterControl(const std::string& command,const Json& args) {
 }
 uint64_t Commands::audioDeviceGeneration()const{return outputProbe->generation.load(std::memory_order_relaxed);}
 Json Commands::render(const juce::File& destination,int64_t start,int64_t end) {
-    checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");stop();captureNativeStates();require(!nativeStates||(!nativeStates->query()["pending"].get<bool>()&&nativeStates->query()["failure"].is_null()),"resolve native state capture before rendering");ParameterWriteGuard parameterGuard(*this); require(start>=0 && end>start,"invalid render range"); require(!destination.exists(),"export destination exists"); stop();validateExternalRuntime();
+    checkThread();require(!audioConfigurationPending(),"wait for audio device preparation");require(!masterAnalysis||!masterAnalysis->status()["busy"].get<bool>(),"wait for or cancel the current analysis/export job before rendering");stop();captureNativeStates();require(!nativeStates||(!nativeStates->query()["pending"].get<bool>()&&nativeStates->query()["failure"].is_null()),"resolve native state capture before rendering");ParameterWriteGuard parameterGuard(*this); require(start>=0 && end>start,"invalid render range"); require(!destination.exists(),"export destination exists"); stop();validateExternalRuntime();
     auto staged=destination.getSiblingFile(destination.getFileNameWithoutExtension()+"-"+juce::Uuid().toString()+".wav");
     const auto began=juce::Time::getMillisecondCounterHiRes();
     try {

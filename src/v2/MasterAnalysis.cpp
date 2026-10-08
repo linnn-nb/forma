@@ -2,6 +2,8 @@
 #include "NativePluginStates.h"
 #include <nativedaw/v2/AudioAnalysis.h>
 #include <nativedaw/v2/DeliveryCheck.h>
+#include <nativedaw/v2/ExportVerification.h>
+#include <filesystem>
 #include <nativedaw/v2/SourceFeatures.h>
 #include <nativedaw/v2/SourceMapping.h>
 #include <nativedaw/v2/LoudnessCurve.h>
@@ -152,7 +154,7 @@ struct MasterAnalysis::Job {
     std::atomic<double> hashMs{0},renderMs{0},measureMs{0},validationMs{0},pausedMs{0};
     HashReads sourceReads;
     Json preparation=Json::object();
-    juce::File directory,pcm;
+    juce::File directory,pcm,destination,exportStage;
     Json binding,sources,result;
     std::string actor;
     double started=now();
@@ -185,11 +187,12 @@ struct MasterAnalysis::Job {
                 }else{
                     while(true){require(!control.cancelled(),"analysis cancelled or deadline expired");control.yield();if(task->runJob()==juce::ThreadPoolJob::jobHasFinished)break;}
                     require(task->errorMessage.isEmpty(),task->errorMessage.toRawUTF8());renderMs=now()-span;span=now();stage=2;
-                    result=analysis::measure(pcm,binding.at("start_samples"),control,{},binding.at("detector_profile"),analysis::FeatureDomain::SessionSamples);
+                    if(binding["purpose"]=="export")result=analysis::stageVerifiedWav(pcm,exportStage,binding.at("start_samples"),binding["end_samples"].get<int64_t>()-binding["start_samples"].get<int64_t>(),control,binding.at("delivery_profile"));
+                    else result=analysis::measure(pcm,binding.at("start_samples"),control,{},binding.at("detector_profile"),analysis::FeatureDomain::SessionSamples);
                     result["processed_event_detection_enabled"]=binding.at("detector_profile").is_object();
                     if(!result["processed_event_detection_enabled"].get<bool>())result["event_counts"]={{"full_scale_exceedance",result["event_count"]},{"silence",nullptr},{"transient_candidate",nullptr}};
                     require(result["frames"].get<int64_t>()==binding["end_samples"].get<int64_t>()-binding["start_samples"].get<int64_t>(),"analysis render frame count mismatch");
-                    require(result["file_float"].get<bool>()&&result["file_bits"]==32,"analysis renderer did not produce float32 PCM");
+                    require(binding["purpose"]=="export"||result["file_float"].get<bool>()&&result["file_bits"]==32,"analysis renderer did not produce float32 PCM");
                 }
                 measureMs=now()-span;span=now();stage=3;
                 if(binding["purpose"]=="delivery")result["delivery"]=delivery::evaluate(result,binding.at("delivery_profile"));
@@ -217,6 +220,11 @@ bool MasterAnalysis::current(const Json& result,bool deep){
     if(owner.edit->getTransport().isPlaying()||!owner.parameterCapture.is_null()||owner.audioConfigurationPending())return false;
     if(binding["purpose"]!="source"&&(binding["revision"]!=owner.revision||chainHash()!=binding["processing_chain_hash"].get<std::string>()))return false;
     for(const auto& source:result.at("media")){const juce::File file(juce::String{source["path"].get<std::string>()});if(!file.existsAsFile()||file.getSize()!=source["bytes"]||file.getLastModificationTime().toMilliseconds()!=source["modified_ms"])return false;}
+    if(binding["purpose"]=="export"){
+        const auto& verified=result.at("file_verification");const juce::File output(juce::String{verified.at("path").get<std::string>()});
+        if(!output.existsAsFile()||output.getSize()!=verified["bytes"]||output.getLastModificationTime().toMilliseconds()!=verified["modified_ms"])return false;
+        if(deep&&Commands::mediaHash(output)!=verified["sha256"].get<std::string>())return false;
+    }
     return !deep||hashes(result.at("media"),{})==result.at("media");
 }
 Json MasterAnalysis::sourceMappings(const Json& result)const{
@@ -240,7 +248,15 @@ void MasterAnalysis::poll(){
     owner.checkThread();if(!job)return;
     job->pause=owner.edit->getTransport().isPlaying()||owner.audioConfigurationPending();
     if(!job->done.load(std::memory_order_acquire)){phase=job->cancel?"cancelling":job->pause||job->userPause?(job->parked?"paused":"pausing"):job->stage==0?"hashing":job->stage==1?"rendering":job->stage==2?"measuring":"validating";return;}
-    receipt=std::move(job->result);phase=receipt.at("state");const auto releaseBegan=now();job.reset();receipt["runtime"]["release_message_ms"]=now()-releaseBegan;
+    receipt=std::move(job->result);phase=receipt.at("state");
+    if(phase=="completed"&&job->binding["purpose"]=="export")try{
+        require(!job->cancel.load()&&!job->expired(),"export cancelled or deadline expired before publication");
+        require(job->binding["session_token"]==owner.sessionToken()&&job->binding["revision"]==owner.revision&&chainHash()==job->binding["processing_chain_hash"].get<std::string>(),"project changed before export publication");
+        const auto& v=receipt.at("file_verification");require(job->exportStage.getSize()==v["bytes"]&&job->exportStage.getLastModificationTime().toMilliseconds()==v["modified_ms"],"export stage changed before publication");
+        std::filesystem::create_hard_link(job->exportStage.getFullPathName().toStdString(),job->destination.getFullPathName().toStdString());
+        receipt["file_verification"]["status"]="verified_published";receipt["file_verification"]["path"]=job->destination.getFullPathName().toStdString();receipt["file_verification"]["publication"]="atomic no-overwrite hard link of the verified bytes; external file creation is not Undo";
+    }catch(const std::exception& e){phase=job->cancel?"cancelled":job->expired()?"expired":"failed";receipt={{"state",phase},{"error",e.what()},{"binding",job->binding},{"artifact_id",job->binding["artifact_id"]},{"runtime",job->runtime()}};}
+    const auto releaseBegan=now();job.reset();receipt["runtime"]["release_message_ms"]=now()-releaseBegan;
     if(phase=="completed"){
         receipt["current"]=current(receipt);
         // Measurement metadata is derived evidence, separate from edit facts and
@@ -281,22 +297,30 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
         }else{require(!args.contains("clip_id")&&!args.contains("base_revision"),"processed location does not take source mapping fields");owner.seek(event["start_samples"]);}
         return {{"state","located"},{"event",event},{"artifact_id",receipt["artifact_id"]}};
     }
-    require(command=="master"||command=="delivery"||command=="source"||command=="track"||command=="clip","unknown analysis control");if(command=="source")fields(args,{"session_token","base_revision","clip","source_start_frame","source_end_frame","request_key","profile"});else if(command=="clip")fields(args,{"session_token","base_revision","clip","start_samples","end_samples","request_key","detector_profile"});else if(command=="track")fields(args,{"session_token","base_revision","track","tap_point","start_samples","end_samples","request_key","detector_profile"});else if(command=="delivery")fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","profile","detector_profile"});else fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","detector_profile"});
+    require(command=="export"||command=="master"||command=="delivery"||command=="source"||command=="track"||command=="clip","unknown analysis control");if(command=="export")fields(args,{"session_token","base_revision","mode","start_samples","end_samples","postroll_samples","destination","request_key","profile"});else if(command=="source")fields(args,{"session_token","base_revision","clip","source_start_frame","source_end_frame","request_key","profile"});else if(command=="clip")fields(args,{"session_token","base_revision","clip","start_samples","end_samples","request_key","detector_profile"});else if(command=="track")fields(args,{"session_token","base_revision","track","tap_point","start_samples","end_samples","request_key","detector_profile"});else if(command=="delivery")fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","profile","detector_profile"});else fields(args,{"session_token","base_revision","start_samples","end_samples","request_key","detector_profile"});
     require(args.at("session_token")==owner.sessionToken()&&integer(args.at("base_revision"))==int64_t(owner.revision),"analysis version conflict");
     require(args.at("request_key").is_string()&&!args["request_key"].get<std::string>().empty()&&args["request_key"].get<std::string>().size()<=128,"analysis request_key required, maximum 128 bytes");
-    const bool raw=command=="source",trackTap=command=="track",clipTap=command=="clip";Json sourceFacts=nullptr;te::WaveAudioClip* sourceClip=nullptr;std::string tapPoint=clipTap?"clip_post_fx":"master",trackID;
+    const bool exporting=command=="export",raw=command=="source",trackTap=command=="track",clipTap=command=="clip";Json sourceFacts=nullptr;te::WaveAudioClip* sourceClip=nullptr;std::string tapPoint=clipTap?"clip_post_fx":"master",trackID;
     if(trackTap){require(args.at("track").is_string()&&args.at("tap_point").is_string(),"track tap requires actual track ID and registered tap_point");trackID=args.at("track");tapPoint=args.at("tap_point");require(owner.track(trackID),"analysis audio/instrument/Aux track not found");require(tapPoint=="track_pre_inserts"||tapPoint=="track_post_inserts"||tapPoint=="bus","unsupported track tap_point");}
     const auto start=integer(args.at(raw?"source_start_frame":"start_samples")),end=integer(args.at(raw?"source_end_frame":"end_samples"));
     if(raw){require(args.at("clip").is_string(),"source clip ID required");sourceClip=owner.audioClip(args["clip"]);require(sourceClip!=nullptr,"source audio clip not found");sourceFacts=owner.audioClipQuery(*sourceClip);const double rate=sourceFacts["source_sample_rate"];require(rate>=8000&&rate<=192000&&end>start&&end<=sourceFacts["source_frames"].get<int64_t>()&&end-start<=rate*300,"source range outside media or 300 second budget");}
     else require(end>start&&end-start<=300*48000&&end<=std::llround(te::Edit::maximumLength*48000),"analysis range must be positive and at most 300 seconds");
     if(clipTap){require(args.at("clip").is_string(),"clip tap requires actual audio clip ID");sourceClip=owner.audioClip(args["clip"]);require(sourceClip!=nullptr,"Clip FX audio clip not found");sourceFacts=owner.audioClipQuery(*sourceClip);require(sourceFacts["editable_audio"].get<bool>()&&!sourceClip->effectsEnabled(),"Clip FX tap of looped/grouped/stretched/warped/reversed or offline ClipEffects media is not qualified yet");const auto p=sourceClip->getPosition();require(start>=std::llround(p.getStart().inSeconds()*48000)&&end<=std::llround(p.getEnd().inSeconds()*48000),"Clip FX range must be inside the actual clip");for(auto* plugin:*sourceClip->getPluginList())require(dynamic_cast<te::EqualiserPlugin*>(plugin)||dynamic_cast<te::CompressorPlugin*>(plugin)||dynamic_cast<te::ReverbPlugin*>(plugin)||dynamic_cast<te::DelayPlugin*>(plugin),"Clip FX tap contains an unqualified plugin type");}
-    const auto profile=raw?analysis::sourceProfile(args.value("profile",Json::object())):command=="delivery"?delivery::normaliseProfile(args.value("profile",Json::object())):Json(nullptr);
+    int64_t postroll=0;juce::File destination;
+    if(exporting){
+        require(actor=="human","verified export requires a local GUI file grant");require(args.at("mode")=="session"||args.at("mode")=="selection","invalid export range mode");
+        const auto bound=owner.exportRequest(args.at("mode")=="selection");for(const auto& key:{"session_token","base_revision","mode","start_samples","end_samples"})require(bound.at(key)==args.at(key),"export range changed; prepare a fresh preview");
+        postroll=integer(args.at("postroll_samples"));require(postroll<=30*48000&&end-start+postroll+96000<=300*48000&&end+postroll+96000<=std::llround(te::Edit::maximumLength*48000),"verified export including postroll and two-second continuation exceeds budget");
+        require(args.at("destination").is_string()&&juce::File::isAbsolutePath(juce::String{args["destination"].get<std::string>()}),"export destination must be an absolute local WAV path");destination=juce::File(juce::String{args["destination"].get<std::string>()});require(destination.hasFileExtension("wav")&&destination.getParentDirectory().isDirectory(),"export requires WAV in an existing local directory");
+    }
+    const auto profile=raw?analysis::sourceProfile(args.value("profile",Json::object())):command=="delivery"||exporting?delivery::normaliseProfile(args.value("profile",Json::object())):Json(nullptr);
     const auto renderProfile=!raw&&args.contains("detector_profile")?analysis::sourceProfile(args.at("detector_profile")):Json(nullptr);
     const auto renderProfileText=renderProfile.dump();
-    const auto intent=Json{{"session_token",owner.sessionToken()},{"revision",owner.revision},{"begin",start},{"end",end},{"clip",raw||clipTap?args.at("clip"):Json(nullptr)},{"track",trackTap?Json(trackID):Json(nullptr)},{"tap_point",trackTap||clipTap?Json(tapPoint):Json(nullptr)},{"purpose",command},{"profile",profile},{"detector_profile",renderProfile}}.dump();
+    const auto intent=Json{{"session_token",owner.sessionToken()},{"revision",owner.revision},{"begin",start},{"end",end},{"clip",raw||clipTap?args.at("clip"):Json(nullptr)},{"track",trackTap?Json(trackID):Json(nullptr)},{"tap_point",trackTap||clipTap?Json(tapPoint):Json(nullptr)},{"purpose",command},{"profile",profile},{"detector_profile",renderProfile},{"postroll_samples",postroll},{"destination",exporting?Json(destination.getFullPathName().toStdString()):Json(nullptr)}}.dump();
     const auto intentHash=juce::SHA256(intent.data(),intent.size()).toHexString().toStdString();
     if(job){require(job->actor==actor&&job->binding["request_key"]==args["request_key"]&&job->binding["request_fingerprint"]==intentHash,"one analysis job is already running or retry differs from its original intent");return status();}
     if(receipt.is_object()&&receipt["binding"]["request_key"]==args["request_key"]){require(receipt["binding"]["actor"]==actor&&receipt["binding"]["revision"]==owner.revision&&receipt["binding"]["request_fingerprint"]==intentHash,"analysis key reused with different intent");return status();}
+    if(exporting)require(!destination.exists(),"export destination already exists; choose a new file");
     require(!owner.edit->getTransport().isPlaying()&&owner.recordingCapture.is_null()&&owner.capture.is_null()&&owner.parameterCapture.is_null()&&!owner.audioConfigurationPending(),"stop transport and finish gestures before preparing analysis");
     if(raw){
         auto work=std::make_unique<Job>();work->actor=actor;work->started=requestBegan;work->pcm=sourceClip->getOriginalFile();require(work->pcm.existsAsFile(),"source media missing");
@@ -313,15 +337,17 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
     for(auto* track:te::getAudioTracks(*owner.edit))for(auto* clip:track->getClips())if(auto* audio=dynamic_cast<te::WaveAudioClip*>(clip);audio&&(!clipTap||audio==sourceClip)){auto facts=owner.audioClipQuery(*audio);const std::string path=facts.at("path");const juce::File file(juce::String{path});require(file.existsAsFile(),"analysis source media missing");work->sources.push_back({{"clip_id",clip->itemID.toString().toStdString()},{"track_id",track->itemID.toString().toStdString()},{"path",path},{"bytes",file.getSize()},{"modified_ms",file.getLastModificationTime().toMilliseconds()}});}
     require(work->sources.size()<=4096,"analysis source count exceeds current 4096-clip budget");work->sources=mediaManifest(work->sources);
     if(clipTap){work->binding["tap_configuration"]=isolateClipState(captured.first,*sourceClip);const auto descriptor=work->binding["tap_configuration"].dump();work->binding["tap_configuration_sha256"]=juce::SHA256(descriptor.data(),descriptor.size()).toHexString().toStdString();}
+    if(exporting){work->destination=destination;work->binding["export_range"]={{"mode",args["mode"]},{"session_token",args["session_token"]},{"base_revision",args["base_revision"]},{"start_samples",start},{"end_samples",end}};work->binding["postroll_samples"]=postroll;work->binding["end_samples"]=end+postroll;work->binding["continuation_samples"]=96000;work->binding["tap_point"]="exported_master_file";work->binding["destination"]=destination.getFullPathName().toStdString();}
     const auto editFile=owner.edit->editFileRetriever?owner.edit->editFileRetriever():juce::File{};
     te::Edit::Options options{owner.engine,std::move(captured.first),owner.edit->getProjectItemRef()};options.role=te::Edit::forRendering;options.numAudioTracks=0;options.editFileRetriever=[editFile]{return editFile;};
     preparationSpan=now();work->snapshot=te::Edit::createEdit(std::move(options));require(work->snapshot!=nullptr,"analysis snapshot creation failed");work->preparation["edit_create"]=now()-preparationSpan;preparationSpan=now();
     if(clipTap){const auto tracks=te::getAudioTracks(*work->snapshot);require(tracks.size()==1&&tracks[0]->getClips().size()==1,"isolated clip snapshot contains unexpected playback objects");for(auto* p:tracks[0]->pluginList.getPlugins())p->deleteFromParent();tracks[0]->setMute(false);tracks[0]->setSolo(false);tracks[0]->setSoloIsolate(true);tracks[0]->getOutput().setOutputToDefaultDevice(false);}
     if(trackTap){work->binding["tap_configuration"]=prepareTrackTap(*work->snapshot,trackID,tapPoint);const auto descriptor=work->binding["tap_configuration"].dump();work->binding["tap_configuration_sha256"]=juce::SHA256(descriptor.data(),descriptor.size()).toHexString().toStdString();}
     work->preparation["tap_prepare"]=now()-preparationSpan;
-    work->directory=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("forma-analysis",{},false);require(work->directory.createDirectory().wasOk(),"analysis temporary storage unavailable");work->pcm=work->directory.getChildFile("master-float.wav");
+    if(exporting){const auto own=destination.getParentDirectory().getChildFile(".forma-export-"+juce::Uuid().toString());require(std::filesystem::create_directory(own.getFullPathName().toStdString()),"private export stage could not be created");work->directory=own;work->exportStage=own.getChildFile("verified.wav");}
+    else{work->directory=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("forma-analysis",{},false);require(work->directory.createDirectory().wasOk(),"analysis temporary storage unavailable");}work->pcm=work->directory.getChildFile("master-float.wav");
     work->renderStatus=std::make_unique<te::Edit::ScopedRenderStatus>(*work->snapshot,false);
-    te::Renderer::Parameters p(*work->snapshot);p.destFile=work->pcm;p.audioFormat=&work->wav;p.bitDepth=32;p.sampleRateForAudio=48000;p.canRenderInMono=false;p.useMasterPlugins=!trackTap&&!clipTap;p.tracksToDo=te::toBitSet(te::getAllTracks(*work->snapshot));p.time={tracktion::TimePosition::fromSeconds(start/48000.),tracktion::TimePosition::fromSeconds(end/48000.)};
+    te::Renderer::Parameters p(*work->snapshot);p.destFile=work->pcm;p.audioFormat=&work->wav;p.bitDepth=32;p.sampleRateForAudio=48000;p.canRenderInMono=false;p.useMasterPlugins=!trackTap&&!clipTap;p.tracksToDo=te::toBitSet(te::getAllTracks(*work->snapshot));p.time={tracktion::TimePosition::fromSeconds(start/48000.),tracktion::TimePosition::fromSeconds((end+(exporting?postroll+96000:0))/48000.)};
     preparationSpan=now();work->task=std::make_unique<te::Renderer::RenderTask>(clipTap?"Forma Clip FX analysis":trackTap?"Forma track tap analysis":"Forma Master analysis",p,&work->progress,nullptr);work->preparation["graph_build"]=now()-preparationSpan;work->preparation["total"]=now()-requestBegan;auto* flag=work.get();work->task->setCancellationCheck([flag]{return flag->cancel.load()||flag->expired();});
     receipt=nullptr;job=std::move(work);job->launch();phase="hashing";return status();
 }
@@ -330,6 +356,7 @@ Json Commands::analysisStatus(){checkThread();if(!masterAnalysis)return {{"state
 void Commands::registerAnalysisCommands(Json& registry){
     const Json string{{"type","string"},{"minLength",1},{"maxLength",128}},integer{{"type","integer"},{"minimum",0},{"maximum",int64_t(9007199254740991)}};
     auto add=[&](const char* id,const char* tool,const char* method,const char* description,Json properties,Json required){registry.push_back({{"id",id},{"execution","analysis"},{"tool_name",tool},{"queue_method",method},{"description",description},{"permission","read"},{"risk","none"},{"reversible",false},{"schema",{{"type","object"},{"properties",properties},{"required",required},{"additionalProperties",false}}},{"test","M3-MASTER-01"}});};
+    registry.push_back({{"id","export.verified"},{"execution","control"},{"actor","human"},{"permission","local_gui"},{"risk","external_file_write"},{"reversible",false},{"test","M3-EXPORT-01"},{"description","Local file grant; asynchronous verified PCM24 WAV with explicit session postroll and two-second continuation; atomic no-overwrite publication. Query analysis.status for the actual receipt; no external write MCP tool."},{"schema",{{"type","object"},{"properties",{{"session_token",string},{"base_revision",integer},{"mode",{{"type","string"},{"enum",{"session","selection"}}}},{"start_samples",integer},{"end_samples",integer},{"postroll_samples",{{"type","integer"},{"minimum",0},{"maximum",1440000}}},{"destination",{{"type","string"},{"minLength",1}}},{"request_key",string},{"profile",delivery::profileSchema()}}},{"required",{"session_token","base_revision","mode","start_samples","end_samples","postroll_samples","destination","request_key"}},{"additionalProperties",false}}}});
     add("analysis.master","analyze_master","analysis_master","Prepare a stopped Edit snapshot and asynchronously measure its Master range. Local-only float32 render; no upload or edit. Poll query_analysis for the actual receipt. Positions are half-open session samples at 48 kHz, maximum 300 seconds; a live request_key retry must be identical.",{{"session_token",string},{"base_revision",integer},{"start_samples",integer},{"end_samples",integer},{"request_key",string}},Json::array({"session_token","base_revision","start_samples","end_samples","request_key"}));
     add("analysis.delivery","analyze_delivery","analysis_delivery","Asynchronously measure the actual stopped Master range and evaluate explicit LUFS-I/True Peak/full-scale/ending-level criteria. This is local evidence, not an export, platform certification or proof of complete effect tails. Poll query_analysis; a completed measurement may have failed/indeterminate/review criteria. Example defaults are -14 LUFS +/-1 and -1 dBTP; profile is configurable. Retry the same key with identical purpose/range/profile.",{{"session_token",string},{"base_revision",integer},{"start_samples",integer},{"end_samples",integer},{"request_key",string},{"profile",delivery::profileSchema()}},Json::array({"session_token","base_revision","start_samples","end_samples","request_key"}));
     registry.back()["test"]="M3-DELIVERY-01";

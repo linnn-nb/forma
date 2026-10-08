@@ -334,6 +334,7 @@ private:
 #include "NewSessionPanel.h"
 #include "TimelinePanel.h"
 #include "AnalysisPanel.h"
+#include "ExportPanel.h"
 
 class Workspace final : public juce::Component,private juce::Timer,public juce::MenuBarModel,public juce::FileDragAndDropTarget {
     friend class ndaw::v2::AudioDeviceTestAccess;
@@ -405,8 +406,13 @@ public:
         recoveryIndicator.setComponentID("recovery.status");recoveryIndicator.setFont(juce::FontOptions(11));addAndMakeVisible(recoveryIndicator);
         setSize(1440,880);refresh();startTimerHz(20);
     }
-    ~Workspace() override {stopTimer();analysisPanel.reset();timelinePanel.reset();newSessionPanel.reset();recoveryPanel.reset();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
+    ~Workspace() override {stopTimer();exportPanel.reset();analysisPanel.reset();timelinePanel.reset();newSessionPanel.reset();recoveryPanel.reset();audioSettings.reset();pluginLibrary.reset();mcp.reset();commandQueue.shutdown();commandFiles.removeAllJobs(true,2000);commands.stop();setLookAndFeel(nullptr);}
     void chooseExport(bool selection){invoke([&]{const auto request=commands.exportRequest(selection);choose(true,[this,request](const juce::File& f){invoke([&]{auto r=commands.renderRequest(f,request);message(text("已生成并校验 WAV · ")+juce::String(r["frames"].get<int64_t>())+text(" 帧 · ")+(r["lufs_i"].is_number()?juce::String(r["lufs_i"].get<double>(),2):text("静音"))+" LUFS-I");});},"*.wav");});}
+    void showVerifiedExport(bool selection=false){invoke([&]{
+        const auto request=commands.exportRequest(selection);
+        if(!exportPanel){exportPanel=std::make_unique<ExportPanel>([this](const auto& method,const auto& args){return commands.analysisControl(method,args);},[this](Json args){choose(true,[this,args](const juce::File& file)mutable{args["destination"]=file.getFullPathName().toStdString();try{exportPanel->update(commands.analysisControl("export",args));}catch(const std::exception& e){exportPanel->showError(e.what());}},"*.wav");},[this]{exportPanel->setVisible(false);grabKeyboardFocus();});addChildComponent(*exportPanel);}
+        exportPanel->bind(request,commands.analysisStatus());exportPanel->setBounds(getLocalBounds());exportPanel->setVisible(true);exportPanel->toFront(true);
+    });}
     void showAnalysis(){invoke([&]{
         if(!analysisPanel){analysisPanel=std::make_unique<AnalysisPanel>([this](const auto& method,const auto& args){auto result=commands.analysisControl(method,args);if(method=="locate"){mix=false;pianoMode=false;refresh();}return result;},[this]{analysisPanel->setVisible(false);grabKeyboardFocus();});addChildComponent(*analysisPanel);}
         auto context=commands.query();context["analysis_selected_clip"]=selectedClip;context["analysis_selected_track"]=selected;analysisPanel->bind(context,commands.analysisStatus());analysisPanel->setBounds(getLocalBounds());analysisPanel->setVisible(true);analysisPanel->toFront(true);
@@ -552,7 +558,7 @@ public:
     }
     juce::StringArray getMenuBarNames() override {return {text("文件"),text("编辑"),text("视图"),text("命令")};}
     juce::PopupMenu getMenuForIndex(int index,const juce::String&) override {
-        juce::PopupMenu p;p.setLookAndFeel(&theme);if(index==0){p.addItem(41,text("新建工程…   ⌘N"),!facts.value("playing",false)&&facts["parameter_capture"].is_null());p.addSeparator();p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
+        juce::PopupMenu p;p.setLookAndFeel(&theme);if(index==0){p.addItem(41,text("新建工程…   ⌘N"),!facts.value("playing",false)&&facts["parameter_capture"].is_null());p.addSeparator();p.addItem(1,text("导入音频…   ⌘I"));p.addItem(2,text("打开工程…   ⌘O"));p.addItem(3,text("另存工程…   ⌘S"));p.addItem(4,text("导出 WAV…   ⇧⌘E"));p.addItem(44,text("导出并检查 WAV…"));p.addItem(45,text("导出并检查时间选区…"),!facts.value("time_selection",Json(nullptr)).is_null());p.addItem(40,text("工程恢复副本…"));p.addSeparator();p.addItem(5,text("新增音频轨道"));p.addSeparator();p.addItem(11,text("导入旧 .ndaw 工程…"));p.addItem(12,text("查看旧工程导入报告"));}
         if(index==1){p.addItem(42,text("定位与时间选区…"));p.addSeparator();p.addItem(6,text("Undo   ⌘Z"),undoButton.isEnabled());p.addItem(7,text("Redo   ⇧⌘Z"),redoButton.isEnabled());}
         if(index==2){p.addItem(8,"Edit",true,!mix&&!pianoMode);p.addItem(9,"Mix",true,mix);p.addItem(10,text("钢琴卷帘"),true,pianoMode);p.addSeparator();p.addItem(13,text("插件库 · AU / VST3"),pending.is_null()&&!commandFileBusy);p.addItem(14,text("音频设备设置…"));p.addItem(43,text("音频分析 / 交付检查…"));}
         if(index==3){p.addItem(26,text("从本地 JSON 请求编辑…"),!commandFileBusy&&pending.is_null());p.addSeparator();p.addItem(21,text("只读分析"),true,commandScope.mode==Permission::ReadOnly);p.addItem(22,text("先预览再提交"),true,commandScope.mode==Permission::Preview);
@@ -562,13 +568,14 @@ public:
         return p;
     }
     void menuItemSelected(int id,int) override {
-        if(id==43){showAnalysis();return;}if(id==42){showTimelineRange();return;}if(id==41){showNewSession();return;}if(id==40){showRecovery();return;}
+        if(id==44||id==45){showVerifiedExport(id==45);return;}if(id==43){showAnalysis();return;}if(id==42){showTimelineRange();return;}if(id==41){showNewSession();return;}if(id==40){showRecovery();return;}
         if(id==30||id==31){startMcp(id==30?Permission::ReadOnly:Permission::Preview);return;}if(id==32){stopMcp();return;}if(id==33){showMcpInfo();return;}
         if(id==14){showAudioSettings();return;}if(id==13){showPluginLibrary();return;}if(id>=21&&id<=24){setCommandPermission(id==21?Permission::ReadOnly:id==22?Permission::Preview:Permission::ScopedLowRisk,id==24);return;}
         if(id==25){cancelCurrentCommand();return;}if(id==26){choose(false,[this](const auto& f){importCommandFile(f);},"*.json");return;}if(id==11){choose(false,[this](const auto& f){prepareLegacyImport(f);},"*.ndaw");return;}if(id==12){showLegacyReport();return;}juce::TextButton* b=nullptr;switch(id){case 1:b=&importButton;break;case 2:b=&openButton;break;case 3:b=&saveButton;break;case 4:b=&exportButton;break;case 5:trackType.setSelectedId(1,juce::dontSendNotification);b=&newTrack;break;case 6:b=&undoButton;break;case 7:b=&redoButton;break;case 8:b=&editButton;break;case 9:b=&mixButton;break;case 10:b=&pianoButton;break;}if(b&&b->isEnabled())b->triggerClick();}
     bool isInterestedInFileDrag(const juce::StringArray& files) override {return files.size()==1;}
     void filesDropped(const juce::StringArray& files,int,int) override {auto file=juce::File(files[0]);if(file.hasFileExtension("json"))importCommandFile(file);else prepareImport(file);}
     bool keyPressed(const juce::KeyPress& key) override {
+        if(exportPanel&&exportPanel->isVisible()){if(key==juce::KeyPress::escapeKey){exportPanel->setVisible(false);grabKeyboardFocus();return true;}return false;}
         if(analysisPanel&&analysisPanel->isVisible()){if(key==juce::KeyPress::escapeKey){analysisPanel->setVisible(false);grabKeyboardFocus();return true;}return false;}
         if(timelinePanel&&timelinePanel->isVisible()){if(key==juce::KeyPress::escapeKey){timelinePanel->setVisible(false);grabKeyboardFocus();return true;}return false;}
         if(newSessionPanel&&newSessionPanel->isVisible()){if(key==juce::KeyPress::escapeKey){newSessionPanel->cancelAndClose();return true;}return false;}
@@ -590,6 +597,7 @@ public:
         g.setColour(juce::Colour(0xff101821));g.fillRect(getWidth()-218,103,202,6);g.setColour(db>=0?juce::Colour(0xffe0756b):accent());g.fillRect(getWidth()-218,103,int(std::clamp((db+60)/60.,0.,1.)*202),6);
     }
     void resized() override {
+        if(exportPanel)exportPanel->setBounds(getLocalBounds());
         if(analysisPanel)analysisPanel->setBounds(getLocalBounds());
         if(timelinePanel)timelinePanel->setBounds(getLocalBounds());
         if(newSessionPanel)newSessionPanel->setBounds(getLocalBounds());
@@ -688,6 +696,7 @@ private:
         groupTab.setToggleState(groupInspector,juce::dontSendNotification);autoTab.setToggleState(autoInspector,juce::dontSendNotification);insertTab.setToggleState(!routingInspector&&!groupInspector&&!autoInspector,juce::dontSendNotification);routingTab.setToggleState(routingInspector,juce::dontSendNotification);
     }
     void refresh() {
+        if(exportPanel&&exportPanel->isVisible())exportPanel->update(commands.analysisStatus());
         if(analysisPanel&&analysisPanel->isVisible()&&juce::Time::getMillisecondCounterHiRes()-analysisRefresh>250){analysisRefresh=juce::Time::getMillisecondCounterHiRes();analysisPanel->update(commands.analysisStatus());}
         if(workspaceSession!=commands.sessionToken()){workspaceSession=commands.sessionToken();if(mcp)startMcp(Permission::ReadOnly,mcpEndpoint);Scope readOnly;readOnly.mode=Permission::ReadOnly;resetCommandClient(readOnly);selected.clear();selectedClip.clear();clipFXInspector=false;pending=nullptr;pendingConfirmation.clear();reportShowing=false;programDraft=false;if(pluginLibrary)pluginLibrary->setVisible(false);message(text("已切换工程会话 · Agent 授权回到只读"));}
         const auto recovery=commands.recoveryStatus();
@@ -730,7 +739,7 @@ private:
     void chooseRecordingDirectory(){chooser=std::make_unique<juce::FileChooser>(text("选择录音目录 · 只创建新录音，不覆盖已有文件"),recordDirectory,"*");chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[safe=juce::Component::SafePointer<Workspace>(this)](const auto& c){if(safe&&c.getResult().isDirectory()){safe->recordDirectory=c.getResult();safe->refresh();}});}
     std::string lastAudioReceipt;uint64_t audioSettingsEpoch=0,lastMeterRequest=0;std::unique_ptr<AudioDevicePanel> audioSettings;
     std::unique_ptr<PluginLibrary> pluginLibrary;std::string pluginLibraryTrack,pluginLibrarySession;
-    std::unique_ptr<AnalysisPanel> analysisPanel;double analysisRefresh=0;
+    std::unique_ptr<ExportPanel> exportPanel;std::unique_ptr<AnalysisPanel> analysisPanel;double analysisRefresh=0;
     std::unique_ptr<TimelinePanel> timelinePanel;juce::TextButton rangeButton{text("定位 / 选区…")};
     bool newSessionRequested=false;std::unique_ptr<NewSessionPanel> newSessionPanel;std::unique_ptr<RecoveryPanel> recoveryPanel;std::string workspaceSession;juce::Label recoveryIndicator;
     bool programDraft=false;std::string programTarget;

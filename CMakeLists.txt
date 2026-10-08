@@ -61,7 +61,7 @@ add_subdirectory(third_party/tracktion_engine)
 add_library(ndaw_ebur128 STATIC third_party/libebur128/ebur128/ebur128.c)
 target_include_directories(ndaw_ebur128 PUBLIC third_party/libebur128/ebur128)
 add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePluginStates.cpp src/v2/PluginEditorCommands.cpp src/v2/ExternalCommands.cpp src/v2/PluginScanning.cpp src/v2/PluginScanStorage.cpp src/v2/CommandQueue.cpp src/v2/McpSession.cpp src/v2/McpGateway.cpp src/v2/Scope.cpp src/v2/ParameterCommands.cpp src/v2/LegacyImport.cpp src/v2/ClipCommands.cpp src/v2/EngineCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/TimelineCommands.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -514,3 +514,17 @@ if(NOT WIN32)
   add_test(NAME tracktion_mcp_native_workspace COMMAND ndaw_mcp_workspace_tests "${CMAKE_SOURCE_DIR}/evidence/M2/workspace-tests.json" "$<TARGET_FILE:forma_mcp>")
   set_tests_properties(tracktion_mcp_native_workspace PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 endif()
+
+# Real staged/published WAV qualification and native verified-export controls.
+juce_add_console_app(ndaw_export_tests PRODUCT_NAME "ndaw_export_tests")
+target_sources(ndaw_export_tests PRIVATE tests/v2/ExportTests.cpp)
+target_link_libraries(ndaw_export_tests PRIVATE ndaw_engine)
+add_test(NAME tracktion_verified_export COMMAND ndaw_export_tests "${CMAKE_SOURCE_DIR}/evidence/M3/export-tests.json")
+set_tests_properties(tracktion_verified_export PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_export_workspace_tests PRODUCT_NAME "ndaw_export_workspace_tests")
+target_sources(ndaw_export_workspace_tests PRIVATE tests/v2/ExportWorkspaceTests.cpp)
+target_include_directories(ndaw_export_workspace_tests PRIVATE src/v2)
+target_link_libraries(ndaw_export_workspace_tests PRIVATE ndaw_engine)
+add_test(NAME tracktion_native_verified_export COMMAND ndaw_export_workspace_tests "${CMAKE_SOURCE_DIR}/evidence/M3/export-workspace-tests.json")
+set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
