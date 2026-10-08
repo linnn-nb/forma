@@ -546,6 +546,38 @@ int main(int argc, char** argv)
     try
     {
         checkCacheBorrowing();
+        {
+            juce::Component component;
+            TimelineCoordinates axis{0, 480000, 0, 1000};
+            auto press = event(component, {100, 20});
+            ScrubGesture normal, fine;
+            normal.begin(press, axis, 1000);
+            fine.begin(event(component, {100, 20}, false, juce::ModifierKeys::commandModifier), axis, 1000);
+            auto right = event(component, {105, 20}, true);
+            check(normal.move(right, 1100)["speed"] == .5 && fine.move(right, 1100)["speed"] == .05,
+                  "fine policy deterministically applies one tenth to the same position/time displacement");
+            check(normal.move(event(component, {100, 20}, true), 1200)["speed"] == -.5 &&
+                      fine.move(event(component, {100, 20}, true), 1200)["speed"] == -.05,
+                  "fine policy preserves reverse sign and fractional position speed");
+            const auto shuttle = normal.move(event(component, {1000, 20}, true, juce::ModifierKeys::altModifier), 1200);
+            const auto fineShuttle =
+                fine.move(event(component, {1000, 20}, true, juce::ModifierKeys::altModifier), 1200);
+            check(shuttle["speed"] == 4. && shuttle["shuttle"] == true && fineShuttle["speed"] == .4,
+                  "fine and Shuttle combine within explicit bounded speed and zero-time motion policy");
+            check(normal.move(event(component, {1000, 20}, true), 1300)["speed"] == 0.,
+                  "stationary pointer reports actual zero speed rather than continued transport");
+            const auto ctrl =
+                juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::ctrlModifier);
+            check(ScrubGesture::accepts("selector", EditingModel::Gesture::select, ctrl) &&
+                      ScrubGesture::accepts("smart", EditingModel::Gesture::select, ctrl) &&
+                      !ScrubGesture::accepts("smart", EditingModel::Gesture::fadeIn, ctrl) &&
+                      !ScrubGesture::accepts("trim", EditingModel::Gesture::left, ctrl) &&
+                      !ScrubGesture::accepts("pencil", EditingModel::Gesture::move, ctrl),
+                  "temporary modifier entry is restricted to supported Selector regions");
+            check(!ScrubGesture::accepts("selector", EditingModel::Gesture::select,
+                                         ctrl.withFlags(juce::ModifierKeys::rightButtonModifier)),
+                  "a genuine right button cannot be promoted into temporary audition");
+        }
         const auto folder = juce::File::getSpecialLocation(juce::File::tempDirectory)
                                 .getChildFile("forma-scrub-" + juce::Uuid().toString());
         folder.createDirectory();
@@ -1282,6 +1314,157 @@ int main(int argc, char** argv)
             check(c.scrubStatus()["preparing"].get<bool>(), "audition prepares before resize test");
             w.setSize(1650, 950);
             check(!c.scrubStatus()["active"].get<bool>(), "coordinate resize cancels native scrub gesture");
+            // The native pointer path must override macOS Ctrl-popup only where
+            // Selector actually applies, without changing tool/selection/history.
+            const int ctrl = juce::ModifierKeys::ctrlModifier;
+            const int cmd = juce::ModifierKeys::commandModifier;
+            for (const auto tool : {"selector", "smart"})
+                for (const bool fine : {false, true})
+                {
+                    check(w.uiCommands().invokeDirectly(tool == std::string("selector") ? 117 : 136, false),
+                          "temporary Scrub starts from the shared Selector/Smart command");
+                    pump();
+                    run(c, Json::array({op("session.range.set", {{"start_samples", 36000}, {"end_samples", 84000}})}));
+                    const auto clip = c.query()["tracks"][0]["clips"][1];
+                    c.updateUiState({{"object_selection", Json::array({{{"id", clip["id"]},
+                                                                        {"track", c.query()["tracks"][0]["id"]},
+                                                                        {"kind", "clip"}}})}},
+                                    c.sessionToken());
+                    AudioDeviceTestAccess::refresh(w);
+                    const auto before = c.query();
+                    const auto beforeView = c.uiState();
+                    const auto bounds = e->clipRect(clip, 0);
+                    auto pos =
+                        juce::Point<float>{float(e->coordinates().pixelAt(72000)), float(bounds.getCentreY() - 1)};
+                    int contextCalls = 0;
+                    auto originalContext = e->onContext;
+                    e->onContext = [&](const std::string&) { ++contextCalls; };
+                    e->mouseDown(event(*e, pos, false, ctrl | (fine ? cmd : 0)));
+                    check(c.scrubStatus().value("preparing", false) && contextCalls == 0 &&
+                              c.uiState()["edit_tool"] == tool,
+                          "Ctrl-left press starts real temporary preparation, not a popup or permanent tool change");
+                    awaitScrub(c);
+                    AudioDeviceTestAccess::refresh(w);
+                    pump(20);
+                    pos.x += 40;
+                    // Fine mode selected on press remains fine even if Command is released.
+                    e->mouseDrag(event(*e, pos, true, ctrl));
+                    const double speed = c.scrubStatus()["speed"];
+                    const double from = c.scrubStatus()["position_samples"];
+                    check(speed > 0 && speed <= (fine ? .1 : 1.),
+                          "temporary motion supplies bounded normal/fine speed to the real audio command");
+                    auto audio = player.process(1024);
+                    double error = 0;
+                    for (int ch = 0; ch < 2; ++ch)
+                        for (int n = 64; n < 1024; ++n)
+                        {
+                            const double sourceFrame = from + n * speed;
+                            const auto first = int(std::floor(sourceFrame));
+                            const float frac = float(sourceFrame - first);
+                            const auto* samples = reference.getReadPointer(ch);
+                            const double expected = samples[first] + frac * (samples[first + 1] - samples[first]);
+                            error = std::max(error, std::abs(double(audio.getSample(ch, n)) - expected));
+                        }
+                    check(audio.getMagnitude(64, 960) > .01 && error < 2e-5,
+                          "temporary native Ctrl/fine drag produces independently checked actual source PCM");
+                    results.push_back({{"case", "native temporary pointer audition"},
+                                       {"tool", tool},
+                                       {"fine", fine},
+                                       {"speed", speed},
+                                       {"maximum_pcm_error", error}});
+                    e->mouseUp(event(*e, pos, true));
+                    e->onContext = originalContext;
+                    const auto after = c.query();
+                    check(!c.scrubStatus().value("busy", false) && after["tracks"] == before["tracks"] &&
+                              after["time_selection"] == before["time_selection"] &&
+                              after["position_samples"] == before["position_samples"] &&
+                              after["revision"] == before["revision"] && c.uiState() == beforeView,
+                          "release retains original tool, selection, insertion, objects, facts and history");
+                    check(player.process(1024).getMagnitude(0, 1024) == 0,
+                          "temporary release leaves no leftover source audio");
+                }
+            // Ordinary editing remains usable immediately after temporary audition.
+            c.updateUiState({{"edit_tool", "selector"}}, c.sessionToken());
+            AudioDeviceTestAccess::refresh(w);
+            auto normal = juce::Point<float>{float(e->coordinates().pixelAt(72000)), float(e->rowY(0) + 56)};
+            const auto originalRange = c.query()["time_selection"];
+            const auto originalRevision = c.query()["revision"].get<uint64_t>();
+            e->mouseDown(event(*e, normal));
+            normal.x += 40;
+            e->mouseDrag(event(*e, normal, true));
+            e->mouseUp(event(*e, normal, true));
+            check(c.query()["time_selection"] != originalRange &&
+                      c.query()["revision"].get<uint64_t>() == originalRevision + 1 &&
+                      !c.scrubStatus().value("busy", false),
+                  "unmodified Selector drag after temporary Scrub commits one real range transaction");
+            const auto changedRange = c.query()["time_selection"];
+            c.undo();
+            check(c.query()["time_selection"] == originalRange,
+                  "Undo after audition targets the real range edit rather than transient Scrub");
+            c.redo();
+            check(c.query()["time_selection"] == changedRange, "Redo restores the real post-audition range edit");
+            AudioDeviceTestAccess::refresh(w);
+            normal.x -= 40;
+            e->mouseDown(event(*e, normal, false, ctrl | cmd));
+            check(c.scrubStatus().value("preparing", false), "temporary fine preparation precedes Escape");
+            check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)), "Escape cancels temporary fine gesture");
+            TransportTestAccess::drainDecoder(c);
+            pump(20);
+            check(!c.scrubStatus().value("busy", false) && c.uiState()["edit_tool"] == "selector" &&
+                      c.query()["time_selection"] == changedRange,
+                  "late decoded temporary result cannot restart or change restored Selector selection");
+            // Genuine popup and Smart non-Selector hot zones keep existing behavior.
+            c.updateUiState({{"edit_tool", "smart"}}, c.sessionToken());
+            AudioDeviceTestAccess::refresh(w);
+            const auto second = c.query()["tracks"][0]["clips"][1];
+            const auto bounds = e->clipRect(second, 0);
+            int menus = 0;
+            auto context = e->onContext;
+            e->onContext = [&](const std::string&) { ++menus; };
+            auto lower = juce::Point<float>{normal.x, float(bounds.getBottom() - 12)};
+            e->mouseDown(event(*e, lower, false, ctrl));
+            auto fade = juce::Point<float>{float(bounds.getX() + 2), float(bounds.getY() + 2)};
+            e->mouseDown(event(*e, fade, false, ctrl));
+            e->mouseDown(event(*e, normal, false, juce::ModifierKeys::rightButtonModifier));
+            e->onContext = context;
+            check(menus == 3 && !c.scrubStatus().value("busy", false) && c.uiState()["edit_tool"] == "smart",
+                  "Smart grab/fade Ctrl zones and genuine right-click remain context actions without audition");
+            // Locked media stays auditionable, but its visible fade hot zones
+            // cannot advertise a temporary Selector action that mouseDown refuses.
+            run(c, Json::array({op("clip.fade", {{"clip", second["id"]},
+                                                 {"in_samples", 12000},
+                                                 {"out_samples", 0},
+                                                 {"in_curve", "linear"},
+                                                 {"out_curve", "linear"}}),
+                                op("clip.lock", {{"clip", second["id"]}, {"locked", true}})}));
+            AudioDeviceTestAccess::refresh(w);
+            const auto locked = c.query()["tracks"];
+            auto handle = juce::Point<float>{float(e->coordinates().pixelAt(59000)), float(bounds.getY() + 2)};
+            e->mouseMove(event(*e, handle, false, ctrl));
+            check(e->getMouseCursor() != juce::MouseCursor::CrosshairCursor,
+                  "locked clip fade hover agrees with actual non-Selector pointer hot zone");
+            menus = 0;
+            e->onContext = [&](const std::string&) { ++menus; };
+            e->mouseDown(event(*e, handle, false, ctrl));
+            e->onContext = context;
+            check(menus == 1 && !c.scrubStatus().value("busy", false) && c.query()["tracks"] == locked,
+                  "locked fade Ctrl press keeps context behavior and original media facts");
+            e->mouseMove(event(*e, normal, false, ctrl));
+            check(e->getMouseCursor() == juce::MouseCursor::CrosshairCursor,
+                  "locked clip Selector region still advertises read-only audition");
+            e->mouseDown(event(*e, normal, false, ctrl));
+            awaitScrub(c);
+            normal.x += 30;
+            e->mouseDrag(event(*e, normal, true, ctrl));
+            check(player.process(1024).getMagnitude(64, 960) > .01,
+                  "locked media temporary audition still produces actual PCM without an edit");
+            e->mouseUp(event(*e, normal, true));
+            check(c.query()["tracks"] == locked && !c.scrubStatus().value("busy", false),
+                  "locked audition release preserves fade/lock state and stops source");
+            c.undo();
+            // Restore explicit tool for the existing custom key/save-reopen qualification.
+            c.updateUiState({{"edit_tool", "scrubber"}}, c.sessionToken());
+            AudioDeviceTestAccess::refresh(w);
             auto* mappings = w.uiCommands().getKeyMappings();
             mappings->clearAllKeyPresses(253);
             const auto custom = juce::KeyPress(juce::KeyPress::F9Key,

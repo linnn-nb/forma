@@ -133,7 +133,7 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
-        {253, "Scrubber 正反向试听（单片段）", "编辑", juce::KeyPress::F9Key, cmd},
+        {253, "Scrubber 正反向试听（单音频轨）", "编辑", juce::KeyPress::F9Key, cmd},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
         {252, "恢复默认波形显示高度", "缩放", '[',
@@ -298,7 +298,8 @@ void Workspace::initialiseCommandManager()
                 refresh();
             });
     };
-    editArea.onScrubReady = [this] { message(text("Scrubber 已就绪 · 左右拖动试听 · 松手或 Escape 停止")); };
+    editArea.onScrubReady = [this]
+    { message(text("Scrubber 已就绪 · 左右拖动 · Command 细拖 · Option Shuttle · 松手停止")); };
     editArea.onScrubBuffering = [this](bool waiting)
     {
         message(text(waiting ? "Scrubber 缓存不足 · 源音频暂停等待读取 · 松手或 Escape 取消"
@@ -599,7 +600,8 @@ bool Workspace::perform(const InvocationInfo& invocation)
             {
                 commands.scrub("cancel");
                 setView({{"edit_tool", "scrubber"}});
-                message(text("Scrubber：普通无淡化音频片段；左右拖动，Option Shuttle，Escape取消；±2秒缓存"));
+                message(text("Scrubber：单音频轨正反向试听，Command 细拖，Option Shuttle；Selector / Smart 上半区 "
+                             "Control 拖动临时试听；松手或 Escape 停止"));
             });
         return true;
     }

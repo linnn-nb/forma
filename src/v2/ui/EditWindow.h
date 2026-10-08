@@ -8,6 +8,7 @@
 #include "EditingModel.h"
 #include "AutomationLane.h"
 #include "ZoomGesture.h"
+#include "ScrubGesture.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -677,7 +678,16 @@ public:
                     const auto gesture =
                         editing.gesture(e.x, e.y, clipRect(clip, row), audio, clip.value("fade_in_samples", int64_t(0)),
                                         clip.value("fade_out_samples", int64_t(0)), axis.width / axis.span);
-                    if (gesture == EditingModel::Gesture::select)
+                    // Locking forbids edits, not audition. Use the same audio
+                    // hot zones as mouseDown even when edit handles are disabled.
+                    const auto scrubRegion =
+                        editing.gesture(e.x, e.y, clipRect(clip, row), true, clip.value("fade_in_samples", int64_t(0)),
+                                        clip.value("fade_out_samples", int64_t(0)), axis.width / axis.span);
+                    if (clip["kind"] == "audio" && viewParameter(trackIDs[size_t(row)]).empty() &&
+                        ScrubGesture::accepts(editing.tool, scrubRegion,
+                                              e.mods.withFlags(juce::ModifierKeys::leftButtonModifier)))
+                        cursor = juce::MouseCursor::CrosshairCursor;
+                    else if (gesture == EditingModel::Gesture::select)
                         cursor = juce::MouseCursor::IBeamCursor;
                     else if (gesture == EditingModel::Gesture::move && audio)
                         cursor = juce::MouseCursor::DraggingHandCursor;
@@ -728,29 +738,41 @@ public:
             repaint();
             return;
         }
-        if (editing.tool == "scrubber" && !e.mods.isPopupMenu() && e.y >= rulerHeight() && rowAt(e.y) >= 0 &&
-            rowAt(e.y) < visibleRows())
+        // Ctrl-left-click wins over macOS popup recognition only in a real
+        // Selector region. Smart trim/fade/grab regions keep their own behavior.
+        if (e.y >= rulerHeight() && rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows() &&
+            viewParameter(trackIDs[size_t(row)]).empty())
         {
-            if (viewParameter(trackIDs[size_t(row)]).empty())
-                for (const auto& clip : facts["tracks"][row]["clips"])
-                    if (clip["kind"] == "audio" && clipRect(clip, row).contains(e.getPosition()) && onScrub)
+            for (const auto& clip : facts["tracks"][row]["clips"])
+                if (clip["kind"] == "audio" && clipRect(clip, row).contains(e.getPosition()))
+                {
+                    const auto region =
+                        editing.gesture(e.x, e.y, clipRect(clip, row), true, clip.value("fade_in_samples", int64_t(0)),
+                                        clip.value("fade_out_samples", int64_t(0)), axis.width / axis.span);
+                    if (ScrubGesture::accepts(editing.tool, region, e.mods))
                     {
-                        scrubSession = facts["session_token"];
-                        scrubRevision = facts["revision"];
-                        scrubGesture = onScrub("begin", {{"clip", clip["id"]},
-                                                         {"position_samples", axis.sampleAt(e.x)},
-                                                         {"session", scrubSession},
-                                                         {"revision", scrubRevision}});
-                        scrubPreparing = scrubGesture;
-                        scrubBuffering = false;
-                        scrubX = e.x;
-                        scrubTime = juce::Time::getMillisecondCounterHiRes();
-                        scrubLeft = timelineLeft();
-                        scrubWidth = getWidth();
+                        if (onScrub)
+                        {
+                            scrubSession = facts["session_token"];
+                            scrubRevision = facts["revision"];
+                            scrubGesture = onScrub("begin", {{"clip", clip["id"]},
+                                                             {"position_samples", axis.sampleAt(e.x)},
+                                                             {"session", scrubSession},
+                                                             {"revision", scrubRevision}});
+                            scrubPreparing = scrubGesture;
+                            scrubBuffering = false;
+                            scrubMotion.begin(e, axis, juce::Time::getMillisecondCounterHiRes());
+                            scrubLeft = timelineLeft();
+                            scrubWidth = getWidth();
+                        }
                         return;
                     }
-            return;
+                }
         }
+        // A dedicated/temporary Scrubber press in empty space cannot seek,
+        // select, edit or fall through to a Ctrl popup. No source means no sound.
+        if (e.y >= rulerHeight() && ScrubGesture::accepts(editing.tool, EditingModel::Gesture::move, e.mods))
+            return;
         const auto point = snapped(axis.sampleAt(e.x), e.mods);
         if (e.y >= rulerHeight() &&
             (editing.tool == "pencil" || (editing.tool != "selector" && row < int(trackIDs.size()) &&
@@ -899,15 +921,8 @@ public:
     {
         if (scrubGesture)
         {
-            const auto now = juce::Time::getMillisecondCounterHiRes();
-            const auto elapsed = std::max(1., now - scrubTime);
-            const auto maximum = e.mods.isAltDown() ? 4. : 1.;
-            const auto speed =
-                std::clamp((e.x - scrubX) * coordinates().span / coordinates().width / 48000. * 1000. / elapsed,
-                           -maximum, maximum);
-            scrubX = e.x;
-            scrubTime = now;
-            if (!onScrub || !onScrub("speed", {{"speed", speed}, {"shuttle", e.mods.isAltDown()}}))
+            const auto request = scrubMotion.move(e, juce::Time::getMillisecondCounterHiRes());
+            if (!onScrub || !onScrub("speed", request))
                 cancelScrubGesture();
             return;
         }
@@ -1228,8 +1243,8 @@ private:
     bool scrubGesture = false, scrubPreparing = false, scrubBuffering = false;
     std::string scrubSession;
     uint64_t scrubRevision = 0;
-    int scrubX = 0, scrubLeft = 0, scrubWidth = 0;
-    double scrubTime = 0;
+    ScrubGesture scrubMotion;
+    int scrubLeft = 0, scrubWidth = 0;
     ZoomGesture zoomGesture;
     WaveformZoomControls waveformControls;
     Json view = Json::object();

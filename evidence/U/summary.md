@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 临时 Ctrl Scrub 与细拖（2026-10-09）
+
+结论：Selector/Smart选择热区Control左拖、Command细拖、Option组合与松手/Escape恢复接通；Release/固定验签、相关7/7（67.91秒）、527专项通过。`scrub-tests.json`为本轮资格回执；新增原生事件真实PCM普通误差0、细拖最大6.9849193e-10，原工具/选区/对象/版本保持、后续真实范围Undo/Redo通过。详细依据/策略/回归及产物哈希见VERIFICATION.md首节；十分之一比例是Forma明确策略，不冒充PT内部算法。
+
+亲手试：`build-v2-tracktion/FormaScrubToolsPreview.app`打开原`scrub-sliding-demo/Scrubber Demo.tracktionedit`，F7、Control拖音频、Command-Control细拖、Option Shuttle、松手后正常选择/Undo。Mac锁定，物理GUI/实体试听未执行，自有PID77399退出；无DMG、新SDK补丁/MCP资格。完整U＋P0未完成，后续双轨/多声道与选区行为继续保留。
+
 ## 有界 Scrubber 滑动窗口（2026-10-09）
 
 结论：真实长范围正反向续读、缓存耗尽暂停/恢复、反向恢复和失败停止接通；Release/固定验签、相关8/8（71.78秒）、485专项通过。`scrub-tests.json` 是本轮机器回执，详细实现/误差/失败修复及产物哈希见 `docs/VERIFICATION.md` 首节。两槽最多16 MiB PCM/单后台作业/每次1500 ms；借用路径10,000发布、18,279一致读，实测C++分配/释放0，非全引擎RT资格。原媒体、Undo/Redo、保存重开与键位保持。

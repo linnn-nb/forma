@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-SCRUB-01 续：临时入口与细拖（2026-10-09）
+
+结论：Selector 的 Control 左拖、Smart Tool 的选择区域 Control 左拖已接通同一真实 Scrubber；Command-Control 按下进入细拖，显式 Scrub 中也可用 Command 细拖，Option Shuttle 可组合。松手/Escape 保留原工具、选区、对象、插入点与工程 revision；之后的普通选区编辑正常提交一笔事务并 Undo/Redo。Release/固定身份 deep/strict 验签通过，相关 **7/7 通过，0 失败，67.91 秒**；Scrubber **527 检查**，suite 专项用时 24.52 秒。完整 U＋P0 未完成，不进 P1。
+
+依据：本地官方 Reference Guide 2026.4，印刷 883–884 页（PDF985–986页），2026-10-09 重新读取；Selector 临时 Ctrl、Command-Control 更细及 Option Shuttle 明文行为。Smart 的临时入口仅复用已有 Selector 热区，不覆盖 Grabber/Trim/淡化区。手册未规定数值比例；Forma 明确采用正常/Shuttle 有界速度的十分之一（最大 ±0.1/±0.4），不宣称与 Pro Tools 的隐藏比例一致。按下时细拖锁定到松手；途中按 Command 可暂时细拖，未更改自定义快捷键。
+
+实现：`ui/ScrubGesture.h` 只解释按钮、工具热区及捕获的采样/像素坐标，使用浮点指针位移和有下限的事件时差；不写 Edit、不另建音频路径。`EditWindow.h` 在确实音频波形/Selector 区域优先处理 Ctrl 左键，避免 macOS 将其当 popup；真右键和 Smart 修剪/淡化/抓取区保留原上下文入口，空音频区不伪造声音。原 L1 版本/设备校验、缓存、取消、watchdog/FX/路由继续复用。更新菜单和状态说明，去掉过时的“单片段/无淡化/固定±2秒结束”提示。
+
+实测：`evidence/U/scrub-tests.json` 四个新增原生组件事件场景走生产图，Selector/Smart 正常临时试听 PCM 误差 0，细拖最大 6.9849193e-10；既定容差 2e-5 未放宽。确定性位移/时间验证正反速度、十分之一比例、Option组合、同时间事件界限和零位移；真实事件验证不弹popup、按下后释放Command仍细拖、松手无残留PCM、原选区/对象/工具/版本保持、后续正常选择一笔Undo/Redo、准备期Escape与迟到解码取消、Smart其他热区/真右键保留；锁定片段的淡化热区光标与点击一致，选择区仍可读入真实PCM且不修改锁定/淡化。已有媒体哈希、保存重开、自定义键位、长窗口和故障资格继续通过。相关回归只覆盖导航、编辑手势、剪贴板、自动化视图、Zoomer、波形及Scrubber；日志 `build-v2-tracktion/scrub-pointer-final-affected-tests.log`。初次测试编译引用了不存在的 version()，改用真实 query/revision 后构建与专项通过；另在最终检查修复锁定片段光标与按下热区不一致，新增五项真实状态/音频检查；失败不计入资格。
+
+亲手试：`build-v2-tracktion/FormaScrubToolsPreview.app`，CommandO 打开原 `scrub-sliding-demo/Scrubber Demo.tracktionedit`；F7 选择 Selector，Control 按住音频拖动，Command-Control 细拖，Option Shuttle，松手后普通拖出选区、CommandZ/ShiftCommandZ；Smart Tool 仅音频中上部选择热区使用相同入口，边缘/淡化/下半区保持各自操作。工具命令可重绑定；保存另存新文件重开，不覆盖示范源媒体。Mac 锁定未执行物理鼠标/截图/实体试听；CUA确认锁定，仅关闭本轮自有预览PID77399，其他窗口保留。产物现可运行，不打DMG。
+
+边界：只读试听不是工程编辑，故不新增 Undo 项；现有工程编辑仍可撤销/保存。Undo 历史不跨重开。没有增加选区扩展/插入跟随偏好、双轨/8声道或 Shuttle Lock；Windows 修饰键未验收。所有前述来源映射/插件与硬件资格限制保留，无新依赖/SDK补丁、MCP或分析资格。正式 binary SHA256 `3be2e8dc969ce9bda66875be231c2ba1b5f296599e5caa988406a76422ec2238`；独立预览 `d4f420e7b55f07687fbf92edce1aabbf575ee750fe4ca45fb24279783fd04a2c`，bundle org.forma.daw.scrub-tools-preview。
+
 ## U-P0-SCRUB-01 续：有界滑动窗口（2026-10-09）
 
 结论：Scrubber/Option Shuttle 已能在同一手势中跨越原 ±2 秒缓存范围，正反向通过实际切点、空隙和淡化；续读不重建原 FX/路由图。Release、固定身份 deep/strict 验签通过；相关 **8/8 通过，0 失败，71.78 秒**，Scrubber **485 项检查**（该次 suite 用时 24.22 秒）。完整 U＋P0 未完成，不进入 P1。下面历史增量的“无长期窗口推进”仅描述当时状态。
