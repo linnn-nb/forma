@@ -9,6 +9,8 @@
 
 `EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track ID 管理多对象和时间范围；音符/自动化点及钢琴卷帘选区联动仍待接入。工具/网格/Nudge 值和 UI 选区引用存 UI schema 2，旧八字段 UI 明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
 
+音频 Smart Tool 以 EditingModel 的位置分区解析手势，EditWindow 在本地保持拖拽预览，松手通过既有 ClipWriter/L1 提交单笔真实淡化/移动/修剪。Smart 是UI工具状态，淡化是Edit事实；MIDI/自动化分区尚未实现。键位完整XML增加 formaCommands 已知命令清单，加载/导入只为新增命令补未占用的默认键，保留人工解绑与冲突映射；迁移写入L1 UI子树，不增加工程revision/Undo。
+
 ## 0. 定位与前提
 
 **一句话定位**：一个开源的原生 DAW。它以成熟引擎提供基础制作能力，以统一命令层为唯一写入口，让 AI Agent 和用户共同构建可复用的个性化工具。

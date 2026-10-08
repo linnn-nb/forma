@@ -1,0 +1,38 @@
+{
+  "result": "passed",
+  "ctest": {
+    "passed": 3,
+    "failed": 0,
+    "seconds": 18.96
+  },
+  "editor": {
+    "checks": 81,
+    "result": "passed",
+    "scope": "actual JUCE tools/commands, L1 Edit transactions, PCM renders, save/reopen; no physical hardware or cross-reopen Undo claim"
+  },
+  "navigation": {
+    "checks": 43,
+    "result": "passed",
+    "scope": "actual Tracktion UI subtree, production JUCE commands/components, save/reopen, no audio hardware claim"
+  },
+  "clipboard": {
+    "checks": 49,
+    "result": "passed",
+    "scope": "actual L1 frozen audio state, native global commands, decoded Tracktion renders, save/reopen; MIDI/automation clipboard and desktop acceptance pending"
+  },
+  "app_sha256": "79a1a6ae276866a0c840a3c0b68629a0c9ee6eb44ffe13be713c27637af97d92",
+  "desktop": {
+    "fade_in_samples": 40454,
+    "fade_out_samples": 35364,
+    "save_reopen": true,
+    "cmd_7": true,
+    "existing_handle_adjustment_undo": true,
+    "screenshot": "CUA image returned in current thread, not saved as PNG"
+  },
+  "limits": [
+    "U+P0 unfinished",
+    "audio Smart Tool only",
+    "cross-reopen Undo unfinished",
+    "no physical hardware qualification"
+  ]
+}

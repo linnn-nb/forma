@@ -58,6 +58,8 @@ const std::vector<Entry>& entries()
         {editCommand::selector, "Selector 时间选择", "编辑", juce::KeyPress::F7Key},
         {editCommand::grabber, "Grabber 片段移动", "编辑", juce::KeyPress::F8Key},
         {editCommand::trim, "Trim 片段修剪", "编辑", juce::KeyPress::F6Key},
+        {editCommand::smart, "Smart Tool（音频选区 / 移动 / 修剪 / 淡化）", "编辑", juce::KeyPress::numberPad7,
+         juce::ModifierKeys::commandModifier},
         {editCommand::nudgeBack, "Nudge 左移", "编辑", ','},
         {editCommand::nudgeForward, "Nudge 右移", "编辑", '.'},
         {editCommand::previousBoundary, "上一个片段边界", "编辑", juce::KeyPress::tabKey,
@@ -153,6 +155,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             info.setInfo(text(e.title), text(e.title), text(e.category), 0);
             if (e.key)
                 info.addDefaultKeypress(e.key, e.modifiers);
+            if (id == editCommand::smart)
+                info.addDefaultKeypress('7', juce::ModifierKeys::commandModifier);
             if (id == editCommand::nudgeBack || id == editCommand::nudgeForward)
                 info.addDefaultKeypress(
                     id == editCommand::nudgeBack ? juce::KeyPress::numberPadSubtract : juce::KeyPress::numberPadAdd, 0);
@@ -173,8 +177,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                  (id != editCommand::cut || !item.value("locked", false));
                 }
             }
-            if (id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
-                (id >= editCommand::grid && id <= editCommand::split))
+            if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip ||
+                id == editCommand::spot || (id >= editCommand::grid && id <= editCommand::split))
             {
                 active = !mix && !pianoMode;
                 info.setTicked(id == editCommand::shuffle    ? editing.mode == "shuffle"
@@ -184,6 +188,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                : id == editCommand::selector ? editing.tool == "selector"
                                : id == editCommand::grabber  ? editing.tool == "grabber"
                                : id == editCommand::trim     ? editing.tool == "trim"
+                               : id == editCommand::smart    ? editing.tool == "smart"
                                                              : false);
                 if (id == editCommand::nudgeBack || id == editCommand::nudgeForward || id == editCommand::split)
                 {
@@ -266,7 +271,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
         executeClipboardCommand(id);
         return true;
     }
-    if (id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
+    if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
         (id >= editCommand::grid && id <= editCommand::split))
     {
         executeEditCommand(id);
@@ -411,11 +416,52 @@ void Workspace::setView(Json patch)
     if (isShowing())
         grabKeyboardFocus();
 }
+std::unique_ptr<juce::XmlElement> Workspace::shortcutSnapshot()
+{
+    auto xml = commandManager.getKeyMappings()->createXml(false);
+    if (xml)
+    {
+        juce::StringArray known;
+        for (const auto& entry : entries())
+            known.add(juce::String(entry.id));
+        xml->setAttribute("formaCommands", known.joinIntoString(","));
+    }
+    return xml;
+}
+bool Workspace::restoreShortcuts(const juce::XmlElement& xml)
+{
+    auto* mappings = commandManager.getKeyMappings();
+    if (!mappings->restoreFromXml(xml))
+        return false;
+    std::set<int> known;
+    if (xml.hasAttribute("formaCommands"))
+        for (const auto& id : juce::StringArray::fromTokens(xml.getStringAttribute("formaCommands"), ",", ""))
+            known.insert(id.getIntValue());
+    else
+    {
+        // Legacy full snapshots predate Smart Tool. Existing unbound commands remain unbound.
+        for (const auto& entry : entries())
+            if (entry.id != editCommand::smart)
+                known.insert(entry.id);
+        for (const auto* item : xml.getChildIterator())
+            known.insert(item->getStringAttribute("commandId").getHexValue32());
+    }
+    for (const auto& entry : entries())
+        if (!known.contains(entry.id))
+        {
+            juce::ApplicationCommandInfo info(entry.id);
+            getCommandInfo(entry.id, info);
+            for (const auto& key : info.defaultKeypresses)
+                if (mappings->findCommandForKeyPress(key) == 0)
+                    mappings->addKeyPress(entry.id, key);
+        }
+    return true;
+}
 void Workspace::changeListenerCallback(juce::ChangeBroadcaster*)
 {
     if (loadingKeymap)
         return;
-    auto xml = commandManager.getKeyMappings()->createXml(false);
+    auto xml = shortcutSnapshot();
     if (!xml)
         return;
     invoke([&] { commands.updateUiState({{"keymap_xml", xml->toString().toStdString()}}, commands.sessionToken()); });
@@ -451,7 +497,7 @@ void Workspace::transferShortcuts(bool writing)
                     {
                         if (file.exists())
                             throw std::runtime_error("choose a new shortcut file; existing files are preserved");
-                        auto xml = commandManager.getKeyMappings()->createXml(false);
+                        auto xml = shortcutSnapshot();
                         if (!xml || !xml->writeTo(file))
                             throw std::runtime_error("shortcut export failed");
                     }
@@ -462,7 +508,7 @@ void Workspace::transferShortcuts(bool writing)
                         auto xml = juce::parseXML(file);
                         if (!xml || !xml->hasTagName("KEYMAPPINGS"))
                             throw std::runtime_error("invalid shortcuts file");
-                        if (!commandManager.getKeyMappings()->restoreFromXml(*xml))
+                        if (!restoreShortcuts(*xml))
                             throw std::runtime_error("shortcut import failed");
                         changeListenerCallback(nullptr);
                     }

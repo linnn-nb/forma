@@ -90,3 +90,21 @@ Shuffle 涟漪删除和 Spot 小节/拍定位已接入 L1/Edit UndoManager、Edi
 桌面：实际以 F3 打开输入框并置入小节4拍1（samples=288000），Undo 回到216000、Redo恢复；另存并重新打开工程后288000位置保留。实际以F1开启 Shuffle 删除中间片段，状态栏确认后续片段前移；桌面 Undo 恢复第三片段、Redo 再次完成涟漪删除。演示工程 `demo/Shuffle Spot P0 GUI accepted.tracktionedit`，测试工程 `demo/Shuffle Spot P0 GUI demo.tracktionedit` 与演示 WAV 均在本机忽略目录。CUA 实时截图已展示，未持久化成 PNG。
 
 下步仍在 U＋P0：Smart Tool、MIDI 钢琴卷帘编辑、淡化、Groups/Clips 侧栏和剩余键位编辑/桌面验收；在阶段 U＋P0 完成前不进入 P1。
+
+## U-P0-SMART-01：音频 Smart Tool 与淡化拖拽（2026-10-08；U＋P0 未完成）
+
+结论：音频片段的 Smart Tool 已接通真实选区、移动、边缘修剪和顶部淡入/淡出手柄。拖拽期间只预览，松手提交一笔 L1 `clip.fade` / `clip.move` / `clip.trim` 事务，原曲线类型及另一端淡化保留；Undo/Redo 与保存重开通过。默认 Cmd+数字区7，另支持笔记本 Cmd+7；可在键位编辑器重映射。顶部黄金色圆点读取真实淡化端点，可继续拖动。完整 Smart Tool 的 MIDI/自动化行为、交叉淡化和默认淡化偏好尚未实现，不能把本增量称为完整工具或 U＋P0 验收。
+
+代码：`src/v2/ui/EditingModel.h` 决定位置手势，`EditWindow.h` 做本地预览并调用 ClipWriter；`WorkspaceCommands.cpp` / `EditingControls.h` / `WorkspaceEditing.cpp` 注册命令、按键和工具状态；`UiState.cpp` 允许保存 smart 状态。所有 Edit 写入继续走 L1；没有新增引擎或 SDK 补丁。
+
+桌面发现旧完整键位 XML 会清除新命令的默认键。修复在 `WorkspaceCommands.cpp` / `WorkspaceRefresh.cpp`：快照保存已知命令清单，迁移只补新命令未被占用的默认键；已自定义或明确解绑的命令不恢复默认。通过自动化核验旧表、键位冲突、保存重开和主动解绑。最小1120像素窗口启用紧凑工具栏，新增Smart与拆分控件均完整可见。
+
+Release app 与三个专项目标构建通过，固定本地叶证书 strict/deep 与指定身份条件通过；最终 CTest 3/3 通过、0 失败，18.96 秒。EditorInteractionTests 81、UiNavigationTests 43、ClipboardWorkspaceTests 49 项检查。真实前后 Tracktion WAV 解码显示淡入区 RMS 降至原来的 72% 以下；没有中间事务，淡出一笔 Undo 保留此前淡入，点击不拖无幽灵编辑，源媒体哈希不变，Smart 工具/两端淡化保存重开一致。仅相关测试，不是全级回归。机器结果汇总 `evidence/U/smart-tool-tests.json`。
+
+失败与修复：先修复 JSON 字符串类型和局部变量声明的编译错误；移动测试原要求 12000 样本精确位移，实际整数鼠标坐标只能到一像素采样精度，改为明确一像素容差；后续保存 Smart 状态使旧 Shuffle fixture 点击上半部成为选区，测试恢复 Grabber 后再检查 Shuffle；新增导航测试的缺少命名空间限定编译错误已修复。上述失败不算通过，最终结果如上。
+
+macOS 桌面：专用预览使用自有演示 PCM、CoreAudio 48 kHz/512 frames，拖入淡入 40454 samples（r53）、淡出 35364（r54）；Cmd+Z 撤销淡出（r55）、Cmd+Shift+Z 重做（r56）。实际文件选择器另存 `evidence/U/demo/Smart Tool GUI accepted.tracktionedit` 并关闭应用，用最终构建重新打开；Smart、原始位置和两端数值均恢复。旧键位表迁移后桌面 Cmd+7 从 Grabber 成功启用 Smart；已有淡入手柄实际调整为56819并一次Undo回40454。工具栏命令异步触发，验收等待可见状态后再发送下一键，避免把高速注入顺序误当用户行为。
+
+最终真实界面截图通过 CUA 回传本线程，工具未提供文件保存接口，没有另存 PNG。预览 `build-v2-tracktion/FormaSmartToolPreview.app` 停止播放后留供试用；正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。自动测试及替换前预览已退出，用户已有其他窗口不动。没有声称用户已试听、实体录音资格或跨重开 Undo；重开仍清空旧 Undo 栈。
+
+下一项：仍在 U＋P0 补齐 MIDI 钢琴卷帘的鼠标音符/力度编辑与量化手势、剩余侧栏/视图/键位桌面验收；不进入 P1。

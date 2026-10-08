@@ -32,7 +32,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 108);
         p.addCommandItem(&commandManager, 42);
         p.addSeparator();
-        for (int id : {editCommand::shuffle, editCommand::slip, editCommand::spot, editCommand::grid, 130, 131, 132})
+        for (int id : {editCommand::shuffle, editCommand::slip, editCommand::spot, editCommand::grid,
+                       editCommand::smart, 130, 131, 132})
             p.addCommandItem(&commandManager, id);
         p.addSeparator();
         p.addCommandItem(&commandManager, 6);

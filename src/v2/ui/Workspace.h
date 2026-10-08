@@ -116,6 +116,8 @@ private:
     void showShortcuts();
     void focusMixInsert(const std::string&, int);
     void transferShortcuts(bool);
+    std::unique_ptr<juce::XmlElement> shortcutSnapshot();
+    bool restoreShortcuts(const juce::XmlElement&);
     void resetCommandClient(const Scope& scope);
     void showCommandCard(const Json& card);
     void finishCommandConfirmation(bool accepted);

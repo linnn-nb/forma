@@ -129,6 +129,20 @@ void verifyShift(const juce::File& before, const juce::File& after, int delta)
     check(energy > 1 && worst < 0.00001,
           "group Nudge translates real rendered signal without changing phase relationships");
 }
+double rmsWindow(const juce::File& file, int64_t first, int64_t last)
+{
+    auto audio = reader(file);
+    if (audio->numChannels != 2 || first < 0 || last <= first || last > audio->lengthInSamples)
+        throw std::runtime_error("invalid rendered PCM window");
+    juce::AudioBuffer<float> buffer(2, int(last - first));
+    if (!audio->read(&buffer, 0, buffer.getNumSamples(), first, true, true))
+        throw std::runtime_error("failed to decode rendered PCM window");
+    double energy = 0;
+    for (int channel = 0; channel < 2; ++channel)
+        for (int frame = 0; frame < buffer.getNumSamples(); ++frame)
+            energy += std::pow(double(buffer.getSample(channel, frame)), 2);
+    return std::sqrt(energy / (2.0 * buffer.getNumSamples()));
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -246,6 +260,101 @@ int main(int argc, char** argv)
         chooseClip(*area, original[1], 1, true);
         check(w.queryView()["object_selection"].size() == 2 && w.queryView()["selection_tracks"].size() == 2,
               "Shift object selection retains actual stable clip and owner IDs across tracks");
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::numberPad7, juce::ModifierKeys::commandModifier, 0)) &&
+                  w.queryView()["edit_tool"] == "smart",
+              "Command-number-pad-7 invokes the registered Smart Tool command");
+        w.uiCommands().invokeDirectly(editCommand::grabber, false);
+        check(w.keyPressed(juce::KeyPress('7', juce::ModifierKeys::commandModifier, '7')) &&
+                  w.queryView()["edit_tool"] == "smart",
+              "Command-7 also activates Smart Tool on laptops without a numeric keypad");
+        auto* smartButton = dynamic_cast<juce::TextButton*>(find(w, "ui.command:136"));
+        check(smartButton && smartButton->getToggleState(), "native Smart Tool button mirrors saved edit-tool state");
+        w.uiCommands().invokeDirectly(editCommand::slip, false);
+        auto smartRect = area->clipRect(original[0], 0);
+        const double smartDx = 12000. / area->coordinates().span * area->coordinates().width;
+        gesture(*area, smartRect.getCentreX(), smartRect.getY() + 34, smartRect.getCentreX() + smartDx,
+                smartRect.getY() + 34);
+        auto smartRange = w.query()["time_selection"];
+        check(!smartRange.is_null() &&
+                  smartRange["end_samples"].get<int64_t>() > smartRange["start_samples"].get<int64_t>() &&
+                  w.queryView()["object_selection"].empty(),
+              "Smart Tool upper half draws a real time selection inside an audio clip");
+        w.uiCommands().invokeDirectly(6, false);
+        smartRect = area->clipRect(original[0], 0);
+        gesture(*area, smartRect.getCentreX(), smartRect.getY() + smartRect.getHeight() - 12,
+                smartRect.getCentreX() + smartDx, smartRect.getY() + smartRect.getHeight() - 12);
+        check(std::abs(clipFacts(w)[0]["start_samples"].get<int64_t>() -
+                       (original[0]["start_samples"].get<int64_t>() + 12000)) <=
+                      std::ceil(double(area->coordinates().span) / area->coordinates().width) &&
+                  clipFacts(w)[0]["source_offset_samples"] == original[0]["source_offset_samples"],
+              "Smart Tool lower half moves an audio clip through one real clip.move transaction");
+        w.uiCommands().invokeDirectly(6, false);
+        smartRect = area->clipRect(original[0], 0);
+        gesture(*area, smartRect.getX() + 1, smartRect.getY() + smartRect.getHeight() / 2,
+                smartRect.getX() + 1 + smartDx, smartRect.getY() + smartRect.getHeight() / 2);
+        auto smartTrim = clipFacts(w)[0];
+        check(smartTrim["start_samples"].get<int64_t>() > original[0]["start_samples"].get<int64_t>() + 10000 &&
+                  smartTrim["source_offset_samples"].get<int64_t>() > 10000 &&
+                  smartTrim["length_samples"].get<int64_t>() < original[0]["length_samples"].get<int64_t>(),
+              "Smart Tool clip edge trims timeline bounds and source mapping together");
+        w.uiCommands().invokeDirectly(6, false);
+        auto fadeBefore = folder.getChildFile("smart-fade-before.wav"),
+             fadeAfter = folder.getChildFile("smart-fade-after.wav");
+        owner.render(fadeBefore, 0, 190000);
+        smartRect = area->clipRect(original[0], 0);
+        const double fadeDx = 12000. / area->coordinates().span * area->coordinates().width;
+        const auto fadeRevision = owner.query()["revision"].get<uint64_t>();
+        area->mouseDown(event(*area, smartRect.getX() + 1, smartRect.getY() + 30));
+        auto fadeEnd = event(*area, smartRect.getX() + 1 + fadeDx, smartRect.getY() + 30,
+                             juce::ModifierKeys::leftButtonModifier, true);
+        area->mouseDrag(fadeEnd);
+        check(owner.query()["revision"] == fadeRevision && clipFacts(w) == original,
+              "fade drag previews without changing the Edit or creating intermediate transactions");
+        area->mouseUp(fadeEnd);
+        pump();
+        auto faded = clipFacts(w)[0];
+        check(faded["fade_in_samples"].get<int64_t>() > 10000 && faded["fade_in_samples"].get<int64_t>() < 14000 &&
+                  w.query()["revision"].get<uint64_t>() == fadeRevision + 1,
+              "Smart Tool top-left fade handle commits a bounded sample-accurate clip fade");
+        owner.render(fadeAfter, 0, 190000);
+        const auto firstOnlyStart = original[0]["start_samples"].get<int64_t>();
+        const auto secondTrackStart = original[1]["start_samples"].get<int64_t>();
+        check(rmsWindow(fadeAfter, firstOnlyStart, secondTrackStart) <
+                  rmsWindow(fadeBefore, firstOnlyStart, secondTrackStart) * .72,
+              "Smart Tool fade changes actual rendered PCM rather than only the waveform drawing");
+        w.uiCommands().invokeDirectly(6, false);
+        check(clipFacts(w)[0]["fade_in_samples"] == 0, "one Undo removes the complete fade gesture");
+        w.uiCommands().invokeDirectly(7, false);
+        check(clipFacts(w)[0]["fade_in_samples"] == faded["fade_in_samples"],
+              "Redo restores the same Smart Tool fade length");
+        smartRect = area->clipRect(faded, 0);
+        const auto fadeOutRevision = owner.query()["revision"].get<uint64_t>();
+        gesture(*area, smartRect.getRight() - 1, smartRect.getY() + 30, smartRect.getRight() - 1 - fadeDx,
+                smartRect.getY() + 30);
+        auto fadedBoth = clipFacts(w)[0];
+        check(fadedBoth["fade_in_samples"] == faded["fade_in_samples"] &&
+                  fadedBoth["fade_out_samples"].get<int64_t>() > 10000 &&
+                  fadedBoth["fade_out_samples"].get<int64_t>() < 14000 &&
+                  owner.query()["revision"] == fadeOutRevision + 1,
+              "top-right handle commits one fade-out transaction while preserving the existing fade-in");
+        auto fadeClick = event(*area,
+                               area->coordinates().pixelAt(fadedBoth["start_samples"].get<int64_t>() +
+                                                           fadedBoth["fade_in_samples"].get<int64_t>()),
+                               smartRect.getY() + 30);
+        area->mouseDown(fadeClick);
+        area->mouseUp(fadeClick);
+        pump();
+        check(owner.query()["revision"] == fadeOutRevision + 1 && clipFacts(w)[0] == fadedBoth,
+              "clicking an existing fade handle without dragging does not create a phantom edit");
+        w.uiCommands().invokeDirectly(6, false);
+        check(clipFacts(w)[0]["fade_out_samples"] == 0 &&
+                  clipFacts(w)[0]["fade_in_samples"] == faded["fade_in_samples"],
+              "Undo of fade-out leaves the earlier fade-in intact");
+        w.uiCommands().invokeDirectly(7, false);
+        original = clipFacts(w);
+        w.uiCommands().invokeDirectly(editCommand::grabber, false);
+        chooseClip(*area, original[0], 0);
+        chooseClip(*area, original[1], 1, true);
         auto beforeRender = folder.getChildFile("before.wav"), afterRender = folder.getChildFile("after.wav");
         owner.render(beforeRender, 0, 190000);
         const auto revision = w.query()["revision"].get<uint64_t>();
@@ -379,19 +488,21 @@ int main(int argc, char** argv)
         check(!w.keyPressed(juce::KeyPress('.', 0, '.')) && w.query() == locked,
               "locked member disables entire selected group Nudge");
         w.uiCommands().invokeDirectly(6, false);
+        w.uiCommands().invokeDirectly(editCommand::smart, false);
         const auto savedView = w.queryView();
         auto session = folder.getChildFile("editor.tracktionedit");
         owner.save(session);
         w.openSession(session);
         pump();
         check(w.queryView() == savedView && persistentClipState(clipFacts(w)) == persistentClipState(original),
-              "actual save/reopen retains modes, values, stable selections and media mapping");
+              "actual save/reopen retains Smart Tool, both fades, values, stable selections and media mapping");
         w.keyPressed(juce::KeyPress('.', 0, '.'));
         check(clipFacts(w)[0]["start_samples"] == 10480 && clipFacts(w)[1]["start_samples"] == 22480,
               "restored group selection remains executable after reopening");
         w.uiCommands().invokeDirectly(6, false);
         check(persistentClipState(clipFacts(w)) == persistentClipState(original),
               "new post-reopen transaction still supports Undo");
+        w.uiCommands().invokeDirectly(editCommand::grabber, false);
 
         owner.commit(owner.makePlan(
             "human", Json::array({operation("track.create", {{"name", "Shuffle lane"}, {"ref", "$shuffle"}}),

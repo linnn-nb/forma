@@ -238,10 +238,25 @@ public:
                         waves.draw(g, c, waveRect, waveRect.getWidth() / axis.width * axis.span / 48000., elapsed);
                     }
                     g.setColour(juce::Colour(0xffe6e1b2));
-                    double in = c.value("fade_in_samples", int64_t(0)) / 48000. / length,
-                           out = c.value("fade_out_samples", int64_t(0)) / 48000. / length;
+                    auto fadeIn = c.value("fade_in_samples", int64_t(0));
+                    auto fadeOut = c.value("fade_out_samples", int64_t(0));
+                    if (!drag.is_null() && drag.value("clip_id", std::string{}) == c["id"].get<std::string>() &&
+                        (drag["mode"] == "fade_in" || drag["mode"] == "fade_out"))
+                    {
+                        fadeIn = drag.value("preview_fade_in", fadeIn);
+                        fadeOut = drag.value("preview_fade_out", fadeOut);
+                    }
+                    double in = fadeIn / 48000. / length, out = fadeOut / 48000. / length;
                     drawFade(g, rect, in, c.value("fade_in_curve", std::string("linear")), true);
                     drawFade(g, rect, out, c.value("fade_out_curve", std::string("linear")), false);
+                    if (editing.tool == "smart" && c.value("editable_audio", false) && !c.value("locked", false) &&
+                        rect.getWidth() > 24)
+                    {
+                        g.setColour(juce::Colour(0xfff0d283));
+                        for (const auto handleX : {rect.getX() + int(std::llround(in * rect.getWidth())),
+                                                   rect.getRight() - int(std::llround(out * rect.getWidth()))})
+                            g.fillEllipse(float(handleX - 3), float(rect.getY() + 24), 7.f, 7.f);
+                    }
                 }
                 if (selection.contains(c["id"]) || c["id"] == selectedClip)
                 {
@@ -259,7 +274,7 @@ public:
                 drawSelection(
                     {{"start_samples", std::min(dragStart, dragEnd)}, {"end_samples", std::max(dragStart, dragEnd)}},
                     rangeTracks());
-            else
+            else if (drag["mode"] != "fade_in" && drag["mode"] != "fade_out")
             {
                 auto preview = drag["clip"];
                 preview["start_samples"] = dragStart;
@@ -310,6 +325,38 @@ public:
                     headers.at(c["id"])->setBounds(r);
                     headers.at(c["id"])->setVisible(!r.isEmpty());
                 }
+    }
+    void mouseMove(const juce::MouseEvent& e) override
+    {
+        juce::MouseCursor cursor(juce::MouseCursor::NormalCursor);
+        const int row = rowAt(e.y);
+        if (e.x >= 250 && e.x < getWidth() - 14 && row >= 0 && row < int(trackIDs.size()))
+        {
+            const auto axis = coordinates();
+            for (const auto& clip : facts["tracks"][size_t(row)]["clips"])
+                if (clipRect(clip, row).contains(e.getPosition()))
+                {
+                    const bool audio = clip.value("kind", std::string{}) == "audio" &&
+                                       clip.value("editable_audio", false) && !clip.value("locked", false);
+                    const auto gesture =
+                        editing.gesture(e.x, e.y, clipRect(clip, row), audio, clip.value("fade_in_samples", int64_t(0)),
+                                        clip.value("fade_out_samples", int64_t(0)), axis.width / axis.span);
+                    if (gesture == EditingModel::Gesture::select)
+                        cursor = juce::MouseCursor::IBeamCursor;
+                    else if (gesture == EditingModel::Gesture::move && audio)
+                        cursor = juce::MouseCursor::DraggingHandCursor;
+                    else if (audio &&
+                             (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right ||
+                              gesture == EditingModel::Gesture::fadeIn || gesture == EditingModel::Gesture::fadeOut))
+                        cursor = juce::MouseCursor::LeftRightResizeCursor;
+                    break;
+                }
+        }
+        setMouseCursor(cursor);
+    }
+    void mouseExit(const juce::MouseEvent&) override
+    {
+        setMouseCursor(juce::MouseCursor::NormalCursor);
     }
     void mouseDown(const juce::MouseEvent& e) override
     {
@@ -379,6 +426,27 @@ public:
             for (const auto c : facts["tracks"][row]["clips"])
                 if (clipRect(c, row).contains(e.getPosition()))
                 {
+                    const auto clipBounds = clipRect(c, row);
+                    const auto clipStart = c["start_samples"].get<int64_t>();
+                    const auto clipEnd = clipStart + c["length_samples"].get<int64_t>();
+                    const bool audio =
+                        c["kind"] == "audio" && c.value("editable_audio", false) && !c.value("locked", false);
+                    const auto toolGesture =
+                        editing.gesture(e.x, e.y, clipBounds, audio, c.value("fade_in_samples", int64_t(0)),
+                                        c.value("fade_out_samples", int64_t(0)), axis.width / axis.span);
+                    if (toolGesture == EditingModel::Gesture::select && editing.tool == "smart")
+                    {
+                        if (!facts.value("playing", false))
+                        {
+                            drag = {{"mode", "selection"},
+                                    {"revision", facts["revision"]},
+                                    {"session", facts["session_token"]},
+                                    {"all_tracks", false}};
+                            dragStart = dragEnd = point;
+                        }
+                        seek(point);
+                        return;
+                    }
                     if (onClipSelection)
                         onClipSelection(c["id"], e.mods.isShiftDown());
                     else
@@ -387,21 +455,27 @@ public:
                         if (selectClip)
                             selectClip(c["id"]);
                     }
-                    if (c["kind"] == "audio" && c.value("editable_audio", false) && !c.value("locked", false) &&
-                        !facts.value("playing", false))
+                    if (audio && !facts.value("playing", false))
                     {
-                        const auto gesture = editing.gesture(e.x, clipRect(c, row));
+                        const auto gesture = toolGesture;
+                        const auto mode = gesture == EditingModel::Gesture::left      ? "left"
+                                          : gesture == EditingModel::Gesture::right   ? "right"
+                                          : gesture == EditingModel::Gesture::fadeIn  ? "fade_in"
+                                          : gesture == EditingModel::Gesture::fadeOut ? "fade_out"
+                                                                                      : "move";
                         drag = {{"clip", c},
+                                {"clip_id", c["id"]},
                                 {"revision", facts["revision"]},
                                 {"session", facts["session_token"]},
                                 {"row", row},
-                                {"mode", gesture == EditingModel::Gesture::left    ? "left"
-                                         : gesture == EditingModel::Gesture::right ? "right"
-                                                                                   : "move"}};
-                        dragStart = c["start_samples"];
-                        dragEnd = dragStart + c["length_samples"].get<int64_t>();
+                                {"mode", mode},
+                                {"preview_fade_in", c.value("fade_in_samples", int64_t(0))},
+                                {"preview_fade_out", c.value("fade_out_samples", int64_t(0))}};
+                        dragStart = clipStart;
+                        dragEnd = clipEnd;
                         if (gesture != EditingModel::Gesture::move)
-                            mouseDrag(e);
+                            if (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right)
+                                mouseDrag(e);
                     }
                     seek(point);
                     return;
@@ -426,6 +500,22 @@ public:
             return;
         }
         const auto& c = drag["clip"];
+        if (mode == "fade_in" || mode == "fade_out")
+        {
+            const auto point = snapped(raw, e.mods);
+            const auto fadeIn = c.value("fade_in_samples", int64_t(0));
+            const auto fadeOut = c.value("fade_out_samples", int64_t(0));
+            if (mode == "fade_in")
+                drag["preview_fade_in"] = std::clamp(point - c["start_samples"].get<int64_t>(), int64_t(0),
+                                                     c["length_samples"].get<int64_t>() - fadeOut);
+            else
+                drag["preview_fade_out"] =
+                    std::clamp(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>() - point,
+                               int64_t(0), c["length_samples"].get<int64_t>() - fadeIn);
+            dragged = std::abs(e.x - dragX) >= 3;
+            repaint();
+            return;
+        }
         int64_t start = c["start_samples"], length = c["length_samples"], offset = c["source_offset_samples"],
                 source =
                     std::llround(c["source_frames"].get<int64_t>() / c["source_sample_rate"].get<double>() * 48000);
@@ -471,6 +561,21 @@ public:
         if (!dragged || !clipWrite)
             return;
         const auto& original = captured["clip"];
+        if (mode == "fade_in" || mode == "fade_out")
+        {
+            const auto fadeIn = captured.value("preview_fade_in", original.value("fade_in_samples", int64_t(0)));
+            const auto fadeOut = captured.value("preview_fade_out", original.value("fade_out_samples", int64_t(0)));
+            if (fadeIn != original.value("fade_in_samples", int64_t(0)) ||
+                fadeOut != original.value("fade_out_samples", int64_t(0)))
+                clipWrite("clip.fade",
+                          {{"clip", original["id"]},
+                           {"in_samples", fadeIn},
+                           {"out_samples", fadeOut},
+                           {"in_curve", original.value("fade_in_curve", std::string("linear"))},
+                           {"out_curve", original.value("fade_out_curve", std::string("linear"))}},
+                          captured["revision"]);
+            return;
+        }
         if (dragStart == original["start_samples"] &&
             dragEnd == original["start_samples"].get<int64_t>() + original["length_samples"].get<int64_t>())
             return;

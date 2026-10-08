@@ -51,7 +51,8 @@ void validate(const Json& value)
         throw std::runtime_error("unknown UI workspace");
     if ((value["edit_mode"] != "shuffle" && value["edit_mode"] != "slip" && value["edit_mode"] != "spot" &&
          value["edit_mode"] != "grid") ||
-        (value["edit_tool"] != "selector" && value["edit_tool"] != "grabber" && value["edit_tool"] != "trim"))
+        (value["edit_tool"] != "selector" && value["edit_tool"] != "grabber" && value["edit_tool"] != "trim" &&
+         value["edit_tool"] != "smart"))
         throw std::runtime_error("unsupported editing mode or tool");
     const double division = value["grid_beats"];
     if (division != 1. && division != .5 && division != .25 && division != .125)

@@ -91,6 +91,12 @@ void Workspace::executeEditCommand(int id)
                                                            : "grabber"}});
         return;
     }
+    if (id == editCommand::smart)
+    {
+        setView({{"edit_tool", "smart"}});
+        message(text("Smart Tool 已启用 · 音频片段上半部选区、下半部移动、边缘修剪、顶部角点淡化"));
+        return;
+    }
     invoke(
         [&]
         {

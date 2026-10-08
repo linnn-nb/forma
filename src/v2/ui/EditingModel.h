@@ -6,7 +6,7 @@ namespace editCommand
 {
 constexpr int shuffle = 114, slip = 115, grid = 116, selector = 117, grabber = 118, trim = 119, nudgeBack = 120,
               nudgeForward = 121, previousBoundary = 122, nextBoundary = 123, split = 124, copy = 125, cut = 126,
-              paste = 127, duplicate = 128, pasteOriginal = 129, spot = 134, remove = 135;
+              paste = 127, duplicate = 128, pasteOriginal = 129, spot = 134, remove = 135, smart = 136;
 }
 // Shared audio/MIDI clip and time selection. IDs are UI references, never permission grants.
 struct SelectionModel
@@ -72,7 +72,9 @@ struct EditingModel
         select,
         move,
         left,
-        right
+        right,
+        fadeIn,
+        fadeOut
     };
     std::string tool = "grabber", mode = "slip", nudge = "10ms";
     double gridBeats = .25;
@@ -83,12 +85,31 @@ struct EditingModel
         nudge = view["nudge"];
         gridBeats = view["grid_beats"];
     }
-    Gesture gesture(int x, const juce::Rectangle<int>& clip) const
+    Gesture gesture(int x, int y, const juce::Rectangle<int>& clip, bool audio, int64_t fadeInSamples,
+                    int64_t fadeOutSamples, double pixelsPerSample) const
     {
         if (tool == "selector")
             return Gesture::select;
         if (tool == "trim")
             return x < clip.getCentreX() ? Gesture::left : Gesture::right;
+        if (tool == "smart")
+        {
+            const bool upper = y < clip.getCentreY();
+            const auto left = clip.getX(), right = clip.getRight();
+            const auto inHandle = left + int(std::llround(fadeInSamples * pixelsPerSample));
+            const auto outHandle = right - int(std::llround(fadeOutSamples * pixelsPerSample));
+            constexpr int edgeHotZone = 11;
+            const bool fadeZone = y < clip.getY() + std::min(42, clip.getHeight() / 3) && audio;
+            if (fadeZone && (std::abs(x - left) <= edgeHotZone || std::abs(x - inHandle) <= edgeHotZone))
+                return Gesture::fadeIn;
+            if (fadeZone && (std::abs(x - right) <= edgeHotZone || std::abs(x - outHandle) <= edgeHotZone))
+                return Gesture::fadeOut;
+            if (std::abs(x - left) <= edgeHotZone)
+                return Gesture::left;
+            if (std::abs(x - right) <= edgeHotZone)
+                return Gesture::right;
+            return upper ? Gesture::select : Gesture::move;
+        }
         return Gesture::move;
     }
 };

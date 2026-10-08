@@ -8,10 +8,12 @@ public:
     EditingControls()
     {
         setComponentID("edit.controls");
-        for (auto* b : {&shuffle, &slip, &spot, &grid, &selector, &grabber, &trim, &back, &forward, &split})
+        for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &back, &forward, &split})
             addAndMakeVisible(b);
-        for (auto* b : {&shuffle, &slip, &spot, &grid, &selector, &grabber, &trim})
+        for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart})
             b->setToggleable(true);
+        smart.setTooltip(
+            text("Smart Tool（音频）· 上半部选区，下半部移动，边缘修剪，顶部角点淡化 · ⌘7（兼容数字键盘）"));
         addAndMakeVisible(division);
         addAndMakeVisible(nudge);
         division.setComponentID("edit.grid.value");
@@ -39,9 +41,11 @@ public:
     void connect(juce::ApplicationCommandManager& manager)
     {
         const std::vector<std::pair<juce::TextButton*, int>> bindings = {
-            {&shuffle, editCommand::shuffle}, {&slip, editCommand::slip},         {&spot, editCommand::spot},
-            {&grid, editCommand::grid},       {&selector, editCommand::selector}, {&grabber, editCommand::grabber},
-            {&trim, editCommand::trim},       {&back, editCommand::nudgeBack},    {&forward, editCommand::nudgeForward},
+            {&shuffle, editCommand::shuffle}, {&slip, editCommand::slip},
+            {&spot, editCommand::spot},       {&grid, editCommand::grid},
+            {&trim, editCommand::trim},       {&selector, editCommand::selector},
+            {&grabber, editCommand::grabber}, {&smart, editCommand::smart},
+            {&back, editCommand::nudgeBack},  {&forward, editCommand::nudgeForward},
             {&split, editCommand::split}};
         for (auto [button, id] : bindings)
         {
@@ -62,16 +66,28 @@ public:
         slip.setToggleState(view["edit_mode"] == "slip", juce::dontSendNotification);
         spot.setToggleState(view["edit_mode"] == "spot", juce::dontSendNotification);
         grid.setToggleState(view["edit_mode"] == "grid", juce::dontSendNotification);
+        trim.setToggleState(view["edit_tool"] == "trim", juce::dontSendNotification);
+        selector.setToggleState(view["edit_tool"] == "selector", juce::dontSendNotification);
+        grabber.setToggleState(view["edit_tool"] == "grabber", juce::dontSendNotification);
+        smart.setToggleState(view["edit_tool"] == "smart", juce::dontSendNotification);
         updating = false;
     }
     void resized() override
     {
         auto r = getLocalBounds();
-        for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{
-                 {&shuffle, 50}, {&slip, 44}, {&spot, 44}, {&grid, 44}, {&selector, 48}, {&grabber, 48}, {&trim, 48}})
+        const bool compact = getWidth() < 692;
+        const int toolWidth = compact ? 40 : 48;
+        for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{{&shuffle, 50},
+                                                                                   {&slip, 44},
+                                                                                   {&spot, 44},
+                                                                                   {&grid, 44},
+                                                                                   {&trim, toolWidth},
+                                                                                   {&selector, toolWidth},
+                                                                                   {&grabber, toolWidth},
+                                                                                   {&smart, 54}})
             button->setBounds(r.removeFromLeft(width).reduced(1, 0));
-        division.setBounds(r.removeFromLeft(100).reduced(2, 0));
-        nudge.setBounds(r.removeFromLeft(118).reduced(2, 0));
+        division.setBounds(r.removeFromLeft(compact ? 90 : 100).reduced(2, 0));
+        nudge.setBounds(r.removeFromLeft(compact ? 90 : 118).reduced(2, 0));
         back.setBounds(r.removeFromLeft(25).reduced(1, 0));
         forward.setBounds(r.removeFromLeft(25).reduced(1, 0));
         split.setBounds(r.removeFromLeft(44).reduced(1, 0));
@@ -80,7 +96,8 @@ public:
 
 private:
     juce::TextButton shuffle{"Shuffle"}, slip{"Slip"}, spot{"Spot"}, grid{"Grid"}, selector{text("选择")},
-        grabber{text("移动")}, trim{text("修剪")}, back{text("−")}, forward{"+"}, split{text("拆分")};
+        grabber{text("移动")}, trim{text("修剪")}, smart{text("Smart")}, back{text("−")}, forward{"+"},
+        split{text("拆分")};
     juce::ComboBox division, nudge;
     const std::array<double, 4> divisions{1., .5, .25, .125};
     const std::array<std::string, 5> nudges{"sample", "10ms", "100ms", "beat", "quarter-beat"};

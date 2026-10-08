@@ -129,6 +129,12 @@ int main(int argc, char** argv)
         auto original = w.queryView();
         check(find(w, "tracks.list") && find(w, "clips.list") && find(w, "timeline.scroll.horizontal"),
               "native sidebar and real timeline navigation exist at minimum window size");
+        auto* smartControl = find(w, "ui.command:136");
+        auto* splitControl = find(w, "ui.command:124");
+        check(smartControl && splitControl &&
+                  smartControl->getParentComponent()->getLocalBounds().contains(smartControl->getBounds()) &&
+                  splitControl->getParentComponent()->getLocalBounds().contains(splitControl->getBounds()),
+              "Smart Tool and Split remain fully visible inside the toolbar at the minimum window width");
         check(w.keyPressed(juce::KeyPress('t', 0, 't')), "default T shortcut invokes registered zoom command");
         check(w.queryView()["span_samples"] == original["span_samples"].get<int64_t>() / 2 && w.query() == baseline,
               "zoom changes only L1 view state");
@@ -169,6 +175,43 @@ int main(int argc, char** argv)
         check(w.keyPressed(juce::KeyPress('j', juce::ModifierKeys::commandModifier, 'j')) &&
                   w.queryView()["span_samples"] == span / 2,
               "reopened custom key retains real binding");
+        mappings = w.uiCommands().getKeyMappings();
+        const auto laptopSmart = juce::KeyPress('7', juce::ModifierKeys::commandModifier, '7');
+        mappings->addKeyPress(101, laptopSmart);
+        auto legacyKeys = mappings->createXml(false);
+        for (auto* item = legacyKeys->getFirstChildElement(); item != nullptr;)
+        {
+            auto* next = item->getNextElement();
+            if (item->getStringAttribute("commandId").getHexValue32() == ndaw::desktop::editCommand::smart)
+                legacyKeys->removeChildElement(item, true);
+            item = next;
+        }
+        owner.updateUiState({{"keymap_xml", legacyKeys->toString().toStdString()}}, owner.sessionToken());
+        auto legacySession = folder.getChildFile("legacy-keys.tracktionedit");
+        owner.save(legacySession);
+        w.openSession(legacySession);
+        pump();
+        mappings = w.uiCommands().getKeyMappings();
+        check(mappings->findCommandForKeyPress(laptopSmart) == 101 &&
+                  mappings->findCommandForKeyPress(
+                      juce::KeyPress(juce::KeyPress::numberPad7, juce::ModifierKeys::commandModifier, 0)) ==
+                      ndaw::desktop::editCommand::smart,
+              "legacy full keymap gains only unclaimed new-command defaults without stealing a human mapping");
+        auto migratedKeys = juce::parseXML(ndaw::desktop::text(w.queryView()["keymap_xml"].get<std::string>()));
+        check(migratedKeys && migratedKeys->hasAttribute("formaCommands"),
+              "migrated keymap records its known command inventory for future version changes");
+        mappings->clearAllKeyPresses(ndaw::desktop::editCommand::smart);
+        pump();
+        auto unboundSession = folder.getChildFile("unbound-keys.tracktionedit");
+        owner.save(unboundSession);
+        w.openSession(unboundSession);
+        pump();
+        check(w.uiCommands()
+                      .getKeyMappings()
+                      ->getKeyPressesAssignedToCommand(ndaw::desktop::editCommand::smart)
+                      .isEmpty() &&
+                  w.uiCommands().getKeyMappings()->findCommandForKeyPress(laptopSmart) == 101,
+              "explicitly unbound Smart Tool stays unbound on save/reopen while custom keys remain intact");
         w.setSize(1600, 1000);
         pump();
         check(find(w, "ui.command:101") && find(w, "timeline.scroll.vertical"),

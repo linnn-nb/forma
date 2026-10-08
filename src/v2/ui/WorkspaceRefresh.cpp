@@ -445,7 +445,12 @@ void Workspace::refresh()
         commandManager.getKeyMappings()->resetToDefaultMappings();
         if (!view["keymap_xml"].get<std::string>().empty())
             if (auto xml = juce::parseXML(text(view["keymap_xml"].get<std::string>())))
-                commandManager.getKeyMappings()->restoreFromXml(*xml);
+            {
+                if (restoreShortcuts(*xml))
+                    if (auto normalized = shortcutSnapshot())
+                        commands.updateUiState({{"keymap_xml", normalized->toString().toStdString()}},
+                                               commands.sessionToken());
+            }
         loadingKeymap = false;
     }
 
