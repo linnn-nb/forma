@@ -87,7 +87,7 @@ public:
                 display+=text("结果来自实际所选链的渲染 PCM；瞬态为 5 ms 窗口相对前 20 ms 的能量上升估计，不是呼吸识别或表演质量判断。\n条件 SHA256: ")+text(features["profile_sha256"].get<std::string>())+"\n";
             }else display+=text("本次未检测静音 / 瞬态；勾选开关后重新分析。\n");}
             display+=text("Artifact: ")+text(result["artifact_id"].get<std::string>())+text("\n处理链 SHA256: ")+text(provenance["processing_chain_hash"].get<std::string>());
-            display+=text("\n超过 0 dBFS 表示整数导出削波风险，不能据此断言原始媒体已经失真。静音为门限测量，瞬态为估计；仅展示前 128 段。");
+            display+=text(!sourceResult&&provenance["tap_point"]!="master"?"\n本 tap 超满刻度不等于最终 Master 或导出削波；后续处理会改变电平，须另测实际输出。静音为门限测量，瞬态为估计；仅展示前128段。":"\n超过 0 dBFS 表示整数导出削波风险，不能据此断言原始媒体已经失真。静音为门限测量，瞬态为估计；仅展示前 128 段。");
         }else if(result.is_object()&&result.contains("error"))display+="\n"+text(result["error"].get<std::string>());
         else display+=text(raw()?"\n输入原生源帧范围；仅解码实际原始媒体。没有测量回执就没有结论。":"\n输入工程采样区间，点击分析；结果只来自实际 Tracktion 渲染。没有测量回执就没有结论。");
         if(summary.getText()!=display)summary.setText(display,false);

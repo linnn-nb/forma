@@ -41,9 +41,9 @@ Json Commands::assessScope(const Json& plan,const Scope& scope,const Json& previ
         automatic&=Scope::defaultCommands().contains(cmd);
         if(cmd.starts_with("clip.")&&cmd!="clip.import"){
             bool found=false;for(const auto& change:preview["clip_changes"])if(change["command"]==cmd&&change["clip"]==a["clip"]){
-                found=true;for(const char* side:{"before","after"})if(!change[side].is_null()){
+                found=true;const bool clipEffects=cmd!="clip.lock"&&((change["before"].is_object()&&!change["before"].value("fx_types",Json::array()).empty())||(change["after"].is_object()&&!change["after"].value("fx_types",Json::array()).empty()));if(clipEffects)require(scope.begin==0&&scope.end==allTime,"Clip FX effect tails require unrestricted time scope until their footprint is qualified");for(const char* side:{"before","after"})if(!change[side].is_null()){
                     const auto& c=change[side];auto* t=domainTrack(c["track"]);object(change["clip"],t);span(c["start_samples"],c["length_samples"]);
-                    impacts.push_back({{"command",cmd},{"object",change["clip"]},{"track",c["track"]},{"side",side},{"start_samples",c["start_samples"]},{"length_samples",c["length_samples"]}});
+                    impacts.push_back({{"command",cmd},{"object",change["clip"]},{"track",c["track"]},{"side",side},{"start_samples",c["start_samples"]},{"length_samples",c["length_samples"]},{"effect_tail_unqualified",clipEffects}});
                 }
                 if(change.contains("created")){const auto& child=change["created"]["after"];auto* t=domainTrack(child["track"]);require(child["track"]==change["before"]["track"]||allowed(child["track"],t),"copy destination outside granted permission scope");span(child["start_samples"],child["length_samples"]);derived.insert(change["created"]["clip"]);impacts.push_back({{"command",cmd},{"object",change["created"]["clip"]},{"track",child["track"]},{"side","created"},{"start_samples",child["start_samples"]},{"length_samples",child["length_samples"]}});}
                 if(cmd=="clip.gain"&&change["after"]["gain_db"].get<double>()>change["before"]["gain_db"].get<double>())automatic=false;
@@ -71,7 +71,7 @@ Json Commands::assessScope(const Json& plan,const Scope& scope,const Json& previ
             }else if(cmd=="track.mute"&&!a["enabled"].get<bool>())automatic=false;
         }else if(a.contains("plugin")&&cmd.starts_with("plugin.")){
             auto id=a["plugin"].get<std::string>();auto* p=plugin(id);require(p||!bounded,"scope requires an existing plugin");
-            if(auto* clip=p?p->getOwnerClip():nullptr){const auto clipID=clip->itemID.toString().toStdString();require(allowed(id,clip->getTrack())||allowed(clipID,clip->getTrack()),"object outside permission scope");const auto pos=clip->getPosition();auto start=std::llround(pos.getStart().inSeconds()*timelineRate),length=std::llround(pos.getLength().inSeconds()*timelineRate);span(start,length);impacts.push_back({{"command",cmd},{"object",id},{"clip",clipID},{"start_samples",start},{"length_samples",length},{"extent","whole_clip"}});}
+            if(auto* clip=p?p->getOwnerClip():nullptr){const auto clipID=clip->itemID.toString().toStdString();require(allowed(id,clip->getTrack())||allowed(clipID,clip->getTrack()),"object outside permission scope");require(scope.begin==0&&scope.end==allTime,"Clip FX effect tails require unrestricted time scope until their footprint is qualified");const auto pos=clip->getPosition();auto start=std::llround(pos.getStart().inSeconds()*timelineRate),length=std::llround(pos.getLength().inSeconds()*timelineRate);span(start,length);impacts.push_back({{"command",cmd},{"object",id},{"clip",clipID},{"start_samples",start},{"length_samples",length},{"extent","whole_clip_and_unqualified_effect_tail"},{"effect_tail_unqualified",true}});}
             else{object(id,p?p->getOwnerTrack():nullptr);full();impacts.push_back({{"command",cmd},{"object",id},{"extent","whole_track"}});}
         }else if(bounded){
             // Structural/global operations need an unrestricted, explicitly

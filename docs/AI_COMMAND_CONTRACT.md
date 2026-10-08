@@ -299,7 +299,7 @@ bands 声明半开 bin 分区 first_bin/end_bin、标称 lower/upper Hz、Nyquis
 
 ## 片段效果与独立分析（M3-CLIPFX-01）
 
-`clip.fx.insert(clip,media_hash,type,wet_only?)` 操作所选 WaveAudioClip 的原生 PluginList，类型为实际 EQ/Compressor/Reverb/Delay，不能插入 FourOsc 或凭空参数。native Clip Gain/Pan 在插件之前，淡化在插件之后；既有 `plugin.parameter` / `delay_time` / `bypass` / `remove` 使用该实例的稳定 ID，GUI 片段检查器使用同一命令和 human 手势。原生五槽预算由 SDK 查询，并按一个 Plan 中的插入/移除顺序预检，资源不足拒绝整笔计划。锁定同时约束命令和原生人工作出的参数修改。片段参数写入不扩大自动执行白名单；有限授权检查完整片段采样范围，clip、plugin 或所属轨道授权可用，均不能逃出时间范围。片段自动化工作流尚未验收。
+`clip.fx.insert(clip,media_hash,type,wet_only?)` 操作所选 WaveAudioClip 的原生 PluginList，类型为实际 EQ/Compressor/Reverb/Delay，不能插入 FourOsc 或凭空参数。native Clip Gain/Pan 在插件之前，淡化在插件之后；既有 `plugin.parameter` / `delay_time` / `bypass` / `remove` 使用该实例的稳定 ID，GUI 片段检查器使用同一命令和 human 手势。原生五槽预算由 SDK 查询，并按一个 Plan 中的插入/移除顺序预检，资源不足拒绝整笔计划。锁定同时约束命令和原生人工作出的参数修改。片段参数写入不扩大自动执行白名单；clip、plugin 或所属轨道的目标授权仍受检查。原生插件无淡化时可能在片段结束后输出尾音，当前尚未资格化其完整影响区间，因此影响带 FX 片段声音的编辑及所有片段插件编辑要求工程全时间授权；有限区间明确拒绝，预览暴露 `effect_tail_unqualified=true`，不能把完整片段范围冒充尾音边界。仅修改 clip.lock 元数据仍可按精确片段区间授权。片段自动化工作流尚未验收。
 
 `analyze_clip(session_token,base_revision,clip,start_samples,end_samples,request_key,detector_profile?)` 是只读 MCP 工具，生成 `purpose=clip,tap_point=clip_post_fx` 的真实 artifact。范围为**所选片段内**的48 kHz工程采样半开区间；不是原生媒体帧。L1 用同一 Engine 构造只含该音频片段的 detached Edit，保留片段增益/声像/插件/淡化与音乐上下文，排除其他片段、上游输入/路由、轨道插入/推子/mute/solo/VCA及Master。L2仅渲染、读PCM及测量；没有成功回执不显示完成。
 
