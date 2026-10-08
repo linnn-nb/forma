@@ -1,5 +1,23 @@
 # 验证状态
 
+## M3-LUFS-01（2026-10-08）
+
+结论：b54f1d0 接通实际所选 PCM 的完整 LUFS-M/S 曲线、原生双曲线、点 ID、最高值、窗口定位和只读 MCP 回执，完整 Release 构建与完整 **64/64 CTest /652.50 秒**通过。3f286d7 随后修正高采样率映射的窗末位置，完整 Release 重建成功，受影响的两专项 **2/2 /50.57 秒**通过（42 后端、33 原生检查）；修正后没有再次执行完整 64 项，两次资格分别记录。
+
+最终两专项：CTest 30.68 /19.88 秒；内部计时 29913.050125 /19149.443292 ms，单作业最大 9732.563208 /8421.032375 ms。全量 b54f1d0 内两项为 30.83 /20.36 秒，内部计时 30732.23754 /20296.43854 ms，作业最大 9673.19675 /9307.450625 ms。此前 FTZ 修复专项 2/2 /29.01 秒另记。原时限、容差、负载保持；96→48 kHz 上取整不能定位到 exclusive 结束采样，最终测试独立断言位置严格在窗口内。
+
+正式桌面已执行：Codex 经包内 forma-mcp /应用 Unix socket，在只读模式查询实际轨道和版本，对 Master [13,384077) 发起测量，GUI 显示相同 77 点曲线。最高 M 点 20 的实际窗口为 [96013,115213)，GUI 定位窗末，正式摘要确认 115212；最大 S 点 46 的 3 秒窗正确显示。人工推子 −12→−18 dB 形成 r2，旧回执 current=false、定位按钮禁用；GUI Undo 恢复 −12 /r3，旧回执仍失效。重新测量生成新 artifact。另存自有 M3-lufs-demo.tracktionedit 后实际关闭应用并 GUI 重开，r4 恢复轨道/片段/增益、停止/只读/空 Undo 和 Redo，query_analysis 为 idle/null。新会话只读重测，三次曲线相同、artifact 各异。应用保留在真实结果页，生产 MCP 客户端和 helper 已退出。
+
+独立现场核验 **728 项通过**：自有 48 kHz /双声道 PCM16、384077 帧，逐点对独立 233 帧分块的锁定 libebur128 验证（≤1e-6 LU），窗口、余 64 尾帧、实际定位、版本失效、重开对象一致和原 hash 保持。实际三次作业 4955.826250 /4911.792917 /4804.544417 ms，最大 MCP 回复 28.868250 ms。素材为电平阶跃正弦及静音，不是麦克风、音乐听感或实时容量资格。媒体 SHA256 f87335700167efa360acbc19335ec1a548a2b9d8e4ef85adb82ba12704b3b6a1；最终应用 SHA256 **73e1ccba4f300a80f75d25e75f3f51971fe1a0ca8e01259326ec4c193aa9eba0**。关键画面由桌面工具展示，未保存 PNG；打开对话框一次 -10005 后重新读取恢复，没有绕过系统安全设置。
+
+数值：44.1/48/96 kHz、非零decode/frame origin，所有点对独立257帧分块的锁定libebur128逐项相符（1e-6 LU）；窗口工程坐标精确。300秒实际PCM完整2997点、曲线96635字节、合并密集事件117407字节，无降采样或静默省略。静音−∞、S不足3秒、低于400ms空序列、部分hop尾帧、源native域与当前移动clip映射、实际Master/pre/fader、只读MCP/交付、human/Undo过期、保存重开/原hash保持通过。120/60秒专项、12秒作业、5秒MCP、1 worker/60秒墙钟/300秒范围、192 KiB曲线/252 KiB完整回执保持。长范围只是离线decode资格，不是300秒原生图/实时容量声明。
+
+首次失败：两专项真实图对照在长静音滤波残留发生有限−3169.16286277与null差异，固定源原生率测试已通过。查明调用线程继承的FTZ/DAZ状态不同；L2和独立参考显式ScopedNoDenormals，恢复调用者状态并写入receipt参数。没有将差异当通过、裁掉尾段或放宽容差；初次/诊断/修正输出均保留。首次apply_patch因CMake预期行不符未应用，分段修正后构建成功。
+
+代码/测试：AudioAnalysis/LoudnessCurve、MasterAnalysis 本地 locate_loudness、SourceMapping 点边界、LoudnessCurveView/AnalysisPanel；LoudnessFixture/LoudnessCurveTests/LoudnessCurveWorkspaceTests。本机 evidence/M3/summary.md、lufs-configure.log、lufs-build-first.log /diagnostic.log /ftz.log /full.log /boundary.log、lufs-ctest-first.log /diagnostic.log /ftz.log /full.log /boundary.log、loudness-curve-tests.json /loudness-curve-workspace-tests.json；desktop-lufs/mcp-receipts.jsonl、verify-receipts.py、verification.json、reference.c 与自有工程/媒体。192 KiB 曲线使用 [end_frame,M,S] 紧凑列，有限值 1e-6 LU；完整 100 ms 网格末端 exclusive，定位最后实际帧。null 窗不足/负无穷分开，纵轴仅显示 −70…0，实际超界数值保留；连线不是新增测量。没有新依赖、SDK 补丁、音频上传或 DMG；证据与媒体保留本机。
+
+边界：选择范围开始初始化K-weighting，无此前分析历史；原生图离线预热不保证从零点连续播放的反馈历史。源窗口可能包含当前clip裁剪外媒体，只有点位置映射到当前clip，不伪装为完整可听工程窗。取消/截止不能抢占插件/系统I/O/message-thread图准备。M3仍部分，频谱、Clip FX独立tap、范围外尾音/导出文件、第三方/PDC/多声道/压力待补；M1实体制作gate、M4–M6/Windows/发行仍未通过。
+
 ## M3-EVENTS-01（2026-10-08）
 
 结论：355c238 接通实际处理后静音门限和瞬态候选，从同一实际 Tracktion render PCM 得到工程位置；GUI 与只读 MCP 共用 L1。完整 Release 构建成功，最终完整 **62/62 CTest 通过 /581.77 秒**（355c238）。本次全量内新后端专项 **62 项 /25.98 秒**、原生专项 **36 项 /14.32 秒**；JSON内部计时25.874671 /14.260675秒，单作业最大4463.347208 /3863.837333 ms。此前分开执行为26.47 /16.25秒，最终以全量为准。前轮新建测试的就绪等待修正随本轮共享源一起重新构建，完整回归中该项4.37秒通过。

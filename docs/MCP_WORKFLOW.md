@@ -91,3 +91,8 @@
 ## 处理后事件分析（M3-EVENTS-01）
 
 analyze_master /analyze_track /analyze_delivery 可传 detector_profile；工具定义由实际注册表生成，tools/list必须读取nextCursor全部分页。显式空对象启用默认五项条件，省略表示未检测静音/瞬态，不能据null计数说没有事件。query_analysis取得真实terminal receipt后检查current、binding中的对象/版本/范围/tap/媒体/链/条件哈希；事件使用工程48 kHz采样，render frame相对本次区间，源分析仍用原生source frame。瞬态候选是估计，不是听感、呼吸或质量结论。只读可分析，无上传；改动和撤销仍走Plan与本地卡片，人工编辑令旧处理证据过期。2026-10-08 Codex通过生产stdio/socket、GUI参数计划/确认、实际pre/post/Bus测量、定位、人工Undo及GUI关闭/重开后的Master交付重测完成现场验证，独立PCM和时限见VERIFICATION.md；完整M3未验收。
+
+
+M3-LUFS-01：query_analysis的成功receipt含loudness_curve。points为[end_frame, M, S]紧凑列，end是相对本次解码范围的exclusive末端；声明sample_rate、decoded_start_frame、session_start_samples和真实window_frames。原始源窗按native帧引用，processed按origin + round(frame×48000/rate)映射工程采样。null在完整窗时为−∞，不足窗时为insufficient_window，不是0 LUFS。Agent可依据实际序列定位问题范围并计划编辑；GUI本地定位仍由L1校验，MCP没有新增直接seek或任意文件/上传权限。完整网格/192 KiB/3000点和完整252 KiB预算越界明确失败；连线不是额外测量，完整M3未验收。
+
+2026-10-08 正式应用实测：Codex 以只读权限测 Master [13,384077)，查询得到完整 77 点；原生最大 M 定位经 query_session_summary 确认为 115212。人工推子修改与 GUI Undo 后两次查询均为历史证据；实际关闭/重开后新 token、只读权限和 idle/null 分析状态，重新发起只读测量才获得新 artifact。三份曲线与独立 PCM/libebur128 的 233 帧分块对照共 728 项通过；不把 accepted/busy 当测量完成。测试范围和时限见 VERIFICATION.md。
