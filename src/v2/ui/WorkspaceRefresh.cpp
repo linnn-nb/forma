@@ -405,6 +405,19 @@ void Workspace::refresh()
         }
     }
     facts = commands.query();
+    static const std::array<std::pair<const char*, int>, 5> countInModes{{
+        {"none", 1}, {"one_beat", 2}, {"two_beats", 3}, {"one_bar", 4}, {"two_bars", 5}}};
+    const auto transportSettings = facts.value("transport_settings", Json::object());
+    updatingTransportControls = true;
+    metronomeButton.setToggleState(transportSettings.value("metronome_enabled", false), juce::dontSendNotification);
+    metronomeButton.setTooltip(text("Tracktion 原生节拍器 · 输出：") +
+                                text(transportSettings.value("click_output", std::string("未知"))) +
+                                text(" · F9 切换，键位可自定义"));
+    const auto mode = transportSettings.value("count_in_mode", std::string("none"));
+    const auto modeItem = std::find_if(countInModes.begin(), countInModes.end(),
+                                       [&](const auto& candidate) { return mode == candidate.first; });
+    countInMode.setSelectedId(modeItem == countInModes.end() ? 1 : modeItem->second, juce::dontSendNotification);
+    updatingTransportControls = false;
     const auto view = commands.uiState();
     selection.update(facts, view);
     editing.update(view);

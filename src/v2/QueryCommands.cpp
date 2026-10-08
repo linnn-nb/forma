@@ -144,6 +144,7 @@ Json Commands::querySummary(const std::string& selectedTrack, const std::string&
               {"track_capacity_kind", "integer representation; not tested playback capacity"}}},
             {"playing", edit->getTransport().isPlaying()},
             {"recording", edit->getTransport().isRecording()},
+            {"transport_settings", transportSettingsQuery()},
             {"music",
              {{"bpm", tempo.getBpmAt(now)},
               {"numerator", meter.numerator.get()},

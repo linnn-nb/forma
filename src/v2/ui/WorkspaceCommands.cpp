@@ -67,6 +67,8 @@ const std::vector<Entry>& entries()
         {editCommand::paste, "粘贴音频选区", "编辑", 'v', cmd},
         {editCommand::duplicate, "复制音频片段到后方", "编辑", 'd', cmd},
         {editCommand::pasteOriginal, "粘贴到原位置 / 原轨道", "编辑", 'v', cmd | juce::ModifierKeys::altModifier},
+        {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
+        {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
         {21, "只读分析", "Agent"},
         {22, "先预览再提交", "Agent"},
         {23, "自动低风险 · 当前轨道", "Agent"},
@@ -98,6 +100,7 @@ void Workspace::initialiseCommandManager()
                                                                               {&stopButton, 81},
                                                                               {&playButton, 80},
                                                                               {&recordButton, 83},
+                                                                              {&metronomeButton, 111},
                                                                               {&undoButton, 6},
                                                                               {&redoButton, 7},
                                                                               {&rangeButton, 42},
@@ -106,6 +109,7 @@ void Workspace::initialiseCommandManager()
         commandActions[pair.second] = pair.first->onClick;
         pair.first->onClick = [this, id = pair.second] { commandManager.invokeDirectly(id, false); };
     }
+    metronomeButton.setComponentID("transport.metronome");
     for (auto pair : std::initializer_list<std::pair<juce::TextButton*, int>>{{&zoomIn, 101},
                                                                               {&zoomOut, 102},
                                                                               {&zoomFit, 103},
@@ -202,6 +206,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = redoButton.isEnabled();
             if (id == 83)
                 active = recordButton.isEnabled();
+            if (id == 111 || id == 112)
+                active = !facts.value("recording", false) && facts.value("recording_capture", Json(nullptr)).is_null() &&
+                         facts.value("parameter_capture", Json(nullptr)).is_null();
+            if (id == 111)
+                info.setTicked(facts.value("transport_settings", Json::object()).value("metronome_enabled", false));
             if (id == 45)
                 active = !facts.value("time_selection", Json(nullptr)).is_null();
             if (id == 1 || id == 2 || id == 3 || id == 4 || id == 5 || id == 41 || id == 84)
@@ -293,6 +302,21 @@ bool Workspace::perform(const InvocationInfo& invocation)
                 else
                     commands.play();
             });
+        return true;
+    }
+    if (id == 111)
+    {
+        write("transport.metronome.set",
+              {{"enabled", !facts.value("transport_settings", Json::object()).value("metronome_enabled", false)}});
+        return true;
+    }
+    if (id == 112)
+    {
+        static const std::array<const char*, 5> modes{"none", "one_beat", "two_beats", "one_bar", "two_bars"};
+        const auto current = facts.value("transport_settings", Json::object()).value("count_in_mode", std::string("none"));
+        auto found = std::find(modes.begin(), modes.end(), current);
+        const auto next = found == modes.end() || ++found == modes.end() ? modes.front() : *found;
+        write("transport.count_in.set", {{"mode", next}});
         return true;
     }
     if (auto action = commandActions.find(id); action != commandActions.end())

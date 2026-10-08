@@ -1,0 +1,15 @@
+{
+  "checks": 17,
+  "click_pcm": {
+    "block_size": 256,
+    "frames": 48000,
+    "left_peak": 0.45447924733161926,
+    "left_rms": 0.015402278862893581,
+    "right_peak": 0.45447924733161926,
+    "right_rms": 0.015402278862893581,
+    "sample_rate": 48000
+  },
+  "result": "passed",
+  "scope": "actual Tracktion Edit and click graph, recorder CountIn, UndoManager, session save/reopen and production GUI controls; CoreAudio hardware playback not tested",
+  "test": "U-P0-TRANSPORT-01"
+}

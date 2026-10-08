@@ -11,6 +11,7 @@ using Json = nlohmann::json;
 // L1 owns all mutable Edit access. Callers receive facts, never mutable objects.
 class OutputProbe;
 class RecordingTestAccess;
+class TransportTestAccess;
 class AudioDeviceTestAccess;
 class PluginEditorWindows;
 class NativePluginStates;
@@ -196,6 +197,11 @@ private:
     void initialiseMusicIDs(juce::UndoManager* = nullptr);
     Json validateMusicPlan(const Json&) const;
     void executeMusicOperation(const std::string&, const Json&, Json&, std::map<std::string, std::string>&);
+    static void registerTransportCommands(Json&);
+    Json validateTransportPlan(const Json&) const;
+    void executeTransportOperation(const std::string&, const Json&);
+    Json transportSettingsQuery() const;
+    void restoreTransportSettings();
     static void registerAutomationCommands(Json&);
     Json automationLaneQuery(te::AutomatableParameter&) const;
     Json automationPointQuery(te::AutomatableParameter&, int) const;
@@ -211,6 +217,7 @@ private:
     std::map<std::string, std::pair<juce::ValueTree, float>> touchCurves;
     friend class AudioDeviceTestAccess;
     friend class RecordingTestAccess;
+    friend class TransportTestAccess;
     static void registerRecordingCommands(Json&);
     void validateRecordingPlan(const Json&) const;
     void executeRecordingOperation(const std::string&, const Json&);

@@ -1,13 +1,11 @@
 # 下一步
 
-结论：原生组件拆分、固定本地签名、全局命令表和第一版可保存的缩放/滚动/快捷键、Slip/Grid、Selector/Grabber/Trim 与音频 Clip 剪贴板已构建；多片段 Nudge、Tab 边界和光标拆分已有专项验证。U＋P0 尚未完成，M2/M3 冻结保留，M4/M5 暂缓。用户未确认 M1，v1 不退役。
+结论：Forma 已有原生 Edit/Mix 界面、真实音频编辑与 PCM 输出、可改快捷键、吸附/Nudge、Tracktion 节拍器和预备拍。当前 U＋P0 仍未完成；M2/M3 冻结保留，M4/M5 暂缓。未把阶段进展包装为完整 DAW。
 
-下一可演示步骤：接通 MIDI Clip/音符剪贴板与钢琴卷帘选区联动；音频 Clip 的 Cmd+C/X/V/D、Option+Cmd+V、Undo/Redo 和保存重开已通过本机桌面实测及真实 Tracktion PCM专项。然后按 P0 顺序完成节拍器/预备拍、循环播放与 Marker/Memory Locations。剪贴板快照只在当前会话有效；保存重开保留已提交的编辑。
+本轮可演示：打开 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，工具栏点击“节拍器”，预备拍下拉选“一小节”；F9 切换节拍器，F10 循环切换预备拍，可在“键位…”编辑。节拍器与预备拍经统一命令提交、可撤销、工程保存后恢复。自动化真实测得 Tracktion ClickNode PCM；实体 Mac 音频设备回环及录音前硬件 CountIn 尚待实测。证据见 `docs/VERIFICATION.md` 的 U-P0-TRANSPORT-01 和 `evidence/U/transport-tests.json`。
 
-本轮桌面按钮 Nudge / Undo 已实测；桌面拖拽控制工具返回 `noWindowsAvailable`，因此 Grid/Trim/跨轨范围的真实鼠标验收仍待执行。现有专项调用真实 JUCE 手势与 Edit，不冒充实体桌面拖拽；没有扩充 CLI 替代验收。
+下一项按用户 P0 顺序实现循环播放范围与快捷键，再做 Marker/Memory Locations。两项都须进入 UndoManager、保存重开和可映射命令，配专项测试及桌面验收。
 
-随后接通 Smart Tool/Shuffle/Spot、淡化手柄、节拍器/预备拍、循环和 Marker/Memory Locations；补齐 Edit Window Views、可调轨高、Groups、MIDI 底部编辑器、Mix 自动化与真实逐轨电平。Undo 跨重开恢复仍须实现，是 U＋P0 验收场景的缺口。
+仍未完成：MIDI/自动化剪贴板、Shuffle/Spot/Smart Tool、淡化手柄、循环/Marker、Edit Window Views、可调轨高、Groups、MIDI 底部编辑器和 Mix 自动化/逐轨电平；键位编辑器的人工自定义映射后重开、F9/F10 实体键盘按键和 Cmd+= 真实桌面按键仍待验收。全级回归只在 U＋P0 完成时执行；完成后暂停交由用户试用，不提前推进 P1。
 
-固定身份已在多次不同二进制构建中验证同一 Bundle ID/叶证书；用户首次麦克风授权后仍需验证跨构建保留。GUI 的真实 Cmd+= 本键仍待手动验证，自动化工具注入了 Shift+Cmd+加号；不冒充完整桌面键位验收。
-
-U＋P0 完成后全量回归并暂停请用户试用；确认后进入 P1 录音/Playlist/Comp/交叉淡化，再 P2 混音交付和 P3 Warp/MIDI CC。每个可构建步骤提交并推送，每轮只测受影响部分，不打本级未验收 DMG。
+每个可构建步骤独立提交并推送；不制作未验收的 DMG。用户原始工程与预先存在的 Tracktion 子模块修改保持原样。

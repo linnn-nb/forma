@@ -171,6 +171,7 @@ private:
     juce::Label recoveryIndicator;
     bool programDraft = false;
     std::string programTarget;
+    bool updatingTransportControls = false;
     Toolbar toolbar;
     Transport transport;
     Counters counters;
@@ -220,6 +221,7 @@ private:
     juce::TextButton newTrack{text("新增轨道")}, importButton{text("导入音频")}, openButton{text("打开工程")},
         saveButton{text("另存工程")}, exportButton{text("导出 WAV")}, editButton{"EDIT"}, mixButton{"MIX"},
         returnButton{"|<"}, stopButton{text("停止")}, playButton{text("播放")}, recordButton{text("● 录音")},
+        metronomeButton{text("节拍器")},
         undoButton{"Undo"}, redoButton{"Redo"}, insertButton{text("插入")}, bypassButton{text("旁通")},
         editorButton{text("插件窗口")}, removeButton{text("移除")}, stateRetryButton{text("重试读取")},
         stateRestoreButton{text("还原已知状态")}, programButton{text("切换 Program")}, acceptButton{text("接受计划")},
@@ -229,7 +231,7 @@ private:
     juce::TextButton audioSettingsButton{text("音频设置…")}, commandButton{text("命令 · 预览")},
         pianoButton{text("钢琴卷帘")}, applyMusic{text("应用")};
     juce::TextEditor bpm, programIndex;
-    juce::ComboBox trackType, meter, pluginType, pluginChoice;
+    juce::ComboBox trackType, meter, pluginType, pluginChoice, countInMode;
     juce::Label counter, device, status, musicPosition, stateStatus;
     juce::TextEditor previewText;
     juce::TooltipWindow tooltips{this, 650};

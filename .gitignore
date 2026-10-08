@@ -3,5 +3,10 @@
 build*/
 dist/
 *.dSYM/
-evidence/
+evidence/*
+!evidence/U/
+evidence/U/*
+!evidence/U/summary.md
+!evidence/U/transport-tests.json
+!evidence/U/signing-verification.json
 .DS_Store

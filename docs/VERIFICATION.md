@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-TRANSPORT-01（2026-10-08；U＋P0 未完成）
+
+结论：节拍器与预备拍已接入 L1 领域命令、Tracktion 原生走带器和原生工具栏；metronome 与 count-in 共用 Edit UndoManager 事务，工程元数据保存 count-in 模式，并在 Undo/Redo/工程重开时同步 Tracktion 的全局 CountIn 偏好。Release 应用及测试目标构建通过；`forma_native_transport_controls` 1/1 CTest 通过，专项 17 个断言。不是 U＋P0 验收完成。
+
+真实输出：48 kHz、256 帧块、Tracktion HostedAudioDeviceInterface 实际图，输出 48,000 帧立体声 PCM；左右 RMS 均为 0.0154022789，左右 Peak 均为 0.4544792473。它验证原生 ClickNode 产生 PCM，不代表扬声器听感、真实 CoreAudio 驱动或录音预备拍硬件回环已测。预备拍模式以工程 4/4 得到一小节 4 拍；独立 Commands 实例打开保存后的 `.tracktionedit` 仍恢复一小节。
+
+桌面：新 Forma 原生窗口中实际点击节拍器，工程 r0→r1；打开预备拍下拉框选择“一小节”，状态为 r2，底部显示提交可撤销，工具栏显示节拍器和预备拍。截图在本轮 CUA 桌面回传中展示；未导出为本地 PNG。真实 MacBook Pro 扬声器已作为当前设备显示，但本轮未播放后以回环测量它的物理输出。测试写入 `evidence/U/transport-tests.json`。
+
+快捷键：F9 切换节拍器、F10 循环切换预备拍，二者均来自可编辑 `ApplicationCommandManager` 命令表，GUI、Plan/MCP 与快捷键复用 L1 操作；自动化验证注册映射、界面提交与撤销。GUI 设置页面的自定义键输入、键盘硬件 F9/F10 的桌面实按尚未单独验收。
+
+| 需求 | 生产实现 | 证据与差距 |
+|---|---|---|
+| 节拍器 | `src/v2/TransportCommands.cpp`、`ui/WorkspaceCommands.cpp`、`ui/WorkspaceLayout.cpp` | Tracktion ClickNode 实际 PCM；项目状态 Undo/Redo/保存重开；真实物理设备回环待测 |
+| 预备拍 | 同上、`ui/WorkspaceRefresh.cpp`、`QueryCommands.cpp` | 关闭/1拍/2拍/1小节/2小节；CountIn 以 session metadata 为权威；实际录音前硬件计数流程待测 |
+| 快捷键与统一事务 | `ui/WorkspaceCommands.cpp`、`EngineCommands.cpp` | F9/F10 命令映射、15 个 GUI/工程断言；桌面键位设置后实体键盘实按待测 |
+
 ## U-EDIT-02（2026-10-08；U＋P0 仍未完成）
 
 结论：L1 统一命令层已接通真实音频 Clip /轨道时间选区的 Copy、Cut、Paste、Paste Original 与 Duplicate，并加入可重映射全局快捷键。Release 构建成功；`forma_native_audio_clipboard` 专项 **1/1 CTest 通过、0 失败，49 个断言**（5.73秒），使用真实 Tracktion Edit、PCM 渲染/解码、撤销重做与保存重开。随后在 Forma 原生桌面，以本地自有 WAV 实际测试 Cmd+C/X/V/D、Option+Cmd+V、Undo/Redo、另存工程和重新打开；打开后看到原有两段波形与片段，Undo/Redo 栈清空。MIDI/自动化剪贴板未完成。

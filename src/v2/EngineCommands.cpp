@@ -239,6 +239,7 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     metadata = edit->state.getOrCreateChildWithName("NATIVEDAW", nullptr);
     metadata.setProperty("schema", 2, nullptr);
     metadata.setProperty("revision", juce::int64(0), nullptr);
+    restoreTransportSettings();
     initialiseMusicIDs();
     initialiseAutomationIDs();
     edit->getAutomationRecordManager().setReadingAutomation(true);
@@ -337,6 +338,7 @@ Json Commands::registry()
     registerParameterCommands(result);
     registerRoutingCommands(result);
     registerMusicCommands(result);
+    registerTransportCommands(result);
     registerTimelineCommands(result);
     registerHierarchyCommands(result);
     registerPanCommands(result);
@@ -422,6 +424,7 @@ Json Commands::query() const
             {"automation_capture", capture},
             {"last_automation_capture", lastCapture},
             {"music", musicQuery()},
+            {"transport_settings", transportSettingsQuery()},
             {"master_gain_db", edit->getMasterVolumePlugin()->getVolumeDb()},
             {"master_pan_law", int(edit->getMasterVolumePlugin()->getPanLaw())},
             {"timeline_sample_rate", timelineRate},
@@ -607,6 +610,10 @@ Json Commands::preview(const Json& plan) const
         {
             // Full ordered range preview below, backed by the Edit metadata.
         }
+        else if (cmd.starts_with("transport."))
+        {
+            // Session transport settings are simulated and previewed by the L1 transport validator.
+        }
         else if (cmd == "track.create")
         {
             const auto ref = a.at("ref").get<std::string>();
@@ -685,6 +692,7 @@ Json Commands::preview(const Json& plan) const
     validateAutomationPlan(ops);
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
+    const auto transportDiff = validateTransportPlan(ops);
     return {{"plan_id", plan.at("plan_id")},
             {"base_revision", revision},
             {"changes", diff},
@@ -694,6 +702,7 @@ Json Commands::preview(const Json& plan) const
             {"track_changes", trackDiff},
             {"pan_changes", panDiff},
             {"midi_changes", midiDiff},
+            {"transport_changes", transportDiff},
             {"legacy_imports", legacyDiff}};
 }
 void Commands::bumpRevision()
@@ -738,7 +747,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             "preview acceptance required");
     if (edit->getTransport().isPlaying())
         for (const auto& op : plan.at("operations"))
-            require(isTrackFlag(op.at("command")) || op.at("command") == "track.gain" ||
+            require(isTrackFlag(op.at("command")) || op.at("command") == "transport.metronome.set" ||
+                        op.at("command") == "transport.count_in.set" || op.at("command") == "track.gain" ||
                         op.at("command") == "track.pan",
                     "stop playback before structural edits");
     ParameterWriteGuard parameterGuard(*this);
@@ -775,7 +785,11 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd == "session.import_legacy")
+            if (cmd.starts_with("transport."))
+            {
+                executeTransportOperation(cmd, a);
+            }
+            else if (cmd == "session.import_legacy")
             {
                 executeLegacyOperation(a, objects);
             }
@@ -924,6 +938,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     catch (...)
     {
         um.undoCurrentTransactionOnly();
+        restoreTransportSettings();
         restoreRoutingAssignments();
         um.beginNewTransaction();
         throw;
@@ -980,6 +995,7 @@ Json Commands::undo(const std::string& expected)
             "untracked undo transaction; command history cannot be advanced");
     edit->getTransport().freePlaybackContext();
     require(edit->getUndoManager().undo(), "Tracktion Undo failed");
+    restoreTransportSettings();
     --historyCursor;
     if (nativeStates)
         nativeStates->historyState(id, "undone");
@@ -1015,6 +1031,7 @@ Json Commands::redo()
             "untracked redo transaction; command history cannot be advanced");
     edit->getTransport().freePlaybackContext();
     require(edit->getUndoManager().redo(), "Tracktion Redo failed");
+    restoreTransportSettings();
     ++historyCursor;
     if (nativeStates)
         nativeStates->historyState(id, "committed");
@@ -1322,6 +1339,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     edit = std::move(candidate);
     undoBoundaryInhibitor = std::move(newInhibitor);
     metadata = edit->state.getOrCreateChildWithName("NATIVEDAW", nullptr);
+    restoreTransportSettings();
     revision = juce::int64(metadata.getProperty("revision", 0));
     initialiseMusicIDs();
     initialiseAutomationIDs();

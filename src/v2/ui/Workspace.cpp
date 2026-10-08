@@ -205,6 +205,21 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     trackType.addItem("VCA", 6);
     trackType.setSelectedId(1, juce::dontSendNotification);
     trackType.setComponentID("track.type");
+    metronomeButton.setComponentID("transport.metronome");
+    countInMode.setComponentID("transport.count_in");
+    countInMode.addItem(text("预备拍：关闭"), 1);
+    countInMode.addItem(text("预备拍：1 拍"), 2);
+    countInMode.addItem(text("预备拍：2 拍"), 3);
+    countInMode.addItem(text("预备拍：1 小节"), 4);
+    countInMode.addItem(text("预备拍：2 小节"), 5);
+    countInMode.setTooltip(text("录音开始前由原生走带器播放预备拍；工程内保存。F10 循环切换"));
+    countInMode.onChange = [this]
+    {
+        static const std::array<const char*, 5> modes{"none", "one_beat", "two_beats", "one_bar", "two_bars"};
+        const auto id = countInMode.getSelectedId();
+        if (!updatingTransportControls && id >= 1 && id <= int(modes.size()))
+            write("transport.count_in.set", {{"mode", modes[size_t(id - 1)]}});
+    };
     newTrack.setComponentID("track.create");
     newTrack.onClick = [this]
     {
@@ -606,6 +621,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
          std::initializer_list<juce::Component*>{&trackType, &newTrack, &importButton, &saveButton, &exportButton,
                                                  &editButton, &mixButton, &pianoButton, &shortcutsButton})
         toolbar.attach(*c);
+    toolbar.attach(metronomeButton);
+    toolbar.attach(countInMode);
     for (auto* c : {&returnButton, &stopButton, &playButton, &recordButton})
         transport.attach(*c);
     counters.attach(counter);
