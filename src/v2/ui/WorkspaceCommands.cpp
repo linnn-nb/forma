@@ -81,6 +81,9 @@ const std::vector<Entry>& entries()
         {132, "跳到下一个 Marker", "走带", juce::KeyPress::rightKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {133, "打开 Memory Locations", "视图", 'm', shift},
+        {146, "Edit I/O 列", "视图", '1', cmd | juce::ModifierKeys::altModifier},
+        {147, "Edit Inserts A–E 列", "视图", '2', cmd | juce::ModifierKeys::altModifier},
+        {148, "Edit Sends A–E 列", "视图", '3', cmd | juce::ModifierKeys::altModifier},
         {145, "显示 / 隐藏 MIDI 编辑器", "窗口", 'm', cmd | juce::ModifierKeys::altModifier},
         {140, "量化所选 MIDI 音符", "MIDI", '0', cmd | juce::ModifierKeys::altModifier},
         {141, "全选 MIDI 音符", "MIDI", 'a', cmd},
@@ -140,6 +143,27 @@ void Workspace::initialiseCommandManager()
         autoInspector = false;
         groupInspector = false;
         refresh();
+    };
+    editArea.onInsert = mixArea.onInsert;
+    editArea.onRouting = [this](std::string id, bool input)
+    {
+        if (!input)
+        {
+            mixArea.onRouting(id);
+            return;
+        }
+        select(id);
+        clipFXInspector = false;
+        routingInspector = false;
+        recordInspector = true;
+        autoInspector = false;
+        groupInspector = false;
+        refresh();
+    };
+    editArea.onSend = [this](std::string id, std::string send)
+    {
+        mixArea.onRouting(id);
+        routing.selectSend(send);
     };
     editArea.onViewChange = [this](Json patch) { setView(std::move(patch)); };
     piano.connect(commandManager);
@@ -271,6 +295,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !selectedAudioClip().is_null();
             if (id == 8 || id == 9 || id == 10)
                 info.setTicked(id == 8 ? !mix : id == 9 ? mix : pianoMode);
+            if (id >= 146 && id <= 148)
+                info.setTicked(commands.uiState()["edit_views"][id == 146 ? "io" : id == 147 ? "inserts" : "sends"]);
             if (id == 145)
                 info.setTicked(pianoMode);
             info.setActive(active);
@@ -324,6 +350,14 @@ bool Workspace::perform(const InvocationInfo& invocation)
             midiCommandContext = true;
             piano.focusEditor();
         }
+        return true;
+    }
+    if (id >= 146 && id <= 148)
+    {
+        auto columns = commands.uiState()["edit_views"];
+        const auto* key = id == 146 ? "io" : id == 147 ? "inserts" : "sends";
+        columns[key] = !columns[key].get<bool>();
+        setView({{"edit_views", columns}});
         return true;
     }
     if (id >= 101 && id <= 110)

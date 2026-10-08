@@ -1,6 +1,7 @@
 #pragma once
 #include "Theme.h"
 #include "TrackHeader.h"
+#include "EditWindowViews.h"
 #include "Waveforms.h"
 #include "Rulers.h"
 #include "EditingModel.h"
@@ -46,11 +47,31 @@ public:
         {
             trackIDs = ids;
             controls.clear();
+            columns.clear();
             for (auto& id : ids)
             {
                 auto c = std::make_unique<TrackHeader>(id, false, write, select);
                 addAndMakeVisible(*c);
                 controls.push_back(std::move(c));
+                auto views = std::make_unique<EditWindowViews>(
+                    id,
+                    [this](auto t, int slot)
+                    {
+                        if (onInsert)
+                            onInsert(t, slot);
+                    },
+                    [this](auto t, bool input)
+                    {
+                        if (onRouting)
+                            onRouting(t, input);
+                    },
+                    [this](auto t, auto send)
+                    {
+                        if (onSend)
+                            onSend(t, send);
+                    });
+                addAndMakeVisible(*views);
+                columns.push_back(std::move(views));
             }
         }
         for (size_t i = 0; i < controls.size(); ++i)
@@ -60,6 +81,7 @@ public:
             item["automation_writing"] = !facts["automation_capture"].is_null();
             item["recording"] = !facts["recording_capture"].is_null();
             controls[i]->update(item, trackIDs[i] == selected);
+            columns[i]->update(item, value["tracks"]);
         }
         std::set<std::string> live;
         for (const auto& t : facts["tracks"])
@@ -116,10 +138,29 @@ public:
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t)> onRange;
+    std::function<void(std::string, int)> onInsert;
+    std::function<void(std::string, bool)> onRouting;
+    std::function<void(std::string, std::string)> onSend;
+    int columnCount() const
+    {
+        int count = 0;
+        for (const auto* key : {"io", "inserts", "sends"})
+            if (view.value("edit_views", Json::object()).value(key, false))
+                ++count;
+        return count;
+    }
+    int columnWidth() const
+    {
+        return columnCount() == 0 ? 0 : std::clamp((getWidth() - 250 - 16 - 160) / columnCount(), 48, 104);
+    }
+    int timelineLeft() const
+    {
+        return 250 + columnCount() * columnWidth();
+    }
     TimelineCoordinates coordinates() const
     {
-        return {view.value("start_samples", int64_t(0)), view.value("span_samples", int64_t(480000)), 250.,
-                double(std::max(1, getWidth() - 266))};
+        return {view.value("start_samples", int64_t(0)), view.value("span_samples", int64_t(480000)),
+                double(timelineLeft()), double(std::max(1, getWidth() - timelineLeft() - 16))};
     }
     int rowY(int row) const
     {
@@ -174,12 +215,13 @@ public:
                              Rulers::markerLaneHeight - 2, juce::Justification::centredLeft, 1);
         }
         juce::Graphics::ScopedSaveState clipState(g);
-        g.reduceClipRegion(juce::Rectangle<int>(250, Rulers::height, std::max(1, getWidth() - 266),
+        g.reduceClipRegion(juce::Rectangle<int>(timelineLeft(), Rulers::height,
+                                                std::max(1, getWidth() - timelineLeft() - 16),
                                                 std::max(1, getHeight() - Rulers::height - 16)));
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
         {
             g.setColour(juce::Colour(facts["tracks"][i]["id"] == selected ? 0xff21313d : 0xff1c2530));
-            g.fillRect(250, rowY(int(i)), getWidth() - 250, view.value("row_height", 144) - 1);
+            g.fillRect(timelineLeft(), rowY(int(i)), getWidth() - timelineLeft(), view.value("row_height", 144) - 1);
         }
         for (const auto& line : grid)
         {
@@ -230,7 +272,8 @@ public:
                 else
                 {
                     auto waveRect = rect.reduced(0, 25).getIntersection(
-                        juce::Rectangle<int>(250, Rulers::height, getWidth() - 266, getHeight() - Rulers::height - 16));
+                        juce::Rectangle<int>(timelineLeft(), Rulers::height, getWidth() - timelineLeft() - 16,
+                                             getHeight() - Rulers::height - 16));
                     if (!waveRect.isEmpty())
                     {
                         const auto elapsed =
@@ -290,15 +333,16 @@ public:
         {
             g.setColour(juce::Colour(0xffb2c3d4));
             g.setFont(juce::FontOptions(18));
-            g.drawText(text("导入音频，开始制作"), 270, 90, getWidth() - 290, 32, juce::Justification::centred);
-            g.setFont(juce::FontOptions(13));
-            g.drawText(text("⌘I 导入 · 空格播放 / 停止 · ⌘Z 撤销"), 270, 130, getWidth() - 290, 26,
+            g.drawText(text("导入音频，开始制作"), timelineLeft() + 20, 90, getWidth() - timelineLeft() - 40, 32,
                        juce::Justification::centred);
+            g.setFont(juce::FontOptions(13));
+            g.drawText(text("⌘I 导入 · 空格播放 / 停止 · ⌘Z 撤销"), timelineLeft() + 20, 130,
+                       getWidth() - timelineLeft() - 40, 26, juce::Justification::centred);
         }
     }
     void resized() override
     {
-        horizontal.setBounds(250, getHeight() - 14, std::max(1, getWidth() - 266), 14);
+        horizontal.setBounds(timelineLeft(), getHeight() - 14, std::max(1, getWidth() - timelineLeft() - 16), 14);
         vertical.setBounds(getWidth() - 14, Rulers::height, 14, std::max(1, getHeight() - Rulers::height - 14));
         const auto axis = coordinates();
         horizontal.setRangeLimits(
@@ -315,13 +359,17 @@ public:
         {
             controls[i]->setBounds(0, rowY(int(i)), 242, view.value("row_height", 144) - 1);
             controls[i]->setVisible(rowY(int(i)) >= Rulers::height && rowY(int(i)) < getHeight() - 16);
+            columns[i]->setBounds(250, rowY(int(i)), timelineLeft() - 250, view.value("row_height", 144) - 1);
+            columns[i]->configure(view.value("edit_views", Json::object()), columnWidth());
+            columns[i]->setVisible(columnCount() > 0 && controls[i]->isVisible());
         }
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
             for (const auto& c : facts["tracks"][i]["clips"])
                 if (headers.contains(c["id"]))
                 {
                     auto r = clipRect(c, int(i)).reduced(3).removeFromTop(20).getIntersection(
-                        juce::Rectangle<int>(250, Rulers::height, getWidth() - 266, getHeight() - Rulers::height - 16));
+                        juce::Rectangle<int>(timelineLeft(), Rulers::height, getWidth() - timelineLeft() - 16,
+                                             getHeight() - Rulers::height - 16));
                     headers.at(c["id"])->setBounds(r);
                     headers.at(c["id"])->setVisible(!r.isEmpty());
                 }
@@ -330,7 +378,7 @@ public:
     {
         juce::MouseCursor cursor(juce::MouseCursor::NormalCursor);
         const int row = rowAt(e.y);
-        if (e.x >= 250 && e.x < getWidth() - 14 && row >= 0 && row < int(trackIDs.size()))
+        if (e.x >= timelineLeft() && e.x < getWidth() - 14 && row >= 0 && row < int(trackIDs.size()))
         {
             const auto axis = coordinates();
             for (const auto& clip : facts["tracks"][size_t(row)]["clips"])
@@ -362,7 +410,7 @@ public:
     {
         drag = nullptr;
         dragged = false;
-        if (e.x < 250 || e.x >= getWidth() - 14 || e.y >= getHeight() - 14)
+        if (e.x < timelineLeft() || e.x >= getWidth() - 14 || e.y >= getHeight() - 14)
             return;
         const auto axis = coordinates();
         const int row = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
@@ -615,7 +663,7 @@ public:
     }
     void mouseDoubleClick(const juce::MouseEvent& e) override
     {
-        if (e.x < 250 || e.y < Rulers::height)
+        if (e.x < timelineLeft() || e.y < Rulers::height)
             return;
         int row = (e.y - Rulers::height) / view.value("row_height", 144) +
                   std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
@@ -705,6 +753,7 @@ private:
     bool dragged = false;
     std::vector<std::string> trackIDs;
     std::vector<std::unique_ptr<TrackHeader>> controls;
+    std::vector<std::unique_ptr<EditWindowViews>> columns;
     std::map<std::string, std::unique_ptr<juce::TextButton>> headers;
 };
 

@@ -1,11 +1,11 @@
 # 下一步
 
-结论：U-P0-MIDI-02已接通Edit下方钢琴卷帘、可调停靠、稳定Clip/Note选择和UI视图保存；相关6/6测试与桌面退出重开通过。U＋P0整体未完成，M2/M3冻结、M4/M5暂缓，不进入P1。
+结论：U-P0-VIEWS-01接通Edit真实I/O/插入A–E/发送A–E，动态坐标、Clips高亮、schema4视图保存和窄窗布局。相关5/5及扩充专项46检查通过，Release/固定签名通过。U＋P0未完成，不进入P1；M2/M3冻结、M4/M5暂缓。
 
-亲手试：已打开`build-v2-tracktion/FormaMidiDockPreview.app`及`evidence/U/demo/MIDI Dock P0 GUI accepted.tracktionedit`。双击MIDI片段，拖分隔条，⌘⌥M收起/恢复；空白拖绘、Shift点选/⌘A、组移动/两缘修剪、力度泳道、⌘⌥0量化、⌘⌥↑/↓力度、Delete、⌘Z/⌘⇧Z。保存新文件再重开可恢复视图与音符选择；快捷键可重映射。正式app：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+亲手试：解锁后打开`build-v2-tracktion/FormaEditViewsPreview.app`（正式构建`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`），导入音频；视图→Edit Window Views，或⌘⌥1/2/3开三列，点插入空槽选EQ/混响，点发送进入真实路由。参数编辑⌘Z/⌘⇧Z；键位可改，另存新工程重开应恢复三列。预览当前未运行；桌面锁定后已结束自有测试实例，其他窗口保留。
 
-下一项明确任务：完善Groups/Clips侧栏与Edit Window Views，接入真实分组/片段对象和可保存的列开关，经统一命令执行编辑；补上顶部工具栏与音频设置重叠的布局检查。
+下一项明确任务：先补本增量最终GUI保存/退出重开及标题编码验收；然后实现真实Groups侧栏（组查询、选择/创建、启用与命令编辑），保持保存和Undo边界。Comments独立列、更多标尺、轨高/颜色、缩放预设及完整键位桌面验收随后补齐。
 
-随后更多标尺、轨高/颜色、缩放预设及自定义键位桌面验收。当前共享Clip/Note对象，不联动音符时间范围/自动化点；卷帘专用缩放控件、框选、MIDI/自动化剪贴板、CC与全局Smart仍未完成。组手势64操作预算，大组批量需在阶段完整验收前补齐。Undo历史不跨重开。
+现有桌面已验证EQ插入/Undo/Redo、新Aux与发送-12/-9/Undo/Redo、原输出保持；GUI保存重开因锁屏未执行，自动化组件通过不替代该项目。卷帘框选、时间范围/自动化点共享选择、MIDI剪贴板/CC、64音符手势预算仍待补齐；Undo历史不跨重开。
 
-阶段U＋P0完成才全量回归并交用户试用；每个可构建增量提交推送，不打包未验收DMG。保留用户工程及预先存在的Tracktion子模块修改。
+阶段U＋P0完成后才全量回归并交用户试用。每个构建增量提交推送，不打未验收DMG；保留用户工程和预先存在的Tracktion子模块修改。

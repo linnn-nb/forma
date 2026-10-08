@@ -10,10 +10,11 @@ public:
         setComponentID("clips.list");
         addAndMakeVisible(list);
         list.setModel(this);
+        list.setMultipleSelectionEnabled(true);
         list.setRowHeight(25);
         list.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff242831));
     }
-    void update(const Json& tracks)
+    void update(const Json& tracks, const std::set<std::string>& selected = {})
     {
         Json next = Json::array();
         for (const auto& t : tracks)
@@ -24,6 +25,10 @@ public:
             rows = next;
             list.updateContent();
         }
+        list.deselectAllRows();
+        for (int i = 0; i < int(rows.size()); ++i)
+            if (selected.contains(rows[i]["id"].get<std::string>()))
+                list.selectRow(i, true, false);
         repaint();
     }
     void paint(juce::Graphics& g) override

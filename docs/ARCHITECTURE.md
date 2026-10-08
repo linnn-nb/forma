@@ -7,9 +7,11 @@
 
 当前原生 UI 位于 `src/v2/ui/`：Workspace 负责组件编排，Edit/Mix、走带、计数器、标尺、列表、快捷键设置各自独立。`WorkspaceCommands.cpp` 的 ApplicationCommandManager 是已迁移全局操作的共同入口；`UiState.cpp` 在 message thread 验证并写入 `Edit/NATIVEDAW/UI`，保存缩放/滚动/侧栏/键位，不使用 UndoManager。人工单文件导入直接形成一个 human Plan；外部请求和高风险操作仍保留预览。统一选区与工具模型、完整窗口结构和跨重开 Undo 尚未完成；下文旧 M 里程碑按本文顶部当前阶段安排冻结或后置。
 
-`EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track/Note ID 管理对象选择，Note引用必须携带父Clip，卷帘与时间线共用父片段高亮；音符时间范围和自动化点联动仍待接入。工具/网格/Nudge 值及UI选区存schema3，同时保存MIDI停靠/高度/目标Clip/网格/尺度/滚动；旧八字段及完整schema2明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
+`EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track/Note ID 管理对象选择，Note引用必须携带父Clip，卷帘与时间线共用父片段高亮；音符时间范围和自动化点联动仍待接入。工具/网格/Nudge 值及UI选区存schema4，同时保存MIDI停靠/高度/目标Clip/网格/尺度/滚动和三个edit_views布尔开关；旧八字段及完整schema2/schema3明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
 
 音频 Smart Tool 以 EditingModel 的位置分区解析手势，EditWindow 在本地保持拖拽预览，松手通过既有 ClipWriter/L1 提交单笔真实淡化/移动/修剪。Smart 是UI工具状态，淡化是Edit事实；全局MIDI/自动化分区尚未实现。Edit下方停靠钢琴卷帘由 `ui/MidiEditor.h` 读取真实音符并预览成组移动/两缘修剪/力度，松手通过Workspace批量writer进入一笔L1事务；全局量化/全选/删除/力度快捷键来自统一命令表。会话切换取消手势，捕获revision拒绝过期编辑；卷帘对象选择与Edit共用稳定ID；MidiDockDivider只做布局预览，松手经L1 UI保存。全局命令145（⌘⌥M）与按钮共用开关，键盘焦点区分音符和音频编辑。键位完整XML增加 formaCommands 已知命令清单，加载/导入只为新增命令补未占用的默认键，保留人工解绑与冲突映射；迁移写入L1 UI子树，不增加工程revision/Undo。
+
+EditWindowViews只读实际插件、发送和I/O facts；插入/路由/指定发送回调复用Workspace检查器，最终编辑仍进入L1。动态timelineLeft统一标尺、波形、鼠标和滚动条；独立列开关只写UI。Clips列表读同一对象选择，显示MIDI Note父Clip高亮；Groups/Comments尚未实现。没有直接te::Edit写入或新的播放模型。
 
 ## 0. 定位与前提
 

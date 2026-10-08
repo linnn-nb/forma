@@ -583,7 +583,7 @@ void Workspace::refresh()
             : std::max(1., std::pow(2., std::ceil(std::log2(std::max(1., viewSpan / 48000. / 40.)))));
     editArea.update(facts, selected, commands.musicalGrid(viewStart, viewStart + viewSpan, gridDivision), selectedClip);
     tracksList.update(facts["tracks"], selected);
-    clipsList.update(facts["tracks"]);
+    clipsList.update(facts["tracks"], selection.objectIDs);
     tracksList.setVisible(view["tracks_list"].get<bool>());
     clipsList.setVisible(view["clips_list"].get<bool>());
     commandManager.commandStatusChanged();

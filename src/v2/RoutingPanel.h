@@ -192,6 +192,19 @@ public:
         addSend.setEnabled(enabled && !newTarget.empty() && !duplicate);
         refreshSend();
     }
+    void selectSend(const std::string& id)
+    {
+        if (facts.is_null())
+            return;
+        for (size_t i = 0; i < facts["sends"].size(); ++i)
+            if (facts["sends"][i]["id"] == id)
+            {
+                selectedSend = id;
+                choice.setSelectedId(int(i) + 1, juce::dontSendNotification);
+                refreshSend();
+                return;
+            }
+    }
     void resized() override
     {
         int w = getWidth() - 20;

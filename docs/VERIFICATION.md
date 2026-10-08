@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-VIEWS-01：Edit I/O、插入与发送列（2026-10-08；增量，U＋P0未完成）
+
+结论：Edit 轨道头与时间线之间可独立显示真实 I/O、Inserts A–E、Sends A–E。视图菜单与⌘⌥1/2/3共用可重映射命令；列开关经L1 UI schema4保存，不占编辑Undo、不改变revision。旧八字段/schema2/schema3完整迁移，损坏或非布尔开关拒绝。插入槽复用实际效果器菜单与插件检查器；I/O进入真实录音/路由检查器；发送槽以稳定Send ID定位确切控制，不把第二槽误当第一槽。发送按实际处理链顺序显示，Pre可排在较早创建的Post之前。
+
+标尺、真实波形、片段、鼠标手势与滚动条共用动态时间线原点；最小1120×700布局仍留160像素时间线。Clips列表跟随统一Clip/Note父片段选择高亮。音频设置收进视图菜单；窄窗隐藏顶部Marker/循环快捷按钮，原菜单与键位仍可用，避免工具栏重叠。
+
+Release Forma.app构建通过，正式及专用预览固定本地身份strict/deep验签通过。相关CTest **5/5通过，0失败，25.20秒**；随后仅扩充双发送/实际列布局拖动专项，**1/1通过，3.93秒，46项检查**。覆盖真实Tracktion Edit/PCM源、确切发送实例、发送电平Undo/Redo、动态轴20像素拖动及Undo/Redo、Clips高亮、最小布局、schema3迁移、坏数据拒绝、新Workspace保存重开及快捷键恢复。既有音频编辑回归保留真实渲染测量；设备关闭的组件测试不替代硬件验收。机器结果`evidence/U/edit-views-tests.json`。
+
+桌面实际执行：旧schema3自有MIDI工程、CoreAudio 48kHz/512frames，三列菜单/快捷键，Edit插入EQ及Undo/Redo；新建Aux2和Post发送，原输出保持Output 1 + 2；发送-12→-9 dB及Undo/Redo标签同步，Aux实际插入Reverb并设Dry=0。桌面随后锁定，未完成本增量GUI另存/退出重开，也未在最终构建上桌面确认修正后的UTF-8列标题。没有宣称听感/实体录音通过。关闭自有测试实例，不修改其他用户窗口；未保存的测试编辑未保留。最终专用预览已更新/验签，待解锁打开试用。
+
+代码：`ui/EditWindowViews.h`、`EditWindow.h`、Workspace命令/布局/刷新、`ClipsList.h`、`RoutingPanel.h`、`UiState.cpp`；专项`tests/v2/EditWindowViewsTests.cpp`。首轮缺内部声明、错误效果器类型/缺track ref和浮点dB精确相等测试已修正；双发送测试改用实际Pre/Post处理链顺序。真实界面发现标题编码问题，生产代码改用UTF-8转换；上述失败均不计通过。
+
+边界：Groups侧栏、Comments、F–J、列All/None/Option点击、槽位排序及直接发送浮窗未完成；缺省三列关闭。Undo历史不跨重开；UI视图不应进入编辑Undo。无新增依赖/MCP工具、无DMG、非U＋P0验收。试用`build-v2-tracktion/FormaEditViewsPreview.app`，打开自己的测试工程，用视图菜单或⌘⌥1/2/3显示列；最终GUI保存重开列为下一轮待执行项。
+
 ## U-P0-MIDI-02：Edit 下方钢琴卷帘停靠（2026-10-08；U＋P0 未完成）
 
 结论：双击真实 MIDI Clip 在 Edit 下方打开对应钢琴卷帘，时间线与音符编辑同时可见；拖动分隔条调整高度。⌘⌥M 和「钢琴卷帘」按钮通过统一命令表收起/恢复，键位可改；Mix 临时隐藏卷帘，返回 Edit 恢复。紧凑控制行保留网格、直接量化、力度；详细变换由「变换…」展开。

@@ -200,7 +200,8 @@ private:
     bool loadingKeymap = false;
     std::string lastKeymapSession;
     TracksList tracksList{[this](std::string id) { select(id); }};
-    ClipsList clipsList{[this](std::string id) { selectAudioClip(id); }};
+    ClipsList clipsList{[this](std::string id)
+                        { selectAudioClip(id, juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown()); }};
     juce::TextButton zoomIn{"+"}, zoomOut{text("−")}, zoomFit{text("全工程")}, scrollLeft{text("‹")},
         scrollRight{text("›")}, shortcutsButton{text("键位…")};
 

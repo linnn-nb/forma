@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 最新增量：U-P0-VIEWS-01（2026-10-08）
+
+Edit I/O、Inserts A–E、Sends A–E三列通过菜单/⌘⌥1/2/3独立开关，读取真实对象并进入原命令/检查器；第二发送槽定位稳定实例。统一动态坐标、Clips选择高亮、UI schema4迁移和窄窗工具栏修正已接通。Release与固定本地签名验签通过；相关5/5、0失败、25.20秒，扩充专项1/1、3.93秒、46检查，包含真实PCM源保持、Undo/Redo及新Workspace保存重开。精简结果`edit-views-tests.json`。
+
+桌面已实际插EQ/Undo/Redo、创建Aux与真实发送、-12/-9发送Undo/Redo，原输出Output1+2保持；后续桌面锁定，GUI另存/退出重开和最终标题修复桌面验收未执行。自有预览测试进程退出，未保存测试编辑未保留；旧验收工程和用户窗口保留。最终`build-v2-tracktion/FormaEditViewsPreview.app`可解锁后打开，用视图菜单试列。U＋P0未完成，Groups/Comments等差距与下一步见docs/VERIFICATION.md、NEXT_STEPS.md；未打DMG。
+
 ## 最新增量：U-P0-MIDI-02（2026-10-08）
 
 Edit下方真实钢琴卷帘、可拖分隔条、⌘⌥M切换、稳定Clip/Note共享选择与UI schema3保存重开已接通。Release/固定签名通过，相关CTest6/6通过、0失败、33.74秒；停靠专项34项，真实MIDI编辑回归64项。桌面力度92→93/Undo92/Redo93，实际退出重开恢复440高度/644滚动/¼网格/选中音符及五个真实事件。机器结果`midi-dock-tests.json`，完整边界见docs/VERIFICATION.md最新节。

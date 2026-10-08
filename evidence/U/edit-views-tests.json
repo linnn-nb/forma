@@ -1,0 +1,54 @@
+{
+  "checks": 46,
+  "result": "passed",
+  "scope": "native Edit views real plugin/send/input routing controls Undo schema migration and reopen; closed device",
+  "date": "2026-10-08",
+  "milestone": "U-P0-VIEWS-01",
+  "ui_schema": 4,
+  "build": {
+    "release_app": "built",
+    "local_signing": "strict/deep verified",
+    "windows": "not executed"
+  },
+  "related_ctest": {
+    "passed": 5,
+    "failed": 0,
+    "seconds": 25.2,
+    "tests": [
+      "forma_native_ui_navigation",
+      "forma_native_editor_interactions",
+      "forma_native_audio_clipboard",
+      "forma_native_edit_views",
+      "forma_native_midi_dock"
+    ]
+  },
+  "expanded_views_ctest": {
+    "passed": 1,
+    "failed": 0,
+    "seconds": 3.93,
+    "checks": 46
+  },
+  "desktop": {
+    "result": "partial; final GUI reopen blocked by desktop lock",
+    "device": "CoreAudio 48000 Hz / 512 frames",
+    "executed": [
+      "Edit view menu and Cmd+Option+1/2/3 display real columns",
+      "EQ inserted through Edit slot; GUI Undo/Redo",
+      "created Aux2 and real post send; original output remains Output 1 + 2",
+      "send -12 to -9 dB; Undo -12 and Redo -9",
+      "native Reverb inserted on Aux; dry level set to 0 (-INF dB)"
+    ],
+    "not_executed": [
+      "GUI save and exit/reopen of this increment",
+      "GUI verification of corrected UTF-8 headings on final build",
+      "listening and hardware qualification"
+    ],
+    "cleanup": "owned preview process terminated after desktop lock; unsaved test edits not retained; user windows untouched"
+  },
+  "limits": [
+    "Groups and Comments pending",
+    "A-E only; no F-J, All/None, Option-click header or direct slot reorder",
+    "view state outside Undo; edit Undo does not survive reopen",
+    "U+P0 incomplete; no DMG"
+  ]
+}

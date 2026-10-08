@@ -26,6 +26,8 @@ open build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app
 
 钢琴卷帘：双击MIDI片段在Edit下方打开，拖分隔条调高度，⌘⌥M收起/恢复；空白拖绘音符，Shift点选或⌘A全选；拖动所选组、两缘改时长，⌘垂直拖或下方力度圆点改力度。⌘⌥0按当前网格/强度直接量化，⌘⌥↑/↓相对改力度，Delete/Backspace删所选，⌘Z/⌘⇧Z撤销/重做。键位可自定义；卷帘成组手势当前最多64音符，超出整笔拒绝。音符、实际力度、合成器状态及停靠高度、网格、滚动、Clip/Note选择可保存重开。时间选区链接、CC泳道及MIDI剪贴板仍未完成。
 
+Edit列：在「视图→Edit Window Views」独立打开I/O、Inserts A–E、Sends A–E，默认⌘⌥1/2/3，可重映射。点真实插入槽打开效果器菜单/检查器，点指定发送槽进入该发送的路由控制；列开关随工程保存，不进入编辑Undo。Groups侧栏、Comments和F–J仍未完成。
+
 开发者可设置 `FORMA_SIGNING_IDENTITY` 为本机代码签名证书 SHA1；签名身份未配置的构建不保证麦克风授权跨构建保留。固定签名并非签名公证或正式发行。外部 MIDI、实体录音和持续可靠性仍有待实测。
 
 ## Build from source

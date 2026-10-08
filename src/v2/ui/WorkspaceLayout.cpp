@@ -55,6 +55,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 9);
         p.addCommandItem(&commandManager, 10);
         p.addCommandItem(&commandManager, 145);
+        juce::PopupMenu views;
+        for (int id : {146, 147, 148})
+            views.addCommandItem(&commandManager, id);
+        p.addSubMenu(text("Edit Window Views"), views);
         p.addSeparator();
         p.addCommandItem(&commandManager, 13);
         p.addCommandItem(&commandManager, 14);
@@ -379,7 +383,8 @@ void Workspace::resized()
     metronomeButton.setBounds(550, 4, 80, 27);
     countInMode.setBounds(634, 4, 132, 27);
     loopButton.setBounds(774, 4, 64, 27);
-    const bool showLocationButtons = getWidth() >= 1180;
+    const bool showLocationButtons = getWidth() >= 1340;
+    loopButton.setVisible(getWidth() >= 1160);
     markerButton.setVisible(showLocationButtons);
     locationsButton.setVisible(showLocationButtons);
     markerButton.setBounds(844, 4, 76, 27);
@@ -402,7 +407,7 @@ void Workspace::resized()
     meter.setBounds(592, 81, 65, 28);
     applyMusic.setBounds(665, 81, 58, 28);
     device.setBounds(750, 66, std::max(150, getWidth() - 1070), 44);
-    audioSettingsButton.setBounds(getWidth() - 296, 114, 112, 24);
+    audioSettingsButton.setVisible(false); // Available through the native View menu; keep editing controls clear.
     undoButton.setBounds(12, 128, 52, 24);
     redoButton.setBounds(70, 128, 52, 24);
     rangeButton.setBounds(132, 128, 110, 24);
