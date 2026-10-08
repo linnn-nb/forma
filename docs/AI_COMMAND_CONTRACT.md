@@ -1,5 +1,13 @@
 # 统一命令契约 v2
 
+## 分析资源控制（M3-RESOURCES-01）
+
+注册表生成 `set_analysis_paused(artifact_id, paused:boolean)`，通过队列 `analysis_pause` 调用L1；GUI同用 `analysisControl("pause",...)`。只有本地human或当前作业所有者可暂停/继续；错误ID、额外actor/权限字段、非boolean、其他客户端及已请求取消都拒绝。暂停不进工程Undo/Revision，不能绕过播放/设备准备优先。query_analysis.pause区分user_requested、playback_requested、worker_parked；pausing是请求，paused才是实际检查点停驻。取消仍等待真实终态，原60秒deadline包含暂停和启动准备；插件/I/O/SDK消息调用仍不能抢占。
+
+runtime使用 `forma-analysis-runtime/1`，报告启动message-thread快照/链哈希/创建Edit/tap/构图和后台source_hash/render/measure/final_validation/parked墙钟时长、message-thread释放、实际源哈希文件读取数/字节、所有源引用数及唯一文件数。完成的阶段才有耗时；未完成阶段为0，不能当无耗时；各阶段包含停驻/SDK等待/I/O，不是纯CPU时间，parked与所属阶段重叠而不可相加。RenderTask构图计入启动；SDK随后在worker发起message hop的context初始化/预热计入render，不把启动数字当全部插件初始化耗时。只有1个L2驱动线程，SDK内部默认并行不是单核或实时资格。
+
+处理后receipt.media按精确文件路径合并共享描述，保留首引用clip_id/track_id作兼容别名，clip_references保留每个实际clip_id/track_id；media数组长度不能当片段数。source_references是完整引用数。每轮SHA256独立、前后两轮必读，定位再次深校验；仅同一轮同一文件复用读取，绝不按mtime跨轮缓存。绑定范围/revision/全部Edit链哈希、原始源映射和失效规则不变，4096引用/252KiB回执/32队列/5秒MCP原预算不变。固定128/256/512真实原生图、完整引用及同大小同mtime字节突变检查见AnalysisResourceTests；原生控件见AnalysisResourceWorkspaceTests，实测见VERIFICATION.md。
+
 结论：M0 命令、M1 静音/独听与四种内置效果器、Aux/发送/输出、MIDI/Tempo、音符量化/移调、Folder/VCA 与自动化命令已接入实际 te::Edit。完整契约是 M1/M2 的实现目标，尚未全部实现。
 
 ## 已实现（M0）

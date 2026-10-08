@@ -122,6 +122,8 @@ M1 需要的最小命令集：
 
 **频谱概要（M3-SPECTRUM-01）**：L2 在同一次真实 PCM 解码中以 bounded ring /cached JUCE FFT 计算完整 4096 帧 periodic-Hann 单侧频谱，声道先独立变换再平均功率，保留全部 2049 bin。末尾用真实范围末端对齐的完整窗覆盖，不补零；不足窗明确不可用。频段按 bin 中心分区，保存各声道功率，不能把反相求和丢失当静音。来源/原生帧/工程 origin、媒体/处理链与有效性继承父 artifact，L5 原生 scroll panel 与只读 MCP 共用结果；概要不新增工程写入或事件 seek。FFT float、累计 double，64 KiB 谱/30000窗/完整252 KiB和原时限保持，数值/GUI及现场资格见ANALYSIS_WORKFLOW.md /VERIFICATION.md。
 
+**M3 分析资源控制（M3-RESOURCES-01）**：L1接受作业所有者/本地human的暂停请求，L2在实际检查点停驻，播放/设备准备优先不能被resume绕过；60秒截止包含暂停，取消保留真实终态。GUI与注册表生成MCP共用入口，公开分阶段墙钟、实际哈希I/O和释放耗时。共享媒体每轮只读取一次，前后/定位各轮独立深校验，完整clip/track引用压缩在同一media描述下。worker只修改自身局部binding/sources，发布的请求描述保持不可变。固定图/队列压力与限制见ANALYSIS_WORKFLOW.md、VERIFICATION.md；SDK内部并行和不可抢占调用的实时资格仍待验收。
+
 ## 5. L3 扩展运行时
 
 扩展是"个性化"的载体。它们只能通过 L1 修改工程，因此天然支持预览、撤销，并能被权限控制。
