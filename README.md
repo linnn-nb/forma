@@ -1,35 +1,28 @@
-# Forma Studio
+# Forma
 
-**An open-source native DAW being built for musicians and AI agents to work in the same session.**
+**开源 macOS DAW：录音、编辑、MIDI 和混音，使用同一份可保存、可撤销的工程。**
 
-Real tracks. Reviewable edits. Changes you can hear and undo.
+当前开发版可以导入和播放真实音频，编辑片段和 MIDI、加载 AU/VST3、插入 EQ/压缩/混响/延迟、设置发送与路由、录写自动化，并导出 WAV。工程恢复、离线测量和导出复核保留在菜单中。具体边界见 [验证记录](docs/VERIFICATION.md)。
 
-Forma Studio is for creators who want to record, edit and mix with an AI that can work inside their session. Agents use actual tracks, routing and parameters to prepare reviewable changes. The design centers on one command and transaction layer shared by the interface, scripts, extensions and external agents: inspect the session, prepare a structured plan, preview its impact, commit, audition and undo.
+**正在重构原生 Edit / Mix 界面，尚未达到日常制作完整验收。** 当前依次推进 U＋P0（界面与基础编辑）、P1（录音/Comp）、P2（混音交付）、P3（Warp/MIDI CC）。AI 功能暂停扩充；既有 MCP 和分析入口保留。每级完成后由用户亲手试用。
 
-This is an early-development project. **M0 feasibility has passed; M1 is in progress. Codex has demonstrated the M2 workflow through the production MCP gateway: query, propose a reverb Aux, confirm in the desktop UI, play through CoreAudio and undo.** The test used local synthetic speech; decoded audio returned exactly to the baseline after Undo. This does not qualify microphone recording, subjective mix quality or the whole workstation. The window title is Forma Studio; the macOS application bundle and build paths retain the internal name `NativeDAW`.
+界面截图将在本轮原生构建实测后加入；这里不放效果图。逐轮功能记录移至 [CHANGELOG](CHANGELOG.md)。
 
-Forma Studio reuses the Tracktion Engine for the audio foundation and focuses original development on the shared command layer, trustworthy project operations, analysis evidence and an extension system. The intended workflow keeps ordinary audio production local and usable without a model service; model-powered capabilities will be optional.
+## 快速开始
 
-## Current development status
+安装 Xcode Command Line Tools、CMake 和 Git 后：
 
-- The M0 prototype has imported and played audio through Tracktion Engine, created and edited tracks through the command layer, exercised Undo/Redo, and rendered audio for loudness and peak measurement.
-- The M1 development build contains working slices of Edit/Mix, audio playback and rendering, MIDI/instrument editing, routing, built-in effects, automation, recording workflows and AU/VST3 hosting. Each feature has its own documented verification boundary; the whole M1 workstation has not passed manual acceptance.
-- M2 now provides stdio/socket MCP queries, registry-generated query/planning tools, version-checked object pages, native confirmation cards, cancellation and Undo, caller request keys and reconnection recovery of live receipts. Saved history requires review after reopening. Protocol and native components have automated coverage; the external-agent desktop demonstration and actual WAV verification were executed on 2026-10-07. See [verification boundaries](docs/VERIFICATION.md).
-- M3 now has native Master-range analysis and configurable delivery checks: float32 offline rendering, full-scale exceedance locations, LUFS/True Peak, revision/media validation and clickable native transport location. The desktop panel and registry-generated MCP tools evaluate the same loudness, peak and last-window conditions from actual audio. [Scope and limits](docs/ANALYSIS_WORKFLOW.md) distinguish a completed measurement from passing criteria, last-window review from complete effect tails, and automated native controls from desktop acceptance. Track pre/post-insert and Bus taps now use the real native graph; full M3 acceptance remains unfinished.
-- Raw source-clip analysis now reads real media at its native sample rate, reports measured low-level intervals and estimated energy-rise candidates, and maps their source frames to the current clips after move, trim, split and Undo/Redo. GUI and MCP use the same evidence. These candidates do not qualify breath detection or performance quality; full analysis qualification remains unfinished. See [analysis workflow](docs/ANALYSIS_WORKFLOW.md).
-- Track pre/post-insert and Bus analysis now samples the actual target boundary in an isolated native render snapshot, preserving upstream routes, sends and instruments while excluding unrelated device outputs and Master processing. GUI and read-only MCP share the same receipts. Native EQ/Delay Read curves, fader/Aux gain relationships, human Undo and same-range formal WAV comparison have automated checks. [Analysis workflow](docs/ANALYSIS_WORKFLOW.md) records the exact fader boundaries, conservative cache invalidation, slot constraints and pending plugin/PDC/sidechain qualifications.
-- Optional processed-event detection now measures silence and estimated energy-rise candidates from the actual Master, track or Bus render, with session-sample locations and condition hashes. GUI and MCP share evidence; missing detector conditions mean “not analysed.” Codex exercised the production gateway, native confirmation, real Delay processing, event location and human Undo on 2026-10-08, with independent PCM checks. These estimates do not identify breaths or performance quality.
-- Measured LUFS-M/S curves now retain the full 100 ms grid, actual window boundaries and explicit silence/insufficient-window states. The native panel supports inspecting both curves, selecting a measured point or maximum, and locating its real window end. Raw-source points follow current clip mappings; processing edits invalidate Master/track evidence. Independent library and native workflow checks cover the documented budgets; full M3 acceptance remains unfinished.
-- Clip effects now have a dedicated native inspector: insert real EQ/Compressor/Reverb/Delay, edit enumerated parameters, bypass, remove and undo. A separate clip-only tap includes clip gain/pan, effects and fades while excluding overlapping clips, upstream inputs, track processing and Master. GUI and read-only MCP share the same artifact; looping/warping/offline ClipEffects/third-party clip analysis and complete tails remain unqualified. See [analysis scope](docs/ANALYSIS_WORKFLOW.md).
-- Native spectral analysis now returns all 2049 one-sided FFT bin powers and separately measured channel band powers from the same real PCM/tap receipt. The panel can inspect actual frequencies and energy fractions; short windows and stale results are explicit. Independent DFT/Parseval, native EQ/formal WAV and GUI checks cover the declared scope; full M3 acceptance remains unfinished.
-- M3 audio intelligence, M4 extensions, M5 generation adapters and M6 advanced editing workflows remain in development.
-- The development build can save stopped-session recovery snapshots and restore them through local preview and confirmation. It backs up the current state, checks hashes and version conflicts, and resets agent access to read-only. Media, persistent Undo and recording-in-progress recovery have separate limits; see [Recovery workflow](docs/RECOVERY_WORKFLOW.md).
-- Persistent sample/seconds time selections and precise native transport positioning are available. Selected-range WAV exports bind the session and revision, verify the generated file, and preserve existing paths; see [Time selection workflow](docs/TIME_SELECTION_WORKFLOW.md).
-- Recording readiness checks every armed track. An unavailable input retains its reference while still allowing disarm and monitor-off; stalled audio processing stops capture with a failed receipt and retains partial media. [Scope and limits](docs/RECORDING_READINESS.md) include the message-thread watchdog and pending physical-device qualification.
-- Edit and Mix expose native audio Pan/Balance controls and six SDK Pan Law settings through the same transactions as MCP. Read/Touch/Latch/Write use the actual pan curve; [Pan workflow](docs/PAN_WORKFLOW.md) documents real stereo gain behavior, PCM checks and boundaries.
-- The primary platform is macOS on Apple Silicon. Windows is planned, not verified.
+```sh
+git clone --recurse-submodules https://github.com/linnn-nb/forma.git
+cd forma
+cmake --preset release
+cmake --build --preset release --target NativeDAW
+open build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app
+```
 
-For milestone definitions and honest verification status, see [Product scope](docs/PRODUCT_SPEC.md), [Architecture](docs/ARCHITECTURE.md), [M0 report](docs/M0_REPORT.md), [Verification](docs/VERIFICATION.md), and [Next steps](docs/NEXT_STEPS.md). Local build logs and sample sessions are intentionally not included in this public source snapshot.
+使用「文件→导入音频」，空格播放/停止；编辑与混音操作可用 Undo/Redo，另存 `.tracktionedit` 工程。完整界面正在重做，尚未实现的能力不会显示成可用按钮。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
+
+开发者可设置 `FORMA_SIGNING_IDENTITY` 为本机代码签名证书 SHA1；签名身份未配置的构建不保证麦克风授权跨构建保留。固定签名并非签名公证或正式发行。外部 MIDI、实体录音和持续可靠性仍有待实测。
 
 ## Build from source
 
@@ -43,7 +36,7 @@ cmake --build --preset release
 ctest --preset release --output-on-failure
 ```
 
-The current development target produces `build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`. CoreAudio device tests use the available local audio device; a passing automated test suite does not replace microphone, MIDI-hardware, long-run or full GUI acceptance.
+The current development target produces `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`. CoreAudio device tests use the available local audio device; a passing automated test suite does not replace microphone, MIDI-hardware, long-run or full GUI acceptance.
 
 ## Connect an external agent
 

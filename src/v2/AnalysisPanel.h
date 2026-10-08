@@ -2,152 +2,848 @@
 #include "LoudnessCurveView.h"
 #include "SpectrumView.h"
 
-class AnalysisPanel final : public juce::Component {
+class AnalysisPanel final : public juce::Component
+{
 public:
-    using Call=std::function<Json(const std::string&,const Json&)>;
-    AnalysisPanel(Call call,std::function<void()> close):call(std::move(call)),close(std::move(close)){
+    using Call = std::function<Json(const std::string&, const Json&)>;
+    AnalysisPanel(Call call, std::function<void()> close) : call(std::move(call)), close(std::move(close))
+    {
         setComponentID("analysis.panel");
-        for(auto* child:std::initializer_list<juce::Component*>{&title,&hint,&start,&end,&run,&check,&cancel,&pause,&dismiss,&target,&tolerance,&truePeakCeiling,&endingCeiling,&quietEnding,&summary,&viewport})addAndMakeVisible(child);
-        title.setText(text("Master 分析 / 交付检查"),juce::dontSendNotification);title.setFont(juce::FontOptions(22));
-        hint.setText(text("离线 Master · 32-bit float · 48 kHz 工程采样位置 · 区间最多 5 分钟；播放和录音优先。"),juce::dontSendNotification);
-        start.setComponentID("analysis.start_samples");end.setComponentID("analysis.end_samples");start.setInputRestrictions(16,"0123456789");end.setInputRestrictions(16,"0123456789");
-        run.setComponentID("analysis.master.run");cancel.setComponentID("analysis.cancel");dismiss.setComponentID("analysis.close");
-        check.setComponentID("analysis.delivery.run");pause.setComponentID("analysis.pause");pause.setTooltip(text("请求暂停/继续当前分析；播放和录音仍优先。60秒截止包含暂停，插件或I/O调用不能立即抢占。"));
-        target.setComponentID("delivery.target_lufs");tolerance.setComponentID("delivery.lufs_tolerance");truePeakCeiling.setComponentID("delivery.true_peak_ceiling");endingCeiling.setComponentID("delivery.ending_peak_ceiling");quietEnding.setComponentID("delivery.quiet_ending");
-        for(auto* editor:{&target,&tolerance,&truePeakCeiling,&endingCeiling})editor->setInputRestrictions(12,"-0123456789.");
-        target.setText("-14",false);tolerance.setText("1",false);truePeakCeiling.setText("-1",false);endingCeiling.setText("-60",false);quietEnding.setToggleState(true,juce::dontSendNotification);
-        target.setTooltip(text("示例目标，可修改；不是平台认证。范围 -70 到 0 LUFS。"));tolerance.setTooltip(text("目标响度的允许偏差，0 到 6 LU。"));truePeakCeiling.setTooltip(text("True Peak 上限，-20 到 0 dBTP，包含上限值。"));endingCeiling.setTooltip(text("所选区间最后 100 ms 的 Sample Peak 上限，-120 到 0 dBFS。不能证明效果器尾音完整。"));
-        start.setTooltip(text("起始采样位置，包含该采样"));end.setTooltip(text("结束采样位置，不包含该采样"));
-        summary.setComponentID("analysis.summary");summary.setMultiLine(true);summary.setReadOnly(true);summary.setScrollbarsShown(true);
-        viewport.setViewedComponent(&rows,false);viewport.setScrollBarsShown(true,false);rows.addChildComponent(loudness);rows.addChildComponent(spectrum);
-        for(auto* child:std::initializer_list<juce::Component*>{&tap,&sourceClipChoice,&trackChoice,&mappingChoice,&silenceLevel,&silenceDuration,&transientLevel,&transientRise,&refractory,&eventsEnabled})addAndMakeVisible(child);
-        eventsEnabled.setComponentID("analysis.events.enabled");eventsEnabled.setToggleState(false,juce::dontSendNotification);eventsEnabled.setTooltip(text("勾选后从实际所选信号链检测静音与能量瞬态，参数在左侧。关闭表示本次未分析这些事件，不表示它们不存在。"));eventsEnabled.onClick=[this]{mode();update(state);};
-        tap.setComponentID("analysis.tap");tap.addItem(text("Master"),1);tap.addItem(text("原始源片段"),2);tap.addItem(text("轨道插入前 / 推子前"),3);tap.addItem(text("轨道插入后 / 推子前"),4);tap.addItem(text("Bus 输出 / 推子后"),5);tap.addItem(text("Clip FX 后 / 单片段"),6);trackChoice.setComponentID("analysis.track");tap.setSelectedId(1,juce::dontSendNotification);
-        sourceClipChoice.setComponentID("analysis.source_clip");mappingChoice.setComponentID("analysis.mapping_clip");
-        for(auto pair:std::initializer_list<std::pair<juce::TextEditor*,const char*>>{{&silenceLevel,"source.silence_dbfs"},{&silenceDuration,"source.silence_ms"},{&transientLevel,"source.transient_dbfs"},{&transientRise,"source.transient_rise"},{&refractory,"source.refractory_ms"}}){pair.first->setComponentID(pair.second);pair.first->setInputRestrictions(12,"-0123456789.");}
-        silenceLevel.setText("-60",false);silenceDuration.setText("100",false);transientLevel.setText("-36",false);transientRise.setText("12",false);refractory.setText("50",false);
-        tap.onChange=[this]{ranges();rowSignature.clear();update(state);};sourceClipChoice.onChange=[this]{ranges();};mappingChoice.onChange=[this]{rowSignature.clear();update(state);};
-        mode();
-        run.onClick=[this]{submit(false);};check.onClick=[this]{submit(true);};
-        cancel.onClick=[this]{try{update(this->call("cancel",{{"artifact_id",state["request"]["artifact_id"]}}));}catch(const std::exception& e){error(e.what());}};
-        pause.onClick=[this]{try{update(this->call("pause",{{"artifact_id",state["request"]["artifact_id"]},{"paused",!state.value("pause",Json::object()).value("user_requested",false)}}));}catch(const std::exception& e){error(e.what());}};
-        dismiss.onClick=[this]{this->close();};
-    }
-    void bind(const Json& facts,const Json& status){binding=facts;localError.clear();trackIDs.clear();trackChoice.clear(juce::dontSendNotification);int trackIndex=1,trackSelected=0;for(const auto& track:facts.at("tracks"))if(track.value("type",std::string{})!="folder"&&track.value("type",std::string{})!="vca"){trackIDs.push_back(track["id"]);trackChoice.addItem(text(track["name"].get<std::string>())+text(" · ")+text(track["type"].get<std::string>()),trackIndex);if(track["id"]==facts.value("analysis_selected_track",std::string{}))trackSelected=trackIndex;++trackIndex;}trackChoice.setSelectedId(trackSelected?trackSelected:trackIDs.empty()?0:1,juce::dontSendNotification);sourceClips.clear();sourceClipChoice.clear(juce::dontSendNotification);int choice=1,selected=0;for(const auto& track:facts.at("tracks"))for(auto clip:track.at("clips"))if(clip.value("kind",std::string{})=="audio"){clip["track_name"]=track["name"];sourceClips.push_back(clip);sourceClipChoice.addItem(clipLabel(track["name"],clip["name"],clip["start_samples"],clip["start_samples"].get<int64_t>()+clip["length_samples"].get<int64_t>()),choice);if(clip["id"]==facts.value("analysis_selected_clip",std::string{}))selected=choice;++choice;}sourceClipChoice.setSelectedId(selected?selected:sourceClips.empty()?0:1,juce::dontSendNotification);if(status.value("receipt",Json(nullptr)).is_object()&&status["receipt"]["binding"]["purpose"]=="source")tap.setSelectedId(2,juce::dontSendNotification);if(status.value("receipt",Json(nullptr)).is_object()&&status["receipt"]["binding"]["purpose"]=="track"){const auto tapName=status["receipt"]["binding"]["tap_point"].get<std::string>();tap.setSelectedId(tapName=="track_pre_inserts"?3:tapName=="track_post_inserts"?4:5,juce::dontSendNotification);for(size_t i=0;i<trackIDs.size();++i)if(trackIDs[i]==status["receipt"]["binding"]["object_id"].get<std::string>())trackChoice.setSelectedId(int(i)+1,juce::dontSendNotification);}if(status.value("receipt",Json(nullptr)).is_object()&&status["receipt"]["binding"]["purpose"]=="clip"){tap.setSelectedId(6,juce::dontSendNotification);for(size_t i=0;i<sourceClips.size();++i)if(sourceClips[i]["id"]==status["receipt"]["binding"]["object_id"])sourceClipChoice.setSelectedId(int(i)+1,juce::dontSendNotification);}if(!raw()&&status.value("receipt",Json(nullptr)).is_object()){const auto profile=status["receipt"]["binding"].value("detector_profile",Json(nullptr));eventsEnabled.setToggleState(profile.is_object(),juce::dontSendNotification);if(profile.is_object()){for(auto pair:std::initializer_list<std::pair<juce::TextEditor*,const char*>>{{&silenceLevel,"silence_threshold_dbfs"},{&silenceDuration,"minimum_silence_ms"},{&transientLevel,"transient_minimum_dbfs"},{&transientRise,"transient_rise_db"},{&refractory,"transient_refractory_ms"}})pair.first->setText(text(profile.at(pair.second).dump()),false);}}ranges();update(status);}
-    void update(const Json& value){
-        state=value;const bool busy=state.value("busy",false);mode();run.setEnabled(!busy&&(!(raw()||clipFx())||!sourceClips.empty())&&(!routed()||!trackIDs.empty()));check.setEnabled(!busy&&tap.getSelectedId()==1);cancel.setEnabled(busy);pause.setEnabled(busy&&state.value("state",std::string{})!="cancelling");pause.setButtonText(text(state.value("pause",Json::object()).value("user_requested",false)?"继续分析":"暂停分析"));start.setEnabled(!busy);end.setEnabled(!busy);tap.setEnabled(!busy);sourceClipChoice.setEnabled(!busy);trackChoice.setEnabled(!busy);
-        for(auto* editor:{&target,&tolerance,&truePeakCeiling,&endingCeiling})editor->setEnabled(!busy);quietEnding.setEnabled(!busy);
-        for(auto* editor:{&silenceLevel,&silenceDuration,&transientLevel,&transientRise,&refractory})editor->setEnabled(!busy);eventsEnabled.setEnabled(!busy);
-        const auto result=state.value("receipt",Json(nullptr));std::string signature=result.is_object()?result.value("artifact_id",std::string{})+":"+(result.value("current",false)?"current":"stale"):"empty";
-        const bool sourceResult=result.is_object()&&result.value("state",std::string{})=="completed"&&result["binding"]["purpose"]=="source";Json mapping=nullptr;
-        mappingChoice.setVisible(sourceResult);
-        if(sourceResult){const auto& views=result["mapping_set"]["clips"];const auto mapSignature=views.dump();if(mapSignature!=lastMaps){const auto old=mappingChoice.getSelectedId();const auto prior=old>0&&old<=int(mappingIDs.size())?mappingIDs[size_t(old-1)]:std::string{};lastMaps=mapSignature;mappingIDs.clear();mappingChoice.clear(juce::dontSendNotification);int selected=0,i=1;for(const auto& view:views){const std::string id=view["clip_id"];mappingIDs.push_back(id);mappingChoice.addItem(clipLabel(view["track_name"],view["name"],view["start_samples"],view["end_samples"]),i);if(id==prior||(prior.empty()&&view["clip_id"]==result["binding"]["object_id"]))selected=i;++i;}mappingChoice.setSelectedId(selected?selected:mappingIDs.empty()?0:1,juce::dontSendNotification);}const auto choice=mappingChoice.getSelectedId();if(choice>0&&choice<=int(views.size()))mapping=views[size_t(choice-1)];signature+=mapSignature+":"+std::to_string(choice);}
-        if(signature!=rowSignature){rowSignature=signature;buttons.clear();loudness.setVisible(result.is_object()&&result.value("state",std::string{})=="completed"&&result.contains("loudness_curve"));
-            spectrum.setVisible(result.is_object()&&result.value("state",std::string{})=="completed"&&result.contains("spectrum"));if(spectrum.isVisible())spectrum.bind(result["spectrum"],result.value("current",false));
-            if(loudness.isVisible())loudness.bind(result["loudness_curve"],result.value("current",false),[mapping,sourceResult](const Json& point){if(!sourceResult)return true;if(!mapping.is_object())return false;const auto frame=point.at("source_location_frame").get<int64_t>();return analysis::projectSourceEvent({{"id",point["point_index"]},{"kind","loudness_point"},{"source_start_frame",frame},{"source_end_frame",frame+1}},mapping).is_object();},[this,result,mapping,sourceResult](const Json& point){
-                Json args={{"artifact_id",result["artifact_id"]},{"point_index",point["point_index"]},{"series",point["series"]}};if(sourceResult){args["clip_id"]=mapping["clip_id"];args["base_revision"]=result["mapping_revision"];}
-                try{this->call("locate_loudness",args);this->close();}catch(const std::exception& e){error(e.what());}
-            });
-            if(result.is_object()&&result.value("state",std::string{})=="completed")for(const auto& event:result.at("events")){
-            auto button=std::make_unique<juce::TextButton>();const auto index=event["id"].get<int>();button->setComponentID("analysis.locate:"+juce::String(index));
-            Json location=sourceResult?(mapping.is_object()?analysis::projectSourceEvent(event,mapping):Json(nullptr)):Json(event);
-            const auto kind=event["kind"].get<std::string>();const auto label=kind=="silence"?"静音门限区间":kind=="transient_candidate"?"瞬态候选 / 估计":"超过满刻度";
-            if(sourceResult)button->setButtonText(text(label)+text(" · 源帧 ")+juce::String(event["source_start_frame"].get<int64_t>())+" – "+juce::String(event["source_end_frame"].get<int64_t>())+(location.is_object()?text(" · 定位 ")+juce::String(location["start_samples"].get<int64_t>()/48000.,6)+text(" 秒"):text(" · 当前片段内不可定位")));
-            else button->setButtonText(text("定位 ")+juce::String(event["start_samples"].get<int64_t>()/48000.,6)+" – "+juce::String(event["end_samples"].get<int64_t>()/48000.,6)+text(" 秒 · ")+text(label));button->setEnabled(result.value("current",false)&&location.is_object());
-            Json locate={{"artifact_id",result["artifact_id"]},{"event_id",index}};if(sourceResult&&mapping.is_object()){locate["clip_id"]=mapping["clip_id"];locate["base_revision"]=result["mapping_revision"];}
-            button->onClick=[this,locate]{try{this->call("locate",locate);this->close();}catch(const std::exception& e){error(e.what());}};rows.addAndMakeVisible(*button);buttons.push_back(std::move(button));
-        }resized();}
-        juce::String display=localError.empty()?juce::String{}:text("操作未完成：")+text(localError)+"\n";display+=text("状态：")+text(state.value("state",std::string("idle")));
-        if(busy)display+=state["request"].value("purpose",std::string{})=="source"?text(" · 源媒体读取 / 测量，进度未估算"):text(" · 渲染进度 ")+juce::String(state.value("progress",0.)*100.,0)+"%";
-        const auto resource=state.value("runtime",Json(nullptr));if(resource.is_object()){const auto& p=resource["preparation_ms"];const auto& w=resource["worker_ms"];display+=text("\n完成阶段耗时 · 启动准备 ")+juce::String(p.value("total",0.),1)+text(" ms · 媒体校验 ")+juce::String(w.value("source_hash",0.)+w.value("final_validation",0.),1)+text(" ms · 渲染 ")+juce::String(w.value("render",0.),1)+text(" ms · 测量 ")+juce::String(w.value("measure",0.),1)+text(" ms\n源引用 ")+juce::String(resource.value("source_references",uint64_t(0)))+text(" · SHA256实际读取 ")+juce::String(resource.value("source_hash_file_reads",uint64_t(0)))+text(" 次 / ")+juce::String(resource.value("source_hash_bytes_read",uint64_t(0)))+text(" 字节 · 截止包含暂停\n");}
-        if(busy){const auto policy=state.value("pause",Json::object());if(policy.value("user_requested",false)||policy.value("playback_requested",false))display+=text(policy.value("worker_parked",false)?"工作线程已停驻；播放/录音优先，继续不能绕过该限制。\n":"暂停已请求，等待当前SDK/插件/I/O调用到达检查点。\n");}
-        if(result.is_object()&&result.value("state",std::string{})=="completed"){
-            const auto& provenance=result.at("binding");display+=result.value("current",false)?text(" · 当前工程证据\n"):text(" · 历史快照：工程已变化或正在播放，请重新分析\n");
-            auto measured=[&](const char* key,int digits){auto v=result.value(key,Json(nullptr));return v.is_number()?juce::String(v.get<double>(),digits):text("不可用 / 静音或区间不足");};
-            display+=text("Sample Peak ")+measured("peak_dbfs",2)+" dBFS    True Peak "+measured("true_peak_dbtp",2)+" dBTP\n";
-            display+="RMS "+measured("rms_dbfs",2)+" dBFS    LUFS-I "+measured("lufs_i",2)+"    LUFS-M max "+measured("lufs_m_max",2)+"    LUFS-S max "+measured("lufs_s_max",2)+"\n";
-            if(result.contains("loudness_curve"))display+=text("连续响度：")+juce::String(result["loudness_curve"]["point_count"].get<int64_t>())+text(" 点 · 100 ms网格 · 下方选点/最高值及实际窗口定位；静音−∞与窗口不足分开。\n");
-            if(result.contains("spectrum")){const auto& spectral=result["spectrum"];display+=text("频谱：")+(spectral["status"]=="measured"?juce::String(spectral["window_count"].get<int64_t>())+text(" 个 4096帧实际窗 / 2049频点 · 下方频谱/频段功率；不是未加窗RMS。\n"):text("范围不足4096帧，没有测量。\n"));}
-            display+=text("立体声相关度 ")+measured("correlation",4)+text(" · 超过满刻度 ")+juce::String(result["over_full_scale_frames"].get<int64_t>())+text(" 帧 · 事件总数 ")+juce::String(result["event_count"].get<int64_t>())+text(" / 省略 ")+juce::String(result["events_omitted"].get<int64_t>())+"\n";
-            if(result.contains("delivery")){
-                const auto& report=result.at("delivery");const auto& profile=report.at("profile");
-                display+=text("交付条件：")+stateText(report["status"].get<std::string>())+text(" · 目标 ")+juce::String(profile["target_lufs"].get<double>(),2)+" LUFS ±"+juce::String(profile["lufs_tolerance"].get<double>(),2)+" LU · TP ≤ "+juce::String(profile["true_peak_ceiling_dbtp"].get<double>(),2)+" dBTP\n";
-                for(const auto& criterion:report.at("checks"))display+=text(criterion["label"].get<std::string>())+text("：")+stateText(criterion["status"].get<std::string>())+"  ";
-                const auto& ending=result.at("ending_window");auto endPeak=ending.at("peak_dbfs");
-                display+=text("\n实际末尾窗口 ")+juce::String(ending["duration_ms"].get<double>(),1)+" ms · Sample Peak "+(endPeak.is_number()?juce::String(endPeak.get<double>(),2):text("−∞ / 静音"))+" dBFS · ≤ "+juce::String(profile["ending_peak_ceiling_dbfs"].get<double>(),2)+" dBFS\n";
-                if(result.contains("file_verification")){
-                    const auto& file=result["file_verification"];display+=text("已发布 WAV / PCM24 · ")+juce::String(file["frames"].get<int64_t>())+text(" 帧 · SHA256: ")+text(file["sha256"].get<std::string>())+text("\n编码前浮点与编码后文件分开测量；另测文件外 2 秒信号，不能证明完整尾音或平台认证。\n");
-                }else display+=text("只检查所选范围，活跃尾部需人工复核；安静末尾不能证明混响尾音完整。不是平台认证或导出文件验收。\n");
-            }
-            if(sourceResult){
-                const auto& counts=result["event_counts"];display+=text("原始源片段 · 静音门限段 ")+juce::String(counts["silence"].get<int64_t>())+text(" · 瞬态候选 ")+juce::String(counts["transient_candidate"].get<int64_t>())+"\n";
-                display+=text("源文件采样率 ")+juce::String(result["sample_rate"].get<double>(),0)+text(" Hz · 原生源帧 [")+juce::String(provenance["source_start_frame"].get<int64_t>())+", "+juce::String(provenance["source_end_frame"].get<int64_t>())+")\n";
-                display+=text("原始测量 revision ")+juce::String(provenance["revision"].get<int64_t>())+text(" · 当前映射 revision ")+juce::String(result["mapping_revision"].get<int64_t>())+text(" · 片段视图 ")+juce::String(result["mapping_set"]["total"].get<int64_t>())+text(" / 省略 ")+juce::String(result["mapping_set"]["omitted"].get<int64_t>())+"\n";
-                display+=text("原始媒体未经过 Clip FX、增益、轨道或 Master 插入。移动/修剪/拆分只更新工程映射。瞬态为 5 ms 窗口能量上升估计，不是呼吸识别或表演质量判断。循环/自动变速/warp/反向映射不可用。\n");
-                display+=text("媒体 SHA256: ")+text(provenance["media_sha256"].get<std::string>())+"\n";
-            }else{display+=text("Tap: ")+text(provenance["tap_point"].get<std::string>())+text(" · 对象 ")+text(provenance["object_id"].get<std::string>())+text(" · revision ")+juce::String(provenance["revision"].get<int64_t>())+text(" · 区间 [")+juce::String(provenance["start_samples"].get<int64_t>())+", "+juce::String(provenance["end_samples"].get<int64_t>())+")\n";if(provenance["purpose"]=="clip")display+=text("单个原生片段效果链 · 插件 ")+juce::String(provenance["tap_configuration"]["plugin_ids"].size())+text(" · 含片段增益/声像及淡化；排除其他片段、轨道和 Master。\n");if(provenance["purpose"]=="track")display+=text("原生信号链边界 · 插入序号 ")+juce::String(provenance["tap_configuration"]["plugin_boundary_index"].get<int>())+text(" · 推子/声像 ")+(provenance["tap_configuration"]["fader_included"].get<bool>()?text("已包含"):text("未包含"))+text(" · 不含 Master；保留上游路由与发送。\n");}
-            if(!sourceResult){if(result.contains("processed_features")){
-                const auto& features=result["processed_features"];const auto& counts=result["event_counts"];display+=text("处理后事件 · 静音门限段 ")+juce::String(counts["silence"].get<int64_t>())+text(" · 瞬态候选 / 估计 ")+juce::String(counts["transient_candidate"].get<int64_t>())+text(" · 工程采样位置\n");
-                const auto& profile=features["profile"];display+=text("实际条件：静音 ≤ ")+juce::String(profile["silence_threshold_dbfs"].get<double>(),1)+text(" dBFS / ≥ ")+juce::String(profile["minimum_silence_ms"].get<double>(),1)+text(" ms；瞬态峰值 ≥ ")+juce::String(profile["transient_minimum_dbfs"].get<double>(),1)+text(" dBFS / 上升 ≥ ")+juce::String(profile["transient_rise_db"].get<double>(),1)+text(" dB / 间隔 ≥ ")+juce::String(profile["transient_refractory_ms"].get<double>(),1)+text(" ms。\n");
-                display+=text("结果来自实际所选链的渲染 PCM；瞬态为 5 ms 窗口相对前 20 ms 的能量上升估计，不是呼吸识别或表演质量判断。\n条件 SHA256: ")+text(features["profile_sha256"].get<std::string>())+"\n";
-            }else display+=text("本次未检测静音 / 瞬态；勾选开关后重新分析。\n");}
-            display+=text("Artifact: ")+text(result["artifact_id"].get<std::string>())+text("\n处理链 SHA256: ")+text(provenance["processing_chain_hash"].get<std::string>());
-            display+=text(result.contains("file_verification")?"\n当前电平来自实际 PCM24 文件；浮点编码风险另列，不据此断言原媒体已失真。":!sourceResult&&provenance["tap_point"]!="master"?"\n本 tap 超满刻度不等于最终 Master 或导出削波；后续处理会改变电平，须另测实际输出。静音为门限测量，瞬态为估计；仅展示前128段。":"\n超过 0 dBFS 表示整数导出削波风险，不能据此断言原始媒体已经失真。静音为门限测量，瞬态为估计；仅展示前 128 段。");
-        }else if(result.is_object()&&result.contains("error"))display+="\n"+text(result["error"].get<std::string>());
-        else display+=text(raw()?"\n输入原生源帧范围；仅解码实际原始媒体。没有测量回执就没有结论。":"\n输入工程采样区间，点击分析；结果只来自实际 Tracktion 渲染。没有测量回执就没有结论。");
-        if(summary.getText()!=display)summary.setText(display,false);
-    }
-    void paint(juce::Graphics& g)override{
-        g.fillAll(base());g.setColour(juce::Colour(0xffb7c7d8));g.setFont(juce::FontOptions(12));
-        g.drawText(text(raw()?"源起始帧":"起始采样"),24,94,100,25,juce::Justification::left);g.drawText(text(raw()?"源结束帧":"结束采样"),260,94,100,25,juce::Justification::left);
-        if(raw()||eventsEnabled.getToggleState()){for(auto label:std::initializer_list<std::pair<int,const char*>>{{24,"静音 dBFS"},{216,"最短 ms"},{396,"瞬态 dBFS"},{588,"上升 dB"},{758,"间隔 ms"}})g.drawText(text(label.second),label.first,raw()?144:184,94,25,juce::Justification::left);}
-        if(!raw()&&!eventsEnabled.getToggleState())g.drawText(text("本次不检测静音与瞬态；启用后可调整五项条件。"),24,184,900,28,juce::Justification::left);
-        if(tap.getSelectedId()==1){g.drawText(text("目标 LUFS"),24,144,78,25,juce::Justification::left);g.drawText(text("偏差 ±LU"),186,144,66,25,juce::Justification::left);g.drawText(text("TP 上限 dBTP"),330,144,110,25,juce::Justification::left);g.drawText(text("末尾上限 dBFS"),536,144,124,25,juce::Justification::left);}
-        if(mappingChoice.isVisible())g.drawText(text("定位到当前片段"),24,508,184,25,juce::Justification::left);
-    }
-    void resized()override{
-        title.setBounds(24,18,260,35);tap.setBounds(292,24,172,28);sourceClipChoice.setBounds(476,24,std::max(140,getWidth()-634),28);trackChoice.setBounds(sourceClipChoice.getBounds());dismiss.setBounds(getWidth()-136,24,112,28);hint.setBounds(24,58,getWidth()-48,28);
-        start.setBounds(120,94,125,28);end.setBounds(352,94,145,28);run.setBounds(514,94,128,28);check.setBounds(654,94,168,28);cancel.setBounds(834,94,100,28);pause.setBounds(942,94,128,28);target.setBounds(102,144,76,28);tolerance.setBounds(252,144,68,28);truePeakCeiling.setBounds(440,144,76,28);endingCeiling.setBounds(660,144,76,28);quietEnding.setBounds(758,144,250,28);
-        const int detectorY=raw()?144:184;silenceLevel.setBounds(124,detectorY,75,28);silenceDuration.setBounds(316,detectorY,65,28);transientLevel.setBounds(502,detectorY,75,28);transientRise.setBounds(687,detectorY,60,28);refractory.setBounds(860,detectorY,65,28);eventsEnabled.setBounds(938,184,158,28);
-        summary.setBounds(24,raw()?194:238,getWidth()-48,raw()?306:262);mappingChoice.setBounds(212,508,getWidth()-236,26);viewport.setBounds(24,546,getWidth()-48,std::max(60,getHeight()-570));const int curveHeight=loudness.isVisible()?LoudnessCurveView::preferredHeight+12:0,spectrumHeight=spectrum.isVisible()?SpectrumView::preferredHeight+12:0;rows.setSize(std::max(400,viewport.getWidth()-18),std::max(viewport.getHeight(),curveHeight+spectrumHeight+int(buttons.size())*38));loudness.setBounds(0,0,rows.getWidth(),LoudnessCurveView::preferredHeight);spectrum.setBounds(0,curveHeight,rows.getWidth(),SpectrumView::preferredHeight);for(size_t i=0;i<buttons.size();++i)buttons[i]->setBounds(0,curveHeight+spectrumHeight+int(i)*38,rows.getWidth(),32);
-    }
-private:
-    static juce::String clipLabel(const std::string& track,const std::string& clip,int64_t begin,int64_t end){return text(track+" / "+clip)+"  ["+juce::String(begin/48000.,6)+" – "+juce::String(end/48000.,6)+text(" 秒]");}
-    bool raw()const{return tap.getSelectedId()==2;}
-    bool clipFx()const{return tap.getSelectedId()==6;}
-    bool routed()const{return tap.getSelectedId()>=3&&tap.getSelectedId()<=5;}
-    std::string trackTap()const{return tap.getSelectedId()==3?"track_pre_inserts":tap.getSelectedId()==4?"track_post_inserts":"bus";}
-    void mode(){
-        title.setText(text("音频分析 / 交付检查"),juce::dontSendNotification);sourceClipChoice.setVisible(raw()||clipFx());trackChoice.setVisible(routed());
-        for(auto* component:std::initializer_list<juce::Component*>{&target,&tolerance,&truePeakCeiling,&endingCeiling,&quietEnding,&check})component->setVisible(tap.getSelectedId()==1);
-        eventsEnabled.setVisible(!raw());
-        for(auto pair:std::initializer_list<std::pair<juce::TextEditor*,const char*>>{{&silenceLevel,"silence_dbfs"},{&silenceDuration,"silence_ms"},{&transientLevel,"transient_dbfs"},{&transientRise,"transient_rise"},{&refractory,"refractory_ms"}}){pair.first->setVisible(raw()||eventsEnabled.getToggleState());pair.first->setComponentID(juce::String(raw()?"source.":"analysis.events.")+pair.second);}
-        start.setTooltip(text(raw()?"原始媒体采样率下的起始源帧，包含该帧":"工程 48 kHz 起始采样位置，包含该采样"));end.setTooltip(text(raw()?"原始媒体采样率下的结束源帧，不包含该帧":"工程 48 kHz 结束采样位置，不包含该采样"));
-        run.setComponentID(raw()?"analysis.source.run":clipFx()?"analysis.clip.run":routed()?"analysis.track.run":"analysis.master.run");run.setButtonText(text(raw()?"分析源片段":clipFx()?"分析片段 FX":routed()?"分析轨道":"分析 Master"));
-        hint.setText(text(raw()?"原始媒体 · 原生源帧位置 · 不含 Clip FX、增益或插入；静音为门限段，瞬态为能量候选。":"离线 Master · 32-bit float · 48 kHz 工程采样位置 · 区间最多 5 分钟；播放和录音优先。"),juce::dontSendNotification);if(routed())hint.setText(text(tap.getSelectedId()==3?"插入前 / 推子前 · 包含 Clip FX、输入合成与乐器 / Aux 返回；不含目标效果器及 Master。":tap.getSelectedId()==4?"插入后 / 推子前 · 包含目标效果器；不含目标推子、声像及 Master。":"Bus 输出 / 推子后 · 包含整条轨道链与上游路由 / 发送；不含 Master。"),juce::dontSendNotification);if(clipFx())hint.setText(text("单个片段增益/声像 → 原生 Clip FX → 淡化；不含其他片段、轨道输入/插入/推子及 Master。"),juce::dontSendNotification);if(getWidth()>0)resized();repaint();
-    }
-    void ranges(){
-        mode();if(raw()){const auto index=sourceClipChoice.getSelectedId();if(index<=0||index>int(sourceClips.size())){start.setText("0",false);end.setText("0",false);return;}const auto& clip=sourceClips[size_t(index-1)];const double rate=clip["source_sample_rate"],offset=clip["source_offset_seconds"],speed=clip["speed_ratio"];if(!clip.value("source_mapping_available",false)){start.setText("0",false);end.setText(juce::String(clip["source_frames"].get<int64_t>()),false);hint.setText(text("当前循环/warp/自动变速/反向映射不可用；默认分析整份原始媒体，不推测片段覆盖范围。"),juce::dontSendNotification);return;}start.setText(juce::String(std::max(int64_t(0),int64_t(std::llround(offset*rate)))),false);end.setText(juce::String(std::min(clip["source_frames"].get<int64_t>(),int64_t(std::llround((offset+clip["length_samples"].get<double>()*speed/48000.)*rate)))),false);}
-        else if(clipFx()){const auto index=sourceClipChoice.getSelectedId();if(index<=0||index>int(sourceClips.size())){start.setText("0",false);end.setText("0",false);return;}const auto& c=sourceClips[size_t(index-1)];start.setText(juce::String(c["start_samples"].get<int64_t>()),false);end.setText(juce::String(c["start_samples"].get<int64_t>()+c["length_samples"].get<int64_t>()),false);}
-        else{auto range=binding.value("time_selection",Json(nullptr));start.setText(juce::String(range.is_null()?int64_t(0):range["start_samples"].get<int64_t>()),false);end.setText(juce::String(range.is_null()?binding.value("length_samples",int64_t(0)):range["end_samples"].get<int64_t>()),false);}
-    }
-    static int64_t number(const juce::String& text){auto str=text.toStdString();if(str.empty()||str.size()>16)throw std::runtime_error("请输入整数采样位置");size_t consumed=0;auto n=std::stoll(str,&consumed);if(consumed!=str.size()||n<0)throw std::runtime_error("采样位置无效");return n;}
-    static double decimal(const juce::String& text){const auto str=text.toStdString();size_t consumed=0;const double n=std::stod(str,&consumed);if(consumed!=str.size()||!std::isfinite(n))throw std::runtime_error("分析条件必须是有限数值");return n;}
-    static juce::String stateText(const std::string& status){return status=="passed"?text("通过"):status=="failed"?text("未通过"):status=="review"||status=="needs_review"?text("需人工复核"):status=="not_required"?text("本次未要求"):text("证据不足");}
-    Json detectorProfile()const{return {{"silence_threshold_dbfs",decimal(silenceLevel.getText())},{"minimum_silence_ms",decimal(silenceDuration.getText())},{"transient_minimum_dbfs",decimal(transientLevel.getText())},{"transient_rise_db",decimal(transientRise.getText())},{"transient_refractory_ms",decimal(refractory.getText())}};}
-    void submit(bool delivery){localError.clear();try{
-        Json args={{"session_token",binding.at("session_token")},{"base_revision",binding.at("revision")},{"start_samples",number(start.getText())},{"end_samples",number(end.getText())},{"request_key","gui:"+juce::Uuid().toString().toStdString()}};
-        if(raw()){
-            const auto index=sourceClipChoice.getSelectedId();if(index<=0||index>int(sourceClips.size()))throw std::runtime_error("请选择真实音频片段");args["clip"]=sourceClips[size_t(index-1)]["id"];args["source_start_frame"]=args["start_samples"];args["source_end_frame"]=args["end_samples"];args.erase("start_samples");args.erase("end_samples");args["profile"]=detectorProfile();update(call("source",args));return;
+        for (auto* child : std::initializer_list<juce::Component*>{
+                 &title, &hint, &start, &end, &run, &check, &cancel, &pause, &dismiss, &target, &tolerance,
+                 &truePeakCeiling, &endingCeiling, &quietEnding, &summary, &viewport})
+            addAndMakeVisible(child);
+        title.setText(text("Master 分析 / 交付检查"), juce::dontSendNotification);
+        title.setFont(juce::FontOptions(22));
+        hint.setText(text("离线 Master · 32-bit float · 48 kHz 工程采样位置 · 区间最多 5 分钟；播放和录音优先。"),
+                     juce::dontSendNotification);
+        start.setComponentID("analysis.start_samples");
+        end.setComponentID("analysis.end_samples");
+        start.setInputRestrictions(16, "0123456789");
+        end.setInputRestrictions(16, "0123456789");
+        run.setComponentID("analysis.master.run");
+        cancel.setComponentID("analysis.cancel");
+        dismiss.setComponentID("analysis.close");
+        check.setComponentID("analysis.delivery.run");
+        pause.setComponentID("analysis.pause");
+        pause.setTooltip(
+            text("请求暂停/继续当前分析；播放和录音仍优先。60秒截止包含暂停，插件或I/O调用不能立即抢占。"));
+        target.setComponentID("delivery.target_lufs");
+        tolerance.setComponentID("delivery.lufs_tolerance");
+        truePeakCeiling.setComponentID("delivery.true_peak_ceiling");
+        endingCeiling.setComponentID("delivery.ending_peak_ceiling");
+        quietEnding.setComponentID("delivery.quiet_ending");
+        for (auto* editor : {&target, &tolerance, &truePeakCeiling, &endingCeiling})
+            editor->setInputRestrictions(12, "-0123456789.");
+        target.setText("-14", false);
+        tolerance.setText("1", false);
+        truePeakCeiling.setText("-1", false);
+        endingCeiling.setText("-60", false);
+        quietEnding.setToggleState(true, juce::dontSendNotification);
+        target.setTooltip(text("示例目标，可修改；不是平台认证。范围 -70 到 0 LUFS。"));
+        tolerance.setTooltip(text("目标响度的允许偏差，0 到 6 LU。"));
+        truePeakCeiling.setTooltip(text("True Peak 上限，-20 到 0 dBTP，包含上限值。"));
+        endingCeiling.setTooltip(
+            text("所选区间最后 100 ms 的 Sample Peak 上限，-120 到 0 dBFS。不能证明效果器尾音完整。"));
+        start.setTooltip(text("起始采样位置，包含该采样"));
+        end.setTooltip(text("结束采样位置，不包含该采样"));
+        summary.setComponentID("analysis.summary");
+        summary.setMultiLine(true);
+        summary.setReadOnly(true);
+        summary.setScrollbarsShown(true);
+        viewport.setViewedComponent(&rows, false);
+        viewport.setScrollBarsShown(true, false);
+        rows.addChildComponent(loudness);
+        rows.addChildComponent(spectrum);
+        for (auto* child : std::initializer_list<juce::Component*>{
+                 &tap, &sourceClipChoice, &trackChoice, &mappingChoice, &silenceLevel, &silenceDuration,
+                 &transientLevel, &transientRise, &refractory, &eventsEnabled})
+            addAndMakeVisible(child);
+        eventsEnabled.setComponentID("analysis.events.enabled");
+        eventsEnabled.setToggleState(false, juce::dontSendNotification);
+        eventsEnabled.setTooltip(text(
+            "勾选后从实际所选信号链检测静音与能量瞬态，参数在左侧。关闭表示本次未分析这些事件，不表示它们不存在。"));
+        eventsEnabled.onClick = [this]
+        {
+            mode();
+            update(state);
+        };
+        tap.setComponentID("analysis.tap");
+        tap.addItem(text("Master"), 1);
+        tap.addItem(text("原始源片段"), 2);
+        tap.addItem(text("轨道插入前 / 推子前"), 3);
+        tap.addItem(text("轨道插入后 / 推子前"), 4);
+        tap.addItem(text("Bus 输出 / 推子后"), 5);
+        tap.addItem(text("Clip FX 后 / 单片段"), 6);
+        trackChoice.setComponentID("analysis.track");
+        tap.setSelectedId(1, juce::dontSendNotification);
+        sourceClipChoice.setComponentID("analysis.source_clip");
+        mappingChoice.setComponentID("analysis.mapping_clip");
+        for (auto pair : std::initializer_list<std::pair<juce::TextEditor*, const char*>>{
+                 {&silenceLevel, "source.silence_dbfs"},
+                 {&silenceDuration, "source.silence_ms"},
+                 {&transientLevel, "source.transient_dbfs"},
+                 {&transientRise, "source.transient_rise"},
+                 {&refractory, "source.refractory_ms"}})
+        {
+            pair.first->setComponentID(pair.second);
+            pair.first->setInputRestrictions(12, "-0123456789.");
         }
-        if(eventsEnabled.getToggleState())args["detector_profile"]=detectorProfile();
-        if(clipFx()){const auto selected=sourceClipChoice.getSelectedId();if(selected<=0||selected>int(sourceClips.size()))throw std::runtime_error("请选择真实音频片段");args["clip"]=sourceClips[size_t(selected-1)]["id"];update(call("clip",args));return;}
-        if(routed()){const auto selected=trackChoice.getSelectedId();if(selected<=0||selected>int(trackIDs.size()))throw std::runtime_error("请选择真实音频 / 乐器 / Aux 轨道");args["track"]=trackIDs[size_t(selected-1)];args["tap_point"]=trackTap();update(call("track",args));return;}
-        if(delivery)args["profile"]={{"target_lufs",decimal(target.getText())},{"lufs_tolerance",decimal(tolerance.getText())},{"true_peak_ceiling_dbtp",decimal(truePeakCeiling.getText())},{"ending_peak_ceiling_dbfs",decimal(endingCeiling.getText())},{"expect_silent_ending",quietEnding.getToggleState()}};
-        update(call(delivery?"delivery":"master",args));
-    }catch(const std::exception& e){error(e.what());}}
-    void error(const std::string& message){localError=message;update(state);}
-    Call call;std::function<void()> close;Json binding=Json::object(),state=Json::object();std::string rowSignature,localError;
-    juce::ComboBox tap,sourceClipChoice,trackChoice,mappingChoice;std::vector<std::string> trackIDs;juce::TextEditor silenceLevel,silenceDuration,transientLevel,transientRise,refractory;std::vector<Json> sourceClips;std::vector<std::string> mappingIDs;std::string lastMaps;
-    juce::Label title,hint;juce::TextEditor start,end,target,tolerance,truePeakCeiling,endingCeiling,summary;juce::TextButton run{text("分析 Master")},check{text("流媒体交付检查")},cancel{text("取消分析")},pause{text("暂停分析")},dismiss{text("返回工程")};juce::ToggleButton quietEnding{text("检查末尾静音 / 截断风险")},eventsEnabled{text("检测静音 / 瞬态")};juce::Viewport viewport;juce::Component rows;LoudnessCurveView loudness;SpectrumView spectrum;std::vector<std::unique_ptr<juce::TextButton>> buttons;
+        silenceLevel.setText("-60", false);
+        silenceDuration.setText("100", false);
+        transientLevel.setText("-36", false);
+        transientRise.setText("12", false);
+        refractory.setText("50", false);
+        tap.onChange = [this]
+        {
+            ranges();
+            rowSignature.clear();
+            update(state);
+        };
+        sourceClipChoice.onChange = [this] { ranges(); };
+        mappingChoice.onChange = [this]
+        {
+            rowSignature.clear();
+            update(state);
+        };
+        mode();
+        run.onClick = [this] { submit(false); };
+        check.onClick = [this] { submit(true); };
+        cancel.onClick = [this]
+        {
+            try
+            {
+                update(this->call("cancel", {{"artifact_id", state["request"]["artifact_id"]}}));
+            }
+            catch (const std::exception& e)
+            {
+                error(e.what());
+            }
+        };
+        pause.onClick = [this]
+        {
+            try
+            {
+                update(this->call("pause",
+                                  {{"artifact_id", state["request"]["artifact_id"]},
+                                   {"paused", !state.value("pause", Json::object()).value("user_requested", false)}}));
+            }
+            catch (const std::exception& e)
+            {
+                error(e.what());
+            }
+        };
+        dismiss.onClick = [this] { this->close(); };
+    }
+    void bind(const Json& facts, const Json& status)
+    {
+        binding = facts;
+        localError.clear();
+        trackIDs.clear();
+        trackChoice.clear(juce::dontSendNotification);
+        int trackIndex = 1, trackSelected = 0;
+        for (const auto& track : facts.at("tracks"))
+            if (track.value("type", std::string{}) != "folder" && track.value("type", std::string{}) != "vca")
+            {
+                trackIDs.push_back(track["id"]);
+                trackChoice.addItem(text(track["name"].get<std::string>()) + text(" · ") +
+                                        text(track["type"].get<std::string>()),
+                                    trackIndex);
+                if (track["id"] == facts.value("analysis_selected_track", std::string{}))
+                    trackSelected = trackIndex;
+                ++trackIndex;
+            }
+        trackChoice.setSelectedId(trackSelected ? trackSelected : trackIDs.empty() ? 0 : 1, juce::dontSendNotification);
+        sourceClips.clear();
+        sourceClipChoice.clear(juce::dontSendNotification);
+        int choice = 1, selected = 0;
+        for (const auto& track : facts.at("tracks"))
+            for (auto clip : track.at("clips"))
+                if (clip.value("kind", std::string{}) == "audio")
+                {
+                    clip["track_name"] = track["name"];
+                    sourceClips.push_back(clip);
+                    sourceClipChoice.addItem(
+                        clipLabel(track["name"], clip["name"], clip["start_samples"],
+                                  clip["start_samples"].get<int64_t>() + clip["length_samples"].get<int64_t>()),
+                        choice);
+                    if (clip["id"] == facts.value("analysis_selected_clip", std::string{}))
+                        selected = choice;
+                    ++choice;
+                }
+        sourceClipChoice.setSelectedId(selected ? selected : sourceClips.empty() ? 0 : 1, juce::dontSendNotification);
+        if (status.value("receipt", Json(nullptr)).is_object() && status["receipt"]["binding"]["purpose"] == "source")
+            tap.setSelectedId(2, juce::dontSendNotification);
+        if (status.value("receipt", Json(nullptr)).is_object() && status["receipt"]["binding"]["purpose"] == "track")
+        {
+            const auto tapName = status["receipt"]["binding"]["tap_point"].get<std::string>();
+            tap.setSelectedId(tapName == "track_pre_inserts"    ? 3
+                              : tapName == "track_post_inserts" ? 4
+                                                                : 5,
+                              juce::dontSendNotification);
+            for (size_t i = 0; i < trackIDs.size(); ++i)
+                if (trackIDs[i] == status["receipt"]["binding"]["object_id"].get<std::string>())
+                    trackChoice.setSelectedId(int(i) + 1, juce::dontSendNotification);
+        }
+        if (status.value("receipt", Json(nullptr)).is_object() && status["receipt"]["binding"]["purpose"] == "clip")
+        {
+            tap.setSelectedId(6, juce::dontSendNotification);
+            for (size_t i = 0; i < sourceClips.size(); ++i)
+                if (sourceClips[i]["id"] == status["receipt"]["binding"]["object_id"])
+                    sourceClipChoice.setSelectedId(int(i) + 1, juce::dontSendNotification);
+        }
+        if (!raw() && status.value("receipt", Json(nullptr)).is_object())
+        {
+            const auto profile = status["receipt"]["binding"].value("detector_profile", Json(nullptr));
+            eventsEnabled.setToggleState(profile.is_object(), juce::dontSendNotification);
+            if (profile.is_object())
+            {
+                for (auto pair : std::initializer_list<std::pair<juce::TextEditor*, const char*>>{
+                         {&silenceLevel, "silence_threshold_dbfs"},
+                         {&silenceDuration, "minimum_silence_ms"},
+                         {&transientLevel, "transient_minimum_dbfs"},
+                         {&transientRise, "transient_rise_db"},
+                         {&refractory, "transient_refractory_ms"}})
+                    pair.first->setText(text(profile.at(pair.second).dump()), false);
+            }
+        }
+        ranges();
+        update(status);
+    }
+    void update(const Json& value)
+    {
+        state = value;
+        const bool busy = state.value("busy", false);
+        mode();
+        run.setEnabled(!busy && (!(raw() || clipFx()) || !sourceClips.empty()) && (!routed() || !trackIDs.empty()));
+        check.setEnabled(!busy && tap.getSelectedId() == 1);
+        cancel.setEnabled(busy);
+        pause.setEnabled(busy && state.value("state", std::string{}) != "cancelling");
+        pause.setButtonText(
+            text(state.value("pause", Json::object()).value("user_requested", false) ? "继续分析" : "暂停分析"));
+        start.setEnabled(!busy);
+        end.setEnabled(!busy);
+        tap.setEnabled(!busy);
+        sourceClipChoice.setEnabled(!busy);
+        trackChoice.setEnabled(!busy);
+        for (auto* editor : {&target, &tolerance, &truePeakCeiling, &endingCeiling})
+            editor->setEnabled(!busy);
+        quietEnding.setEnabled(!busy);
+        for (auto* editor : {&silenceLevel, &silenceDuration, &transientLevel, &transientRise, &refractory})
+            editor->setEnabled(!busy);
+        eventsEnabled.setEnabled(!busy);
+        const auto result = state.value("receipt", Json(nullptr));
+        std::string signature = result.is_object() ? result.value("artifact_id", std::string{}) + ":" +
+                                                         (result.value("current", false) ? "current" : "stale")
+                                                   : "empty";
+        const bool sourceResult = result.is_object() && result.value("state", std::string{}) == "completed" &&
+                                  result["binding"]["purpose"] == "source";
+        Json mapping = nullptr;
+        mappingChoice.setVisible(sourceResult);
+        if (sourceResult)
+        {
+            const auto& views = result["mapping_set"]["clips"];
+            const auto mapSignature = views.dump();
+            if (mapSignature != lastMaps)
+            {
+                const auto old = mappingChoice.getSelectedId();
+                const auto prior =
+                    old > 0 && old <= int(mappingIDs.size()) ? mappingIDs[size_t(old - 1)] : std::string{};
+                lastMaps = mapSignature;
+                mappingIDs.clear();
+                mappingChoice.clear(juce::dontSendNotification);
+                int selected = 0, i = 1;
+                for (const auto& view : views)
+                {
+                    const std::string id = view["clip_id"];
+                    mappingIDs.push_back(id);
+                    mappingChoice.addItem(
+                        clipLabel(view["track_name"], view["name"], view["start_samples"], view["end_samples"]), i);
+                    if (id == prior || (prior.empty() && view["clip_id"] == result["binding"]["object_id"]))
+                        selected = i;
+                    ++i;
+                }
+                mappingChoice.setSelectedId(selected             ? selected
+                                            : mappingIDs.empty() ? 0
+                                                                 : 1,
+                                            juce::dontSendNotification);
+            }
+            const auto choice = mappingChoice.getSelectedId();
+            if (choice > 0 && choice <= int(views.size()))
+                mapping = views[size_t(choice - 1)];
+            signature += mapSignature + ":" + std::to_string(choice);
+        }
+        if (signature != rowSignature)
+        {
+            rowSignature = signature;
+            buttons.clear();
+            loudness.setVisible(result.is_object() && result.value("state", std::string{}) == "completed" &&
+                                result.contains("loudness_curve"));
+            spectrum.setVisible(result.is_object() && result.value("state", std::string{}) == "completed" &&
+                                result.contains("spectrum"));
+            if (spectrum.isVisible())
+                spectrum.bind(result["spectrum"], result.value("current", false));
+            if (loudness.isVisible())
+                loudness.bind(
+                    result["loudness_curve"], result.value("current", false),
+                    [mapping, sourceResult](const Json& point)
+                    {
+                        if (!sourceResult)
+                            return true;
+                        if (!mapping.is_object())
+                            return false;
+                        const auto frame = point.at("source_location_frame").get<int64_t>();
+                        return analysis::projectSourceEvent({{"id", point["point_index"]},
+                                                             {"kind", "loudness_point"},
+                                                             {"source_start_frame", frame},
+                                                             {"source_end_frame", frame + 1}},
+                                                            mapping)
+                            .is_object();
+                    },
+                    [this, result, mapping, sourceResult](const Json& point)
+                    {
+                        Json args = {{"artifact_id", result["artifact_id"]},
+                                     {"point_index", point["point_index"]},
+                                     {"series", point["series"]}};
+                        if (sourceResult)
+                        {
+                            args["clip_id"] = mapping["clip_id"];
+                            args["base_revision"] = result["mapping_revision"];
+                        }
+                        try
+                        {
+                            this->call("locate_loudness", args);
+                            this->close();
+                        }
+                        catch (const std::exception& e)
+                        {
+                            error(e.what());
+                        }
+                    });
+            if (result.is_object() && result.value("state", std::string{}) == "completed")
+                for (const auto& event : result.at("events"))
+                {
+                    auto button = std::make_unique<juce::TextButton>();
+                    const auto index = event["id"].get<int>();
+                    button->setComponentID("analysis.locate:" + juce::String(index));
+                    Json location = sourceResult ? (mapping.is_object() ? analysis::projectSourceEvent(event, mapping)
+                                                                        : Json(nullptr))
+                                                 : Json(event);
+                    const auto kind = event["kind"].get<std::string>();
+                    const auto label = kind == "silence"               ? "静音门限区间"
+                                       : kind == "transient_candidate" ? "瞬态候选 / 估计"
+                                                                       : "超过满刻度";
+                    if (sourceResult)
+                        button->setButtonText(
+                            text(label) + text(" · 源帧 ") + juce::String(event["source_start_frame"].get<int64_t>()) +
+                            " – " + juce::String(event["source_end_frame"].get<int64_t>()) +
+                            (location.is_object()
+                                 ? text(" · 定位 ") +
+                                       juce::String(location["start_samples"].get<int64_t>() / 48000., 6) + text(" 秒")
+                                 : text(" · 当前片段内不可定位")));
+                    else
+                        button->setButtonText(text("定位 ") +
+                                              juce::String(event["start_samples"].get<int64_t>() / 48000., 6) + " – " +
+                                              juce::String(event["end_samples"].get<int64_t>() / 48000., 6) +
+                                              text(" 秒 · ") + text(label));
+                    button->setEnabled(result.value("current", false) && location.is_object());
+                    Json locate = {{"artifact_id", result["artifact_id"]}, {"event_id", index}};
+                    if (sourceResult && mapping.is_object())
+                    {
+                        locate["clip_id"] = mapping["clip_id"];
+                        locate["base_revision"] = result["mapping_revision"];
+                    }
+                    button->onClick = [this, locate]
+                    {
+                        try
+                        {
+                            this->call("locate", locate);
+                            this->close();
+                        }
+                        catch (const std::exception& e)
+                        {
+                            error(e.what());
+                        }
+                    };
+                    rows.addAndMakeVisible(*button);
+                    buttons.push_back(std::move(button));
+                }
+            resized();
+        }
+        juce::String display = localError.empty() ? juce::String{} : text("操作未完成：") + text(localError) + "\n";
+        display += text("状态：") + text(state.value("state", std::string("idle")));
+        if (busy)
+            display += state["request"].value("purpose", std::string{}) == "source"
+                           ? text(" · 源媒体读取 / 测量，进度未估算")
+                           : text(" · 渲染进度 ") + juce::String(state.value("progress", 0.) * 100., 0) + "%";
+        const auto resource = state.value("runtime", Json(nullptr));
+        if (resource.is_object())
+        {
+            const auto& p = resource["preparation_ms"];
+            const auto& w = resource["worker_ms"];
+            display +=
+                text("\n完成阶段耗时 · 启动准备 ") + juce::String(p.value("total", 0.), 1) + text(" ms · 媒体校验 ") +
+                juce::String(w.value("source_hash", 0.) + w.value("final_validation", 0.), 1) + text(" ms · 渲染 ") +
+                juce::String(w.value("render", 0.), 1) + text(" ms · 测量 ") + juce::String(w.value("measure", 0.), 1) +
+                text(" ms\n源引用 ") + juce::String(resource.value("source_references", uint64_t(0))) +
+                text(" · SHA256实际读取 ") + juce::String(resource.value("source_hash_file_reads", uint64_t(0))) +
+                text(" 次 / ") + juce::String(resource.value("source_hash_bytes_read", uint64_t(0))) +
+                text(" 字节 · 截止包含暂停\n");
+        }
+        if (busy)
+        {
+            const auto policy = state.value("pause", Json::object());
+            if (policy.value("user_requested", false) || policy.value("playback_requested", false))
+                display +=
+                    text(policy.value("worker_parked", false) ? "工作线程已停驻；播放/录音优先，继续不能绕过该限制。\n"
+                                                              : "暂停已请求，等待当前SDK/插件/I/O调用到达检查点。\n");
+        }
+        if (result.is_object() && result.value("state", std::string{}) == "completed")
+        {
+            const auto& provenance = result.at("binding");
+            display += result.value("current", false) ? text(" · 当前工程证据\n")
+                                                      : text(" · 历史快照：工程已变化或正在播放，请重新分析\n");
+            auto measured = [&](const char* key, int digits)
+            {
+                auto v = result.value(key, Json(nullptr));
+                return v.is_number() ? juce::String(v.get<double>(), digits) : text("不可用 / 静音或区间不足");
+            };
+            display += text("Sample Peak ") + measured("peak_dbfs", 2) + " dBFS    True Peak " +
+                       measured("true_peak_dbtp", 2) + " dBTP\n";
+            display += "RMS " + measured("rms_dbfs", 2) + " dBFS    LUFS-I " + measured("lufs_i", 2) +
+                       "    LUFS-M max " + measured("lufs_m_max", 2) + "    LUFS-S max " + measured("lufs_s_max", 2) +
+                       "\n";
+            if (result.contains("loudness_curve"))
+                display += text("连续响度：") + juce::String(result["loudness_curve"]["point_count"].get<int64_t>()) +
+                           text(" 点 · 100 ms网格 · 下方选点/最高值及实际窗口定位；静音−∞与窗口不足分开。\n");
+            if (result.contains("spectrum"))
+            {
+                const auto& spectral = result["spectrum"];
+                display += text("频谱：") +
+                           (spectral["status"] == "measured"
+                                ? juce::String(spectral["window_count"].get<int64_t>()) +
+                                      text(" 个 4096帧实际窗 / 2049频点 · 下方频谱/频段功率；不是未加窗RMS。\n")
+                                : text("范围不足4096帧，没有测量。\n"));
+            }
+            display += text("立体声相关度 ") + measured("correlation", 4) + text(" · 超过满刻度 ") +
+                       juce::String(result["over_full_scale_frames"].get<int64_t>()) + text(" 帧 · 事件总数 ") +
+                       juce::String(result["event_count"].get<int64_t>()) + text(" / 省略 ") +
+                       juce::String(result["events_omitted"].get<int64_t>()) + "\n";
+            if (result.contains("delivery"))
+            {
+                const auto& report = result.at("delivery");
+                const auto& profile = report.at("profile");
+                display += text("交付条件：") + stateText(report["status"].get<std::string>()) + text(" · 目标 ") +
+                           juce::String(profile["target_lufs"].get<double>(), 2) + " LUFS ±" +
+                           juce::String(profile["lufs_tolerance"].get<double>(), 2) + " LU · TP ≤ " +
+                           juce::String(profile["true_peak_ceiling_dbtp"].get<double>(), 2) + " dBTP\n";
+                for (const auto& criterion : report.at("checks"))
+                    display += text(criterion["label"].get<std::string>()) + text("：") +
+                               stateText(criterion["status"].get<std::string>()) + "  ";
+                const auto& ending = result.at("ending_window");
+                auto endPeak = ending.at("peak_dbfs");
+                display += text("\n实际末尾窗口 ") + juce::String(ending["duration_ms"].get<double>(), 1) +
+                           " ms · Sample Peak " +
+                           (endPeak.is_number() ? juce::String(endPeak.get<double>(), 2) : text("−∞ / 静音")) +
+                           " dBFS · ≤ " + juce::String(profile["ending_peak_ceiling_dbfs"].get<double>(), 2) +
+                           " dBFS\n";
+                if (result.contains("file_verification"))
+                {
+                    const auto& file = result["file_verification"];
+                    display +=
+                        text("已发布 WAV / PCM24 · ") + juce::String(file["frames"].get<int64_t>()) +
+                        text(" 帧 · SHA256: ") + text(file["sha256"].get<std::string>()) +
+                        text("\n编码前浮点与编码后文件分开测量；另测文件外 2 秒信号，不能证明完整尾音或平台认证。\n");
+                }
+                else
+                    display += text("只检查所选范围，活跃尾部需人工复核；安静末尾不能证明混响尾音完整。不是平台认证或导"
+                                    "出文件验收。\n");
+            }
+            if (sourceResult)
+            {
+                const auto& counts = result["event_counts"];
+                display += text("原始源片段 · 静音门限段 ") + juce::String(counts["silence"].get<int64_t>()) +
+                           text(" · 瞬态候选 ") + juce::String(counts["transient_candidate"].get<int64_t>()) + "\n";
+                display += text("源文件采样率 ") + juce::String(result["sample_rate"].get<double>(), 0) +
+                           text(" Hz · 原生源帧 [") + juce::String(provenance["source_start_frame"].get<int64_t>()) +
+                           ", " + juce::String(provenance["source_end_frame"].get<int64_t>()) + ")\n";
+                display += text("原始测量 revision ") + juce::String(provenance["revision"].get<int64_t>()) +
+                           text(" · 当前映射 revision ") + juce::String(result["mapping_revision"].get<int64_t>()) +
+                           text(" · 片段视图 ") + juce::String(result["mapping_set"]["total"].get<int64_t>()) +
+                           text(" / 省略 ") + juce::String(result["mapping_set"]["omitted"].get<int64_t>()) + "\n";
+                display +=
+                    text("原始媒体未经过 Clip FX、增益、轨道或 Master 插入。移动/修剪/拆分只更新工程映射。瞬态为 5 ms "
+                         "窗口能量上升估计，不是呼吸识别或表演质量判断。循环/自动变速/warp/反向映射不可用。\n");
+                display += text("媒体 SHA256: ") + text(provenance["media_sha256"].get<std::string>()) + "\n";
+            }
+            else
+            {
+                display += text("Tap: ") + text(provenance["tap_point"].get<std::string>()) + text(" · 对象 ") +
+                           text(provenance["object_id"].get<std::string>()) + text(" · revision ") +
+                           juce::String(provenance["revision"].get<int64_t>()) + text(" · 区间 [") +
+                           juce::String(provenance["start_samples"].get<int64_t>()) + ", " +
+                           juce::String(provenance["end_samples"].get<int64_t>()) + ")\n";
+                if (provenance["purpose"] == "clip")
+                    display += text("单个原生片段效果链 · 插件 ") +
+                               juce::String(provenance["tap_configuration"]["plugin_ids"].size()) +
+                               text(" · 含片段增益/声像及淡化；排除其他片段、轨道和 Master。\n");
+                if (provenance["purpose"] == "track")
+                    display += text("原生信号链边界 · 插入序号 ") +
+                               juce::String(provenance["tap_configuration"]["plugin_boundary_index"].get<int>()) +
+                               text(" · 推子/声像 ") +
+                               (provenance["tap_configuration"]["fader_included"].get<bool>() ? text("已包含")
+                                                                                              : text("未包含")) +
+                               text(" · 不含 Master；保留上游路由与发送。\n");
+            }
+            if (!sourceResult)
+            {
+                if (result.contains("processed_features"))
+                {
+                    const auto& features = result["processed_features"];
+                    const auto& counts = result["event_counts"];
+                    display += text("处理后事件 · 静音门限段 ") + juce::String(counts["silence"].get<int64_t>()) +
+                               text(" · 瞬态候选 / 估计 ") +
+                               juce::String(counts["transient_candidate"].get<int64_t>()) + text(" · 工程采样位置\n");
+                    const auto& profile = features["profile"];
+                    display += text("实际条件：静音 ≤ ") +
+                               juce::String(profile["silence_threshold_dbfs"].get<double>(), 1) + text(" dBFS / ≥ ") +
+                               juce::String(profile["minimum_silence_ms"].get<double>(), 1) + text(" ms；瞬态峰值 ≥ ") +
+                               juce::String(profile["transient_minimum_dbfs"].get<double>(), 1) +
+                               text(" dBFS / 上升 ≥ ") + juce::String(profile["transient_rise_db"].get<double>(), 1) +
+                               text(" dB / 间隔 ≥ ") +
+                               juce::String(profile["transient_refractory_ms"].get<double>(), 1) + text(" ms。\n");
+                    display += text("结果来自实际所选链的渲染 PCM；瞬态为 5 ms 窗口相对前 20 ms "
+                                    "的能量上升估计，不是呼吸识别或表演质量判断。\n条件 SHA256: ") +
+                               text(features["profile_sha256"].get<std::string>()) + "\n";
+                }
+                else
+                    display += text("本次未检测静音 / 瞬态；勾选开关后重新分析。\n");
+            }
+            display += text("Artifact: ") + text(result["artifact_id"].get<std::string>()) + text("\n处理链 SHA256: ") +
+                       text(provenance["processing_chain_hash"].get<std::string>());
+            display +=
+                text(result.contains("file_verification")
+                         ? "\n当前电平来自实际 PCM24 文件；浮点编码风险另列，不据此断言原媒体已失真。"
+                     : !sourceResult && provenance["tap_point"] != "master"
+                         ? "\n本 tap 超满刻度不等于最终 Master "
+                           "或导出削波；后续处理会改变电平，须另测实际输出。静音为门限测量，瞬态为估计；仅展示前128段。"
+                         : "\n超过 0 dBFS "
+                           "表示整数导出削波风险，不能据此断言原始媒体已经失真。静音为门限测量，瞬态为估计；仅展示前 "
+                           "128 段。");
+        }
+        else if (result.is_object() && result.contains("error"))
+            display += "\n" + text(result["error"].get<std::string>());
+        else
+            display +=
+                text(raw() ? "\n输入原生源帧范围；仅解码实际原始媒体。没有测量回执就没有结论。"
+                           : "\n输入工程采样区间，点击分析；结果只来自实际 Tracktion 渲染。没有测量回执就没有结论。");
+        if (summary.getText() != display)
+            summary.setText(display, false);
+    }
+    void paint(juce::Graphics& g) override
+    {
+        g.fillAll(base());
+        g.setColour(juce::Colour(0xffb7c7d8));
+        g.setFont(juce::FontOptions(12));
+        g.drawText(text(raw() ? "源起始帧" : "起始采样"), 24, 94, 100, 25, juce::Justification::left);
+        g.drawText(text(raw() ? "源结束帧" : "结束采样"), 260, 94, 100, 25, juce::Justification::left);
+        if (raw() || eventsEnabled.getToggleState())
+        {
+            for (auto label : std::initializer_list<std::pair<int, const char*>>{
+                     {24, "静音 dBFS"}, {216, "最短 ms"}, {396, "瞬态 dBFS"}, {588, "上升 dB"}, {758, "间隔 ms"}})
+                g.drawText(text(label.second), label.first, raw() ? 144 : 184, 94, 25, juce::Justification::left);
+        }
+        if (!raw() && !eventsEnabled.getToggleState())
+            g.drawText(text("本次不检测静音与瞬态；启用后可调整五项条件。"), 24, 184, 900, 28,
+                       juce::Justification::left);
+        if (tap.getSelectedId() == 1)
+        {
+            g.drawText(text("目标 LUFS"), 24, 144, 78, 25, juce::Justification::left);
+            g.drawText(text("偏差 ±LU"), 186, 144, 66, 25, juce::Justification::left);
+            g.drawText(text("TP 上限 dBTP"), 330, 144, 110, 25, juce::Justification::left);
+            g.drawText(text("末尾上限 dBFS"), 536, 144, 124, 25, juce::Justification::left);
+        }
+        if (mappingChoice.isVisible())
+            g.drawText(text("定位到当前片段"), 24, 508, 184, 25, juce::Justification::left);
+    }
+    void resized() override
+    {
+        title.setBounds(24, 18, 260, 35);
+        tap.setBounds(292, 24, 172, 28);
+        sourceClipChoice.setBounds(476, 24, std::max(140, getWidth() - 634), 28);
+        trackChoice.setBounds(sourceClipChoice.getBounds());
+        dismiss.setBounds(getWidth() - 136, 24, 112, 28);
+        hint.setBounds(24, 58, getWidth() - 48, 28);
+        start.setBounds(120, 94, 125, 28);
+        end.setBounds(352, 94, 145, 28);
+        run.setBounds(514, 94, 128, 28);
+        check.setBounds(654, 94, 168, 28);
+        cancel.setBounds(834, 94, 100, 28);
+        pause.setBounds(942, 94, 128, 28);
+        target.setBounds(102, 144, 76, 28);
+        tolerance.setBounds(252, 144, 68, 28);
+        truePeakCeiling.setBounds(440, 144, 76, 28);
+        endingCeiling.setBounds(660, 144, 76, 28);
+        quietEnding.setBounds(758, 144, 250, 28);
+        const int detectorY = raw() ? 144 : 184;
+        silenceLevel.setBounds(124, detectorY, 75, 28);
+        silenceDuration.setBounds(316, detectorY, 65, 28);
+        transientLevel.setBounds(502, detectorY, 75, 28);
+        transientRise.setBounds(687, detectorY, 60, 28);
+        refractory.setBounds(860, detectorY, 65, 28);
+        eventsEnabled.setBounds(938, 184, 158, 28);
+        summary.setBounds(24, raw() ? 194 : 238, getWidth() - 48, raw() ? 306 : 262);
+        mappingChoice.setBounds(212, 508, getWidth() - 236, 26);
+        viewport.setBounds(24, 546, getWidth() - 48, std::max(60, getHeight() - 570));
+        const int curveHeight = loudness.isVisible() ? LoudnessCurveView::preferredHeight + 12 : 0,
+                  spectrumHeight = spectrum.isVisible() ? SpectrumView::preferredHeight + 12 : 0;
+        rows.setSize(std::max(400, viewport.getWidth() - 18),
+                     std::max(viewport.getHeight(), curveHeight + spectrumHeight + int(buttons.size()) * 38));
+        loudness.setBounds(0, 0, rows.getWidth(), LoudnessCurveView::preferredHeight);
+        spectrum.setBounds(0, curveHeight, rows.getWidth(), SpectrumView::preferredHeight);
+        for (size_t i = 0; i < buttons.size(); ++i)
+            buttons[i]->setBounds(0, curveHeight + spectrumHeight + int(i) * 38, rows.getWidth(), 32);
+    }
+
+private:
+    static juce::String clipLabel(const std::string& track, const std::string& clip, int64_t begin, int64_t end)
+    {
+        return text(track + " / " + clip) + "  [" + juce::String(begin / 48000., 6) + " – " +
+               juce::String(end / 48000., 6) + text(" 秒]");
+    }
+    bool raw() const
+    {
+        return tap.getSelectedId() == 2;
+    }
+    bool clipFx() const
+    {
+        return tap.getSelectedId() == 6;
+    }
+    bool routed() const
+    {
+        return tap.getSelectedId() >= 3 && tap.getSelectedId() <= 5;
+    }
+    std::string trackTap() const
+    {
+        return tap.getSelectedId() == 3 ? "track_pre_inserts" : tap.getSelectedId() == 4 ? "track_post_inserts" : "bus";
+    }
+    void mode()
+    {
+        title.setText(text("音频分析 / 交付检查"), juce::dontSendNotification);
+        sourceClipChoice.setVisible(raw() || clipFx());
+        trackChoice.setVisible(routed());
+        for (auto* component : std::initializer_list<juce::Component*>{&target, &tolerance, &truePeakCeiling,
+                                                                       &endingCeiling, &quietEnding, &check})
+            component->setVisible(tap.getSelectedId() == 1);
+        eventsEnabled.setVisible(!raw());
+        for (auto pair :
+             std::initializer_list<std::pair<juce::TextEditor*, const char*>>{{&silenceLevel, "silence_dbfs"},
+                                                                              {&silenceDuration, "silence_ms"},
+                                                                              {&transientLevel, "transient_dbfs"},
+                                                                              {&transientRise, "transient_rise"},
+                                                                              {&refractory, "refractory_ms"}})
+        {
+            pair.first->setVisible(raw() || eventsEnabled.getToggleState());
+            pair.first->setComponentID(juce::String(raw() ? "source." : "analysis.events.") + pair.second);
+        }
+        start.setTooltip(text(raw() ? "原始媒体采样率下的起始源帧，包含该帧" : "工程 48 kHz 起始采样位置，包含该采样"));
+        end.setTooltip(
+            text(raw() ? "原始媒体采样率下的结束源帧，不包含该帧" : "工程 48 kHz 结束采样位置，不包含该采样"));
+        run.setComponentID(raw()      ? "analysis.source.run"
+                           : clipFx() ? "analysis.clip.run"
+                           : routed() ? "analysis.track.run"
+                                      : "analysis.master.run");
+        run.setButtonText(text(raw()      ? "分析源片段"
+                               : clipFx() ? "分析片段 FX"
+                               : routed() ? "分析轨道"
+                                          : "分析 Master"));
+        hint.setText(text(raw()
+                              ? "原始媒体 · 原生源帧位置 · 不含 Clip FX、增益或插入；静音为门限段，瞬态为能量候选。"
+                              : "离线 Master · 32-bit float · 48 kHz 工程采样位置 · 区间最多 5 分钟；播放和录音优先。"),
+                     juce::dontSendNotification);
+        if (routed())
+            hint.setText(
+                text(tap.getSelectedId() == 3
+                         ? "插入前 / 推子前 · 包含 Clip FX、输入合成与乐器 / Aux 返回；不含目标效果器及 Master。"
+                     : tap.getSelectedId() == 4 ? "插入后 / 推子前 · 包含目标效果器；不含目标推子、声像及 Master。"
+                                                : "Bus 输出 / 推子后 · 包含整条轨道链与上游路由 / 发送；不含 Master。"),
+                juce::dontSendNotification);
+        if (clipFx())
+            hint.setText(text("单个片段增益/声像 → 原生 Clip FX → 淡化；不含其他片段、轨道输入/插入/推子及 Master。"),
+                         juce::dontSendNotification);
+        if (getWidth() > 0)
+            resized();
+        repaint();
+    }
+    void ranges()
+    {
+        mode();
+        if (raw())
+        {
+            const auto index = sourceClipChoice.getSelectedId();
+            if (index <= 0 || index > int(sourceClips.size()))
+            {
+                start.setText("0", false);
+                end.setText("0", false);
+                return;
+            }
+            const auto& clip = sourceClips[size_t(index - 1)];
+            const double rate = clip["source_sample_rate"], offset = clip["source_offset_seconds"],
+                         speed = clip["speed_ratio"];
+            if (!clip.value("source_mapping_available", false))
+            {
+                start.setText("0", false);
+                end.setText(juce::String(clip["source_frames"].get<int64_t>()), false);
+                hint.setText(text("当前循环/warp/自动变速/反向映射不可用；默认分析整份原始媒体，不推测片段覆盖范围。"),
+                             juce::dontSendNotification);
+                return;
+            }
+            start.setText(juce::String(std::max(int64_t(0), int64_t(std::llround(offset * rate)))), false);
+            end.setText(
+                juce::String(std::min(
+                    clip["source_frames"].get<int64_t>(),
+                    int64_t(std::llround((offset + clip["length_samples"].get<double>() * speed / 48000.) * rate)))),
+                false);
+        }
+        else if (clipFx())
+        {
+            const auto index = sourceClipChoice.getSelectedId();
+            if (index <= 0 || index > int(sourceClips.size()))
+            {
+                start.setText("0", false);
+                end.setText("0", false);
+                return;
+            }
+            const auto& c = sourceClips[size_t(index - 1)];
+            start.setText(juce::String(c["start_samples"].get<int64_t>()), false);
+            end.setText(juce::String(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>()), false);
+        }
+        else
+        {
+            auto range = binding.value("time_selection", Json(nullptr));
+            start.setText(juce::String(range.is_null() ? int64_t(0) : range["start_samples"].get<int64_t>()), false);
+            end.setText(juce::String(range.is_null() ? binding.value("length_samples", int64_t(0))
+                                                     : range["end_samples"].get<int64_t>()),
+                        false);
+        }
+    }
+    static int64_t number(const juce::String& text)
+    {
+        auto str = text.toStdString();
+        if (str.empty() || str.size() > 16)
+            throw std::runtime_error("请输入整数采样位置");
+        size_t consumed = 0;
+        auto n = std::stoll(str, &consumed);
+        if (consumed != str.size() || n < 0)
+            throw std::runtime_error("采样位置无效");
+        return n;
+    }
+    static double decimal(const juce::String& text)
+    {
+        const auto str = text.toStdString();
+        size_t consumed = 0;
+        const double n = std::stod(str, &consumed);
+        if (consumed != str.size() || !std::isfinite(n))
+            throw std::runtime_error("分析条件必须是有限数值");
+        return n;
+    }
+    static juce::String stateText(const std::string& status)
+    {
+        return status == "passed"                               ? text("通过")
+               : status == "failed"                             ? text("未通过")
+               : status == "review" || status == "needs_review" ? text("需人工复核")
+               : status == "not_required"                       ? text("本次未要求")
+                                                                : text("证据不足");
+    }
+    Json detectorProfile() const
+    {
+        return {{"silence_threshold_dbfs", decimal(silenceLevel.getText())},
+                {"minimum_silence_ms", decimal(silenceDuration.getText())},
+                {"transient_minimum_dbfs", decimal(transientLevel.getText())},
+                {"transient_rise_db", decimal(transientRise.getText())},
+                {"transient_refractory_ms", decimal(refractory.getText())}};
+    }
+    void submit(bool delivery)
+    {
+        localError.clear();
+        try
+        {
+            Json args = {{"session_token", binding.at("session_token")},
+                         {"base_revision", binding.at("revision")},
+                         {"start_samples", number(start.getText())},
+                         {"end_samples", number(end.getText())},
+                         {"request_key", "gui:" + juce::Uuid().toString().toStdString()}};
+            if (raw())
+            {
+                const auto index = sourceClipChoice.getSelectedId();
+                if (index <= 0 || index > int(sourceClips.size()))
+                    throw std::runtime_error("请选择真实音频片段");
+                args["clip"] = sourceClips[size_t(index - 1)]["id"];
+                args["source_start_frame"] = args["start_samples"];
+                args["source_end_frame"] = args["end_samples"];
+                args.erase("start_samples");
+                args.erase("end_samples");
+                args["profile"] = detectorProfile();
+                update(call("source", args));
+                return;
+            }
+            if (eventsEnabled.getToggleState())
+                args["detector_profile"] = detectorProfile();
+            if (clipFx())
+            {
+                const auto selected = sourceClipChoice.getSelectedId();
+                if (selected <= 0 || selected > int(sourceClips.size()))
+                    throw std::runtime_error("请选择真实音频片段");
+                args["clip"] = sourceClips[size_t(selected - 1)]["id"];
+                update(call("clip", args));
+                return;
+            }
+            if (routed())
+            {
+                const auto selected = trackChoice.getSelectedId();
+                if (selected <= 0 || selected > int(trackIDs.size()))
+                    throw std::runtime_error("请选择真实音频 / 乐器 / Aux 轨道");
+                args["track"] = trackIDs[size_t(selected - 1)];
+                args["tap_point"] = trackTap();
+                update(call("track", args));
+                return;
+            }
+            if (delivery)
+                args["profile"] = {{"target_lufs", decimal(target.getText())},
+                                   {"lufs_tolerance", decimal(tolerance.getText())},
+                                   {"true_peak_ceiling_dbtp", decimal(truePeakCeiling.getText())},
+                                   {"ending_peak_ceiling_dbfs", decimal(endingCeiling.getText())},
+                                   {"expect_silent_ending", quietEnding.getToggleState()}};
+            update(call(delivery ? "delivery" : "master", args));
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what());
+        }
+    }
+    void error(const std::string& message)
+    {
+        localError = message;
+        update(state);
+    }
+    Call call;
+    std::function<void()> close;
+    Json binding = Json::object(), state = Json::object();
+    std::string rowSignature, localError;
+    juce::ComboBox tap, sourceClipChoice, trackChoice, mappingChoice;
+    std::vector<std::string> trackIDs;
+    juce::TextEditor silenceLevel, silenceDuration, transientLevel, transientRise, refractory;
+    std::vector<Json> sourceClips;
+    std::vector<std::string> mappingIDs;
+    std::string lastMaps;
+    juce::Label title, hint;
+    juce::TextEditor start, end, target, tolerance, truePeakCeiling, endingCeiling, summary;
+    juce::TextButton run{text("分析 Master")}, check{text("流媒体交付检查")}, cancel{text("取消分析")},
+        pause{text("暂停分析")}, dismiss{text("返回工程")};
+    juce::ToggleButton quietEnding{text("检查末尾静音 / 截断风险")}, eventsEnabled{text("检测静音 / 瞬态")};
+    juce::Viewport viewport;
+    juce::Component rows;
+    LoudnessCurveView loudness;
+    SpectrumView spectrum;
+    std::vector<std::unique_ptr<juce::TextButton>> buttons;
 };
