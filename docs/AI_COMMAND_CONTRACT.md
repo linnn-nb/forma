@@ -289,3 +289,9 @@ M3-EVENTS-01：analysis.master /track /delivery 的可选 detector_profile 使�
 M3-LUFS-01：所有成功音频分析回执含loudness_curve，紧凑points列[decoded_end_frame, momentary_lufs, short_term_lufs]；完整100 ms网格从第一个400 ms窗开始，M为4×hop、S为30×hop。有限值1e-6 LU量化，null在完整窗为负无穷，不足窗为insufficient_window；不补零、降采样或隐瞒省略。曲线声明实际rate、origin、decoded_start_frame、窗口帧数和末尾不足hop帧数，源与工程位置不混淆。192 KiB/3000点和完整252 KiB预算越界明确失败；浮点次正规中间值通过ScopedNoDenormals统一归零，退出恢复调用者状态。
 
 本地GUI控制locate_loudness(artifact_id, point_index, series[, clip_id, base_revision])由L1核验当前工程/深媒体哈希和完整窗口，映射exclusive end−1实际帧并保持在工程窗内（高采样率映射不能四舍五入到exclusive end）；raw源经当前clip映射，已裁掉的点明确拒绝。外部Agent只读query_analysis取得相同序列，不能直接调用此本地seek入口。曲线不产生编辑事务，human/Undo改变版本使processed证据过期，raw源只更新映射；保存记录不在重开时恢复为当前成功。实现LoudnessCurve/AudioAnalysis/MasterAnalysis/LoudnessCurveView，测试LoudnessCurveTests/LoudnessCurveWorkspaceTests，边界见ANALYSIS_WORKFLOW.md。
+
+## 频谱证据（M3-SPECTRUM-01）
+
+成功分析 receipt 新增 spectrum，和父 artifact 共用实际来源/范围/媒体/链哈希与 current 判断；MCP Schema 和权限不变。bin_power 是全部 2049 个单侧平均线性功率，频率=k×bin_width_hz；FFT4096、hop2048、periodic Hann、内部 float FFT 与 double 功率累计，每窗/声道等权。DC/Nyquist 不乘二，其他 bin 乘二，按 N×window_square_sum 归一化。窗口概要包含 window_count、真实源解码范围、工程 origin 或 null、final_end_aligned_window；不足4096帧 status=insufficient_window、空序列及 null 总功率，不补零假测量。measured 下零功率/null dBFS 表示数字静音；不与缺失测量混淆。
+
+bands 声明半开 bin 分区 first_bin/end_bin、标称 lower/upper Hz、Nyquist 上限的包含性、实际功率/占比和各声道功率；按 bin 中心分组，不当作理想带通滤波器。功率零时 fraction=null。dominant_bin 是真实最高平均功率 bin，静音/不足窗为 null。末端剩余帧用完整尾端对齐窗，额外重叠明确；该概要不携带峰值事件时间，不提供直接 seek 或扩展写权限。频谱≤64 KiB、窗口≤30000、完整artifact仍≤252 KiB，越界拒绝不截断。原时限/单worker不变，测试预算及边界见ANALYSIS_WORKFLOW.md，验证状态见VERIFICATION.md。频谱不是未加窗RMS、PSD/Hz、实时表或音色质量判断；原始源不能解释处理后音频。

@@ -1,5 +1,6 @@
 #include <nativedaw/v2/AudioAnalysis.h>
 #include <nativedaw/v2/SourceFeatures.h>
+#include <nativedaw/v2/Spectrum.h>
 #include <ebur128.h>
 
 namespace ndaw::v2::analysis {
@@ -28,6 +29,7 @@ Json measure(const juce::File& source,int64_t start,const Control& control,Frame
     struct Cleanup{ebur128_state* meter;~Cleanup(){ebur128_destroy(&meter);}} cleanup{meter};
     const int blockFrames=int((static_cast<unsigned long>(reader->sampleRate)+5)/10);
     require(length<=reader->sampleRate*300,"analysis exceeds 300 second curve budget");
+    Spectrum spectrum(reader->sampleRate,int(reader->numChannels),range.begin,start,domain,control);
     juce::AudioBuffer<float> buffer(reader->numChannels,blockFrames);
     std::vector<float> interleaved(size_t(blockFrames)*reader->numChannels);
     double peak=0,endingPeak=0;Sum sum,sumL,sumR,LL,RR,LR,endingSum;
@@ -43,6 +45,7 @@ Json measure(const juce::File& source,int64_t start,const Control& control,Frame
         const int n=int(std::min<int64_t>(blockFrames,length-offset));
         require(reader->read(&buffer,0,n,range.begin+offset,true,true),"analysis PCM read failed");
         for(int i=0;i<n;++i){bool over=false;double framePeak=0,frameSquare=0;for(unsigned ch=0;ch<reader->numChannels;++ch){const double v=buffer.getSample(ch,i);require(std::isfinite(v),"nonfinite analysis sample");interleaved[size_t(i)*reader->numChannels+ch]=float(v);sum.add(v*v);if(detector){framePeak=std::max(framePeak,std::abs(v));frameSquare+=v*v;}if(offset+i>=endingStart){endingSum.add(v*v);endingPeak=std::max(endingPeak,std::abs(v));}if(std::abs(v)>peak){peak=std::abs(v);peakFrame=offset+i;}over|=std::abs(v)>=1.;}
+            spectrum.frame(interleaved.data()+size_t(i)*reader->numChannels);
             if(detector)detector->frame(range.begin+offset+i,framePeak,frameSquare/reader->numChannels);
             if(over){++overFrames;if(eventStart<0)eventStart=offset+i;}else closeEvent(offset+i);
             if(reader->numChannels==2){const double l=buffer.getSample(0,i),r=buffer.getSample(1,i);sumL.add(l);sumR.add(r);LL.add(l*l);RR.add(r*r);LR.add(l*r);}
@@ -68,7 +71,7 @@ Json measure(const juce::File& source,int64_t start,const Control& control,Frame
         {"hop_frames",blockFrames},{"momentary_window_frames",4*blockFrames},{"short_term_window_frames",30*blockFrames},{"frames",length},{"trailing_frames",length%blockFrames},
         {"null_rule","end < window: insufficient_window; otherwise negative_infinity; never zero LUFS"},{"history_scope","K-weighting state starts at the selected decode range; no earlier audio history"}};
     require(curve.dump().size()<=192*1024,"loudness curve exceeds 192 KiB budget");
-    Json result={{"analyser","forma-pcm/5 + libebur128/1.2.6"},{"audio_verified",true},{"loudness_curve",std::move(curve)},{"frames",length},{"sample_rate",reader->sampleRate},{"channels",reader->numChannels},{"file_bits",reader->bitsPerSample},{"file_float",reader->usesFloatingPointData},{"read_range",{{"begin_frame",range.begin},{"end_frame",range.end}}},{"peak_file_frame",range.begin+peakFrame},
+    Json result={{"analyser","forma-pcm/6 + libebur128/1.2.6"},{"audio_verified",true},{"spectrum",spectrum.finish()},{"loudness_curve",std::move(curve)},{"frames",length},{"sample_rate",reader->sampleRate},{"channels",reader->numChannels},{"file_bits",reader->bitsPerSample},{"file_float",reader->usesFloatingPointData},{"read_range",{{"begin_frame",range.begin},{"end_frame",range.end}}},{"peak_file_frame",range.begin+peakFrame},
         {"peak",peak},{"peak_dbfs",db(peak)},{"peak_position_samples",position(peakFrame)},{"rms",rms},{"rms_dbfs",db(rms)},{"lufs_i",std::isfinite(integrated)?Json(integrated):Json(nullptr)},
         {"lufs_m_max",std::isfinite(maxM)?Json(maxM):Json(nullptr)},{"lufs_s_max",std::isfinite(maxS)?Json(maxS):Json(nullptr)},{"loudness_windows",{{"hop_ms",100},{"momentary_ms",400},{"short_term_ms",3000},{"momentary_count",windowM},{"short_term_count",windowS}}},
         {"true_peak_dbtp",db(truePeak)},{"correlation",correlation},{"over_full_scale_frames",overFrames},{"events",std::move(events)},{"event_count",eventCount},{"events_omitted",std::max(int64_t(0),eventCount-128)},
