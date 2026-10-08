@@ -16,12 +16,16 @@ public:
         {
             window = std::make_unique<Window>();
             auto args = getCommandLineParameterArray();
+            const bool gatewayEnabled = !args.contains("--no-mcp");
+            args.removeString("--no-mcp");
             auto* workspace = static_cast<ndaw::desktop::Workspace*>(window->getContentComponent());
             if (args.size() == 2 && args[0] == "--open-session")
                 workspace->openSession(juce::File(args[1]));
             else if (args.size() == 1)
-                workspace->prepareImport(juce::File(args[0]));
-            workspace->startMcp(ndaw::v2::Permission::ReadOnly);
+                workspace->importAudio(juce::File(args[0]));
+            if (gatewayEnabled)
+                workspace->startMcp(ndaw::v2::Permission::ReadOnly);
+            workspace->grabKeyboardFocus();
         }
         catch (const std::exception& e)
         {

@@ -5,6 +5,8 @@
 **当前结论**：只推进 macOS 原生 DAW，U＋P0→P1→P2→P3。M2/M3 冻结保留，M4/M5 暂缓；各 P 级完成后由用户试用确认。Tracktion/L1 写入边界继续有效。UI 视图状态独立于编辑历史，在 Edit/UI 子树保存，不递增工程 revision、不进入 Undo；不以旧“每项可撤销”要求强行把缩放加入工程历史。
 状态：M0 关口通过（2026-10-06）；M1 完整制作待验收；M2 指定外部 Agent 桌面演示已实测（2026-10-07）。具体证据与未完成约束见 VERIFICATION.md。
 
+当前原生 UI 位于 `src/v2/ui/`：Workspace 负责组件编排，Edit/Mix、走带、计数器、标尺、列表、快捷键设置各自独立。`WorkspaceCommands.cpp` 的 ApplicationCommandManager 是已迁移全局操作的共同入口；`UiState.cpp` 在 message thread 验证并写入 `Edit/NATIVEDAW/UI`，保存缩放/滚动/侧栏/键位，不使用 UndoManager。人工单文件导入直接形成一个 human Plan；外部请求和高风险操作仍保留预览。统一选区与工具模型、完整窗口结构和跨重开 Undo 尚未完成；下文旧 M 里程碑按本文顶部当前阶段安排冻结或后置。
+
 ## 0. 定位与前提
 
 **一句话定位**：一个开源的原生 DAW。它以成熟引擎提供基础制作能力，以统一命令层为唯一写入口，让 AI Agent 和用户共同构建可复用的个性化工具。

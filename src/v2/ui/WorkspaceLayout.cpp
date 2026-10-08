@@ -12,61 +12,69 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
     p.setLookAndFeel(&theme);
     if (index == 0)
     {
-        p.addItem(41, text("新建工程…   ⌘N"), !facts.value("playing", false) && facts["parameter_capture"].is_null());
+        p.addCommandItem(&commandManager, 41);
         p.addSeparator();
-        p.addItem(1, text("导入音频…   ⌘I"));
-        p.addItem(2, text("打开工程…   ⌘O"));
-        p.addItem(3, text("另存工程…   ⌘S"));
-        p.addItem(4, text("导出 WAV…   ⇧⌘E"));
-        p.addItem(44, text("导出并检查 WAV…"));
-        p.addItem(45, text("导出并检查时间选区…"), !facts.value("time_selection", Json(nullptr)).is_null());
-        p.addItem(40, text("工程恢复副本…"));
+        p.addCommandItem(&commandManager, 1);
+        p.addCommandItem(&commandManager, 2);
+        p.addCommandItem(&commandManager, 3);
+        p.addCommandItem(&commandManager, 4);
+        p.addCommandItem(&commandManager, 44);
+        p.addCommandItem(&commandManager, 45);
+        p.addCommandItem(&commandManager, 40);
         p.addSeparator();
-        p.addItem(5, text("新增音频轨道"));
+        p.addCommandItem(&commandManager, 5);
         p.addSeparator();
-        p.addItem(11, text("导入旧 .ndaw 工程…"));
-        p.addItem(12, text("查看旧工程导入报告"));
+        p.addCommandItem(&commandManager, 11);
+        p.addCommandItem(&commandManager, 12);
     }
     if (index == 1)
     {
-        p.addItem(42, text("定位与时间选区…"));
+        p.addCommandItem(&commandManager, 108);
+        p.addCommandItem(&commandManager, 42);
         p.addSeparator();
-        p.addItem(6, text("Undo   ⌘Z"), undoButton.isEnabled());
-        p.addItem(7, text("Redo   ⇧⌘Z"), redoButton.isEnabled());
+        p.addCommandItem(&commandManager, 6);
+        p.addCommandItem(&commandManager, 7);
     }
     if (index == 2)
     {
-        p.addItem(8, "Edit", true, !mix && !pianoMode);
-        p.addItem(9, "Mix", true, mix);
-        p.addItem(10, text("钢琴卷帘"), true, pianoMode);
+        for (int id : {100, 101, 102, 103, 104, 105, 106, 107, 109, 110})
+            p.addCommandItem(&commandManager, id);
         p.addSeparator();
-        p.addItem(13, text("插件库 · AU / VST3"), pending.is_null() && !commandFileBusy);
-        p.addItem(14, text("音频设备设置…"));
-        p.addItem(43, text("音频分析 / 交付检查…"));
+        p.addCommandItem(&commandManager, 8);
+        p.addCommandItem(&commandManager, 9);
+        p.addCommandItem(&commandManager, 10);
+        p.addSeparator();
+        p.addCommandItem(&commandManager, 13);
+        p.addCommandItem(&commandManager, 14);
+        p.addCommandItem(&commandManager, 43);
     }
     if (index == 3)
     {
-        p.addItem(26, text("从本地 JSON 请求编辑…"), !commandFileBusy && pending.is_null());
+        p.addCommandItem(&commandManager, 26);
         p.addSeparator();
-        p.addItem(21, text("只读分析"), true, commandScope.mode == Permission::ReadOnly);
-        p.addItem(22, text("先预览再提交"), true, commandScope.mode == Permission::Preview);
-        p.addItem(23, text("自动低风险 · 当前轨道"), !selected.empty());
-        p.addItem(24, text("自动低风险 · 当前片段与时间"),
-                  !(pianoMode ? piano.viewedClip() : selectedAudioClip()).is_null());
+        p.addCommandItem(&commandManager, 21);
+        p.addCommandItem(&commandManager, 22);
+        p.addCommandItem(&commandManager, 23);
+        p.addCommandItem(&commandManager, 24);
         p.addSeparator();
-        p.addItem(25, text("取消请求 / 撤回当前授权"), commandFileBusy || !pendingConfirmation.empty());
+        p.addCommandItem(&commandManager, 25);
         auto m = queryMcpStatus();
         auto mode = m.contains("permission") ? m["permission"].value("mode", std::string{}) : std::string{};
         p.addSeparator();
-        p.addItem(30, text("MCP · 只读连接"), true, mode == "read_only");
-        p.addItem(31, text("MCP · 预览与确认提交"), true, mode == "preview");
-        p.addItem(32, text("停止 MCP / 撤回 Agent 授权"), bool(mcp));
-        p.addItem(33, text("MCP 配置与状态…"), pending.is_null());
+        p.addCommandItem(&commandManager, 30);
+        p.addCommandItem(&commandManager, 31);
+        p.addCommandItem(&commandManager, 32);
+        p.addCommandItem(&commandManager, 33);
     }
     return p;
 }
 
 void Workspace::menuItemSelected(int id, int)
+{
+    commandManager.invokeDirectly(id, false);
+}
+
+void Workspace::dispatchCommand(int id)
 {
     if (id == 44 || id == 45)
     {
@@ -196,7 +204,7 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
     if (file.hasFileExtension("json"))
         importCommandFile(file);
     else
-        prepareImport(file);
+        importAudio(file);
 }
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
@@ -259,38 +267,20 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         }
         return false;
     }
-    if (key == juce::KeyPress::spaceKey)
+    if (keyboardSettings && keyboardSettings->isVisible())
     {
-        invoke(
-            [&]
-            {
-                if (facts["playing"].get<bool>())
-                    commands.stop();
-                else
-                    commands.play();
-            });
-        return true;
+        if (key == juce::KeyPress::escapeKey)
+        {
+            keyboardSettings->setVisible(false);
+            grabKeyboardFocus();
+            return true;
+        }
+        return false;
     }
-    if (key.getModifiers().isCommandDown())
-    {
-        auto c = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
-        if (c == 'z')
-            menuItemSelected(key.getModifiers().isShiftDown() ? 7 : 6, 0);
-        else if (c == 'n')
-            menuItemSelected(41, 0);
-        else if (c == 'i')
-            menuItemSelected(1, 0);
-        else if (c == 'o')
-            menuItemSelected(2, 0);
-        else if (c == 's')
-            menuItemSelected(3, 0);
-        else if (c == 'e' && key.getModifiers().isShiftDown())
-            menuItemSelected(4, 0);
-        else
-            return false;
-        return true;
-    }
-    return false;
+    if (auto* focused = juce::Component::getCurrentlyFocusedComponent();
+        dynamic_cast<juce::TextEditor*>(focused) && !key.getModifiers().isCommandDown())
+        return false;
+    return commandManager.getKeyMappings()->keyPressed(key, this);
 }
 
 void Workspace::paint(juce::Graphics& g)
@@ -346,45 +336,59 @@ void Workspace::resized()
         newSessionPanel->setBounds(getLocalBounds());
     if (pluginLibrary)
         pluginLibrary->setBounds(8, 168, getWidth() - 16, getHeight() - 205);
-    menu.setBounds(0, 0, getWidth(), 28);
-    trackType.setBounds(12, 39, 86, 28);
-    int x = 106;
-    for (auto* b : {&newTrack, &importButton, &openButton, &saveButton, &exportButton})
+    if (keyboardSettings)
+        keyboardSettings->setBounds(getLocalBounds().reduced(12));
+    menu.setBounds(0, 0, getWidth(), 22);
+    toolbar.setBounds(0, 22, getWidth(), 36);
+    trackType.setBounds(116, 4, 72, 27);
+    newTrack.setBounds(194, 4, 78, 27);
+    importButton.setBounds(280, 4, 76, 27);
+    saveButton.setBounds(364, 4, 94, 27);
+    exportButton.setBounds(466, 4, 76, 27);
+    editButton.setBounds(getWidth() - 314, 4, 64, 27);
+    mixButton.setBounds(getWidth() - 244, 4, 64, 27);
+    pianoButton.setBounds(getWidth() - 174, 4, 86, 27);
+    shortcutsButton.setBounds(getWidth() - 82, 4, 72, 27);
+    transport.setBounds(12, 64, 252, 53);
+    int x = 0;
+    for (auto* button : {&returnButton, &stopButton, &playButton, &recordButton})
     {
-        b->setBounds(x, 39, 100, 28);
-        x += 108;
+        button->setBounds(x, 21, 56, 27);
+        x += 62;
     }
-    commandButton.setBounds(654, 39, 142, 28);
-    editButton.setBounds(getWidth() - 310, 39, 92, 28);
-    mixButton.setBounds(getWidth() - 210, 39, 92, 28);
-    pianoButton.setBounds(getWidth() - 110, 39, 98, 28);
-    x = 12;
-    for (auto* b : {&returnButton, &stopButton, &playButton, &recordButton, &undoButton, &redoButton})
-    {
-        b->setBounds(x, 83, 64, 29);
-        x += 72;
-    }
-    counter.setBounds(448, 76, 196, 39);
-    rangeButton.setBounds(428, 126, 116, 28);
-    bpm.setBounds(654, 83, 62, 28);
-    meter.setBounds(726, 83, 68, 28);
-    applyMusic.setBounds(804, 83, 70, 28);
-    device.setBounds(12, 124, 285, 32);
-    audioSettingsButton.setBounds(305, 126, 111, 28);
-    musicPosition.setBounds(550, 124, getWidth() - 572, 32);
-    int right = getWidth() - 332, areaHeight = getHeight() - 197;
+    counters.setBounds(278, 64, 224, 56);
+    counter.setBounds(10, 1, 208, 32);
+    musicPosition.setBounds(10, 32, 208, 22);
+    bpm.setBounds(522, 81, 62, 28);
+    meter.setBounds(592, 81, 65, 28);
+    applyMusic.setBounds(665, 81, 58, 28);
+    device.setBounds(750, 66, std::max(150, getWidth() - 1070), 44);
+    audioSettingsButton.setBounds(getWidth() - 296, 114, 112, 24);
+    undoButton.setBounds(12, 128, 52, 24);
+    redoButton.setBounds(70, 128, 52, 24);
+    rangeButton.setBounds(132, 128, 110, 24);
+    zoomOut.setBounds(258, 128, 30, 24);
+    zoomIn.setBounds(292, 128, 30, 24);
+    zoomFit.setBounds(326, 128, 70, 24);
+    scrollLeft.setBounds(404, 128, 30, 24);
+    scrollRight.setBounds(438, 128, 30, 24);
+    const int left = commands.uiState()["tracks_list"].get<bool>() ? 138 : 0;
+    int right = getWidth() - 332, areaHeight = getHeight() - 191;
     bool clipDock = !selectedClip.empty() && !mix && !pianoMode;
     int dockHeight = clipDock ? 182 : 0;
-    editView.setBounds(0, 168, right, areaHeight - dockHeight);
-    clipPanel.setBounds(0, getHeight() - 29 - dockHeight, right, dockHeight);
+    tracksList.setBounds(0, 162, left, areaHeight);
+    clipsList.setBounds(right + 6, getHeight() - 222, 320, 190);
+    editView.setBounds(left, 162, right - left, areaHeight - dockHeight);
+    clipPanel.setBounds(left, getHeight() - 29 - dockHeight, right - left, dockHeight);
     clipPanel.setVisible(clipDock);
-    mixView.setBounds(0, 168, right, areaHeight);
-    piano.setBounds(0, 168, right, areaHeight);
+    mixView.setBounds(left, 162, right - left, areaHeight);
+    piano.setBounds(left, 162, right - left, areaHeight);
     editView.setVisible(!mix && !pianoMode);
     mixView.setVisible(mix && !pianoMode);
     piano.setVisible(pianoMode);
-    editArea.setSize(std::max(600, right - 14), std::max(areaHeight - dockHeight, 32 + editArea.visibleRows() * 144));
-    mixArea.setSize(std::max(right, int(facts.value("tracks", Json::array()).size()) * 180 + 180),
+    editView.setScrollBarsShown(false, false);
+    editArea.setSize(std::max(400, right - left), areaHeight - dockHeight);
+    mixArea.setSize(std::max(right - left, int(facts.value("tracks", Json::array()).size()) * 150 + 180),
                     std::max(420, areaHeight - 14));
     insertTab.setBounds(right + 8, 237, 64, 26);
     routingTab.setBounds(right + 76, 237, 58, 26);
@@ -398,11 +402,12 @@ void Workspace::resized()
     editorButton.setBounds(right + 108, 352, 108, 26);
     removeButton.setBounds(right + 222, 352, 94, 26);
     const bool preview = !pending.is_null();
+    clipsList.setVisible(commands.uiState()["clips_list"].get<bool>() && !preview && !reportShowing);
     const bool legacyView =
         reportShowing ||
         (preview && (pending["operations"][0]["command"] == "track.delete" ||
                      pending["operations"][0]["command"].get<std::string>().starts_with("midi.notes.")));
-    int bottom = getHeight() - 41 - (preview ? 220 : 0);
+    int bottom = getHeight() - 41 - (preview ? 220 : clipsList.isVisible() ? 194 : 0);
     bool externalState = stateStatus.isVisible();
     bool recovering = stateRetryButton.isVisible();
     int parameterTop = externalState ? (recovering ? 447 : 418) : 390;

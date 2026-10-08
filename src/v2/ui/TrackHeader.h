@@ -5,12 +5,41 @@ namespace ndaw::desktop
 class TrackHeader final : public juce::Component
 {
 public:
-    TrackHeader(std::string id, bool strip, Writer write, std::function<void(std::string)> select)
-        : id(std::move(id)), strip(strip), write(std::move(write)), select(std::move(select))
+    TrackHeader(std::string id, bool strip, Writer write, std::function<void(std::string)> select,
+                std::function<void(std::string, int)> insert = {}, std::function<void(std::string)> route = {})
+        : id(std::move(id)), strip(strip), write(std::move(write)), select(std::move(select)),
+          focusInsert(std::move(insert)), focusRouting(std::move(route))
     {
         for (auto* b : {&name, &mute, &solo, &safe, &fold})
             addAndMakeVisible(b);
         addAndMakeVisible(gain);
+        if (strip)
+        {
+            for (int i = 0; i < 5; ++i)
+            {
+                auto slot = std::make_unique<juce::TextButton>();
+                slot->setComponentID("mix.insert:" + text(this->id) + ":" + juce::String(i));
+                slot->onClick = [this, i]
+                {
+                    if (focusInsert)
+                        focusInsert(this->id, i);
+                };
+                addAndMakeVisible(*slot);
+                insertSlots.push_back(std::move(slot));
+            }
+            for (auto* b : {&sendSlot, &outputSlot})
+            {
+                addAndMakeVisible(b);
+                b->onClick = [this]
+                {
+                    if (focusRouting)
+                        focusRouting(this->id);
+                };
+            }
+            sendSlot.setComponentID("mix.sends:" + text(this->id));
+            outputSlot.setComponentID("mix.output:" + text(this->id));
+        }
+
         name.setComponentID("track.select:" + text(this->id));
         name.onClick = [this] { this->select(this->id); };
         mute.setComponentID("track.mute:" + text(this->id));
@@ -159,6 +188,21 @@ public:
     void update(const Json& value, bool selected)
     {
         facts = value;
+        if (strip)
+        {
+            for (int i = 0; i < int(insertSlots.size()); ++i)
+            {
+                bool existing = i < int(facts.value("plugins", Json::array()).size());
+                insertSlots[i]->setButtonText(existing ? text(facts["plugins"][i]["name"].get<std::string>())
+                                                       : juce::String::charToString(juce::juce_wchar('A' + i)) + "  +");
+                insertSlots[i]->setEnabled(bool(focusInsert) && facts["capabilities"].value("audio_routing", false));
+            }
+            sendSlot.setButtonText(text("Sends  ") + juce::String(facts.value("sends", Json::array()).size()));
+            outputSlot.setButtonText(text(facts["output"].value("name", std::string("—"))));
+            sendSlot.setEnabled(bool(focusRouting));
+            outputSlot.setEnabled(bool(focusRouting));
+        }
+
         this->selected = selected;
         name.setButtonText(text(facts["name"].get<std::string>()));
         name.setColour(juce::TextButton::buttonColourId, trackColour(facts).darker(selected ? .45f : .75f));
@@ -225,22 +269,8 @@ public:
         if (strip)
         {
             g.drawText(text("INSERTS · 插入"), 14, 87, getWidth() - 28, 22, juce::Justification::left);
-            int y = 115;
-            for (const auto& p : facts.value("plugins", Json::array()))
-            {
-                g.setColour(juce::Colour(0xff17202a));
-                g.fillRoundedRectangle(juce::Rectangle<float>(14, float(y), float(getWidth() - 28), 24), 3);
-                g.setColour(p["bypassed"].get<bool>() ? juce::Colour(0xff738396) : juce::Colour(0xffbce5de));
-                g.drawText(text(p["name"].get<std::string>()), 20, y, getWidth() - 40, 24, juce::Justification::left);
-                y += 28;
-            }
-            g.setColour(juce::Colour(0xffa8beca));
-            g.drawText(text("OUT · ") + text(facts["output"]["name"].get<std::string>()), 14, 257, getWidth() - 28, 22,
-                       juce::Justification::left);
-            g.drawText(text("SENDS · ") + juce::String(facts["sends"].size()), 14, 229, getWidth() - 28, 22,
-                       juce::Justification::left);
-            if (facts.value("plugins", Json::array()).empty())
-                g.drawText(text("无效果器"), 14, 115, getWidth() - 28, 24, juce::Justification::left);
+            g.setColour(juce::Colour(0xff8394a7));
+            g.drawText(text("SENDS / I/O"), 14, 246, getWidth() - 28, 20, juce::Justification::left);
             if (pan.isVisible())
                 g.drawText(text("PAN / BALANCE"), 14, 288, getWidth() - 28, 19, juce::Justification::left);
             g.setColour(juce::Colour(0xff8394a7));
@@ -263,6 +293,13 @@ public:
         mute.setBounds(12, 46, width, 25);
         solo.setBounds(18 + width, 46, width, 25);
         safe.setBounds(24 + 2 * width, 46, width, 25);
+        if (strip)
+        {
+            for (int i = 0; i < int(insertSlots.size()); ++i)
+                insertSlots[i]->setBounds(12, 112 + i * 25, getWidth() - 24, 22);
+            sendSlot.setBounds(12, 268, getWidth() - 24, 22);
+            outputSlot.setBounds(12, 294, getWidth() - 24, 22);
+        }
         const bool hasPan = pan.isVisible();
         const int faderTop = strip && hasPan ? 378 : 292;
         gain.setBounds(strip ? 22 : 10, strip ? faderTop : 82,
@@ -270,8 +307,8 @@ public:
                        : hasPan ? getWidth() - 112
                                 : getWidth() - 20,
                        strip ? std::max(60, getHeight() - faderTop - 44) : 29);
-        pan.setBounds(strip ? 12 : getWidth() - 96, strip ? 310 : 76, strip ? getWidth() - 24 : 84, strip ? 30 : 60);
-        panLaw.setBounds(12, 346, getWidth() - 24, 25);
+        pan.setBounds(strip ? 12 : getWidth() - 96, strip ? 334 : 76, strip ? getWidth() - 24 : 84, strip ? 30 : 60);
+        panLaw.setBounds(12, 371, getWidth() - 24, 25);
     }
 
 private:
@@ -308,7 +345,11 @@ private:
     bool strip, selected = false, gesture = false, stoppedGesture = false, panGesture = false,
                 panStoppedGesture = false;
     Writer write;
-    std::function<void(std::string)> select;
+    std::function<void(std::string)> select, focusRouting;
+    std::function<void(std::string, int)> focusInsert;
+    std::vector<std::unique_ptr<juce::TextButton>> insertSlots;
+    juce::TextButton sendSlot, outputSlot;
+
     Json facts;
     juce::TextButton name, mute{"M"}, solo{"S"}, safe{"SAFE"}, fold{"v"};
     juce::Slider gain, pan;

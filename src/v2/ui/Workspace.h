@@ -3,6 +3,12 @@
 #include "EditWindow.h"
 #include "MixWindow.h"
 #include "Inspector.h"
+#include "TracksList.h"
+#include "ClipsList.h"
+#include "KeyboardSettings.h"
+#include "Toolbar.h"
+#include "Transport.h"
+#include "Counters.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -26,7 +32,9 @@ namespace ndaw::desktop
 class Workspace final : public juce::Component,
                         private juce::Timer,
                         public juce::MenuBarModel,
-                        public juce::FileDragAndDropTarget
+                        public juce::FileDragAndDropTarget,
+                        public juce::ApplicationCommandTarget,
+                        private juce::ChangeListener
 {
     friend class ndaw::v2::AudioDeviceTestAccess;
     friend class ndaw::v2::McpTestAccess;
@@ -55,6 +63,7 @@ public:
     Json queryAutomation(const std::string& target) const;
     void openSession(const juce::File& f);
     void prepareImport(const juce::File& f);
+    void importAudio(const juce::File& f);
     Json queryLegacyReports() const;
     void prepareLegacyImport(const juce::File& f);
     void showLegacyReport();
@@ -81,8 +90,27 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
     void paint(juce::Graphics& g) override;
     void resized() override;
+    juce::ApplicationCommandTarget* getNextCommandTarget() override;
+    void getAllCommands(juce::Array<juce::CommandID>&) override;
+    void getCommandInfo(juce::CommandID, juce::ApplicationCommandInfo&) override;
+    bool perform(const InvocationInfo&) override;
+    Json queryView() const
+    {
+        return commands.uiState();
+    }
+    juce::ApplicationCommandManager& uiCommands()
+    {
+        return commandManager;
+    }
 
 private:
+    void initialiseCommandManager();
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
+    void dispatchCommand(int);
+    void setView(Json);
+    void showShortcuts();
+    void focusMixInsert(const std::string&, int);
+    void transferShortcuts(bool);
     void resetCommandClient(const Scope& scope);
     void showCommandCard(const Json& card);
     void finishCommandConfirmation(bool accepted);
@@ -134,7 +162,20 @@ private:
     juce::Label recoveryIndicator;
     bool programDraft = false;
     std::string programTarget;
+    Toolbar toolbar;
+    Transport transport;
+    Counters counters;
     Theme theme;
+    juce::ApplicationCommandManager commandManager;
+    std::map<int, std::function<void()>> commandActions;
+    std::unique_ptr<KeyboardSettings> keyboardSettings;
+    bool loadingKeymap = false;
+    std::string lastKeymapSession;
+    TracksList tracksList{[this](std::string id) { select(id); }};
+    ClipsList clipsList{[this](std::string id) { selectAudioClip(id); }};
+    juce::TextButton zoomIn{"+"}, zoomOut{text("−")}, zoomFit{text("全工程")}, scrollLeft{text("‹")},
+        scrollRight{text("›")}, shortcutsButton{text("键位…")};
+
     Commands commands;
     CommandQueue commandQueue{commands};
     std::unique_ptr<McpGateway> mcp;

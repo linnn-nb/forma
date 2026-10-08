@@ -61,7 +61,7 @@ add_subdirectory(third_party/tracktion_engine)
 add_library(ndaw_ebur128 STATIC third_party/libebur128/ebur128/ebur128.c)
 target_include_directories(ndaw_ebur128 PUBLIC third_party/libebur128/ebur128)
 add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePluginStates.cpp src/v2/PluginEditorCommands.cpp src/v2/ExternalCommands.cpp src/v2/PluginScanning.cpp src/v2/PluginScanStorage.cpp src/v2/CommandQueue.cpp src/v2/McpSession.cpp src/v2/McpGateway.cpp src/v2/Scope.cpp src/v2/ParameterCommands.cpp src/v2/LegacyImport.cpp src/v2/ClipCommands.cpp src/v2/EngineCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -533,7 +533,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 add_library(ndaw_ui STATIC
   src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
-  src/v2/ui/WorkspaceRefresh.cpp)
+  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
 target_link_libraries(ndaw_ui PUBLIC ndaw_engine)
 target_link_libraries(NativeDAW PRIVATE ndaw_ui)
@@ -567,3 +567,10 @@ if(APPLE)
     message(WARNING "Forma has no fixed signing identity; microphone permission persistence is unverified")
   endif()
 endif()
+
+juce_add_console_app(ndaw_ui_navigation_tests PRODUCT_NAME "ndaw_ui_navigation_tests")
+target_sources(ndaw_ui_navigation_tests PRIVATE tests/v2/UiNavigationTests.cpp)
+target_link_libraries(ndaw_ui_navigation_tests PRIVATE ndaw_ui)
+file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/evidence/U")
+add_test(NAME forma_native_ui_navigation COMMAND ndaw_ui_navigation_tests "${CMAKE_SOURCE_DIR}/evidence/U/navigation-tests.json")
+set_tests_properties(forma_native_ui_navigation PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

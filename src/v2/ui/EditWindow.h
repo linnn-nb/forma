@@ -2,9 +2,10 @@
 #include "Theme.h"
 #include "TrackHeader.h"
 #include "Waveforms.h"
+#include "Rulers.h"
 namespace ndaw::desktop
 {
-class EditWindow final : public juce::Component
+class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
 {
 public:
     EditWindow(Writer write, std::function<void(std::string)> select, std::function<void(int64_t)> seek,
@@ -15,6 +16,14 @@ public:
           openMidi(std::move(openMidi)), selectClip(std::move(selectClip)), clipWrite(std::move(clipWrite))
     {
         setComponentID("edit.timeline");
+        horizontal.setComponentID("timeline.scroll.horizontal");
+        vertical.setComponentID("timeline.scroll.vertical");
+        horizontal.setAutoHide(false);
+        vertical.setAutoHide(false);
+        horizontal.addListener(this);
+        vertical.addListener(this);
+        addAndMakeVisible(horizontal);
+        addAndMakeVisible(vertical);
     }
     void update(const Json& value, const std::string& selection, const Json& grid,
                 const std::string& clipSelection = {})
@@ -82,51 +91,63 @@ public:
         resized();
         repaint();
     }
+    void setView(const Json& value)
+    {
+        view = value;
+        resized();
+        repaint();
+    }
+    std::function<void(Json)> onViewChange;
+    TimelineCoordinates coordinates() const
+    {
+        return {view.value("start_samples", int64_t(0)), view.value("span_samples", int64_t(480000)), 250.,
+                double(std::max(1, getWidth() - 266))};
+    }
+    int rowY(int row) const
+    {
+        return Rulers::height + (row - std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1))) *
+                                    view.value("row_height", 144);
+    }
     int visibleRows() const
     {
         return int(trackIDs.size());
     }
     double duration() const
     {
-        return std::max(10., facts.value("length_samples", int64_t(0)) / 48000. * 1.05);
+        return coordinates().span / 48000.;
     }
     juce::Rectangle<int> clipRect(const Json& c, int row) const
     {
-        double d = duration(), w = getWidth() - 262;
-        return {250 + int(c["start_samples"].get<int64_t>() / 48000. / d * w), 44 + row * 144,
-                std::max(3, int(c["length_samples"].get<int64_t>() / 48000. / d * w)), 118};
+        const auto axis = coordinates();
+        const int left = int(std::clamp(axis.pixelAt(c["start_samples"]), -1000000., 1000000.));
+        const int right = int(std::clamp(
+            axis.pixelAt(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>()), -1000000., 1000000.));
+        return {left, rowY(row) + 12, std::max(3, right - left), view.value("row_height", 144) - 26};
     }
     void paint(juce::Graphics& g) override
     {
         g.fillAll(base());
-        g.setColour(juce::Colour(0xff29333f));
-        g.fillRect(0, 0, getWidth(), 32);
-        g.setFont(juce::FontOptions(11));
-        g.setColour(juce::Colour(0xffb9c8d8));
-        g.drawText(text("TRACKS / 轨道"), 12, 0, 210, 32, juce::Justification::left);
+        const auto axis = coordinates();
+        Rulers::draw(g, axis, grid, getWidth() - 16);
+        juce::Graphics::ScopedSaveState clipState(g);
+        g.reduceClipRegion(juce::Rectangle<int>(250, Rulers::height, std::max(1, getWidth() - 266),
+                                                std::max(1, getHeight() - Rulers::height - 16)));
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
         {
             g.setColour(juce::Colour(facts["tracks"][i]["id"] == selected ? 0xff21313d : 0xff1c2530));
-            g.fillRect(250, 32 + int(i) * 144, getWidth() - 250, 143);
+            g.fillRect(250, rowY(int(i)), getWidth() - 250, view.value("row_height", 144) - 1);
         }
         for (const auto& line : grid)
         {
-            int x = 250 + int(line["samples"].get<int64_t>() / 48000. / duration() * (getWidth() - 262));
+            int x = int(std::round(axis.pixelAt(line["samples"])));
             bool bar = line["bar_line"];
             g.setColour(juce::Colour(bar ? 0xff536575 : 0xff303b49));
-            g.drawVerticalLine(x, 32, float(getHeight()));
-            if (bar)
-            {
-                g.setColour(juce::Colour(0xffacbbcc));
-                g.drawText(juce::String(line["bar"].get<int>()) + " |", x + 4, 0, 50, 30, juce::Justification::left);
-            }
+            g.drawVerticalLine(x, Rulers::height, float(getHeight()));
         }
         if (auto range = facts.value("time_selection", Json(nullptr)); !range.is_null())
         {
-            const auto left =
-                           250 + int(range["start_samples"].get<int64_t>() / 48000. / duration() * (getWidth() - 262)),
-                       right =
-                           250 + int(range["end_samples"].get<int64_t>() / 48000. / duration() * (getWidth() - 262));
+            const auto left = int(std::round(axis.pixelAt(range["start_samples"]))),
+                       right = int(std::round(axis.pixelAt(range["end_samples"])));
             g.setColour(accent().withAlpha(.14f));
             g.fillRect(left, 0, std::max(1, right - left), getHeight());
             g.setColour(accent());
@@ -135,10 +156,10 @@ public:
         }
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
         {
-            int y = 32 + int(i) * 144;
+            int y = rowY(int(i));
             const auto& t = facts["tracks"][i];
             g.setColour(juce::Colour(0xff33404e));
-            g.drawHorizontalLine(y + 143, 0, float(getWidth()));
+            g.drawHorizontalLine(y + view.value("row_height", 144) - 1, 0, float(getWidth()));
             for (const auto& c : t["clips"])
             {
                 auto rect = clipRect(c, int(i));
@@ -158,7 +179,14 @@ public:
                     }
                 else
                 {
-                    waves.draw(g, c, rect.reduced(0, 25), length);
+                    auto waveRect = rect.reduced(0, 25).getIntersection(
+                        juce::Rectangle<int>(250, Rulers::height, getWidth() - 266, getHeight() - Rulers::height - 16));
+                    if (!waveRect.isEmpty())
+                    {
+                        const auto elapsed =
+                            std::max(0., (axis.sampleAt(waveRect.getX()) - c["start_samples"].get<int64_t>()) / 48000.);
+                        waves.draw(g, c, waveRect, waveRect.getWidth() / axis.width * axis.span / 48000., elapsed);
+                    }
                     g.setColour(juce::Colour(0xffe6e1b2));
                     double in = c.value("fade_in_samples", int64_t(0)) / 48000. / length,
                            out = c.value("fade_out_samples", int64_t(0)) / 48000. / length;
@@ -182,7 +210,7 @@ public:
             g.setColour(accent().withAlpha(.25f));
             g.fillRect(clipRect(preview, drag["row"]));
         }
-        int x = 250 + int(facts.value("position_samples", int64_t(0)) / 48000. / duration() * (getWidth() - 262));
+        int x = int(std::round(axis.pixelAt(facts.value("position_samples", int64_t(0)))));
         g.setColour(juce::Colour(0xffedca72));
         g.drawVerticalLine(x, 0, float(getHeight()));
         if (facts.value("tracks", Json::array()).empty())
@@ -197,12 +225,33 @@ public:
     }
     void resized() override
     {
+        horizontal.setBounds(250, getHeight() - 14, std::max(1, getWidth() - 266), 14);
+        vertical.setBounds(getWidth() - 14, Rulers::height, 14, std::max(1, getHeight() - Rulers::height - 14));
+        const auto axis = coordinates();
+        horizontal.setRangeLimits(
+            0, double(std::max(facts.value("length_samples", int64_t(0)) + axis.span, axis.start + axis.span)));
+        horizontal.setCurrentRange(double(axis.start), double(axis.span), juce::dontSendNotification);
+        horizontal.setSingleStepSize(double(axis.span) / 10);
+        vertical.setRangeLimits(0, std::max(1, visibleRows()));
+        vertical.setCurrentRange(view.value("first_row", 0),
+                                 std::max(1, (getHeight() - Rulers::height - 14) / view.value("row_height", 144)),
+                                 juce::dontSendNotification);
+        vertical.setSingleStepSize(1);
+
         for (size_t i = 0; i < controls.size(); ++i)
-            controls[i]->setBounds(0, 32 + int(i) * 144, 242, 143);
+        {
+            controls[i]->setBounds(0, rowY(int(i)), 242, view.value("row_height", 144) - 1);
+            controls[i]->setVisible(rowY(int(i)) >= Rulers::height && rowY(int(i)) < getHeight() - 16);
+        }
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
             for (const auto& c : facts["tracks"][i]["clips"])
                 if (headers.contains(c["id"]))
-                    headers.at(c["id"])->setBounds(clipRect(c, int(i)).reduced(3).removeFromTop(20));
+                {
+                    auto r = clipRect(c, int(i)).reduced(3).removeFromTop(20).getIntersection(
+                        juce::Rectangle<int>(250, Rulers::height, getWidth() - 266, getHeight() - Rulers::height - 16));
+                    headers.at(c["id"])->setBounds(r);
+                    headers.at(c["id"])->setVisible(!r.isEmpty());
+                }
     }
     void mouseDown(const juce::MouseEvent& e) override
     {
@@ -210,9 +259,10 @@ public:
         dragged = false;
         if (e.x < 250)
             return;
-        int row = (e.y - 32) / 144;
+        int row = (e.y - Rulers::height) / view.value("row_height", 144) +
+                  std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
         auto sample = sampleAt(e.x);
-        if (e.y >= 32 && row >= 0 && row < int(trackIDs.size()))
+        if (e.y >= Rulers::height && row >= 0 && row < int(trackIDs.size()))
         {
             select(trackIDs[row]);
             for (const auto c : facts["tracks"][row]["clips"])
@@ -233,7 +283,7 @@ public:
                         dragX = e.x;
                         dragStart = c["start_samples"];
                         dragEnd = dragStart + c["length_samples"].get<int64_t>();
-                        dragScale = duration() * 48000 / (getWidth() - 262);
+                        dragScale = coordinates().span / coordinates().width;
                     }
                     break;
                 }
@@ -286,11 +336,40 @@ public:
                       {{"clip", captured["clip"]["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
                       captured["revision"]);
     }
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
+    {
+        if (!onViewChange || (wheel.deltaX == 0 && wheel.deltaY == 0))
+            return;
+        auto axis = coordinates();
+        if (e.mods.isCommandDown())
+        {
+            auto next = std::clamp(int64_t(std::llround(axis.span * (wheel.deltaY > 0 ? .8 : 1.25))), int64_t(480),
+                                   std::llround(te::Edit::maximumLength * 48000));
+            auto anchor = axis.sampleAt(e.x);
+            auto first = std::llround(anchor - (anchor - axis.start) * double(next) / axis.span);
+            onViewChange({{"span_samples", next},
+                          {"start_samples",
+                           std::clamp(first, int64_t(0), std::llround(te::Edit::maximumLength * 48000) - next)}});
+        }
+        else if (e.mods.isShiftDown() || std::abs(wheel.deltaX) > std::abs(wheel.deltaY))
+        {
+            auto delta = std::llround((wheel.deltaX != 0 ? wheel.deltaX : wheel.deltaY) * axis.span * .3);
+            onViewChange({{"start_samples", std::clamp(axis.start - delta, int64_t(0),
+                                                       std::llround(te::Edit::maximumLength * 48000) - axis.span)}});
+        }
+        else
+        {
+            const int first =
+                std::clamp(view.value("first_row", 0) + (wheel.deltaY > 0 ? -1 : 1), 0, std::max(0, visibleRows() - 1));
+            onViewChange({{"first_row", first}});
+        }
+    }
     void mouseDoubleClick(const juce::MouseEvent& e) override
     {
-        if (e.x < 250 || e.y < 32)
+        if (e.x < 250 || e.y < Rulers::height)
             return;
-        int row = (e.y - 32) / 144;
+        int row = (e.y - Rulers::height) / view.value("row_height", 144) +
+                  std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
         if (row >= int(trackIDs.size()))
             return;
         for (const auto& c : facts["tracks"][row]["clips"])
@@ -302,6 +381,18 @@ public:
     }
 
 private:
+    void scrollBarMoved(juce::ScrollBar* bar, double position) override
+    {
+        if (!onViewChange)
+            return;
+        if (bar == &horizontal)
+            onViewChange(
+                {{"start_samples", std::clamp(std::llround(position), int64_t(0),
+                                              std::llround(te::Edit::maximumLength * 48000) - coordinates().span)}});
+        else
+            onViewChange({{"first_row", std::clamp(int(std::llround(position)), 0, std::max(0, visibleRows() - 1))}});
+    }
+    juce::ScrollBar horizontal{false}, vertical{true};
     static void drawFade(juce::Graphics& g, juce::Rectangle<int> r, double fraction, const std::string& type, bool in)
     {
         if (fraction <= 0)
@@ -325,7 +416,7 @@ private:
     }
     int64_t sampleAt(int x) const
     {
-        return std::llround(std::max(0., (x - 250) / double(getWidth() - 262) * duration() * 48000));
+        return coordinates().sampleAt(x);
     }
     Writer write;
     std::function<void(std::string)> select;
@@ -333,6 +424,7 @@ private:
     Waveforms& waves;
     std::function<void(std::string)> openMidi, selectClip;
     std::function<void(const std::string&, Json, uint64_t)> clipWrite;
+    Json view = Json::object();
     Json facts = Json::object(), grid = Json::array(), drag = nullptr;
     std::string selected, selectedClip;
     int dragX = 0;

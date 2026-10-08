@@ -17,11 +17,11 @@ inline juce::String text(const std::string& s)
 }
 inline juce::Colour accent()
 {
-    return juce::Colour(0xff54c7ba);
+    return juce::Colour(0xff78a9cf);
 }
 inline juce::Colour base()
 {
-    return juce::Colour(0xff191e25);
+    return juce::Colour(0xff202329);
 }
 inline Json operation(const std::string& command, Json args)
 {

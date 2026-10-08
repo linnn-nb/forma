@@ -6,7 +6,9 @@
 
 **正在重构原生 Edit / Mix 界面，尚未达到日常制作完整验收。** 当前依次推进 U＋P0（界面与基础编辑）、P1（录音/Comp）、P2（混音交付）、P3（Warp/MIDI CC）。AI 功能暂停扩充；既有 MCP 和分析入口保留。每级完成后由用户亲手试用。
 
-界面截图将在本轮原生构建实测后加入；这里不放效果图。逐轮功能记录移至 [CHANGELOG](CHANGELOG.md)。
+![Forma 原生 Edit 窗口](.github/assets/forma-edit.png)
+
+实际 macOS 开发构建；波形来自本地原创合成 PCM，截图不代表实体录音或完整 U＋P0 验收。[真实 Mix 截图](.github/assets/forma-mix.png) · [CHANGELOG](CHANGELOG.md)。
 
 ## 快速开始
 
@@ -20,7 +22,7 @@ cmake --build --preset release --target NativeDAW
 open build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app
 ```
 
-使用「文件→导入音频」，空格播放/停止；编辑与混音操作可用 Undo/Redo，另存 `.tracktionedit` 工程。完整界面正在重做，尚未实现的能力不会显示成可用按钮。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
+使用「文件→导入音频」，直接在光标处创建轨道和片段，一次 Undo 撤销；空格播放/停止，T/R 水平缩放，Option＋方向键滚动，Cmd+= 切换 Edit/Mix。「键位…」可以即时编辑和导入导出快捷键，视图与键位随 `.tracktionedit` 保存。当前 Undo 历史只在本次打开期间保留。完整界面正在重做，尚未实现的能力不会显示成可用按钮。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
 
 开发者可设置 `FORMA_SIGNING_IDENTITY` 为本机代码签名证书 SHA1；签名身份未配置的构建不保证麦克风授权跨构建保留。固定签名并非签名公证或正式发行。外部 MIDI、实体录音和持续可靠性仍有待实测。
 
@@ -54,6 +56,8 @@ The development application starts a local read-only MCP gateway. Choose the pre
 
 Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine, JUCE and other dependencies retain their own licenses and notices; see [LICENSE](LICENSE), [NOTICE](NOTICE.md), and the dependency manifests. This is an open-source copyleft project, not a closed-source commercial edition.
 
-## 中文简介
+## 当前边界
 
-Forma Studio 是一款正在开发的开源原生 DAW，目标是让音乐创作者与 AI Agent 在同一份真实工程中协作。编辑操作通过统一命令层形成可检查的计划，供用户预览、试听、提交或撤销。M0 已通过；Codex 已通过生产 MCP 完成新建混响 Aux、桌面确认、CoreAudio 播放和一次撤销，真实 WAV 的撤销结果与原版 PCM 一致。测试使用本地合成语音，不代表真实麦克风录音或主观音质验收。M1 完整制作、M3–M6 和发行仍未完成。当前 macOS 构建保留内部名称 `NativeDAW`，完整状态见上方文档。
+Forma 仍是开发版。U＋P0 尚未完成：统一选区和工具模型、四种编辑模式、剪贴板、吸附/Nudge、节拍器、循环与 Marker 正在依次实现；Undo 跨工程重开恢复也尚未实现。P1–P3 按用户验收顺序推进。麦克风授权跨构建、外部 MIDI、Windows 和发行签名公证尚未验证或完成。
+
+既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。

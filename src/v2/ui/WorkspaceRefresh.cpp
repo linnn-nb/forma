@@ -50,8 +50,7 @@ void Workspace::selectAudioClip(const std::string& id)
                 }
                 selected = t["id"];
                 selectedClip = id;
-                mix = false;
-                pianoMode = false;
+                commands.updateUiState({{"workspace", "edit"}}, commands.sessionToken());
                 refresh();
                 return;
             }
@@ -176,6 +175,8 @@ void Workspace::select(std::string id)
         lastPluginIDs.clear();
     }
     refresh();
+    if (isShowing())
+        grabKeyboardFocus();
 }
 
 juce::String Workspace::trackName(const std::string& id) const
@@ -399,6 +400,20 @@ void Workspace::refresh()
         }
     }
     facts = commands.query();
+    const auto view = commands.uiState();
+    mix = view["workspace"] == "mix";
+    pianoMode = view["workspace"] == "midi";
+    if (lastKeymapSession != commands.sessionToken())
+    {
+        lastKeymapSession = commands.sessionToken();
+        loadingKeymap = true;
+        commandManager.getKeyMappings()->resetToDefaultMappings();
+        if (!view["keymap_xml"].get<std::string>().empty())
+            if (auto xml = juce::parseXML(text(view["keymap_xml"].get<std::string>())))
+                commandManager.getKeyMappings()->restoreFromXml(*xml);
+        loadingKeymap = false;
+    }
+
     if (timelinePanel && timelinePanel->isVisible())
         timelinePanel->update(facts);
     waves.update(facts);
@@ -462,11 +477,8 @@ void Workspace::refresh()
     if (audioSettings && audioSettings->isVisible())
         audioSettings->updateRuntime(commands.audioDevices());
     const auto& music = facts["music"];
-    musicPosition.setText(text("小节 / 拍 ") + juce::String(music["bar"].get<int>()) + " | " +
-                              juce::String(music["beat"].get<double>(), 2) + text("    当前 ") +
-                              juce::String(music["bpm"].get<double>(), 2) + " BPM   " +
-                              juce::String(music["numerator"].get<int>()) + "/" +
-                              juce::String(music["denominator"].get<int>()) + text("    起始 Tempo / 拍号：上方应用"),
+    musicPosition.setText(juce::String(music["bar"].get<int>()) + " | " + juce::String(music["beat"].get<double>(), 2) +
+                              text("  小节 / 拍"),
                           juce::dontSendNotification);
     if (music["tempos"].dump() + music["meters"].dump() != lastMusicMap)
     {
@@ -492,10 +504,15 @@ void Workspace::refresh()
         clipFXInspector = false;
     }
     clipPanel.update(selectedAudio, selected, facts["revision"], facts["position_samples"], playing);
-    editArea.update(facts, selected,
-                    commands.musicalGrid(
-                        0, std::llround(std::max(10., facts["length_samples"].get<int64_t>() / 48000. * 1.05) * 48000)),
-                    selectedClip);
+    editArea.setView(view);
+    const auto viewStart = view["start_samples"].get<int64_t>(), viewSpan = view["span_samples"].get<int64_t>();
+    const double gridDivision = std::max(1., std::pow(2., std::ceil(std::log2(std::max(1., viewSpan / 48000. / 40.)))));
+    editArea.update(facts, selected, commands.musicalGrid(viewStart, viewStart + viewSpan, gridDivision), selectedClip);
+    tracksList.update(facts["tracks"], selected);
+    clipsList.update(facts["tracks"]);
+    tracksList.setVisible(view["tracks_list"].get<bool>());
+    clipsList.setVisible(view["clips_list"].get<bool>());
+    commandManager.commandStatusChanged();
     mixArea.update(facts, selected, d);
     piano.update(selectedTrack(), facts["revision"], playing, music["position_beats"]);
     auto selectedMidi = pianoMode ? piano.viewedClip() : Json(nullptr);

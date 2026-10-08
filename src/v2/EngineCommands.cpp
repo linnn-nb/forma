@@ -1295,6 +1295,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
+    readUiState(candidate->state.getChildWithName("NATIVEDAW"));
     if (masterAnalysis)
         masterAnalysis->reset();
     auto newInhibitor = std::make_unique<te::Edit::UndoTransactionInhibitor>(*candidate);

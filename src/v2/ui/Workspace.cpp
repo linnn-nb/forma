@@ -9,9 +9,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
           [this](auto id)
           {
               piano.showClip(id);
-              pianoMode = true;
-              mix = false;
-              refresh();
+              setView({{"workspace", "midi"}});
           },
           [this](auto id) { selectAudioClip(id); }, clipWriter()),
       mixArea(writer(), [this](auto id) { select(id); }), parameters(writer()),
@@ -245,6 +243,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 }
                 commands.commit(commands.makePlan("human", ops));
                 selected.clear();
+                if (type == "midi" || type == "instrument")
+                    commands.updateUiState({{"workspace", "midi"}}, commands.sessionToken());
                 message(type == "midi"         ? text("已建 MIDI 轨 · 未加载乐器，不会发声；可插入 FourOsc")
                         : type == "instrument" ? text("已建 FourOsc 乐器轨 · 空白四小节 MIDI 片段 · 增益 −12 dB")
                                                : text("已新增 ") + text(type) + text(" 轨道 · 可撤销"));
@@ -276,7 +276,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 message(text("起始 Tempo / 拍号已提交 · 音符按节拍跟随，导入音频按采样保持"));
             });
     };
-    importButton.onClick = [this] { choose(false, [this](const auto& f) { prepareImport(f); }); };
+    importButton.onClick = [this] { choose(false, [this](const auto& f) { importAudio(f); }); };
     openButton.onClick = [this] { choose(false, [this](const auto& f) { openSession(f); }, "*.tracktionedit;*.ndaw"); };
     saveButton.onClick = [this]
     {
@@ -571,6 +571,27 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     recoveryIndicator.setComponentID("recovery.status");
     recoveryIndicator.setFont(juce::FontOptions(11));
     addAndMakeVisible(recoveryIndicator);
+    addAndMakeVisible(tracksList);
+    addAndMakeVisible(clipsList);
+    initialiseCommandManager();
+    for (auto* c : std::initializer_list<juce::Component*>{&toolbar, &transport, &counters})
+        addAndMakeVisible(c);
+    for (auto* c :
+         std::initializer_list<juce::Component*>{&trackType, &newTrack, &importButton, &saveButton, &exportButton,
+                                                 &editButton, &mixButton, &pianoButton, &shortcutsButton})
+        toolbar.attach(*c);
+    for (auto* c : {&returnButton, &stopButton, &playButton, &recordButton})
+        transport.attach(*c);
+    counters.attach(counter);
+    counters.attach(musicPosition);
+    openButton.setVisible(false);
+    commandButton.setVisible(false);
+    menu.setComponentID("workspace.menu");
+    newTrack.setButtonText(text("＋ 轨道"));
+    importButton.setButtonText(text("导入…"));
+    saveButton.setButtonText(text("保存副本…"));
+    exportButton.setButtonText(text("导出…"));
+
     setSize(1440, 880);
     refresh();
     startTimerHz(20);
@@ -579,6 +600,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
 Workspace::~Workspace()
 {
     stopTimer();
+    commandManager.getKeyMappings()->removeChangeListener(this);
+    keyboardSettings.reset();
     exportPanel.reset();
     analysisPanel.reset();
     timelinePanel.reset();

@@ -431,6 +431,31 @@ void Workspace::openSession(const juce::File& f)
         });
 }
 
+void Workspace::importAudio(const juce::File& f)
+{
+    if (f.hasFileExtension("ndaw"))
+    {
+        prepareLegacyImport(f);
+        return;
+    }
+    invoke(
+        [&]
+        {
+            if (!pending.is_null() || !pendingConfirmation.empty() || commandFileBusy)
+                throw std::runtime_error("finish the current preview before importing audio");
+            auto plan = commands.makePlan(
+                "human",
+                Json::array({operation("track.create",
+                                       {{"name", f.getFileNameWithoutExtension().toStdString()}, {"ref", "$import"}}),
+                             operation("clip.import", {{"track", "$import"},
+                                                       {"path", f.getFullPathName().toStdString()},
+                                                       {"position_samples", facts["position_samples"]}})}));
+            commands.commit(plan);
+            setView({{"workspace", "edit"}});
+            message(text("音频已导入至光标 · 原始媒体保留 · 一次 Undo 撤销"));
+        });
+}
+
 void Workspace::prepareImport(const juce::File& f)
 {
     if (!pendingConfirmation.empty() || commandFileBusy)

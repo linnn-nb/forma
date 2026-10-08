@@ -1,5 +1,12 @@
 # 更新记录
 
+## 2026-10-08：原生界面基础与固定签名
+
+- 原生 Workspace 拆分到 `src/v2/ui`，clang-format19.1.7/120列；应用名 Forma / org.forma.daw，固定本机代码签名身份。
+- 全局 JUCE 命令表和真实键位编辑/导入导出，T/R缩放、滚动、全工程视图、Tracks/Clips侧栏、双计数器与两个实际标尺；视图保存在Edit UI子树，独立于工程Undo。
+- 普通音频导入直接创建真实轨道和片段，一笔Undo/Redo；Mix A–E真实插入槽接到实例/内置效果菜单与I/O检查器。U＋P0其余编辑与窗口仍在建；重开工程后的旧Undo历史尚未保留。
+- 相关8/8测试通过；最后焦点修复后3/3复测通过。真实原生Edit/Mix截图加入README；M2/M3冻结。
+
 
 ## 2026-10-08：界面重构前功能与验证边界
 
@@ -23,4 +30,3 @@
 - The primary platform is macOS on Apple Silicon. Windows is planned, not verified.
 
 For milestone definitions and honest verification status, see [Product scope](docs/PRODUCT_SPEC.md), [Architecture](docs/ARCHITECTURE.md), [M0 report](docs/M0_REPORT.md), [Verification](docs/VERIFICATION.md), and [Next steps](docs/NEXT_STEPS.md). Local build logs and sample sessions are intentionally not included in this public source snapshot.
-

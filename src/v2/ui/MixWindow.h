@@ -16,6 +16,8 @@ public:
         reset.onClick = [this] { this->write("audio.meters.reset", Json::object()); };
         addAndMakeVisible(reset);
     }
+    std::function<void(std::string, int)> onInsert;
+    std::function<void(std::string)> onRouting;
     void update(const Json& facts, const std::string& selected, const Json& device)
     {
         std::vector<std::string> ids;
@@ -27,7 +29,18 @@ public:
             controls.clear();
             for (auto& id : ids)
             {
-                auto c = std::make_unique<TrackHeader>(id, true, write, select);
+                auto c = std::make_unique<TrackHeader>(
+                    id, true, write, select,
+                    [this](std::string id, int index)
+                    {
+                        if (onInsert)
+                            onInsert(id, index);
+                    },
+                    [this](std::string id)
+                    {
+                        if (onRouting)
+                            onRouting(id);
+                    });
                 addAndMakeVisible(*c);
                 controls.push_back(std::move(c));
             }
@@ -61,7 +74,7 @@ public:
     void resized() override
     {
         for (size_t i = 0; i < controls.size(); ++i)
-            controls[i]->setBounds(int(i) * 180 + 8, 8, 170, getHeight() - 16);
+            controls[i]->setBounds(int(i) * 150 + 8, 8, 140, getHeight() - 16);
         reset.setBounds(masterX() + 12, 93, 126, 24);
     }
     void paint(juce::Graphics& g) override
@@ -130,7 +143,7 @@ public:
 private:
     int masterX() const
     {
-        return int(controls.size()) * 180 + 16;
+        return int(controls.size()) * 150 + 16;
     }
     static int levelHeight(double level, int height)
     {
