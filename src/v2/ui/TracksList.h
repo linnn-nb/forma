@@ -11,9 +11,10 @@ public:
         addAndMakeVisible(list);
         list.setModel(this);
         list.setRowHeight(26);
+        list.setMultipleSelectionEnabled(true);
         list.setColour(juce::ListBox::backgroundColourId, base().darker(.15f));
     }
-    void update(const Json& tracks, const std::string& selected)
+    void update(const Json& tracks, const std::string& selected, const Json& selection = Json::array())
     {
         Json next = Json::array();
         for (const auto& t : tracks)
@@ -29,7 +30,8 @@ public:
         }
         list.deselectAllRows();
         for (int i = 0; i < int(rows.size()); ++i)
-            if (rows[i]["id"] == selected)
+            if (rows[i]["id"] == selected ||
+                std::find(selection.begin(), selection.end(), rows[i]["id"]) != selection.end())
                 list.selectRow(i, true, false);
         repaint();
     }

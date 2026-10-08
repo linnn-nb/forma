@@ -645,6 +645,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     recoveryIndicator.setFont(juce::FontOptions(11));
     addAndMakeVisible(recoveryIndicator);
     addAndMakeVisible(tracksList);
+    addAndMakeVisible(groupsList);
     addAndMakeVisible(clipsList);
     initialiseCommandManager();
     addAndMakeVisible(editingControls);

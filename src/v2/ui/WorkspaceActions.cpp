@@ -754,4 +754,65 @@ void Workspace::chooseRecordingDirectory()
                              }
                          });
 }
+
+void Workspace::showMixGroup(const std::string& id)
+{
+    invoke(
+        [&]
+        {
+            if (!mixGroupEditor)
+            {
+                mixGroupEditor = std::make_unique<MixGroupEditor>(
+                    [this](const auto& cmd, const auto& args, const auto& binding)
+                    {
+                        auto plan = commands.makePlan("human", Json::array({operation(cmd, args)}));
+                        plan["session_token"] = binding["session_token"];
+                        plan["base_revision"] = binding["base_revision"];
+                        commands.commit(plan);
+                        groupsList.preferSelection(args.at("id").template get<std::string>());
+                        if (args.contains("members"))
+                            commands.updateUiState(
+                                {{"object_selection", Json::array()}, {"selection_tracks", args["members"]}},
+                                commands.sessionToken());
+                        message(text("Mix 组已提交 · 可撤销"));
+                        refresh();
+                    },
+                    [this]
+                    {
+                        mixGroupEditor->setVisible(false);
+                        grabKeyboardFocus();
+                    });
+                addChildComponent(*mixGroupEditor);
+            }
+            mixGroupEditor->bind(commands.query(), id, selection.tracks);
+            mixGroupEditor->setBounds(getLocalBounds());
+            mixGroupEditor->setVisible(true);
+            mixGroupEditor->toFront(true);
+        });
+}
+void Workspace::toggleMixGroup(const std::string& id, bool enabled)
+{
+    writer()("group.enabled", {{"id", id}, {"enabled", enabled}});
+}
+void Workspace::selectMixGroup(const std::string& id)
+{
+    for (const auto& group : facts["mix_groups"])
+        if (group["id"] == id)
+        {
+            groupsList.preferSelection(id);
+            Json members = Json::array();
+            for (const auto& member : group["members"])
+                for (const auto& track : facts["tracks"])
+                    if (track["id"] == member)
+                        members.push_back(member);
+            if (!members.empty())
+                selected = members[0];
+            selectedClip.clear();
+            midiCommandContext = false;
+            commands.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", members}},
+                                   commands.sessionToken());
+            refresh();
+            return;
+        }
+}
 } // namespace ndaw::desktop

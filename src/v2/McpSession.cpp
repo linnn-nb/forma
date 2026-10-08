@@ -102,8 +102,12 @@ Json McpSession::tools(const Json& registry)
         "Read the authoritative L1 command registry. Control commands are not callable as editing plans.", object(),
         true);
     for (const auto& command : registry)
-        if (command.value("execution", std::string("plan")) == "query" ||
-            command.value("execution", std::string("plan")) == "analysis")
+        if (command.value("tool_visibility", std::string("public")) == "local_gui")
+        {
+            continue;
+        }
+        else if (command.value("execution", std::string("plan")) == "query" ||
+                 command.value("execution", std::string("plan")) == "analysis")
         {
             add(command.at("tool_name"), command.at("description"), command.at("schema"), true);
         }

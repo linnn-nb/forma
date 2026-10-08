@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 最新增量：U-P0-GROUPS-01（2026-10-08）
+
+独立Mix组与左侧Groups列表接通：创建/改名/成员/属性/启用/删除，成员Mute/Solo由L1展开并整笔Undo；Folder/VCA与输出保持。⌘G/⌘⇧G/⌘⌥G共用可改键位命令，schema1定义和成员UI选择保存重开。最终Release/固定验签通过，相关7/7、0失败、26.74秒；Groups专项84检查，真实PCM Mute=基线1/3、Solo=2/3与Undo容差3e-6通过。结果`groups-tests.json`。
+
+桌面锁定，GUI验收/听感/实际退出重开未执行。`build-v2-tracktion/FormaGroupsPreview.app`准备好，未运行。仅Mix Mute/Solo；完整编辑/混音组、All/隔离/排序及其他U功能未完成；预算与界面差异详见docs/VERIFICATION.md。无新依赖/SDK补丁、无DMG，不进入P1。
+
 ## 最新增量：U-P0-VIEWS-01（2026-10-08）
 
 Edit I/O、Inserts A–E、Sends A–E三列通过菜单/⌘⌥1/2/3独立开关，读取真实对象并进入原命令/检查器；第二发送槽定位稳定实例。统一动态坐标、Clips选择高亮、UI schema4迁移和窄窗工具栏修正已接通。Release与固定本地签名验签通过；相关5/5、0失败、25.20秒，扩充专项1/1、3.93秒、46检查，包含真实PCM源保持、Undo/Redo及新Workspace保存重开。精简结果`edit-views-tests.json`。

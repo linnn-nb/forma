@@ -342,6 +342,7 @@ Json Commands::registry()
     registerTimelineCommands(result);
     registerMarkerCommands(result);
     registerHierarchyCommands(result);
+    registerMixGroupCommands(result);
     registerPanCommands(result);
     registerAutomationCommands(result);
     registerRecordingCommands(result);
@@ -434,6 +435,7 @@ Json Commands::query() const
             {"timeline_sample_rate", timelineRate},
             {"tracks", tracks},
             {"markers", markerQuery()},
+            {"mix_groups", mixGroupsQuery()},
             {"length_samples", std::llround(edit->getLength().inSeconds() * timelineRate)},
             {"position_samples", std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
             {"playing", edit->getTransport().isPlaying()},
@@ -453,6 +455,7 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
     require(removing || !nativeStates ||
                 (!nativeStates->query()["pending"].get<bool>() && nativeStates->query()["failure"].is_null()),
             "native plugin state pending; stop playback or resolve capture failure before planning");
+    require(ops.is_array() && !ops.empty() && ops.size() <= 64, "operation limit (1..64)");
     std::map<std::string, std::string> hashes;
     for (auto& op : ops)
     {
@@ -512,12 +515,16 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
                 hashes[a.at("ref")] = a["media_hash"];
         }
     }
+    const auto requested = ops;
+    ops = expandMixGroupFlags(ops);
     Json plan{{"plan_id", juce::Uuid().toString().toStdString()},
               {"actor", actor},
               {"session_token", sessionToken()},
               {"base_revision", revision},
               {"idempotency_key", juce::Uuid().toString().toStdString()},
               {"operations", ops}};
+    if (requested != ops)
+        plan["requested_operations"] = requested;
     preview(plan);
     return plan;
 }
@@ -549,6 +556,9 @@ Json Commands::preview(const Json& plan) const
             "missing plan identity");
     const auto& ops = plan.at("operations");
     require(ops.is_array() && !ops.empty() && ops.size() <= 64, "operation limit (1..64)");
+    const auto requested = plan.value("requested_operations", ops);
+    require(requested.is_array() && !requested.empty() && requested.size() <= 64, "requested operation limit (1..64)");
+    require(ops == expandMixGroupFlags(requested), "group targets changed; rebuild the Plan with current members");
     std::set<std::string> refs;
     Json diff = Json::array();
     Json legacyDiff = Json::array();
@@ -610,6 +620,11 @@ Json Commands::preview(const Json& plan) const
         {
             require(ops.size() == 1, "legacy import must be one standalone Plan operation");
             legacyDiff.push_back(validateLegacyOperation(a));
+        }
+        else if (cmd.starts_with("group."))
+        {
+            require(actor == "human", "Mix group definitions are local GUI only during the U phase");
+            // Independent Mix definitions are validated as standalone transactions below.
         }
         else if (cmd == "session.range.set" || cmd == "session.range.clear")
         {
@@ -693,6 +708,7 @@ Json Commands::preview(const Json& plan) const
         }
         diff.push_back({{"command", cmd}, {"change", a}});
     }
+    const auto groupDiff = validateMixGroupPlan(ops);
     const auto rangeDiff = validateTimelinePlan(ops);
     const auto trackDiff = validateHierarchyPlan(ops);
     const auto panDiff = validatePanPlan(ops);
@@ -714,6 +730,7 @@ Json Commands::preview(const Json& plan) const
             {"midi_changes", midiDiff},
             {"transport_changes", transportDiff},
             {"marker_changes", markerDiff},
+            {"group_changes", groupDiff},
             {"legacy_imports", legacyDiff}};
 }
 void Commands::bumpRevision()
@@ -798,7 +815,11 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd.starts_with("marker.") || cmd == "location.store_selection")
+            if (cmd.starts_with("group."))
+            {
+                executeMixGroupOperation(cmd, a);
+            }
+            else if (cmd.starts_with("marker.") || cmd == "location.store_selection")
             {
                 executeMarkerOperation(cmd, a, objects);
             }

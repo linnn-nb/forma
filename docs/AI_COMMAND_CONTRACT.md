@@ -1,5 +1,11 @@
 # 统一命令契约 v2
 
+## 独立Mix组（U-P0-GROUPS-01）
+
+领域命令group.create/update（id/name/members/enabled/mute/solo）、group.enabled与group.delete由注册表给出Schema，低风险、可撤销、非live，定义变更为单独事务。已有query事实新增mix_groups；组定义标记tool_visibility=local_gui，preview要求actor=human；MCP工具生成跳过该标记，且外部generic plan也不能绕过actor验证，不新增工具入口，M2/M3仍冻结。现有外部track.mute/solo服从相同展开与权限验证。结构命令按现有Scope规则需要不受限的预览权限，不能使用成员范围假冒结构授权。
+
+track.mute/solo按当前稳定组/属性扩展原操作，Plan发生扩展时含requested_operations；它是待核验意图而非授权。preview/commit核验operations等于当前L1计算结果，每个真实目标都进入权限影响范围；actor/版本/幂等规则不变。缺失成员、未知属性、错误成员、陈旧草稿和原始/展开操作超64整笔拒绝。Mix组首个启用父组优先，成员不会递归触发另一个重叠Mix组。当前仅Mute/Solo，其他组属性没有成功回执；定义/成员/原生声音证据见GroupsWorkspaceTests与VERIFICATION.md。
+
 ## 经核验的本地导出（M3-EXPORT-01）
 
 `export.verified` 是注册表中的 local_gui 控制，actor=human，risk=external_file_write、reversible=false；不生成外部文件写入 MCP 工具，也不能放进编辑 Plan。原生文件菜单绑定当前 session_token/base_revision、完整工程或当前时间选区的半开范围，经系统选择器选择不存在的绝对 WAV 路径，再交给 L1。允许显式 postroll_samples=0–1440000，继续同一工程的原生回放；文件外另测96000帧，整个渲染范围最多300秒。额外profile由既有交付Schema校验并进入请求指纹；相同作业/最终回执重试返回真实结果，变更意图、陈旧范围/版本、已有路径和非human拒绝。

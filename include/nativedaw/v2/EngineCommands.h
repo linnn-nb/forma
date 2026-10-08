@@ -115,6 +115,11 @@ private:
     te::AudioTrack* track(const std::string&) const;
     te::Track* domainTrack(const std::string&) const;
     static void registerHierarchyCommands(Json&);
+    static void registerMixGroupCommands(Json&);
+    Json mixGroupsQuery() const;
+    Json validateMixGroupPlan(const Json&) const;
+    Json expandMixGroupFlags(const Json&) const;
+    void executeMixGroupOperation(const std::string&, const Json&);
     static void registerPanCommands(Json&);
     Json panQuery(te::AudioTrack&) const;
     Json validatePanPlan(const Json&) const;

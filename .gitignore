@@ -19,3 +19,4 @@ evidence/U/*
 .DS_Store
 
 !evidence/U/edit-views-tests.json
+!evidence/U/groups-tests.json

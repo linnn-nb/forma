@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-GROUPS-01：独立 Mix 组与 Groups 侧栏（2026-10-08；增量，U＋P0未完成）
+
+结论：Edit/Mix左侧Tracks下方新增真实Groups列表，独立Mix组不再混同Folder/VCA。⌘G/加号打开成员对话框；可选成员、改名、启用/禁用、勾选Mute/Solo属性和删除组。组名按钮选择实际成员，复用统一UI选择；⌘⇧G启用/禁用所选组，⌘⌥G修改组，均来自可改键位命令表。已接通的属性是Mute/Solo，不显示尚未实现的推子/Pan/编辑组属性。没有改变成员输出、片段、推子或组织层级。
+
+L1 `MixGroupCommands.cpp`在te::Edit/NATIVEDAW/MIX_GROUPS保存schema1的稳定组ID与成员引用，全部修改进入一个UndoManager事务。makePlan在当前revision按实际组扩展track.mute/solo，预览与权限检查包含每个成员；发生扩展时保留requested_operations原意图，commit重新核验，不能由调用者剔除成员逃避范围。重叠Mix组按v1与官方父组规则使用列表中首个启用的匹配组，不能递归以成员当新锚点影响别组。成员删除后保留原引用、明确报告missing_members，相关启用组操作整笔拒绝；可显式禁用或修复。不同组即便成员相同，窗口内快捷键仍指向刚点击的稳定组ID。
+
+最终Release Forma.app与专用Groups预览构建、固定本地身份strict/deep验签通过。受影响CTest **7/7通过、0失败、26.74秒**；新增Groups专项 **84项检查**，涵盖实际原生控件/L1/Edit、组定义/成员/属性/启用/删除Undo、重叠优先、原意图验证、权限/版本冲突、缺失成员/删除恢复、同成员组定位、键位及新Workspace保存重开、1120×700无重叠布局。三个实际PCM轨道渲染：组Mute仅剩非成员，RMS为基线1/3；组Solo为2/3；容差3e-6，Undo恢复基线，原PCM哈希不变。相关原有Mix/FolderVCA/Scope/MCP协议/导航/Edit列回归通过。机器结果`evidence/U/groups-tests.json`；并非全级回归。
+
+桌面再次只读核验为锁定，GUI新建组/试听/实际退出重开未执行；原生组件测试不冒充桌面或实体设备资格。专用`build-v2-tracktion/FormaGroupsPreview.app`已准备但未启动，用户其他窗口不动，没有新测试窗口残留。组定义标记tool_visibility=local_gui并限human；注册表不派生新MCP工具，协议回归通过。无需新依赖/SDK改动/签名授权，无DMG。源中首轮字符串比较和测试PCM stream基类编译错误已修复；测试发现组快捷键刷新替换facts导致迭代器失效，改为先捕获标量并立即返回。进一步修复相同成员组的快捷键目标混淆；失败不计为通过。
+
+边界：组定义本阶段仅本地human可改，既有外部track.mute/solo仍服从相同联动/权限。当前仅独立Mix组的Mute/Solo；relative volume/pan与保留offset、发送/插件/录音/自动化属性、Edit/Edit-Mix组、All组、组排序、临时隔离与字母焦点未实现。显式预算2..64成员/1024组/64原始及展开操作，超限整笔报错，不静默丢成员；结构变更需停播放并单独事务。成员选择随UI保存；同成员组的确切焦点不跨重开，重开选择首个匹配组。Undo历史不跨重开，实时同步切换、实体MIDI/录音、Windows未验收。P1编辑分组继续以v1行为重做。
+
+亲手试：解锁后打开预览，导入两个音频轨，⌘G选成员并应用；点Groups组名，再点任一成员的M/S观察两轨与实际声音；⌘Z/⌘⇧Z整笔撤销/重做。勾选或⌘⇧G禁用，⌘⌥G改成员/组名，另存新工程重开。下一项先补本轮及上一轮列视图GUI验收，再接通真实Comments列及其他U缺口，仍不进入P1。
+
 ## U-P0-VIEWS-01：Edit I/O、插入与发送列（2026-10-08；增量，U＋P0未完成）
 
 结论：Edit 轨道头与时间线之间可独立显示真实 I/O、Inserts A–E、Sends A–E。视图菜单与⌘⌥1/2/3共用可重映射命令；列开关经L1 UI schema4保存，不占编辑Undo、不改变revision。旧八字段/schema2/schema3完整迁移，损坏或非布尔开关拒绝。插入槽复用实际效果器菜单与插件检查器；I/O进入真实录音/路由检查器；发送槽以稳定Send ID定位确切控制，不把第二槽误当第一槽。发送按实际处理链顺序显示，Pre可排在较早创建的Post之前。

@@ -11,7 +11,9 @@
 
 音频 Smart Tool 以 EditingModel 的位置分区解析手势，EditWindow 在本地保持拖拽预览，松手通过既有 ClipWriter/L1 提交单笔真实淡化/移动/修剪。Smart 是UI工具状态，淡化是Edit事实；全局MIDI/自动化分区尚未实现。Edit下方停靠钢琴卷帘由 `ui/MidiEditor.h` 读取真实音符并预览成组移动/两缘修剪/力度，松手通过Workspace批量writer进入一笔L1事务；全局量化/全选/删除/力度快捷键来自统一命令表。会话切换取消手势，捕获revision拒绝过期编辑；卷帘对象选择与Edit共用稳定ID；MidiDockDivider只做布局预览，松手经L1 UI保存。全局命令145（⌘⌥M）与按钮共用开关，键盘焦点区分音符和音频编辑。键位完整XML增加 formaCommands 已知命令清单，加载/导入只为新增命令补未占用的默认键，保留人工解绑与冲突映射；迁移写入L1 UI子树，不增加工程revision/Undo。
 
-EditWindowViews只读实际插件、发送和I/O facts；插入/路由/指定发送回调复用Workspace检查器，最终编辑仍进入L1。动态timelineLeft统一标尺、波形、鼠标和滚动条；独立列开关只写UI。Clips列表读同一对象选择，显示MIDI Note父Clip高亮；Groups/Comments尚未实现。没有直接te::Edit写入或新的播放模型。
+EditWindowViews只读实际插件、发送和I/O facts；插入/路由/指定发送回调复用Workspace检查器，最终编辑仍进入L1。动态timelineLeft统一标尺、波形、鼠标和滚动条；独立列开关只写UI。Clips列表读同一对象选择，显示MIDI Note父Clip高亮；Groups独立Mix Mute/Solo增量已接通；完整分组与Comments尚未实现。没有直接te::Edit写入或新的播放模型。
+
+独立Mix组由L1 MixGroupCommands保存在Edit/NATIVEDAW/MIX_GROUPS schema1，成员与组织层级分离。原生GroupsList/MixGroupEditor只读facts、产出命令；定义变更单独事务，捕获版本拒绝旧草稿；本阶段仅human改组，tool_visibility=local_gui不派生新MCP工具。track.mute/solo在Plan阶段按首个匹配的启用组展开；requested_operations保存初始锚点，预览/权限/提交再次验证所有受影响对象，拒绝剔除成员和资源超限。删除成员保留缺失引用；禁用/修复后才恢复相关联动，Undo恢复原ID。成员选择写UI，组定义写Undo。推子/Pan/录音/编辑组属性仍待实现。
 
 ## 0. 定位与前提
 

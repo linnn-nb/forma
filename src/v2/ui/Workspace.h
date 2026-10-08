@@ -5,6 +5,8 @@
 #include "Inspector.h"
 #include "TracksList.h"
 #include "ClipsList.h"
+#include "GroupsList.h"
+#include "MixGroupEditor.h"
 #include "KeyboardSettings.h"
 #include "Toolbar.h"
 #include "Transport.h"
@@ -119,6 +121,10 @@ private:
         return pianoMode && (midiCommandContext || piano.editorHasFocus());
     }
     void showShortcuts();
+    void showMixGroup(const std::string& = {});
+    void selectMixGroup(const std::string&);
+    void toggleMixGroup(const std::string&, bool);
+    std::unique_ptr<MixGroupEditor> mixGroupEditor;
     void focusMixInsert(const std::string&, int);
     void transferShortcuts(bool);
     std::unique_ptr<juce::XmlElement> shortcutSnapshot();
@@ -199,6 +205,15 @@ private:
     std::unique_ptr<KeyboardSettings> keyboardSettings;
     bool loadingKeymap = false;
     std::string lastKeymapSession;
+    GroupsList groupsList{[this](const auto& id) { selectMixGroup(id); },
+                          [this](const auto& id, bool enabled) { toggleMixGroup(id, enabled); },
+                          [this](const auto& id)
+                          {
+                              if (id.empty())
+                                  commandManager.invokeDirectly(149, false);
+                              else
+                                  showMixGroup(id);
+                          }};
     TracksList tracksList{[this](std::string id) { select(id); }};
     ClipsList clipsList{[this](std::string id)
                         { selectAudioClip(id, juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown()); }};

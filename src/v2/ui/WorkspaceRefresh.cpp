@@ -347,6 +347,9 @@ void Workspace::refresh()
     if (workspaceSession != commands.sessionToken())
     {
         workspaceSession = commands.sessionToken();
+        if (mixGroupEditor)
+            mixGroupEditor->setVisible(false);
+        groupsList.preferSelection("");
         pendingClipboard = nullptr;
         pendingClipboardPlan.clear();
         if (mcp)
@@ -582,7 +585,8 @@ void Workspace::refresh()
             ? editing.gridBeats
             : std::max(1., std::pow(2., std::ceil(std::log2(std::max(1., viewSpan / 48000. / 40.)))));
     editArea.update(facts, selected, commands.musicalGrid(viewStart, viewStart + viewSpan, gridDivision), selectedClip);
-    tracksList.update(facts["tracks"], selected);
+    tracksList.update(facts["tracks"], selected, selection.tracks);
+    groupsList.update(facts["mix_groups"], facts["tracks"], selection.tracks, facts.value("playing", false));
     clipsList.update(facts["tracks"], selection.objectIDs);
     tracksList.setVisible(view["tracks_list"].get<bool>());
     clipsList.setVisible(view["clips_list"].get<bool>());

@@ -1,0 +1,55 @@
+{
+  "checks": 84,
+  "result": "passed",
+  "scope": "native Groups controls with real Tracktion Edit and decoded PCM; no hardware GUI qualification",
+  "milestone": "U-P0-GROUPS-01",
+  "date": "2026-10-08",
+  "build": {
+    "release": "passed",
+    "local_signing": "strict/deep verified",
+    "dependencies": "unchanged; no SDK edits"
+  },
+  "ctest": {
+    "passed": 7,
+    "failed": 0,
+    "seconds": 26.74,
+    "tests": [
+      "tracktion_mix_controls",
+      "tracktion_native_folder_vca",
+      "tracktion_permission_scope",
+      "tracktion_mcp_protocol",
+      "forma_native_ui_navigation",
+      "forma_native_groups",
+      "forma_native_edit_views"
+    ]
+  },
+  "audio": {
+    "source": "generated 220 Hz stereo PCM24 / 48000 Hz / 96000 frames; not microphone",
+    "grouped_mute_rms_ratio": {
+      "expected": 0.3333333333333333,
+      "tolerance": 3e-06,
+      "result": "passed"
+    },
+    "grouped_solo_rms_ratio": {
+      "expected": 0.6666666666666666,
+      "tolerance": 3e-06,
+      "result": "passed"
+    },
+    "undo_pcm_rms_tolerance": 3e-06,
+    "source_hash_preserved": true
+  },
+  "desktop": {
+    "result": "not executed; Mac locked",
+    "native_component_tests": "84 checks; actual L1/Edit/render, no screenshot substituted",
+    "preview": "build-v2-tracktion/FormaGroupsPreview.app; not running"
+  },
+  "limits": [
+    "Mix Mute/Solo only; volume/pan/send/automation/capture and Edit/Edit-Mix groups pending",
+    "group definitions human/local only; no new MCP tools; existing track flags share group expansion",
+    "overlap uses first enabled group in creation/display order; no reorder or group isolate/All/group-keyboard-focus yet",
+    "2..64 members, 1024 groups and 64 requested/expanded operations are explicit transaction/resource budgets; overflow rejects whole Plan",
+    "group definition changes require standalone transaction and stopped transport",
+    "group member selection saved; identical-member group focus is local and defaults to first matching group on reopen",
+    "Undo history does not survive reopen; no Windows/hardware/live grouped-switch qualification; U+P0 incomplete"
+  ]
+}

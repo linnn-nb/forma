@@ -11,7 +11,8 @@
 | Edit 与 Mix 分工 | Reference 第12章，254–257页 | 已拆 `ui/EditWindow.h`、`ui/MixWindow.h`；原生工具栏/走带/双计数器/两种标尺/侧栏已接通；完整工具与窗口仍待补齐 | 部分 |
 | 工具栏与可隐藏区域 | 257–262页 | 现有全局操作迁入命令表；侧栏可隐藏；未实现的编辑工具不显示 | 部分 |
 | 水平缩放、轨高与预设 | 263页；Shortcuts Zoom章节33页 | T/R、全工程缩放、水平/垂直滚动、Cmd＋滚轮锚点缩放；L1 UI 子树保存；视图不进 Undo。轨高数值可保存，轨高 GUI/缩放预设未完成 | 部分；已接通部分专项验证 |
-| Tracks / Groups、Clips | 314、345–347页 | Tracks/Clips原生列表可选择和隐藏，Clips联动统一对象/父片段高亮；Groups侧栏及排序尚未实现 | 部分 |
+| Tracks / Groups、Clips | 314、345–347页 | Tracks/Clips原生列表可选择和隐藏，Clips联动统一对象/父片段高亮；Groups独立Mix Mute/Solo增量已接通；完整分组与排序尚未实现 | 部分 |
+| Groups列表与独立Mix组 | Reference 410–414、420、422–423页（本地PDF核验2026-10-08）；v1 TrackGroups.cpp的首组优先行为 | Tracks下方独立组列表，选成员/名称/Mute/Solo/启用/删除，一事务Undo、缺失引用保留、首启用匹配组优先。组名选成员、勾选框启用（官方点组名启用）；⌘G/⌘⇧G/⌘⌥G可改。本产品⌘⌥3用于Sends列，与官方Groups焦点不同，字母组焦点未实现；无All/排序/隔离/relative fader/Pan/其他属性/Edit组 | U-P0-GROUPS-01：84专项、真实PCM与相关7/7通过；GUI因锁屏未执行；完整行为部分 |
 | Edit Window Views | Reference 257、1434–1436页（本地官方PDF核验2026-10-08） | I/O、Inserts A–E、Sends A–E独立菜单/可改⌘⌥1/2/3，真实对象与检查器；稳定Send ID、动态时间线原点、schema4保存。无Comments/F–J/All/None/Option点击隐藏/槽位排序 | U-P0-VIEWS-01：46专项及相关5/5；GUI插EQ和发送Undo/Redo通过，最终GUI保存重开因锁屏未执行；完整行为部分 |
 | Cmd+= 切换 Edit/Mix | Shortcuts Window Menu，51页（PDF56） | ApplicationCommandManager 同一操作；绑定及保存重开通过组件测试。桌面工具实际注入 Shift+Cmd+加号，等号本键待人工实测 | 部分；桌面键位待确认 |
 | 自定义快捷键 | Shortcuts Keyboard Shortcuts，第9页（PDF14） | JUCE 原生命令映射编辑器、XML 导入导出接通；两个即时自定义键及工程保存重开通过专项。真实界面已打开，两个键的完整鼠标编辑验收待做 | 部分 |

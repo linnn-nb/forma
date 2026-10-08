@@ -31,6 +31,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
     {
         p.addCommandItem(&commandManager, 108);
         p.addCommandItem(&commandManager, 42);
+        for (int id : {149, 150, 151})
+            p.addCommandItem(&commandManager, id);
         p.addSeparator();
         for (int id : {editCommand::shuffle, editCommand::slip, editCommand::spot, editCommand::grid,
                        editCommand::smart, 130, 131, 132})
@@ -357,6 +359,8 @@ void Workspace::paint(juce::Graphics& g)
 
 void Workspace::resized()
 {
+    if (mixGroupEditor)
+        mixGroupEditor->setBounds(getLocalBounds());
     if (exportPanel)
         exportPanel->setBounds(getLocalBounds());
     if (analysisPanel)
@@ -426,7 +430,10 @@ void Workspace::resized()
         std::clamp(midiHeightPreview >= 0 ? midiHeightPreview : midiState["midi_dock_height"].get<int>(), 220,
                    std::max(220, areaHeight - 110));
     int dockHeight = pianoMode ? midiHeight + 8 : clipDock ? 182 : 0;
-    tracksList.setBounds(0, 162, left, areaHeight);
+    const int groupsHeight = std::clamp(areaHeight / 3, 150, 220);
+    tracksList.setBounds(0, 162, left, areaHeight - groupsHeight - 4);
+    groupsList.setBounds(0, 162 + areaHeight - groupsHeight, left, groupsHeight);
+    groupsList.setVisible(left > 0);
     clipsList.setBounds(right + 6, getHeight() - 222, 320, 190);
     editView.setBounds(left, 162, right - left, areaHeight - dockHeight);
     clipPanel.setBounds(left, getHeight() - 29 - dockHeight, right - left, dockHeight);

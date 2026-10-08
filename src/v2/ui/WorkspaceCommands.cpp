@@ -81,6 +81,9 @@ const std::vector<Entry>& entries()
         {132, "跳到下一个 Marker", "走带", juce::KeyPress::rightKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {133, "打开 Memory Locations", "视图", 'm', shift},
+        {149, "新建 Mix 组…", "组", 'g', cmd},
+        {150, "启用 / 禁用所选 Mix 组", "组", 'g', cmd | shift},
+        {151, "修改所选 Mix 组…", "组", 'g', cmd | juce::ModifierKeys::altModifier},
         {146, "Edit I/O 列", "视图", '1', cmd | juce::ModifierKeys::altModifier},
         {147, "Edit Inserts A–E 列", "视图", '2', cmd | juce::ModifierKeys::altModifier},
         {148, "Edit Sends A–E 列", "视图", '3', cmd | juce::ModifierKeys::altModifier},
@@ -299,6 +302,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.setTicked(commands.uiState()["edit_views"][id == 146 ? "io" : id == 147 ? "inserts" : "sends"]);
             if (id == 145)
                 info.setTicked(pianoMode);
+            if (id >= 149 && id <= 151)
+                active = !facts.value("playing", false) && (id == 149 || !groupsList.selectedId().empty());
             info.setActive(active);
             return;
         }
@@ -350,6 +355,23 @@ bool Workspace::perform(const InvocationInfo& invocation)
             midiCommandContext = true;
             piano.focusEditor();
         }
+        return true;
+    }
+    if (id == 149 || id == 151)
+    {
+        showMixGroup(id == 149 ? "" : groupsList.selectedId());
+        return true;
+    }
+    if (id == 150)
+    {
+        const auto selectedGroup = groupsList.selectedId();
+        for (const auto& group : facts["mix_groups"])
+            if (group["id"] == selectedGroup)
+            {
+                const bool enabled = !group["enabled"].get<bool>();
+                toggleMixGroup(selectedGroup, enabled);
+                return true; // Writer refresh replaces facts; never retain its iterator.
+            }
         return true;
     }
     if (id >= 146 && id <= 148)
