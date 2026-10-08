@@ -1,5 +1,13 @@
 # 统一命令契约 v2
 
+## 经核验的本地导出（M3-EXPORT-01）
+
+`export.verified` 是注册表中的 local_gui 控制，actor=human，risk=external_file_write、reversible=false；不生成外部文件写入 MCP 工具，也不能放进编辑 Plan。原生文件菜单绑定当前 session_token/base_revision、完整工程或当前时间选区的半开范围，经系统选择器选择不存在的绝对 WAV 路径，再交给 L1。允许显式 postroll_samples=0–1440000，继续同一工程的原生回放；文件外另测96000帧，整个渲染范围最多300秒。额外profile由既有交付Schema校验并进入请求指纹；相同作业/最终回执重试返回真实结果，变更意图、陈旧范围/版本、已有路径和非human拒绝。
+
+复用同一Engine/既有单L2作业和60秒截止：Master float32渲染→分别测量文件范围和文件外2秒→PCM24暂存→完整解码测量→前后SHA256一致→L1重新检查版本/链状态→同目录原子不覆盖硬链接发布。source哈希仍前后独立校验；取消、冲突与失败不能发布成功。query_analysis返回同一实际receipt，file_verification包含真实WAV/PCM24/48000Hz/2ch/帧数/字节/mtime/SHA256与verified_published；float_reference、continuation和实际整数文件测量分开。六项交付条件中编码前风险可使结果failed，文件外活跃信号至少review，不能被文件内通过掩盖。完成文件验证不等于所有交付条件通过；有限安静窗口不认证完整尾音或平台。后滚/文件外可能包含后续片段或MIDI，不是隔离选区尾音。
+
+结果不写Undo，真实文件创建不是可撤销编辑；当前工程变化或实际输出变动使证据历史化，深定位再次检查最终文件及源SHA256。暂停/继续/取消沿用实际worker ACK与播放优先，runtime.measure包括编码、输出哈希和三次区间测量。普通导出保留，已有分析/导出作业忙时拒绝启动第二个渲染。原生ExportPanel与Workspace专项、实际PCM24/碰撞/版本并发与只读MCP见ExportTests、ExportWorkspaceTests和VERIFICATION.md。当前新路径仅48k/双声道/无抖动PCM24，较长工程继续使用原普通导出；外部文件系统硬链接支持及完整磁盘故障/电源安全未资格。
+
 ## 分析资源控制（M3-RESOURCES-01）
 
 注册表生成 `set_analysis_paused(artifact_id, paused:boolean)`，通过队列 `analysis_pause` 调用L1；GUI同用 `analysisControl("pause",...)`。只有本地human或当前作业所有者可暂停/继续；错误ID、额外actor/权限字段、非boolean、其他客户端及已请求取消都拒绝。暂停不进工程Undo/Revision，不能绕过播放/设备准备优先。query_analysis.pause区分user_requested、playback_requested、worker_parked；pausing是请求，paused才是实际检查点停驻。取消仍等待真实终态，原60秒deadline包含暂停和启动准备；插件/I/O/SDK消息调用仍不能抢占。

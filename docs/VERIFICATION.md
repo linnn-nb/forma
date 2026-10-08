@@ -1,5 +1,25 @@
 # 验证状态
 
+## M3-EXPORT-01（2026-10-08，d1e0071）
+
+结论：d1e0071已实现实际原子不覆盖WAV导出、编码前float32/编码后PCM24独立测量、明确后滚及文件外2秒复核。完整Release构建成功；**73/73完整CTest /773.36秒通过**，其中后台43项 /33.43秒、原生控件17项 /9.66秒通过。生产真实文件菜单、系统保存、逐项结果与GUI暂停/工作线程停驻ACK/继续均已执行；独立最终WAV、PCM及工程一致性两份报告分别24/27项通过。不是完整M3或完整产品验收。
+
+固定资格：M5 Pro/18逻辑CPU/48GiB/macOS26.6.2，同一Engine/真实Edit；自有48k双声道float32、末尾4800帧(.4,−.2)、Clip Gain +12dB、原生Delay150ms纯湿/feedback−30；选择[13,23999)。无后滚实际PCM24为23986帧静音，但文件外[23999,119999)测到4800帧超过满刻度的延迟信号，明确review。0.5秒后滚实际47986帧，逐帧两声道符合独立gain/delay/整数饱和预测≤3e−6；真实输出Peak/RMS与独立解码≤1e−12、header和SHA256相符。浮点>1.59 /4800风险帧与整数Peak<1分开报告，交付仍failed；文件外安静2秒不声称完整尾音。另一份实际PCM的文件内四项全部通过但文件外有信号，六项汇总为needs_review。
+
+最终完整回归中，未暂停完成作业8528.72/7869.61ms，message-thread准备4.78/2.61ms；全部五作业心跳max≤16.93ms/p95≤15.11ms。先前两专项独立运行 /21.64秒与5.65秒的日志也保留；它们不是最终完整回归耗时。各12秒、准备1000ms、心跳250/50ms、后端总120秒/原生总60秒及原60秒作业截止不变。实际输出同大小同mtime字节变化使深定位永久失效；相同请求重试不重复发布，改变意图拒绝；发布时路径碰撞保留既有sentinel、暂停/取消不发布、人工重命名版本冲突保留新事实且不发布；普通导出并发拒绝。实际只读MCP与本地GUI使用同一最终文件回执，其他actor不能取得外部文件写权限。所有源媒体hash保持、私有暂存目录实际回收。
+
+原生Workspace/ExportPanel已测真实回调、后滚校验、实际异步文件/暂停ACK/继续/取消/格式哈希和不写Undo；该专项的选择器回调只授予自有测试目录，真实OS选择器另验收。初次构建因std::string和Json比较失败，改为显式取字符串；后端首跑实际文件数值/发布断言通过后，在MCP测试调用者缺capabilities/clientInfo/initialized时失败，修正测试握手，未改变生产MCP协议或预算。失败日志保留。
+
+生产现场：旧进程93414首次CUA连接timeoutReached；实际MCP核对自有demo停止/r16/空UndoRedo/cursor55200后退出旧进程，启动d1e0071应用31322，以`--open-session`读取自有M3-clip-fx-demo.tracktionedit。该载入是产品CLI路径，不计为OS工程打开选择器资格。新CUA窗口可读；重开恢复文件中cursor80501，随后导出前后保持。真实「文件→导出并检查WAV」在原生面板拒绝31秒后滚，再接受0.5秒；系统保存窗口选新目录/新文件，观察到actual pending、终态及六项结果。
+
+首次未暂停artifact cf731546b28a42468eacff24445155b4，实际4591.77ms、启动3.28ms；WAV48k/2ch/PCM24/148800帧（3.1秒）、892904字节、SHA256 c9ebe4a7502cddd2c8b4e8b73921d7124f24b6bd5c74a90cd55ebb638442f897。独立全部样本按原pulse(.8,−.4)、offset4800/clip start28800、Clip Gain+6/track−12和Delay150ms预测，实际峰值段[55200,60000)、最大误差8.40424e−8 /原3e−6容差；实际Peak0.40094971657、RMS0.05693104089与独立解码≤1e−12。实际library回执LUFS-I−31.204771、TP−6.905692dBTP；这两项不是另一个独立分析器重测。示例−14LUFS条件如实failed、其余五项通过，文件已生成不冒充规范通过或平台认证；外部2秒为实际静音，不认证全部尾音。
+
+第二次GUI保存新路径后，立即真实点击暂停；只读生产MCP确认同一artifact77f6ccb212f44edfb68a6129979f2a0f的state=paused/user_requested/worker_parked，截图显示实际停驻；再点击GUI继续，生成独立148800帧新WAV，解码PCM与首次一致。墙钟24056.93ms包含实际停驻19908.89ms，按60秒控制deadline验收，不冒充12秒未暂停容量通过。两份作业源SHA256独立深读各2次/1920088字节；全部MCP RPC最大31.15ms。最终工程r16/同一session/原轨道片段插件路由/cursor80501/空UndoRedo及源哈希保持；暂存与测试/bridge进程已退出，正式应用保留当前真实结果。生产GUI本轮未手动执行导出取消/文件碰撞，它们由真实后台与原生组件专项覆盖；未作主观试听、RTT/XRUN/录音缺口或耐久资格。代码应用SHA25601455b72793648f8f02c3301b16f43cd8cbf8339aa0164578c0c13482a473ad1，launch.json记录PID/代码提交；截图rejected-postroll/published-result/paused-worker/pause-resume-result与完整MCP回执/独立脚本保留在desktop-verified-export。
+
+边界：新入口固定48k/双声道/PCM24/无抖动，总渲染范围（含后滚和外部2秒）最多5分钟；普通导出保持。后滚和2秒测量是原工程继续回放，可含后续片段/MIDI，不隔离尾音；选区反馈历史服从SDK预热，不能代替零点连续播放证据。发布使用同目录硬链接、未资格非APFS/不支持硬链接文件系统及真正磁盘满/断电持久性；创建外部文件非Undo。GUI示例profile为−14LUFS±1/TP≤−1，仅示例，不是平台认证。完整M3、实体M1、M4–M6/Windows/实时/耐久未完成。没有新增依赖/SDK补丁/第二Engine/上传/DMG。
+
+代码：src/v2/MasterAnalysis.cpp /ExportVerification.cpp /ExportPanel.h /Workspace.h /AnalysisPanel.h；契约见AI_COMMAND_CONTRACT.md与ANALYSIS_WORKFLOW.md。专项：tracktion_verified_export /tracktion_native_verified_export。证据：evidence/M3/export-*-final.log、export-tests.json、export-workspace-tests.json、export-release-build.log与export-release-ctest.log；生产evidence/M3/desktop-verified-export/。最终状态在本节更新，历史下节保持原范围。
+
 ## M3-RESOURCES-01（2026-10-08）
 
 结论：785df48已实现共享媒体每轮独立去重校验、完整引用清单、真实暂停/继续、分阶段墙钟/I/O记录及GUI/MCP。完整Release构建成功；最终专项3/3通过（资源115项、原生控件23项、Master47项）。完整 **71/71 CTest /733.06秒通过**。生产Codex MCP的暂停/继续/取消及独立PCM核验已执行；本轮桌面工具在打开工程后持续超时，生产GUI人工点击未完成，与已通过的原生组件专项分开。
