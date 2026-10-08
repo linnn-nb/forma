@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+当前UI增量（2026-10-09，Overview）：原生命令262、视图菜单与Command点Zoomer共用WorkspaceZoom→L1 updateUiState，span=实际时间线可绘制像素×256。保持中心并只夹水平位置，不改工具／纵向／轨高／选区／revision／工程Undo。沿用schema11及16条联合缩放历史，重复相同比例不入栈；窗口后来调整时仍保留采样跨度，再调用重新计算。无新SDK／实时／MCP／分析修改；Zoom Toggle未完成，完整资格见VERIFICATION.md首节。
+
 当前UI增量（2026-10-09，MIDI Zoom）：schema11的midi_zoom.tracks按稳定ID保存low/high/mode；4–128半音、Fit真实极值加边距，16条联合历史存时间／波形／MIDI显示，旧1–10严格迁移。MidiZoom.h统一实际音符绘制轴；TrackHeader／WorkspaceAutomation区分Notes、Clips和真实自动化参数；ZoomGesture仅本地草稿，WorkspaceZoom及ApplicationCommandManager257–261经L1更新UI。不修改Note／采样事件、gain、revision或Undo；随机FourOsc不能逐位比较。独立钢琴卷帘纵向、组联动／高级按钮等仍待补；MCP／分析／SDK及实时路径不变，实际资格见VERIFICATION.md首节。
 
 当前增量（2026-10-09，Selector端点）：停止时按下／拖动只建立草稿；Shift改较近端点并固定对端，长选择保留原轨道引用。松手由Workspace将范围和原生插入点作为同一human Plan提交，L1复验session/revision；Escape／坐标／工具／Grid／UI选择改变取消，不留下临时seek。原生命令255/256复用同一事务扩展所选轨道真实片段边界，键位可改。schema10、MCP／分析、SDK及依赖不变；实际资格见VERIFICATION.md首节。

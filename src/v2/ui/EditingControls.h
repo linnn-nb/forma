@@ -5,22 +5,36 @@ namespace ndaw::desktop
 class ZoomToolButton final : public juce::TextButton
 {
 public:
-    std::function<void()> onFit;
+    std::function<void()> onFit, onOverview;
     void mouseDown(const juce::MouseEvent& e) override
     {
+        overviewPressed = e.mods.isCommandDown() && !e.mods.isPopupMenu();
+        if (overviewPressed)
+            return;
         if (e.getNumberOfClicks() < 2)
             juce::TextButton::mouseDown(e);
     }
     void mouseUp(const juce::MouseEvent& e) override
     {
+        if (overviewPressed)
+        {
+            overviewPressed = false;
+            if (e.getNumberOfClicks() < 2 && e.mods.isCommandDown() && !e.mods.isPopupMenu() &&
+                getLocalBounds().toFloat().contains(e.position) && onOverview)
+                onOverview();
+            return;
+        }
         if (e.getNumberOfClicks() < 2)
             juce::TextButton::mouseUp(e);
     }
     void mouseDoubleClick(const juce::MouseEvent& e) override
     {
-        if (!e.mods.isPopupMenu() && onFit)
+        if (!e.mods.isCommandDown() && !e.mods.isPopupMenu() && onFit)
             onFit();
     }
+
+private:
+    bool overviewPressed = false;
 };
 class EditingControls final : public juce::Component
 {
@@ -35,8 +49,14 @@ public:
             if (onZoomFit)
                 onZoomFit();
         };
+        zoomer.onOverview = [this]
+        {
+            if (onZoomOverview)
+                onZoomOverview();
+        };
         zoomer.setTooltip(
-            text("F5 · Normal / Single Zoom；拖范围，⌘拖音频波形二维框选，⌃拖连续缩放；Option返回，双击显示工程"));
+            text("F5 · Normal / Single Zoom；⌘点工具：Overview（256采样/像素）；拖范围，⌘拖波形/Notes二维框选，"
+                 "⌃拖连续缩放；Option返回，双击显示工程"));
         for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &scrubber, &pencil, &back,
                         &forward, &split})
             addAndMakeVisible(b);
@@ -151,6 +171,7 @@ public:
     }
     std::function<void(Json)> onSettings;
     std::function<void()> onZoomFit;
+    std::function<void()> onZoomOverview;
 
 private:
     ZoomToolButton zoomer;

@@ -1,5 +1,17 @@
 # U 原生界面重构
 
+## U-P0-OVERVIEW-01：256工程采样／像素（2026-10-09）
+
+结论：Command点Zoomer、View菜单及可改CommandOptionShift0共用原生命令262→WorkspaceZoom→L1 updateUiState，真实布局宽度×256。保留工具、波形／MIDI显示、轨高、选区和工程事实；上一缩放、保存重开、改键执行及工程Undo／Redo跳过视图通过。schema11与16条历史不变，无新依赖、SDK、RT、MCP或分析能力；Zoom Toggle未做，完整U＋P0未完成。
+
+实际结果：Release与正式／预览固定身份deep/strict签名通过；受影响6通过0失败，专项1/1 12.13秒＋相关5/5 37.95秒。扩展tests/v2/ZoomerWorkspaceTests.cpp共229检查，74新增（包含真实命令派发检查，并非74个制作流程）。overview-tests.json保存真实回执：六种布局drawable宽384／176／564／356／864／656，span98304／45056／144384／91136／221184／167936；生产坐标轴一像素差256。释放外部／松Command取消、Command双击尾部不Fit、重复调用不增历史、起止边界、Mix禁用、只读菜单、Single规则、改键及新Workspace原生Edit重开通过。实际两次48k／24bit／stereo各96000帧渲染，非零PCM最大差0；原始WAV SHA256 03ea36f061bb90d4b2b6d19c060486b9338852d330360adb84ed3d6d0507023d保持。WAV容器元数据哈希不同不等于PCM改变。
+
+修正记录：第一次构建误写ndaw_presentation_workspace_tests，NativeDAW及三个缩放目标已成功，修正目标ndaw_presentation_tests／其他受影响目标后全部完成。专项首次失败的“完整恢复”夹具继承Single状态和满16条历史，恢复规则原本会返回旧工具并保留有界淘汰；未改变这些生产规则。隔离本增量夹具后增加Single单独检查，最终通过。首次准备示范文件误以为JUCE临时目录等同TMPDIR；查实际锁定JUCE Files_mac源码确认附加可执行名子目录，找到实际生成Edit。没有伪造结果或覆盖用户文件。
+
+边界与出处：[官方Reference Guide 2026.4](https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf)，印刷864／PDF966页“overview scale (256 samples per pixel)”，本地PDF SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8，2026-10-09核验。固定48k工程采样轴独立于设备／媒体格式；保留当前视口中心，边缘只夹位置，后续resize保留采样跨度、再次调用按新宽度重算，是明确Forma策略，非官方未公开算法。单次调用不改Vertical／Midi range或mode；返回仍遵守已有Single规则。宽不足2像素／超工程预算拒绝，没有占位Toggle按钮。
+
+产物：build-v2-tracktion/FormaOverviewPreview.app，Bundle ID org.forma.daw.overview-preview；正式可执行SHA256 9beb46ae6ea71db270a1c6297cb3f1f2ec5457de33a35a563e95da5e565122c8，预览eed7557dd69e8fe22f7c0f8dac163c7c885b434ddae11504be49182e522df596；签名F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F。CUA返回Mac锁定，无物理点击／默认键／截图／试听／桌面退出重开；未启动额外预览进程。亲手打开现有工程、Command点缩放工具、CommandOptionE返回，修改列／窗口再调用，另存重开。测试日志在build-v2-tracktion/overview-tests-final.log与overview-affected-tests.log；相关重跑回执保存在build的overview-rerun-*.json，已恢复历史证据原件。无DMG／全量回归；以下保留历史资格。
+
 ## U-P0-MIDI-ZOOM-01：Notes／Clips与纵向缩放（2026-10-09）
 
 结论：Edit MIDI／Instrument轨道头明确Notes／Clips，右侧♪按钮、视图菜单及257–259可改CommandShift]/[、ControlCommandShift[共用入口；260/261切换视图。全局只缩放Notes；Control所点轨连续纵向、Command二维框选、Single、全工程Fit、上一视图共同接通。UI schema11在L1保存稳定Track ID的low/high/mode，视图不改Note pitch／velocity／采样事件／gain／轨高／revision或工程Undo。16条历史包含时间／波形／MIDI显示；旧1–10严格迁移，畸形拒绝。

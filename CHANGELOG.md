@@ -1,5 +1,11 @@
 # 更新记录
 
+## 2026-10-09：Overview 时间线缩放
+
+- Command点Zoomer、视图菜单及可改CommandOptionShift0：每像素256个工程采样，实际布局计算，上一缩放／保存重开可用。
+- 保留工具／纵向显示与工程Undo；边缘只夹位置、重复调用不堆相同历史。Command释放／按钮外释放取消，双击尾部不另触发Fit。
+- Release／固定验签、受影响6通过0失败，74新增检查，双声道真实PCM差0。Mac锁定未物理验收；Zoom Toggle及完整U＋P0未完成，无DMG。
+
 ## 2026-10-09：Selector／Smart Shift选区与边界扩展
 
 - Shift点击／拖动改变近端并固定对端，跨锚点／折叠与滚动长选择；Smart选择区／空白轨、音频MIDI和Selector自动化泳道共用规则。

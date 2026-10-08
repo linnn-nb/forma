@@ -1,0 +1,47 @@
+{
+  "checks": 229,
+  "overview_checks": 74,
+  "overview_geometry": [
+    {
+      "drawable_pixels": 384,
+      "io_inserts_visible": false,
+      "span_samples": 98304,
+      "window_width": 1120
+    },
+    {
+      "drawable_pixels": 176,
+      "io_inserts_visible": true,
+      "span_samples": 45056,
+      "window_width": 1120
+    },
+    {
+      "drawable_pixels": 564,
+      "io_inserts_visible": false,
+      "span_samples": 144384,
+      "window_width": 1300
+    },
+    {
+      "drawable_pixels": 356,
+      "io_inserts_visible": true,
+      "span_samples": 91136,
+      "window_width": 1300
+    },
+    {
+      "drawable_pixels": 864,
+      "io_inserts_visible": false,
+      "span_samples": 221184,
+      "window_width": 1600
+    },
+    {
+      "drawable_pixels": 656,
+      "io_inserts_visible": true,
+      "span_samples": 167936,
+      "window_width": 1600
+    }
+  ],
+  "render_max_error": 0.0,
+  "result": "passed",
+  "scope": "production native Zoomer commands and component mouse/key dispatch with real Tracktion source/render; desktop physical gestures separately pending",
+  "source_sha256": "03ea36f061bb90d4b2b6d19c060486b9338852d330360adb84ed3d6d0507023d",
+  "ui_schema": 11
+}

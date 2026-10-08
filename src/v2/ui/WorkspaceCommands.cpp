@@ -144,6 +144,7 @@ const std::vector<Entry>& entries()
         {259, "MIDI Fit Notes · 适配全部音符", "视图", '[', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {260, "MIDI Notes 轨道视图", "视图", 'n', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {261, "MIDI Clips 轨道视图", "视图", 'c', cmd | shift | juce::ModifierKeys::ctrlModifier},
+        {262, "Overview · 256 采样/像素", "缩放", '0', cmd | shift | juce::ModifierKeys::altModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
         {252, "恢复默认波形显示高度", "缩放", '[',
@@ -372,6 +373,7 @@ void Workspace::initialiseCommandManager()
     { commitZoomGesture(request, session, revision); };
     editArea.onViewChange = [this](Json patch) { setView(std::move(patch)); };
     editingControls.onZoomFit = [this] { commandManager.invokeDirectly(103, false); };
+    editingControls.onZoomOverview = [this] { commandManager.invokeDirectly(262, false); };
     piano.connect(commandManager);
     commandManager.commandStatusChanged();
 }
@@ -606,6 +608,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             }
             if (id >= 250 && id <= 252)
                 active = !mix;
+            if (id == 262)
+                active = !mix && editArea.coordinates().width >= 2;
             if (id >= 240 && id <= 244)
             {
                 active = !mix;
@@ -667,7 +671,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
             });
         return true;
     }
-    if ((id >= 240 && id <= 244) || (id >= 250 && id <= 252) || (id >= 257 && id <= 261))
+    if ((id >= 240 && id <= 244) || (id >= 250 && id <= 252) || (id >= 257 && id <= 262))
     {
         executeZoomCommand(id);
         return true;

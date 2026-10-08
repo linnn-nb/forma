@@ -72,6 +72,24 @@ void Workspace::executeZoomCommand(int id)
         [&]
         {
             auto view = commands.uiState();
+            if (id == 262)
+            {
+                if (view["workspace"] != "edit")
+                    throw std::runtime_error("Overview requires the Edit workspace");
+                editArea.cancelZoomGesture();
+                const auto maximum = std::llround(te::Edit::maximumLength * 48000);
+                const auto pixels = std::llround(editArea.coordinates().width);
+                if (pixels < 2 || pixels > maximum / 256)
+                    throw std::runtime_error("Overview requires a wider visible timeline");
+                // The official scale uses timeline samples, not the media or device sample rate.
+                // Keep the viewport centre; the guide does not specify an anchoring algorithm.
+                const auto span = pixels * 256;
+                const auto center = view["start_samples"].get<int64_t>() + view["span_samples"].get<int64_t>() / 2;
+                setView({{"start_samples", std::clamp(center - span / 2, int64_t(0), maximum - span)},
+                         {"span_samples", span}},
+                        true);
+                return;
+            }
             if (id >= 257 && id <= 259)
             {
                 setView({{"midi_zoom", MidiZoom::all(commands.query(), view, id)}});

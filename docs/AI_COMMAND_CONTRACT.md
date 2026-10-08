@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+## 本地Overview（U-P0-OVERVIEW-01）
+
+ApplicationCommandManager 262只在Edit可用，Command点工具、视图菜单和可改CommandOptionShift0进入同一路径；与MIDI量化CommandOption0分离。取消未提交的缩放草稿后读取真实布局，按固定48k工程采样轴每像素256设置span；宽度不足2像素／超工程预算拒绝，起止端只夹位置。中心锚定是明确Forma策略。工程UI通过L1/session校验保存，不创建Plan／revision／Undo；已有16条历史和Single返回规则保持，相同视口不增加历史。GUI按钮只在Command仍按下且在按钮内释放时执行，双击尾部不另触发Fit。没有新的AI工具或伪装的Zoom Toggle。
+
 Selector端点（U-P0-SELECTION-01）：GUI停止时只预览草稿；松手传实际session/revision/范围/轨道引用/插入点，L1先核验再一次human Plan提交session.range.*与本地session.insertion.set。无变化不新增事务，不报告已提交；UI选择与全局视图仍不进工程Undo。原生命令255/256提供ShiftTab／OptionShiftTab，使用所选轨道的实际clip边界，并复用同一提交路径；耗尽无编辑。没有新MCP工具或分析资格，schema10不变。
 
 Scrubber当前增量（2026-10-09）：本地begin可选`tracks`为1–2个唯一稳定音频轨ID；GUI按相邻边界或真实时间选区中的首两条音频轨构造。后台探测所选轨媒体最大声道数，合计超过8拒绝整笔；每窗两轨合计32片段/8 MiB，两槽总16 MiB，单后台作业。查询sources区分media_channels、output_groups、channel_reduction/channel_expansion，不把原图输出映射冒充新源声道。瞬态试听默认不进入Plan/Undo；开启全局插入跟随后，实际释放范围与插入点进入一笔human Plan，不添加MCP工具。当前测试与未验边界见VERIFICATION.md首节。

@@ -391,6 +391,158 @@ int main(int argc, char** argv)
               "double click completion does not accidentally cycle Normal/Single again");
         check(c.uiState()["start_samples"] == 0 && c.uiState()["span_samples"] == 105600,
               "toolbar double click uses shared full-session zoom command");
+        const auto overviewCheckStart = checks;
+        const auto cmd = juce::ModifierKeys::commandModifier;
+        const auto overviewKey =
+            juce::KeyPress('0', cmd | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier, 0);
+        check(keys->containsMapping(262, overviewKey), "Overview has a separate customizable default key");
+        check(!keys->containsMapping(140, overviewKey), "Overview does not steal MIDI quantize default key");
+        check(bool(zoomButton->onOverview), "real Zoomer button connected to shared Overview command");
+        command(w, editCommand::smart);
+        auto overviewHistory = c.uiState()["zoom_state"];
+        overviewHistory["history"] = Json::array();
+        c.updateUiState({{"zoom_state", overviewHistory}}, c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
+        Json overviewWidths = Json::array();
+        for (int width : {1120, 1300, 1600})
+        {
+            w.setSize(width, 1050);
+            for (int columns : {0, 1})
+            {
+                c.updateUiState(
+                    {{"start_samples", 90000},
+                     {"span_samples", 48000},
+                     {"waveform_zoom", {{"scale", 3.}, {"track_scales", {{id, 2.}}}}},
+                     {"edit_views",
+                      {{"io", bool(columns)}, {"inserts", bool(columns)}, {"sends", false}, {"comments", false}}}},
+                    c.sessionToken());
+                AudioDeviceTestAccess::refresh(w);
+                const auto beforeOverview = c.uiState();
+                const auto beforeFacts = c.query();
+                const auto pixels = std::llround(e.coordinates().width);
+                const auto mouse = event(*zoomButton, {5, 5}, false, cmd);
+                zoomButton->mouseDown(mouse);
+                check(c.uiState() == beforeOverview, "Overview toolbar press is only a pending native click");
+                zoomButton->mouseUp(mouse);
+                pump();
+                auto expected = beforeOverview;
+                expected["span_samples"] = pixels * 256;
+                expected["start_samples"] = std::max(int64_t(0), int64_t(114000 - pixels * 128));
+                expected["zoom_state"]["history"].push_back({{"start_samples", beforeOverview["start_samples"]},
+                                                             {"span_samples", beforeOverview["span_samples"]},
+                                                             {"waveform_zoom", beforeOverview["waveform_zoom"]},
+                                                             {"midi_zoom", beforeOverview["midi_zoom"]}});
+                if (expected["zoom_state"]["history"].size() > 16)
+                    expected["zoom_state"]["history"].erase(expected["zoom_state"]["history"].begin());
+                check(c.uiState() == expected && c.query() == beforeFacts,
+                      "Command tool click sets exact 256 timeline samples per drawable pixel only");
+                check(e.coordinates().sampleAt(e.coordinates().left + 1) -
+                              e.coordinates().sampleAt(e.coordinates().left) ==
+                          256,
+                      "actual production coordinate axis advances exactly 256 samples in one pixel");
+                overviewWidths.push_back({{"window_width", width},
+                                          {"io_inserts_visible", bool(columns)},
+                                          {"drawable_pixels", pixels},
+                                          {"span_samples", pixels * 256}});
+                command(w, 262);
+                check(c.uiState() == expected, "repeating Overview is idempotent and adds no false view history");
+                command(w, 243);
+                check(c.uiState() == beforeOverview, "previous zoom restores complete pre-Overview view exactly");
+            }
+        }
+        w.setSize(1600, 1050);
+        command(w, 242);
+        const auto singleBeforeOverview = c.uiState();
+        command(w, 262);
+        check(c.uiState()["edit_tool"] == "zoom_single" && c.uiState()["zoom_state"]["return_tool"] == "smart",
+              "Overview does not cycle or consume pending Single Zoom tool");
+        command(w, 243);
+        check(c.uiState()["edit_tool"] == "smart" &&
+                  c.uiState()["start_samples"] == singleBeforeOverview["start_samples"] &&
+                  c.uiState()["span_samples"] == singleBeforeOverview["span_samples"],
+              "previous zoom retains existing Single return-tool behavior after Overview");
+        const auto maximum = std::llround(te::Edit::maximumLength * 48000);
+        for (const auto start : {int64_t(0), int64_t(maximum - 480)})
+        {
+            c.updateUiState({{"start_samples", start}, {"span_samples", 480}}, c.sessionToken());
+            AudioDeviceTestAccess::refresh(w);
+            command(w, 262);
+            const auto span = std::llround(e.coordinates().width) * 256;
+            check(c.uiState()["span_samples"] == span &&
+                      c.uiState()["start_samples"] == (start == 0 ? 0 : maximum - span),
+                  "Overview keeps exact scale at session start/end and clamps only horizontal position");
+        }
+        const auto beforeCancelledClick = c.uiState();
+        zoomButton->mouseDown(event(*zoomButton, {5, 5}, false, cmd));
+        zoomButton->mouseUp(event(*zoomButton, {-5, 5}, false, cmd));
+        pump();
+        check(c.uiState() == beforeCancelledClick, "releasing outside Overview button cancels without tool changes");
+        zoomButton->mouseDown(event(*zoomButton, {5, 5}, false, cmd));
+        zoomButton->mouseUp(event(*zoomButton, {5, 5}));
+        pump();
+        check(c.uiState() == beforeCancelledClick, "releasing Command before mouse-up cancels Overview chord");
+        const auto chordDouble = event(*zoomButton, {5, 5}, false, cmd, 2);
+        zoomButton->mouseDown(chordDouble);
+        zoomButton->mouseDoubleClick(chordDouble);
+        zoomButton->mouseUp(chordDouble);
+        pump();
+        check(c.uiState() == beforeCancelledClick,
+              "Command double-click tail cannot reset vertical zoom or cycle tool");
+        command(w, 100);
+        juce::ApplicationCommandInfo mixOverview(262);
+        w.getCommandInfo(262, mixOverview);
+        check((mixOverview.flags & juce::ApplicationCommandInfo::isDisabled) != 0,
+              "Overview is disabled in Mix workspace");
+        command(w, 100);
+        c.updateUiState({{"start_samples", 90000}, {"span_samples", 48000}}, c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
+        const auto menuState = c.uiState();
+        const auto menu = w.getMenuForIndex(2, text("视图"));
+        bool inMenu = false;
+        for (juce::PopupMenu::MenuItemIterator item(menu); item.next();)
+            inMenu = inMenu || item.getItem().itemID == 262;
+        check(inMenu && c.uiState() == menuState, "native View menu exposes Overview without side effects");
+        check(keys->keyPressed(overviewKey, &w), "default Overview key dispatches actual native command");
+        pump();
+        keys->clearAllKeyPresses(262);
+        const auto customOverviewKey = juce::KeyPress('o', cmd | juce::ModifierKeys::ctrlModifier, 0);
+        keys->addKeyPress(262, customOverviewKey);
+        pump();
+        const auto overviewFile = dir.getChildFile("overview.tracktionedit");
+        const auto savedOverview = c.uiState();
+        c.save(overviewFile);
+        {
+            Workspace reopened(false, std::make_unique<Storage>(dir.getChildFile("overview-prefs")));
+            reopened.setVisible(true);
+            reopened.setSize(1600, 1050);
+            auto& other = AudioDeviceTestAccess::owner(reopened);
+            other.open(overviewFile);
+            AudioDeviceTestAccess::refresh(reopened);
+            pump();
+            check(other.uiState() == savedOverview && other.query()["tracks"] == c.query()["tracks"],
+                  "new Workspace restores saved Overview, history, keys and actual track state");
+            command(reopened, 243);
+            check(other.uiState()["start_samples"] == 90000 && other.uiState()["span_samples"] == 48000,
+                  "saved previous view can be restored after reopening actual native Edit");
+            check(reopened.uiCommands().getKeyMappings()->keyPressed(customOverviewKey, &reopened),
+                  "reopened custom Overview key dispatches production command");
+            pump();
+            check(other.uiState()["span_samples"] == std::llround(edit(reopened).coordinates().width) * 256,
+                  "remapped Overview key uses actual reopened timeline geometry");
+        }
+        c.commit(c.makePlan("human", Json::array({operation("track.gain", {{"track", id}, {"db", -9.}})})));
+        AudioDeviceTestAccess::refresh(w);
+        command(w, 262);
+        const auto undoView = c.uiState();
+        command(w, 6);
+        check(c.uiState() == undoView && std::abs(c.query()["tracks"][0]["gain_db"].get<double>() -
+                                                  original["tracks"][0]["gain_db"].get<double>()) < 1e-4,
+              "engineering Undo after Overview reverses gain and skips view changes");
+        command(w, 7);
+        check(c.uiState() == undoView && std::abs(c.query()["tracks"][0]["gain_db"].get<double>() + 9.) < 1e-4,
+              "engineering Redo after Overview restores gain and leaves navigation unchanged");
+        command(w, 6);
+        const auto overviewChecks = checks - overviewCheckStart;
         check(c.query()["tracks"][0]["clips"][0] == originalClip && Commands::mediaHash(media) == hash,
               "all zoom operations preserve clip data and original media hash");
         c.render(dir.getChildFile("after.wav"), 0, 96000);
@@ -402,6 +554,8 @@ int main(int argc, char** argv)
         Json result = {{"result", "passed"},
                        {"checks", checks},
                        {"ui_schema", 11},
+                       {"overview_checks", overviewChecks},
+                       {"overview_geometry", overviewWidths},
                        {"source_sha256", hash},
                        {"render_max_error", error},
                        {"scope", "production native Zoomer commands and component mouse/key dispatch with real "
