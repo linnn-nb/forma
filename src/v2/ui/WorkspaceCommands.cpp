@@ -299,16 +299,24 @@ void Workspace::initialiseCommandManager()
             });
     };
     editArea.onScrubReady = [this] { message(text("Scrubber 已就绪 · 左右拖动试听 · 松手或 Escape 停止")); };
+    editArea.onScrubBuffering = [this](bool waiting)
+    {
+        message(text(waiting ? "Scrubber 缓存不足 · 源音频暂停等待读取 · 松手或 Escape 取消"
+                             : "Scrubber 已恢复试听 · 松手或 Escape 停止"));
+    };
     editArea.onScrubStopped = [this](const std::string& reason)
     {
         if (reason == "source_boundary")
-            message(text("Scrubber 已到轨道或缓存边界；重新按下可继续试听"));
+            message(text("Scrubber 已到轨道边界"));
         else if (reason == "drag_timeout")
             message(text("Scrubber 已停止：鼠标未继续拖动"));
         else if (reason == "device_or_transport_interrupted")
             message(text("Scrubber 已停止：工程、设备或走带状态改变"));
         else if (reason == "preparation_timeout")
             message(text("Scrubber 准备超时；没有启动试听"));
+        else if (reason == "cache_refill_failed")
+            message(text("Scrubber 缓存读取失败，试听已停止：") +
+                    text(commands.scrubStatus().value("error", std::string("unknown error"))));
         else if (reason == "decode_failed" || reason == "graph_failed")
             message(text("Scrubber 准备失败：") +
                     text(commands.scrubStatus().value("error", std::string("unknown error"))));

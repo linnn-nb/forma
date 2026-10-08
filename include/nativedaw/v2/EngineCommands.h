@@ -107,6 +107,7 @@ private:
     std::shared_ptr<ScrubPlayback> scrubPlayback;
     std::unique_ptr<juce::ThreadPool> scrubDecoder;
     void activateScrub();
+    void advanceScrub();
     Json lastScrubStatus = {{"active", false}};
     void stopScrub(const std::string& reason = "stopped");
     friend class MasterAnalysis;

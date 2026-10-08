@@ -1,7 +1,92 @@
 #include "Workspace.h"
+#include "ScrubWindowCache.h"
+#include <thread>
+#include <cstdlib>
+#include <new>
+#if defined(_WIN32)
+#include <malloc.h>
+#endif
 #include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <iostream>
 #include <fstream>
+// Only enable instrumentation on the dedicated production cache-borrow thread.
+// It does not qualify JUCE/Tracktion/plugins or the whole audio callback.
+namespace
+{
+thread_local bool cacheWatch = false;
+thread_local size_t cacheAllocations = 0, cacheReleases = 0;
+} // namespace
+void* operator new(size_t n)
+{
+    if (cacheWatch)
+        ++cacheAllocations;
+    if (auto* p = std::malloc(std::max(size_t(1), n)))
+        return p;
+    throw std::bad_alloc();
+}
+void* operator new[](size_t n)
+{
+    return ::operator new(n);
+}
+void operator delete(void* p) noexcept
+{
+    if (cacheWatch && p)
+        ++cacheReleases;
+    std::free(p);
+}
+void operator delete[](void* p) noexcept
+{
+    ::operator delete(p);
+}
+void operator delete(void* p, size_t) noexcept
+{
+    ::operator delete(p);
+}
+void operator delete[](void* p, size_t) noexcept
+{
+    ::operator delete(p);
+}
+void* operator new(size_t n, std::align_val_t alignment)
+{
+    if (cacheWatch)
+        ++cacheAllocations;
+    void* p = nullptr;
+#if defined(_WIN32)
+    p = _aligned_malloc(std::max(size_t(1), n), size_t(alignment));
+    if (p)
+        return p;
+#else
+    if (posix_memalign(&p, size_t(alignment), std::max(size_t(1), n)) == 0)
+        return p;
+#endif
+    throw std::bad_alloc();
+}
+void* operator new[](size_t n, std::align_val_t a)
+{
+    return ::operator new(n, a);
+}
+void operator delete(void* p, std::align_val_t) noexcept
+{
+#if defined(_WIN32)
+    if (cacheWatch && p)
+        ++cacheReleases;
+    _aligned_free(p);
+#else
+    ::operator delete(p);
+#endif
+}
+void operator delete[](void* p, std::align_val_t a) noexcept
+{
+    ::operator delete(p, a);
+}
+void operator delete(void* p, size_t, std::align_val_t a) noexcept
+{
+    ::operator delete(p, a);
+}
+void operator delete[](void* p, size_t, std::align_val_t a) noexcept
+{
+    ::operator delete(p, a);
+}
 using namespace ndaw::v2;
 using namespace ndaw::desktop;
 namespace ndaw::v2
@@ -20,6 +105,10 @@ public:
     static std::weak_ptr<ScrubPlayback> auditionLifetime(Commands& c)
     {
         return c.scrubPlayback;
+    }
+    static void serviceScrub(Commands& c)
+    {
+        c.advanceScrub();
     }
     static int decoderJobs(Commands& c)
     {
@@ -140,9 +229,9 @@ void startScrub(Commands& c, const Json& args)
     check(c.scrubStatus()["timing"]["graph_ms"].get<double>() <= 20,
           "native built-in source graph publication respects predeclared 20ms budget");
 }
-juce::AudioBuffer<float> create(const juce::File& file, double rate = 48000, int channels = 2)
+juce::AudioBuffer<float> create(const juce::File& file, double rate = 48000, int channels = 2, int seconds = 4)
 {
-    juce::AudioBuffer<float> b(channels, int(rate * 4));
+    juce::AudioBuffer<float> b(channels, int(rate * seconds));
     uint32_t seed = 0x8761fe12;
     for (int n = 0; n < b.getNumSamples(); ++n)
         for (int c = 0; c < channels; ++c)
@@ -288,6 +377,140 @@ void verifyTimeline(Commands& c, te::test_utilities::EnginePlayer& player, int64
                        {"cached_bytes", cache["cached_bytes"]},
                        {"timing", timing}});
 }
+void followTimeline(Commands& c, te::test_utilities::EnginePlayer& player, double speed, double destination,
+                    const std::function<double(int, double)>& expected, const char* label)
+{
+    double error = 0, worstPosition = 0, worstActual = 0, worstExpected = 0;
+    Json worstCache;
+    int blocks = 0, emptyWindows = 0;
+    int64_t maximumBytes = 0;
+    const auto until = juce::Time::getMillisecondCounterHiRes() + 10000;
+    while ((speed > 0 ? c.scrubStatus()["position_samples"].get<double>() < destination
+                      : c.scrubStatus()["position_samples"].get<double>() > destination) &&
+           juce::Time::getMillisecondCounterHiRes() < until)
+    {
+        c.scrub("speed", {{"speed", speed}, {"shuttle", std::abs(speed) > 1.}});
+        const auto start = c.scrubStatus()["position_samples"].get<double>();
+        auto audio = player.process(1024);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int n = blocks ? 0 : 64; n < audio.getNumSamples(); ++n)
+            {
+                const auto difference = std::abs(audio.getSample(ch, n) - expected(ch, start + n * speed));
+                if (difference > error)
+                {
+                    error = difference;
+                    worstPosition = start + n * speed;
+                    worstActual = audio.getSample(ch, n);
+                    worstExpected = expected(ch, worstPosition);
+                    worstCache = c.scrubStatus();
+                }
+            }
+        const auto status = c.scrubStatus();
+        if (status["cache_underruns"] != 0 ||
+            std::abs(status["position_samples"].get<double>() - (start + 1024 * speed)) > 1)
+            throw std::runtime_error(std::string(label) + " lost audible source progression: " + status.dump());
+        maximumBytes = std::max(maximumBytes, status["decoded_cached_bytes"].get<int64_t>());
+        emptyWindows += status["cached_clips"].empty();
+        ++blocks;
+        pump(5);
+        if (!c.scrubStatus().value("active", false))
+            throw std::runtime_error(std::string(label) + " stopped: " + c.scrubStatus().dump());
+    }
+    const auto status = c.scrubStatus();
+    check(blocks > 0 && (speed > 0 ? status["position_samples"].get<double>() >= destination
+                                   : status["position_samples"].get<double>() <= destination),
+          "real source cursor reaches requested long audition destination");
+    std::cout << "Long PCM " << label << " error " << error << " windows " << status["windows_published"]
+              << " worst source " << worstPosition << " actual " << worstActual << " expected " << worstExpected
+              << std::endl;
+    if (error >= 2e-5)
+        std::cout << "Worst cache " << worstCache.dump() << " clips " << c.query()["tracks"][0]["clips"].dump()
+                  << std::endl;
+    check(error < 2e-5, label);
+    check(maximumBytes <= 16 * 1024 * 1024 && TransportTestAccess::decoderJobs(c) <= 1 &&
+              status["refill_capture_max_ms"].get<double>() <= 20,
+          "long audition retains at most two 8MiB windows and one background job");
+    results.push_back({{"case", label},
+                       {"maximum_pcm_error", error},
+                       {"blocks", blocks},
+                       {"empty_window_blocks", emptyWindows},
+                       {"maximum_decoded_bytes", maximumBytes},
+                       {"windows_published", status["windows_published"]},
+                       {"source_graph_builds", status["source_graph_builds"]},
+                       {"cache_underruns", status["cache_underruns"]},
+                       {"refill_capture_max_ms", status["refill_capture_max_ms"]},
+                       {"refill_decode_max_ms", status["refill_decode_max_ms"]}});
+}
+void checkCacheBorrowing()
+{
+    struct Payload
+    {
+        std::array<float, 512> samples{};
+    };
+    ScrubWindowCache<Payload> cache;
+    check(!cache.read(), "unpublished cache cannot return fabricated PCM");
+    check(cache.claimForWrite(0), "producer claims initial stable slot");
+    cache.data(0).samples.fill(1);
+    cache.publish(0);
+    {
+        auto held = cache.read();
+        check(held && held->samples[0] == 1, "real-time lease reads actual published data");
+        check(cache.claimForWrite(1), "other slot can be prepared while audio borrows first");
+        cache.data(1).samples.fill(2);
+        cache.publish(1);
+        check(!cache.claimForWrite(0) && held->samples[511] == 1,
+              "publication cannot reclaim an old slot still borrowed by audio");
+    }
+    check(cache.claimForWrite(0), "returning audio lease allows off-callback slot reuse");
+    cache.abandon(0);
+    std::atomic<bool> done{false}, coherent{true};
+    std::atomic<uint64_t> reads{0};
+    size_t loanAllocations = 0, loanReleases = 0;
+    std::thread reader(
+        [&]
+        {
+            cacheWatch = true;
+            while (!done.load())
+            {
+                auto lease = cache.read();
+                if (!lease)
+                    continue;
+                const float first = lease->samples[0];
+                for (const auto value : lease->samples)
+                    if (value != first)
+                        coherent.store(false);
+                reads.fetch_add(1);
+            }
+            cacheWatch = false;
+            loanAllocations = cacheAllocations;
+            loanReleases = cacheReleases;
+        });
+    const auto until = juce::Time::getMillisecondCounterHiRes() + 5000;
+    int swaps = 0;
+    while (swaps < 10000 && juce::Time::getMillisecondCounterHiRes() < until)
+    {
+        const int index = 1 - cache.frontIndex();
+        if (!cache.claimForWrite(index))
+        {
+            std::this_thread::yield(); // Test producer only; never the callback.
+            continue;
+        }
+        cache.data(index).samples.fill(float(swaps + 3));
+        cache.publish(index);
+        ++swaps;
+    }
+    done.store(true);
+    reader.join();
+    check(swaps == 10000 && reads.load() > 0 && coherent.load(),
+          "10000 concurrent publications retain coherent PCM without overwriting borrowed memory");
+    check(loanAllocations == 0 && loanReleases == 0,
+          "production cache borrow/read/return makes zero instrumented C++ allocations or releases");
+    results.push_back({{"case", "production two-slot concurrent borrowing"},
+                       {"swaps", swaps},
+                       {"coherent_reads", reads.load()},
+                       {"borrow_cpp_allocations", loanAllocations},
+                       {"borrow_cpp_releases", loanReleases}});
+}
 juce::Component* find(juce::Component& p, const juce::String& id)
 {
     if (p.getComponentID() == id)
@@ -322,6 +545,7 @@ int main(int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI gui;
     try
     {
+        checkCacheBorrowing();
         const auto folder = juce::File::getSpecialLocation(juce::File::tempDirectory)
                                 .getChildFile("forma-scrub-" + juce::Uuid().toString());
         folder.createDirectory();
@@ -826,6 +1050,193 @@ int main(int argc, char** argv)
                   "failed aggregate preparation preserves every project fact and transport state");
         }
         {
+            const auto longFile = folder.getChildFile("24-second-source.wav");
+            const auto longPcm = create(longFile, 48000, 2, 24);
+            const auto mediaHash = Commands::mediaHash(longFile);
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("sliding-prefs")));
+            setup(c, longFile, false);
+            const auto clip = c.query()["tracks"][0]["clips"][0]["id"];
+            run(c, Json::array({op("clip.split", {{"clip", clip}, {"position_samples", 288000}, {"ref", "$next"}}),
+                                op("clip.move", {{"clip", "$next"}, {"position_samples", 336000}})}));
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            const auto before = c.query();
+            const auto expected = [&](int ch, double p)
+            {
+                return p < 288000 ? sampleAt(longPcm, ch, p) : p < 336000 ? 0. : sampleAt(longPcm, ch, p - 48000);
+            };
+            startScrub(c, beginArgs(c, 24000));
+            followTimeline(c, player, 4, 22 * 48000, expected,
+                           "4x forward continues across many real windows, clip source offset and silence");
+            const auto graphBuilds = c.scrubStatus()["source_graph_builds"].get<uint64_t>();
+            TransportTestAccess::edit(c).getTransport().ensureContextAllocated(true);
+            check(c.scrubStatus()["source_graph_builds"].get<uint64_t>() > graphBuilds,
+                  "continuity fault actually rebuilds the native source graph within the same gesture");
+            followTimeline(c, player, -4, 2 * 48000, expected,
+                           "same-gesture reverse crosses every cache boundary without skipping or replaying PCM");
+            c.scrub("speed", {{"speed", 0.}, {"shuttle", false}});
+            const auto paused = c.scrubStatus()["position_samples"];
+            const auto zero = player.process(512);
+            check(c.scrubStatus()["position_samples"] == paused && zero.getMagnitude(64, 448) == 0,
+                  "zero speed holds real cursor and silences after the bounded audition envelope");
+            followTimeline(c, player, .5, 4 * 48000, expected,
+                           "half-speed resumes same gesture with sample-correct fractional positions");
+            c.scrub("end");
+            check(c.query()["tracks"] == before["tracks"] && c.query()["revision"] == before["revision"] &&
+                      c.query()["position_samples"] == before["position_samples"] &&
+                      Commands::mediaHash(longFile) == mediaHash,
+                  "multiple cache replacements leave Edit facts, Undo, insertion and original media unchanged");
+            TransportTestAccess::drainDecoder(c);
+            pump(20);
+            startScrub(c, beginArgs(c, 24000));
+            // Advance actual blocks without dispatching the GUI refill Timer.
+            // This is a real cache underrun, not a fake decoder or fake audio.
+            for (int i = 0; i < 110; ++i)
+            {
+                c.scrub("speed", {{"speed", 4.}, {"shuttle", true}});
+                player.process(256);
+            }
+            const auto waiting = c.scrubStatus();
+            const auto held = waiting["position_samples"];
+            check(waiting["active"].get<bool>() && waiting["state"] == "buffering" &&
+                      waiting["cache_underruns"].get<int>() == 1 && !waiting["exhausted"].get<bool>(),
+                  "actual cache exhaustion reports buffering instead of false playback progress or source EOF");
+            c.scrub("speed", {{"speed", 4.}, {"shuttle", true}});
+            check(player.process(1024).getMagnitude(0, 1024) == 0 && c.scrubStatus()["position_samples"] == held,
+                  "underrun outputs real silence and preserves unheard source position");
+            TransportTestAccess::serviceScrub(c);
+            check(c.scrubStatus()["refilling"].get<bool>(), "cache recovery queues a real background decode");
+            TransportTestAccess::drainDecoder(c);
+            TransportTestAccess::serviceScrub(c);
+            c.scrub("speed", {{"speed", 1.}, {"shuttle", false}});
+            auto recovered = player.process(1024);
+            double recoveryError = 0;
+            for (int ch = 0; ch < 2; ++ch)
+                for (int n = 64; n < 1024; ++n)
+                    recoveryError = std::max(
+                        recoveryError, std::abs(recovered.getSample(ch, n) - expected(ch, held.get<double>() + n)));
+            check(recoveryError < 2e-5 && !c.scrubStatus()["cache_waiting"].get<bool>(),
+                  "real refill resumes exactly the previously unheard PCM after envelope recovery");
+            results.push_back({{"case", "actual cache exhaustion and recovery"},
+                               {"maximum_pcm_error", recoveryError},
+                               {"wait_frames", c.scrubStatus()["cache_wait_frames"]}});
+            c.scrub("cancel");
+            TransportTestAccess::drainDecoder(c);
+            pump(20);
+            startScrub(c, beginArgs(c, 24000));
+            for (int i = 0; i < 110; ++i)
+            {
+                c.scrub("speed", {{"speed", 4.}, {"shuttle", true}});
+                player.process(256);
+            }
+            const auto turnPosition = c.scrubStatus()["position_samples"].get<double>();
+            check(c.scrubStatus()["cache_waiting"].get<bool>(),
+                  "reverse recovery starts at actual exhausted cache edge");
+            c.scrub("speed", {{"speed", -4.}, {"shuttle", true}});
+            TransportTestAccess::serviceScrub(c);
+            check(c.scrubStatus()["refilling"].get<bool>(),
+                  "reverse edge recovery queues an overlapping backward window");
+            TransportTestAccess::drainDecoder(c);
+            TransportTestAccess::serviceScrub(c);
+            const auto turned = player.process(1024);
+            double turnError = 0;
+            for (int ch = 0; ch < 2; ++ch)
+                for (int n = 64; n < 1024; ++n)
+                    turnError =
+                        std::max(turnError, std::abs(turned.getSample(ch, n) - expected(ch, turnPosition - n * 4)));
+            check(turnError < 2e-5 && !c.scrubStatus()["cache_waiting"].get<bool>() &&
+                      c.scrubStatus()["position_samples"].get<double>() == turnPosition - 4096,
+                  "reversing an exhausted cache resumes exact backward PCM instead of becoming stuck or jumping");
+            results.push_back({{"case", "reverse after actual cache exhaustion"}, {"maximum_pcm_error", turnError}});
+            c.scrub("cancel");
+            TransportTestAccess::drainDecoder(c);
+            pump(20);
+            startScrub(c, beginArgs(c, 24000));
+            for (int i = 0; i < 80; ++i)
+            {
+                c.scrub("speed", {{"speed", 4.}, {"shuttle", true}});
+                player.process(256);
+            }
+            TransportTestAccess::serviceScrub(c);
+            check(c.scrubStatus()["refilling"].get<bool>(), "human conflict test has a real pending refill");
+            run(c, Json::array({op("track.gain", {{"track", c.query()["tracks"][0]["id"]}, {"db", -6}})}));
+            TransportTestAccess::drainDecoder(c);
+            pump(20);
+            check(!c.query()["playing"].get<bool>() && !c.scrubStatus().value("busy", false) &&
+                      player.process(1024).getMagnitude(0, 1024) == 0,
+                  "human edit cancels ongoing refill without publishing late audio");
+            c.undo();
+            pump(20);
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("silent-gap-prefs")));
+            setup(c, source, false);
+            run(c, Json::array({op("clip.copy", {{"clip", c.query()["tracks"][0]["clips"][0]["id"]},
+                                                 {"track", c.query()["tracks"][0]["id"]},
+                                                 {"position_samples", 14 * 48000},
+                                                 {"ref", "$later"}})}));
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            const auto expected = [&](int ch, double p)
+            {
+                return p < 4 * 48000    ? sampleAt(reference, ch, p)
+                       : p < 14 * 48000 ? 0.
+                                        : sampleAt(reference, ch, p - 14 * 48000);
+            };
+            startScrub(c, beginArgs(c, 24000));
+            followTimeline(c, player, 4, 17 * 48000, expected,
+                           "long empty timeline windows remain real silence then reach next source clip");
+            followTimeline(c, player, -4, 48000, expected,
+                           "reverse crosses completely empty windows into the earlier source clip");
+            check(results.back()["empty_window_blocks"].get<int>() > 0,
+                  "silence qualification actually traversed decoded windows with no clip data");
+            c.scrub("cancel");
+        }
+        {
+            const auto faultFile = folder.getChildFile("refill-fault.wav");
+            check(source.copyFileTo(faultFile), "owned real PCM fault media copied for cache refill failure");
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("refill-fault-prefs")));
+            setup(c, faultFile, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            startScrub(c, beginArgs(c, 24000));
+            const auto version = c.query()["revision"];
+            for (int i = 0; i < 80; ++i)
+            {
+                c.scrub("speed", {{"speed", 4.}, {"shuttle", true}});
+                player.process(256);
+            }
+            check(faultFile.deleteFile(), "only the owned fault file removed after actual initial audio decode");
+            TransportTestAccess::serviceScrub(c);
+            TransportTestAccess::drainDecoder(c);
+            TransportTestAccess::serviceScrub(c);
+            const auto failed = c.scrubStatus();
+            check(failed["state"] == "failed" && failed["reason"] == "cache_refill_failed" &&
+                      failed["error"].is_string() && !c.query()["playing"].get<bool>() &&
+                      c.query()["revision"] == version && player.process(1024).getMagnitude(0, 1024) == 0,
+                  "real missing-file refill stops with failed receipt, preserved Edit revision and no leftover audio");
+            results.push_back(
+                {{"case", "actual deleted-media refill"}, {"state", failed["state"]}, {"error", failed["error"]}});
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("refill-expiry-prefs")));
+            setup(c, source, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            startScrub(c, beginArgs(c, 24000));
+            for (int i = 0; i < 80; ++i)
+            {
+                c.scrub("speed", {{"speed", 4.}, {"shuttle", true}});
+                player.process(256);
+            }
+            TransportTestAccess::serviceScrub(c);
+            check(c.scrubStatus()["refilling"].get<bool>(), "expiry test queues actual pending window");
+            TransportTestAccess::drainDecoder(c);
+            juce::Thread::sleep(1550);
+            c.scrub("speed", {{"speed", 4.}, {"shuttle", true}}); // Isolate refill deadline from drag timeout.
+            TransportTestAccess::serviceScrub(c);
+            check(c.scrubStatus()["state"] == "failed" && c.scrubStatus()["reason"] == "cache_refill_failed" &&
+                      c.scrubStatus()["error"].get<std::string>().find("1500ms") != std::string::npos &&
+                      !c.query()["playing"].get<bool>(),
+                  "expired completed refill cannot be published even when mouse activity resumes");
+        }
+        {
             Workspace w(false, std::make_unique<Storage>(folder.getChildFile("ui-prefs")));
             w.setVisible(true);
             w.setSize(1720, 1000);
@@ -907,13 +1318,15 @@ int main(int argc, char** argv)
             auto media = demoFolder.getChildFile("Scrub source.wav");
             auto session = demoFolder.getChildFile("Scrubber Demo.tracktionedit");
             check(!media.exists() && !session.exists(), "owned demonstration never overwrites existing media or Edit");
-            juce::AudioBuffer<float> cue(2, 192000);
+            const bool slidingDemo = argc > 3 && std::string(argv[3]) == "sliding";
+            const int duration = slidingDemo ? 24 : 4;
+            juce::AudioBuffer<float> cue(2, duration * 48000);
             double phase = 0;
             for (int n = 0; n < cue.getNumSamples(); ++n)
             {
                 const double seconds = n / 48000.;
-                phase += 2 * juce::MathConstants<double>::pi * (220 + 440 * seconds) / 48000.;
-                const float gain = .08f * float(std::min({1., seconds * 100, (4 - seconds) * 100}));
+                phase += 2 * juce::MathConstants<double>::pi * (220 + 440 * seconds * 4 / duration) / 48000.;
+                const float gain = .08f * float(std::min({1., seconds * 100, (duration - seconds) * 100}));
                 cue.setSample(0, n, gain * float(std::sin(phase)));
                 cue.setSample(1, n, gain * float(std::sin(phase * .75)));
             }
@@ -928,20 +1341,23 @@ int main(int argc, char** argv)
             Commands demo(false, std::make_unique<Storage>(demoFolder.getChildFile("prefs")));
             setup(demo, media, false);
             const auto left = demo.query()["tracks"][0]["clips"][0]["id"];
-            run(demo, Json::array({op("clip.split", {{"clip", left}, {"position_samples", 96000}, {"ref", "$right"}}),
-                                   op("clip.move", {{"clip", "$right"}, {"position_samples", 84000}}),
-                                   op("clip.fade", {{"clip", left},
-                                                    {"in_samples", 2400},
-                                                    {"out_samples", 12000},
-                                                    {"in_curve", "linear"},
-                                                    {"out_curve", "convex"}}),
-                                   op("clip.fade", {{"clip", "$right"},
-                                                    {"in_samples", 12000},
-                                                    {"out_samples", 2400},
-                                                    {"in_curve", "convex"},
-                                                    {"out_curve", "linear"}}),
-                                   op("clip.gain", {{"clip", "$right"}, {"db", -3}})}));
-            demo.updateUiState({{"edit_tool", "scrubber"}, {"span_samples", 192000}}, demo.sessionToken());
+            run(demo, Json::array(
+                          {op("clip.split",
+                              {{"clip", left}, {"position_samples", slidingDemo ? 288000 : 96000}, {"ref", "$right"}}),
+                           op("clip.move", {{"clip", "$right"}, {"position_samples", slidingDemo ? 336000 : 84000}}),
+                           op("clip.fade", {{"clip", left},
+                                            {"in_samples", 2400},
+                                            {"out_samples", 12000},
+                                            {"in_curve", "linear"},
+                                            {"out_curve", "convex"}}),
+                           op("clip.fade", {{"clip", "$right"},
+                                            {"in_samples", 12000},
+                                            {"out_samples", 2400},
+                                            {"in_curve", "convex"},
+                                            {"out_curve", "linear"}}),
+                           op("clip.gain", {{"clip", "$right"}, {"db", -3}})}));
+            demo.updateUiState({{"edit_tool", "scrubber"}, {"span_samples", slidingDemo ? 1200000 : 192000}},
+                               demo.sessionToken());
             demo.save(session);
             check(session.existsAsFile(), "demonstration saved through actual L1 native Edit writer");
         }

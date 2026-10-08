@@ -65,6 +65,16 @@ public:
             if (onScrubReady)
                 onScrubReady();
         }
+        if (scrubGesture)
+        {
+            const bool waiting = value.value("scrub", Json::object()).value("cache_waiting", false);
+            if (waiting != scrubBuffering)
+            {
+                scrubBuffering = waiting;
+                if (onScrubBuffering)
+                    onScrubBuffering(waiting);
+            }
+        }
         facts = value;
         facts["tracks"] = Json::array();
         for (const auto& t : value["tracks"])
@@ -286,6 +296,7 @@ public:
     std::function<bool(const std::string&, const Json&)> onScrub;
     std::function<void(const std::string&)> onScrubStopped;
     std::function<void()> onScrubReady;
+    std::function<void(bool)> onScrubBuffering;
     std::function<void(Json, std::string, uint64_t)> onZoomGesture;
     std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
     std::function<void(std::string, int)> onRecordingCommand;
@@ -731,6 +742,7 @@ public:
                                                          {"session", scrubSession},
                                                          {"revision", scrubRevision}});
                         scrubPreparing = scrubGesture;
+                        scrubBuffering = false;
                         scrubX = e.x;
                         scrubTime = juce::Time::getMillisecondCounterHiRes();
                         scrubLeft = timelineLeft();
@@ -1213,7 +1225,7 @@ private:
     std::function<void(const std::string&, Json, uint64_t)> clipWrite;
     EditingModel editing;
     SelectionModel selection;
-    bool scrubGesture = false, scrubPreparing = false;
+    bool scrubGesture = false, scrubPreparing = false, scrubBuffering = false;
     std::string scrubSession;
     uint64_t scrubRevision = 0;
     int scrubX = 0, scrubLeft = 0, scrubWidth = 0;

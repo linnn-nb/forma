@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 有界 Scrubber 滑动窗口（2026-10-09）
+
+结论：真实长范围正反向续读、缓存耗尽暂停/恢复、反向恢复和失败停止接通；Release/固定验签、相关8/8（71.78秒）、485专项通过。`scrub-tests.json` 是本轮机器回执，详细实现/误差/失败修复及产物哈希见 `docs/VERIFICATION.md` 首节。两槽最多16 MiB PCM/单后台作业/每次1500 ms；借用路径10,000发布、18,279一致读，实测C++分配/释放0，非全引擎RT资格。原媒体、Undo/Redo、保存重开与键位保持。
+
+亲手试：`build-v2-tracktion/FormaSlidingScrubPreview.app` 打开 `scrub-sliding-demo/Scrubber Demo.tracktionedit`，CommandF9，2–20秒拖动/Option Shuttle/反向/松手；24秒真实原创PCM，6–7秒实际空隙。示范生成独立488检查通过。Mac锁定，物理GUI/实体试听未执行，自有预览已退出。不打DMG、不改变SDK补丁；完整U＋P0未完成。下面保留历史增量资格，不用当前结果改写旧数字。
+
 ## U-P0-SCRUB-01 续：后台解码与可取消准备（2026-10-09）
 
 结论：Scrubber 的媒体打开、格式探测和 PCM 解码已移到一个后台线程。GUI 显示“正在读取音频”，真正发布原生图后才显示“已就绪”；松手/Escape、人工编辑、正常播放、保存或关闭工程不会迟到启动试听。Release 与固定身份 deep/strict 验签通过；相关 **11/11 通过，0 失败，84.72 秒**，Scrubber **421 项检查**。完整 U＋P0 未完成，不进入 P1。

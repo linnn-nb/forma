@@ -1,7 +1,14 @@
 {
-  "checks": 421,
+  "checks": 485,
   "hardware_listening": "not_executed",
   "pcm": [
+    {
+      "borrow_cpp_allocations": 0,
+      "borrow_cpp_releases": 0,
+      "case": "production two-slot concurrent borrowing",
+      "coherent_reads": 18279,
+      "swaps": 10000
+    },
     {
       "device_rate": 48000.0,
       "gain": 1.0,
@@ -9,14 +16,14 @@
       "source_rate": 48000.0,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.06662499904632568,
-        "context_ms": 0.6581249982118607,
-        "decode_ms": 1.0153749883174896,
-        "first_audio_ms": 11.121041666666667,
-        "graph_ms": 0.6935416758060455,
-        "native_state_ms": 0.0005416721105575562,
-        "ready_ms": 9.783166661858559,
-        "transport_start_ms": 0.007083341479301453
+        "capture_ms": 0.07733333110809326,
+        "context_ms": 0.7899166792631149,
+        "decode_ms": 1.752291664481163,
+        "first_audio_ms": 19.050583333333332,
+        "graph_ms": 0.8281666785478592,
+        "native_state_ms": 0.0003750026226043701,
+        "ready_ms": 13.207208335399628,
+        "transport_start_ms": 0.006999999284744263
       }
     },
     {
@@ -26,14 +33,14 @@
       "source_rate": 48000.0,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.024000003933906555,
-        "context_ms": 0.23775000870227814,
-        "decode_ms": 0.502374991774559,
-        "first_audio_ms": 11.441375,
-        "graph_ms": 0.26116667687892914,
-        "native_state_ms": 0.00033333897590637207,
-        "ready_ms": 7.276916667819023,
-        "transport_start_ms": 0.005208343267440796
+        "capture_ms": 0.025583326816558838,
+        "context_ms": 0.20745833218097687,
+        "decode_ms": 0.9110416620969772,
+        "first_audio_ms": 6.209416666666667,
+        "graph_ms": 0.22949999570846558,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 1.9673749953508377,
+        "transport_start_ms": 0.0033749938011169434
       }
     },
     {
@@ -43,14 +50,14 @@
       "source_rate": 48000.0,
       "speed": 0.5,
       "timing": {
-        "capture_ms": 0.027583345770835876,
-        "context_ms": 0.2226666659116745,
-        "decode_ms": 0.7211250066757202,
-        "first_audio_ms": 5.508958333333333,
-        "graph_ms": 0.24249999225139618,
+        "capture_ms": 0.02233332395553589,
+        "context_ms": 0.19208334386348724,
+        "decode_ms": 0.6207916736602783,
+        "first_audio_ms": 4.916791666666667,
+        "graph_ms": 0.21320833265781403,
         "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 4.1288750022649765,
-        "transport_start_ms": 0.0029999911785125732
+        "ready_ms": 4.861583322286606,
+        "transport_start_ms": 0.002374991774559021
       }
     },
     {
@@ -60,14 +67,14 @@
       "source_rate": 48000.0,
       "speed": -0.5,
       "timing": {
-        "capture_ms": 0.020750001072883606,
-        "context_ms": 0.1928333193063736,
-        "decode_ms": 0.6755000054836273,
-        "first_audio_ms": 10.51625,
-        "graph_ms": 0.21195833384990692,
-        "native_state_ms": 0.0,
-        "ready_ms": 7.789291679859161,
-        "transport_start_ms": 0.002291664481163025
+        "capture_ms": 0.023208335041999817,
+        "context_ms": 0.20629166066646576,
+        "decode_ms": 0.5796250104904175,
+        "first_audio_ms": 11.544791666666667,
+        "graph_ms": 0.2292916625738144,
+        "native_state_ms": 8.334219455718994e-05,
+        "ready_ms": 9.93345832824707,
+        "transport_start_ms": 0.002791658043861389
       }
     },
     {
@@ -77,14 +84,14 @@
       "source_rate": 48000.0,
       "speed": 4.0,
       "timing": {
-        "capture_ms": 0.020166665315628052,
-        "context_ms": 0.22108334302902222,
-        "decode_ms": 0.7502083331346512,
-        "first_audio_ms": 11.496125,
-        "graph_ms": 0.24158333241939545,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 7.861333325505257,
-        "transport_start_ms": 0.002499997615814209
+        "capture_ms": 0.022333338856697083,
+        "context_ms": 0.23479166626930237,
+        "decode_ms": 0.6357500106096268,
+        "first_audio_ms": 13.336333333333334,
+        "graph_ms": 0.2566250115633011,
+        "native_state_ms": 4.1678547859191895e-05,
+        "ready_ms": 7.846708342432976,
+        "transport_start_ms": 0.0037500113248825073
       }
     },
     {
@@ -94,31 +101,14 @@
       "source_rate": 48000.0,
       "speed": -4.0,
       "timing": {
-        "capture_ms": 0.023958340287208557,
-        "context_ms": 0.1940833330154419,
-        "decode_ms": 1.5360833257436752,
-        "first_audio_ms": 5.386166666666667,
-        "graph_ms": 0.21649999916553497,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 5.310333341360092,
-        "transport_start_ms": 0.0036250054836273193
-      }
-    },
-    {
-      "device_rate": 48000.0,
-      "gain": 1.0,
-      "maximum_pcm_error": 0.0,
-      "source_rate": 48000.0,
-      "speed": -1.0,
-      "timing": {
-        "capture_ms": 0.03470833599567413,
-        "context_ms": 0.5901666730642319,
-        "decode_ms": 1.3970416635274887,
-        "first_audio_ms": 5.941583333333333,
-        "graph_ms": 0.6201249957084656,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 3.2820000052452087,
-        "transport_start_ms": 0.004166662693023682
+        "capture_ms": 0.025041669607162476,
+        "context_ms": 0.2330416589975357,
+        "decode_ms": 0.5686666667461395,
+        "first_audio_ms": 6.44925,
+        "graph_ms": 0.255500003695488,
+        "native_state_ms": 4.1678547859191895e-05,
+        "ready_ms": 3.3509583324193954,
+        "transport_start_ms": 0.0036666691303253174
       }
     },
     {
@@ -129,13 +119,30 @@
       "speed": -1.0,
       "timing": {
         "capture_ms": 0.03304167091846466,
-        "context_ms": 0.6033749878406525,
-        "decode_ms": 1.002374991774559,
-        "first_audio_ms": 10.997166666666667,
-        "graph_ms": 0.6302083432674408,
-        "native_state_ms": 4.1678547859191895e-05,
-        "ready_ms": 10.891375005245209,
-        "transport_start_ms": 0.0040000081062316895
+        "context_ms": 0.5700416713953018,
+        "decode_ms": 1.3672916740179062,
+        "first_audio_ms": 5.903791666666667,
+        "graph_ms": 0.5988333374261856,
+        "native_state_ms": 0.00016666948795318604,
+        "ready_ms": 3.711166664958,
+        "transport_start_ms": 0.004124999046325684
+      }
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": -1.0,
+      "timing": {
+        "capture_ms": 0.03433333337306976,
+        "context_ms": 0.6552499979734421,
+        "decode_ms": 1.267916664481163,
+        "first_audio_ms": 11.577125,
+        "graph_ms": 0.6872500032186508,
+        "native_state_ms": 8.33272933959961e-05,
+        "ready_ms": 11.497250005602837,
+        "transport_start_ms": 0.00429166853427887
       }
     },
     {
@@ -145,14 +152,14 @@
       "source_rate": 48000.0,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.032499998807907104,
-        "context_ms": 0.6190000027418137,
-        "decode_ms": 1.8031249940395355,
-        "first_audio_ms": 5.501375,
-        "graph_ms": 0.643875002861023,
-        "native_state_ms": 0.00024999678134918213,
-        "ready_ms": 2.969833329319954,
-        "transport_start_ms": 0.0039583295583724976
+        "capture_ms": 0.035708338022232056,
+        "context_ms": 0.6375000029802322,
+        "decode_ms": 1.5581666678190231,
+        "first_audio_ms": 6.880583333333333,
+        "graph_ms": 0.6627499908208847,
+        "native_state_ms": 0.0,
+        "ready_ms": 3.785874992609024,
+        "transport_start_ms": 0.0036666542291641235
       }
     },
     {
@@ -165,14 +172,14 @@
       "source_rate": 48000.0,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.040375009179115295,
-        "context_ms": 0.6315833330154419,
-        "decode_ms": 1.131583333015442,
-        "first_audio_ms": 11.085833333333333,
-        "graph_ms": 0.6601250022649765,
-        "native_state_ms": 0.00020833313465118408,
-        "ready_ms": 11.018666669726372,
-        "transport_start_ms": 0.005083322525024414
+        "capture_ms": 0.0442916601896286,
+        "context_ms": 0.6655416637659073,
+        "decode_ms": 1.7272083312273026,
+        "first_audio_ms": 13.7995,
+        "graph_ms": 0.7012500017881393,
+        "native_state_ms": 0.000125005841255188,
+        "ready_ms": 9.176291674375534,
+        "transport_start_ms": 0.005291655659675598
       }
     },
     {
@@ -182,14 +189,14 @@
       "source_rate": 48000.0,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.04187500476837158,
-        "context_ms": 0.6472499966621399,
-        "decode_ms": 1.3500416725873947,
-        "first_audio_ms": 11.418541666666666,
-        "graph_ms": 0.6742916703224182,
-        "native_state_ms": 4.1678547859191895e-05,
-        "ready_ms": 10.071791663765907,
-        "transport_start_ms": 0.00504167377948761
+        "capture_ms": 0.04470832645893097,
+        "context_ms": 0.6879166662693024,
+        "decode_ms": 1.100208342075348,
+        "first_audio_ms": 18.811583333333335,
+        "graph_ms": 0.7170416712760925,
+        "native_state_ms": 0.0,
+        "ready_ms": 13.089874997735023,
+        "transport_start_ms": 0.005541667342185974
       }
     },
     {
@@ -203,37 +210,37 @@
       "source_rate": 44100.0,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.07429167628288269,
-        "context_ms": 0.5824166685342789,
-        "decode_ms": 0.6044999957084656,
-        "first_audio_ms": 12.302791666666666,
-        "graph_ms": 0.6063333302736282,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 9.654541671276093,
-        "transport_start_ms": 0.00504167377948761
+        "capture_ms": 0.07404166460037231,
+        "context_ms": 0.5513333380222321,
+        "decode_ms": 3.4357083290815353,
+        "first_audio_ms": 14.444833333333333,
+        "graph_ms": 0.5902916640043259,
+        "native_state_ms": 0.0002916604280471802,
+        "ready_ms": 10.083875000476837,
+        "transport_start_ms": 0.007624998688697815
       }
     },
     {
-      "accepted": 14,
+      "accepted": 13,
       "case": "rapid asynchronous cancellation",
-      "refused_busy": 6
+      "refused_busy": 7
     },
     {
       "cached_bytes": 816008,
       "case": "forward fade-in matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 1.4429291095297003e-09,
-      "preparation_ms": 11.07549999654293,
+      "preparation_ms": 13.337875008583069,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.0989166647195816,
-        "context_ms": 0.5613333284854889,
-        "decode_ms": 1.1302083283662796,
-        "first_audio_ms": 11.032875,
-        "graph_ms": 0.5956666767597198,
-        "native_state_ms": 0.0005000084638595581,
-        "ready_ms": 10.964916676282883,
-        "transport_start_ms": 0.007416665554046631
+        "capture_ms": 0.09187500178813934,
+        "context_ms": 0.5956250131130219,
+        "decode_ms": 1.0855000019073486,
+        "first_audio_ms": 13.302083333333334,
+        "graph_ms": 0.6236249953508377,
+        "native_state_ms": 0.00012499094009399414,
+        "ready_ms": 9.259166672825813,
+        "transport_start_ms": 0.007041662931442261
       }
     },
     {
@@ -241,17 +248,17 @@
       "case": "reverse fade-in follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 7.425745331135492e-10,
-      "preparation_ms": 11.225749999284744,
+      "preparation_ms": 10.91004166007042,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.035750001668930054,
-        "context_ms": 0.2383750081062317,
-        "decode_ms": 1.0482083410024643,
-        "first_audio_ms": 11.191791666666667,
-        "graph_ms": 0.2618333250284195,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 7.764583334326744,
-        "transport_start_ms": 0.0031249970197677612
+        "capture_ms": 0.03404167294502258,
+        "context_ms": 0.24541665613651276,
+        "decode_ms": 0.40625,
+        "first_audio_ms": 10.881166666666667,
+        "graph_ms": 0.27045832574367523,
+        "native_state_ms": 0.00016666948795318604,
+        "ready_ms": 10.81604166328907,
+        "transport_start_ms": 0.0037916600704193115
       }
     },
     {
@@ -259,17 +266,17 @@
       "case": "forward fade-out matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 7.326404257573804e-10,
-      "preparation_ms": 5.51658333837986,
+      "preparation_ms": 11.577500000596046,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.03020833432674408,
-        "context_ms": 0.28325000405311584,
-        "decode_ms": 1.60370834171772,
-        "first_audio_ms": 5.478125,
-        "graph_ms": 0.30504167079925537,
-        "native_state_ms": 0.0,
-        "ready_ms": 5.414875000715256,
-        "transport_start_ms": 0.002458333969116211
+        "capture_ms": 0.028541669249534607,
+        "context_ms": 0.25954167544841766,
+        "decode_ms": 0.7952500134706497,
+        "first_audio_ms": 11.543166666666666,
+        "graph_ms": 0.28562499582767487,
+        "native_state_ms": 8.33272933959961e-05,
+        "ready_ms": 9.893541663885117,
+        "transport_start_ms": 0.004374995827674866
       }
     },
     {
@@ -277,17 +284,17 @@
       "case": "reverse fade-out follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 1.4478961640751464e-09,
-      "preparation_ms": 10.033083334565163,
+      "preparation_ms": 13.685333326458931,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.03162500262260437,
-        "context_ms": 0.2588333338499069,
-        "decode_ms": 0.46954166889190674,
-        "first_audio_ms": 9.998125,
-        "graph_ms": 0.28170832991600037,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 7.898541659116745,
-        "transport_start_ms": 0.0033333301544189453
+        "capture_ms": 0.029583334922790527,
+        "context_ms": 0.22887499630451202,
+        "decode_ms": 0.5392500013113022,
+        "first_audio_ms": 13.650291666666666,
+        "graph_ms": 0.2529583275318146,
+        "native_state_ms": 0.0,
+        "ready_ms": 8.17354166507721,
+        "transport_start_ms": 0.003000006079673767
       }
     },
     {
@@ -295,17 +302,17 @@
       "case": "forward fade-in matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 3.4133752387088823e-09,
-      "preparation_ms": 6.021541655063629,
+      "preparation_ms": 13.313999995589256,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.04324999451637268,
-        "context_ms": 0.6890416741371155,
-        "decode_ms": 1.218708336353302,
-        "first_audio_ms": 5.976916666666667,
-        "graph_ms": 0.7167916595935822,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 5.918833330273628,
-        "transport_start_ms": 0.0034999996423721313
+        "capture_ms": 0.039250001311302185,
+        "context_ms": 0.7672916650772095,
+        "decode_ms": 1.1155416667461395,
+        "first_audio_ms": 13.274916666666666,
+        "graph_ms": 0.8025416731834412,
+        "native_state_ms": 0.0,
+        "ready_ms": 11.599375009536743,
+        "transport_start_ms": 0.008374989032745361
       }
     },
     {
@@ -313,17 +320,17 @@
       "case": "reverse fade-in follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 1.726397847595651e-09,
-      "preparation_ms": 10.87004166841507,
+      "preparation_ms": 14.717375010251999,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.025374993681907654,
-        "context_ms": 0.22341667115688324,
-        "decode_ms": 1.5171666592359543,
-        "first_audio_ms": 10.837833333333334,
-        "graph_ms": 0.24529166519641876,
-        "native_state_ms": 0.00016666948795318604,
-        "ready_ms": 8.194541662931442,
-        "transport_start_ms": 0.0029999911785125732
+        "capture_ms": 0.03579166531562805,
+        "context_ms": 0.24670833349227905,
+        "decode_ms": 0.41708333790302277,
+        "first_audio_ms": 14.687041666666667,
+        "graph_ms": 0.27258333563804626,
+        "native_state_ms": 4.1678547859191895e-05,
+        "ready_ms": 7.901624992489815,
+        "transport_start_ms": 0.005083322525024414
       }
     },
     {
@@ -331,17 +338,17 @@
       "case": "forward fade-out matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 1.7896599809746894e-09,
-      "preparation_ms": 11.972249999642372,
+      "preparation_ms": 12.63354167342186,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.03016667068004608,
-        "context_ms": 0.3218750059604645,
-        "decode_ms": 0.437666654586792,
-        "first_audio_ms": 11.942666666666666,
-        "graph_ms": 0.34724999964237213,
-        "native_state_ms": 8.334219455718994e-05,
-        "ready_ms": 8.01395833492279,
-        "transport_start_ms": 0.005208328366279602
+        "capture_ms": 0.03466665744781494,
+        "context_ms": 0.2708750069141388,
+        "decode_ms": 0.48395833373069763,
+        "first_audio_ms": 12.604416666666667,
+        "graph_ms": 0.2952916622161865,
+        "native_state_ms": 0.00020833313465118408,
+        "ready_ms": 11.117749989032745,
+        "transport_start_ms": 0.004749998450279236
       }
     },
     {
@@ -349,16 +356,16 @@
       "case": "reverse fade-out follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 3.6217733256904694e-09,
-      "preparation_ms": 5.594999998807907,
+      "preparation_ms": 10.416041672229767,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.026583343744277954,
-        "context_ms": 0.22808334231376648,
-        "decode_ms": 0.3788750022649765,
-        "first_audio_ms": 5.561,
-        "graph_ms": 0.2510833293199539,
-        "native_state_ms": 8.33272933959961e-05,
-        "ready_ms": 4.174750000238419,
+        "capture_ms": 0.03200000524520874,
+        "context_ms": 0.2370000034570694,
+        "decode_ms": 0.4150833189487457,
+        "first_audio_ms": 10.385291666666667,
+        "graph_ms": 0.2606666684150696,
+        "native_state_ms": 0.0,
+        "ready_ms": 5.746750012040138,
         "transport_start_ms": 0.0036249905824661255
       }
     },
@@ -367,17 +374,17 @@
       "case": "forward fade-in matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 2.9610995560917786e-09,
-      "preparation_ms": 10.892125010490417,
+      "preparation_ms": 19.05750000476837,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.03766666352748871,
-        "context_ms": 0.5539583414793015,
-        "decode_ms": 1.1447083204984665,
-        "first_audio_ms": 10.863,
-        "graph_ms": 0.5888333320617676,
-        "native_state_ms": 0.00024999678134918213,
-        "ready_ms": 10.78741666674614,
-        "transport_start_ms": 0.006833329796791077
+        "capture_ms": 0.042500004172325134,
+        "context_ms": 0.5986666679382324,
+        "decode_ms": 1.1780000030994415,
+        "first_audio_ms": 19.014833333333332,
+        "graph_ms": 0.6278750002384186,
+        "native_state_ms": 0.0,
+        "ready_ms": 12.925125002861023,
+        "transport_start_ms": 0.004458338022232056
       }
     },
     {
@@ -385,17 +392,17 @@
       "case": "reverse fade-in follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 2.68587825656523e-09,
-      "preparation_ms": 11.629875004291534,
+      "preparation_ms": 5.399333328008652,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.031833335757255554,
-        "context_ms": 0.22812500596046448,
-        "decode_ms": 0.47333334386348724,
-        "first_audio_ms": 11.598958333333334,
-        "graph_ms": 0.25037500262260437,
+        "capture_ms": 0.031541675329208374,
+        "context_ms": 0.28587499260902405,
+        "decode_ms": 1.3834999948740005,
+        "first_audio_ms": 5.363666666666667,
+        "graph_ms": 0.31174999475479126,
         "native_state_ms": 0.0,
-        "ready_ms": 9.099291667342186,
-        "transport_start_ms": 0.002708330750465393
+        "ready_ms": 2.0630416721105576,
+        "transport_start_ms": 0.0040833353996276855
       }
     },
     {
@@ -403,17 +410,17 @@
       "case": "forward fade-out matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 2.7230634294748285e-09,
-      "preparation_ms": 10.492375001311302,
+      "preparation_ms": 11.748916670680046,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.026541665196418762,
-        "context_ms": 0.2096666693687439,
-        "decode_ms": 0.6895416676998138,
-        "first_audio_ms": 10.461083333333333,
-        "graph_ms": 0.23262500762939453,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 5.5150416642427444,
-        "transport_start_ms": 0.002499997615814209
+        "capture_ms": 0.036083340644836426,
+        "context_ms": 0.2694166600704193,
+        "decode_ms": 0.4165833294391632,
+        "first_audio_ms": 11.712583333333333,
+        "graph_ms": 0.2939999997615814,
+        "native_state_ms": 8.334219455718994e-05,
+        "ready_ms": 5.93087500333786,
+        "transport_start_ms": 0.0035416632890701294
       }
     },
     {
@@ -421,17 +428,17 @@
       "case": "reverse fade-out follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 3.0308406097356855e-09,
-      "preparation_ms": 6.8029583394527435,
+      "preparation_ms": 5.879874989390373,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.02770833671092987,
-        "context_ms": 0.19745832681655884,
-        "decode_ms": 0.8727916777133942,
-        "first_audio_ms": 6.771125,
-        "graph_ms": 0.21987499296665192,
-        "native_state_ms": 0.0,
-        "ready_ms": 2.863708332180977,
-        "transport_start_ms": 0.002375006675720215
+        "capture_ms": 0.029124990105628967,
+        "context_ms": 0.2148750126361847,
+        "decode_ms": 0.5451249927282333,
+        "first_audio_ms": 5.860541666666666,
+        "graph_ms": 0.23791666328907013,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 1.83733332157135,
+        "transport_start_ms": 0.0035416632890701294
       }
     },
     {
@@ -439,17 +446,17 @@
       "case": "forward fade-in matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 3.2376233308900604e-09,
-      "preparation_ms": 11.780833333730698,
+      "preparation_ms": 12.097874999046326,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.03541666269302368,
-        "context_ms": 0.6044583320617676,
-        "decode_ms": 2.261041671037674,
-        "first_audio_ms": 11.753625,
-        "graph_ms": 0.6301250010728836,
-        "native_state_ms": 0.0,
-        "ready_ms": 7.0062499940395355,
-        "transport_start_ms": 0.0038750022649765015
+        "capture_ms": 0.03920832276344299,
+        "context_ms": 0.541291669011116,
+        "decode_ms": 1.106124997138977,
+        "first_audio_ms": 12.060083333333333,
+        "graph_ms": 0.5728749930858612,
+        "native_state_ms": 0.0001666545867919922,
+        "ready_ms": 10.449124991893768,
+        "transport_start_ms": 0.004708334803581238
       }
     },
     {
@@ -457,17 +464,17 @@
       "case": "reverse fade-in follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 2.5488749808705302e-09,
-      "preparation_ms": 5.719291657209396,
+      "preparation_ms": 12.615708336234093,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.032166674733161926,
-        "context_ms": 0.2722916603088379,
-        "decode_ms": 0.43966667354106903,
-        "first_audio_ms": 5.691708333333334,
-        "graph_ms": 0.2985000014305115,
-        "native_state_ms": 0.0,
-        "ready_ms": 2.9984583407640457,
-        "transport_start_ms": 0.0035833418369293213
+        "capture_ms": 0.031000003218650818,
+        "context_ms": 0.25699999928474426,
+        "decode_ms": 1.0500416606664658,
+        "first_audio_ms": 12.582333333333333,
+        "graph_ms": 0.28050000965595245,
+        "native_state_ms": 0.000125005841255188,
+        "ready_ms": 7.976625010371208,
+        "transport_start_ms": 0.0040416717529296875
       }
     },
     {
@@ -475,17 +482,17 @@
       "case": "forward fade-out matches independent curve PCM",
       "clip_count": 1,
       "maximum_pcm_error": 2.5347292580829572e-09,
-      "preparation_ms": 11.366208329796791,
+      "preparation_ms": 4.917500004172325,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.030625000596046448,
-        "context_ms": 0.25304166972637177,
-        "decode_ms": 1.841333344578743,
-        "first_audio_ms": 11.327625,
-        "graph_ms": 0.27674999833106995,
-        "native_state_ms": 0.00020833313465118408,
-        "ready_ms": 7.8789166659116745,
-        "transport_start_ms": 0.0038750022649765015
+        "capture_ms": 0.031749993562698364,
+        "context_ms": 0.22599999606609344,
+        "decode_ms": 0.9984583407640457,
+        "first_audio_ms": 4.888625,
+        "graph_ms": 0.24979166686534882,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 3.3814166635274887,
+        "transport_start_ms": 0.0035833418369293213
       }
     },
     {
@@ -493,17 +500,17 @@
       "case": "reverse fade-out follows actual engineering position",
       "clip_count": 1,
       "maximum_pcm_error": 3.682056511251919e-09,
-      "preparation_ms": 5.4727083295583725,
+      "preparation_ms": 11.880125001072884,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.02512499690055847,
-        "context_ms": 0.23541666567325592,
-        "decode_ms": 0.4480833411216736,
-        "first_audio_ms": 5.447208333333333,
-        "graph_ms": 0.2580000013113022,
-        "native_state_ms": 8.33272933959961e-05,
-        "ready_ms": 4.101958334445953,
-        "transport_start_ms": 0.0032916665077209473
+        "capture_ms": 0.028333336114883423,
+        "context_ms": 0.271166667342186,
+        "decode_ms": 0.45387499034404755,
+        "first_audio_ms": 11.851625,
+        "graph_ms": 0.3021249920129776,
+        "native_state_ms": 0.0003333240747451782,
+        "ready_ms": 7.9758750051259995,
+        "transport_start_ms": 0.007750004529953003
       }
     },
     {
@@ -511,17 +518,17 @@
       "case": "reopened source graph actually applies saved reverse fade",
       "clip_count": 1,
       "maximum_pcm_error": 2.5488749808705302e-09,
-      "preparation_ms": 10.878250002861023,
+      "preparation_ms": 13.380750000476837,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.06599999964237213,
-        "context_ms": 0.6413749903440475,
-        "decode_ms": 1.475250005722046,
-        "first_audio_ms": 10.853166666666667,
-        "graph_ms": 0.6748749911785126,
-        "native_state_ms": 0.00016666948795318604,
-        "ready_ms": 8.337499991059303,
-        "transport_start_ms": 0.00562499463558197
+        "capture_ms": 0.06883333623409271,
+        "context_ms": 0.5797500014305115,
+        "decode_ms": 1.045666664838791,
+        "first_audio_ms": 13.354083333333334,
+        "graph_ms": 0.6024583280086517,
+        "native_state_ms": 0.0,
+        "ready_ms": 9.276333332061768,
+        "transport_start_ms": 0.005125001072883606
       }
     },
     {
@@ -529,17 +536,17 @@
       "case": "forward audition crosses actual split without source discontinuity",
       "clip_count": 2,
       "maximum_pcm_error": 0.0,
-      "preparation_ms": 11.832791671156883,
+      "preparation_ms": 17.616041660308838,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.08145833015441895,
-        "context_ms": 0.5585416704416275,
-        "decode_ms": 1.1654583364725113,
-        "first_audio_ms": 11.795708333333334,
-        "graph_ms": 0.5972499996423721,
-        "native_state_ms": 0.0,
-        "ready_ms": 8.286416664719582,
-        "transport_start_ms": 0.007499992847442627
+        "capture_ms": 0.09091666340827942,
+        "context_ms": 0.5931666642427444,
+        "decode_ms": 1.9293333292007446,
+        "first_audio_ms": 17.573541666666667,
+        "graph_ms": 0.6222500056028366,
+        "native_state_ms": 0.000125005841255188,
+        "ready_ms": 11.453500002622604,
+        "transport_start_ms": 0.007166668772697449
       }
     },
     {
@@ -547,17 +554,17 @@
       "case": "actual timeline gap emits silence and continues into moved source",
       "clip_count": 2,
       "maximum_pcm_error": 0.0,
-      "preparation_ms": 11.963333323597908,
+      "preparation_ms": 13.041374996304512,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.049458324909210205,
-        "context_ms": 0.5777083337306976,
-        "decode_ms": 2.061208337545395,
-        "first_audio_ms": 11.936333333333334,
-        "graph_ms": 0.6040833294391632,
-        "native_state_ms": 8.334219455718994e-05,
-        "ready_ms": 8.285541653633118,
-        "transport_start_ms": 0.004541665315628052
+        "capture_ms": 0.03841666877269745,
+        "context_ms": 0.6001666635274887,
+        "decode_ms": 1.6275416612625122,
+        "first_audio_ms": 12.992,
+        "graph_ms": 0.6284999996423721,
+        "native_state_ms": 0.00016666948795318604,
+        "ready_ms": 12.922666668891907,
+        "transport_start_ms": 0.004250004887580872
       }
     },
     {
@@ -565,17 +572,17 @@
       "case": "reverse audition crosses moved-source gap and returns to previous actual clip",
       "clip_count": 2,
       "maximum_pcm_error": 0.0,
-      "preparation_ms": 5.428916662931442,
+      "preparation_ms": 12.579000011086464,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.02912500500679016,
-        "context_ms": 0.2201666682958603,
-        "decode_ms": 1.1826249957084656,
-        "first_audio_ms": 5.377,
-        "graph_ms": 0.2446666657924652,
-        "native_state_ms": 0.00016666948795318604,
-        "ready_ms": 4.105791658163071,
-        "transport_start_ms": 0.0032916665077209473
+        "capture_ms": 0.028333336114883423,
+        "context_ms": 0.29120832681655884,
+        "decode_ms": 1.3937499970197678,
+        "first_audio_ms": 12.54675,
+        "graph_ms": 0.31466665863990784,
+        "native_state_ms": 0.0,
+        "ready_ms": 9.465124994516373,
+        "transport_start_ms": 0.0034583359956741333
       }
     },
     {
@@ -583,17 +590,17 @@
       "case": "overlap sums actual equal-power clip fades and individual gain",
       "clip_count": 2,
       "maximum_pcm_error": 1.070966697269693e-08,
-      "preparation_ms": 5.872958332300186,
+      "preparation_ms": 13.621375009417534,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.03816667199134827,
-        "context_ms": 0.55704165995121,
-        "decode_ms": 1.6257916539907455,
-        "first_audio_ms": 5.821041666666667,
-        "graph_ms": 0.5939583331346512,
-        "native_state_ms": 0.0,
-        "ready_ms": 4.468625009059906,
-        "transport_start_ms": 0.005291670560836792
+        "capture_ms": 0.04020833969116211,
+        "context_ms": 0.630541667342186,
+        "decode_ms": 2.660541668534279,
+        "first_audio_ms": 13.587166666666667,
+        "graph_ms": 0.6564583331346512,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 11.075625002384186,
+        "transport_start_ms": 0.0039166659116744995
       }
     },
     {
@@ -601,17 +608,17 @@
       "case": "reverse overlap uses each clip's independent source time and fade direction",
       "clip_count": 2,
       "maximum_pcm_error": 1.18608987215163e-08,
-      "preparation_ms": 12.073249995708466,
+      "preparation_ms": 11.906124994158745,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.04612499475479126,
-        "context_ms": 0.6162500083446503,
-        "decode_ms": 2.567083328962326,
-        "first_audio_ms": 12.023083333333334,
-        "graph_ms": 0.6417500078678131,
-        "native_state_ms": 0.00020833313465118408,
-        "ready_ms": 9.365708336234093,
-        "transport_start_ms": 0.0039583295583724976
+        "capture_ms": 0.038208335638046265,
+        "context_ms": 0.6169166713953018,
+        "decode_ms": 1.2327083349227905,
+        "first_audio_ms": 11.859958333333333,
+        "graph_ms": 0.6417499929666519,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 9.190249994397163,
+        "transport_start_ms": 0.00429166853427887
       }
     },
     {
@@ -619,17 +626,17 @@
       "case": "48k stereo to 44.1k mono cut with fractional source offset maps directly into 96k device",
       "clip_count": 2,
       "maximum_pcm_error": 0.0,
-      "preparation_ms": 11.449249997735023,
+      "preparation_ms": 11.656125009059906,
       "speed": 1.0,
       "timing": {
-        "capture_ms": 0.1420833319425583,
-        "context_ms": 0.5746666789054871,
-        "decode_ms": 1.658375009894371,
-        "first_audio_ms": 11.396333333333333,
-        "graph_ms": 0.6014166623353958,
-        "native_state_ms": 4.166364669799805e-05,
-        "ready_ms": 9.10579165816307,
-        "transport_start_ms": 0.0063749998807907104
+        "capture_ms": 0.08529166877269745,
+        "context_ms": 0.7312500029802322,
+        "decode_ms": 1.2317499965429306,
+        "first_audio_ms": 11.612708333333334,
+        "graph_ms": 0.7699166685342789,
+        "native_state_ms": 0.00041666626930236816,
+        "ready_ms": 11.534833326935768,
+        "transport_start_ms": 0.006874993443489075
       }
     },
     {
@@ -637,17 +644,17 @@
       "case": "reverse mixed-rate cut preserves fractional source offset and mono channel duplication",
       "clip_count": 2,
       "maximum_pcm_error": 0.0,
-      "preparation_ms": 11.719666659832,
+      "preparation_ms": 12.277791664004326,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.0338333398103714,
-        "context_ms": 0.3113750070333481,
-        "decode_ms": 0.5807083398103714,
-        "first_audio_ms": 11.677375,
-        "graph_ms": 0.3386666774749756,
-        "native_state_ms": 8.334219455718994e-05,
-        "ready_ms": 6.7091666758060455,
-        "transport_start_ms": 0.0063749998807907104
+        "capture_ms": 0.031458333134651184,
+        "context_ms": 0.2433333396911621,
+        "decode_ms": 0.46437500417232513,
+        "first_audio_ms": 12.23625,
+        "graph_ms": 0.27004167437553406,
+        "native_state_ms": 0.0,
+        "ready_ms": 8.372958332300186,
+        "transport_start_ms": 0.0039166659116744995
       }
     },
     {
@@ -655,22 +662,96 @@
       "case": "Undo restores removed neighbor for actual reverse audition",
       "clip_count": 2,
       "maximum_pcm_error": 0.0,
-      "preparation_ms": 11.233166664838791,
+      "preparation_ms": 12.160208329558372,
       "speed": -1.0,
       "timing": {
-        "capture_ms": 0.04416666924953461,
-        "context_ms": 0.6446250081062317,
-        "decode_ms": 3.4772499948740005,
-        "first_audio_ms": 11.181541666666666,
-        "graph_ms": 0.6725000143051147,
-        "native_state_ms": 0.000125005841255188,
-        "ready_ms": 9.747625008225441,
-        "transport_start_ms": 0.004833340644836426
+        "capture_ms": 0.044124990701675415,
+        "context_ms": 0.6391249895095825,
+        "decode_ms": 0.6347083300352097,
+        "first_audio_ms": 12.131583333333333,
+        "graph_ms": 0.668708324432373,
+        "native_state_ms": 0.00016666948795318604,
+        "ready_ms": 9.834833323955536,
+        "transport_start_ms": 0.004916667938232422
       }
     },
     {
       "case": "32-clip production source",
       "maximum_pcm_error": 1.1920928955078125e-06
+    },
+    {
+      "blocks": 252,
+      "cache_underruns": 0,
+      "case": "4x forward continues across many real windows, clip source offset and silence",
+      "empty_window_blocks": 0,
+      "maximum_decoded_bytes": 3072024,
+      "maximum_pcm_error": 1.4551915228366852e-11,
+      "refill_capture_max_ms": 0.03966666758060455,
+      "refill_decode_max_ms": 2.701166659593582,
+      "source_graph_builds": 2,
+      "windows_published": 11
+    },
+    {
+      "blocks": 235,
+      "cache_underruns": 0,
+      "case": "same-gesture reverse crosses every cache boundary without skipping or replaying PCM",
+      "empty_window_blocks": 0,
+      "maximum_decoded_bytes": 3072024,
+      "maximum_pcm_error": 1.4551915228366852e-11,
+      "refill_capture_max_ms": 0.03966666758060455,
+      "refill_decode_max_ms": 3.006583333015442,
+      "source_graph_builds": 3,
+      "windows_published": 20
+    },
+    {
+      "blocks": 193,
+      "cache_underruns": 0,
+      "case": "half-speed resumes same gesture with sample-correct fractional positions",
+      "empty_window_blocks": 0,
+      "maximum_decoded_bytes": 2983456,
+      "maximum_pcm_error": 9.094947017729282e-13,
+      "refill_capture_max_ms": 0.03966666758060455,
+      "refill_decode_max_ms": 3.006583333015442,
+      "source_graph_builds": 3,
+      "windows_published": 21
+    },
+    {
+      "case": "actual cache exhaustion and recovery",
+      "maximum_pcm_error": 0.0,
+      "wait_frames": 5184
+    },
+    {
+      "case": "reverse after actual cache exhaustion",
+      "maximum_pcm_error": 0.0
+    },
+    {
+      "blocks": 194,
+      "cache_underruns": 0,
+      "case": "long empty timeline windows remain real silence then reach next source clip",
+      "empty_window_blocks": 72,
+      "maximum_decoded_bytes": 2262040,
+      "maximum_pcm_error": 7.275957614183426e-12,
+      "refill_capture_max_ms": 0.015749990940093994,
+      "refill_decode_max_ms": 1.7622083276510239,
+      "source_graph_builds": 3,
+      "windows_published": 9
+    },
+    {
+      "blocks": 189,
+      "cache_underruns": 0,
+      "case": "reverse crosses completely empty windows into the earlier source clip",
+      "empty_window_blocks": 71,
+      "maximum_decoded_bytes": 2285592,
+      "maximum_pcm_error": 7.275957614183426e-12,
+      "refill_capture_max_ms": 0.015749990940093994,
+      "refill_decode_max_ms": 1.7622083276510239,
+      "source_graph_builds": 3,
+      "windows_published": 17
+    },
+    {
+      "case": "actual deleted-media refill",
+      "error": "scrub supports readable mono/stereo PCM",
+      "state": "failed"
     }
   ],
   "state": "passed",
