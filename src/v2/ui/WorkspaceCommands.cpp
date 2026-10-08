@@ -901,13 +901,14 @@ bool Workspace::perform(const InvocationInfo& invocation)
     dispatchCommand(id);
     return true;
 }
-void Workspace::setView(Json patch)
+void Workspace::setView(Json patch, bool zoomGesture)
 {
     invoke(
         [&]
         {
             const auto old = commands.uiState();
-            if ((patch.contains("span_samples") && patch["span_samples"] != old["span_samples"]) ||
+            if ((zoomGesture && patch.contains("start_samples") && patch["start_samples"] != old["start_samples"]) ||
+                (patch.contains("span_samples") && patch["span_samples"] != old["span_samples"]) ||
                 (patch.contains("waveform_zoom") && patch["waveform_zoom"] != old["waveform_zoom"]))
             {
                 auto state = patch.value("zoom_state", old["zoom_state"]);

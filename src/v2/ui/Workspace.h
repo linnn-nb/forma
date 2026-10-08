@@ -143,7 +143,7 @@ private:
     void initialiseCommandManager();
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void dispatchCommand(int);
-    void setView(Json);
+    void setView(Json, bool zoomGesture = false);
     bool midiKeyboardFocus() const
     {
         return pianoMode && (midiCommandContext || piano.editorHasFocus());

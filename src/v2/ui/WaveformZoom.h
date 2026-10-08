@@ -7,6 +7,20 @@ inline double waveformScale(const Json& zoom, const std::string& track)
 {
     return zoom["track_scales"].value(track, zoom["scale"].get<double>());
 }
+// Keep each channel's zero line fixed. Fit both selected amplitude endpoints,
+// rather than recentering an off-zero rectangle or confusing amplitude with gain.
+inline std::optional<double> fitWaveformBox(double scale, juce::Rectangle<int> channel, int a, int b)
+{
+    if (channel.getHeight() < 3)
+        return {};
+    a = std::clamp(a, channel.getY(), channel.getBottom());
+    b = std::clamp(b, channel.getY(), channel.getBottom());
+    if (std::abs(a - b) < 3)
+        return {};
+    const double half = channel.getHeight() * .5, center = channel.getY() + half;
+    const double extent = std::max(std::abs(a - center), std::abs(b - center));
+    return std::clamp(scale * half / extent, .03125, 64.);
+}
 inline Json scaleAllWaveforms(Json zoom, double ratio)
 {
     zoom["scale"] = std::clamp(zoom["scale"].get<double>() * ratio, .03125, 64.);

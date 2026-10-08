@@ -13,7 +13,7 @@ public:
         return tool == "zoomer" || tool == "zoom_single";
     }
     void begin(const juce::MouseEvent& e, const TimelineCoordinates& axis, const Json& facts, const Json& view,
-               const std::string& owner = {}, bool isTemporary = false)
+               const std::string& owner = {}, bool isTemporary = false, juce::Rectangle<int> channel = {})
     {
         active = true;
         temporary = isTemporary;
@@ -22,13 +22,15 @@ public:
         track = owner;
         originalView = view;
         continuous = e.mods.isCtrlDown() && !isTemporary && !owner.empty() && !reverse;
+        rectangular = e.mods.isCommandDown() && !e.mods.isCtrlDown() && !isTemporary && !reverse;
+        channelBounds = channel;
         verticalAvailable = false;
         for (const auto& t : facts["tracks"])
             if (t["id"] == track)
                 verticalAvailable = t["type"] == "audio" && view["track_views"].value(track, std::string{}).empty();
         direction.clear();
         preview = Json::object();
-        y = e.y;
+        y = endY = e.y;
         x = e.x;
         first = last = axis.sampleAt(e.x);
         captured = axis;
@@ -62,7 +64,8 @@ public:
             return;
         }
         last = captured.sampleAt(std::clamp(e.x, int(captured.left), int(captured.left + captured.width)));
-        dragged = std::abs(e.x - x) >= 3;
+        endY = channelBounds.isEmpty() ? e.y : std::clamp(e.y, channelBounds.getY(), channelBounds.getBottom());
+        dragged = rectangular ? std::max(std::abs(e.x - x), std::abs(e.y - y)) >= 3 : std::abs(e.x - x) >= 3;
     }
     Json finish()
     {
@@ -71,6 +74,23 @@ public:
             return {{"temporary", temporary},
                     {"unsupported_vertical", direction == "vertical" && !verticalAvailable},
                     {"continuous_patch", preview}};
+        if (rectangular && dragged)
+        {
+            const auto scale = verticalAvailable ? fitWaveformBox(waveformScale(originalView["waveform_zoom"], track),
+                                                                  channelBounds, y, endY)
+                                                 : std::optional<double>{};
+            if (!scale || first == last || std::abs(captured.pixelAt(last) - x) < 3)
+                return {{"invalid_box", true}, {"temporary", temporary}};
+            auto zoom = originalView["waveform_zoom"];
+            zoom["track_scales"][track] = *scale;
+            return {{"temporary", temporary},
+                    {"back", false},
+                    {"range", true},
+                    {"start_samples", std::min(first, last)},
+                    {"end_samples", std::max(first, last)},
+                    {"point_samples", first},
+                    {"waveform_zoom", zoom}};
+        }
         return {{"temporary", temporary},
                 {"back", reverse},
                 {"range", dragged && first != last},
@@ -95,7 +115,9 @@ public:
         if (!active || !dragged || reverse || continuous)
             return;
         const float a = float(axis.pixelAt(std::min(first, last))), b = float(axis.pixelAt(std::max(first, last)));
-        const juce::Rectangle<float> r(a, float(top), std::max(1.f, b - a), float(bottom - top));
+        const int boxTop = rectangular ? std::min(y, endY) : top;
+        const int boxBottom = rectangular ? std::max(y, endY) : bottom;
+        const juce::Rectangle<float> r(a, float(boxTop), std::max(1.f, b - a), float(std::max(1, boxBottom - boxTop)));
         g.setColour(juce::Colour(0xffe8c880).withAlpha(.14f));
         g.fillRect(r);
         g.setColour(juce::Colour(0xffe8c880));
@@ -107,10 +129,11 @@ public:
 
 private:
     TimelineCoordinates captured;
-    int x = 0, y = 0;
+    int x = 0, y = 0, endY = 0;
+    juce::Rectangle<int> channelBounds;
     std::string track, direction;
     Json originalView, preview = Json::object();
-    bool continuous = false, verticalAvailable = false;
+    bool continuous = false, verticalAvailable = false, rectangular = false;
     int64_t first = 0, last = 0;
     bool reverse = false, dragged = false, temporary = false;
 };

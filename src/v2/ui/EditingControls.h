@@ -36,7 +36,7 @@ public:
                 onZoomFit();
         };
         zoomer.setTooltip(
-            text("F5 · Normal / Single Zoom；点按居中放大，拖范围，Option返回上一缩放；双击按钮显示工程"));
+            text("F5 · Normal / Single Zoom；拖范围，⌘拖音频波形二维框选，⌃拖连续缩放；Option返回，双击显示工程"));
         for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &scrubber, &pencil, &back,
                         &forward, &split})
             addAndMakeVisible(b);

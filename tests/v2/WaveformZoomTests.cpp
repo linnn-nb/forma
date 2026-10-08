@@ -343,6 +343,168 @@ int main(int argc, char** argv)
             rejects([&] { c.updateUiState({{"waveform_zoom", bad}}, c.sessionToken()); },
                     "invalid display scale or stable ID rejected atomically");
         check(c.uiState() == good, "invalid saved waveform state leaves valid current view intact");
+        // Command rectangle fitting uses the actual loaded stereo channel geometry.
+        command(w, 252);
+        command(w, 241);
+        c.updateUiState({{"start_samples", 0}, {"span_samples", 480000}}, c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
+        const auto channel = e.clipRect(clip, 0).reduced(0, 25);
+        const int channelHeight = channel.getHeight() / 2;
+        const int centerY = channel.getY() + channelHeight / 2;
+        check(fitWaveformBox(1., {0, 0, 100, 100}, 25, 75) == 2., "symmetric rectangle fits amplitude endpoints");
+        check(fitWaveformBox(1., {0, 0, 100, 100}, 50, 75) == 2.,
+              "off-zero rectangle keeps zero line fixed rather than overstating magnification");
+        check(fitWaveformBox(32., {0, 0, 100, 100}, 48, 52) == 64., "box scale clamps existing display maximum");
+        check(!fitWaveformBox(1., {0, 0, 100, 2}, 0, 2) && !fitWaveformBox(1., {0, 0, 100, 100}, 49, 51),
+              "tiny channel or box cannot divide by zero or silently magnify");
+        auto boxFrom = point(e, .04), boxTo = point(e, .14);
+        boxFrom.y = float(centerY - 8);
+        boxTo.y = float(centerY + 8);
+        const auto boxView = c.uiState();
+        const auto boxFacts = c.query();
+        const auto boxAxis = e.coordinates();
+        const auto boxFirst = boxAxis.sampleAt(event(e, boxFrom).x), boxLast = boxAxis.sampleAt(event(e, boxTo).x);
+        auto box = [&](juce::Point<float> a, juce::Point<float> b)
+        {
+            e.mouseDown(event(e, a, false, juce::ModifierKeys::commandModifier));
+            e.mouseDrag(event(e, b, true, juce::ModifierKeys::commandModifier));
+            e.mouseUp(event(e, b, true, juce::ModifierKeys::commandModifier));
+            pump();
+        };
+        e.mouseDown(event(e, boxFrom, false, juce::ModifierKeys::commandModifier));
+        e.mouseDrag(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        check(c.uiState() == boxView && c.query() == boxFacts && e.coordinates().span == boxAxis.span &&
+                  e.waveformDisplayScale(id) == 1.,
+              "Command box previews only its rectangle without persistent writes");
+        juce::Image overlay(juce::Image::RGB, e.getWidth(), e.getHeight(), true);
+        {
+            juce::Graphics g(overlay);
+            e.paintOverChildren(g);
+        }
+        int rectangleInk = 0, outsideInk = 0;
+        const auto expectedRectangle = juce::Rectangle<int>::leftTopRightBottom(event(e, boxFrom).x - 2, centerY - 10,
+                                                                                event(e, boxTo).x + 2, centerY + 10);
+        for (int yy = 0; yy < overlay.getHeight(); ++yy)
+            for (int xx = 0; xx < overlay.getWidth(); ++xx)
+                if (overlay.getPixelAt(xx, yy).getBrightness() > .1f)
+                {
+                    ++rectangleInk;
+                    if (!expectedRectangle.contains(xx, yy))
+                        ++outsideInk;
+                }
+        check(rectangleInk > 0 && outsideInk == 0,
+              "native overlay paints a two-dimensional rectangle, not a full-height band");
+        e.mouseUp(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        pump();
+        const double boxScale = channelHeight / 16.;
+        check(c.uiState()["start_samples"] == boxFirst && c.uiState()["span_samples"] == boxLast - boxFirst &&
+                  e.waveformDisplayScale(id) == boxScale && e.waveformDisplayScale(other) == 1.,
+              "Command release fits time range and clicked stereo waveform in one shared view update");
+        check(c.query() == boxFacts && c.uiState()["track_heights"] == boxView["track_heights"] &&
+                  c.uiState()["zoom_state"]["history"].back()["waveform_zoom"] == boxView["waveform_zoom"],
+              "two-dimensional zoom changes no gain, row height, selection, revision or Edit facts");
+        command(w, 243);
+        check(c.uiState()["start_samples"] == boxView["start_samples"] &&
+                  c.uiState()["span_samples"] == boxView["span_samples"] &&
+                  c.uiState()["waveform_zoom"] == boxView["waveform_zoom"],
+              "one previous-view command reverses horizontal and vertical box zoom together");
+        box(boxTo, boxFrom);
+        check(c.uiState()["start_samples"] == boxFirst && c.uiState()["span_samples"] == boxLast - boxFirst &&
+                  e.waveformDisplayScale(id) == boxScale,
+              "reverse-direction box has identical fit");
+        command(w, 243);
+        const auto untouched = c.uiState();
+        box(boxFrom, boxTo.withY(boxFrom.y + 1));
+        check(c.uiState() == untouched && c.query() == boxFacts, "one-pixel box rejects both axes atomically");
+        box(boxFrom, boxTo.withX(boxFrom.x + 1));
+        check(c.uiState() == untouched, "one-pixel horizontal box does not masquerade as a click");
+        auto emptyFrom = boxFrom.withY(float(e.rowY(1) + 45));
+        box(emptyFrom, emptyFrom.translated(60, 15));
+        check(c.uiState() == untouched, "empty audio lane has no invented channel geometry and rejects box");
+        e.mouseDown(event(e, boxFrom, false, juce::ModifierKeys::commandModifier));
+        e.mouseDrag(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)), "Escape cancels rectangle draft");
+        e.mouseUp(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        pump();
+        check(c.uiState() == untouched, "cancelled box adds no view history");
+        e.mouseDown(event(e, boxFrom, false, juce::ModifierKeys::commandModifier));
+        e.mouseDrag(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        e.setVisible(false);
+        e.setVisible(true);
+        e.mouseUp(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        pump();
+        check(c.uiState() == untouched, "hidden Edit window discards rectangle before late mouse release");
+        e.mouseDown(event(e, boxFrom, false, juce::ModifierKeys::commandModifier));
+        e.mouseDrag(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        c.commit(c.makePlan("human", Json::array({operation("track.gain", {{"track", id}, {"db", -6.}})})));
+        AudioDeviceTestAccess::refresh(w);
+        e.mouseUp(event(e, boxTo, true, juce::ModifierKeys::commandModifier));
+        pump();
+        check(c.uiState() == untouched && std::abs(c.query()["tracks"][0]["gain_db"].get<double>() + 6.) < 1e-4,
+              "human edit during box invalidates draft and preserves actual gain transaction");
+        box(boxFrom, boxTo);
+        command(w, 6);
+        check(c.query()["tracks"][0]["gain_db"] == base["tracks"][0]["gain_db"] &&
+                  e.waveformDisplayScale(id) == boxScale,
+              "Undo skips both zoom axes and reverses human gain");
+        command(w, 7);
+        check(std::abs(c.query()["tracks"][0]["gain_db"].get<double>() + 6.) < 1e-4 &&
+                  e.waveformDisplayScale(id) == boxScale,
+              "Redo restores actual gain without undoing box view");
+        command(w, 6);
+        command(w, 243);
+        command(w, 218);
+        command(w, 242);
+        box(boxFrom, boxTo);
+        check(c.uiState()["edit_tool"] == "pencil" && e.waveformDisplayScale(id) == boxScale,
+              "Single Command box fits both axes then restores actual previous tool");
+        auto* boxKeys = w.uiCommands().getKeyMappings();
+        boxKeys->clearAllKeyPresses(243);
+        const auto boxBackKey =
+            juce::KeyPress('b', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
+        boxKeys->addKeyPress(243, boxBackKey);
+        pump();
+        const auto boxSavedView = c.uiState();
+        const auto boxSave = dir.getChildFile("two-dimensional.tracktionedit");
+        c.save(boxSave);
+        {
+            Workspace reopened(false, std::make_unique<Storage>(dir.getChildFile("box-prefs")));
+            reopened.setVisible(true);
+            reopened.setSize(1600, 1050);
+            auto& fresh = AudioDeviceTestAccess::owner(reopened);
+            fresh.open(boxSave);
+            AudioDeviceTestAccess::refresh(reopened);
+            pump();
+            check(fresh.uiState() == boxSavedView && edit(reopened).waveformDisplayScale(id) == boxScale,
+                  "actual new Workspace restores complete box zoom state and per-track scale");
+            const auto prev = fresh.uiState()["zoom_state"]["history"].back();
+            check(reopened.uiCommands().getKeyMappings()->keyPressed(boxBackKey, &reopened),
+                  "reopened custom key dispatches shared previous box view");
+            pump();
+            check(fresh.uiState()["start_samples"] == prev["start_samples"] &&
+                      fresh.uiState()["span_samples"] == prev["span_samples"] &&
+                      fresh.uiState()["waveform_zoom"] == prev["waveform_zoom"],
+                  "reopened previous-view key restores both saved axes in one step");
+        }
+        command(w, 243);
+        command(w, 241);
+        c.updateUiState({{"start_samples", 24000},
+                         {"span_samples", 480},
+                         {"waveform_zoom", {{"scale", 1.0}, {"track_scales", Json::object()}}}},
+                        c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
+        const auto minimumView = c.uiState();
+        auto narrowFrom = point(e, .7), narrowTo = point(e, .95);
+        narrowFrom.y = float(channel.getY());
+        narrowTo.y = float(channel.getY() + channelHeight);
+        box(narrowFrom, narrowTo);
+        check(c.uiState()["span_samples"] == 480 && c.uiState()["start_samples"] != minimumView["start_samples"] &&
+                  e.waveformDisplayScale(id) == 1.,
+              "minimum horizontal span can recenter without changing display scale");
+        command(w, 243);
+        check(c.uiState()["start_samples"] == minimumView["start_samples"] && c.uiState()["span_samples"] == 480 &&
+                  c.uiState()["waveform_zoom"] == minimumView["waveform_zoom"],
+              "minimum-span recentering still records exactly one restorable zoom gesture");
         Waveforms actualWaveforms([] {});
         actualWaveforms.update(c.query());
         auto imageAt = [&](double scale)
@@ -369,6 +531,8 @@ int main(int argc, char** argv)
             normalInk = ink(imageAt(1.));
         }
         const int zoomedInk = ink(imageAt(8.));
+        const int boxInk = ink(imageAt(boxScale));
+        check(boxInk > normalInk, "actual source thumbnail becomes taller with the committed box display scale");
         check(normalInk > 0 && zoomedInk > normalInk * 3,
               "actual PCM thumbnail paints a taller waveform when display scale increases");
         check(Commands::mediaHash(source) == hash && c.query()["tracks"] == base["tracks"],
@@ -386,6 +550,8 @@ int main(int argc, char** argv)
                     {"render_max_error", error},
                     {"normal_thumbnail_ink", normalInk},
                     {"zoomed_thumbnail_ink", zoomedInk},
+                    {"box_thumbnail_ink", boxInk},
+                    {"box_display_scale", boxScale},
                     {"scope", "native controls and component mouse/key dispatch, actual PCM thumbnail and Tracktion "
                               "render; physical desktop gestures separately pending"}};
         if (argc > 1)

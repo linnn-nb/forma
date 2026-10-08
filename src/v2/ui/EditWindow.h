@@ -634,6 +634,7 @@ public:
         {
             cancelTimeSelection();
             cancelScrubGesture();
+            zoomGesture.cancel();
         }
     }
     void resized() override
@@ -762,8 +763,19 @@ public:
         if (rulerZoom || ((!e.mods.isPopupMenu() || continuousZoom) && ZoomGesture::isTool(editing.tool) &&
                           e.y >= rulerHeight() && rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows()))
         {
+            juce::Rectangle<int> channel;
+            if (e.y >= rulerHeight() && e.mods.isCommandDown() && !e.mods.isCtrlDown())
+                for (const auto& clip : facts["tracks"][row]["clips"])
+                    if (clip["kind"] == "audio" && clipRect(clip, row).contains(e.getPosition()))
+                    {
+                        const auto area = clipRect(clip, row).reduced(0, 25).getIntersection(
+                            juce::Rectangle<int>(timelineLeft(), rulerHeight(), getWidth() - timelineLeft() - 16,
+                                                 getHeight() - rulerHeight() - 16));
+                        channel = waves.channelAt(clip, area, e.y);
+                        break;
+                    }
             zoomGesture.begin(e, axis, facts, view, e.y >= rulerHeight() ? trackIDs[size_t(row)] : std::string{},
-                              !ZoomGesture::isTool(editing.tool));
+                              !ZoomGesture::isTool(editing.tool), channel);
             repaint();
             return;
         }

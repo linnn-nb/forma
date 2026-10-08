@@ -1,5 +1,15 @@
 # U 原生界面重构
 
+## U-P0-BOX-ZOOM-01：Command 二维音频框选（2026-10-09）
+
+结论：F5 Zoomer 下从真实音频波形声道内 Command 拖框，松手共同适配原始采样时间范围与所点轨道的波形显示尺度；Single 返回原工具，Option／CommandOptionE 一次恢复两轴。视图通过 L1 保存，schema10／16条联合历史沿用，不改变轨道高度、实际 gain、选区、revision 或工程 Undo。最小480采样跨度下只重新居中也记录缩放历史；普通滚动仍不独立入栈。
+
+验证：Release／固定本地签名 deep/strict 通过；受影响 CTest **7通过、0失败**，两批 **2/2（19.73秒）＋5/5（29.15秒）**。波形专项 **145检查**（既有106＋新增39，不是145个制作流程），含真实24bit／48k立体声源、原生二维覆盖矩形／正反拖框／小框与空轨拒绝、Escape／隐藏取消、人工版本冲突、原生Gain Undo/Redo跳过显示状态、新Workspace保存重开和重绑定上一缩放键的实际执行。缩略图默认／框选2.125倍／8倍的像素覆盖数2048／3072／8192；两次真实Tracktion渲染双声道非零PCM最大误差 **0**（既有1e-7容差不变），源SHA256保持。回执 `waveform-zoom-tests.json`；本轮构建与两批CTest日志 `box-zoom-qualified-build.log`／`box-zoom-initial-tests.log`／`box-zoom-affected-tests.log` 在build目录，其他历史回执原样保留、重跑副本同目录。既有重复静态库链接警告，无构建错误；未新增依赖／SDK改动／实时路径。
+
+依据及边界：本地官方2026.4印刷865页的Command拖动两轴规则已核验（来源／SHA见docs/UI_PARITY.md）。手册未公开纵向拟合公式；Forma明确按所点已载入缩略图的实际声道分区，保持零线，以所选两个幅度端点的最大绝对距离拟合，范围1/32–64。框选至少3×3显示像素，跨声道的纵向终点夹限到起始声道，修改整个所点轨道的显示比例；不是轨高／Gain，也不冒称官方算法。未载入波形、空轨、MIDI／自动化视图不伪造纵向结果并整笔拒绝；MIDI垂直缩放、编辑组联动、Overview／Zoom Toggle仍未做。鼠标Down/Drag只保留本地矩形草稿，松手重验session／revision，经同一L1 UI入口提交；工具／视口／布局／窗口隐藏和人工编辑取消过期草稿。代码 `ui/ZoomGesture.h`、`WaveformZoom.h`、`Waveforms.h`、`EditWindow.h`、`WorkspaceZoom.cpp`／`WorkspaceCommands.cpp`；测试 `tests/v2/WaveformZoomTests.cpp`。
+
+亲手试：`build-v2-tracktion/FormaBoxZoomPreview.app`，CommandO打开 `scrub-multi-demo/Two-track Scrubber.tracktionedit`，F5选Zoomer，Command拖框围住一条声道的波形，再CommandOptionE；另存新工程重开。实体桌面工具明确Mac锁定，未执行物理鼠标／截图／试听／桌面退出重开；本轮未启动额外预览进程，保留用户已有窗口。正式可执行SHA256 `6f8c621c87e094a49716b0eb0e79df6d2bcbfe544bd7a187e3b5a3e83613b42e`，预览 `1894f86967279d83d4a109d5ad9c93213aa070505aa3280b1dddeb45c84e7a03`；固定身份 `F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F`，严格验签通过。完整U＋P0未完成，不进P1、不打DMG；以下保留历史资格。
+
 ## Selector／Smart Shift 选区与边界快捷键（2026-10-09）
 
 结论：端点Shift点击／拖动、跨锚点／长距离滚动、Smart空白轨、音频MIDI和Selector自动化泳道共用真实范围／插入点事务；Undo/Redo、保存重开与两键重绑定后执行通过。Release／固定验签，受影响11/11（81.52秒）；无变化提示修复后2/2（12.72秒），最终83新检查。真实选区WAV最大PCM误差0（预设2e-5），原媒体哈希保持；回执 `selection-extension-tests.json`，范围／证据／失败修复与哈希见VERIFICATION.md首节，历史JSON保持。

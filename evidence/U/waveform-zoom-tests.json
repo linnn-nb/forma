@@ -1,5 +1,7 @@
 {
-  "checks": 106,
+  "box_display_scale": 2.125,
+  "box_thumbnail_ink": 3072,
+  "checks": 145,
   "normal_thumbnail_ink": 2048,
   "render_max_error": 0.0,
   "result": "passed",

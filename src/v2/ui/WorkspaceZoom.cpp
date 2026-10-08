@@ -30,6 +30,9 @@ void Workspace::commitZoomGesture(Json request, const std::string& session, uint
             const auto view = commands.uiState();
             if (!request.value("temporary", false) && !ZoomGesture::isTool(view["edit_tool"]))
                 throw std::runtime_error("zoom tool changed");
+            if (request.value("invalid_box", false))
+                throw std::runtime_error(
+                    "二维缩放需从已载入的音频波形声道内框选至少 3×3 像素；MIDI／自动化视图尚不支持");
             if (request.value("unsupported_vertical", false))
                 throw std::runtime_error("continuous vertical zoom requires an audio track in waveform view");
             if (request.contains("continuous_patch"))
@@ -37,7 +40,7 @@ void Workspace::commitZoomGesture(Json request, const std::string& session, uint
                 auto patch = request["continuous_patch"];
                 if (view["edit_tool"] == "zoom_single")
                     patch["edit_tool"] = view["zoom_state"]["return_tool"];
-                setView(patch);
+                setView(patch, true);
                 return;
             }
             if (request["back"])
@@ -54,9 +57,11 @@ void Workspace::commitZoomGesture(Json request, const std::string& session, uint
                 request["range"].get<bool>() ? first + (last - first) / 2 : request["point_samples"].get<int64_t>();
             Json patch = {{"start_samples", std::clamp(center - span / 2, int64_t(0), maximum - span)},
                           {"span_samples", span}};
+            if (request.contains("waveform_zoom"))
+                patch["waveform_zoom"] = request["waveform_zoom"];
             if (view["edit_tool"] == "zoom_single")
                 patch["edit_tool"] = view["zoom_state"]["return_tool"];
-            setView(patch);
+            setView(patch, true);
         });
 }
 void Workspace::executeZoomCommand(int id)
