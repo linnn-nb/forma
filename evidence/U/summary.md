@@ -4,7 +4,7 @@
 
 结论：实际试听释放定位、Shift再次释放建立选区，一笔human事务Undo/Redo，原生范围／插入点保存重开、全局偏好与自定义键保持；Release／固定验签、相关10/10（79.55秒）、80新检查＋527＋126既有检查通过，新增真实PCM最大误差0.0（容差2e-5）。回执 `scrub-selection-tests.json`，失败修复／最终测试日志／产物哈希见VERIFICATION.md首节；其他历史JSON保持，不用本轮时序覆盖旧证据。
 
-亲手试：`build-v2-tracktion/FormaScrubSelectionPreview.app`打开`scrub-multi-demo/Two-track Scrubber.tracktionedit`；编辑菜单开启插入跟随（ControlOptionShiftF9），Scrub松手定位、ShiftScrub松手选区，CommandZ／ShiftCommandZ，另存重开。Mac锁定未物理操作／实体试听，自有PID52566已核验退出；完整U＋P0未完成，不进P1，不打DMG。一般Selector Shift端点／其他缩放与标尺行为待补。以下保留历史增量。
+亲手试：`build-v2-tracktion/FormaScrubSelectionPreview.app`打开`scrub-multi-demo/Two-track Scrubber.tracktionedit`；编辑菜单开启插入跟随（ControlOptionShiftF9），Scrub松手定位、ShiftScrub松手选区，CommandZ／ShiftCommandZ，另存重开。Mac锁定未物理操作／实体试听，自有PID52566已核验退出；完整U＋P0未完成，不进P1，不打DMG。一般Selector Shift端点／其他缩放与标尺行为待补。双轨示范本轮补生成并独立核验；中文路径显式UTF-8修复后126检查通过，实际24秒媒体与2片段XML存在，见VERIFICATION.md首节。以下保留历史增量。
 
 ## 双轨与真实多声道 Scrubber（2026-10-09）
 

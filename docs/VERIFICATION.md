@@ -10,7 +10,7 @@
 
 修复：首次原生组件用旧键位XML触发正常迁移，导致手势视图冲突；改用生产shortcutSnapshot，不放宽校验。初次10项回归有2失败：254默认键与旧253自定义键冲突，已改新默认；旧范围测试点击退役按钮，已改当前原生命令42，保留原导出PCM／Undo／重开／MCP范围覆盖并格式化。两项先复测通过，再全10项通过；失败日志保留 `scrub-selection-affected-tests.log`，不计资格。
 
-亲手试：`build-v2-tracktion/FormaScrubSelectionPreview.app`，CommandO打开 `scrub-multi-demo/Two-track Scrubber.tracktionedit`，编辑菜单开启“编辑插入点跟随 Scrub / Shuttle”（默认Control＋Option＋Shift＋F9，可改键）；Scrub／CommandF9试听后松手，再Shift试听后松手；CommandZ／ShiftCommandZ，另存新文件重开。示范为原创诊断PCM，非实录。CUA确认Mac锁定，物理鼠标／键盘／截图／实体试听与应用实际退出重开未执行；自有PID52566按精确路径结束且核验退出，用户窗口保留。正式binary SHA256 `1b3f34bd6ca345835903f6796119f24224b50269e2b855b35a3bb2fd80184cef`；预览 `fcdca76d6432aeff5eec1b8360a134a0820aac88f052cdff0fb49847f6a14512`，bundle org.forma.daw.scrub-selection-preview；均固定身份验签，无DMG。
+亲手试：`build-v2-tracktion/FormaScrubSelectionPreview.app`，CommandO打开 `scrub-multi-demo/Two-track Scrubber.tracktionedit`，编辑菜单开启“编辑插入点跟随 Scrub / Shuttle”（默认Control＋Option＋Shift＋F9，可改键）；Scrub／CommandF9试听后松手，再Shift试听后松手；CommandZ／ShiftCommandZ，另存新文件重开。示范为原创诊断PCM，非实录。本轮最终路径检查发现原双轨示范缺失；生成工具的char路径将中文工作目录错误解码并拒绝写入，改为显式UTF-8后实际生成，完整双轨126检查通过。独立WAV头核验为24秒／24bit、48k立体声与44.1k单声道，保存XML实际含2个AUDIOCLIP；日志scrub-selection-demo-qualified-tests.log、格式／哈希回执scrub-selection-demo-verification.json在build。首次失败保留，不计资格。CUA确认Mac锁定，物理鼠标／键盘／截图／实体试听与应用实际退出重开未执行；自有PID52566按精确路径结束且核验退出，用户窗口保留。正式binary SHA256 `1b3f34bd6ca345835903f6796119f24224b50269e2b855b35a3bb2fd80184cef`；预览 `fcdca76d6432aeff5eec1b8360a134a0820aac88f052cdff0fb49847f6a14512`，bundle org.forma.daw.scrub-selection-preview；均固定身份验签，无DMG。
 
 边界：全局偏好不进入工程Undo；轨道／对象视图选择亦独立，不伪称Undo恢复全部GUI状态；Undo历史不跨重开。实体回调与停止的最终端点时序、任意第三方双轨PDC、输出组与慢盘／耐久仍待实测。保留现有Scrubber缓存／路由／Clip FX／自动化限制。一般Selector／Smart的Shift点击或拖动端点、独立Timeline/Edit链接、连续居中、Shuttle Lock以及其余U＋P0仍未完成。
 

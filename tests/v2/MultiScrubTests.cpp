@@ -377,7 +377,7 @@ int main(int argc, char** argv)
                   "two-source long graph rebuild releases cache borrowers and preserves original media");
             if (argc > 2)
             {
-                const juce::File demoFolder(argv[2]);
+                const juce::File demoFolder(juce::String::fromUTF8(argv[2]));
                 if (demoFolder.exists())
                     throw std::runtime_error("refuse to overwrite existing demo directory");
                 demoFolder.createDirectory();
