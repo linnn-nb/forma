@@ -32,6 +32,9 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 108);
         p.addCommandItem(&commandManager, 42);
         p.addSeparator();
+        for (int id : {130, 131, 132})
+            p.addCommandItem(&commandManager, id);
+        p.addSeparator();
         p.addCommandItem(&commandManager, 6);
         p.addCommandItem(&commandManager, 7);
         p.addSeparator();
@@ -50,6 +53,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 13);
         p.addCommandItem(&commandManager, 14);
         p.addCommandItem(&commandManager, 43);
+        p.addCommandItem(&commandManager, 133);
     }
     if (index == 3)
     {
@@ -216,6 +220,16 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
+    {
+        if (key == juce::KeyPress::escapeKey)
+        {
+            memoryLocationsPanel->setVisible(false);
+            grabKeyboardFocus();
+            return true;
+        }
+        return false;
+    }
     if (exportPanel && exportPanel->isVisible())
     {
         if (key == juce::KeyPress::escapeKey)
@@ -339,6 +353,8 @@ void Workspace::resized()
         analysisPanel->setBounds(getLocalBounds());
     if (timelinePanel)
         timelinePanel->setBounds(getLocalBounds());
+    if (memoryLocationsPanel)
+        memoryLocationsPanel->setBounds(getLocalBounds());
     if (newSessionPanel)
         newSessionPanel->setBounds(getLocalBounds());
     if (pluginLibrary)
@@ -355,6 +371,11 @@ void Workspace::resized()
     metronomeButton.setBounds(550, 4, 80, 27);
     countInMode.setBounds(634, 4, 132, 27);
     loopButton.setBounds(774, 4, 64, 27);
+    const bool showLocationButtons = getWidth() >= 1180;
+    markerButton.setVisible(showLocationButtons);
+    locationsButton.setVisible(showLocationButtons);
+    markerButton.setBounds(844, 4, 76, 27);
+    locationsButton.setBounds(924, 4, 84, 27);
     editButton.setBounds(getWidth() - 314, 4, 64, 27);
     mixButton.setBounds(getWidth() - 244, 4, 64, 27);
     pianoButton.setBounds(getWidth() - 174, 4, 86, 27);

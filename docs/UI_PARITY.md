@@ -21,6 +21,7 @@
 | Nudge | Reference 894、919–921页 | 支持 1 sample、10/100 ms、1/¼ 拍；独立于 Grid，完全选中的合格音频片段共用同一采样偏移，一笔 Undo；锁定/不支持成员拒绝整笔。键盘数字区 ±；另提供逗号/句号便于无数字区键盘。自动化跟随、内容滑移、MIDI 整片 Nudge 未接通 | 部分；专项渲染对照及桌面按钮/Undo 已验证 |
 | Tab 片段边界 / 光标拆分 | Reference 900–901、912页 | Tab/Option+Tab 定位所选轨道真实 Clip 边界；Cmd+E 在光标拆分合格音频，一笔 Undo。边界导航不进编辑历史；瞬态导航、Shift 扩选、范围两端拆分未接通 | 部分；专项已验证 |
 | Cut / Copy / Paste / Duplicate | Reference Guide Edit menu，印刷页1077–1078（PDF页1179–1180）；仅作菜单工作流参考 | `ui/WorkspaceClipboard.cpp` 接通可改键位的音频 Clip/时间范围剪贴板，经L1事务编辑真实Tracktion对象。支持跨轨映射、保留选区相对位置、剪切/粘贴的重叠区切分与保留、Paste Original、Duplicate 不覆盖目的轨重叠内容、一笔 Undo/Redo；快照只在当前会话有效。macOS桌面已验收Clip快捷键/Undo/Redo/保存重开；MIDI/自动化对象未接通 | 部分；自动化与桌面专项通过 |
-| Marker、Memory Locations、循环与预备拍 | Reference Transport 264页；Shortcuts35/51–52页 | 尚未在新版UI接通，不展示占位开关 | 未完成 |
+| Marker / Memory Locations | Reference Transport 264页；Shortcuts 35、51–52页 | `src/v2/MarkerCommands.cpp`、`ui/MemoryLocationsPanel.h`、`ui/EditWindow.h`；原生 Marker 标尺、位置列表、记忆选区、定位/恢复、重命名/移动/删除；通过 L1/Edit UndoManager，支持 M、Shift+M 与工程保存重开。自动化 32 项检查，桌面另存并重开后两个 Marker 均保留 | 已实现；U-P0-MARKER-01 已验收 |
+| 循环播放与预备拍 | Reference Transport 264页；Shortcuts 35、51–52页 | 循环范围和状态通过 Tracktion TransportControl 保存及 Undo；节拍器/预备拍接入原生命令与走带；各自证据见 `docs/VERIFICATION.md` | 部分；真实设备回环与录音前硬件 CountIn 流程仍待测 |
 
 开源实现审查：Tracktion Engine锁定 `0d4d77c8c9defa6ec2aec6454f634e77bbd13f98`，GPLv3，本机源码和[官方功能清单](https://github.com/Tracktion/tracktion_engine/blob/develop/FEATURES.md)已核对；复用现有播放/录音/效果器/自动化/MIDI/渲染能力，其不提供DAW界面。JUCE锁定8.0.13，AGPLv3，采用原生命令管理和按键映射。Ardour的[Editor源码](https://github.com/Ardour/ardour/blob/master/gtk2_ardour/editor.cc)与当前JUCE/Tracktion对象系统耦合方式不适配，作为布局和行为参考，不引入第二引擎或GTK前端。没有新增第三方UI框架。

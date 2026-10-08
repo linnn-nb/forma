@@ -568,6 +568,8 @@ void Workspace::refresh()
     auto selectedMidi = pianoMode ? piano.viewedClip() : Json(nullptr);
     commandQueue.setSelection(selected, !selectedMidi.is_null() ? selectedMidi["id"].get<std::string>() : selectedClip);
     refreshInspector();
+    if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
+        memoryLocationsPanel->update(facts);
     resized();
     repaint();
 }

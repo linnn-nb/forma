@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-MARKER-01（2026-10-08；U＋P0 未完成）
+
+结论：Marker 与 Memory Locations 已接通 Tracktion 原生 MarkerTrack、统一命令层和原生 Edit 界面。新增、重命名、移动、删除 Marker 及保存时间选区均为 L1 事务；撤销与重做使用 Edit UndoManager，`.tracktionedit` 保存重开后位置仍存在。Release `Forma.app` 与 `ndaw_marker_tests` 构建通过；`forma_native_markers` 1/1 CTest 通过，32 项检查，结果见 `evidence/U/marker-tests.json`。
+
+桌面实测：通过“另存工程”创建 `evidence/U/demo/Marker memory locations GUI demo.tracktionedit`，实际关闭并从原生打开对话框重新打开；再打开“位置…”列表，确认 Marker 1 位于样本 0、Marker 2 位于样本 76364，两条记录均存在。演示使用本机自有工程副本；没有覆盖原始工程。重开后的窗口截图保存在 `evidence/U/marker-memory-locations.png`。
+
+快捷键：`M` 添加 Marker，`Shift+M` 打开 Memory Locations；按钮与键盘均进入同一命令层。自动化覆盖键位注册和界面回调；本轮实际桌面按键验证了 M 与 Shift+M。用户可运行 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app` 并打开上述演示工程亲手复查。
+
+| 行为 | 实现位置 | 验证与差距 |
+|---|---|---|
+| Marker 创建、改名、移动、删除与定位 | `src/v2/MarkerCommands.cpp`、`ui/MemoryLocationsPanel.h` | 原生 MarkerTrack；Plan/预览/提交、撤销重做、无效目标拒绝、保存重开；32 项专项检查及桌面重开 |
+| 选区记忆与恢复 | 同上、`ui/EditWindow.h`、`ui/Rulers.h` | 保存样本精度 start/length，Marker ruler 可定位；GUI 和命令查询共用 ID |
+| 工具栏与快捷键 | `ui/WorkspaceCommands.cpp`、`ui/WorkspaceActions.cpp`、`ui/WorkspaceLayout.cpp` | M / Shift+M 实测；位置列表使用可保存、可撤销的 L1 操作 |
+
+本轮仅完成 Marker 增量。Shuffle/Spot/Smart Tool、MIDI 编辑、淡入淡出、Groups 等阶段 U/P0 工作仍未完成；用户要求的阶段验收前不进入 P1。
+
 ## U-P0-TRANSPORT-01（2026-10-08；U＋P0 未完成）
 
 结论：节拍器与预备拍已接入 L1 领域命令、Tracktion 原生走带器和原生工具栏；metronome 与 count-in 共用 Edit UndoManager 事务，工程元数据保存 count-in 模式，并在 Undo/Redo/工程重开时同步 Tracktion 的全局 CountIn 偏好。Release 应用及测试目标构建通过；`forma_native_transport_controls` 1/1 CTest 通过，专项 17 个断言。不是 U＋P0 验收完成。

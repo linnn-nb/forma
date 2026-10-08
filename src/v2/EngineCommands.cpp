@@ -340,6 +340,7 @@ Json Commands::registry()
     registerMusicCommands(result);
     registerTransportCommands(result);
     registerTimelineCommands(result);
+    registerMarkerCommands(result);
     registerHierarchyCommands(result);
     registerPanCommands(result);
     registerAutomationCommands(result);
@@ -429,6 +430,7 @@ Json Commands::query() const
             {"master_pan_law", int(edit->getMasterVolumePlugin()->getPanLaw())},
             {"timeline_sample_rate", timelineRate},
             {"tracks", tracks},
+            {"markers", markerQuery()},
             {"length_samples", std::llround(edit->getLength().inSeconds() * timelineRate)},
             {"position_samples", std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
             {"playing", edit->getTransport().isPlaying()},
@@ -614,6 +616,10 @@ Json Commands::preview(const Json& plan) const
         {
             // Session transport settings are simulated and previewed by the L1 transport validator.
         }
+        else if (cmd.starts_with("marker.") || cmd == "location.store_selection")
+        {
+            // Marker state and selection memories are checked against the native MarkerTrack below.
+        }
         else if (cmd == "track.create")
         {
             const auto ref = a.at("ref").get<std::string>();
@@ -693,6 +699,7 @@ Json Commands::preview(const Json& plan) const
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
     const auto transportDiff = validateTransportPlan(ops);
+    const auto markerDiff = validateMarkerPlan(ops);
     return {{"plan_id", plan.at("plan_id")},
             {"base_revision", revision},
             {"changes", diff},
@@ -703,6 +710,7 @@ Json Commands::preview(const Json& plan) const
             {"pan_changes", panDiff},
             {"midi_changes", midiDiff},
             {"transport_changes", transportDiff},
+            {"marker_changes", markerDiff},
             {"legacy_imports", legacyDiff}};
 }
 void Commands::bumpRevision()
@@ -766,7 +774,9 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.order" || op.at("command") == "track.delete" ||
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
             op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("midi.") ||
-            op.at("command") == "tempo.set" || op.at("command") == "meter.set")
+            op.at("command").get<std::string>().starts_with("marker.") ||
+            op.at("command") == "location.store_selection" || op.at("command") == "tempo.set" ||
+            op.at("command") == "meter.set")
         {
             edit->getTransport().freePlaybackContext();
             break;
@@ -785,7 +795,11 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd.starts_with("transport."))
+            if (cmd.starts_with("marker.") || cmd == "location.store_selection")
+            {
+                executeMarkerOperation(cmd, a, objects);
+            }
+            else if (cmd.starts_with("transport."))
             {
                 executeTransportOperation(cmd, a);
             }

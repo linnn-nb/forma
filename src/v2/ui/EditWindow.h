@@ -113,6 +113,7 @@ public:
     std::function<void(Json)> onViewChange;
     std::function<int64_t(int64_t, double)> onSnap;
     std::function<void(std::string, bool)> onClipSelection;
+    std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t)> onRange;
     TimelineCoordinates coordinates() const
@@ -146,6 +147,32 @@ public:
         g.fillAll(base());
         const auto axis = coordinates();
         Rulers::draw(g, axis, grid, getWidth() - 16);
+        for (const auto& marker : facts.value("markers", Json::array()))
+        {
+            const int x = int(std::round(axis.pixelAt(marker["position_samples"])));
+            if (x < int(axis.left) - 120 || x > getWidth() - 14)
+                continue;
+            const bool range = marker.value("kind", std::string{}) == "selection";
+            const auto colour = range ? juce::Colour(0xff73c9b7) : juce::Colour(0xffe8c36c);
+            g.setColour(colour.withAlpha(range ? .38f : .95f));
+            if (range)
+                g.fillRoundedRectangle(
+                    float(x), float(Rulers::markerLaneY + 3),
+                    float(std::max<int64_t>(
+                        3, std::llround(marker.value("length_samples", int64_t(0)) * axis.width / axis.span))),
+                    14.f, 3.f);
+            juce::Path flag;
+            flag.startNewSubPath(float(x), float(Rulers::markerLaneY + 2));
+            flag.lineTo(float(x), float(Rulers::markerLaneY + 16));
+            flag.lineTo(float(x + 6), float(Rulers::markerLaneY + 11));
+            flag.lineTo(float(x), float(Rulers::markerLaneY + 8));
+            flag.closeSubPath();
+            g.fillPath(flag);
+            g.setColour(juce::Colour(0xfff1f3f5));
+            g.setFont(juce::FontOptions(10, juce::Font::bold));
+            g.drawFittedText(text(marker.value("name", std::string{})), x + 8, Rulers::markerLaneY + 1, 134,
+                             Rulers::markerLaneHeight - 2, juce::Justification::centredLeft, 1);
+        }
         juce::Graphics::ScopedSaveState clipState(g);
         g.reduceClipRegion(juce::Rectangle<int>(250, Rulers::height, std::max(1, getWidth() - 266),
                                                 std::max(1, getHeight() - Rulers::height - 16)));
@@ -302,6 +329,31 @@ public:
                         clip = c["id"];
             if (onContext)
                 onContext(clip);
+            return;
+        }
+        if (e.y >= Rulers::markerLaneY && e.y < Rulers::height)
+        {
+            const Json* nearest = nullptr;
+            double distance = 10.0;
+            for (const auto& marker : facts.value("markers", Json::array()))
+            {
+                const auto delta = std::abs(axis.pixelAt(marker["position_samples"].get<int64_t>()) - double(e.x));
+                if (delta <= distance)
+                {
+                    nearest = &marker;
+                    distance = delta;
+                }
+            }
+            if (nearest)
+            {
+                const auto id = nearest->at("id").get<std::string>();
+                const auto position = nearest->at("position_samples").get<int64_t>();
+                seek(position);
+                if (onMarkerClick)
+                    onMarkerClick(id);
+            }
+            else
+                seek(point);
             return;
         }
         dragX = e.x;

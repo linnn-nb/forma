@@ -63,14 +63,15 @@ void Commands::registerQueryCommands(Json& registry)
         "Read actual objects in bounded pages at an exact session token and revision. No edit or analysis is "
         "performed. Each page lists total, offset and next_offset; omitted detail uses explicit counts and follow-up "
         "collections. Current automated values remain live. Stop recording or a parameter gesture before paging. "
-        "Target is a track for clips/plugins/sends/automation_lanes/automation_points, audio clip for clip_plugins, "
+        "Markers and Memory Locations are available in the global markers collection. Target is a track for "
+        "clips/plugins/sends/automation_lanes/automation_points, audio clip for clip_plugins, "
         "plugin for parameters, MIDI clip for midi_notes/midi_controllers; automation_points also needs a queried lane "
         "ID in parameter.",
         {{"collection",
           {{"type", "string"},
            {"enum",
             {"tracks", "clips", "plugins", "clip_plugins", "parameters", "sends", "midi_notes", "midi_controllers",
-             "tempos", "meters", "automation_lanes", "automation_points"}}}},
+             "tempos", "meters", "markers", "automation_lanes", "automation_points"}}}},
          {"target", string},
          {"parameter", string},
          {"session_token", string},
@@ -131,6 +132,7 @@ Json Commands::querySummary(const std::string& selectedTrack, const std::string&
              {{"tracks", tracks.size()},
               {"audio_tracks", audioCount},
               {"clips", clipCount},
+              {"markers", edit->getMarkerManager().getMarkers().size()},
               {"tempos", tempo.getTempos().size()},
               {"meters", tempo.getTimeSigs().size()}}},
             {"timeline_sample_rate", timelineRate},
@@ -161,7 +163,7 @@ Json Commands::querySummary(const std::string& selectedTrack, const std::string&
             {"native_state_pending", !native.is_null() && native["pending"].get<bool>()},
             {"detail_collections",
              {"tracks", "clips", "plugins", "clip_plugins", "parameters", "sends", "midi_notes", "midi_controllers",
-              "tempos", "meters", "automation_lanes", "automation_points"}}};
+              "tempos", "meters", "markers", "automation_lanes", "automation_points"}}};
 }
 
 Json Commands::queryObjects(const Json& args) const
@@ -194,7 +196,8 @@ Json Commands::queryObjects(const Json& args) const
     require(!nativeStates || !nativeStates->query()["pending"].get<bool>(),
             "native plugin state pending; stop and retry before paging");
     const std::string collection = args["collection"];
-    const bool global = collection == "tracks" || collection == "tempos" || collection == "meters";
+    const bool global =
+        collection == "tracks" || collection == "tempos" || collection == "meters" || collection == "markers";
     require(global ? !args.contains("target") : args.contains("target"),
             "target required only for an object detail collection");
     require((collection == "automation_points") == args.contains("parameter"),
@@ -420,6 +423,11 @@ Json Commands::queryObjects(const Json& args) const
                                     {"numerator", m.numerator.get()},
                                     {"denominator", m.denominator.get()}};
                     });
+    }
+    if (collection == "markers")
+    {
+        const auto markers = markerQuery();
+        return page(markers.size(), [&](size_t index) { return markers[index]; });
     }
     if (collection == "automation_lanes")
     {

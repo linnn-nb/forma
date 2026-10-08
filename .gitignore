@@ -10,4 +10,6 @@ evidence/U/*
 !evidence/U/transport-tests.json
 !evidence/U/signing-verification.json
 !evidence/U/loop-tests.json
+!evidence/U/marker-tests.json
+!evidence/U/marker-memory-locations.png
 .DS_Store

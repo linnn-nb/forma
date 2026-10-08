@@ -188,6 +188,12 @@ private:
     static void registerTimelineCommands(Json&);
     Json validateTimelinePlan(const Json&) const;
     void executeTimelineOperation(const std::string&, const Json&);
+    static void registerMarkerCommands(Json&);
+    te::MarkerClip* marker(const std::string&) const;
+    Json markerQuery() const;
+    Json validateMarkerPlan(const Json&) const;
+    void executeMarkerOperation(const std::string&, const Json&, Json&);
+    int64_t markerPositionForCurrentTransport() const;
     static void registerMusicCommands(Json&);
     std::string trackType(te::AudioTrack&) const;
     void createMusicTrack(te::AudioTrack&, const std::string&, Json&);

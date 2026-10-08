@@ -6,7 +6,9 @@ namespace ndaw::desktop
 class Rulers
 {
 public:
-    static constexpr int height = 58;
+    static constexpr int markerLaneY = 58;
+    static constexpr int markerLaneHeight = 20;
+    static constexpr int height = markerLaneY + markerLaneHeight;
     static void draw(juce::Graphics& g, const TimelineCoordinates& axis, const Json& grid, int canvasWidth)
     {
         g.setColour(juce::Colour(0xff30343b));
@@ -45,6 +47,12 @@ public:
         }
         g.setColour(juce::Colour(0xff454b56));
         g.drawHorizontalLine(28, 0, float(canvasWidth));
+        g.setColour(juce::Colour(0xff262e38));
+        g.fillRect(0, markerLaneY, canvasWidth, markerLaneHeight);
+        g.setColour(juce::Colour(0xff8094a4));
+        g.setFont(juce::FontOptions(9));
+        g.drawText("LOCATIONS", 12, markerLaneY, int(axis.left) - 18, markerLaneHeight, juce::Justification::right);
+        g.setColour(juce::Colour(0xff454b56));
         g.drawHorizontalLine(height - 1, 0, float(canvasWidth));
     }
 };

@@ -10,6 +10,7 @@
 #include "Transport.h"
 #include "Counters.h"
 #include "EditingControls.h"
+#include "MemoryLocationsPanel.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -48,6 +49,7 @@ public:
     void showAnalysis();
     Json queryAnalysis();
     void showTimelineRange();
+    void showMemoryLocations(const std::string& markerID = {});
     void showNewSession();
     Json query() const;
     Json queryAudioDevices() const;
@@ -163,6 +165,7 @@ private:
     std::unique_ptr<AnalysisPanel> analysisPanel;
     double analysisRefresh = 0;
     std::unique_ptr<TimelinePanel> timelinePanel;
+    std::unique_ptr<MemoryLocationsPanel> memoryLocationsPanel;
     juce::TextButton rangeButton{text("定位 / 选区…")};
     bool newSessionRequested = false;
     std::unique_ptr<NewSessionPanel> newSessionPanel;
@@ -221,9 +224,10 @@ private:
     juce::TextButton newTrack{text("新增轨道")}, importButton{text("导入音频")}, openButton{text("打开工程")},
         saveButton{text("另存工程")}, exportButton{text("导出 WAV")}, editButton{"EDIT"}, mixButton{"MIX"},
         returnButton{"|<"}, stopButton{text("停止")}, playButton{text("播放")}, recordButton{text("● 录音")},
-        metronomeButton{text("节拍器")}, loopButton{text("循环")}, undoButton{"Undo"}, redoButton{"Redo"},
-        insertButton{text("插入")}, bypassButton{text("旁通")}, editorButton{text("插件窗口")},
-        removeButton{text("移除")}, stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
+        metronomeButton{text("节拍器")}, loopButton{text("循环")}, markerButton{text("Marker +")},
+        locationsButton{text("位置…")}, undoButton{"Undo"}, redoButton{"Redo"}, insertButton{text("插入")},
+        bypassButton{text("旁通")}, editorButton{text("插件窗口")}, removeButton{text("移除")},
+        stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
         programButton{text("切换 Program")}, acceptButton{text("接受计划")}, rejectButton{text("取消")};
     juce::TextButton insertTab{text("插入 / 参数")}, routingTab{text("I/O / 发送")}, groupTab{text("组织")},
         autoTab{text("自动化")}, recordTab{text("录音")};

@@ -151,6 +151,57 @@ void Workspace::showTimelineRange()
         });
 }
 
+void Workspace::showMemoryLocations(const std::string& markerID)
+{
+    invoke(
+        [&]
+        {
+            if (!memoryLocationsPanel)
+            {
+                memoryLocationsPanel = std::make_unique<MemoryLocationsPanel>(
+                    [this](const std::string& command, const Json& args, const Json& binding)
+                    {
+                        const auto current = commands.query();
+                        if (binding.value("session_token", std::string{}) !=
+                                current["session_token"].get<std::string>() ||
+                            binding.value("base_revision", uint64_t(0)) != current["revision"].get<uint64_t>())
+                            throw std::runtime_error("project changed; review the current Memory Locations first");
+                        auto plan = commands.makePlan("human", Json::array({operation(command, args)}));
+                        plan["session_token"] = binding["session_token"];
+                        plan["base_revision"] = binding["base_revision"];
+                        const auto receipt = commands.commit(plan);
+                        if (receipt.value("state", std::string{}) != "committed")
+                            throw std::runtime_error("Memory Location edit did not commit");
+                        refresh();
+                        message(text("Memory Location 已保存到工程 · 可撤销"));
+                    },
+                    [this](int64_t sample, const Json& binding)
+                    {
+                        const auto current = commands.query();
+                        if (binding.value("session_token", std::string{}) !=
+                                current["session_token"].get<std::string>() ||
+                            binding.value("base_revision", uint64_t(0)) != current["revision"].get<uint64_t>())
+                            throw std::runtime_error("project changed; review the current Memory Location first");
+                        commands.seek(sample);
+                        refresh();
+                    },
+                    [this]
+                    {
+                        memoryLocationsPanel->setVisible(false);
+                        grabKeyboardFocus();
+                    });
+                addChildComponent(*memoryLocationsPanel);
+            }
+            const auto current = commands.query();
+            memoryLocationsPanel->bind(current);
+            if (!markerID.empty())
+                memoryLocationsPanel->selectID(markerID);
+            memoryLocationsPanel->setBounds(getLocalBounds());
+            memoryLocationsPanel->setVisible(true);
+            memoryLocationsPanel->toFront(true);
+        });
+}
+
 void Workspace::showNewSession()
 {
     invoke(

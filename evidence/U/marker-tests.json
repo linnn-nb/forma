@@ -1,0 +1,15 @@
+{
+  "checks": 32,
+  "engine_and_gui": {
+    "gui_marker_id": "1012",
+    "gui_selection_id": "1013",
+    "marker_id": "1012",
+    "marker_position_samples": 96000,
+    "saved_project": "markers.tracktionedit",
+    "selection_id": "1013",
+    "selection_length_samples": 36000,
+    "selection_start_samples": 24000
+  },
+  "result": "passed",
+  "test": "U-P0-MARKER-01"
+}

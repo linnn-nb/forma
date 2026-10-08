@@ -617,11 +617,12 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     };
     editArea.onRange = [this](Json range, Json tracks, uint64_t revision)
     { commitTimeSelection(std::move(range), std::move(tracks), revision); };
+    editArea.onMarkerClick = [this](const std::string& id) { showMemoryLocations(id); };
     for (auto* c : std::initializer_list<juce::Component*>{&toolbar, &transport, &counters})
         addAndMakeVisible(c);
-    for (auto* c :
-         std::initializer_list<juce::Component*>{&trackType, &newTrack, &importButton, &saveButton, &exportButton,
-                                                 &editButton, &mixButton, &pianoButton, &shortcutsButton})
+    for (auto* c : std::initializer_list<juce::Component*>{&trackType, &newTrack, &importButton, &saveButton,
+                                                           &exportButton, &editButton, &mixButton, &pianoButton,
+                                                           &shortcutsButton, &markerButton, &locationsButton})
         toolbar.attach(*c);
     toolbar.attach(metronomeButton);
     toolbar.attach(loopButton);
@@ -651,6 +652,7 @@ Workspace::~Workspace()
     exportPanel.reset();
     analysisPanel.reset();
     timelinePanel.reset();
+    memoryLocationsPanel.reset();
     newSessionPanel.reset();
     recoveryPanel.reset();
     audioSettings.reset();

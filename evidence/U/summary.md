@@ -72,3 +72,11 @@ Release app 与循环专项构建通过；`forma_native_loop_playback` 1/1 CTest
 桌面通过实际 `L` 键和工具栏切换循环，工程回执可撤销/重做；样本范围 `[0,96000)`。另存 `demo/Loop playback GUI demo.tracktionedit` 并从原生文件对话框重开后，循环范围仍可见；实际 CoreAudio 输出播放时走带从 1.770 秒回卷至 0.405 秒。桌面监听设备为 MacBook Pro 扬声器；未做扬声器物理回环采集或声学测量，CUA 实时截图未另存 PNG。演示工程/WAV 在忽略目录中，仅供本机手动打开。
 
 命令、Undo、Redo、GUI/快捷键映射和保存重开对应 `src/v2/TransportCommands.cpp`、`src/v2/ui/WorkspaceCommands.cpp` 与 `tests/v2/LoopPlaybackTests.cpp`。循环录音、Punch、Take/Playlist/Comp 仍属未完成的 P1；下一项按顺序做 Marker/Memory Locations。U＋P0 整体仍未验收。
+
+## U-P0-MARKER-01：Marker 与 Memory Locations（增量，U＋P0 未完成）
+
+Release `Forma.app` 和 `ndaw_marker_tests` 构建通过；`forma_native_markers` 1/1 CTest 通过、0 失败，32 项检查。测试覆盖真实 Tracktion MarkerTrack、L1 Plan/预览/提交、命令查询、Undo/Redo、错误目标、选区样本范围、Workspace 控件、快捷键及原生工程保存重开；机器结果在 `marker-tests.json`。
+
+在独立 Forma 桌面窗口实际创建第二个 Marker，打开 Memory Locations 并验证两条位置记录；使用原生“另存工程”写入 `demo/Marker memory locations GUI demo.tracktionedit`，之后通过原生打开对话框重新载入。重开后列表仍显示样本位置 0 与 76364（第二个 Marker），从而验证生产 UI 的保存重开路径。窗口截图保存在 `marker-memory-locations.png`。新增操作以 Tracktion MarkerTrack 保存，Undo/Redo 共用 Edit UndoManager；本轮实测 M 添加、Shift+M 打开，点击“位置…”可显示列表。
+
+下一项继续阶段 U＋P0：实现 Shuffle/Spot/Smart Tool 的真实编辑行为，并补齐 MIDI 鼠标编辑、淡入淡出及其他 UI 验收项。未完成这些项目，不开始 P1，也不宣称 U＋P0 完成。

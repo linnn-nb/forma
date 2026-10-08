@@ -70,6 +70,12 @@ const std::vector<Entry>& entries()
         {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
         {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
         {113, "切换循环播放", "走带", 'l'},
+        {130, "在播放位置添加 Marker", "走带", 'm'},
+        {131, "跳到上一个 Marker", "走带", juce::KeyPress::leftKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {132, "跳到下一个 Marker", "走带", juce::KeyPress::rightKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {133, "打开 Memory Locations", "视图", 'm', shift},
         {21, "只读分析", "Agent"},
         {22, "先预览再提交", "Agent"},
         {23, "自动低风险 · 当前轨道", "Agent"},
@@ -89,29 +95,19 @@ void Workspace::initialiseCommandManager()
     commandManager.setFirstCommandTarget(this);
     commandManager.getKeyMappings()->resetToDefaultMappings();
     commandManager.getKeyMappings()->addChangeListener(this);
-    for (auto pair : std::initializer_list<std::pair<juce::TextButton*, int>>{{&newTrack, 84},
-                                                                              {&importButton, 1},
-                                                                              {&openButton, 2},
-                                                                              {&saveButton, 3},
-                                                                              {&exportButton, 4},
-                                                                              {&editButton, 8},
-                                                                              {&mixButton, 9},
-                                                                              {&pianoButton, 10},
-                                                                              {&returnButton, 82},
-                                                                              {&stopButton, 81},
-                                                                              {&playButton, 80},
-                                                                              {&recordButton, 83},
-                                                                              {&metronomeButton, 111},
-                                                                              {&loopButton, 113},
-                                                                              {&undoButton, 6},
-                                                                              {&redoButton, 7},
-                                                                              {&rangeButton, 42},
-                                                                              {&audioSettingsButton, 14}})
+    for (auto pair : std::initializer_list<std::pair<juce::TextButton*, int>>{
+             {&newTrack, 84},         {&importButton, 1}, {&openButton, 2},     {&saveButton, 3},
+             {&exportButton, 4},      {&editButton, 8},   {&mixButton, 9},      {&pianoButton, 10},
+             {&returnButton, 82},     {&stopButton, 81},  {&playButton, 80},    {&recordButton, 83},
+             {&metronomeButton, 111}, {&loopButton, 113}, {&markerButton, 130}, {&locationsButton, 133},
+             {&undoButton, 6},        {&redoButton, 7},   {&rangeButton, 42},   {&audioSettingsButton, 14}})
     {
         commandActions[pair.second] = pair.first->onClick;
         pair.first->onClick = [this, id = pair.second] { commandManager.invokeDirectly(id, false); };
     }
     metronomeButton.setComponentID("transport.metronome");
+    markerButton.setComponentID("marker.create");
+    locationsButton.setComponentID("memory.locations.open");
     for (auto pair : std::initializer_list<std::pair<juce::TextButton*, int>>{{&zoomIn, 101},
                                                                               {&zoomOut, 102},
                                                                               {&zoomFit, 103},
@@ -221,6 +217,12 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !facts.value("recording", false) && available;
                 info.setTicked(settings.value("loop_enabled", false));
             }
+            if (id == 130)
+                active = !facts.value("playing", false) && !facts.value("recording", false) &&
+                         facts.value("parameter_capture", Json(nullptr)).is_null() &&
+                         facts.value("automation_capture", Json(nullptr)).is_null();
+            if (id == 131 || id == 132)
+                active = !facts.value("markers", Json::array()).empty();
             if (id == 111)
                 info.setTicked(facts.value("transport_settings", Json::object()).value("metronome_enabled", false));
             if (id == 45)
@@ -336,6 +338,34 @@ bool Workspace::perform(const InvocationInfo& invocation)
     {
         const auto enabled = !facts.value("transport_settings", Json::object()).value("loop_enabled", false);
         write("transport.loop.set", {{"enabled", enabled}});
+        return true;
+    }
+    if (id == 130)
+    {
+        write("marker.create", Json::object());
+        return true;
+    }
+    if (id == 131 || id == 132)
+    {
+        const auto now = facts.value("position_samples", int64_t(0));
+        std::optional<int64_t> target;
+        for (const auto& marker : facts.value("markers", Json::array()))
+        {
+            const auto position = marker.value("position_samples", int64_t(0));
+            if (id == 131 && position < now && (!target || position > *target))
+                target = position;
+            if (id == 132 && position > now && (!target || position < *target))
+                target = position;
+        }
+        if (target)
+            invoke([&] { commands.seek(*target); });
+        else
+            message(text(id == 131 ? "没有更早的 Marker。" : "没有更晚的 Marker。"));
+        return true;
+    }
+    if (id == 133)
+    {
+        showMemoryLocations();
         return true;
     }
     if (auto action = commandActions.find(id); action != commandActions.end())
