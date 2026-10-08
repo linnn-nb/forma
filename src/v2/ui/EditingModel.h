@@ -54,7 +54,7 @@ struct SelectionModel
         for (const auto& object : objects)
             objectIDs.insert(object["id"].get<std::string>());
     }
-    void update(const Json& facts, const Json& view)
+    void update(const Json& facts, const Json& view, const Json& automation = Json::object())
     {
         range = facts.value("time_selection", Json(nullptr));
         objects = Json::array();
@@ -71,6 +71,18 @@ struct SelectionModel
             const auto id = t["id"].get<std::string>();
             if (owners.contains(id) || (owners.empty() && !range.is_null()))
                 tracks.push_back(id);
+            if (automation.contains(id))
+                for (const auto& lane : automation[id]["lanes"])
+                    for (const auto& point : lane["points"])
+                    {
+                        const auto ref = references.find(point["id"].get<std::string>());
+                        if (ref != references.end() && ref->second["kind"] == "automation_point" &&
+                            ref->second["track"] == id && ref->second["parameter"] == lane["id"])
+                        {
+                            objects.push_back(ref->second);
+                            objectIDs.insert(ref->first);
+                        }
+                    }
             for (const auto& c : t["clips"])
             {
                 const auto found = references.find(c["id"].get<std::string>());

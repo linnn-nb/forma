@@ -455,7 +455,13 @@ void Workspace::refresh()
     countInMode.setSelectedId(modeItem == countInModes.end() ? 1 : modeItem->second, juce::dontSendNotification);
     updatingTransportControls = false;
     const auto view = commands.uiState();
-    selection.update(facts, view);
+    Json selectedAutomation = Json::object();
+    for (const auto& ref : view["object_selection"])
+        if (ref["kind"] == "automation_point")
+            for (const auto& t : facts["tracks"])
+                if (t["id"] == ref["track"])
+                    selectedAutomation[t["id"].get<std::string>()] = cachedAutomation(t["id"]);
+    selection.update(facts, view, selectedAutomation);
     editing.update(view);
     editingControls.update(view);
     mix = view["workspace"] == "mix";

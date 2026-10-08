@@ -128,6 +128,24 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         refresh();
     };
     clipPanel.onError = [this](auto error) { message(text("未执行：") + text(error)); };
+    editArea.onAutomationQuery = [this](auto track) { return cachedAutomation(track); };
+    editArea.onAutomationSamples = [this](auto track, auto parameter, auto start, auto end)
+    { return commands.automationCurveRange(track, parameter, start, end); };
+    editArea.onTrackView = [this](auto track, auto parameter) { setTrackView(track, parameter); };
+    editArea.onAutomationCommit = [this](auto ops, auto revision, auto session)
+    { commitAutomationGesture(ops, revision, session); };
+    editArea.onAutomationError = [this](auto error) { message(text("未执行：") + text(error)); };
+    editArea.onAutomationSelection = [this](const Json& ref)
+    {
+        midiCommandContext = false;
+        selectedClip.clear();
+        Json refs = ref.is_null() ? Json::array() : Json::array({ref});
+        if (!ref.is_null())
+            selected = ref["track"];
+        commands.updateUiState({{"object_selection", refs}, {"selection_tracks", Json::array({selected})}},
+                               workspaceSession);
+        commandManager.commandStatusChanged();
+    };
     piano.onError = [this](const auto& error) { message(text("未执行：") + text(error)); };
     piano.onView = [this](Json patch)
     {

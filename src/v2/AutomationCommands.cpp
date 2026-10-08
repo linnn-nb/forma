@@ -213,15 +213,21 @@ Json Commands::automationQuery(const std::string& target) const
 Json Commands::automationCurveSamples(const std::string& target, const std::string& parameter, int64_t end,
                                       int count) const
 {
+    return automationCurveRange(target, parameter, 0, end, count);
+}
+Json Commands::automationCurveRange(const std::string& target, const std::string& parameter, int64_t start, int64_t end,
+                                    int count) const
+{
     checkThread();
+    validPosition(start);
     validPosition(end);
-    require(end > 0 && count >= 2 && count <= 4096, "invalid automation display sampling range");
+    require(end > start && count >= 2 && count <= 4096, "invalid automation display sampling range");
     auto* a = automationParameter(target, parameter);
     require(a != nullptr, "parameter not enumerated on target");
     Json values = Json::array();
     for (int i = 0; i < count; ++i)
     {
-        auto pos = std::llround(end * double(i) / (count - 1));
+        auto pos = start + std::llround((end - start) * double(i) / (count - 1));
         values.push_back(
             {{"position_samples", pos},
              {"value", toValue(*a, a->getCurve().getValueAt(tracktion::TimePosition::fromSeconds(pos / timelineRate),

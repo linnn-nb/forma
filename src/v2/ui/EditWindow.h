@@ -6,6 +6,7 @@
 #include "Waveforms.h"
 #include "Rulers.h"
 #include "EditingModel.h"
+#include "AutomationLane.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -62,6 +63,7 @@ public:
             trackIDs = ids;
             controls.clear();
             columns.clear();
+            automationLanes.clear();
             for (auto& id : ids)
             {
                 auto c = std::make_unique<TrackHeader>(id, false, write, select);
@@ -70,6 +72,43 @@ public:
                     if (onTrackOptions)
                         onTrackOptions(id, component, strip);
                 };
+                c->onView = [this](auto id, auto parameter)
+                {
+                    if (onTrackView)
+                        onTrackView(id, parameter);
+                };
+                auto lane = std::make_unique<AutomationLane>();
+                lane->onCommit = [this](auto ops, auto revision, auto session)
+                {
+                    if (onAutomationCommit)
+                        onAutomationCommit(ops, revision, session);
+                };
+                lane->onSelection = [this](auto ref)
+                {
+                    if (onAutomationSelection)
+                        onAutomationSelection(ref);
+                };
+                lane->onSnap = [this](auto sample, auto beats) { return onSnap ? onSnap(sample, beats) : sample; };
+                lane->onError = [this](auto error)
+                {
+                    if (onAutomationError)
+                        onAutomationError(error);
+                };
+                lane->onRangeEvent = [this, canvas = lane.get()](int action, const juce::MouseEvent& e)
+                {
+                    const auto event = e.getEventRelativeTo(this);
+                    if (action == 0)
+                        mouseDown(event);
+                    else if (action == 1)
+                        mouseDrag(event);
+                    else
+                        mouseUp(event);
+                    if (!drag.is_null() && drag.value("mode", std::string{}) == "selection")
+                        canvas->previewRange({{"start_samples", std::min(dragStart, dragEnd)},
+                                              {"end_samples", std::max(dragStart, dragEnd)}});
+                };
+                addChildComponent(*lane);
+                automationLanes.push_back(std::move(lane));
                 c->onHeight = [this](auto id, int height, bool finished)
                 {
                     if (resizeTrack.empty())
@@ -159,13 +198,14 @@ public:
             else
                 ++it;
         resized();
+        updateAutomation();
         repaint();
     }
     void setView(const Json& value)
     {
         if (!drag.is_null())
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
-                                    "main_time_scale", "track_heights"})
+                                    "main_time_scale", "track_heights", "track_views"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                 {
                     drag = nullptr;
@@ -186,11 +226,22 @@ public:
     }
     void setModels(const EditingModel& tools, const SelectionModel& selectedObjects)
     {
+        if (editing.tool != tools.tool || editing.mode != tools.mode)
+        {
+            drag = nullptr;
+            dragged = false;
+        }
         editing = tools;
         selection = selectedObjects;
     }
     std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
     std::function<void(std::string, int, std::string)> onTrackHeight;
+    std::function<void(std::string, std::string)> onTrackView;
+    std::function<Json(std::string)> onAutomationQuery;
+    std::function<Json(std::string, std::string, int64_t, int64_t)> onAutomationSamples;
+    std::function<void(Json, uint64_t, std::string)> onAutomationCommit;
+    std::function<void(Json)> onAutomationSelection;
+    std::function<void(std::string)> onAutomationError;
     std::function<void(juce::Component&)> onRulersMenu;
     std::function<void(int)> onRulerCommand;
     std::function<void(Json, uint64_t)> onLoopRange;
@@ -361,6 +412,8 @@ public:
             const auto& t = facts["tracks"][i];
             g.setColour(juce::Colour(0xff33404e));
             g.drawHorizontalLine(y + rowHeight(int(i)) - 1, 0, float(getWidth()));
+            if (!viewParameter(t["id"]).empty())
+                continue;
             for (const auto& c : t["clips"])
             {
                 auto rect = clipRect(c, int(i));
@@ -479,6 +532,10 @@ public:
             columns[i]->setBounds(250, rowY(int(i)), timelineLeft() - 250, rowHeight(int(i)) - 1);
             columns[i]->configure(view.value("edit_views", Json::object()), columnWidth());
             columns[i]->setVisible(columnCount() > 0 && controls[i]->isVisible());
+            auto bounds = juce::Rectangle<int>(timelineLeft(), rowY(int(i)), getWidth() - timelineLeft() - 16,
+                                               rowHeight(int(i)) - 1);
+            automationLanes[i]->setBounds(bounds);
+            automationLanes[i]->setVisible(!viewParameter(trackIDs[i]).empty() && controls[i]->isVisible());
         }
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
             for (const auto& c : facts["tracks"][i]["clips"])
@@ -488,7 +545,7 @@ public:
                         juce::Rectangle<int>(timelineLeft(), rulerHeight(), getWidth() - timelineLeft() - 16,
                                              getHeight() - rulerHeight() - 16));
                     headers.at(c["id"])->setBounds(r);
-                    headers.at(c["id"])->setVisible(!r.isEmpty());
+                    headers.at(c["id"])->setVisible(!r.isEmpty() && viewParameter(facts["tracks"][i]["id"]).empty());
                 }
     }
     void mouseMove(const juce::MouseEvent& e) override
@@ -543,6 +600,10 @@ public:
         const auto axis = coordinates();
         const int row = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
         const auto point = snapped(axis.sampleAt(e.x), e.mods);
+        if (e.y >= rulerHeight() &&
+            (editing.tool == "pencil" || (editing.tool != "selector" && row < int(trackIDs.size()) &&
+                                          !viewParameter(trackIDs[size_t(row)]).empty())))
+            return;
         if (e.mods.isPopupMenu())
         {
             std::string clip;
@@ -844,6 +905,57 @@ public:
     }
 
 private:
+    std::string viewParameter(const std::string& id) const
+    {
+        return view.value("track_views", Json::object()).value(id, std::string{});
+    }
+    void updateAutomation()
+    {
+        if (!onAutomationQuery || !onAutomationSamples)
+            return;
+        for (size_t i = 0; i < controls.size(); ++i)
+        {
+            const auto parameter = viewParameter(trackIDs[i]);
+            // Header enumeration only when visible; the Workspace caches actual facts per revision.
+            if (!controls[i]->isVisible())
+            {
+                automationLanes[i]->cancel();
+                continue;
+            }
+            const auto q = onAutomationQuery(trackIDs[i]);
+            Json options = Json::array(), selectedLane = nullptr;
+            for (const auto& lane : q["lanes"])
+            {
+                options.push_back({{"id", lane["id"]}, {"name", lane["name"]}});
+                if (lane["id"] == parameter)
+                    selectedLane = lane;
+            }
+            controls[i]->configureViews(options, parameter);
+            if (parameter.empty())
+            {
+                automationLanes[i]->cancel();
+                continue;
+            }
+            auto axis = coordinates();
+            const auto key = facts["session_token"].get<std::string>() + ":" + facts["revision"].dump() + ":" +
+                             parameter + ":" + std::to_string(axis.start) + ":" + std::to_string(axis.span);
+            auto& cached = sampled[trackIDs[i]];
+            if (cached.first != key)
+            {
+                cached.first = key;
+                cached.second = selectedLane.is_null()
+                                    ? Json::array()
+                                    : onAutomationSamples(trackIDs[i], parameter, axis.start, axis.start + axis.span);
+            }
+            automationLanes[i]->setTimeline(grid, facts["position_samples"]);
+            automationLanes[i]->update(trackIDs[i], selectedLane, cached.second, axis, editing, selection,
+                                       facts["revision"], facts["session_token"],
+                                       !facts.value("playing", false) && !facts.value("recording", false) &&
+                                           facts.value("parameter_capture", Json(nullptr)).is_null());
+        }
+    }
+    std::map<std::string, std::pair<std::string, Json>> sampled;
+    std::vector<std::unique_ptr<AutomationLane>> automationLanes;
     int rowAt(int y) const
     {
         if (rowOffsets.size() < 2)

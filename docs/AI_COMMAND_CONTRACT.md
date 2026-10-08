@@ -1,5 +1,13 @@
 # 统一命令契约 v2
 
+## 轨道自动化视图与手势（U-P0-AUTOMATION-VIEWS-01）
+
+schema8增加track_views（稳定track ID→实际lane ID，稀疏UI引用最多4096），object_selection增加automation_point（id、track、parameter、kind）。完整旧7及此前版本明确迁移，不把引用当权限或生成对象。UI写入只走L1 updateUiState，不进入领域Undo/revision；实际选择由同版本曲线事实复核，移除/失效目标不可执行。
+
+新增本地只读automationCurveRange(track,parameter,start,end,count)：message thread、48k工程采样域、count 2–4096、有效有序范围，读取实际枚举参数与SDK getValueAt；旧automationCurveSamples保留0起点行为。没有注册新MCP工具。GUI采样缓存按session/revision/视口失效；绘制是本地草稿，松手用原session/revision提交既有automation.point.add/set/delete。一次鼠标手势一份Plan，one Undo；Pencil覆盖区间外点保留。单笔32不同采样点、删除+新增64操作上限，超限整笔拒绝，不部分执行。版本/目标/布局/工具变化取消；提交前再次校验，录放期间不做结构曲线写入。
+
+全局218、220–226统一命令表，实例参数下拉依实际枚举写L1 UI。Selector复用session.range事务，共享Clip/Note/automation_point对象模型。工程重開产生新的会话版本；持久事实（ID、点/native值、显式基值、模式）与实时观察值（value/display/recording）分别验证，不把观察值不一致包装成媒体损坏或音频逐位一致。高级自动化、剪贴板、多点和持续Undo边界见VERIFICATION.md。
+
 ## 轨高、颜色与缩放（U-P0-PRESENTATION-01）
 
 track_heights/zoom_presets是schema7 L1 UI属性，视图写入不进领域Undo/revision；高度32–640、五个水平span严格校验。Header拖动布局仅为草稿，松手按session写UI，坐标或目标变化取消。颜色仍用现有track.colour，一次多轨Plan一个Undo，不新增MCP工具。

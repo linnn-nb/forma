@@ -1,0 +1,44 @@
+{
+  "checks": 131,
+  "render_rms_ratio": 0.09999989718198776,
+  "result": "passed",
+  "scope": "production native widget methods and real Tracktion render; desktop mouse/listening separately qualified",
+  "source_sha256": "e9adcbc0459e847f24164c8d00897245aaf1499b5b4074cccd847fe042c5ff63",
+  "ui_schema": 8,
+  "date": "2026-10-09",
+  "milestone": "U-P0-AUTOMATION-VIEWS-01",
+  "reference_printed_pages": [
+    339,
+    340,
+    341,
+    342,
+    1573,
+    1574,
+    1576
+  ],
+  "affected_ctest": {
+    "passed": 10,
+    "failed": 0,
+    "seconds": 63.65
+  },
+  "final_layout_ctest": {
+    "passed": 2,
+    "failed": 0,
+    "seconds": 14.06
+  },
+  "build": "Release NativeDAW, strict/deep fixed local code signing verified",
+  "binary_sha256": "e0d2f3d553bc3e4fcaf541ee57ea8cd76acafe14d151e77a563a2e24f2bbb152",
+  "preview": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/FormaAutomationTimelinePreview.app",
+  "desktop": {
+    "status": "unexecuted_locked",
+    "detail": "CUA reported Mac locked; preview owned process terminated; no screenshot/listening/physical-keyboard/endurance claim"
+  },
+  "limits": {
+    "drawing_points": 32,
+    "transaction_operations": 64,
+    "display_samples": 256,
+    "ui_track_view_refs": 4096
+  },
+  "new_mcp_tools": 0,
+  "production_requirement": "Executable=/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/MacOS/Forma"
+}

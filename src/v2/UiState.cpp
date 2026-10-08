@@ -6,7 +6,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 7},
+    return {{"ui_schema", 8},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -40,6 +40,7 @@ Json defaults()
             {"main_time_scale", "min_sec"},
             {"timecode_fps", 24},
             {"track_heights", Json::object()},
+            {"track_views", Json::object()},
             {"zoom_presets", Json::array({48000, 240000, 480000, 1440000, 5760000})}};
 }
 void validate(const Json& value)
@@ -56,7 +57,7 @@ void validate(const Json& value)
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 7)
+    if (value["ui_schema"] != 8)
         throw std::runtime_error("unsupported UI schema");
     const auto& columns = value["edit_views"];
     if (!columns.is_object() || columns.size() != 4)
@@ -84,6 +85,13 @@ void validate(const Json& value)
         if (it.key().empty() || it.key().size() > 64 || !it.value().is_number_integer() || it.value() < 32 ||
             it.value() > 640)
             throw std::runtime_error("track height requires a stable ID and 32..640");
+    const auto& views = value["track_views"];
+    if (!views.is_object() || views.size() > 4096)
+        throw std::runtime_error("invalid track view map");
+    for (auto it = views.begin(); it != views.end(); ++it)
+        if (it.key().empty() || it.key().size() > 64 || !it.value().is_string() ||
+            it.value().get<std::string>().size() > 256)
+            throw std::runtime_error("invalid stable track automation view reference");
     const auto& presets = value["zoom_presets"];
     if (!presets.is_array() || presets.size() != 5)
         throw std::runtime_error("five horizontal zoom presets required");
@@ -104,7 +112,7 @@ void validate(const Json& value)
     if ((value["edit_mode"] != "shuffle" && value["edit_mode"] != "slip" && value["edit_mode"] != "spot" &&
          value["edit_mode"] != "grid") ||
         (value["edit_tool"] != "selector" && value["edit_tool"] != "grabber" && value["edit_tool"] != "trim" &&
-         value["edit_tool"] != "smart"))
+         value["edit_tool"] != "smart" && value["edit_tool"] != "pencil"))
         throw std::runtime_error("unsupported editing mode or tool");
     const double division = value["grid_beats"];
     if (division != 1. && division != .5 && division != .25 && division != .125)
@@ -122,6 +130,13 @@ void validate(const Json& value)
         if (!o.is_object() || !o.contains("id") || !o.contains("track") || !o.contains("kind") || !validID(o["id"]) ||
             !validID(o["track"]) || !objects.insert(o["id"]).second)
             throw std::runtime_error("invalid object selection reference");
+        if (o["kind"] == "automation_point")
+        {
+            if (o.size() != 4 || !o.contains("parameter") || !o["parameter"].is_string() ||
+                o["parameter"].get<std::string>().empty() || o["parameter"].get<std::string>().size() > 256)
+                throw std::runtime_error("invalid automation selection reference");
+            continue;
+        }
         if (o["kind"] == "clip" ? o.size() != 3
                                 : o["kind"] != "note" || o.size() != 4 || !o.contains("clip") || !validID(o["clip"]))
             throw std::runtime_error("invalid clip or note selection reference");
@@ -166,7 +181,7 @@ Json readUiState(const juce::ValueTree& metadata)
         const bool v5 = saved.value("ui_schema", Json(0)) == 5;
         if (v4 || v5)
         {
-            if (saved.size() != result.size() - 5 || !saved.contains("edit_views") ||
+            if (saved.size() != result.size() - 6 || !saved.contains("edit_views") ||
                 !saved["edit_views"].is_object() || saved["edit_views"].size() != (v4 ? 3 : 4))
                 throw std::runtime_error("incomplete legacy Edit views");
             for (const auto* key : {"io", "inserts", "sends"})
@@ -182,11 +197,18 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 6)
         {
-            if (saved.size() != result.size() - 2)
+            if (saved.size() != result.size() - 3)
                 throw std::runtime_error("incomplete schema6 UI state");
             saved["track_heights"] = result["track_heights"];
             saved["zoom_presets"] = result["zoom_presets"];
             saved["ui_schema"] = 7;
+        }
+        if (saved.value("ui_schema", Json(0)) == 7)
+        {
+            if (saved.size() != result.size() - 1)
+                throw std::runtime_error("incomplete schema7 UI state");
+            saved["track_views"] = result["track_views"];
+            saved["ui_schema"] = 8;
         }
         if (legacy || v2 || v3)
         {
@@ -211,7 +233,7 @@ Json readUiState(const juce::ValueTree& metadata)
                     if (!o.is_object() || o.value("kind", std::string{}) != "clip")
                         throw std::runtime_error("invalid legacy object selection");
         }
-        else if (saved["ui_schema"] != 7 || saved.size() != result.size())
+        else if (saved["ui_schema"] != 8 || saved.size() != result.size())
             throw std::runtime_error("unsupported or incomplete UI schema");
         if (legacy)
             result["ui_schema"] = 1;
@@ -227,7 +249,7 @@ Json readUiState(const juce::ValueTree& metadata)
         result["workspace"] = "edit";
         result["midi_dock"] = true;
     }
-    result["ui_schema"] = 7;
+    result["ui_schema"] = 8;
     validate(result);
     return result;
 }

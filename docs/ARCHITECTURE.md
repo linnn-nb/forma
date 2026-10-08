@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+当前UI增量（2026-10-09）：自动化轨道视图、直接点编辑与Pencil接入`ui/AutomationLane.h`；WorkspaceAutomation负责actual参数事实缓存和L1提交，EditWindow只协调统一坐标/工具/对象及时间选择。GUI不直接写te::Edit。原生SDK插值通过L1只读automationCurveRange获取；非零视口、session/revision缓存失效，播放光标/节拍网格读同一facts。结构修改仅停止时允许；一笔手势一Plan/Undo，陈旧草稿取消。
+
+当前UI schema8在schema7之上加track_views，稳定lane引用可保存/恢复，失效插件保留引用并显示不可用；object_selection支持真实automation_point与父track/parameter，选择恢复先读同版本点事实。视图不进Undo；持久工程事实与DSP瞬态观察值分离，重开不承诺跨会话Undo。CommandManager 218、220–226和Header下拉/画笔/菜单共用实际参数；不增加冻结MCP/分析能力。完整资格、32/64手势预算与256显示采样差异见VERIFICATION.md。
+
 日期：2026-10-05；2026-10-08 阶段调整：见 UI_REBUILD_PLAN.md。
 
 **当前结论**：只推进 macOS 原生 DAW，U＋P0→P1→P2→P3。M2/M3 冻结保留，M4/M5 暂缓；各 P 级完成后由用户试用确认。Tracktion/L1 写入边界继续有效。UI 视图状态独立于编辑历史，在 Edit/UI 子树保存，不递增工程 revision、不进入 Undo；不以旧“每项可撤销”要求强行把缩放加入工程历史。
@@ -15,11 +19,11 @@ schema7新增稀疏track_heights和五个水平zoom_presets。EditWindow用高�
 
 循环手柄仅在停止时编辑真实transport_settings.loop_range；拖动本地预览，松手提交一份Plan：临时session.range.set→transport.loop.set→恢复原Edit选区（或clear）。一个UndoManager事务保留独立循环范围与编辑选区，原revision/session用于冲突校验。坐标、标尺或行布局在手势中变化则取消草稿。时间码目前从零显示整数帧率非丢帧，不代表视频同步/起始偏移；Tempo/Meter行只读现有事实。
 
-`EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track/Note ID 管理对象选择，Note引用必须携带父Clip，卷帘与时间线共用父片段高亮；音符时间范围和自动化点联动仍待接入。工具/网格/Nudge 值及UI选区存schema7，同时保存MIDI停靠/高度/目标Clip/网格/尺度/滚动和四个edit_views布尔开关；旧八字段及完整schema2/schema3/schema4/schema5/schema6明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
+`EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track/Note/AutomationPoint ID 管理对象选择，Note引用必须携带父Clip，卷帘与时间线共用父片段高亮；音符时间范围和自动化多点联动仍待接入。工具/网格/Nudge 值及UI选区存schema8，同时保存MIDI停靠/高度/目标Clip/网格/尺度/滚动和四个edit_views布尔开关；旧八字段及完整schema2/schema3/schema4/schema5/schema6明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
 
 音频 Smart Tool 以 EditingModel 的位置分区解析手势，EditWindow 在本地保持拖拽预览，松手通过既有 ClipWriter/L1 提交单笔真实淡化/移动/修剪。Smart 是UI工具状态，淡化是Edit事实；全局MIDI/自动化分区尚未实现。Edit下方停靠钢琴卷帘由 `ui/MidiEditor.h` 读取真实音符并预览成组移动/两缘修剪/力度，松手通过Workspace批量writer进入一笔L1事务；全局量化/全选/删除/力度快捷键来自统一命令表。会话切换取消手势，捕获revision拒绝过期编辑；卷帘对象选择与Edit共用稳定ID；MidiDockDivider只做布局预览，松手经L1 UI保存。全局命令145（⌘⌥M）与按钮共用开关，键盘焦点区分音符和音频编辑。键位完整XML增加 formaCommands 已知命令清单，加载/导入只为新增命令补未占用的默认键，保留人工解绑与冲突映射；迁移写入L1 UI子树，不增加工程revision/Undo。
 
-EditWindowViews只读实际插件、发送和I/O facts；插入/路由/指定发送回调复用Workspace检查器，最终编辑仍进入L1。动态timelineLeft统一标尺、波形、鼠标和滚动条；独立列开关只写UI。Clips列表读同一对象选择，显示MIDI Note父Clip高亮；Groups独立Mix Mute/Solo增量已接通；完整分组尚未实现，Comments已接通。没有直接te::Edit写入或新的播放模型。
+EditWindowViews只读实际插件、发送和I/O facts；插入/路由/指定发送回调复用Workspace检查器，最终编辑仍进入L1。动态timelineLeft统一标尺、波形、鼠标和滚动条；独立列开关只写UI。Clips列表读同一对象选择，显示MIDI Note父Clip高亮；Groups独立Mix Mute/Solo增量已接通；完整分组尚未实现，Comments/自动化轨道视图已接通。没有直接te::Edit写入或新的播放模型。
 
 独立Mix组由L1 MixGroupCommands保存在Edit/NATIVEDAW/MIX_GROUPS schema1，成员与组织层级分离。原生GroupsList/MixGroupEditor只读facts、产出命令；定义变更单独事务，捕获版本拒绝旧草稿；本阶段仅human改组，tool_visibility=local_gui不派生新MCP工具。track.mute/solo在Plan阶段按首个匹配的启用组展开；requested_operations保存初始锚点，预览/权限/提交再次验证所有受影响对象，拒绝剔除成员和资源超限。删除成员保留缺失引用；禁用/修复后才恢复相关联动，Undo恢复原ID。成员选择写UI，组定义写Undo。推子/Pan/录音/编辑组属性仍待实现。
 

@@ -48,6 +48,18 @@ public:
             outputSlot.setComponentID("mix.output:" + text(this->id));
         }
 
+        if (!strip)
+        {
+            addAndMakeVisible(viewChoice);
+            viewChoice.setComponentID("track.view:" + text(this->id));
+            viewChoice.setTooltip(text("轨道视图 · 片段 / 音量 / 声像 / 实际插件参数"));
+            viewChoice.onChange = [this]
+            {
+                const int index = viewChoice.getSelectedId() - 2;
+                if (onView && viewChoice.getSelectedId() > 0)
+                    onView(this->id, index < 0 ? "" : viewLanes.at(size_t(index))["id"].get<std::string>());
+            };
+        }
         options.setButtonText(text("⋮"));
         options.setComponentID("track.options:" + text(this->id));
         options.setTooltip(text("轨道高度 / 颜色"));
@@ -204,6 +216,26 @@ public:
     }
     std::function<void(std::string, juce::Component&, bool)> onOptions;
     std::function<void(std::string, int, bool)> onHeight;
+    std::function<void(std::string, std::string)> onView;
+    void configureViews(const Json& lanes, const std::string& parameter)
+    {
+        if (viewLanes != lanes)
+        {
+            viewLanes = lanes;
+            viewChoice.clear(juce::dontSendNotification);
+            viewChoice.addItem(text("片段 / 波形 / MIDI"), 1);
+            int index = 2;
+            for (const auto& lane : lanes)
+                viewChoice.addItem(text(lane["name"].get<std::string>()), index++);
+        }
+        int index = 1;
+        for (size_t i = 0; i < lanes.size(); ++i)
+            if (lanes[i]["id"] == parameter)
+                index = int(i) + 2;
+        viewChoice.setSelectedId(index, juce::dontSendNotification);
+        if (!parameter.empty() && index == 1)
+            viewChoice.setText(text("自动化目标不可用"), juce::dontSendNotification);
+    }
     void cancelHeightGesture()
     {
         heightGesture = false;
@@ -334,10 +366,10 @@ public:
                            text(facts.value("audible", false) ? " · 可听" : " · 已静音 / 非独听"),
                        14, getHeight() - 57, getWidth() - 28, 22, juce::Justification::centred);
         }
-        else if (getHeight() >= 140)
+        else if (getHeight() >= 180)
             g.drawText(text(facts.value("type", std::string("audio"))) + "  |  " +
                            juce::String(facts.value("clips", Json::array()).size()) + text(" 片段"),
-                       12, 116, pan.isVisible() ? 128 : getWidth() - 24, 19, juce::Justification::left);
+                       12, 145, pan.isVisible() ? 128 : getWidth() - 24, 19, juce::Justification::left);
     }
     void resized() override
     {
@@ -375,6 +407,8 @@ public:
         panLaw.setBounds(12, compact ? 330 : 371, getWidth() - 24, 25);
         if (!strip)
         {
+            viewChoice.setVisible(bool(onView) && getHeight() >= 140);
+            viewChoice.setBounds(10, shortRow ? 62 : 115, getWidth() - 20, 23);
             const bool mini = getHeight() < 60;
             for (auto* b : {&mute, &solo, &safe})
                 b->setVisible(!mini);
@@ -386,13 +420,15 @@ public:
                 gain.setBounds(10, 61, getWidth() - 20, 26);
             }
             gain.setVisible(facts.is_object() && facts.contains("capabilities") &&
-                            facts["capabilities"].value("gain", false) && getHeight() >= 94);
+                            facts["capabilities"].value("gain", false) && getHeight() >= 140);
             pan.setVisible(facts.is_object() && facts.contains("capabilities") &&
                            facts["capabilities"].value("pan", false) && !shortRow);
         }
     }
 
 private:
+    juce::ComboBox viewChoice;
+    Json viewLanes = Json::array();
     bool live() const
     {
         return facts.value("playing", false) && facts.value("automation_writing", false) &&

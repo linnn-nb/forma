@@ -133,6 +133,14 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {218, "Pencil 自动化绘制", "编辑", juce::KeyPress::F10Key, cmd},
+        {220, "轨道片段 / 波形视图", "轨道"},
+        {221, "轨道音量自动化视图", "轨道"},
+        {222, "轨道声像自动化视图", "轨道"},
+        {223, "上一个轨道视图", "轨道", juce::KeyPress::leftKey, cmd | juce::ModifierKeys::ctrlModifier},
+        {224, "下一个轨道视图", "轨道", juce::KeyPress::rightKey, cmd | juce::ModifierKeys::ctrlModifier},
+        {225, "片段 / 音量视图切换", "轨道", '-', juce::ModifierKeys::ctrlModifier},
+        {226, "删除所选自动化点", "编辑", juce::KeyPress::deleteKey, juce::ModifierKeys::ctrlModifier},
         {152, "Edit Comments 列", "视图", '4', cmd | juce::ModifierKeys::altModifier},
         {153, "编辑轨道备注…", "轨道", 'c', cmd | juce::ModifierKeys::altModifier},
         {146, "Edit I/O 列", "视图", '1', cmd | juce::ModifierKeys::altModifier},
@@ -356,6 +364,10 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                  !clip.value("locked", false);
             }
+            if (id == editCommand::remove && !mix && !facts.value("playing", false) &&
+                std::any_of(selection.objects.begin(), selection.objects.end(),
+                            [](const auto& o) { return o["kind"] == "automation_point"; }))
+                active = true;
             if (id >= 140 && id <= 144)
                 active = pianoMode && !facts.value("playing", false) &&
                          (id == 141 ? !piano.viewedClip().is_null() : piano.canQuantize());
@@ -445,6 +457,35 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    (id == 199 ? Json(nullptr) : Json(colour.value)));
                 }
             }
+            if (id == 218)
+            {
+                active = !mix;
+                info.setTicked(editing.tool == "pencil");
+            }
+            if (id >= 220 && id <= 225)
+            {
+                active = !mix && !selectedTrack().is_null();
+                if (active)
+                {
+                    const auto parameter = commands.uiState()["track_views"].value(selected, std::string{});
+                    const auto q = cachedAutomation(selected);
+                    const auto found = std::find_if(q["lanes"].begin(), q["lanes"].end(),
+                                                    [&](const auto& l) { return l["id"] == parameter; });
+                    if (id == 220)
+                        info.setTicked(parameter.empty());
+                    if (id == 221 || id == 222)
+                    {
+                        const auto alias = id == 221 ? (selectedTrack()["type"] == "vca" ? "vca" : "volume") : "pan";
+                        active = std::any_of(q["lanes"].begin(), q["lanes"].end(),
+                                             [&](const auto& l) { return l["parameter"] == alias; });
+                        info.setTicked(found != q["lanes"].end() && (*found)["parameter"] == alias);
+                    }
+                }
+            }
+            if (id == 226)
+                active = !mix && !facts.value("playing", false) &&
+                         std::any_of(selection.objects.begin(), selection.objects.end(),
+                                     [](const auto& o) { return o["kind"] == "automation_point"; });
             info.setActive(active);
             return;
         }
@@ -452,6 +493,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 218 || (id >= 220 && id <= 226))
+    {
+        executeAutomationViewCommand(id);
+        return true;
+    }
     if ((id >= 170 && id <= 173) || (id >= 180 && id <= 189) || (id >= 199 && id <= 208) || (id >= 210 && id <= 216))
     {
         executePresentationCommand(id);
@@ -468,6 +514,12 @@ bool Workspace::perform(const InvocationInfo& invocation)
             piano.deleteNotes();
         if (id == 143 || id == 144)
             piano.velocityStep(id == 143 ? 1 : -1);
+        return true;
+    }
+    if (id == editCommand::remove && std::any_of(selection.objects.begin(), selection.objects.end(),
+                                                 [](const auto& o) { return o["kind"] == "automation_point"; }))
+    {
+        executeAutomationViewCommand(226);
         return true;
     }
     if (id == editCommand::remove && midiKeyboardFocus())

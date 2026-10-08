@@ -58,6 +58,13 @@ void Workspace::showTrackOptions(const std::string& id, juce::Component& compone
     menu.setLookAndFeel(&theme);
     if (!strip)
         menu.addSubMenu(text("Track Height"), trackHeightMenu());
+    if (!strip)
+    {
+        juce::PopupMenu views;
+        for (int command = 220; command <= 225; ++command)
+            addMenuCommand(views, command);
+        menu.addSubMenu(text("Track View"), views);
+    }
     menu.addSubMenu(text("Track Colour"), trackColourMenu());
     menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(&component),
                        [safe = juce::Component::SafePointer<Workspace>(this), id, session, revision](int command)

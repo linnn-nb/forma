@@ -122,6 +122,12 @@ private:
     void showTrackOptions(const std::string&, juce::Component&, bool);
     void setTrackHeight(const std::string&, int, const std::string&);
     void executePresentationCommand(int);
+    Json cachedAutomation(const std::string&);
+    void setTrackView(const std::string&, const std::string&);
+    void executeAutomationViewCommand(int);
+    void commitAutomationGesture(Json, uint64_t, const std::string&);
+    std::string automationCacheKey;
+    Json automationCache = Json::object();
     void showZoomPresetMenu(int, juce::Component&);
     ZoomPresets zoomPresets;
     void initialiseCommandManager();

@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-AUTOMATION-VIEWS-01：轨道自动化视图与直接编辑（2026-10-09；增量）
+
+结论：Edit轨道头新增实际参数视图选择，覆盖音量、声像及已枚举的插件实例参数。Pencil自由绘制、点拖动、加点、Option点删除、共享对象选择和Selector时间范围均进入现有L1；松手一笔Plan/UndoManager事务，Undo/Redo和新Workspace保存重开通过。视图schema8独立保存稳定lane ID，不进工程Undo/revision；移除插件保留失效引用并显示不可用，Undo恢复原lane。普通Folder不伪造参数。
+
+`ui/AutomationLane.h`从L1 `automationCurveRange`取得实际Tracktion插值，支持非零视口；统一采样坐标、当前节拍网格和真实播放光标，波形/片段命中在自动化视图中关闭。Grabber/Smart拖点，曲线上点击或双击加点；Pencil绘制替换覆盖区间的点，区间外点/原媒体保持。Selector复用EditWindow的时间范围事务，不改隐藏片段或曲线。拖动期间版本、session、参数、布局、工具或播放状态变化取消草稿；提交再次核验。缓存按session/revision和采样视口失效，不在每次20Hz刷新重新枚举整条曲线；没有新MCP工具或第二引擎。
+
+全局命令218、220–226来自同一ApplicationCommandManager，轨道菜单/画笔按钮共用；Control−切片段/音量，ControlCommand←/→切前后视图，CommandF10选Pencil，ControlDelete或Backspace删除真实选择点。键位可改、保存重开后实际自定义键执行通过。插件参数下拉只用实际ID、名称、范围和单位，不创建语义参数。1120/1189/1300/1600四种宽度逐控件检查，修正692–714像素工具区使用完整布局可能溢出的阈值。
+
+Release和正式/独立预览固定本地签名strict/deep验证通过；受影响回归**10通过、0失败，63.65秒**；最后布局/失效引用/键位补测**2通过、0失败，14.06秒**。当前自动化专项**131检查**（包含逐控件边界检查，不代表131个制作工作流），`tests/v2/AutomationTimelineTests.cpp`读取实际2秒双声道WAV并比较Tracktion渲染；-20dB单点曲线的PCM RMS比**0.09999989718198776**，符合独立预期0.1，文件声道/帧数和非零输出、源SHA256保持通过。旧Schema7/6/5/4/3/2/八字段迁移保持，损坏字段拒绝；旧专项证据原样保留，当前机器记录`evidence/U/automation-timeline-tests.json`。
+
+首轮修复：测试WAV writer使用错误unique_ptr派生类型导致编译失败；Pencil状态下用点击选择会生成绘制事务，删除测试改为Grabber；重开比较移除不持久的DSP观察值和会话revision，继续严格核对原ID、点、native_value、显式基值和模式。预览首次deep重签后helper封印失效，改为各helper→主bundle顺序固定签名并重新strict/deep验签。最终上述检查通过，失败尝试未算通过。
+
+边界：一笔自由绘制最多32个不同采样点，删除+新增最多64操作，超过整体拒绝且无执行回执；尚未有自动稀疏化和Line/Triangle/Square/Random形状。显示曲线目前256个SDK采样点，是显示近似，不降低原生音频调度精度。仅停止时结构编辑，点支持单选；自动化剪贴板/多点框选/数值键盘微移、组视图联动、所有轨视图快捷键、MIDI Notes/Clips/Velocity公共切换、Trim/Preview/Capture高级模式待做。Undo历史仍不跨工程重开；第三方实际精度继续按原有SDK资格，不宣称任意采样级支持。
+
+桌面验收工具明确报告Mac锁定；尝试启动的本轮独立预览进程已清理。没有本轮真实鼠标/物理键盘/试听/截图或应用退出重开证据，组件方法测试不替代它。可运行预览`build-v2-tracktion/FormaAutomationTimelinePreview.app`，自有媒体示例`build-v2-tracktion/automation-demo/Automation Demo.tracktionedit`；打开预览后CommandO选择示例，Control−进入音量，选择画笔/移动并画或拖点，CommandZ/CommandShiftZ，另存新工程重开。完整U＋P0未完成，不进P1，不打DMG；下一项轨道头录音待命/输入监听及其余工具缺口。
+
 ## U-P0-PRESENTATION-01：每轨高度、颜色入口和缩放预设（2026-10-09；增量，U＋P0未完成）
 
 结论：Edit轨道头新增真实高度/颜色菜单；每轨稳定ID保存Micro/Mini/Small/Medium/Large/Jumbo/Extreme七档，也可拖轨道头底边连续调32–640。Ctrl+↑/↓调整所选轨道，Ctrl+Option+↑/↓按比例调全部；原生轨道头、Clip/真实波形、MIDI双击、跨轨选区、滚动与命中改用同一高度前缀坐标，Micro/短轨隐藏放不下的推子等控件。拖动仅本地布局预览，松手L1 UI保存；布局变化、目标移除或会话切换取消草稿，不产生工程Undo/revision。

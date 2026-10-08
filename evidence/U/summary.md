@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 最新增量：U-P0-AUTOMATION-VIEWS-01（2026-10-09）
+
+实际音量/声像/插件参数轨道视图、点编辑、Pencil、共享Selector范围、原生Grid/播放光标、稳定ID及schema8保存重开已接通；L1一手势一Plan/Undo，版本/目标/视图冲突取消，缺失插件保留引用。Release/固定身份strict/deep验签；受影响回归10通过0失败63.65秒，最后布局补测2通过0失败14.06秒。专项131检查含四宽度逐控件边界；真实96000帧双声道20dB曲线PCM RMS比0.09999989718198776，源SHA不变。结果`automation-timeline-tests.json`，此前各增量证据原样保留。
+
+亲手试`build-v2-tracktion/FormaAutomationTimelinePreview.app`→CommandO打开`build-v2-tracktion/automation-demo/Automation Demo.tracktionedit`→Control−音量→画笔/拖点→Undo/Redo→另存重开。测试素材是原创实际220Hz PCM。Mac锁定，GUI截图/物理键位/试听和应用实际退出重开未执行；本轮独立预览进程已清理。32点/64操作超限整笔拒绝，256点SDK采样是显示近似，多点/剪贴板/高级模式仍待补。U＋P0未完成，无DMG；下一项R/I轨道头和剩余工具。
+
 ## 最新增量：U-P0-PRESENTATION-01（2026-10-09）
 
 每轨高度/底边拖动/统一前缀轴、Edit/Mix颜色入口、五个水平缩放预设已接通，schema7旧版迁移；颜色单笔Undo，视图保存不污染历史。修复菜单自动派发加回调可能执行两次。Release/固定验签、受影响CTest8/8、0失败、43.27秒；专项217检查（含逐菜单项），实际96000帧非零PCM Peak0.040000081/最大误差0，源哈希保持。机器结果`presentation-tests.json`，完整边界及首轮修复见VERIFICATION.md，旧桌面证据原样保留。

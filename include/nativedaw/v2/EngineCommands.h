@@ -79,6 +79,8 @@ public:
     Json automationQuery(const std::string& track) const;
     Json automationCurveSamples(const std::string& track, const std::string& parameter, int64_t end,
                                 int count = 256) const;
+    Json automationCurveRange(const std::string& track, const std::string& parameter, int64_t start, int64_t end,
+                              int count = 256) const;
     Json automationControl(const std::string& command, const Json& args);
     Json parameterControl(const std::string& command, const Json& args);
     Json pluginEditorControl(const std::string& command, const Json& args);
