@@ -2,34 +2,230 @@
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
-namespace {
-int checks=0;
-void check(bool b,const char* s){if(!b)throw std::runtime_error(s);++checks;std::cout<<"PASS "<<s<<std::endl;}
-juce::Component* visible(juce::Component& p,const juce::String& id){if(!p.isVisible())return nullptr;if(p.getComponentID()==id)return &p;for(auto* c:p.getChildren())if(auto* found=visible(*c,id))return found;return nullptr;}
-void settle(){juce::MessageManager::getInstance()->runDispatchLoopUntil(80);}
-void click(juce::Component& w,const char* id){auto* b=dynamic_cast<juce::Button*>(visible(w,id));if(!b||!b->isEnabled())throw std::runtime_error("missing button "+std::string(id));b->triggerClick();settle();}
-void choose(juce::Component& w,const char* id,int value){auto* c=dynamic_cast<juce::ComboBox*>(visible(w,id));if(!c)throw std::runtime_error("missing choice "+std::string(id));c->setSelectedId(value,juce::sendNotificationSync);settle();}
-void textValue(juce::Component& w,const char* id,const char* value){auto* t=dynamic_cast<juce::TextEditor*>(visible(w,id));if(!t)throw std::runtime_error("missing input "+std::string(id));t->setText(value,false);}
-juce::MouseEvent event(juce::Component& c,juce::Point<float> pt,bool shift=false){return {juce::Desktop::getInstance().getMainMouseSource(),pt,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|(shift?juce::ModifierKeys::shiftModifier:0)),1,0,0,0,0,&c,&c,juce::Time::getCurrentTime(),pt,juce::Time::getCurrentTime(),1,false};}
-Json notes(ndaw::desktop::Workspace& w){return w.query()["tracks"][0]["clips"][0]["notes"];}
-void pencil(ndaw::desktop::NoteCanvas& c,float x,int pitch){juce::Point<float> p{x,float(32+(127-pitch)*14+7)};c.mouseDown(event(c,p));c.mouseUp(event(c,p));settle();}
-void select(ndaw::desktop::NoteCanvas& c,const Json& note,bool shift=false){auto p=c.noteBounds(note).getCentre();c.mouseDown(event(c,p,shift));c.mouseUp(event(c,p,shift));settle();}
+namespace
+{
+int checks = 0;
+void check(bool b, const char* s)
+{
+    if (!b)
+        throw std::runtime_error(s);
+    ++checks;
+    std::cout << "PASS " << s << std::endl;
 }
-int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
- ndaw::desktop::Workspace w(false);w.setVisible(true);w.setSize(1120,700);choose(w,"track.type",3);click(w,"track.create");auto* canvas=dynamic_cast<ndaw::desktop::NoteCanvas*>(visible(w,"midi.canvas"));if(!canvas)throw std::runtime_error("missing canvas");
- check(!visible(w,"midi.quantize.preview")->isEnabled(),"empty MIDI clip has no executable transform button");
- pencil(*canvas,172,69);pencil(*canvas,244,72);pencil(*canvas,352,76);auto original=w.query();auto n=notes(w);check(n.size()==3&&n[0]["position_samples"]==36000&&n[1]["position_samples"]==60000&&n[2]["position_samples"]==96000,"production pencil creates actual off-grid notes for transform");
- select(*canvas,n[0]);select(*canvas,n[1],true);check(canvas->selectedNotes().size()==2,"Shift click selects two stable note IDs without editing revision");select(*canvas,n[1],true);check(canvas->selectedNotes().size()==1,"Shift click toggles selected note");select(*canvas,n[1],true);choose(w,"midi.snap",3);
- click(w,"midi.quantize.preview");check(w.query()==original&&visible(w,"plan.accept")&&visible(w,"plan.reject"),"GUI quantise opens readonly change preview");auto* preview=dynamic_cast<juce::TextEditor*>(visible(w,"legacy.report"));check(preview&&preview->getText().contains("36000")&&preview->getText().contains("48000")&&preview->getHeight()>300,"preview shows actual before after samples in full-height panel");click(w,"plan.reject");check(w.query()==original,"Cancel quantise leaves Edit and revision unchanged");
- click(w,"midi.quantize.preview");click(w,"plan.accept");auto quantised=w.query();check(notes(w)[0]["position_samples"]==48000&&notes(w)[1]["position_samples"]==72000&&notes(w)[2]==n[2]&&canvas->selectedNotes().size()==2,"GUI accepts selected quantise and preserves other notes and selection");click(w,"history.undo");check(w.query()["tracks"]==original["tracks"],"one GUI Undo restores both quantised notes");click(w,"history.redo");check(w.query()["tracks"]==quantised["tracks"],"GUI Redo restores both notes and IDs");
- textValue(w,"midi.transpose.semitones","12");click(w,"midi.transpose.preview");auto* velocity=dynamic_cast<juce::Slider*>(visible(w,"midi.velocity"));if(!velocity)throw std::runtime_error("missing velocity");velocity->setValue(76,juce::sendNotificationSync);settle();auto human=w.query();click(w,"plan.accept");check(w.query()==human&&notes(w)[0]["pitch"]==69&&notes(w)[1]["pitch"]==72,"preview acceptance after human velocity edit rejects stale Plan");click(w,"plan.reject");click(w,"history.undo");
- click(w,"midi.transpose.preview");click(w,"plan.accept");check(notes(w)[0]["pitch"]==81&&notes(w)[1]["pitch"]==84&&notes(w)[2]==n[2],"GUI accepted octave transposes selected notes only");click(w,"history.undo");check(w.query()["tracks"]==quantised["tracks"],"GUI transpose Undo restores pitch without undoing prior quantise");click(w,"history.undo");check(w.query()["tracks"]==original["tracks"],"next Undo separately restores earlier quantise");
- auto before=w.query();textValue(w,"midi.transpose.semitones","12.5");click(w,"midi.transpose.preview");check(w.query()==before&&!visible(w,"plan.accept"),"fractional semitone input is rejected rather than coerced");textValue(w,"midi.transpose.semitones","100");click(w,"midi.transpose.preview");check(w.query()==before&&!visible(w,"plan.accept"),"pitch overflow rejects full GUI selection with no preview success");
- choose(w,"midi.transform.scope",3);textValue(w,"midi.transform.start","60000");textValue(w,"midi.transform.end","96000");textValue(w,"midi.transpose.semitones","-12");click(w,"midi.transpose.preview");click(w,"plan.accept");check(notes(w)[0]==n[0]&&notes(w)[1]["pitch"]==60&&notes(w)[2]==n[2],"range transform includes first onset and excludes endpoint through real GUI");click(w,"history.undo");
- before=w.query();textValue(w,"midi.transform.start","60000.5");click(w,"midi.quantize.preview");check(w.query()==before&&!visible(w,"plan.accept"),"fractional sample range preserves Edit without digit filtering");textValue(w,"midi.transform.start","-1");click(w,"midi.quantize.preview");check(w.query()==before,"negative sample range is rejected");
- click(w,"midi.select_all");check(canvas->selectedNotes().size()==3,"all selection button selects actual clip notes");textValue(w,"midi.quantize.strength","50");click(w,"midi.quantize.preview");click(w,"plan.accept");check(notes(w)[0]["position_samples"]==42000&&notes(w)[1]["position_samples"]==66000&&notes(w)[2]["position_samples"]==96000,"50 percent GUI quantise retains intended timing proportion");click(w,"history.undo");
- choose(w,"midi.transform.scope",2);textValue(w,"midi.transpose.semitones","-2");click(w,"midi.transpose.preview");click(w,"plan.accept");check(notes(w)[0]["pitch"]==67&&notes(w)[1]["pitch"]==70&&notes(w)[2]["pitch"]==74,"whole clip scope operates on every real note");click(w,"history.undo");
- canvas->keyPressed(juce::KeyPress('a',juce::ModifierKeys::commandModifier, 'a'));check(canvas->selectedNotes().size()==3,"native command A selects actual notes");
- w.setSize(1600,1000);settle();check(visible(w,"midi.quantize.preview")->getBounds().getRight()<=visible(w,"midi.editor")->getWidth()&&visible(w,"midi.canvas"),"transform controls and piano remain operable at tested sizes");
- Json report{{"result","passed"},{"checks",checks},{"scope","production native widgets plus actual L1 Edit, preview and Undo; device closed, PCM in MidiTransformTests"}};if(argc>1){std::ofstream out(argv[1]);out<<report.dump(2);out.close();if(!out)throw std::runtime_error("report write failed");}std::cout<<report.dump(2)<<std::endl;return 0;
-}catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<std::endl;return 1;}}
+juce::Component* visible(juce::Component& p, const juce::String& id)
+{
+    if (!p.isVisible())
+        return nullptr;
+    if (p.getComponentID() == id)
+        return &p;
+    for (auto* c : p.getChildren())
+        if (auto* found = visible(*c, id))
+            return found;
+    return nullptr;
+}
+void settle()
+{
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(80);
+}
+void click(juce::Component& w, const char* id)
+{
+    auto* b = dynamic_cast<juce::Button*>(visible(w, id));
+    if (!b || !b->isEnabled())
+        throw std::runtime_error("missing button " + std::string(id));
+    b->triggerClick();
+    settle();
+}
+void choose(juce::Component& w, const char* id, int value)
+{
+    auto* c = dynamic_cast<juce::ComboBox*>(visible(w, id));
+    if (!c)
+        throw std::runtime_error("missing choice " + std::string(id));
+    c->setSelectedId(value, juce::sendNotificationSync);
+    settle();
+}
+void textValue(juce::Component& w, const char* id, const char* value)
+{
+    auto* t = dynamic_cast<juce::TextEditor*>(visible(w, id));
+    if (!t)
+        throw std::runtime_error("missing input " + std::string(id));
+    t->setText(value, false);
+}
+juce::MouseEvent event(juce::Component& c, juce::Point<float> pt, bool shift = false)
+{
+    return {
+        juce::Desktop::getInstance().getMainMouseSource(),
+        pt,
+        juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier | (shift ? juce::ModifierKeys::shiftModifier : 0)),
+        1,
+        0,
+        0,
+        0,
+        0,
+        &c,
+        &c,
+        juce::Time::getCurrentTime(),
+        pt,
+        juce::Time::getCurrentTime(),
+        1,
+        false};
+}
+Json notes(ndaw::desktop::Workspace& w)
+{
+    return w.query()["tracks"][0]["clips"][0]["notes"];
+}
+void pencil(ndaw::desktop::NoteCanvas& c, float x, int pitch)
+{
+    juce::Point<float> p{x, float(32 + (127 - pitch) * 14 + 7)};
+    c.mouseDown(event(c, p));
+    c.mouseUp(event(c, p));
+    settle();
+}
+void select(ndaw::desktop::NoteCanvas& c, const Json& note, bool shift = false)
+{
+    auto p = c.noteBounds(note).getCentre();
+    c.mouseDown(event(c, p, shift));
+    c.mouseUp(event(c, p, shift));
+    settle();
+}
+} // namespace
+int main(int argc, char** argv)
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    try
+    {
+        ndaw::desktop::Workspace w(false);
+        w.setVisible(true);
+        w.setSize(1120, 700);
+        choose(w, "track.type", 3);
+        click(w, "track.create");
+        click(w, "midi.advanced");
+        auto* canvas = dynamic_cast<ndaw::desktop::NoteCanvas*>(visible(w, "midi.canvas"));
+        if (!canvas)
+            throw std::runtime_error("missing canvas");
+        check(!visible(w, "midi.quantize.preview")->isEnabled(), "empty MIDI clip has no executable transform button");
+        pencil(*canvas, 172, 69);
+        pencil(*canvas, 244, 72);
+        pencil(*canvas, 352, 76);
+        auto original = w.query();
+        auto n = notes(w);
+        check(n.size() == 3 && n[0]["position_samples"] == 36000 && n[1]["position_samples"] == 60000 &&
+                  n[2]["position_samples"] == 96000,
+              "production pencil creates actual off-grid notes for transform");
+        select(*canvas, n[0]);
+        select(*canvas, n[1], true);
+        check(canvas->selectedNotes().size() == 2, "Shift click selects two stable note IDs without editing revision");
+        select(*canvas, n[1], true);
+        check(canvas->selectedNotes().size() == 1, "Shift click toggles selected note");
+        select(*canvas, n[1], true);
+        choose(w, "midi.snap", 3);
+        click(w, "midi.quantize.preview");
+        check(w.query() == original && visible(w, "plan.accept") && visible(w, "plan.reject"),
+              "GUI quantise opens readonly change preview");
+        auto* preview = dynamic_cast<juce::TextEditor*>(visible(w, "legacy.report"));
+        check(preview && preview->getText().contains("36000") && preview->getText().contains("48000") &&
+                  preview->getHeight() > 300,
+              "preview shows actual before after samples in full-height panel");
+        click(w, "plan.reject");
+        check(w.query() == original, "Cancel quantise leaves Edit and revision unchanged");
+        click(w, "midi.quantize.preview");
+        click(w, "plan.accept");
+        auto quantised = w.query();
+        check(notes(w)[0]["position_samples"] == 48000 && notes(w)[1]["position_samples"] == 72000 &&
+                  notes(w)[2] == n[2] && canvas->selectedNotes().size() == 2,
+              "GUI accepts selected quantise and preserves other notes and selection");
+        click(w, "history.undo");
+        check(w.query()["tracks"] == original["tracks"], "one GUI Undo restores both quantised notes");
+        click(w, "history.redo");
+        check(w.query()["tracks"] == quantised["tracks"], "GUI Redo restores both notes and IDs");
+        textValue(w, "midi.transpose.semitones", "12");
+        click(w, "midi.transpose.preview");
+        auto* velocity = dynamic_cast<juce::Slider*>(visible(w, "midi.velocity"));
+        if (!velocity)
+            throw std::runtime_error("missing velocity");
+        velocity->setValue(76, juce::sendNotificationSync);
+        settle();
+        auto human = w.query();
+        click(w, "plan.accept");
+        check(w.query() == human && notes(w)[0]["pitch"] == 69 && notes(w)[1]["pitch"] == 72,
+              "preview acceptance after human velocity edit rejects stale Plan");
+        click(w, "plan.reject");
+        click(w, "history.undo");
+        click(w, "midi.transpose.preview");
+        click(w, "plan.accept");
+        check(notes(w)[0]["pitch"] == 81 && notes(w)[1]["pitch"] == 84 && notes(w)[2] == n[2],
+              "GUI accepted octave transposes selected notes only");
+        click(w, "history.undo");
+        check(w.query()["tracks"] == quantised["tracks"],
+              "GUI transpose Undo restores pitch without undoing prior quantise");
+        click(w, "history.undo");
+        check(w.query()["tracks"] == original["tracks"], "next Undo separately restores earlier quantise");
+        auto before = w.query();
+        textValue(w, "midi.transpose.semitones", "12.5");
+        click(w, "midi.transpose.preview");
+        check(w.query() == before && !visible(w, "plan.accept"),
+              "fractional semitone input is rejected rather than coerced");
+        textValue(w, "midi.transpose.semitones", "100");
+        click(w, "midi.transpose.preview");
+        check(w.query() == before && !visible(w, "plan.accept"),
+              "pitch overflow rejects full GUI selection with no preview success");
+        choose(w, "midi.transform.scope", 3);
+        textValue(w, "midi.transform.start", "60000");
+        textValue(w, "midi.transform.end", "96000");
+        textValue(w, "midi.transpose.semitones", "-12");
+        click(w, "midi.transpose.preview");
+        click(w, "plan.accept");
+        check(notes(w)[0] == n[0] && notes(w)[1]["pitch"] == 60 && notes(w)[2] == n[2],
+              "range transform includes first onset and excludes endpoint through real GUI");
+        click(w, "history.undo");
+        before = w.query();
+        textValue(w, "midi.transform.start", "60000.5");
+        click(w, "midi.quantize.preview");
+        check(w.query() == before && !visible(w, "plan.accept"),
+              "fractional sample range preserves Edit without digit filtering");
+        textValue(w, "midi.transform.start", "-1");
+        click(w, "midi.quantize.preview");
+        check(w.query() == before, "negative sample range is rejected");
+        click(w, "midi.select_all");
+        check(canvas->selectedNotes().size() == 3, "all selection button selects actual clip notes");
+        textValue(w, "midi.quantize.strength", "50");
+        click(w, "midi.quantize.preview");
+        click(w, "plan.accept");
+        check(notes(w)[0]["position_samples"] == 42000 && notes(w)[1]["position_samples"] == 66000 &&
+                  notes(w)[2]["position_samples"] == 96000,
+              "50 percent GUI quantise retains intended timing proportion");
+        click(w, "history.undo");
+        choose(w, "midi.transform.scope", 2);
+        textValue(w, "midi.transpose.semitones", "-2");
+        click(w, "midi.transpose.preview");
+        click(w, "plan.accept");
+        check(notes(w)[0]["pitch"] == 67 && notes(w)[1]["pitch"] == 70 && notes(w)[2]["pitch"] == 74,
+              "whole clip scope operates on every real note");
+        click(w, "history.undo");
+        canvas->keyPressed(juce::KeyPress('a', juce::ModifierKeys::commandModifier, 'a'));
+        check(canvas->selectedNotes().size() == 3, "native command A selects actual notes");
+        w.setSize(1600, 1000);
+        settle();
+        check(visible(w, "midi.quantize.preview")->getBounds().getRight() <= visible(w, "midi.editor")->getWidth() &&
+                  visible(w, "midi.canvas"),
+              "transform controls and piano remain operable at tested sizes");
+        Json report{{"result", "passed"},
+                    {"checks", checks},
+                    {"scope", "production native widgets plus actual L1 Edit, preview and Undo; device closed, PCM in "
+                              "MidiTransformTests"}};
+        if (argc > 1)
+        {
+            std::ofstream out(argv[1]);
+            out << report.dump(2);
+            out.close();
+            if (!out)
+                throw std::runtime_error("report write failed");
+        }
+        std::cout << report.dump(2) << std::endl;
+        return 0;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "FAIL " << e.what() << std::endl;
+        return 1;
+    }
+}

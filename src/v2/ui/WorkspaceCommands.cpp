@@ -31,7 +31,7 @@ const std::vector<Entry>& entries()
         {7, "Redo", "编辑", 'z', cmd | shift},
         {8, "Edit", "窗口"},
         {9, "Mix", "窗口"},
-        {10, "MIDI 编辑器", "窗口"},
+        {10, "打开停靠 MIDI 编辑器", "窗口"},
         {13, "插件库 · AU / VST3", "窗口"},
         {14, "音频设备设置…", "设置"},
         {43, "音频分析 / 交付检查…", "窗口"},
@@ -81,6 +81,7 @@ const std::vector<Entry>& entries()
         {132, "跳到下一个 Marker", "走带", juce::KeyPress::rightKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {133, "打开 Memory Locations", "视图", 'm', shift},
+        {145, "显示 / 隐藏 MIDI 编辑器", "窗口", 'm', cmd | juce::ModifierKeys::altModifier},
         {140, "量化所选 MIDI 音符", "MIDI", '0', cmd | juce::ModifierKeys::altModifier},
         {141, "全选 MIDI 音符", "MIDI", 'a', cmd},
         {142, "删除所选 MIDI 音符", "MIDI", juce::KeyPress::deleteKey},
@@ -107,7 +108,7 @@ void Workspace::initialiseCommandManager()
     commandManager.getKeyMappings()->addChangeListener(this);
     for (auto pair : std::initializer_list<std::pair<juce::TextButton*, int>>{
              {&newTrack, 84},         {&importButton, 1}, {&openButton, 2},     {&saveButton, 3},
-             {&exportButton, 4},      {&editButton, 8},   {&mixButton, 9},      {&pianoButton, 10},
+             {&exportButton, 4},      {&editButton, 8},   {&mixButton, 9},      {&pianoButton, 145},
              {&returnButton, 82},     {&stopButton, 81},  {&playButton, 80},    {&recordButton, 83},
              {&metronomeButton, 111}, {&loopButton, 113}, {&markerButton, 130}, {&locationsButton, 133},
              {&undoButton, 6},        {&redoButton, 7},   {&rangeButton, 42},   {&audioSettingsButton, 14}})
@@ -169,7 +170,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             bool active = true;
             if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
             {
-                active = !mix && !pianoMode && !facts.value("playing", false) &&
+                active = !mix && !midiKeyboardFocus() && !facts.value("playing", false) &&
                          facts.value("parameter_capture", Json(nullptr)).is_null() && pendingClipboardPlan.empty();
                 if (id == editCommand::paste || id == editCommand::pasteOriginal)
                     active = active && !commands.clipboard().is_null();
@@ -186,7 +187,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip ||
                 id == editCommand::spot || (id >= editCommand::grid && id <= editCommand::split))
             {
-                active = !mix && !pianoMode;
+                active = !mix;
                 info.setTicked(id == editCommand::shuffle    ? editing.mode == "shuffle"
                                : id == editCommand::slip     ? editing.mode == "slip"
                                : id == editCommand::spot     ? editing.mode == "spot"
@@ -218,10 +219,10 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == editCommand::remove)
             {
                 const auto clips = selectedEditClips();
-                active = pianoMode
+                active = midiKeyboardFocus()
                              ? piano.canQuantize()
                              : !mix && !facts.value("playing", false) && !clips.empty() && pendingClipboardPlan.empty();
-                if (!pianoMode)
+                if (!midiKeyboardFocus())
                     for (const auto& clip : clips)
                         active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                  !clip.value("locked", false);
@@ -269,7 +270,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == 24)
                 active = !selectedAudioClip().is_null();
             if (id == 8 || id == 9 || id == 10)
-                info.setTicked(id == 8 ? !mix && !pianoMode : id == 9 ? mix : pianoMode);
+                info.setTicked(id == 8 ? !mix : id == 9 ? mix : pianoMode);
+            if (id == 145)
+                info.setTicked(pianoMode);
             info.setActive(active);
             return;
         }
@@ -289,7 +292,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
             piano.velocityStep(id == 143 ? 1 : -1);
         return true;
     }
-    if (id == editCommand::remove && pianoMode)
+    if (id == editCommand::remove && midiKeyboardFocus())
     {
         piano.deleteNotes();
         return true;
@@ -310,9 +313,17 @@ bool Workspace::perform(const InvocationInfo& invocation)
         executeDeleteCommand();
         return true;
     }
-    if (id == 100 || id == 8 || id == 9 || id == 10)
+    if (id == 100 || id == 8 || id == 9 || id == 10 || id == 145)
     {
-        setView({{"workspace", id == 10 ? "midi" : id == 9 ? "mix" : id == 8 ? "edit" : mix ? "edit" : "mix"}});
+        Json patch{{"workspace", id == 9 ? "mix" : id == 100 && !mix ? "mix" : "edit"}};
+        if (id == 10 || id == 145)
+            patch["midi_dock"] = id == 10 || !pianoMode;
+        setView(patch);
+        if (id == 10 || (id == 145 && pianoMode))
+        {
+            midiCommandContext = true;
+            piano.focusEditor();
+        }
         return true;
     }
     if (id >= 101 && id <= 110)

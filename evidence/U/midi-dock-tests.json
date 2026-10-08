@@ -1,0 +1,56 @@
+{
+  "checks": 34,
+  "result": "passed",
+  "scope": "actual native layout, L1 UI schema migration, stable note selection, Undo and reopen; device closed",
+  "milestone": "U-P0-MIDI-02",
+  "date": "2026-10-08",
+  "related_ctest": {
+    "passed": 6,
+    "failed": 0,
+    "seconds": 33.74,
+    "tests": [
+      "tracktion_native_midi_transform_workspace",
+      "forma_native_ui_navigation",
+      "forma_native_editor_interactions",
+      "forma_native_audio_clipboard",
+      "forma_native_midi_editor",
+      "forma_native_midi_dock"
+    ]
+  },
+  "midi_editor_regression": {
+    "checks": 64,
+    "pcm_onset_after": 48000,
+    "pcm_onset_before": 53001,
+    "result": "passed",
+    "scope": "production native gestures, actual L1 Edit and FourOsc render; no hardware MIDI or model claim"
+  },
+  "desktop": {
+    "device": "MacBook Pro Speakers",
+    "sample_rate": 48000,
+    "buffer_frames": 512,
+    "height": 440,
+    "scroll_y": 644,
+    "grid_beats": 0.25,
+    "notes": 5,
+    "selected_note": "1017",
+    "clip": "1016",
+    "pitch": 70,
+    "position_samples": 60000,
+    "velocity_edit": {
+      "before": 92,
+      "after": 93,
+      "undo": 92,
+      "redo": 93
+    },
+    "reopened": true,
+    "reopened_revision": 35,
+    "undo_history_persisted": false,
+    "trial": "evidence/U/demo/MIDI Dock P0 GUI accepted.tracktionedit",
+    "screenshot": "CUA inline result only; no PNG file saved"
+  },
+  "application": {
+    "path": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "binary_sha256": "e31efafef37b22b88baedbe7ee6f56ca228a814650484521888df162d6af8350",
+    "signing": "fixed local leaf; strict/deep verified; not notarized"
+  }
+}

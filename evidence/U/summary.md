@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 最新增量：U-P0-MIDI-02（2026-10-08）
+
+Edit下方真实钢琴卷帘、可拖分隔条、⌘⌥M切换、稳定Clip/Note共享选择与UI schema3保存重开已接通。Release/固定签名通过，相关CTest6/6通过、0失败、33.74秒；停靠专项34项，真实MIDI编辑回归64项。桌面力度92→93/Undo92/Redo93，实际退出重开恢复440高度/644滚动/¼网格/选中音符及五个真实事件。机器结果`midi-dock-tests.json`，完整边界见docs/VERIFICATION.md最新节。
+
+试用：`build-v2-tracktion/FormaMidiDockPreview.app`，已打开`evidence/U/demo/MIDI Dock P0 GUI accepted.tracktionedit`并停止。CUA截图在线回传，没有另存PNG。U＋P0未完成；64音符手势预算、CC/自动化共享选择、MIDI剪贴板、跨重开Undo等缺口保留；下一项侧栏/视图。
+
 ## U-P0-TRANSPORT-01：节拍器与预备拍（增量，P0 未完成）
 
 节拍器通过 Tracktion `CLICKTRACK.active` 原生图节点播放；预备拍提供关闭、1 拍、2 拍、1 小节、2 小节，并调用 Tracktion `TransportControl` 的录音 CountIn。统一命令为 `transport.metronome.set` / `transport.count_in.set`，工程内一次计划一个 Undo 事务；预备拍存入 session metadata，因为 Tracktion 原 API 把该值放在 Engine 全局偏好。加载工程、Undo、Redo 均将 session 值同步给 Tracktion。

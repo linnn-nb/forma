@@ -54,6 +54,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 8);
         p.addCommandItem(&commandManager, 9);
         p.addCommandItem(&commandManager, 10);
+        p.addCommandItem(&commandManager, 145);
         p.addSeparator();
         p.addCommandItem(&commandManager, 13);
         p.addCommandItem(&commandManager, 14);
@@ -411,20 +412,27 @@ void Workspace::resized()
     scrollLeft.setBounds(404, 128, 30, 24);
     scrollRight.setBounds(438, 128, 30, 24);
     editingControls.setBounds(476, 128, getWidth() - 486, 24);
-    editingControls.setVisible(!mix && !pianoMode);
+    editingControls.setVisible(!mix);
     const int left = commands.uiState()["tracks_list"].get<bool>() ? 138 : 0;
     int right = getWidth() - 332, areaHeight = getHeight() - 191;
     bool clipDock = !selectedClip.empty() && !mix && !pianoMode;
-    int dockHeight = clipDock ? 182 : 0;
+    const auto midiState = commands.uiState();
+    const int midiHeight =
+        std::clamp(midiHeightPreview >= 0 ? midiHeightPreview : midiState["midi_dock_height"].get<int>(), 220,
+                   std::max(220, areaHeight - 110));
+    int dockHeight = pianoMode ? midiHeight + 8 : clipDock ? 182 : 0;
     tracksList.setBounds(0, 162, left, areaHeight);
     clipsList.setBounds(right + 6, getHeight() - 222, 320, 190);
     editView.setBounds(left, 162, right - left, areaHeight - dockHeight);
     clipPanel.setBounds(left, getHeight() - 29 - dockHeight, right - left, dockHeight);
     clipPanel.setVisible(clipDock);
     mixView.setBounds(left, 162, right - left, areaHeight);
-    piano.setBounds(left, 162, right - left, areaHeight);
-    editView.setVisible(!mix && !pianoMode);
-    mixView.setVisible(mix && !pianoMode);
+    piano.setBounds(left, 162 + areaHeight - midiHeight, right - left, midiHeight);
+    midiDivider.setBounds(left, 162 + areaHeight - midiHeight - 8, right - left, 8);
+    midiDivider.setHeight(midiHeight);
+    midiDivider.setVisible(pianoMode);
+    editView.setVisible(!mix);
+    mixView.setVisible(mix);
     piano.setVisible(pianoMode);
     editView.setScrollBarsShown(false, false);
     editArea.setSize(std::max(400, right - left), areaHeight - dockHeight);

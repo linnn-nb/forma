@@ -1,5 +1,22 @@
 # 验证状态
 
+## U-P0-MIDI-02：Edit 下方钢琴卷帘停靠（2026-10-08；U＋P0 未完成）
+
+结论：双击真实 MIDI Clip 在 Edit 下方打开对应钢琴卷帘，时间线与音符编辑同时可见；拖动分隔条调整高度。⌘⌥M 和「钢琴卷帘」按钮通过统一命令表收起/恢复，键位可改；Mix 临时隐藏卷帘，返回 Edit 恢复。紧凑控制行保留网格、直接量化、力度；详细变换由「变换…」展开。
+
+L1 UI schema 3 保存停靠状态/高度、目标 Clip、网格、水平尺度、滚动与带所属 Clip/Track 的稳定 Note ID 选择；支持旧八字段及完整 schema 2 迁移，旧 MIDI 主视图迁为 Edit 停靠。界面组件不写 Edit。音符选择保留父片段以联动时间线高亮；过期引用按真实对象过滤。拖分隔条只预览，松手由 L1 保存 UI，不增加工程 revision 或 Undo；实际音符编辑继续一手势一笔编辑事务。焦点路由保留卷帘打开期间的音频复制/删除，避免把打开卷帘误当作禁用整个 Edit。
+
+构建：Release Forma.app 与六个受影响测试目标完成；固定本地身份签名、strict/deep 验签通过。最终相关 CTest **6/6 通过、0 失败，33.74 秒**；新增停靠专项34项检查。专项覆盖准确双击目标、上下布局、分隔条预览、网格/滚动/选区保存重开、Edit/Mix 恢复、音频剪贴板/删除 Undo、schema 迁移/拒绝和1120×700最小布局。MIDI 编辑回归64项及真实 FourOsc PCM起音53001→48000通过；没有全级回归或新增实体 MIDI/麦克风资格。机器结果 `evidence/U/midi-dock-tests.json`。
+
+桌面：专用最终构建、CoreAudio 48 kHz/512 frames，打开旧 schema 2 演示工程实际迁移。双击 Clip1016 后拖分隔条340→440，卷帘滚动644，网格¼拍；选中 Note1017（pitch70/工程60000），⌘⌥↑把92改93（r32），一次Undo回92（r33），Redo回93（r34）。⌘⌥M收起/恢复保留选区。原生另存 `evidence/U/demo/MIDI Dock P0 GUI accepted.tracktionedit`，实际退出再启动该文件，五音符、选中的Note、93力度、440高度、644滚动和¼网格均恢复；XML独立核对schema3与对象ID。重开Undo栈清空，如实显示。重新验证停靠快捷键并保持停止，未覆盖旧工程，也未宣称用户已试听。
+
+代码：`ui/MidiDock.h`、`ui/MidiEditor.h`、`ui/EditingModel.h`、Workspace 编排与命令/刷新/布局、`UiState.cpp`；测试 `tests/v2/MidiDockWorkspaceTests.cpp` 及相关既有专项。首轮编译中的 JSON/字符串比较已修正；测试旧schema fixture按实际8/15字段迁移更新，不降低已有音频数值标准。最终源码按JUCE格式化。
+
+边界：共享的是Clip/Note对象选择，不是音符导出的时间范围、CC或自动化点。卷帘网格与Edit网格独立；尚无全局Pencil/Smart/框选/MIDI剪贴板，水平尺度字段已保存但卷帘专用缩放控件未接通。组手势仍最多64音符，Undo历史不跨重开。下一项Groups/Clips侧栏与Edit Window Views；仍不进入P1。
+
+专用预览 `build-v2-tracktion/FormaMidiDockPreview.app` 已打开上述文件留供试用；上一轮专用MIDI实例与本轮测试退出，其他用户窗口保留。真实截图由CUA回传线程，未另存PNG。未打包DMG，U＋P0整体与发行资格仍未完成。
+
+
 ## U-P0-MIDI-01：钢琴卷帘成组编辑与力度泳道（2026-10-08；U＋P0 未完成）
 
 结论：原生 MIDI 编辑器可在空白处绘制音符，Shift 点选/⌘A 成组选择，拖动组、左右边缘修剪、⌘垂直拖动或力度泳道改力度；拖拽只预览，松手一笔 L1 Plan / UndoManager 事务。快捷键和按钮来自同一 ApplicationCommandManager：⌘⌥0 直接量化所选，遵循当前编辑器网格与强度；⌘⌥↑/↓ 相对改变组力度，Delete/Backspace 删除所选。可在键位窗口重映射。详细范围变换的原有预览保留；常规手势无需填写采样数。

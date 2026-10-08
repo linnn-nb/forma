@@ -8,8 +8,9 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
           waves,
           [this](auto id)
           {
-              piano.showClip(id);
-              setView({{"workspace", "midi"}});
+              selectAudioClip(id);
+              setView({{"workspace", "edit"}, {"midi_dock", true}, {"midi_clip", id}});
+              piano.focusEditor();
           },
           [this](auto id) { selectAudioClip(id); }, clipWriter()),
       mixArea(writer(), [this](auto id) { select(id); }), parameters(writer()),
@@ -128,6 +129,40 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     };
     clipPanel.onError = [this](auto error) { message(text("未执行：") + text(error)); };
     piano.onError = [this](const auto& error) { message(text("未执行：") + text(error)); };
+    piano.onView = [this](Json patch)
+    {
+        try
+        {
+            commands.updateUiState(patch, workspaceSession);
+        }
+        catch (const std::exception& e)
+        {
+            message(text("视图未保存：") + text(e.what()));
+        }
+    };
+    piano.onSelection = [this](const Json& clip, const Json& ids)
+    {
+        if (selected.empty())
+            return;
+        midiCommandContext = true;
+        selection.chooseNotes(clip, selected, ids);
+        commands.updateUiState({{"object_selection", selection.objects}, {"selection_tracks", selection.tracks}},
+                               workspaceSession);
+        commandManager.commandStatusChanged();
+    };
+    piano.onClip = [this](const std::string& id) { selectAudioClip(id); };
+    midiDivider.onResize = [this](int height, bool finished)
+    {
+        midiHeightPreview = std::clamp(height, 220, std::max(220, getHeight() - 301));
+        resized();
+        if (finished)
+        {
+            const int finalHeight = midiHeightPreview;
+            midiHeightPreview = -1;
+            setView({{"midi_dock_height", finalHeight}});
+        }
+    };
+
     for (auto* c : std::initializer_list<juce::Component*>{&menu,
                                                            &editView,
                                                            &mixView,
@@ -172,6 +207,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                                            &recordTab,
                                                            &recordButton,
                                                            &piano,
+                                                           &midiDivider,
                                                            &pianoButton,
                                                            &trackType,
                                                            &bpm,
@@ -275,7 +311,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 commands.commit(commands.makePlan("human", ops));
                 selected.clear();
                 if (type == "midi" || type == "instrument")
-                    commands.updateUiState({{"workspace", "midi"}}, commands.sessionToken());
+                    commands.updateUiState({{"workspace", "edit"}, {"midi_dock", true}, {"midi_clip", ""}},
+                                           commands.sessionToken());
                 message(type == "midi"         ? text("已建 MIDI 轨 · 未加载乐器，不会发声；可插入 FourOsc")
                         : type == "instrument" ? text("已建 FourOsc 乐器轨 · 空白四小节 MIDI 片段 · 增益 −12 dB")
                                                : text("已新增 ") + text(type) + text(" 轨道 · 可撤销"));

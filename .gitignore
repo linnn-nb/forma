@@ -14,5 +14,6 @@ evidence/U/*
 !evidence/U/shuffle-spot-tests.json
 !evidence/U/smart-tool-tests.json
 !evidence/U/midi-editor-tests.json
+!evidence/U/midi-dock-tests.json
 !evidence/U/marker-memory-locations.png
 .DS_Store

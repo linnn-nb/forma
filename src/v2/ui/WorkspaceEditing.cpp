@@ -28,6 +28,7 @@ Json Workspace::selectedEditClips() const
 }
 void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision)
 {
+    midiCommandContext = false;
     invoke(
         [&]
         {

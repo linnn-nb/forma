@@ -138,7 +138,7 @@ int main(int argc, char** argv)
         invoke(w, 10);
         auto* canvas = dynamic_cast<NoteCanvas*>(find(w, "midi.canvas"));
         auto* lane = dynamic_cast<VelocityLane*>(find(w, "midi.velocity_lane"));
-        check(canvas && lane && lane->getHeight() == 82, "production piano roll has actual independent velocity lane");
+        check(canvas && lane && lane->getHeight() == 60, "production piano roll has actual independent velocity lane");
         check(!find(w, "midi.transform.start"), "ordinary mouse workflow hides optional sample-range fields");
         const auto original = notes(w);
         const auto base = revision(w);
@@ -242,11 +242,14 @@ int main(int argc, char** argv)
         {
             Commands reopened(false, std::make_unique<Storage>(folder.getChildFile("reopen")));
             reopened.open(saveFile);
-            check(reopened.query()["tracks"] == c.query()["tracks"] && reopened.uiState()["workspace"] == "midi",
+            check(reopened.query()["tracks"] == c.query()["tracks"] && reopened.uiState()["workspace"] == "edit" &&
+                      reopened.uiState()["midi_dock"] == true,
                   "save reopen preserves notes instrument routing and MIDI workspace");
         }
         invoke(w, 6);
         check(notes(w) == original, "quantize single Undo restores off-grid notes");
+        dynamic_cast<juce::Button*>(find(w, "midi.advanced"))->triggerClick();
+        pump();
         auto* strength = dynamic_cast<juce::TextEditor*>(find(w, "midi.quantize.strength"));
         check(strength != nullptr, "actual quantize strength control is accessible");
         strength->setText("50", false);
@@ -289,8 +292,8 @@ int main(int argc, char** argv)
         const auto opened = w.query();
         canvas->mouseUp(event(*canvas, moved, 0, true));
         pump();
-        check(w.query() == opened && canvas->selectedNotes().empty(),
-              "opening another session cancels old gesture and clears stale note selection");
+        check(w.query() == opened && canvas->selectedNotes().size() == 2,
+              "opening another session cancels old gesture and restores saved stable note selection");
         w.setSize(1600, 1000);
         pump();
         check(find(w, "midi.quantize.apply")->getBounds().getRight() <= find(w, "midi.editor")->getWidth(),

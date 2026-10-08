@@ -6,7 +6,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 2},
+    return {{"ui_schema", 3},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -20,7 +20,14 @@ Json defaults()
             {"grid_beats", .25},
             {"nudge", "10ms"},
             {"object_selection", Json::array()},
-            {"selection_tracks", Json::array()}};
+            {"selection_tracks", Json::array()},
+            {"midi_dock", false},
+            {"midi_dock_height", 340},
+            {"midi_clip", ""},
+            {"midi_grid_beats", .5},
+            {"midi_pixels_per_beat", 72.},
+            {"midi_scroll_x", 0},
+            {"midi_scroll_y", 746}};
 }
 void validate(const Json& value)
 {
@@ -36,7 +43,7 @@ void validate(const Json& value)
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 2)
+    if (value["ui_schema"] != 3)
         throw std::runtime_error("unsupported UI schema");
     const auto max = std::llround(te::Edit::maximumLength * 48000);
     for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height"})
@@ -47,7 +54,7 @@ void validate(const Json& value)
         value["first_row"].get<int64_t>() > 100000 || value["row_height"].get<int>() < 96 ||
         value["row_height"].get<int>() > 320)
         throw std::runtime_error("UI viewport out of range");
-    if (value["workspace"] != "edit" && value["workspace"] != "mix" && value["workspace"] != "midi")
+    if (value["workspace"] != "edit" && value["workspace"] != "mix")
         throw std::runtime_error("unknown UI workspace");
     if ((value["edit_mode"] != "shuffle" && value["edit_mode"] != "slip" && value["edit_mode"] != "spot" &&
          value["edit_mode"] != "grid") ||
@@ -66,9 +73,22 @@ void validate(const Json& value)
         throw std::runtime_error("selection exceeds UI reference budget");
     std::set<std::string> objects, tracks;
     for (const auto& o : value["object_selection"])
-        if (!o.is_object() || o.size() != 3 || !o.contains("id") || !o.contains("track") || !o.contains("kind") ||
-            !validID(o["id"]) || !validID(o["track"]) || o["kind"] != "clip" || !objects.insert(o["id"]).second)
-            throw std::runtime_error("invalid clip selection reference");
+    {
+        if (!o.is_object() || !o.contains("id") || !o.contains("track") || !o.contains("kind") || !validID(o["id"]) ||
+            !validID(o["track"]) || !objects.insert(o["id"]).second)
+            throw std::runtime_error("invalid object selection reference");
+        if (o["kind"] == "clip" ? o.size() != 3
+                                : o["kind"] != "note" || o.size() != 4 || !o.contains("clip") || !validID(o["clip"]))
+            throw std::runtime_error("invalid clip or note selection reference");
+    }
+    if (value["midi_dock_height"].get<int64_t>() < 220 || value["midi_dock_height"].get<int64_t>() > 1200 ||
+        value["midi_scroll_x"].get<int64_t>() < 0 || value["midi_scroll_x"].get<int64_t>() > 2000000 ||
+        value["midi_scroll_y"].get<int64_t>() < 0 || value["midi_scroll_y"].get<int64_t>() > 1824 ||
+        value["midi_pixels_per_beat"].get<double>() < 16 || value["midi_pixels_per_beat"].get<double>() > 512 ||
+        !std::isfinite(value["midi_pixels_per_beat"].get<double>()) ||
+        (value["midi_grid_beats"] != .25 && value["midi_grid_beats"] != .5 && value["midi_grid_beats"] != 1.) ||
+        value["midi_clip"].get<std::string>().size() > 64)
+        throw std::runtime_error("MIDI editor viewport out of range");
     for (const auto& id : value["selection_tracks"])
         if (!validID(id) || !tracks.insert(id).second)
             throw std::runtime_error("invalid selected track reference");
@@ -94,21 +114,31 @@ Json readUiState(const juce::ValueTree& metadata)
         auto saved = Json::parse(state.getProperty("json").toString().toStdString());
         if (!saved.is_object())
             throw std::runtime_error("invalid saved UI state");
-        if (saved.contains("ui_schema"))
+        const bool legacy = !saved.contains("ui_schema");
+        const bool v2 = saved.value("ui_schema", Json(0)) == 2;
+        if (legacy || v2)
         {
-            if (saved["ui_schema"] != 2 || saved.size() != result.size())
-                throw std::runtime_error("unsupported or incomplete UI schema");
-        }
-        else
-        {
-            // The first shipped UI subtree had exactly these eight fields.
-            if (saved.size() != 8)
+            const std::vector<std::string> base{"start_samples", "span_samples", "first_row",  "row_height",
+                                                "workspace",     "tracks_list",  "clips_list", "keymap_xml"};
+            auto required = base;
+            if (v2)
+                for (const auto* key : {"ui_schema", "edit_mode", "edit_tool", "grid_beats", "nudge",
+                                        "object_selection", "selection_tracks"})
+                    required.push_back(key);
+            if (saved.size() != required.size())
                 throw std::runtime_error("incomplete legacy UI subtree");
-            for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "workspace",
-                                    "tracks_list", "clips_list", "keymap_xml"})
+            for (const auto& key : required)
                 if (!saved.contains(key))
                     throw std::runtime_error("missing legacy UI field");
+            if (v2)
+                for (const auto& o : saved["object_selection"])
+                    if (!o.is_object() || o.value("kind", std::string{}) != "clip")
+                        throw std::runtime_error("invalid legacy object selection");
         }
+        else if (saved["ui_schema"] != 3 || saved.size() != result.size())
+            throw std::runtime_error("unsupported or incomplete UI schema");
+        if (legacy)
+            result["ui_schema"] = 1;
         for (auto it = saved.begin(); it != saved.end(); ++it)
         {
             if (!result.contains(it.key()))
@@ -116,6 +146,12 @@ Json readUiState(const juce::ValueTree& metadata)
             result[it.key()] = it.value();
         }
     }
+    if (result["workspace"] == "midi" && result["ui_schema"] != 3)
+    {
+        result["workspace"] = "edit";
+        result["midi_dock"] = true;
+    }
+    result["ui_schema"] = 3;
     validate(result);
     return result;
 }
@@ -137,6 +173,11 @@ Json Commands::updateUiState(const Json& patch, const std::string& expectedSessi
         if (!next.contains(it.key()))
             throw std::runtime_error("unknown UI field");
         next[it.key()] = it.value();
+    }
+    if (next["workspace"] == "midi")
+    {
+        next["workspace"] = "edit";
+        next["midi_dock"] = true;
     }
     validate(next);
     if (next != uiState())

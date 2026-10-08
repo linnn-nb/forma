@@ -178,14 +178,14 @@ int main(int argc, char** argv)
         const auto at = c.sampleAtBeat(6);
         check(c.snapToGrid(at + 6000, .25) == at + 12000 && c.offsetByBeats(at, 1) == at + 48000,
               "grid and nudge follow real Tempo map after a tempo change");
-        auto old = c.uiState();
-        for (const auto* key :
-             {"ui_schema", "edit_mode", "edit_tool", "grid_beats", "nudge", "object_selection", "selection_tracks"})
-            old.erase(key);
+        Json old = Json::object();
+        for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "workspace", "tracks_list",
+                                "clips_list", "keymap_xml"})
+            old[key] = c.uiState()[key];
         juce::ValueTree metadata("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(old.dump()), nullptr);
         metadata.addChild(ui, -1, nullptr);
-        check(readUiState(metadata)["ui_schema"] == 2 && readUiState(metadata)["span_samples"] == old["span_samples"],
+        check(readUiState(metadata)["ui_schema"] == 3 && readUiState(metadata)["span_samples"] == old["span_samples"],
               "previous eight-field UI subtree migrates without discarding viewport");
         old.erase("start_samples");
         ui.setProperty("json", text(old.dump()), nullptr);

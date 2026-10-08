@@ -12,6 +12,7 @@
 #include "EditingControls.h"
 #include "MemoryLocationsPanel.h"
 #include "SpotPlacementPanel.h"
+#include "MidiDock.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -113,6 +114,10 @@ private:
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void dispatchCommand(int);
     void setView(Json);
+    bool midiKeyboardFocus() const
+    {
+        return pianoMode && (midiCommandContext || piano.editorHasFocus());
+    }
     void showShortcuts();
     void focusMixInsert(const std::string&, int);
     void transferShortcuts(bool);
@@ -226,6 +231,9 @@ private:
     AutomationPanel automation;
     ClipPanel clipPanel;
     PianoRoll piano;
+    MidiDockDivider midiDivider;
+    int midiHeightPreview = -1;
+    bool midiCommandContext = false;
     juce::Viewport editView, mixView, parameterView, routingView, groupView, autoView, recordView;
     juce::MenuBarComponent menu{this};
     juce::TextButton newTrack{text("新增轨道")}, importButton{text("导入音频")}, openButton{text("打开工程")},

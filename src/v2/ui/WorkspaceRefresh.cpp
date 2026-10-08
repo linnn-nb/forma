@@ -39,6 +39,7 @@ ClipWriter Workspace::clipWriter()
 
 void Workspace::selectAudioClip(const std::string& id, bool additive)
 {
+    midiCommandContext = false;
     for (const auto& t : facts["tracks"])
         for (const auto& c : t["clips"])
             if (c["id"] == id)
@@ -46,10 +47,22 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
                 selection.choose(c, t["id"], additive);
                 selected = t["id"];
                 selectedClip = c["kind"] == "audio" && selection.contains(id) ? id : "";
-                commands.updateUiState({{"workspace", "edit"},
-                                        {"object_selection", selection.objects},
-                                        {"selection_tracks", selection.tracks}},
-                                       commands.sessionToken());
+                Json patch{{"workspace", "edit"},
+                           {"object_selection", selection.objects},
+                           {"selection_tracks", selection.tracks}};
+                if (c["kind"] == "midi")
+                {
+                    patch["midi_clip"] = id;
+                    if (commands.uiState()["midi_clip"] != id)
+                    {
+                        int high = 72;
+                        for (const auto& n : c["notes"])
+                            high = std::max(high, n["pitch"].get<int>());
+                        patch["midi_scroll_y"] = 32 + (127 - std::min(127, high + 2)) * 14;
+                        patch["midi_scroll_x"] = 0;
+                    }
+                }
+                commands.updateUiState(patch, commands.sessionToken());
                 refresh();
                 if (isShowing())
                     grabKeyboardFocus();
@@ -159,6 +172,7 @@ void Workspace::write(const std::string& cmd, Json args)
 
 void Workspace::select(std::string id)
 {
+    midiCommandContext = false;
     for (const auto& t : facts["tracks"])
         if (t["id"] == id && t["capabilities"]["group"].get<bool>())
         {
@@ -341,6 +355,9 @@ void Workspace::refresh()
         readOnly.mode = Permission::ReadOnly;
         resetCommandClient(readOnly);
         selected.clear();
+        midiDivider.cancel();
+        midiHeightPreview = -1;
+        midiCommandContext = false;
         selectedClip.clear();
         clipFXInspector = false;
         pending = nullptr;
@@ -437,7 +454,7 @@ void Workspace::refresh()
     editing.update(view);
     editingControls.update(view);
     mix = view["workspace"] == "mix";
-    pianoMode = view["workspace"] == "midi";
+    pianoMode = !mix && view["midi_dock"].get<bool>();
     if (lastKeymapSession != commands.sessionToken())
     {
         lastKeymapSession = commands.sessionToken();
@@ -463,6 +480,8 @@ void Workspace::refresh()
     if (!found)
     {
         selected = facts["tracks"].empty() ? "" : facts["tracks"].back()["id"].get<std::string>();
+        if (!selection.tracks.empty())
+            selected = selection.tracks.back();
         pluginSelection = 0;
         lastPluginIDs.clear();
     }
@@ -491,7 +510,7 @@ void Workspace::refresh()
     recordButton.setToggleState(facts["recording"], juce::dontSendNotification);
     recordButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffbd4249));
     playButton.setToggleState(facts["playing"].get<bool>(), juce::dontSendNotification);
-    editButton.setToggleState(!mix && !pianoMode, juce::dontSendNotification);
+    editButton.setToggleState(!mix, juce::dontSendNotification);
     mixButton.setToggleState(mix, juce::dontSendNotification);
     pianoButton.setToggleState(pianoMode, juce::dontSendNotification);
     acceptButton.setEnabled(!pending.is_null() && !playing && !parameterEditing);
@@ -569,7 +588,19 @@ void Workspace::refresh()
     clipsList.setVisible(view["clips_list"].get<bool>());
     commandManager.commandStatusChanged();
     mixArea.update(facts, selected, d);
-    piano.update(selectedTrack(), facts["revision"], playing, music["position_beats"], commands.sessionToken());
+    auto midiView = commands.uiState();
+    for (const auto& o : selection.objects)
+        if (o["kind"] == "clip")
+            for (const auto& t : facts["tracks"])
+                for (const auto& c : t["clips"])
+                    if (c["id"] == o["id"] && c["kind"] == "midi")
+                        midiView["midi_clip"] = c["id"];
+    piano.update(selectedTrack(), facts["revision"], playing, music["position_beats"], commands.sessionToken(),
+                 midiView, selection.notesFor(midiView["midi_clip"].get<std::string>()));
+    const auto currentMidi = piano.viewedClip();
+    const auto currentID = currentMidi.is_null() ? "" : currentMidi["id"].get<std::string>();
+    if (currentID != commands.uiState()["midi_clip"].get<std::string>())
+        commands.updateUiState({{"midi_clip", currentID}}, commands.sessionToken());
     auto selectedMidi = pianoMode ? piano.viewedClip() : Json(nullptr);
     commandQueue.setSelection(selected, !selectedMidi.is_null() ? selectedMidi["id"].get<std::string>() : selectedClip);
     refreshInspector();

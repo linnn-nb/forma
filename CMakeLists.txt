@@ -612,3 +612,9 @@ target_sources(ndaw_midi_editor_tests PRIVATE tests/v2/MidiEditorInteractionTest
 target_link_libraries(ndaw_midi_editor_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_midi_editor COMMAND ndaw_midi_editor_tests "${CMAKE_SOURCE_DIR}/evidence/U/midi-editor-tests.json")
 set_tests_properties(forma_native_midi_editor PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_midi_dock_tests PRODUCT_NAME "ndaw_midi_dock_tests")
+target_sources(ndaw_midi_dock_tests PRIVATE tests/v2/MidiDockWorkspaceTests.cpp)
+target_link_libraries(ndaw_midi_dock_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_midi_dock COMMAND ndaw_midi_dock_tests "${CMAKE_SOURCE_DIR}/evidence/U/midi-dock-tests.json")
+set_tests_properties(forma_native_midi_dock PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

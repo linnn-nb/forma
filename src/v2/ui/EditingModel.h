@@ -36,6 +36,24 @@ struct SelectionModel
             if (std::find(tracks.begin(), tracks.end(), o["track"]) == tracks.end())
                 tracks.push_back(o["track"]);
     }
+    Json notesFor(const std::string& clip) const
+    {
+        Json ids = Json::array();
+        for (const auto& o : objects)
+            if (o["kind"] == "note" && o["clip"] == clip)
+                ids.push_back(o["id"]);
+        return ids;
+    }
+    void chooseNotes(const Json& clip, const std::string& track, const Json& ids)
+    {
+        objects = Json::array({{{"id", clip["id"]}, {"track", track}, {"kind", "clip"}}});
+        for (const auto& id : ids)
+            objects.push_back({{"id", id}, {"track", track}, {"kind", "note"}, {"clip", clip["id"]}});
+        tracks = Json::array({track});
+        objectIDs.clear();
+        for (const auto& object : objects)
+            objectIDs.insert(object["id"].get<std::string>());
+    }
     void update(const Json& facts, const Json& view)
     {
         range = facts.value("time_selection", Json(nullptr));
@@ -56,11 +74,22 @@ struct SelectionModel
             for (const auto& c : t["clips"])
             {
                 const auto found = references.find(c["id"].get<std::string>());
-                if (found != references.end() && found->second["track"] == id)
+                if (found != references.end() && found->second["track"] == id && found->second["kind"] == "clip")
                 {
                     objects.push_back(found->second);
                     objectIDs.insert(found->first);
                 }
+                if (c["kind"] == "midi")
+                    for (const auto& n : c["notes"])
+                    {
+                        const auto ref = references.find(n["id"].get<std::string>());
+                        if (ref != references.end() && ref->second["kind"] == "note" && ref->second["track"] == id &&
+                            ref->second["clip"] == c["id"])
+                        {
+                            objects.push_back(ref->second);
+                            objectIDs.insert(n["id"].get<std::string>());
+                        }
+                    }
             }
         }
     }
