@@ -1,5 +1,19 @@
 # 验证状态
 
+## M3-SPECTRUM-01（2026-10-08）
+
+结论：7fa96bb 接通真实 PCM 的完整 4096帧 Hann/2049 bin 频谱、声道频段功率、原生频点/频段检查器和只读 MCP；完整 Release 构建成功，完整 **66/66 CTest /643.57秒通过**。全量内新后端67项 /17.36秒、原生21项 /9.69秒，内部计时17258.246167 /9631.386667 ms。生产 Codex MCP、GUI、人工作出的修改/Undo、实际关闭重开和独立全部频点核验已执行，完整 M3 仍未验收。
+
+数值预算：8/44.1/48/96/192 kHz，mono/stereo、非零decode/session origin；独立double DFT抽查频点及time-domain Parseval、所有bin的频段一次分区、DC/Nyquist、反相/静音/不足窗口/取消通过。实际Master推子、pre/Bus、post EQ的+6 dB目标峰值和正式WAV独立DFT、真实只读MCP、human/Undo失效、raw move保持、save/reopen/hash通过。300秒8 kHz原始PCM执行全部1171窗口，谱47830字节、合并144703字节；没有降低时限或截断。该300秒测试不是300秒原生图或192 kHz实时/性能资格。
+
+生产现场：Codex 经正式包内 forma-mcp /应用 Unix socket，在只读模式查询真实对象，测量 Master [23,96060)。GUI 显示同一2049频点/46完整窗，最高bin128为1500 Hz /−30.751 dBFS/bin，250–2000 Hz窗功率占85.837%，两个声道各−28.990 dBFS；反相主音未错误抵消。GUI 推子−12→−18 /r2 后旧证据 current=false；Undo 恢复−12 /r3仍不复活旧证据，重新测量获新artifact。另存新 M3-spectrum-demo.tracktionedit，实际关闭应用并GUI重开r4，轨道/片段/增益/输出一致，新token、停止/只读/空Undo/Redo，query_analysis idle/null。新会话重测取得第三份当前回执，三份频谱相同、artifact不同；应用保留在真实结果页，测试客户端/helper已退出。
+
+独立现场核验 **6281项通过**：既有桌面运行时 NumPy2.0 float64 rfft 对全部三份2049 bin、频段/声道功率逐项核验，并用9个显式double DFT频点和time-domain Parseval交叉验证参考；容差保持max(1e-10, reference×2e-5) /2e-6。自有48kHz /双声道 /PCM16 /96077帧，左声道DC、双声道反相1500Hz、右声道4500Hz；分析96037帧，原媒体SHA256 aa41f1e99702978a903d0b7d680ed61a8e71d70774a62db486d014f40583a1b9保持。三次实际作业4232.312333 /4648.466375 /4602.743875 ms，MCP回复最大30.625 ms，固定12秒/5秒预算未放宽。这是离线数值和事务资格，不是音乐听感、麦克风或实时容量。应用SHA256 **7ede0482a1b1906ee95a2cbf680004d95405dbb2350c466287984294e05f8014**。
+
+代码/测试：Spectrum.h/.cpp、AudioAnalysis、MasterAnalysis注册表、SpectrumView/AnalysisPanel；SpectrumFixture的独立DFT/Parseval和SpectrumTests/SpectrumWorkspaceTests。固定12秒作业、5秒MCP、120/60秒专项、单worker/300秒范围/60秒墙钟、64 KiB谱/30000窗/完整252 KiB预算；参数和精度见ANALYSIS_WORKFLOW.md/AI_COMMAND_CONTRACT.md。本机evidence/M3/summary.md、spectrum-configure.log、spectrum-build-first.log /feature.log /feature-final.log /eq.log /full.log、spectrum-ctest-first.log /eq.log /full.log、spectrum-tests.json /spectrum-workspace-tests.json；desktop-spectrum/mcp-receipts.jsonl /verify-receipts.py /verification.json及自有工程/媒体。首两专项2/2 /26.07秒、补EQ后后端20.44秒另记。首次核验调用仓库工具venv未找到NumPy，改用已安装的桌面依赖运行时后成功，未安装新依赖；退出应用时CUA -10005超时，进程查询确认实际关闭后才重启。关键画面由桌面工具展示，未保存PNG。
+
+边界：加窗/重叠窗口等权的bin平均功率，频段按中心分区，不是未加窗全范围RMS、PSD/Hz、理想带通、事件时间、实时表或音色质量。末尾额外完整窗口真实重叠，不补零；不足4096帧明确无测量。源证据仍原生域，处理修改使processed失效。Clip FX独立tap、范围外尾音/文件复核、第三方/PDC/旁链/多声道/压力及完整M3，M1实体制作gate、M4–M6/Windows/发行均未通过。无新依赖/SDK补丁/上传音频/DMG；证据本机保留。
+
 ## M3-LUFS-01（2026-10-08）
 
 结论：b54f1d0 接通实际所选 PCM 的完整 LUFS-M/S 曲线、原生双曲线、点 ID、最高值、窗口定位和只读 MCP 回执，完整 Release 构建与完整 **64/64 CTest /652.50 秒**通过。3f286d7 随后修正高采样率映射的窗末位置，完整 Release 重建成功，受影响的两专项 **2/2 /50.57 秒**通过（42 后端、33 原生检查）；修正后没有再次执行完整 64 项，两次资格分别记录。

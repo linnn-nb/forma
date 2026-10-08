@@ -1,12 +1,12 @@
 # 音频分析与定位
 
-结论：Master/交付检查与原始源片段已有自动和前轮生产桌面证据；本轮新增真实轨道插入前后/Bus，GUI/MCP 共用同一入口。41d58bd 为功能、8e70394 修正曲线缓存；完整构建成功，首次全量59/60（677.48秒），60e6927 修复新建测试的异步等待后专项1/1（4.83秒），没有重跑全量。轨道57项、插件曲线25项、原生29项在全量中通过。本轮 Mac 锁定，新的生产桌面/外部 Codex tap 验收未执行；完整 M3 未完成，边界见 VERIFICATION.md。
+结论：Master、可配置交付检查、原始源片段、轨道插入前后/Bus、处理后事件与连续 LUFS 已接通真实 PCM、GUI 和只读 MCP。本轮 7fa96bb 增加完整频谱和声道频段功率；完整 Release 构建、66/66回归及生产Codex MCP/GUI/人工Undo/实际重开通过，独立全部频点核验6281项通过。结果及边界见 VERIFICATION.md；完整 M3 未验收。
 
 ## 频谱概要增量预算（M3-SPECTRUM-01，实施前）
 
 同一实际 PCM 读取过程中计算 4096 帧 periodic Hann FFT，hop 2048 帧；保留从 DC 到 Nyquist 的全部 2049 个平均功率 bin，不截断或用显示插值冒充测量。各声道分别变换，再平均功率；频段为 0/80/250/2000/6000/20000/Nyquist Hz 的单侧 bin 中心分区，超出 Nyquist 的边界不产生虚构频段。功率按单侧 Parseval 与窗口平方和归一化，记录每窗等权平均规则，不当作未加窗全范围 RMS 或 PSD/Hz。末尾不足 hop 时追加一个以真实范围末端结束的完整窗口，显式记录额外重叠；不足 4096 帧返回 insufficient_window，不补零假测量。范围/媒体/链/版本继承同一 artifact，源帧与工程坐标保持分开；频谱概要不定位某个事件或判断音色质量。
 
-固定验收：8/44.1/48/96/192 kHz 的 mono/stereo 已知 bin 对齐/非对齐音、DC、Nyquist、反相、数字静音与非零解码范围；独立 double 直接 DFT 的抽查功率容差 max(1e-10, reference×2e-5)，Parseval 加窗功率容差 2e-6。频段分区须覆盖每 bin 一次；实际增益与 pre/post/Bus、MCP、human/Undo 失效、保存重開通过原生链路。300 秒 PCM 的所有窗口执行，最高 30000 窗，单份 spectrum ≤64 KiB、完整回执仍 ≤252 KiB；超预算失败，不静默截断。每真实作业 ≤12 秒、MCP回复 ≤5 秒、后端专项 ≤120 秒、原生专项 ≤60 秒；既有单worker/300秒范围/60秒墙钟不变。浮点处理继承已声明 ScopedNoDenormals。JUCE FFT 的 2N 交错复数输出按锁定源码核验：[官方 API](https://docs.juce.com/master/classjuce_1_1dsp_1_1FFT.html)；运行速度以本机实測为准。生产桌面与外部 Agent 单独验证，未执行不算通过。
+固定验收：8/44.1/48/96/192 kHz 的 mono/stereo 已知 bin 对齐/非对齐音、DC、Nyquist、反相、数字静音与非零解码范围；独立 double 直接 DFT 的抽查功率容差 max(1e-10, reference×2e-5)，Parseval 加窗功率容差 2e-6。频段分区须覆盖每 bin 一次；实际增益与 pre/post/Bus、MCP、human/Undo 失效、保存重开通过原生链路。300 秒 PCM 的所有窗口执行，最高 30000 窗，单份 spectrum ≤64 KiB、完整回执仍 ≤252 KiB；超预算失败，不静默截断。每真实作业 ≤12 秒、MCP回复 ≤5 秒、后端专项 ≤120 秒、原生专项 ≤60 秒；既有单worker/300秒范围/60秒墙钟不变。浮点处理继承已声明 ScopedNoDenormals。JUCE FFT 的 2N 交错复数输出按锁定源码核验：[官方 API](https://docs.juce.com/master/classjuce_1_1dsp_1_1FFT.html)；运行速度以本机实测为准。生产桌面与外部 Agent 单独验证，未执行不算通过。
 
 ## 源片段增量验收预算（M3-SOURCE-01）
 
@@ -38,7 +38,7 @@ MCP analyze_master /analyze_track /analyze_delivery 新增可选 detector_profil
 
 启用后的事件以工程 48 kHz 半开区间 start_samples/end_samples 定位。render_start_frame/end_frame 是本次实际解码区间内的位置，不是原始媒体帧；候选证据同时列出渲染窗和工程窗。静音要求所有渲染声道都不高于门限且连续达到最短时长；瞬态是完整 5 ms 能量窗相对前 20 ms 的上升估计，保留首次超过最低峰值的起点和可配置间隔，不是呼吸或表演质量判定。结果绑定 detector_profile_sha256、实际 render/media SHA256、链状态、对象、范围和版本。GUI 修改条件不会自动改写已测回执，摘要显示测量时实际条件；修改工程后旧 processed 回执定位禁用，Undo 产生新 revision，须重新测量。
 
-每个静音/候选族只保留前 64 项、满刻度风险保留前 128 项，再合并排序最多展示 128 项；event_counts/event_count 保持全部计数，events_omitted 是合并后实际省略数，processed_features.family_candidates_omitted 单独描述族内省略。并不保证稠密信号中展示所有最早事件。源码与测试：AudioAnalysis /MasterAnalysis /AnalysisPanel，ProcessedEventsFixture /ProcessedEventsTests /ProcessedEventsWorkspaceTests；固定预算见上文，实际结果见 VERIFICATION.md。连续响度曲线、频谱与完整 M3 仍待完成。
+每个静音/候选族只保留前 64 项、满刻度风险保留前 128 项，再合并排序最多展示 128 项；event_counts/event_count 保持全部计数，events_omitted 是合并后实际省略数，processed_features.family_candidates_omitted 单独描述族内省略。并不保证稠密信号中展示所有最早事件。源码与测试：AudioAnalysis /MasterAnalysis /AnalysisPanel，ProcessedEventsFixture /ProcessedEventsTests /ProcessedEventsWorkspaceTests；固定预算见上文，实际结果见 VERIFICATION.md。连续响度和频谱概要增量见对应章节；完整 M3 仍待完成。
 
 ## 轨道插入前后与 Bus（M3-TAP-01）
 
@@ -127,3 +127,11 @@ L1本地locate_loudness校验当前artifact、媒体深哈希、点ID、series�
 使用：完成分析后在结果页下方查看曲线（小窗口可滚动），青色为M、黄色为S。图点击或点ID滑块选择实际网格点；下拉框选择M/S，「最大 M/S」选择最高有限测量值。读数显示真实窗口范围，定位按钮跳到窗最后实际帧并返回工程；连线只辅助阅读，不是网格间额外测量。源模式显示原生源帧，选定当前片段后映射到工程；历史曲线可查但不能定位。纵轴显示−70…0 LUFS，超界实际数值仍保留在读数，null留空。已显式统一ScopedNoDenormals以防SDK工作线程继承状态使极小滤波残留与−∞跨线程不一致；该浮点处理写入回执，不放宽对照容差。
 
 跨采样率定位：处理后窗末原生帧先映射到48 kHz工程，再限制为小于exclusive窗末。96→48 kHz时半采样四舍五入不会seek到分析区间外；原生源点仍由当前clip映射执行同样的可见范围保护。该规则的独立验收是不落到窗外，不仅比对同一映射公式。
+
+## 频谱概要与频段功率（M3-SPECTRUM-01）
+
+在已有分析面板选择真实 tap /对象/范围，停止播放并测量。结果下方滚动到「频谱概要」，点击图或 bin 滑块选择实际频点，「最高功率频点」选择真实 dominant_bin；频段菜单显示该分区的总窗功率、占比和各声道功率。频率来自实际 sample_rate/4096，线性功率的 dB 显示为 10log10(power)，不当作正弦峰值幅度。图使用对数频率和 −120…0 dBFS/bin 显示范围，DC 左置、超界读数保留，连线只是视觉辅助。没有频谱事件时间，不通过频点跳转时间线。不足4096帧不会填假曲线，完整数字静音为零功率/−∞，没有占比或最高频点。
+
+2048 帧 hop 的完整窗口等权平均；若末尾未对齐 hop，另加一个以范围末端结束的真实完整窗，final_end_aligned_window=true，window_count 包括该窗。各声道独立 FFT 后按功率平均；声道相位不在频谱求和中取消，实际相关度仍独立测量。所有 2049 bin 保留，边界 0/80/250/2000/6000/20000/Nyquist，超出实际 Nyquist 的分区不返回；以 bin 中心划分而非理想滤波器，DC/Nyquist 包含且不乘二。频谱是加窗平均功率，不能拿总功率代替整段未加窗 RMS 或专业音色判断；原始源不是处理后证据。处理后改动/Undo 令旧谱过期，历史谱可查看但标题明确提示重测，保存重开不复活旧回执。
+
+Spectrum.h/.cpp（脱离 Edit 的后台 PCM）、AudioAnalysis（同一次读盘）、AnalysisPanel/SpectrumView（只读原生控件）及注册表描述；SpectrumFixture/SpectrumTests/SpectrumWorkspaceTests 固定数值、原生链与控件验收。MCP query_analysis 的 spectrum 继承父 artifact，详细字段/权限见 AI_COMMAND_CONTRACT.md；原始源域与 processing 域保持分开。FFT 接口以锁定 JUCE 头文件核验，外部现场参考用已安装 NumPy2.0 的独立 float64 rfft，并以显式 double DFT/时域 Parseval复核：[NumPy 官方 API](https://numpy.org/doc/2.0/reference/generated/numpy.fft.rfft.html)。本机结果及未执行部分见VERIFICATION.md。

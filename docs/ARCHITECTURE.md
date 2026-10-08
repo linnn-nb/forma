@@ -120,6 +120,8 @@ M1 需要的最小命令集：
 
 **连续响度（M3-LUFS-01）**：L2同一次PCM读取/锁定libebur128处理保留完整100 ms网格M/S，显式统一ScopedNoDenormals，紧凑序列含真实帧域、窗口和不足hop尾帧。L1本地locate_loudness复核当前证据/深媒体哈希/完整窗，定位实际末帧；raw源通过当前clip视图映射。L5以原生曲线、点ID、最高有限值和窗口范围展示，历史禁止定位；MCP只读查询同一序列，不新增Engine或外部seek权限。192 KiB/3000点/完整252 KiB硬预算和固定时限不变。独立库分块对照、300秒/不同采样率、实际GUI/MCP/Undo测试见ANALYSIS_WORKFLOW.md与VERIFICATION.md。
 
+**频谱概要（M3-SPECTRUM-01）**：L2 在同一次真实 PCM 解码中以 bounded ring /cached JUCE FFT 计算完整 4096 帧 periodic-Hann 单侧频谱，声道先独立变换再平均功率，保留全部 2049 bin。末尾用真实范围末端对齐的完整窗覆盖，不补零；不足窗明确不可用。频段按 bin 中心分区，保存各声道功率，不能把反相求和丢失当静音。来源/原生帧/工程 origin、媒体/处理链与有效性继承父 artifact，L5 原生 scroll panel 与只读 MCP 共用结果；概要不新增工程写入或事件 seek。FFT float、累计 double，64 KiB 谱/30000窗/完整252 KiB和原时限保持，数值/GUI及现场资格见ANALYSIS_WORKFLOW.md /VERIFICATION.md。
+
 ## 5. L3 扩展运行时
 
 扩展是"个性化"的载体。它们只能通过 L1 修改工程，因此天然支持预览、撤销，并能被权限控制。

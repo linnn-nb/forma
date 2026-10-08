@@ -96,3 +96,7 @@ analyze_master /analyze_track /analyze_delivery 可传 detector_profile；工具
 M3-LUFS-01：query_analysis的成功receipt含loudness_curve。points为[end_frame, M, S]紧凑列，end是相对本次解码范围的exclusive末端；声明sample_rate、decoded_start_frame、session_start_samples和真实window_frames。原始源窗按native帧引用，processed按origin + round(frame×48000/rate)映射工程采样。null在完整窗时为−∞，不足窗时为insufficient_window，不是0 LUFS。Agent可依据实际序列定位问题范围并计划编辑；GUI本地定位仍由L1校验，MCP没有新增直接seek或任意文件/上传权限。完整网格/192 KiB/3000点和完整252 KiB预算越界明确失败；连线不是额外测量，完整M3未验收。
 
 2026-10-08 正式应用实测：Codex 以只读权限测 Master [13,384077)，查询得到完整 77 点；原生最大 M 定位经 query_session_summary 确认为 115212。人工推子修改与 GUI Undo 后两次查询均为历史证据；实际关闭/重开后新 token、只读权限和 idle/null 分析状态，重新发起只读测量才获得新 artifact。三份曲线与独立 PCM/libebur128 的 233 帧分块对照共 728 项通过；不把 accepted/busy 当测量完成。测试范围和时限见 VERIFICATION.md。
+
+M3-SPECTRUM-01：成功 query_analysis 的 spectrum 提供完整 bin_power、bin_width_hz、真实 window_count/末端窗规则、原生解码范围/工程 origin、频段分区和声道功率。权限和请求 Schema 保持；先取得 terminal/current 证据，再按真实 Hz/功率查询和规划。dominant_bin 没有事件时间，不虚构 timecode 或 seek；加窗频段占比不是音色质量或语义参数。数字静音与不足窗口分开，父 artifact 失效时禁止当作当前证据，详细预算见 AI_COMMAND_CONTRACT.md /ANALYSIS_WORKFLOW.md。
+
+2026-10-08 频谱现场：Codex 只读测 Master [23,96060)，GUI与MCP同一2049频点/46窗，主频1500 Hz、中频窗功率85.837%。人工增益和Undo两次令旧processed证据失效；新测、实际关闭重开后的第三次测量频谱一致、artifact各异，重开先返回idle/null、只读和空历史。三份全部频点与独立NumPy2.0/DFT/Parseval及真实状态核验6281项通过，最大回复30.625 ms。自有PCM、无上传，不新增编辑或seek权限。
