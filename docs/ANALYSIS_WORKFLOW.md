@@ -10,6 +10,10 @@
 
 固定 48 kHz /双声道 /3 秒真实 PCM，非零工程范围；信号经过 Clip Gain、实际 EQ/Delay、轨道推子、pre/post 发送和 Aux 返回。分别测量插入前、插入后（均推子前）与 Bus 输出（推子后），Peak/RMS 与独立 PCM/既有正式渲染的误差 ≤3e-6，已知削波边界逐帧相同，测量不得改变活动工程、历史或原始媒体。上游直接路由与 Aux 发送、旁通、自动化、MIDI 合成器和后续人工改动的失效分别验证；不把 Master 渲染改名为轨道证据。每次作业 ≤12 秒，MCP 回复 ≤5 秒，后端专项 ≤120 秒、原生构件专项 ≤60 秒，单 worker/300 秒范围/60 秒墙钟不变。桌面与真实 Agent 另行记录；未执行不写通过。新增 EQ/Delay 曲线与正式 WAV 对照采用同一真实 PCM 的独立专项，固定每作业 12 秒、专项 120 秒；原轨道后端 120 秒与原生构件 60 秒不变，完整回归分别列出，不合并或降低标准。
 
+## 处理后事件增量预算（M3-EVENTS-01，实施前）
+
+新增可选 detector_profile，对 Master、轨道插入前后/Bus 及交付检查的实际渲染 PCM 检测静音门限段和能量瞬态候选。原始源帧行为保留；省略此字段保持既有只报告满刻度事件的 API 行为，不能把未启用写成没有静音/瞬态。固定44.1/48/96 kHz真实双声道脉冲/低电平段，非零文件范围与工程起点；静音所有边界、候选起点及完整5 ms窗结束与独立 PCM 预测精确对应到48 kHz工程位置，Peak/RMS保持原容差。原生48 kHz图验证Clip Gain +12 dB、推子−18 dB、非零clip位置、真实150 ms湿Delay与源证据的区别；参数改变、人工编辑/Undo、幂等、取消、MCP和保存重开不能改写原媒体或冒充新回执。每作业12秒、MCP5秒、后端专项120秒、原生界面专项60秒；已有单worker/300秒范围/60秒墙钟/252 KiB回执/每事件族64、合并128上限保持。超限明确报告省略，不降低原tap/源负载或标准。生产桌面/外部模型单独验收，未执行不写通过。
+
 ## 亲手试
 
 1. 退出旧进程，启动最新 `build-v2-tracktion/NativeDAW_artefacts/Release/NativeDAW.app`，导入音频或打开已有工程，停止播放。
@@ -19,6 +23,16 @@
 5. 「取消分析」等到 `cancelled` 才算停止。关闭面板保留后台作业；之后播放/录音会让作业暂停，停止后继续。暂停仍计入 60 秒墙钟预算。
 
 离线风险分析可检查较高增益，不要求播放过载信号。测量不代表主观听感检查。
+
+## 处理后静音 / 瞬态（M3-EVENTS-01）
+
+选择 Master、轨道插入前后或 Bus，勾选「检测静音 / 瞬态」，调整五项条件后重新分析。同一实际渲染 PCM 同时测量响度和事件，不复用原始源片段检测来解释插件处理。Master 的交付条件与事件条件分开；交付削波判据仍读取实际 over_full_scale_frames，不把静音和瞬态数算成削波。
+
+MCP analyze_master /analyze_track /analyze_delivery 新增可选 detector_profile，五个字段与源检测 profile 相同，拒绝未知、非有限和越界条件。传 `{}` 启用规范化默认条件；不传则只保留既有满刻度风险检测，processed_event_detection_enabled=false，静音/瞬态计数为 null（未分析），没有 processed_features。同键重试包含规范化条件；整数和浮点默认值等价，不同条件拒绝。
+
+启用后的事件以工程 48 kHz 半开区间 start_samples/end_samples 定位。render_start_frame/end_frame 是本次实际解码区间内的位置，不是原始媒体帧；候选证据同时列出渲染窗和工程窗。静音要求所有渲染声道都不高于门限且连续达到最短时长；瞬态是完整 5 ms 能量窗相对前 20 ms 的上升估计，保留首次超过最低峰值的起点和可配置间隔，不是呼吸或表演质量判定。结果绑定 detector_profile_sha256、实际 render/media SHA256、链状态、对象、范围和版本。GUI 修改条件不会自动改写已测回执，摘要显示测量时实际条件；修改工程后旧 processed 回执定位禁用，Undo 产生新 revision，须重新测量。
+
+每个静音/候选族只保留前 64 项、满刻度风险保留前 128 项，再合并排序最多展示 128 项；event_counts/event_count 保持全部计数，events_omitted 是合并后实际省略数，processed_features.family_candidates_omitted 单独描述族内省略。并不保证稠密信号中展示所有最早事件。源码与测试：AudioAnalysis /MasterAnalysis /AnalysisPanel，ProcessedEventsFixture /ProcessedEventsTests /ProcessedEventsWorkspaceTests；固定预算见上文，实际结果见 VERIFICATION.md。连续响度曲线、频谱与完整 M3 仍待完成。
 
 ## 轨道插入前后与 Bus（M3-TAP-01）
 

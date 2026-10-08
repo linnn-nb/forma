@@ -9,5 +9,8 @@ struct Control {
     std::function<void()> yield = [] {};
 };
 struct FrameRange {int64_t begin=0,end=-1;};
-Json measure(const juce::File&, int64_t sessionStart, const Control& = {}, FrameRange = {}, const Json& sourceFeatures=nullptr);
+// The detector consumes native decoded frames. Its output must explicitly
+// distinguish original source references from rendered tap positions.
+enum class FeatureDomain { SourceFrames, SessionSamples };
+Json measure(const juce::File&, int64_t sessionStart, const Control& = {}, FrameRange = {}, const Json& detectorProfile=nullptr, FeatureDomain = FeatureDomain::SourceFrames);
 }
