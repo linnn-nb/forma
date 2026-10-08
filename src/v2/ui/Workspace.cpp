@@ -613,6 +613,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
             menu.addCommandItem(&commandManager, command);
         menu.addSeparator();
         menu.addCommandItem(&commandManager, editCommand::split);
+        menu.addCommandItem(&commandManager, editCommand::spot);
+        menu.addCommandItem(&commandManager, editCommand::remove);
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&editArea).withParentComponent(this));
     };
     editArea.onRange = [this](Json range, Json tracks, uint64_t revision)

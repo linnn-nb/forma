@@ -384,6 +384,9 @@ Json Commands::query() const
                       {"name", c->getName().toStdString()},
                       {"start_samples", std::llround(p.getStart().inSeconds() * timelineRate)},
                       {"length_samples", std::llround(p.getLength().inSeconds() * timelineRate)}};
+            const auto barsBeats = edit->tempoSequence.toBarsAndBeats(p.getStart());
+            info["bar"] = barsBeats.bars + 1;
+            info["beat"] = barsBeats.beats.inBeats() + 1.0;
             info["kind"] = c->isMidi() ? "midi" : "audio";
             info["timebase"] = c->getSyncType() == te::Clip::syncBarsBeats ? "beats" : "samples";
             if (auto* midi = dynamic_cast<te::MidiClip*>(c))

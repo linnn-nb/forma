@@ -138,10 +138,24 @@ int main(int argc, char** argv)
     folder.createDirectory();
     try
     {
+        juce::File demoSession;
+        auto media = folder.getChildFile("owned.wav");
+        if (argc > 2)
+        {
+            demoSession = juce::File(argv[2]);
+            demoSession.getParentDirectory().createDirectory();
+            if (demoSession.existsAsFile())
+                throw std::runtime_error("refusing to overwrite an existing GUI demo session");
+            media = demoSession.getSiblingFile("Shuffle Spot source.wav");
+            if (media.existsAsFile())
+                throw std::runtime_error("refusing to overwrite an existing GUI demo media file");
+        }
         Commands c(false, std::make_unique<Storage>(folder.getChildFile("core")));
         check(c.snapToGrid(2999, .25) == 0 && c.snapToGrid(3000, .25) == 6000,
               "absolute musical grid chooses nearest sample boundary and ties forward");
         check(c.offsetByBeats(12345, 1) == 36345, "musical nudge preserves off-grid offset at constant tempo");
+        check(c.sampleAtBarBeat(3, 2) == 216000, "Spot conversion follows the native 120 BPM 4/4 sequence");
+        fails([&] { c.sampleAtBarBeat(1, 5); }, "Spot refuses a beat outside the active time signature");
         fails([&] { c.snapToGrid(-1, .25); }, "negative snap position refused");
         fails([&] { c.snapToGrid(100, 0); }, "zero grid refused");
         fails([&] { c.offsetByBeats(0, -1); }, "musical nudge cannot cross session start");
@@ -162,8 +176,10 @@ int main(int argc, char** argv)
         old.erase("start_samples");
         ui.setProperty("json", text(old.dump()), nullptr);
         fails([&] { readUiState(metadata); }, "incomplete legacy UI is rejected");
-        fails([&] { c.updateUiState({{"edit_mode", "shuffle"}}, c.sessionToken()); },
-              "unimplemented mode cannot appear enabled");
+        c.updateUiState({{"edit_mode", "shuffle"}}, c.sessionToken());
+        check(c.uiState()["edit_mode"] == "shuffle", "Shuffle is a persisted native editing mode");
+        fails([&] { c.updateUiState({{"edit_mode", "warp"}}, c.sessionToken()); },
+              "unknown editing modes cannot appear enabled");
         fails(
             [&]
             {
@@ -171,7 +187,6 @@ int main(int argc, char** argv)
                                 c.sessionToken());
             },
             "malformed selection reference is rejected");
-        auto media = folder.getChildFile("owned.wav");
         {
             juce::WavAudioFormat wav;
             std::unique_ptr<juce::OutputStream> stream = media.createOutputStream();
@@ -181,9 +196,22 @@ int main(int argc, char** argv)
             if (!writer)
                 throw std::runtime_error("PCM fixture writer unavailable");
             juce::AudioBuffer<float> buffer(2, 144000);
-            for (int i = 0; i < buffer.getNumSamples(); ++i)
-                for (int channel = 0; channel < 2; ++channel)
-                    buffer.setSample(channel, i, float(.07 * std::sin(i * .043 + channel * .2)));
+            if (demoSession.getFullPathName().isEmpty())
+                for (int i = 0; i < buffer.getNumSamples(); ++i)
+                    for (int channel = 0; channel < 2; ++channel)
+                        buffer.setSample(channel, i, float(.07 * std::sin(i * .043 + channel * .2)));
+            else
+            {
+                juce::AudioFormatManager sourceFormats;
+                sourceFormats.registerBasicFormats();
+                auto sourceFile =
+                    juce::File::getCurrentWorkingDirectory().getChildFile("evidence/U/demo/Rhythm study.wav");
+                std::unique_ptr<juce::AudioFormatReader> sourceReader(sourceFormats.createReaderFor(sourceFile));
+                if (!sourceReader || sourceReader->sampleRate != 48000 || sourceReader->numChannels != 2 ||
+                    sourceReader->lengthInSamples < buffer.getNumSamples())
+                    throw std::runtime_error("expected owned 48 kHz stereo PCM demo source");
+                sourceReader->read(&buffer, 0, buffer.getNumSamples(), 0, true, true);
+            }
             check(writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples()), "real PCM fixture written");
         }
         const auto hash = Commands::mediaHash(media);
@@ -205,6 +233,15 @@ int main(int argc, char** argv)
         check(area && find(w, "edit.grid.value") && find(w, "edit.nudge.value"),
               "real native editor tools and values connected");
         auto original = clipFacts(w);
+        auto persistentClipState = [](Json clips)
+        {
+            for (auto& clip : clips)
+            {
+                clip.erase("bar");
+                clip.erase("beat");
+            }
+            return clips;
+        };
         chooseClip(*area, original[0], 0);
         chooseClip(*area, original[1], 1, true);
         check(w.queryView()["object_selection"].size() == 2 && w.queryView()["selection_tracks"].size() == 2,
@@ -347,13 +384,133 @@ int main(int argc, char** argv)
         owner.save(session);
         w.openSession(session);
         pump();
-        check(w.queryView() == savedView && clipFacts(w) == original,
+        check(w.queryView() == savedView && persistentClipState(clipFacts(w)) == persistentClipState(original),
               "actual save/reopen retains modes, values, stable selections and media mapping");
         w.keyPressed(juce::KeyPress('.', 0, '.'));
         check(clipFacts(w)[0]["start_samples"] == 10480 && clipFacts(w)[1]["start_samples"] == 22480,
               "restored group selection remains executable after reopening");
         w.uiCommands().invokeDirectly(6, false);
-        check(clipFacts(w) == original, "new post-reopen transaction still supports Undo");
+        check(persistentClipState(clipFacts(w)) == persistentClipState(original),
+              "new post-reopen transaction still supports Undo");
+
+        owner.commit(owner.makePlan(
+            "human", Json::array({operation("track.create", {{"name", "Shuffle lane"}, {"ref", "$shuffle"}}),
+                                  operation("clip.import", {{"track", "$shuffle"},
+                                                            {"path", media.getFullPathName().toStdString()},
+                                                            {"position_samples", 10000}}),
+                                  operation("clip.import", {{"track", "$shuffle"},
+                                                            {"path", media.getFullPathName().toStdString()},
+                                                            {"position_samples", 170000}}),
+                                  operation("clip.import", {{"track", "$shuffle"},
+                                                            {"path", media.getFullPathName().toStdString()},
+                                                            {"position_samples", 330000}}),
+                                  operation("track.create", {{"name", "Spot lane"}, {"ref", "$spot"}}),
+                                  operation("clip.import", {{"track", "$spot"},
+                                                            {"path", media.getFullPathName().toStdString()},
+                                                            {"position_samples", 24000}})})));
+        pump();
+        auto clipsOn = [&](const std::string& name)
+        {
+            Json result = Json::array();
+            const auto current = w.query();
+            for (const auto& track : current["tracks"])
+                if (track["name"] == name)
+                    result = track["clips"];
+            return result;
+        };
+        const auto rippleBefore = clipsOn("Shuffle lane");
+        check(rippleBefore.size() == 3, "shuffle fixture has three real clips on one audio track");
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::F1Key)) && w.queryView()["edit_mode"] == "shuffle",
+              "F1 activates the registered Shuffle editing command");
+        chooseClip(*area, rippleBefore[1], 2);
+        const auto beforeRippleRevision = w.query()["revision"].get<uint64_t>();
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::backspaceKey)),
+              "Backspace invokes real Delete in Shuffle mode");
+        auto rippleAfter = clipsOn("Shuffle lane");
+        check(rippleAfter.size() == 2 && rippleAfter[0]["start_samples"] == 10000 &&
+                  rippleAfter[1]["start_samples"] == 186000 && w.query()["revision"] == beforeRippleRevision + 1,
+              "Shuffle Delete removes the selected clip and advances the later clip by its exact duration in one "
+              "revision");
+        w.uiCommands().invokeDirectly(6, false);
+        check(clipsOn("Shuffle lane") == rippleBefore, "one Undo restores the deleted clip and ripple position");
+        w.uiCommands().invokeDirectly(7, false);
+        rippleAfter = clipsOn("Shuffle lane");
+        check(rippleAfter.size() == 2 && rippleAfter[1]["start_samples"] == 186000,
+              "one Redo reapplies the complete Shuffle transaction");
+        w.uiCommands().invokeDirectly(6, false);
+        pump();
+        owner.commit(owner.makePlan(
+            "human", Json::array({operation("clip.lock", {{"clip", rippleAfter[1]["id"]}, {"locked", true}})})));
+        pump();
+        chooseClip(*area, rippleBefore[1], 2);
+        const auto lockedRipple = owner.query();
+        w.keyPressed(juce::KeyPress(juce::KeyPress::backspaceKey));
+        auto* rippleStatus = dynamic_cast<juce::Label*>(find(w, "workspace.status"));
+        check(owner.query() == lockedRipple && rippleStatus && rippleStatus->getText().contains("cannot move safely"),
+              "Shuffle refuses atomically when a later clip is locked");
+        w.uiCommands().invokeDirectly(6, false);
+        pump();
+        chooseClip(*area, rippleBefore[1], 2);
+        w.keyPressed(juce::KeyPress(juce::KeyPress::backspaceKey));
+        rippleAfter = clipsOn("Shuffle lane");
+        check(rippleAfter.size() == 2 && rippleAfter[1]["start_samples"] == 186000,
+              "Shuffle Delete remains available after reversing the locked edit");
+        const auto rippleDemo = folder.getChildFile("shuffle-demo.tracktionedit");
+        owner.save(rippleDemo);
+        const auto rippleSavedView = w.queryView();
+        w.openSession(rippleDemo);
+        pump();
+        check(w.queryView() == rippleSavedView && w.queryView()["edit_mode"] == "shuffle" &&
+                  persistentClipState(clipsOn("Shuffle lane")) == persistentClipState(rippleAfter),
+              "Shuffle mode and actual ripple edit survive Tracktion save/reopen");
+
+        const auto spotClip = clipsOn("Spot lane").at(0);
+        chooseClip(*area, spotClip, 3);
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::F3Key)) && find(w, "edit.spot.panel"),
+              "F3 opens the native Spot Placement dialog for the selected audio clip");
+        auto* spotBar = dynamic_cast<juce::TextEditor*>(find(w, "edit.spot.bar"));
+        auto* spotBeat = dynamic_cast<juce::TextEditor*>(find(w, "edit.spot.beat"));
+        auto* spotApply = dynamic_cast<juce::TextButton*>(find(w, "edit.spot.apply"));
+        auto* spotStatus = dynamic_cast<juce::Label*>(find(w, "edit.spot.status"));
+        check(spotBar && spotBeat && spotApply && spotStatus,
+              "Spot exposes editable bar/beat fields and an apply result");
+        spotBar->setText("3", false);
+        spotBeat->setText("2", false);
+        owner.commit(owner.makePlan(
+            "human", Json::array({operation("track.gain", {{"track", w.query()["tracks"][0]["id"]}, {"db", -1.}})})));
+        spotApply->onClick();
+        const bool staleSpotUnchanged = clipsOn("Spot lane")[0]["start_samples"] == spotClip["start_samples"];
+        const bool staleSpotExplained = spotStatus->getText().contains("工程已变化");
+        check(staleSpotUnchanged, "stale Spot binding leaves the clip unmoved");
+        check(staleSpotExplained, "Spot reports that the bound project revision is stale");
+        auto* spotCancel = dynamic_cast<juce::TextButton*>(find(w, "edit.spot.cancel"));
+        spotCancel->triggerClick();
+        w.uiCommands().invokeDirectly(6, false);
+        pump();
+        chooseClip(*area, clipsOn("Spot lane")[0], 3);
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::F3Key)), "F3 reopens Spot against the current revision");
+        spotBar = dynamic_cast<juce::TextEditor*>(find(w, "edit.spot.bar"));
+        spotBeat = dynamic_cast<juce::TextEditor*>(find(w, "edit.spot.beat"));
+        spotApply = dynamic_cast<juce::TextButton*>(find(w, "edit.spot.apply"));
+        spotBar->setText("3", false);
+        spotBeat->setText("2", false);
+        spotApply->onClick();
+        const auto placed = clipsOn("Spot lane")[0];
+        check(placed["start_samples"] == 216000 && w.queryView()["edit_mode"] == "spot",
+              "Spot maps bar 3 beat 2 through the active 120 BPM 4/4 map to sample 216000");
+        w.uiCommands().invokeDirectly(6, false);
+        check(clipsOn("Spot lane")[0]["start_samples"] == spotClip["start_samples"],
+              "one Undo restores the exact pre-Spot sample position");
+        w.uiCommands().invokeDirectly(7, false);
+        check(clipsOn("Spot lane")[0]["start_samples"] == 216000, "one Redo reapplies Spot placement");
+        const auto spotDemo = folder.getChildFile("spot-demo.tracktionedit");
+        owner.save(spotDemo);
+        const auto spotSavedView = w.queryView();
+        w.openSession(spotDemo);
+        pump();
+        check(w.queryView() == spotSavedView && w.queryView()["edit_mode"] == "spot" &&
+                  clipsOn("Spot lane")[0]["start_samples"] == 216000,
+              "Spot mode and musical placement survive Tracktion save/reopen");
         check(Commands::mediaHash(media) == hash, "all production gestures preserve original media hash");
         w.addToDesktop(juce::ComponentPeer::windowIsTemporary);
         auto* header =
@@ -367,6 +524,8 @@ int main(int argc, char** argv)
         pump();
         check(!find(w, "clip.trim") && w.queryView()["object_selection"].empty() && w.hasKeyboardFocus(false),
               "closing restored clip dock clears reference and retains command focus");
+        if (!demoSession.getFullPathName().isEmpty())
+            owner.save(demoSession);
         w.removeFromDesktop();
         Json result{{"result", "passed"},
                     {"checks", checks},

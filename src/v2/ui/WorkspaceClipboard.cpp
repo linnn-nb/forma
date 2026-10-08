@@ -133,8 +133,14 @@ void Workspace::executeClipboardCommand(int id)
                 }
                 if (id == editCommand::cut)
                 {
-                    for (const auto& c : slices)
-                        removeInterval(ops, c, c["slice_start"], c["slice_end"], ref);
+                    if (editing.mode == "shuffle")
+                    {
+                        require(!range, "Shuffle Cut currently requires whole-clip selection");
+                        ops = deleteClipOperations(true);
+                    }
+                    else
+                        for (const auto& c : slices)
+                            removeInterval(ops, c, c["slice_start"], c["slice_end"], ref);
                     pendingClipboard = buffer;
                 }
             }

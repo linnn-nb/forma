@@ -80,3 +80,13 @@ Release `Forma.app` 和 `ndaw_marker_tests` 构建通过；`forma_native_markers
 在独立 Forma 桌面窗口实际创建第二个 Marker，打开 Memory Locations 并验证两条位置记录；使用原生“另存工程”写入 `demo/Marker memory locations GUI demo.tracktionedit`，之后通过原生打开对话框重新载入。重开后列表仍显示样本位置 0 与 76364（第二个 Marker），从而验证生产 UI 的保存重开路径。窗口截图保存在 `marker-memory-locations.png`。新增操作以 Tracktion MarkerTrack 保存，Undo/Redo 共用 Edit UndoManager；本轮实测 M 添加、Shift+M 打开，点击“位置…”可显示列表。
 
 下一项继续阶段 U＋P0：实现 Shuffle/Spot/Smart Tool 的真实编辑行为，并补齐 MIDI 鼠标编辑、淡入淡出及其他 UI 验收项。未完成这些项目，不开始 P1，也不宣称 U＋P0 完成。
+
+## U-P0-EDIT-03：Shuffle 与 Spot（增量，U＋P0 未完成）
+
+Shuffle 涟漪删除和 Spot 小节/拍定位已接入 L1/Edit UndoManager、Edit 工具栏、F1/F3 可映射快捷键及 Backspace 删除命令。Spot 通过 tempo/meter sequence 把 bar/beat 转为工程样本位置；打开 Spot 面板期间 revision 改变会拒绝陈旧计划。Shuffle 删除同轨后续合格片段并原子平移，锁定、重叠、不支持对象等情况拒绝整笔操作。编辑不改写源 PCM。
+
+验证：Release `Forma.app`、`forma_native_editor_interactions` 与 `forma_native_audio_clipboard` 构建成功，2/2 CTest 通过；Shuffle/Spot 专项 67 项检查全通过，见 `shuffle-spot-tests.json`。专项含真实 Tracktion Edit、命令/快捷键、Undo/Redo、保存重开、Tempo/Meter 映射、过期 Revision 拒绝、锁定拒绝、PCM 源哈希。
+
+桌面：实际以 F3 打开输入框并置入小节4拍1（samples=288000），Undo 回到216000、Redo恢复；另存并重新打开工程后288000位置保留。实际以F1开启 Shuffle 删除中间片段，状态栏确认后续片段前移；桌面 Undo 恢复第三片段、Redo 再次完成涟漪删除。演示工程 `demo/Shuffle Spot P0 GUI accepted.tracktionedit`，测试工程 `demo/Shuffle Spot P0 GUI demo.tracktionedit` 与演示 WAV 均在本机忽略目录。CUA 实时截图已展示，未持久化成 PNG。
+
+下步仍在 U＋P0：Smart Tool、MIDI 钢琴卷帘编辑、淡化、Groups/Clips 侧栏和剩余键位编辑/桌面验收；在阶段 U＋P0 完成前不进入 P1。

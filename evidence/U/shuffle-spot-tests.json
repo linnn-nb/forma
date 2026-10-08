@@ -1,0 +1,5 @@
+{
+  "checks": 67,
+  "result": "passed",
+  "scope": "actual JUCE tools/commands, L1 Edit transactions, PCM renders, save/reopen; no physical hardware or cross-reopen Undo claim"
+}

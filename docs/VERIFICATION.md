@@ -1,5 +1,13 @@
 # 验证状态
 
+## U-P0-EDIT-03：Shuffle 与 Spot（2026-10-08；U＋P0 未完成）
+
+结论：Shuffle 涟漪删除和 Spot 小节/拍定位已进入原生 Edit 工具栏、可配置命令表与 L1 Edit 事务。`forma_native_editor_interactions` 与 `forma_native_audio_clipboard` 均构建并通过 CTest（2/2）。Shuffle/Spot 专项包含 67 项检查，结果见 `evidence/U/shuffle-spot-tests.json`；覆盖真实 Tracktion Edit、PCM 源不变、快捷键映射、锁定拒绝、版本冲突、Undo/Redo 和工程保存重开。Release Forma.app 已用固定本地开发身份签名，strict/deep 验签通过。
+
+桌面实测：在自有演示工程实际以 F3 打开 Spot 对话框，输入小节 4、拍 1 后应用；界面显示提交回执与 revision，位置从 216000 移至 288000 samples。点击 Undo 回到 216000，Redo 恢复 288000；另存新工程并通过原生打开对话框重开，位置仍为 288000，重开后 Undo/Redo 清空。再以 F1 开启 Shuffle，复制出第三片段后选中中间片段按 Backspace；界面显示“Shuffle Delete 已提交 · 后续片段按时间推进”，r54。GUI Undo 恢复第三片段，Redo 再次删除且回到两片段；工具栏仍显示 Shuffle On。当前桌面最终画面可见 Main、Double、Shuffle、Spot 四轨真实波形及结果。本机未保存桌面截图为文件；CUA 实时截图已在本轮展示。
+
+Shuffle 目前仅对同轨时间轴上的合格音频片段执行整片删除与后续片段前移；锁定对象、重叠目标、负时间或不支持的对象会原子拒绝。Spot 以工程 Tempo/Meter 换算目标采样位置，并在面板打开期间发现工程 revision 变化时拒绝过期提交。此项不代表完整 Smart Tool、拖拽模式桌面验收、MIDI 片段编辑或 U＋P0 总体验收。
+
 ## U-P0-MARKER-01（2026-10-08；U＋P0 未完成）
 
 结论：Marker 与 Memory Locations 已接通 Tracktion 原生 MarkerTrack、统一命令层和原生 Edit 界面。新增、重命名、移动、删除 Marker 及保存时间选区均为 L1 事务；撤销与重做使用 Edit UndoManager，`.tracktionedit` 保存重开后位置仍存在。Release `Forma.app` 与 `ndaw_marker_tests` 构建通过；`forma_native_markers` 1/1 CTest 通过，32 项检查，结果见 `evidence/U/marker-tests.json`。

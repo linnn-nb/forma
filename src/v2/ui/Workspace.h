@@ -11,6 +11,7 @@
 #include "Counters.h"
 #include "EditingControls.h"
 #include "MemoryLocationsPanel.h"
+#include "SpotPlacementPanel.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -50,6 +51,7 @@ public:
     Json queryAnalysis();
     void showTimelineRange();
     void showMemoryLocations(const std::string& markerID = {});
+    void showSpotPlacement(const std::string& clipID);
     void showNewSession();
     Json query() const;
     Json queryAudioDevices() const;
@@ -122,7 +124,9 @@ private:
     ClipWriter clipWriter();
     void selectAudioClip(const std::string& id, bool additive = false);
     void executeEditCommand(int id);
+    void executeDeleteCommand();
     void executeClipboardCommand(int id);
+    Json deleteClipOperations(bool ripple) const;
     Json clipboardSelection() const;
     void finishClipboardEdit(const Json& receipt);
     Json pendingClipboard = nullptr;
@@ -166,6 +170,7 @@ private:
     double analysisRefresh = 0;
     std::unique_ptr<TimelinePanel> timelinePanel;
     std::unique_ptr<MemoryLocationsPanel> memoryLocationsPanel;
+    std::unique_ptr<SpotPlacementPanel> spotPlacementPanel;
     juce::TextButton rangeButton{text("定位 / 选区…")};
     bool newSessionRequested = false;
     std::unique_ptr<NewSessionPanel> newSessionPanel;

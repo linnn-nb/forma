@@ -11,5 +11,6 @@ evidence/U/*
 !evidence/U/signing-verification.json
 !evidence/U/loop-tests.json
 !evidence/U/marker-tests.json
+!evidence/U/shuffle-spot-tests.json
 !evidence/U/marker-memory-locations.png
 .DS_Store

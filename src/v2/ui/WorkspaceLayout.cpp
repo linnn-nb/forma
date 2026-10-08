@@ -32,7 +32,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 108);
         p.addCommandItem(&commandManager, 42);
         p.addSeparator();
-        for (int id : {130, 131, 132})
+        for (int id : {editCommand::shuffle, editCommand::slip, editCommand::spot, editCommand::grid, 130, 131, 132})
             p.addCommandItem(&commandManager, id);
         p.addSeparator();
         p.addCommandItem(&commandManager, 6);
@@ -40,6 +40,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSeparator();
         for (int id = editCommand::slip; id <= editCommand::pasteOriginal; ++id)
             p.addCommandItem(&commandManager, id);
+        p.addCommandItem(&commandManager, editCommand::remove);
     }
     if (index == 2)
     {
@@ -355,6 +356,8 @@ void Workspace::resized()
         timelinePanel->setBounds(getLocalBounds());
     if (memoryLocationsPanel)
         memoryLocationsPanel->setBounds(getLocalBounds());
+    if (spotPlacementPanel)
+        spotPlacementPanel->setBounds(getLocalBounds());
     if (newSessionPanel)
         newSessionPanel->setBounds(getLocalBounds());
     if (pluginLibrary)

@@ -49,7 +49,8 @@ void validate(const Json& value)
         throw std::runtime_error("UI viewport out of range");
     if (value["workspace"] != "edit" && value["workspace"] != "mix" && value["workspace"] != "midi")
         throw std::runtime_error("unknown UI workspace");
-    if ((value["edit_mode"] != "slip" && value["edit_mode"] != "grid") ||
+    if ((value["edit_mode"] != "shuffle" && value["edit_mode"] != "slip" && value["edit_mode"] != "spot" &&
+         value["edit_mode"] != "grid") ||
         (value["edit_tool"] != "selector" && value["edit_tool"] != "grabber" && value["edit_tool"] != "trim"))
         throw std::runtime_error("unsupported editing mode or tool");
     const double division = value["grid_beats"];

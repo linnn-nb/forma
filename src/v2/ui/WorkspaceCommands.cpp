@@ -51,7 +51,9 @@ const std::vector<Entry>& entries()
         {108, "快捷键设置…", "设置", 'k', juce::ModifierKeys::ctrlModifier | shift},
         {109, "显示 / 隐藏轨道列表", "视图"},
         {110, "显示 / 隐藏片段列表", "视图"},
+        {editCommand::shuffle, "Shuffle 涟漪编辑", "编辑", juce::KeyPress::F1Key},
         {editCommand::slip, "Slip 自由编辑", "编辑", juce::KeyPress::F2Key},
+        {editCommand::spot, "Spot 按小节与拍置入", "编辑", juce::KeyPress::F3Key},
         {editCommand::grid, "Grid 绝对网格", "编辑", juce::KeyPress::F4Key},
         {editCommand::selector, "Selector 时间选择", "编辑", juce::KeyPress::F7Key},
         {editCommand::grabber, "Grabber 片段移动", "编辑", juce::KeyPress::F8Key},
@@ -67,6 +69,7 @@ const std::vector<Entry>& entries()
         {editCommand::paste, "粘贴音频选区", "编辑", 'v', cmd},
         {editCommand::duplicate, "复制音频片段到后方", "编辑", 'd', cmd},
         {editCommand::pasteOriginal, "粘贴到原位置 / 原轨道", "编辑", 'v', cmd | juce::ModifierKeys::altModifier},
+        {editCommand::remove, "删除所选片段", "编辑", juce::KeyPress::backspaceKey},
         {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
         {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
         {113, "切换循环播放", "走带", 'l'},
@@ -170,10 +173,13 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                  (id != editCommand::cut || !item.value("locked", false));
                 }
             }
-            if (id >= editCommand::slip && id <= editCommand::split)
+            if (id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
+                (id >= editCommand::grid && id <= editCommand::split))
             {
                 active = !mix && !pianoMode;
-                info.setTicked(id == editCommand::slip       ? editing.mode == "slip"
+                info.setTicked(id == editCommand::shuffle    ? editing.mode == "shuffle"
+                               : id == editCommand::slip     ? editing.mode == "slip"
+                               : id == editCommand::spot     ? editing.mode == "spot"
                                : id == editCommand::grid     ? editing.mode == "grid"
                                : id == editCommand::selector ? editing.tool == "selector"
                                : id == editCommand::grabber  ? editing.tool == "grabber"
@@ -197,6 +203,15 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     if (id == editCommand::split)
                         active = active && splitTarget;
                 }
+            }
+            if (id == editCommand::remove)
+            {
+                const auto clips = selectedEditClips();
+                active = !mix && !pianoMode && !facts.value("playing", false) && !clips.empty() &&
+                         pendingClipboardPlan.empty();
+                for (const auto& clip : clips)
+                    active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                             !clip.value("locked", false);
             }
             if (id == 6)
                 active = undoButton.isEnabled();
@@ -251,9 +266,15 @@ bool Workspace::perform(const InvocationInfo& invocation)
         executeClipboardCommand(id);
         return true;
     }
-    if (id >= editCommand::slip && id <= editCommand::split)
+    if (id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
+        (id >= editCommand::grid && id <= editCommand::split))
     {
         executeEditCommand(id);
+        return true;
+    }
+    if (id == editCommand::remove)
+    {
+        executeDeleteCommand();
         return true;
     }
     if (id == 100 || id == 8 || id == 9 || id == 10)

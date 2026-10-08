@@ -202,6 +202,58 @@ void Workspace::showMemoryLocations(const std::string& markerID)
         });
 }
 
+void Workspace::showSpotPlacement(const std::string& clipID)
+{
+    invoke(
+        [&]
+        {
+            const auto current = commands.query();
+            Json clip;
+            for (const auto& track : current["tracks"])
+                for (const auto& candidate : track["clips"])
+                    if (candidate.value("id", std::string{}) == clipID)
+                        clip = candidate;
+            if (clip.is_null() || clip.value("kind", std::string{}) != "audio" ||
+                !clip.value("editable_audio", false) || clip.value("locked", false))
+                throw std::runtime_error("Spot requires one unlocked, supported audio clip");
+            if (!spotPlacementPanel)
+            {
+                spotPlacementPanel = std::make_unique<SpotPlacementPanel>(
+                    [this](const std::string& id, int bar, double beat, const Json& binding)
+                    {
+                        const auto latest = commands.query();
+                        if (binding.value("session_token", std::string{}) !=
+                                latest["session_token"].get<std::string>() ||
+                            binding.value("base_revision", uint64_t(0)) != latest["revision"].get<uint64_t>())
+                            throw std::runtime_error("工程已变化；请关闭 Spot 并根据最新工程重新打开");
+                        const auto target = commands.sampleAtBarBeat(bar, beat);
+                        auto plan = commands.makePlan(
+                            "human",
+                            Json::array({operation("clip.move", {{"clip", id}, {"position_samples", target}})}));
+                        plan["session_token"] = binding["session_token"];
+                        plan["base_revision"] = binding["base_revision"];
+                        const auto receipt = commands.commit(plan);
+                        if (receipt.value("state", std::string{}) != "committed")
+                            throw std::runtime_error("Spot placement did not commit");
+                        spotPlacementPanel->setVisible(false);
+                        refresh();
+                        message(text("Spot 已置入小节 ") + juce::String(bar) + text(" · ") + juce::String(beat, 3) +
+                                text(" 拍 · 一次 Undo"));
+                    },
+                    [this]
+                    {
+                        spotPlacementPanel->setVisible(false);
+                        grabKeyboardFocus();
+                    });
+                addChildComponent(*spotPlacementPanel);
+            }
+            spotPlacementPanel->bind(clip, current);
+            spotPlacementPanel->setBounds(getLocalBounds());
+            spotPlacementPanel->setVisible(true);
+            spotPlacementPanel->toFront(true);
+        });
+}
+
 void Workspace::showNewSession()
 {
     invoke(

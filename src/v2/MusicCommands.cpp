@@ -318,6 +318,21 @@ int64_t Commands::sampleAtBeat(double beat) const
     require(std::isfinite(beat) && beat >= 0, "invalid beat position");
     return samples(edit->tempoSequence.toTime(tracktion::BeatPosition::fromBeats(beat)));
 }
+int64_t Commands::sampleAtBarBeat(int bar, double beat) const
+{
+    checkThread();
+    require(bar >= 1 && bar <= 1000000 && std::isfinite(beat) && beat >= 1.0 && beat < 65.0,
+            "invalid bar and beat position");
+    const auto target = edit->tempoSequence.toTime(
+        tracktion::tempo::BarsAndBeats{.bars = bar - 1, .beats = tracktion::BeatDuration::fromBeats(beat - 1.0)});
+    const auto roundTrip = edit->tempoSequence.toBarsAndBeats(target);
+    require(roundTrip.bars == bar - 1 && std::abs(roundTrip.beats.inBeats() - (beat - 1.0)) < 1e-6,
+            "beat is outside the selected bar in the current Tempo and Meter map");
+    const auto result = samples(target);
+    require(result >= 0 && result <= std::llround(te::Edit::maximumLength * timelineRate),
+            "bar and beat position exceeds the session timeline");
+    return result;
+}
 Json Commands::musicalGrid(int64_t start, int64_t end, double division) const
 {
     checkThread();

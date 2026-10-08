@@ -1,6 +1,14 @@
 #include "Workspace.h"
 namespace ndaw::desktop
 {
+namespace
+{
+void require(bool condition, const char* message)
+{
+    if (!condition)
+        throw std::runtime_error(message);
+}
+} // namespace
 Json Workspace::selectedEditClips() const
 {
     Json result = Json::array();
@@ -55,9 +63,25 @@ void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision)
 }
 void Workspace::executeEditCommand(int id)
 {
-    if (id == editCommand::slip || id == editCommand::grid)
+    if (id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot || id == editCommand::grid)
     {
-        setView({{"edit_mode", id == editCommand::grid ? "grid" : "slip"}});
+        const auto mode = id == editCommand::shuffle ? "shuffle"
+                          : id == editCommand::spot  ? "spot"
+                          : id == editCommand::grid  ? "grid"
+                                                     : "slip";
+        setView({{"edit_mode", mode}});
+        if (id == editCommand::spot)
+        {
+            const auto clips = selectedEditClips();
+            if (clips.size() == 1)
+                showSpotPlacement(clips[0]["id"].get<std::string>());
+            else
+                message(text("Spot 模式已启用 · 选择一个音频片段后按 F3 打开置入对话框"));
+        }
+        else
+            message(text(id == editCommand::shuffle ? "Shuffle 涟漪编辑已启用 · 删除选中片段会推进后续片段"
+                         : id == editCommand::grid  ? "Grid 绝对网格已启用"
+                                                    : "Slip 自由编辑已启用"));
         return;
     }
     if (id == editCommand::selector || id == editCommand::grabber || id == editCommand::trim)
@@ -153,6 +177,97 @@ void Workspace::executeEditCommand(int id)
             commands.commit(plan);
             message(text(id == editCommand::split ? "光标处已拆分 · 原媒体保留 · 一次 Undo"
                                                   : "Nudge 已提交 · 整组选区同一偏移 · 一次 Undo"));
+        });
+    if (isShowing())
+        grabKeyboardFocus();
+}
+
+Json Workspace::deleteClipOperations(bool ripple) const
+{
+    const auto selectedClips = selectedEditClips();
+    require(!selectedClips.empty(), "select one or more whole audio clips first");
+    require(!ripple || !selection.objects.empty(), "Shuffle Delete requires whole-clip selection, not a time range");
+    std::map<std::string, std::set<std::string>> selectedByTrack;
+    std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> intervals;
+
+    for (const auto& clip : selectedClips)
+    {
+        require(clip["kind"] == "audio" && clip.value("editable_audio", false) && !clip.value("locked", false),
+                "entire delete refused: selected clip is locked or unsupported");
+        const auto reference = std::find_if(selection.objects.begin(), selection.objects.end(),
+                                            [&](const Json& object) { return object["id"] == clip["id"]; });
+        require(reference != selection.objects.end(), "selected clip is stale; refresh and select it again");
+        const auto track = (*reference)["track"].get<std::string>();
+        const auto first = clip["start_samples"].get<int64_t>();
+        const auto last = first + clip["length_samples"].get<int64_t>();
+        selectedByTrack[track].insert(clip["id"].get<std::string>());
+        intervals[track].push_back({first, last});
+    }
+
+    Json operations = Json::array();
+    for (const auto& [trackID, clipIDs] : selectedByTrack)
+        for (const auto& id : clipIDs)
+            operations.push_back(operation("clip.delete", {{"clip", id}}));
+    if (!ripple)
+        return operations;
+
+    for (auto& [trackID, deleted] : intervals)
+    {
+        std::sort(deleted.begin(), deleted.end());
+        std::vector<std::pair<int64_t, int64_t>> merged;
+        for (const auto& interval : deleted)
+        {
+            if (merged.empty() || interval.first > merged.back().second)
+                merged.push_back(interval);
+            else
+                merged.back().second = std::max(merged.back().second, interval.second);
+        }
+        for (const auto& track : facts["tracks"])
+        {
+            if (track["id"] != trackID)
+                continue;
+            for (const auto& clip : track["clips"])
+            {
+                const auto id = clip["id"].get<std::string>();
+                if (selectedByTrack[trackID].contains(id))
+                    continue;
+                const auto first = clip["start_samples"].get<int64_t>();
+                const auto last = first + clip["length_samples"].get<int64_t>();
+                int64_t shift = 0;
+                for (const auto& interval : merged)
+                {
+                    require(last <= interval.first || first >= interval.second,
+                            "Shuffle Delete would overlap an unselected clip; select the overlapping clip too");
+                    if (interval.second <= first)
+                        shift += interval.second - interval.first;
+                }
+                if (shift == 0)
+                    continue;
+                require(clip["kind"] == "audio" && clip.value("editable_audio", false) && !clip.value("locked", false),
+                        "Shuffle Delete refused: a later clip cannot move safely");
+                require(first >= shift, "Shuffle Delete would move a clip before session start");
+                operations.push_back(operation("clip.move", {{"clip", id}, {"position_samples", first - shift}}));
+            }
+        }
+    }
+    return operations;
+}
+
+void Workspace::executeDeleteCommand()
+{
+    invoke(
+        [&]
+        {
+            require(workspaceSession == commands.sessionToken() &&
+                        facts["revision"] == commands.querySummary()["revision"],
+                    "project changed before Delete; refresh and retry");
+            const bool ripple = editing.mode == "shuffle";
+            auto plan = commands.makePlan("human", deleteClipOperations(ripple));
+            plan["base_revision"] = facts["revision"];
+            const auto receipt = commands.commit(plan);
+            require(receipt.value("state", std::string{}) == "committed", "clip deletion did not commit");
+            refresh();
+            message(text(ripple ? "Shuffle Delete 已提交 · 后续片段按时间推进 · 一次 Undo" : "片段已删除 · 一次 Undo"));
         });
     if (isShowing())
         grabKeyboardFocus();
