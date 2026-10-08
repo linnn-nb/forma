@@ -84,6 +84,8 @@ const std::vector<Entry>& entries()
         {149, "新建 Mix 组…", "组", 'g', cmd},
         {150, "启用 / 禁用所选 Mix 组", "组", 'g', cmd | shift},
         {151, "修改所选 Mix 组…", "组", 'g', cmd | juce::ModifierKeys::altModifier},
+        {152, "Edit Comments 列", "视图", '4', cmd | juce::ModifierKeys::altModifier},
+        {153, "编辑轨道备注…", "轨道", 'c', cmd | juce::ModifierKeys::altModifier},
         {146, "Edit I/O 列", "视图", '1', cmd | juce::ModifierKeys::altModifier},
         {147, "Edit Inserts A–E 列", "视图", '2', cmd | juce::ModifierKeys::altModifier},
         {148, "Edit Sends A–E 列", "视图", '3', cmd | juce::ModifierKeys::altModifier},
@@ -147,6 +149,7 @@ void Workspace::initialiseCommandManager()
         groupInspector = false;
         refresh();
     };
+    editArea.onComments = mixArea.onComments = [this](std::string id) { showTrackComments(id); };
     editArea.onInsert = mixArea.onInsert;
     editArea.onRouting = [this](std::string id, bool input)
     {
@@ -298,8 +301,13 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !selectedAudioClip().is_null();
             if (id == 8 || id == 9 || id == 10)
                 info.setTicked(id == 8 ? !mix : id == 9 ? mix : pianoMode);
-            if (id >= 146 && id <= 148)
-                info.setTicked(commands.uiState()["edit_views"][id == 146 ? "io" : id == 147 ? "inserts" : "sends"]);
+            if ((id >= 146 && id <= 148) || id == 152)
+                info.setTicked(commands.uiState()["edit_views"][id == 146   ? "io"
+                                                                : id == 147 ? "inserts"
+                                                                : id == 148 ? "sends"
+                                                                            : "comments"]);
+            if (id == 153)
+                active = !facts.value("playing", false) && !selectedTrack().is_null();
             if (id == 145)
                 info.setTicked(pianoMode);
             if (id >= 149 && id <= 151)
@@ -357,6 +365,11 @@ bool Workspace::perform(const InvocationInfo& invocation)
         }
         return true;
     }
+    if (id == 153)
+    {
+        showTrackComments(selected);
+        return true;
+    }
     if (id == 149 || id == 151)
     {
         showMixGroup(id == 149 ? "" : groupsList.selectedId());
@@ -374,10 +387,10 @@ bool Workspace::perform(const InvocationInfo& invocation)
             }
         return true;
     }
-    if (id >= 146 && id <= 148)
+    if ((id >= 146 && id <= 148) || id == 152)
     {
         auto columns = commands.uiState()["edit_views"];
-        const auto* key = id == 146 ? "io" : id == 147 ? "inserts" : "sends";
+        const auto* key = id == 146 ? "io" : id == 147 ? "inserts" : id == 148 ? "sends" : "comments";
         columns[key] = !columns[key].get<bool>();
         setView({{"edit_views", columns}});
         return true;

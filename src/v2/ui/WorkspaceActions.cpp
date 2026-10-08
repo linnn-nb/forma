@@ -755,6 +755,44 @@ void Workspace::chooseRecordingDirectory()
                          });
 }
 
+void Workspace::showTrackComments(const std::string& id)
+{
+    invoke(
+        [&]
+        {
+            const auto q = commands.query();
+            Json track = nullptr;
+            for (const auto& t : q["tracks"])
+                if (t["id"] == id)
+                    track = t;
+            if (track.is_null())
+                throw std::runtime_error("track no longer exists");
+            if (!trackCommentsPanel)
+            {
+                trackCommentsPanel = std::make_unique<TrackCommentsPanel>(
+                    [this](const auto& args, const auto& binding)
+                    {
+                        auto plan = commands.makePlan("human", Json::array({operation("track.comment", args)}));
+                        plan["session_token"] = binding["session_token"];
+                        plan["base_revision"] = binding["base_revision"];
+                        commands.commit(plan);
+                        message(text("轨道备注已提交 · 可撤销"));
+                        refresh();
+                    },
+                    [this]
+                    {
+                        trackCommentsPanel->setVisible(false);
+                        grabKeyboardFocus();
+                    });
+                addChildComponent(*trackCommentsPanel);
+            }
+            trackCommentsPanel->bind(track, q);
+            trackCommentsPanel->setBounds(getLocalBounds());
+            trackCommentsPanel->setVisible(true);
+            trackCommentsPanel->toFront(false);
+            trackCommentsPanel->focusEditor();
+        });
+}
 void Workspace::showMixGroup(const std::string& id)
 {
     invoke(

@@ -20,3 +20,5 @@ evidence/U/*
 
 !evidence/U/edit-views-tests.json
 !evidence/U/groups-tests.json
+
+!evidence/U/comments-tests.json

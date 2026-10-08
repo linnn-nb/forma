@@ -613,6 +613,12 @@ target_link_libraries(ndaw_midi_editor_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_midi_editor COMMAND ndaw_midi_editor_tests "${CMAKE_SOURCE_DIR}/evidence/U/midi-editor-tests.json")
 set_tests_properties(forma_native_midi_editor PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_comments_tests PRODUCT_NAME "ndaw_comments_tests")
+target_sources(ndaw_comments_tests PRIVATE tests/v2/CommentsWorkspaceTests.cpp)
+target_link_libraries(ndaw_comments_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_comments COMMAND ndaw_comments_tests "${CMAKE_SOURCE_DIR}/evidence/U/comments-tests.json")
+set_tests_properties(forma_native_comments PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_groups_tests PRODUCT_NAME "ndaw_groups_tests")
 target_sources(ndaw_groups_tests PRIVATE tests/v2/GroupsWorkspaceTests.cpp)
 target_link_libraries(ndaw_groups_tests PRIVATE ndaw_ui)

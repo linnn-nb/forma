@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 最新增量：U-P0-COMMENTS-01（2026-10-09）
+
+Edit Comments列与Mix备注读同一真实Track属性，原生中文多行编辑经L1事务，可清除/Undo/Redo/保存新Workspace重开；⌘⌥4开关列，⌘⌥C编辑，均可改键位。草稿/取消不写Edit；旧版本、失效对象、越权与无效编码拒绝。UI schema5明确迁移旧schema4/3/2，四列布局在1120×700保留时间线，Mix推子/声像规则/备注分开。
+
+Release/固定本地签名验签通过，受影响8/8、0失败、34.90秒；扩充专项1/1、0失败、4.81秒、63项检查。实际PCM源SHA与Clip/路由保持，结果`comments-tests.json`；不代表实体制作资格。桌面锁定，截图、真实退出重开和试听未执行。`build-v2-tracktion/FormaCommentsPreview.app`准备好但未运行；不影响用户窗口，无DMG/新依赖，不进入P1。详细边界和代码/测试映射见docs/VERIFICATION.md。
+
 ## 最新增量：U-P0-GROUPS-01（2026-10-08）
 
 独立Mix组与左侧Groups列表接通：创建/改名/成员/属性/启用/删除，成员Mute/Solo由L1展开并整笔Undo；Folder/VCA与输出保持。⌘G/⌘⇧G/⌘⌥G共用可改键位命令，schema1定义和成员UI选择保存重开。最终Release/固定验签通过，相关7/7、0失败、26.74秒；Groups专项84检查，真实PCM Mute=基线1/3、Solo=2/3与Undo容差3e-6通过。结果`groups-tests.json`。

@@ -1,0 +1,34 @@
+{
+  "checks": 63,
+  "result": "passed",
+  "scope": "native controls with actual Edit and Undo/save/reopen; closed audio device; desktop acceptance unexecuted",
+  "ui_schema": 5,
+  "verified_on": "2026-10-09",
+  "affected_ctest": {
+    "passed": 8,
+    "failed": 0,
+    "seconds": 34.9
+  },
+  "expanded_comments_ctest": {
+    "passed": 1,
+    "failed": 0,
+    "seconds": 4.81
+  },
+  "build": "Release NativeDAW and affected tests; successful",
+  "signed_bundles": [
+    {
+      "bundle": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+      "strict_deep_exit": 0,
+      "requirements": "designated => identifier \"org.forma.daw\" and certificate leaf = H\"f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f\""
+    },
+    {
+      "bundle": "build-v2-tracktion/FormaCommentsPreview.app",
+      "strict_deep_exit": 0,
+      "requirements": "designated => identifier \"org.forma.daw.comments-preview\" and certificate root = H\"f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f\""
+    }
+  ],
+  "binary_sha256": "6c745a96e9ea2c7d2fe9a910d17a7e2c0221e1fffaa03e00a9047355a40046dc",
+  "desktop_acceptance": "unexecuted: Mac locked; no screenshot or listening result",
+  "preview_running": false,
+  "media": "generated real stereo PCM24 48k; original SHA unchanged; no physical input"
+}

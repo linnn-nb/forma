@@ -247,8 +247,9 @@ int main(int argc, char** argv)
         ui.setProperty("json", juce::String(old.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 4 &&
-                  migrated["edit_views"] == Json({{"io", false}, {"inserts", false}, {"sends", false}}) &&
+        check(migrated["ui_schema"] == 5 &&
+                  migrated["edit_views"] ==
+                      Json({{"io", false}, {"inserts", false}, {"sends", false}, {"comments", false}}) &&
                   migrated["object_selection"] == old["object_selection"],
               "complete prior schema3 migrates preserving shared selection");
         old.erase("midi_scroll_y");

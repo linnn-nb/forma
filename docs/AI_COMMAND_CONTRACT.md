@@ -70,6 +70,8 @@ track.create 支持 audio/midi/instrument/aux/folder/vca。Folder 是没有 VCA 
 
 VCA 采用 SDK 原生推子位置偏移：p(dB)=exp((dB−6)/20)，有效位置=成员位置+Σ(p(VCA)−p(0))，再转成增益；不声称简单的 dB 相加。两个 −6 dB 偏移作用于 0 dB 成员实测等效 −14.611314 dB。普通 Folder 不汇总或处理音频，gain_db=null；query.capabilities 明确是否有推子、音频路由、片段或分组能力。两者不开放音频插入、发送或输出操作。
 
+`track.comment(track, value)`是U阶段本地human命令，tool_visibility=local_gui，不派生新的MCP工具。value为UTF-8多行文本（最多4096字符/16384字节、无NUL），空值清除，写Track/ndaw_comment并进入同一Edit Undo事务；query返回comment。真实Track ID/Scope/版本校验，需停止播放，过期对话框草稿整笔拒绝。测试U-P0-COMMENTS-01；扩展/Agent无法直接调用。
+
 track.rename 要求 1–64 有效字符、无 NUL，避免 SDK 截断；SDK 的默认编号轨名可能按轨道位置规范化。track.collapsed 只用于 Folder/VCA，保存于 Edit、进入历史；query 返回 parent/depth/children/collapsed/edit_hidden。GUI Edit 隐藏折叠后代，Mix 保留成员。所有父级循环、非分组父级、失效对象和能力不匹配在 whole-Plan dry-run 拒绝；结构操作要求停止并释放播放图。SDK reparent 会重建对象，L1 不跨移动保留原指针，后续操作重新按 ID 查询。测试：HierarchyTests.cpp、HierarchyWorkspaceTests.cpp。
 
 ## 自动化（M1-AUTO-01）

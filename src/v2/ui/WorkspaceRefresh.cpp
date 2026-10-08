@@ -367,6 +367,8 @@ void Workspace::refresh()
         pendingConfirmation.clear();
         reportShowing = false;
         programDraft = false;
+        if (trackCommentsPanel)
+            trackCommentsPanel->setVisible(false);
         if (pluginLibrary)
             pluginLibrary->setVisible(false);
         message(text("已切换工程会话 · Agent 授权回到只读"));

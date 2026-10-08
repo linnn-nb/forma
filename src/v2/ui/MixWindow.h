@@ -17,7 +17,7 @@ public:
         addAndMakeVisible(reset);
     }
     std::function<void(std::string, int)> onInsert;
-    std::function<void(std::string)> onRouting;
+    std::function<void(std::string)> onRouting, onComments;
     void update(const Json& facts, const std::string& selected, const Json& device)
     {
         std::vector<std::string> ids;
@@ -40,6 +40,11 @@ public:
                     {
                         if (onRouting)
                             onRouting(id);
+                    },
+                    [this](std::string id)
+                    {
+                        if (onComments)
+                            onComments(id);
                     });
                 addAndMakeVisible(*c);
                 controls.push_back(std::move(c));

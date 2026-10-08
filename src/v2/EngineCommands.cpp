@@ -662,8 +662,10 @@ Json Commands::preview(const Json& plan) const
             // Full-Plan automation preflight uses real enumerated parameters.
         }
         else if (cmd == "track.parent" || cmd == "track.rename" || cmd == "track.collapsed" || cmd == "track.order" ||
-                 cmd == "track.colour" || cmd == "track.delete")
+                 cmd == "track.colour" || cmd == "track.delete" || cmd == "track.comment")
         {
+            if (cmd == "track.comment")
+                require(actor == "human", "track Comments are local GUI only during the U phase");
             // Complete hierarchy and capabilities are validated below.
         }
         else if (cmd.starts_with("midi.") || cmd == "tempo.set" || cmd == "meter.set")
@@ -895,7 +897,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                 executeAutomationOperation(cmd, resolved, objects);
             }
             else if (cmd == "track.parent" || cmd == "track.rename" || cmd == "track.collapsed" ||
-                     cmd == "track.order" || cmd == "track.colour" || cmd == "track.delete")
+                     cmd == "track.order" || cmd == "track.colour" || cmd == "track.delete" || cmd == "track.comment")
             {
                 auto resolved = a;
                 for (const char* key : {"track", "parent"})

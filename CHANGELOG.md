@@ -1,5 +1,11 @@
 # 更新记录
 
+## 2026-10-09：Edit/Mix真实轨道Comments
+
+- 可隐藏Edit列与Mix底部读同一备注，中文多行原生编辑走L1，单笔Undo/Redo、清除、取消、版本/目标/Scope校验及真实保存重开；⌘⌥4/⌘⌥C可改键位。
+- UI schema5明确迁移完整旧版本；Mix短窗给备注/推子/Pan Law留独立空间。备注为Track ValueTree扩展属性，本阶段human/local_gui，不扩展冻结MCP。
+- Release/固定验签、相关8/8与扩充专项63检查通过；桌面锁定，截图/实际退出重开未执行，U＋P0仍未完成。
+
 ## 2026-10-08：独立Mix组与Groups侧栏
 
 - 独立Mix Mute/Solo组，真实成员/名称/属性/启用/删除通过L1事务，保存重开；Tracks下方Groups列表选择成员，⌘G/⌘⇧G/⌘⌥G可改键位。

@@ -8,10 +8,19 @@ class EditWindowViews final : public juce::Component
 public:
     EditWindowViews(std::string owner, std::function<void(std::string, int)> insert,
                     std::function<void(std::string, bool)> route,
-                    std::function<void(std::string, std::string)> send = {})
-        : owner(std::move(owner)), insert(std::move(insert)), route(std::move(route)), send(std::move(send))
+                    std::function<void(std::string, std::string)> send = {},
+                    std::function<void(std::string)> comment = {})
+        : owner(std::move(owner)), insert(std::move(insert)), route(std::move(route)), send(std::move(send)),
+          comment(std::move(comment))
     {
         setComponentID("edit.views:" + text(this->owner));
+        comments.setComponentID("edit.comment:" + text(this->owner));
+        addAndMakeVisible(comments);
+        comments.onClick = [this]
+        {
+            if (this->comment)
+                this->comment(this->owner);
+        };
         input.setComponentID("edit.input:" + text(this->owner));
         output.setComponentID("edit.output:" + text(this->owner));
         for (auto* b : {&input, &output})
@@ -88,6 +97,10 @@ public:
             sends[i]->setTooltip(tooltip);
             sends[i]->setEnabled(capable && bool(route));
         }
+        const auto value = text(facts.value("comment", std::string{}));
+        comments.setButtonText(value.isEmpty() ? text("添加备注…") : value.upToFirstOccurrenceOf("\n", false, false));
+        comments.setTooltip(value.isEmpty() ? text("编辑轨道备注") : value);
+        comments.setEnabled(bool(comment) && !facts.value("playing", false));
         repaint();
     }
     void configure(const Json& views, int width)
@@ -100,7 +113,7 @@ public:
     void resized() override
     {
         int x = 0;
-        for (const auto* key : {"io", "inserts", "sends"})
+        for (const auto* key : {"io", "inserts", "sends", "comments"})
         {
             const bool show = enabled.value(key, false);
             if (std::string(key) == "io")
@@ -109,6 +122,11 @@ public:
                 output.setVisible(show);
                 input.setBounds(x + 4, 24, columnWidth - 8, 22);
                 output.setBounds(x + 4, 50, columnWidth - 8, 22);
+            }
+            else if (std::string(key) == "comments")
+            {
+                comments.setVisible(show);
+                comments.setBounds(x + 4, 24, columnWidth - 8, std::max(22, getHeight() - 28));
             }
             else
             {
@@ -130,12 +148,13 @@ public:
         g.setColour(juce::Colour(0xff91a5b7));
         g.setFont(juce::FontOptions(10));
         int x = 0;
-        for (const auto* key : {"io", "inserts", "sends"})
+        for (const auto* key : {"io", "inserts", "sends", "comments"})
             if (enabled.value(key, false))
             {
                 g.drawText(text(std::string(key) == "io"        ? "I/O"
                                 : std::string(key) == "inserts" ? "INSERTS A–E"
-                                                                : "SENDS A–E"),
+                                : std::string(key) == "sends"   ? "SENDS A–E"
+                                                                : "COMMENTS"),
                            x + 4, 2, columnWidth - 8, 20, juce::Justification::centredLeft);
                 g.drawVerticalLine(x + columnWidth - 1, 0, float(getHeight()));
                 x += columnWidth;
@@ -147,9 +166,10 @@ private:
     std::function<void(std::string, int)> insert;
     std::function<void(std::string, bool)> route;
     std::function<void(std::string, std::string)> send;
+    std::function<void(std::string)> comment;
     Json facts = Json::object(), enabled = Json::object();
     int columnWidth = 100;
-    juce::TextButton input, output;
+    juce::TextButton input, output, comments;
     std::vector<std::unique_ptr<juce::TextButton>> inserts, sends;
 };
 } // namespace ndaw::desktop

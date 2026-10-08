@@ -7,6 +7,7 @@
 #include "ClipsList.h"
 #include "GroupsList.h"
 #include "MixGroupEditor.h"
+#include "TrackCommentsPanel.h"
 #include "KeyboardSettings.h"
 #include "Toolbar.h"
 #include "Transport.h"
@@ -121,6 +122,8 @@ private:
         return pianoMode && (midiCommandContext || piano.editorHasFocus());
     }
     void showShortcuts();
+    void showTrackComments(const std::string&);
+    std::unique_ptr<TrackCommentsPanel> trackCommentsPanel;
     void showMixGroup(const std::string& = {});
     void selectMixGroup(const std::string&);
     void toggleMixGroup(const std::string&, bool);

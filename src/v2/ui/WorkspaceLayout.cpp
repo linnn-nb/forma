@@ -45,6 +45,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
             p.addCommandItem(&commandManager, id);
         p.addCommandItem(&commandManager, editCommand::remove);
         p.addSeparator();
+        p.addCommandItem(&commandManager, 153);
         for (int id : {140, 141, 142, 143, 144})
             p.addCommandItem(&commandManager, id);
     }
@@ -58,7 +59,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 10);
         p.addCommandItem(&commandManager, 145);
         juce::PopupMenu views;
-        for (int id : {146, 147, 148})
+        for (int id : {146, 147, 148, 152})
             views.addCommandItem(&commandManager, id);
         p.addSubMenu(text("Edit Window Views"), views);
         p.addSeparator();
@@ -232,6 +233,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (trackCommentsPanel && trackCommentsPanel->isVisible())
+        return trackCommentsPanel->handleKey(key);
     if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
     {
         if (key == juce::KeyPress::escapeKey)
@@ -359,6 +362,8 @@ void Workspace::paint(juce::Graphics& g)
 
 void Workspace::resized()
 {
+    if (trackCommentsPanel)
+        trackCommentsPanel->setBounds(getLocalBounds());
     if (mixGroupEditor)
         mixGroupEditor->setBounds(getLocalBounds());
     if (exportPanel)

@@ -1,5 +1,15 @@
 # 验证状态
 
+## U-P0-COMMENTS-01：真实轨道备注（2026-10-09；增量，U＋P0未完成）
+
+结论：Edit新增可独立开关的Comments列，Mix每条通道底部显示同一实际备注；点备注或⌘⌥C打开原生多行编辑器，⌘Return应用，Esc取消。⌘⌥4切换Edit列，两项全局命令可改键位。audio/midi/instrument/aux/folder/vca均支持中文多行文本，空白清除；应用一笔human事务，Undo/Redo恢复文字，真实`.tracktionedit`新Workspace保存重开保留。
+
+Tracktion未提供轨道Comments字段，L1 `HierarchyCommands.cpp`以`ndaw_comment`属性扩展原生Track ValueTree并使用Edit的UndoManager；query返回comment，UI只读facts及提交Plan。`track.comment`限human/local_gui，不扩大冻结MCP；版本、目标和Scope照常验证，过期草稿保持可见并显示冲突，不覆盖后续人工编辑。明确预算4096字符/16384 UTF-8字节，NUL、无效编码、失效目标在预检拒绝；取消或输入草稿不写Edit。备注编辑当前需停止播放。UI schema5保存四列开关，完整schema4/3/2及旧八字段迁移；视图不进Undo。Mix短窗压缩槽位并为备注、状态、Pan Law和推子分别留位。
+
+Release构建与固定本地签名strict/deep验签通过。受影响CTest **8/8通过、0失败、34.90秒**（Comments、Edit列、MIDI停靠、编辑手势、导航、Groups、Scope、MCP协议）；扩充Comments专项 **1/1通过、0失败、4.81秒，63项检查**，新增4096边界与1120×700 Mix布局检查。实际PCM源哈希、Clip及路由保持；原生控件/L1/Edit、整笔Undo/Redo、取消/版本/范围/编码拒绝、新Workspace保存重开、自定义快捷键及schema迁移均验证。代码：`src/v2/ui/TrackCommentsPanel.h`、`EditWindowViews.h`、`TrackHeader.h`、`WorkspaceActions.cpp`、`WorkspaceCommands.cpp`、`src/v2/UiState.cpp`；测试：`tests/v2/CommentsWorkspaceTests.cpp`。精简机器结果`evidence/U/comments-tests.json`。
+
+桌面锁定，真实GUI截图/实际退出重开与试听未执行；组件测试不冒充桌面资格。签名预览`build-v2-tracktion/FormaCommentsPreview.app`已准备，未运行；正式产物`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。无新依赖、SDK修改或DMG；用户窗口与既有Tracktion子模块修改保留。Undo历史不跨重开。完整U＋P0、更多标尺/轨高/轨道视图/缩放预设及P1–P3仍未完成。
+
 ## U-P0-GROUPS-01：独立 Mix 组与 Groups 侧栏（2026-10-08；增量，U＋P0未完成）
 
 结论：Edit/Mix左侧Tracks下方新增真实Groups列表，独立Mix组不再混同Folder/VCA。⌘G/加号打开成员对话框；可选成员、改名、启用/禁用、勾选Mute/Solo属性和删除组。组名按钮选择实际成员，复用统一UI选择；⌘⇧G启用/禁用所选组，⌘⌥G修改组，均来自可改键位命令表。已接通的属性是Mute/Solo，不显示尚未实现的推子/Pan/编辑组属性。没有改变成员输出、片段、推子或组织层级。

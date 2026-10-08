@@ -69,6 +69,11 @@ public:
                     {
                         if (onSend)
                             onSend(t, send);
+                    },
+                    [this](auto t)
+                    {
+                        if (onComments)
+                            onComments(t);
                     });
                 addAndMakeVisible(*views);
                 columns.push_back(std::move(views));
@@ -138,13 +143,14 @@ public:
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t)> onRange;
+    std::function<void(std::string)> onComments;
     std::function<void(std::string, int)> onInsert;
     std::function<void(std::string, bool)> onRouting;
     std::function<void(std::string, std::string)> onSend;
     int columnCount() const
     {
         int count = 0;
-        for (const auto* key : {"io", "inserts", "sends"})
+        for (const auto* key : {"io", "inserts", "sends", "comments"})
             if (view.value("edit_views", Json::object()).value(key, false))
                 ++count;
         return count;

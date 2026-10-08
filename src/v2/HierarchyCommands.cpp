@@ -75,6 +75,10 @@ void Commands::registerHierarchyCommands(Json& registry)
     registry.back()["units"] = {
         {"parent",
          "folder/VCA stable ID or preceding local reference; root detaches; preserves audio output and member faders"}};
+    add("track.comment", {{"track", string}, {"value", string}});
+    registry.back()["test"] = "U-P0-COMMENTS-01";
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["units"] = {{"value", "UTF-8 track text, up to 4096 characters/16384 bytes; empty clears"}};
     add("track.rename", {{"track", string}, {"name", string}});
     add("track.collapsed", {{"track", string}, {"enabled", {{"type", "boolean"}}}});
 }
@@ -95,7 +99,8 @@ Json Commands::hierarchyQuery(te::Track& t) const
                   {"depth", depth},
                   {"children", members},
                   {"edit_hidden", hidden},
-                  {"collapsed", bool(t.state.getProperty("ndaw_collapsed", false))}};
+                  {"collapsed", bool(t.state.getProperty("ndaw_collapsed", false))},
+                  {"comment", t.state.getProperty("ndaw_comment").toString().toStdString()}};
     int order = 0;
     for (auto* sibling : te::getAllTracks(*edit))
         if (sibling != &t && sibling->getParentTrack() == t.getParentTrack() &&
@@ -362,6 +367,21 @@ Json Commands::validateHierarchyPlan(const Json& operations) const
                 nodes.erase(key);
             std::erase_if(order, [&](const auto& key) { return affected.contains(key); });
         }
+        else if (cmd == "track.comment")
+        {
+            const auto value = a.at("value").get<std::string>();
+            require(value.size() <= 16384 && value.find('\0') == std::string::npos &&
+                        juce::CharPointer_UTF8::isValidString(value.data(), int(value.size())),
+                    "comment requires valid UTF-8 without NUL, at most 16384 bytes");
+            auto utf = juce::String::fromUTF8(value.data(), int(value.size()));
+            require(utf.length() <= 4096 && utf.toStdString() == value,
+                    "comment exceeds 4096 characters or contains invalid text");
+            diff.push_back({{"command", cmd},
+                            {"track", target},
+                            {"before", n.facts.value("comment", std::string{})},
+                            {"after", value}});
+            n.facts["comment"] = value;
+        }
         else if (cmd == "track.rename")
         {
             validName(a.at("name"));
@@ -386,6 +406,8 @@ void Commands::executeHierarchyOperation(const std::string& cmd, const Json& a)
     require(t != nullptr, "hierarchy target disappeared");
     if (cmd == "track.rename")
         t->setName(juce::String(a.at("name").get<std::string>()));
+    else if (cmd == "track.comment")
+        t->state.setProperty("ndaw_comment", juce::String(a.at("value").get<std::string>()), &edit->getUndoManager());
     else if (cmd == "track.collapsed")
         t->state.setProperty("ndaw_collapsed", bool(a.at("enabled")), &edit->getUndoManager());
     else if (cmd == "track.colour")

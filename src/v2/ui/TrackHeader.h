@@ -6,15 +6,23 @@ class TrackHeader final : public juce::Component
 {
 public:
     TrackHeader(std::string id, bool strip, Writer write, std::function<void(std::string)> select,
-                std::function<void(std::string, int)> insert = {}, std::function<void(std::string)> route = {})
+                std::function<void(std::string, int)> insert = {}, std::function<void(std::string)> route = {},
+                std::function<void(std::string)> comment = {})
         : id(std::move(id)), strip(strip), write(std::move(write)), select(std::move(select)),
-          focusInsert(std::move(insert)), focusRouting(std::move(route))
+          focusInsert(std::move(insert)), focusRouting(std::move(route)), focusComments(std::move(comment))
     {
         for (auto* b : {&name, &mute, &solo, &safe, &fold})
             addAndMakeVisible(b);
         addAndMakeVisible(gain);
         if (strip)
         {
+            comments.setComponentID("mix.comment:" + text(this->id));
+            addAndMakeVisible(comments);
+            comments.onClick = [this]
+            {
+                if (focusComments)
+                    focusComments(this->id);
+            };
             for (int i = 0; i < 5; ++i)
             {
                 auto slot = std::make_unique<juce::TextButton>();
@@ -197,6 +205,10 @@ public:
                                                        : juce::String::charToString(juce::juce_wchar('A' + i)) + "  +");
                 insertSlots[i]->setEnabled(bool(focusInsert) && facts["capabilities"].value("audio_routing", false));
             }
+            const auto value = text(facts.value("comment", std::string{}));
+            comments.setButtonText(value.isEmpty() ? text("备注…") : value.upToFirstOccurrenceOf("\n", false, false));
+            comments.setTooltip(value.isEmpty() ? text("编辑轨道备注") : value);
+            comments.setEnabled(bool(focusComments) && !facts.value("playing", false));
             sendSlot.setButtonText(text("Sends  ") + juce::String(facts.value("sends", Json::array()).size()));
             outputSlot.setButtonText(text(facts["output"].value("name", std::string("—"))));
             sendSlot.setEnabled(bool(focusRouting));
@@ -270,13 +282,14 @@ public:
         {
             g.drawText(text("INSERTS · 插入"), 14, 87, getWidth() - 28, 22, juce::Justification::left);
             g.setColour(juce::Colour(0xff8394a7));
-            g.drawText(text("SENDS / I/O"), 14, 246, getWidth() - 28, 20, juce::Justification::left);
-            if (pan.isVisible())
-                g.drawText(text("PAN / BALANCE"), 14, 288, getWidth() - 28, 19, juce::Justification::left);
+            g.drawText(text("SENDS / I/O"), 14, getHeight() < 580 ? 216 : 246, getWidth() - 28, 20,
+                       juce::Justification::left);
+            if (pan.isVisible() && getHeight() >= 580)
+                g.drawText(text("PAN / BALANCE"), 14, 312, getWidth() - 28, 19, juce::Justification::left);
             g.setColour(juce::Colour(0xff8394a7));
             g.drawText(text(facts.value("type", std::string("audio"))) +
                            text(facts.value("audible", false) ? " · 可听" : " · 已静音 / 非独听"),
-                       14, getHeight() - 30, getWidth() - 28, 22, juce::Justification::centred);
+                       14, getHeight() - 57, getWidth() - 28, 22, juce::Justification::centred);
         }
         else
             g.drawText(text(facts.value("type", std::string("audio"))) + "  |  " +
@@ -293,22 +306,25 @@ public:
         mute.setBounds(12, 46, width, 25);
         solo.setBounds(18 + width, 46, width, 25);
         safe.setBounds(24 + 2 * width, 46, width, 25);
+        const bool compact = strip && getHeight() < 580;
         if (strip)
         {
             for (int i = 0; i < int(insertSlots.size()); ++i)
-                insertSlots[i]->setBounds(12, 112 + i * 25, getWidth() - 24, 22);
-            sendSlot.setBounds(12, 268, getWidth() - 24, 22);
-            outputSlot.setBounds(12, 294, getWidth() - 24, 22);
+                insertSlots[i]->setBounds(12, 112 + i * (compact ? 20 : 25), getWidth() - 24, compact ? 18 : 22);
+            sendSlot.setBounds(12, compact ? 238 : 268, getWidth() - 24, 22);
+            outputSlot.setBounds(12, compact ? 264 : 294, getWidth() - 24, 22);
+            comments.setBounds(12, getHeight() - 31, getWidth() - 24, 24);
         }
         const bool hasPan = pan.isVisible();
-        const int faderTop = strip && hasPan ? 378 : 292;
+        const int faderTop = strip && hasPan ? (compact ? 363 : 407) : 292;
         gain.setBounds(strip ? 22 : 10, strip ? faderTop : 82,
                        strip    ? getWidth() - 44
                        : hasPan ? getWidth() - 112
                                 : getWidth() - 20,
-                       strip ? std::max(60, getHeight() - faderTop - 44) : 29);
-        pan.setBounds(strip ? 12 : getWidth() - 96, strip ? 334 : 76, strip ? getWidth() - 24 : 84, strip ? 30 : 60);
-        panLaw.setBounds(12, 371, getWidth() - 24, 25);
+                       strip ? std::max(32, getHeight() - faderTop - 71) : 29);
+        pan.setBounds(strip ? 12 : getWidth() - 96, strip ? (compact ? 296 : 334) : 76, strip ? getWidth() - 24 : 84,
+                      strip ? 30 : 60);
+        panLaw.setBounds(12, compact ? 330 : 371, getWidth() - 24, 25);
     }
 
 private:
@@ -345,10 +361,10 @@ private:
     bool strip, selected = false, gesture = false, stoppedGesture = false, panGesture = false,
                 panStoppedGesture = false;
     Writer write;
-    std::function<void(std::string)> select, focusRouting;
+    std::function<void(std::string)> select, focusRouting, focusComments;
     std::function<void(std::string, int)> focusInsert;
     std::vector<std::unique_ptr<juce::TextButton>> insertSlots;
-    juce::TextButton sendSlot, outputSlot;
+    juce::TextButton sendSlot, outputSlot, comments;
 
     Json facts;
     juce::TextButton name, mute{"M"}, solo{"S"}, safe{"SAFE"}, fold{"v"};
