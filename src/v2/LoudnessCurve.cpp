@@ -18,7 +18,10 @@ Json loudnessPoint(const Json& curve,int64_t index,const std::string& series){
     }else{
         const double rate=curve.at("sample_rate");const auto origin=curve.at("session_start_samples").get<int64_t>();
         auto position=[&](int64_t frame){return origin+std::llround(frame*48000./rate);};
-        result["start_samples"]=position(end-window);result["end_samples"]=position(end);result["location_samples"]=position(end-1);
+        result["start_samples"]=position(end-window);result["end_samples"]=position(end);
+        // A higher-rate last file frame can round UP to the exclusive session
+        // end (e.g. 96 kHz -> 48 kHz). Keep transport inside the measured window.
+        result["location_samples"]=std::min(position(end)-1,position(end-1));
     }
     return result;
 }
