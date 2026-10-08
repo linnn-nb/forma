@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-MULTI-SCRUB-01：双轨与真实多声道（2026-10-09）
+
+结论：相邻音频轨边界双轨 Scrub、跨轨真实时间选区按时间线顺序试听首两条音频轨已接通；真实媒体合计最多8声道，原FX/Aux/设备输出图保留。Release及固定身份deep/strict验签通过；相关 **8/8、0失败、75.22秒**，原Scrubber **527** 检查、新专项 **126** 检查通过。完整U＋P0未完成，不进P1。以下历史增量保留，当前资格以本节为准。
+
+参考：本地官方 Pro Tools Reference Guide 2026.4印刷883–884页（PDF985–986页），相邻边界/选区首两轨、合计8源声道和原输出处理；与上一轮同一已核验来源。实现：`src/v2/ScrubPlayback.cpp`在L1校验各源原路由，后台读取真实1–8声道PCM；共享ScrubClock每输出帧只推进一次，再由各SignedSource把自身通道送入原Tracktion图。`ui/EditWindow.h`构造实际轨道ID/Clip锚点，`WorkspaceCommands.cpp`复用可改命令253及真实就绪/失败提示，不新增MCP、UI schema或直接Edit写入。
+
+测试：`tests/v2/MultiScrubTests.cpp`、`evidence/U/multi-scrub-tests.json`。独立解码实际PCM24 WAV作数值对照；48k立体声＋44.1k单声道、独立Clip Gain、原生Aux、重开后实际音频、工程Undo/Redo和媒体哈希通过；8独立源通道在实际hosted 8声道输出组正/反向误差0。六声道＋立体声合计8、八源声道→立体声原路由删减、两个六声道拒绝整笔、单轨断开输出拒绝整笔及恢复通过；原生组件事件验证边界入口、三轨选区仅首两轨、选区/视图/版本保持。全部新PCM最大误差 **3.0376644e-9**，既定容差 **2e-5** 未放宽。24秒双源文件在同一手势4x前进到20秒、原图重建后-4x返回2秒：18次窗口发布、0缓存缺口，最大两槽已解码PCM **4,483,240字节**。hosted首次出音 **8.405–14.486ms**，捕获 **0.042–0.193ms**、图准备 **0.517–1.195ms**，原20ms/100ms预算保持；不是物理延迟/通用性能对齐。回归日志 `build-v2-tracktion/scrub-multi-qualified-affected-tests.log`，覆盖导航、编辑手势、剪贴板、自动化视图、Zoomer、波形及两个Scrubber专项。其他历史JSON保留，rerun数据在build目录。
+
+修复与对照：首次共享节点把缓存Lease存到图对象，SDK延后回收旧图导致下一窗无法复用，长距离真实PCM检查失败；改成块内借用、共享节点完成PCM后释放，再让各轨读SDK处理缓冲，527旧检查和双源长距离重建检查通过。保存重开仅运行时设备显示名称变化，测试只排除该标签，仍比较所有稳定路由引用/Clip/增益并验证重开实际音频。六声道混合→八声道的初始对照错误假设补零；本地SDK实际在输出端复制最后混合声道，普通原生播放对照误差0独立确认，更新显式映射oracle，不改原路由或容差。sources分别报告真实媒体宽度与原输出组，删减/扩展在界面提示，额外输出不冒充新源通道。测试使用独立临时PropertyStorage，避免写用户音频偏好。编译时修正测试Writer类型与构建目标名称；失败不记为资格。
+
+亲手试：打开 `build-v2-tracktion/FormaMultiScrubPreview.app`，CommandO打开 `build-v2-tracktion/scrub-multi-demo/Two-track Scrubber.tracktionedit`；选择Scrub或可改CommandF9，在两条音频轨边界左右拖动，或在保存的双轨选区内拖动，Option Shuttle、Command细拖、松手/Escape停止。之后普通编辑/CommandZ/ShiftCommandZ，另存新文件重开。示范是原创24秒诊断PCM，不是麦克风实录。CUA确认Mac锁定，未执行物理鼠标、截图、实体试听与真实应用退出重开；仅关闭并核验退出本轮自有预览PID34548，用户窗口保留。正式binary SHA256 `3c48c35c9e3092c37e6c8311bc002d5a90e93539f221e776ed7d995bbbad5c90`；预览 `9784f514c8f79a9a4bac444f3b93b37db09e4fdba526ee9952fbdb2d05fc5424`，bundle org.forma.daw.multi-scrub-preview；无需DMG。
+
+边界：每窗±2工程秒、两轨合计32片段/8 MiB，两槽总16 MiB；各源最多2048媒体头、总64路由、单作业/1.5秒准备预算，超过整笔拒绝。1–8声道读取已实现，本轮实际文件仅1/2/6/8声道，44.1/48k；高声道高采样率可能超过8 MiB拒绝，未认证192k全布局。生产音频配置尚未提供8声道原生输出组编辑，hosted测试设置不代表实体8声道声卡或标准环绕声映射。带报告延迟第三方插件的双轨PDC、任意插件压力、慢盘挂起、实体听感/时钟、耐久、Windows未验。原生FX路径资格由原527项继续覆盖，不宣称全部插件通过。Clip FX/路由自动化/ARA/伸缩/循环/Comp等限制保留；源线性插值不是高质量伸缩，同步外部指纹/图准备及退出OS I/O等待仍有风险。选区扩展/插入跟随和完整U＋P0待做。只读试听不产生Undo；普通工程编辑可撤销与保存，Undo历史不跨重开。无新依赖/SDK补丁、模型/分析资格或DMG。
+
 ## U-P0-SCRUB-01 续：临时入口与细拖（2026-10-09）
 
 结论：Selector 的 Control 左拖、Smart Tool 的选择区域 Control 左拖已接通同一真实 Scrubber；Command-Control 按下进入细拖，显式 Scrub 中也可用 Command 细拖，Option Shuttle 可组合。松手/Escape 保留原工具、选区、对象、插入点与工程 revision；之后的普通选区编辑正常提交一笔事务并 Undo/Redo。Release/固定身份 deep/strict 验签通过，相关 **7/7 通过，0 失败，67.91 秒**；Scrubber **527 检查**，suite 专项用时 24.52 秒。完整 U＋P0 未完成，不进 P1。

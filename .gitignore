@@ -32,3 +32,5 @@ evidence/U/*
 !evidence/U/waveform-zoom-tests.json
 
 !evidence/U/scrub-tests.json
+
+!evidence/U/multi-scrub-tests.json

@@ -22,16 +22,26 @@ static_assert(std::atomic<double>::is_always_lock_free && std::atomic<uint64_t>:
 class ScrubPlayback final : public juce::Timer
 {
 public:
+    struct Source
+    {
+        std::string track;
+        std::vector<juce::File> headers;
+        int mediaChannels = 1; // Worker publishes once before the initial window.
+        std::vector<int> outputGroups;
+    };
+    std::vector<Source> sources;
+    std::atomic<bool> channelsReady{false}, blockTooLarge{false};
     struct Segment
     {
         juce::AudioBuffer<float> pcm;
         std::string clip;
+        int source = 0;
         juce::File file;
         double start = 0, end = 0, offset = 0, fileRate = 0;
         int64_t cacheFirst = 0;
         double fadeIn = 0, fadeOut = 0;
         te::AudioFadeCurve::Type inCurve = te::AudioFadeCurve::linear, outCurve = te::AudioFadeCurve::linear;
-        float leftGain = 1, rightGain = 1;
+        float leftGain = 1, rightGain = 1, gain = 1;
         float gainAt(double seconds) const noexcept
         {
             float gain = 1;
@@ -85,6 +95,8 @@ public:
         std::string reason;
         if (!playing && juce::Time::getMillisecondCounterHiRes() - beganAt > 1500)
             reason = "preparation_timeout";
+        else if (blockTooLarge.load(std::memory_order_relaxed))
+            reason = "audio_block_exceeded";
         else if (exhausted.load(std::memory_order_relaxed))
             reason = "source_boundary";
         else if (interrupted && interrupted())
@@ -119,8 +131,8 @@ public:
 };
 namespace
 {
-void captureWindow(te::AudioTrack& target, ScrubPlayback& state, ScrubPlayback::Window& window, double centre,
-                   double requested, const std::string& validateClip = {})
+void captureWindow(const std::vector<te::AudioTrack*>& targets, ScrubPlayback& state, ScrubPlayback::Window& window,
+                   double centre, double requested, const std::string& validateClip = {})
 {
     const auto started = juce::Time::getMillisecondCounterHiRes();
     window.decoded.store(false, std::memory_order_relaxed);
@@ -138,43 +150,47 @@ void captureWindow(te::AudioTrack& target, ScrubPlayback& state, ScrubPlayback::
     window.lastSecond = lastSecond;
     window.start = firstSecond * state.projectRate;
     window.end = lastSecond * state.projectRate;
-    for (auto* item : target.getClips())
-    {
-        const auto pos = item->getPosition();
-        const double start = pos.getStart().inSeconds(), end = pos.getEnd().inSeconds();
-        require(std::isfinite(start) && std::isfinite(end) && end > start, "invalid scrub clip position");
-        if (end <= firstSecond || start >= lastSecond)
-            continue;
-        require(window.segments.size() < 32, "scrub window exceeds 32-clip preparation budget");
-        auto* clip = dynamic_cast<te::WaveAudioClip*>(item);
-        require(clip != nullptr, "scrub window contains a non-audio source");
-        require(!clip->isLooping() && !clip->isGrouped() && !clip->getAutoTempo() && !clip->getAutoPitch() &&
-                    !clip->getWarpTime() && !clip->getIsReversed() && std::abs(clip->getSpeedRatio() - 1) < 1e-9 &&
-                    !clip->isUsingARA() && clip->getPitchChange() == 0 && !clip->effectsEnabled() &&
-                    clip->getPluginList()->size() == 0,
-                "scrub window requires unwarped clips without Clip FX or pitch change");
-        require(clip->getFadeInBehaviour() == te::AudioClipBase::gainFade &&
-                    clip->getFadeOutBehaviour() == te::AudioClipBase::gainFade,
-                "scrub tape-speed fades not supported yet");
-        require(clip->state.getProperty("channels").toString().isEmpty(), "scrub channel masks not supported yet");
-        ScrubPlayback::Segment segment;
-        segment.clip = clip->itemID.toString().toStdString();
-        segment.start = start;
-        segment.end = end;
-        segment.offset = pos.getOffset().inSeconds();
-        segment.file = clip->getOriginalFile();
-        segment.fadeIn = clip->getFadeIn().inSeconds();
-        segment.fadeOut = clip->getFadeOut().inSeconds();
-        segment.inCurve = clip->getFadeInType();
-        segment.outCurve = clip->getFadeOutType();
-        require(std::isfinite(segment.fadeIn) && std::isfinite(segment.fadeOut) && segment.fadeIn >= 0 &&
-                    segment.fadeOut >= 0 && segment.inCurve >= te::AudioFadeCurve::linear &&
-                    segment.inCurve <= te::AudioFadeCurve::sCurve && segment.outCurve >= te::AudioFadeCurve::linear &&
-                    segment.outCurve <= te::AudioFadeCurve::sCurve,
-                "invalid scrub fade settings");
-        clip->getLiveClipLevel().getLeftAndRightGains(segment.leftGain, segment.rightGain);
-        window.segments.push_back(std::move(segment));
-    }
+    for (size_t source = 0; source < targets.size(); ++source)
+        for (auto* item : targets[source]->getClips())
+        {
+            const auto pos = item->getPosition();
+            const double start = pos.getStart().inSeconds(), end = pos.getEnd().inSeconds();
+            require(std::isfinite(start) && std::isfinite(end) && end > start, "invalid scrub clip position");
+            if (end <= firstSecond || start >= lastSecond)
+                continue;
+            require(window.segments.size() < 32, "scrub window exceeds 32-clip preparation budget");
+            auto* clip = dynamic_cast<te::WaveAudioClip*>(item);
+            require(clip != nullptr, "scrub window contains a non-audio source");
+            require(!clip->isLooping() && !clip->isGrouped() && !clip->getAutoTempo() && !clip->getAutoPitch() &&
+                        !clip->getWarpTime() && !clip->getIsReversed() && std::abs(clip->getSpeedRatio() - 1) < 1e-9 &&
+                        !clip->isUsingARA() && clip->getPitchChange() == 0 && !clip->effectsEnabled() &&
+                        clip->getPluginList()->size() == 0,
+                    "scrub window requires unwarped clips without Clip FX or pitch change");
+            require(clip->getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                        clip->getFadeOutBehaviour() == te::AudioClipBase::gainFade,
+                    "scrub tape-speed fades not supported yet");
+            require(clip->state.getProperty("channels").toString().isEmpty(), "scrub channel masks not supported yet");
+            ScrubPlayback::Segment segment;
+            segment.clip = clip->itemID.toString().toStdString();
+            segment.source = int(source);
+            segment.start = start;
+            segment.end = end;
+            segment.offset = pos.getOffset().inSeconds();
+            segment.file = clip->getOriginalFile();
+            segment.fadeIn = clip->getFadeIn().inSeconds();
+            segment.fadeOut = clip->getFadeOut().inSeconds();
+            segment.inCurve = clip->getFadeInType();
+            segment.outCurve = clip->getFadeOutType();
+            require(std::isfinite(segment.fadeIn) && std::isfinite(segment.fadeOut) && segment.fadeIn >= 0 &&
+                        segment.fadeOut >= 0 && segment.inCurve >= te::AudioFadeCurve::linear &&
+                        segment.inCurve <= te::AudioFadeCurve::sCurve &&
+                        segment.outCurve >= te::AudioFadeCurve::linear &&
+                        segment.outCurve <= te::AudioFadeCurve::sCurve,
+                    "invalid scrub fade settings");
+            clip->getLiveClipLevel().getLeftAndRightGains(segment.leftGain, segment.rightGain);
+            segment.gain = clip->getLiveClipLevel().getGainIncludingMute();
+            window.segments.push_back(std::move(segment));
+        }
     window.captureMs = juce::Time::getMillisecondCounterHiRes() - started;
 }
 class DecodeWindow final : public juce::ThreadPoolJob
@@ -197,14 +213,34 @@ public:
         {
             juce::AudioFormatManager formats;
             formats.registerBasicFormats();
+            if (!state->channelsReady.load(std::memory_order_acquire))
+            {
+                int total = 0;
+                for (auto& source : state->sources)
+                {
+                    for (const auto& file : source.headers)
+                    {
+                        valid();
+                        std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
+                        require(reader && reader->numChannels >= 1 && reader->numChannels <= 8,
+                                "scrub supports readable 1-8 channel PCM");
+                        source.mediaChannels = std::max(source.mediaChannels, int(reader->numChannels));
+                    }
+                    total += source.mediaChannels;
+                }
+                require(total <= 8, "scrub selected sources exceed eight media channels");
+                state->channelsReady.store(true, std::memory_order_release);
+            }
             for (auto& segment : window.segments)
             {
                 valid();
                 // File open, format probing, allocation and chunked reads are worker-only.
                 std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(segment.file));
                 require(reader && reader->sampleRate >= 8000 && reader->sampleRate <= 192000 &&
-                            reader->numChannels >= 1 && reader->numChannels <= 2,
-                        "scrub supports readable mono/stereo PCM");
+                            reader->numChannels >= 1 && reader->numChannels <= 8,
+                        "scrub supports readable 1-8 channel PCM");
+                require(int(reader->numChannels) <= state->sources[size_t(segment.source)].mediaChannels,
+                        "scrub source channel count changed during gesture");
                 segment.fileRate = reader->sampleRate;
                 const double sourceFirst =
                     (segment.offset + std::max(segment.start, window.firstSecond) - segment.start) * reader->sampleRate;
@@ -231,8 +267,12 @@ public:
                 {
                     valid();
                     const auto amount = std::min(4096, int(count) - offset);
-                    require(reader->read(&segment.pcm, offset, amount, segment.cacheFirst + offset, true, true),
-                            "scrub source read failed");
+                    std::array<float*, 8> channels{};
+                    for (int ch = 0; ch < segment.pcm.getNumChannels(); ++ch)
+                        channels[size_t(ch)] = segment.pcm.getWritePointer(ch, offset);
+                    require(
+                        reader->read(channels.data(), int(reader->numChannels), segment.cacheFirst + offset, amount),
+                        "scrub source read failed");
                 }
                 window.cachedFrames += count;
                 window.cachedBytes += bytes;
@@ -252,21 +292,23 @@ private:
     std::shared_ptr<ScrubPlayback> state;
     int index;
 };
-class SignedSource final : public tracktion::graph::Node
+class ScrubClock final : public tracktion::graph::Node
 {
+    std::shared_ptr<ScrubPlayback> state;
+
 public:
-    explicit SignedSource(std::shared_ptr<ScrubPlayback> s, uint64_t trackID, bool primary = true)
-        : state(std::move(s)), primary(primary)
+    explicit ScrubClock(std::shared_ptr<ScrubPlayback> s) : state(std::move(s))
     {
-        nodeID = (size_t(trackID) << 1) ^ size_t(state.get()) ^ size_t(0x7363727562ULL);
-        if (nodeID == 0)
-            nodeID = 1;
-        if (primary)
-            state->sourceGraphBuilds.fetch_add(1);
+        state->sourceGraphBuilds.fetch_add(1);
+        for (size_t i = 0; i < state->sources.size(); ++i)
+            offsets[i + 1] = offsets[i] + std::max(2, state->sources[i].mediaChannels);
     }
     tracktion::graph::NodeProperties getNodeProperties() override
     {
-        return {true, false, 2, 0, nodeID};
+        auto id = size_t(state.get()) ^ size_t(0x636c6f636bULL);
+        if (id == 0)
+            id = 1;
+        return {true, false, offsets[state->sources.size()], 0, id};
     }
     bool isReadyToProcess() override
     {
@@ -276,18 +318,19 @@ public:
     {
         outputRate = info.sampleRate;
         watchdogFrames = std::max(1, int(outputRate * .15));
+        maximumFrames = uint32_t(std::max(1, info.blockSize));
     }
     void process(ProcessContext& pc) override
     {
-        if (!primary)
+        frames = pc.numSamples;
+        pc.buffers.audio.clear();
+        pc.buffers.midi.clear();
+        if (frames > maximumFrames)
         {
-            pc.buffers.audio.clear();
-            pc.buffers.midi.clear();
+            frames = 0;
+            state->blockTooLarge.store(true, std::memory_order_relaxed);
             return;
         }
-        // Tracktion may rebuild a graph after deferred clip/device notifications.
-        // Runtime scalars belong to the audition, not this disposable node: no
-        // constructor snapshot, cursor replay, envelope restart or watchdog reset.
         auto cursor = state->position.load(std::memory_order_relaxed);
         auto envelope = state->sourceEnvelope.load(std::memory_order_relaxed);
         auto staleFrames = state->staleSourceFrames.load(std::memory_order_relaxed);
@@ -320,30 +363,37 @@ public:
                 goal = float(std::min(1., remaining / 64.));
             }
             envelope += std::clamp(goal - envelope, -1.f / 64.f, 1.f / 64.f);
-            const double seconds = cursor / state->projectRate;
-            for (uint32_t ch = 0; ch < pc.buffers.audio.getNumChannels(); ++ch)
+            if (within && sourceWithin && envelope != 0)
             {
-                float value = 0;
-                if (within && sourceWithin)
-                    for (const auto& segment : window->segments)
+                const double seconds = cursor / state->projectRate;
+                for (const auto& segment : window->segments)
+                {
+                    if (seconds < segment.start || seconds >= segment.end)
+                        continue;
+                    const double local =
+                        (segment.offset + seconds - segment.start) * segment.fileRate - double(segment.cacheFirst);
+                    const auto first = int64_t(std::floor(local));
+                    if (first < 0 || first + 1 >= segment.pcm.getNumSamples())
+                        continue;
+                    const float fraction = float(local - double(first));
+                    const int count = segment.pcm.getNumChannels();
+                    const int outputChannels = offsets[size_t(segment.source) + 1] - offsets[size_t(segment.source)];
+                    for (int ch = 0; ch < outputChannels; ++ch)
                     {
-                        if (seconds < segment.start || seconds >= segment.end)
+                        // Only native mono monitoring duplicates to L/R; wider
+                        // layouts retain independent real channels or zero padding.
+                        if (ch >= count && !(count == 1 && ch < 2))
                             continue;
-                        const double local =
-                            (segment.offset + seconds - segment.start) * segment.fileRate - double(segment.cacheFirst);
-                        const auto first = int64_t(std::floor(local));
-                        if (first < 0 || first + 1 >= segment.pcm.getNumSamples())
-                            continue;
-                        const float fraction = float(local - double(first));
-                        const auto* input =
-                            segment.pcm.getReadPointer(std::min(int(ch), segment.pcm.getNumChannels() - 1));
-                        value += (input[first] + fraction * (input[first + 1] - input[first])) *
-                                 segment.gainAt(seconds) * (ch == 0 ? segment.leftGain : segment.rightGain);
+                        const auto* input = segment.pcm.getReadPointer(count == 1 ? 0 : ch);
+                        const float gain = count == 2 ? (ch == 0 ? segment.leftGain : segment.rightGain) : segment.gain;
+                        const float value = (input[first] + fraction * (input[first + 1] - input[first])) *
+                                            segment.gainAt(seconds) * gain * envelope;
+                        pc.buffers.audio.getSample(uint32_t(offsets[size_t(segment.source)] + ch), i) += value;
+                        if (value != 0 && state->firstAudioTick.load(std::memory_order_relaxed) == 0)
+                            state->firstAudioTick.store(uint64_t(juce::Time::getHighResolutionTicks()),
+                                                        std::memory_order_relaxed);
                     }
-                pc.buffers.audio.getSample(ch, i) = value * envelope;
-                if (value != 0 && envelope != 0 && state->firstAudioTick.load(std::memory_order_relaxed) == 0)
-                    state->firstAudioTick.store(uint64_t(juce::Time::getHighResolutionTicks()),
-                                                std::memory_order_relaxed);
+                }
             }
             if (run && rate != 0)
             {
@@ -373,12 +423,56 @@ public:
         state->position.store(cursor, std::memory_order_relaxed);
     }
 
+    std::array<int, 3> offsets{};
+    uint32_t frames = 0;
+
+private:
+    double outputRate = 48000;
+    int watchdogFrames = 7200;
+    uint32_t maximumFrames = 0;
+};
+class SignedSource final : public tracktion::graph::Node
+{
+public:
+    SignedSource(std::shared_ptr<ScrubPlayback> s, std::shared_ptr<ScrubClock> c, uint64_t trackID, int source)
+        : state(std::move(s)), clock(std::move(c)), source(source)
+    {
+        nodeID = (size_t(trackID) << 1) ^ size_t(state.get()) ^ size_t(0x7363727562ULL);
+        if (nodeID == 0)
+            nodeID = 1;
+    }
+    tracktion::graph::NodeProperties getNodeProperties() override
+    {
+        const int channels = source < 0 ? 2 : std::max(2, state->sources[size_t(source)].mediaChannels);
+        return {true, false, channels, 0, nodeID};
+    }
+    std::vector<tracktion::graph::Node*> getDirectInputNodes() override
+    {
+        if (source < 0)
+            return {};
+        return {clock.get()};
+    }
+    bool isReadyToProcess() override
+    {
+        return source < 0 || clock->hasProcessed();
+    }
+    void process(ProcessContext& pc) override
+    {
+        pc.buffers.audio.clear();
+        pc.buffers.midi.clear();
+        if (source < 0 || clock->frames < pc.numSamples)
+            return;
+        const auto audio = clock->getProcessedOutput().audio;
+        for (uint32_t ch = 0; ch < pc.buffers.audio.getNumChannels(); ++ch)
+            for (uint32_t n = 0; n < pc.numSamples; ++n)
+                pc.buffers.audio.getSample(ch, n) = audio.getSample(uint32_t(clock->offsets[size_t(source)]) + ch, n);
+    }
+
 private:
     std::shared_ptr<ScrubPlayback> state;
-    double outputRate = 48000;
+    std::shared_ptr<ScrubClock> clock;
+    int source = -1;
     size_t nodeID = 0;
-    int watchdogFrames = 7200;
-    bool primary = true;
 };
 } // namespace
 Json Commands::scrubStatus() const
@@ -398,6 +492,26 @@ Json Commands::scrubStatus() const
     for (int index = 0; index < 2; ++index)
         if (s.cache.data(index).decoded.load(std::memory_order_acquire))
             residentBytes += s.cache.data(index).cachedBytes;
+    Json sources = Json::array();
+    const bool channelsReady = s.channelsReady.load(std::memory_order_acquire);
+    int totalChannels = 0;
+    for (const auto& source : s.sources)
+    {
+        bool reduction = false, expansion = false;
+        if (channelsReady)
+            for (const auto channels : source.outputGroups)
+            {
+                reduction |= channels < source.mediaChannels;
+                expansion |= channels > std::max(2, source.mediaChannels);
+            }
+        sources.push_back({{"track", source.track},
+                           {"media_channels", channelsReady ? Json(source.mediaChannels) : Json(nullptr)},
+                           {"output_groups", source.outputGroups},
+                           {"channel_reduction", reduction},
+                           {"channel_expansion", expansion}});
+        if (channelsReady)
+            totalChannels += source.mediaChannels;
+    }
     const auto firstTick = s.firstAudioTick.load(std::memory_order_relaxed);
     return {{"active", s.playing},
             {"busy", true},
@@ -425,6 +539,8 @@ Json Commands::scrubStatus() const
               {"first_audio_ms", firstTick ? Json(double(firstTick - uint64_t(s.beginTick)) * 1000 /
                                                   juce::Time::getHighResolutionTicksPerSecond())
                                            : Json(nullptr)}}},
+            {"sources", sources},
+            {"media_channels", channelsReady ? Json(totalChannels) : Json(nullptr)},
             {"clip", s.clip},
             {"track", s.track},
             {"position_samples", std::llround(frame)},
@@ -446,7 +562,8 @@ void Commands::stopScrub(const std::string& reason)
     lastScrubStatus["busy"] = false;
     lastScrubStatus["preparing"] = false;
     lastScrubStatus["state"] = reason == "decode_failed" || reason == "preparation_timeout" ||
-                                       reason == "graph_failed" || reason.starts_with("cache_")
+                                       reason == "graph_failed" || reason == "audio_block_exceeded" ||
+                                       reason.starts_with("cache_")
                                    ? "failed"
                                    : "stopped";
     auto state = std::move(scrubPlayback);
@@ -503,10 +620,10 @@ Json Commands::scrub(const std::string& action, const Json& args)
     require(!scrubDecoder || scrubDecoder->getNumJobs() == 0, "scrub decoder is finishing a cancelled request");
     const auto beganAt = juce::Time::getMillisecondCounterHiRes();
     const auto beginTick = juce::Time::getHighResolutionTicks();
-    require(args.is_object() && args.size() == 4 && args.contains("clip") && args["clip"].is_string() &&
-                args.contains("position_samples") && args["position_samples"].is_number_integer() &&
-                args.contains("session") && args["session"].is_string() && args.contains("revision") &&
-                args["revision"].is_number_unsigned(),
+    require(args.is_object() && (args.size() == 4 || (args.size() == 5 && args.contains("tracks"))) &&
+                args.contains("clip") && args["clip"].is_string() && args.contains("position_samples") &&
+                args["position_samples"].is_number_integer() && args.contains("session") &&
+                args["session"].is_string() && args.contains("revision") && args["revision"].is_number_unsigned(),
             "invalid scrub begin request");
     require(args["session"] == sessionToken() && args["revision"] == revision, "stale scrub target");
     require(!audioConfigurationPending() && !edit->getTransport().isPlaying() && !edit->getTransport().isRecording() &&
@@ -516,50 +633,79 @@ Json Commands::scrub(const std::string& action, const Json& args)
     auto* c = audioClip(args["clip"]);
     require(c != nullptr && dynamic_cast<te::AudioTrack*>(c->getTrack()) != nullptr, "audio clip not found");
     auto* target = dynamic_cast<te::AudioTrack*>(c->getTrack());
-    require(trackType(*target) == "audio" && target->shouldBePlayed() && !target->isFrozen(te::Track::individualFreeze),
-            "scrub requires an audible, unfrozen audio track");
-    // Validate native route closure; no edits to mute/solo or output connections.
+    // The GUI may request the first two selected tracks; anchor remains a real
+    // clip at the pointer, even if it lies on a third selected track.
+    Json requestedTracks = args.value("tracks", Json::array({target->itemID.toString().toStdString()}));
+    require(requestedTracks.is_array() && !requestedTracks.empty() && requestedTracks.size() <= 2,
+            "scrub accepts one or two source tracks");
     auto state = std::make_shared<ScrubPlayback>();
     state->projectRate = timelineRate;
     state->beganAt = beganAt;
     state->beginTick = beginTick;
-    state->track = target->itemID.toString().toStdString();
-    std::vector<std::string> pending{state->track};
-    bool reachesDevice = false;
-    while (!pending.empty())
+    std::vector<te::AudioTrack*> targets;
+    std::vector<std::string> pending;
+    for (const auto& id : requestedTracks)
     {
-        auto id = pending.back();
-        pending.pop_back();
-        if (!state->included.insert(id).second)
-            continue;
-        require(state->included.size() <= 64, "scrub route exceeds 64-track preparation budget");
-        auto* t = track(id);
-        require(t && t->getCompGroup() == -1 && !t->isPartOfSubmix() && !t->isFrozen(te::Track::individualFreeze) &&
-                    !t->isFrozen(te::Track::groupFreeze),
-                "scrub submix/frozen routes not supported yet");
-        require(!t->getModifierList() || t->getModifierList()->getModifiers().isEmpty(),
-                "scrub modulation not supported yet");
-        for (auto* p : t->pluginList)
-        {
-            require(!p->producesAudioWhenNoAudioInput() || dynamic_cast<te::AuxReturnPlugin*>(p),
-                    "scrub route contains a generator");
-            require(dynamic_cast<te::InsertPlugin*>(p) == nullptr && dynamic_cast<te::RackInstance*>(p) == nullptr &&
-                        !p->getSidechainSourceID().isValid(),
-                    "scrub hardware/rack/sidechain routes not supported yet");
-            for (auto* parameter : p->getAutomatableParameters())
-                require(parameter->getCurve().getNumPoints() == 0, "scrub route automation not supported yet");
-        }
-        if (auto* device = t->getOutput().getOutputDevice(false); device && device->isEnabled())
-            reachesDevice = true;
-        const auto route = routingQuery(*t);
-        if (route["output"]["kind"] == "track")
-            pending.push_back(route["output"]["target"]);
-        for (const auto& send : route["sends"])
-            if (send["enabled"].get<bool>())
-                for (const auto& destination : send["targets"])
-                    pending.push_back(destination);
+        require(id.is_string() && std::find(pending.begin(), pending.end(), id.get<std::string>()) == pending.end(),
+                "scrub source track IDs must be unique");
+        auto* t = id.is_string() ? track(id.get<std::string>()) : nullptr;
+        require(t && trackType(*t) == "audio" && t->shouldBePlayed() && !t->isFrozen(te::Track::individualFreeze),
+                "scrub requires audible unfrozen audio source tracks");
+        targets.push_back(t);
+        pending.push_back(id.get<std::string>());
+        state->sources.push_back({id.get<std::string>(), {}, 1});
     }
-    require(reachesDevice, "scrub route has no enabled audio output");
+    state->track = state->sources.front().track;
+    for (auto& source : state->sources)
+    {
+        bool reachesDevice = false;
+        std::set<std::string> visited;
+        pending = {source.track};
+        while (!pending.empty())
+        {
+            auto id = pending.back();
+            pending.pop_back();
+            if (!visited.insert(id).second)
+                continue;
+            state->included.insert(id);
+            require(state->included.size() <= 64, "scrub route exceeds 64-track preparation budget");
+            auto* t = track(id);
+            require(t && t->getCompGroup() == -1 && !t->isPartOfSubmix() && !t->isFrozen(te::Track::individualFreeze) &&
+                        !t->isFrozen(te::Track::groupFreeze),
+                    "scrub submix/frozen routes not supported yet");
+            require(!t->getModifierList() || t->getModifierList()->getModifiers().isEmpty(),
+                    "scrub modulation not supported yet");
+            for (auto* p : t->pluginList)
+            {
+                require(!p->producesAudioWhenNoAudioInput() || dynamic_cast<te::AuxReturnPlugin*>(p),
+                        "scrub route contains a generator");
+                require(dynamic_cast<te::InsertPlugin*>(p) == nullptr &&
+                            dynamic_cast<te::RackInstance*>(p) == nullptr && !p->getSidechainSourceID().isValid(),
+                        "scrub hardware/rack/sidechain routes not supported yet");
+                for (auto* parameter : p->getAutomatableParameters())
+                    require(parameter->getCurve().getNumPoints() == 0, "scrub route automation not supported yet");
+            }
+            if (auto* device = t->getOutput().getOutputDevice(false); device && device->isEnabled())
+            {
+                reachesDevice = true;
+                if (auto* wave = dynamic_cast<te::WaveOutputDevice*>(device))
+                {
+                    const int channels = int(wave->getChannels().getNumChannels());
+                    if (std::find(source.outputGroups.begin(), source.outputGroups.end(), channels) ==
+                        source.outputGroups.end())
+                        source.outputGroups.push_back(channels);
+                }
+            }
+            const auto route = routingQuery(*t);
+            if (route["output"]["kind"] == "track")
+                pending.push_back(route["output"]["target"]);
+            for (const auto& send : route["sends"])
+                if (send["enabled"].get<bool>())
+                    for (const auto& destination : send["targets"])
+                        pending.push_back(destination);
+        }
+        require(reachesDevice, "scrub source route has no enabled audio output");
+    }
     for (auto* global :
          {static_cast<te::Track*>(edit->getMasterTrack()), static_cast<te::Track*>(edit->getTempoTrack())})
         if (global && global->getModifierList())
@@ -579,19 +725,33 @@ Json Commands::scrub(const std::string& action, const Json& args)
     require(requested >= c->getPosition().getStart().inSeconds() && requested < c->getPosition().getEnd().inSeconds(),
             "scrub start outside clip");
     double extentStart = requested, extentEnd = requested;
-    for (auto* item : target->getClips())
+    for (size_t source = 0; source < targets.size(); ++source)
     {
-        const auto position = item->getPosition();
-        const auto start = position.getStart().inSeconds(), end = position.getEnd().inSeconds();
-        require(std::isfinite(start) && std::isfinite(end) && end > start, "invalid scrub clip position");
-        extentStart = std::min(extentStart, start);
-        extentEnd = std::max(extentEnd, end);
+        std::set<std::string> files;
+        for (auto* item : targets[source]->getClips())
+        {
+            const auto position = item->getPosition();
+            const auto start = position.getStart().inSeconds(), end = position.getEnd().inSeconds();
+            require(std::isfinite(start) && std::isfinite(end) && end > start, "invalid scrub clip position");
+            extentStart = std::min(extentStart, start);
+            extentEnd = std::max(extentEnd, end);
+            if (auto* wave = dynamic_cast<te::WaveAudioClip*>(item))
+            {
+                auto file = wave->getOriginalFile();
+                if (files.insert(file.getFullPathName().toStdString()).second)
+                {
+                    require(files.size() <= 2048, "scrub source exceeds 2048 media header budget");
+                    state->sources[source].headers.push_back(file);
+                }
+            }
+        }
+        require(!state->sources[source].headers.empty(), "scrub source track has no audio media");
     }
     state->sourceStart = std::max(0., extentStart) * timelineRate;
     state->sourceEnd = extentEnd * timelineRate;
     state->requestedPosition = requested;
     require(state->cache.claimForWrite(0), "scrub initial window unavailable");
-    captureWindow(*target, *state, state->cache.data(0), requested, requested, args["clip"]);
+    captureWindow(targets, *state, state->cache.data(0), requested, requested, args["clip"]);
     state->position.store(requested * timelineRate);
     state->clip = args["clip"];
     state->session = sessionToken();
@@ -676,10 +836,15 @@ void Commands::advanceScrub()
         if (!state->cache.claimForWrite(next))
             return; // An audio block still owns the old slot. Retry on next GUI tick.
         state->pendingWindow = next;
-        auto* target = track(state->track);
-        require(target != nullptr, "scrub source track disappeared");
+        std::vector<te::AudioTrack*> targets;
+        for (const auto& source : state->sources)
+        {
+            auto* target = track(source.track);
+            require(target != nullptr, "scrub source track disappeared");
+            targets.push_back(target);
+        }
         auto& window = state->cache.data(next);
-        captureWindow(*target, *state, window, seconds + (forward ? 1. : -1.), seconds);
+        captureWindow(targets, *state, window, seconds + (forward ? 1. : -1.), seconds);
         state->maximumRefillCaptureMs = std::max(state->maximumRefillCaptureMs, window.captureMs);
         scrubDecoder->addJob(new DecodeWindow(state, next), true);
     }
@@ -728,13 +893,16 @@ void Commands::activateScrub()
                         params.allowClipSlots = false;
                         params.auditionIncludesTrack = [state](te::Track& t)
                         { return state->included.contains(t.itemID.toString().toStdString()); };
+                        auto clock = std::make_shared<ScrubClock>(state);
                         params.auditionSource =
-                            [state](te::AudioTrack& t,
-                                    const te::CreateNodeParams&) -> std::unique_ptr<tracktion::graph::Node>
+                            [state, clock](te::AudioTrack& t,
+                                           const te::CreateNodeParams&) -> std::unique_ptr<tracktion::graph::Node>
                         {
-                            if (t.itemID.toString().toStdString() == state->track)
-                                return std::make_unique<SignedSource>(state, t.itemID.getRawID());
-                            return std::make_unique<SignedSource>(state, t.itemID.getRawID(), false);
+                            int source = -1;
+                            for (size_t i = 0; i < state->sources.size(); ++i)
+                                if (t.itemID.toString().toStdString() == state->sources[i].track)
+                                    source = int(i);
+                            return std::make_unique<SignedSource>(state, clock, t.itemID.getRawID(), source);
                         };
                     });
             });

@@ -738,6 +738,33 @@ public:
             repaint();
             return;
         }
+        // The small gap at an adjacent audio lane boundary auditions both
+        // actual sources; track headers and rulers retain their own gestures.
+        if (editing.tool == "scrubber" && ScrubGesture::accepts(editing.tool, EditingModel::Gesture::move, e.mods) &&
+            e.y >= rulerHeight() && rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows())
+        {
+            int upper = -1;
+            if (row > 0 && std::abs(e.y - rowY(row)) <= 6)
+                upper = row - 1;
+            else if (row + 1 < visibleRows() && std::abs(e.y - rowY(row + 1)) <= 6)
+                upper = row;
+            if (upper >= 0 && facts["tracks"][upper]["type"] == "audio" &&
+                facts["tracks"][upper + 1]["type"] == "audio" && viewParameter(trackIDs[size_t(upper)]).empty() &&
+                viewParameter(trackIDs[size_t(upper + 1)]).empty())
+            {
+                const auto sample = axis.sampleAt(e.x);
+                for (const int owner : {upper, upper + 1})
+                    for (const auto& clip : facts["tracks"][owner]["clips"])
+                        if (clip["kind"] == "audio" && sample >= clip["start_samples"].get<int64_t>() &&
+                            sample < clip["start_samples"].get<int64_t>() + clip["length_samples"].get<int64_t>())
+                        {
+                            beginScrubPointer(clip, e, owner,
+                                              Json::array({trackIDs[size_t(upper)], trackIDs[size_t(upper + 1)]}));
+                            return;
+                        }
+                return;
+            }
+        }
         // Ctrl-left-click wins over macOS popup recognition only in a real
         // Selector region. Smart trim/fade/grab regions keep their own behavior.
         if (e.y >= rulerHeight() && rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows() &&
@@ -751,20 +778,7 @@ public:
                                         clip.value("fade_out_samples", int64_t(0)), axis.width / axis.span);
                     if (ScrubGesture::accepts(editing.tool, region, e.mods))
                     {
-                        if (onScrub)
-                        {
-                            scrubSession = facts["session_token"];
-                            scrubRevision = facts["revision"];
-                            scrubGesture = onScrub("begin", {{"clip", clip["id"]},
-                                                             {"position_samples", axis.sampleAt(e.x)},
-                                                             {"session", scrubSession},
-                                                             {"revision", scrubRevision}});
-                            scrubPreparing = scrubGesture;
-                            scrubBuffering = false;
-                            scrubMotion.begin(e, axis, juce::Time::getMillisecondCounterHiRes());
-                            scrubLeft = timelineLeft();
-                            scrubWidth = getWidth();
-                        }
+                        beginScrubPointer(clip, e, row);
                         return;
                     }
                 }
@@ -1160,6 +1174,47 @@ private:
     }
     std::map<std::string, std::pair<std::string, Json>> sampled;
     std::vector<std::unique_ptr<AutomationLane>> automationLanes;
+    void beginScrubPointer(const Json& clip, const juce::MouseEvent& event, int row, Json tracks = Json::array())
+    {
+        if (!onScrub)
+            return;
+        const auto axis = coordinates();
+        const auto sample = axis.sampleAt(event.x);
+        if (tracks.empty())
+        {
+            tracks.push_back(trackIDs[size_t(row)]);
+            const auto range = facts.value("time_selection", Json(nullptr));
+            if (!range.is_null() && sample >= range["start_samples"].get<int64_t>() &&
+                sample < range["end_samples"].get<int64_t>() &&
+                std::find(selection.tracks.begin(), selection.tracks.end(), trackIDs[size_t(row)]) !=
+                    selection.tracks.end())
+            {
+                Json selectedAudio = Json::array();
+                for (const auto& t : facts["tracks"])
+                    if (t["type"] == "audio" &&
+                        std::find(selection.tracks.begin(), selection.tracks.end(), t["id"]) != selection.tracks.end())
+                    {
+                        selectedAudio.push_back(t["id"]);
+                        if (selectedAudio.size() == 2)
+                            break;
+                    }
+                if (selectedAudio.size() > 1)
+                    tracks = selectedAudio;
+            }
+        }
+        scrubSession = facts["session_token"];
+        scrubRevision = facts["revision"];
+        Json request = {
+            {"clip", clip["id"]}, {"position_samples", sample}, {"session", scrubSession}, {"revision", scrubRevision}};
+        if (tracks.size() > 1)
+            request["tracks"] = tracks;
+        scrubGesture = onScrub("begin", request);
+        scrubPreparing = scrubGesture;
+        scrubBuffering = false;
+        scrubMotion.begin(event, axis, juce::Time::getMillisecondCounterHiRes());
+        scrubLeft = timelineLeft();
+        scrubWidth = getWidth();
+    }
     int rowAt(int y) const
     {
         if (rowOffsets.size() < 2)

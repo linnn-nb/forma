@@ -1,9 +1,9 @@
 # 下一步
 
-结论：Selector/Smart选择区临时Control Scrub、Command细拖与松手/Escape恢复已接通，保留原选择、对象、工具与版本；普通编辑仍正常Undo/Redo。Release/固定验签、相关7/7（67.91秒）、527专项/真实PCM通过。完整U＋P0未完成，不进P1；M2/M3冻结，M4/M5暂缓。资格见VERIFICATION.md首节。
+结论：双轨边界/真实选区首两轨Scrubber、真实源合计8声道接通；Release/固定验签、相关8/8（75.22秒）、527＋126检查，双源长距离/独立PCM/原Aux/工程Undo和保存重开通过。完整U＋P0未完成，不进P1；M2/M3冻结，M4/M5暂缓，当前资格见VERIFICATION.md首节。
 
-亲手试：打开 `build-v2-tracktion/FormaScrubToolsPreview.app`，CommandO 打开 `build-v2-tracktion/scrub-sliding-demo/Scrubber Demo.tracktionedit`；F7、Control拖音频，Command-Control细拖，Option Shuttle，松手后普通选择、Undo/Redo；Smart仅音频上部选择热区使用临时入口。另存新文件重开。示范为原创诊断PCM，非实录。Mac锁定，物理鼠标/截图/实体试听/真正应用退出重开未执行；自有PID77399已退出，用户窗口保留。
+亲手试：打开 `build-v2-tracktion/FormaMultiScrubPreview.app`，CommandO打开 `build-v2-tracktion/scrub-multi-demo/Two-track Scrubber.tracktionedit`；Scrub/可改CommandF9，拖两轨边界或所存双轨选区，Option Shuttle、Command细拖，松手/Escape；之后普通选择和编辑Undo/Redo，另存新文件重开。示范为原创诊断PCM，非实录。Mac锁定，物理GUI/实体试听未执行；自有PID34548核验退出，用户窗口保留。
 
-下一项明确工程任务：扩展Scrubber为相邻双轨及多声道实际源/原路由试听，确定8声道上限、轨道选择优先级和缓存总预算，以独立PCM核验每路来源、PDC、混合声道及失败/恢复；不能把立体声复制冒充环绕源。随后补选区扩展/插入跟随与剩余U＋P0。无新MCP/分析资格；用户确认完整U＋P0后才进入P1。
+下一项明确工程任务：按官方Selector/Scrubber行为接通选择区扩展与插入跟随规则及可保存偏好；一笔实际范围修改复用L1事务，支持Undo/Redo、重开、键位入口和指针取消/版本冲突测试。先核验具体触发/链接规则，不把试听游标直接当永久工程编辑。随后处理MIDI垂直缩放、二维框选/Overview/Zoom Toggle、Tempo/Meter/预后卷及组完整联动等剩余U＋P0；用户确认完整U＋P0后才进P1。
 
-保留缺口：每窗±2工程秒、32源/8 MiB，两槽总16 MiB PCM（非RSS）、64路由；外部插件指纹与原生图准备仍同步，OS文件调用不可抢占，退出时线程池可能等待。无Clip FX/自动化/ARA/伸缩/循环源映射，线性插值不是高质量伸缩；慢盘/网络盘挂起、第三方压力、实体时钟未验。临时入口/细拖是macOS资格，Windows键位待验。MIDI垂直缩放、二维框选/Overview/Zoom Toggle、Tempo/Meter/预后卷、组完整联动等U＋P0仍不完整。实体麦克风/MIDI、耐久、Windows与发行待验收；Undo不跨重开。本轮不打包DMG。
+保留缺口：每窗±2工程秒、两轨合计32片段/8 MiB，两槽16 MiB（非RSS）、每轨2048媒体头/64路由/单解码作业、1.5秒准备超时。高声道高采样率可能显式超预算；本轮仅1/2/6/8声道、44.1/48k实际文件检查，192k全布局未验。生产输出组编辑、实体8声道设备与带报告延迟第三方双轨PDC待验；原生宽输出复制最后混合声道、窄输出丢弃额外声道，已提示，不能冒充标准环绕声。Clip FX/自动化/ARA/伸缩/循环/Comp等拒绝；线性插值不是高质量伸缩。外部指纹与原生图仍同步、OS I/O不可抢占、退出回收可能等待；慢盘/插件压力/实体时钟/耐久/Windows及发行待验。Undo不跨重开，本轮不打包DMG。

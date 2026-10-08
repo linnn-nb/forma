@@ -133,7 +133,7 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
-        {253, "Scrubber 正反向试听（单音频轨）", "编辑", juce::KeyPress::F9Key, cmd},
+        {253, "Scrubber 正反向试听（最多两轨）", "编辑", juce::KeyPress::F9Key, cmd},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
         {252, "恢复默认波形显示高度", "缩放", '[',
@@ -299,7 +299,17 @@ void Workspace::initialiseCommandManager()
             });
     };
     editArea.onScrubReady = [this]
-    { message(text("Scrubber 已就绪 · 左右拖动 · Command 细拖 · Option Shuttle · 松手停止")); };
+    {
+        bool reduction = false, expansion = false;
+        for (const auto& source : commands.scrubStatus().value("sources", Json::array()))
+        {
+            reduction |= source.value("channel_reduction", false);
+            expansion |= source.value("channel_expansion", false);
+        }
+        message(text(reduction   ? "Scrubber 已就绪 · 原路由输出声道不足，部分源声道不会输出"
+                     : expansion ? "Scrubber 已就绪 · 原路由含声道扩展映射，并非独立新声道"
+                                 : "Scrubber 已就绪 · 左右拖动 · Command 细拖 · Option Shuttle · 松手停止"));
+    };
     editArea.onScrubBuffering = [this](bool waiting)
     {
         message(text(waiting ? "Scrubber 缓存不足 · 源音频暂停等待读取 · 松手或 Escape 取消"
@@ -315,6 +325,8 @@ void Workspace::initialiseCommandManager()
             message(text("Scrubber 已停止：工程、设备或走带状态改变"));
         else if (reason == "preparation_timeout")
             message(text("Scrubber 准备超时；没有启动试听"));
+        else if (reason == "audio_block_exceeded")
+            message(text("Scrubber 已停止：设备处理块超出已准备范围"));
         else if (reason == "cache_refill_failed")
             message(text("Scrubber 缓存读取失败，试听已停止：") +
                     text(commands.scrubStatus().value("error", std::string("unknown error"))));
@@ -600,7 +612,8 @@ bool Workspace::perform(const InvocationInfo& invocation)
             {
                 commands.scrub("cancel");
                 setView({{"edit_tool", "scrubber"}});
-                message(text("Scrubber：单音频轨正反向试听，Command 细拖，Option Shuttle；Selector / Smart 上半区 "
+                message(text("Scrubber：最多两轨、合计八个源声道；轨道边界或跨轨选区试听两轨，Command 细拖，Option "
+                             "Shuttle；Selector / Smart 上半区 "
                              "Control 拖动临时试听；松手或 Escape 停止"));
             });
         return true;

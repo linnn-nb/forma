@@ -38,7 +38,7 @@ Edit列：在「视图→Edit Window Views」独立打开I/O、Inserts A–E、S
 
 Zoomer：F5循环Normal/Single，点击时间线居中放大、拖范围适配；Single完成后返回原工具。Option点击或⌘⌥E返回上一缩放，OptionF显示编辑选区，ControlCommand在标尺临时缩放；双击缩放工具显示全工程。视口和最多16条历史随工程保存，不占编辑Undo；支持水平缩放和上述音频显示尺度；其余高级缩放仍待实现。
 
-Scrubber：工具栏Scrub／编辑菜单／⌘F9（可改键），按住左右拖动真实正反向试听；Selector（F7）可用Control拖动临时试听，Smart Tool只在选择热区响应。Command-Control按下细拖，显式Scrub也可用Command，速度为Forma定义的十分之一；Option可组合Shuttle。松手或Escape保留原工具、选区和插入点，空格恢复普通播放。经过原FX与Aux/输出，同轨切点、空隙、重叠、四曲线淡化及Clip Gain可试听，支持mono/stereo混合采样率。单后台作业续读，两缓存槽各最多32源/8 MiB；缓存耗尽时源静音并保留游标，恢复从原位置继续，失败明确停止。Clip FX/路由自动化/伸缩等拒绝；双轨/8声道、选区扩展、完整Scrubber及实体试听仍待验收。
+Scrubber：工具栏Scrub／编辑菜单／⌘F9（可改键），按住左右拖动真实正反向试听；Selector（F7）可用Control拖动临时试听，Smart Tool只在选择热区响应。Command-Control按下细拖，显式Scrub也可用Command，速度为Forma定义的十分之一；Option可组合Shuttle。松手或Escape保留原工具、选区和插入点，空格恢复普通播放。经过原FX与Aux/输出，同轨切点、空隙、重叠、四曲线淡化及Clip Gain可试听，支持mono/stereo混合采样率。按两条相邻音频轨边界可双轨试听，跨轨选区仅试听按时间线顺序的前两条音频轨；真实源合计最多8声道。保留原输出布局，声道删减/扩展会提示，额外输出不代表独立新媒体声道。单后台作业续读，两缓存槽各最多两轨合计32片段/8 MiB；缓存耗尽时源静音并保留游标，恢复从原位置继续，失败明确停止。Clip FX/路由自动化/伸缩等拒绝；双轨/8声道已做生产图PCM检查，实体多声道声卡、带报告延迟插件的双轨PDC、选区扩展/插入跟随、完整Scrubber仍待验收。
 
 缩放预设：五个按钮或View→Zoom Presets，Control+1…5召回，Control+Shift+1…5/Shift点击保存当前水平缩放，右键存取。预设随工程保存，召回保持光标锚点；不保存完整工作区，也不改变原音频。
 

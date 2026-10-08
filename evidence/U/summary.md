@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 双轨与真实多声道 Scrubber（2026-10-09）
+
+结论：Release/固定验签、相关8/8（75.22秒）、527原检查＋126新增检查通过。边界入口与跨轨选区首两轨、各源增益/原Aux、真实PCM/Undo/保存重开已接通；8独立源通道hosted输出误差0，六＋二原生输出映射由普通播放独立确认。双源长范围重建后正反连续、18窗口/0缺口，最大PCM误差3.0376644e-9（容差2e-5），最大两槽4,483,240字节；首次出音8.405–14.486ms是hosted测值。回执 `multi-scrub-tests.json` 与更新的 `scrub-tests.json`，详细失败修复、预算、哈希和产物见VERIFICATION.md首节。
+
+可演示：`build-v2-tracktion/FormaMultiScrubPreview.app`＋`scrub-multi-demo/Two-track Scrubber.tracktionedit`，Scrub拖双轨边界或选区，Option/Command组合、松手/取消，然后普通编辑Undo/另存重开。原创诊断PCM，非实体实录。CUA确认Mac锁定，无物理操作/截图/实体试听；自有PID34548已退出，用户窗口保留。实体8声道输出、生产输出组编辑、带报告延迟第三方双轨PDC、192k布局/慢盘/耐久/Windows和完整U＋P0未验/未完成，不进P1、无DMG。以下保留历史增量。
+
 ## 临时 Ctrl Scrub 与细拖（2026-10-09）
 
 结论：Selector/Smart选择热区Control左拖、Command细拖、Option组合与松手/Escape恢复接通；Release/固定验签、相关7/7（67.91秒）、527专项通过。`scrub-tests.json`为本轮资格回执；新增原生事件真实PCM普通误差0、细拖最大6.9849193e-10，原工具/选区/对象/版本保持、后续真实范围Undo/Redo通过。详细依据/策略/回归及产物哈希见VERIFICATION.md首节；十分之一比例是Forma明确策略，不冒充PT内部算法。

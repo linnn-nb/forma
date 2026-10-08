@@ -1,10 +1,10 @@
 # 统一命令契约 v2
 
-Scrubber增量：本地begin准备同轨所有相交音频源（最多32、总8 MiB、±2工程秒）；查询新增cached_clips/cached_bytes/window_start_samples/window_end_samples，工程游标替代旧单源frame字段。只供本地瞬态UI；无新MCP工具。任一不支持邻片段拒绝整窗，正常命令/版本、Undo/取消与权限规则不变；预取及可取消准备仍待做。
+Scrubber当前增量（2026-10-09）：本地begin可选`tracks`为1–2个唯一稳定音频轨ID；GUI按相邻边界或真实时间选区中的首两条音频轨构造。后台探测所选轨媒体最大声道数，合计超过8拒绝整笔；每窗两轨合计32片段/8 MiB，两槽总16 MiB，单后台作业。查询sources区分media_channels、output_groups、channel_reduction/channel_expansion，不把原图输出映射冒充新源声道。瞬态试听不进入Plan/Undo，不添加MCP工具。当前测试与未验边界见VERIFICATION.md首节。
 
 ## 本地Scrubber（U-P0-SCRUB-01）
 
-原生命令253仅选择工具，经L1 updateUiState保存schema10；默认CommandF9保留旧F9节拍器，人工解绑/改键照常保留。音频`Commands::scrub(begin/speed/end/cancel)`只供本地UI，message-thread校验当前session/revision、真实Clip和实际路径，走带瞬态不进入Plan/Undo或MCP。begin为clip、整数position_samples、session、unsigned revision；speed为有限数speed和布尔shuttle（±1或±4）。查询返回actual工程采样游标/缓存/是否活动，停止保留实际reason；无执行成功就不显示活动。无新AI工具、Provider、模型或分析资格。正常Play/Stop/Seek、合法提交、Undo/Redo、保存/设备/旁路参数变化先回收试听；未获授权的commit不取消试听。录音互斥，正常播放和工程状态恢复；所选工具可重开，音频窗口不持久化。条件、预算和验证见VERIFICATION.md。
+原生命令253仅选择工具，经L1 updateUiState保存schema10；默认CommandF9保留旧F9节拍器，人工解绑/改键照常保留。音频`Commands::scrub(begin/speed/end/cancel)`只供本地UI，message-thread校验当前session/revision、真实Clip和实际路径，走带瞬态不进入Plan/Undo或MCP。begin为clip、整数position_samples、session、unsigned revision，可选tracks；speed为有限数speed和布尔shuttle（±1或±4）。查询返回actual工程采样游标/缓存/是否活动，停止保留实际reason；无执行成功就不显示活动。无新AI工具、Provider、模型或分析资格。正常Play/Stop/Seek、合法提交、Undo/Redo、保存/设备/旁路参数变化先回收试听；未获授权的commit不取消试听。录音互斥，正常播放和工程状态恢复；所选工具可重开，音频窗口不持久化。条件、预算和验证见VERIFICATION.md。
 
 ## 波形显示与连续缩放（U-P0-WAVEFORM-ZOOM-01）
 

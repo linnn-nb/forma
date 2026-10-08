@@ -1,0 +1,507 @@
+{
+  "checks": 126,
+  "hardware_listening": "not_executed",
+  "pcm": [
+    {
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.10866667330265045,
+        "context_ms": 1.1590416729450226,
+        "decode_ms": 2.000916674733162,
+        "first_audio_ms": 13.749291666666666,
+        "graph_ms": 1.1945833414793015,
+        "native_state_ms": 0.0003750026226043701,
+        "ready_ms": 13.480625003576279,
+        "transport_start_ms": 0.007708340883255005
+      }
+    },
+    {
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": -0.5,
+      "timing": {
+        "capture_ms": 0.10866667330265045,
+        "context_ms": 1.1590416729450226,
+        "decode_ms": 2.000916674733162,
+        "first_audio_ms": 13.749291666666666,
+        "graph_ms": 1.1945833414793015,
+        "native_state_ms": 0.0003750026226043701,
+        "ready_ms": 13.480625003576279,
+        "transport_start_ms": 0.007708340883255005
+      }
+    },
+    {
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": -1.0,
+      "timing": {
+        "capture_ms": 0.10866667330265045,
+        "context_ms": 1.1590416729450226,
+        "decode_ms": 2.000916674733162,
+        "first_audio_ms": 13.749291666666666,
+        "graph_ms": 1.1945833414793015,
+        "native_state_ms": 0.0003750026226043701,
+        "ready_ms": 13.480625003576279,
+        "transport_start_ms": 0.007708340883255005
+      }
+    },
+    {
+      "maximum_pcm_error": 3.037664376981386e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 0.5,
+      "timing": {
+        "capture_ms": 0.044874995946884155,
+        "context_ms": 0.5810000002384186,
+        "decode_ms": 1.5694166719913483,
+        "first_audio_ms": 10.915541666666666,
+        "graph_ms": 0.6136250048875809,
+        "native_state_ms": 8.33272933959961e-05,
+        "ready_ms": 9.134083330631256,
+        "transport_start_ms": 0.004624992609024048
+      }
+    },
+    {
+      "maximum_pcm_error": 3.037664376981386e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.07633332908153534,
+        "context_ms": 0.5769999921321869,
+        "decode_ms": 1.4959166646003723,
+        "first_audio_ms": 10.100458333333334,
+        "graph_ms": 0.6127916574478149,
+        "native_state_ms": 0.00024999678134918213,
+        "ready_ms": 9.895041659474373,
+        "transport_start_ms": 0.006958335638046265
+      }
+    },
+    {
+      "maximum_pcm_error": 3.037664376981386e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.04158332943916321,
+        "context_ms": 0.5925833433866501,
+        "decode_ms": 2.8479166626930237,
+        "first_audio_ms": 10.971666666666666,
+        "graph_ms": 0.619499996304512,
+        "native_state_ms": 0.0003333240747451782,
+        "ready_ms": 10.762125000357628,
+        "transport_start_ms": 0.004833340644836426
+      }
+    },
+    {
+      "cache_underruns": 0,
+      "case": "long two-source",
+      "maximum_decoded_bytes": 4483240,
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "source_graph_builds": 3,
+      "speed": 4.0,
+      "windows_published": 10
+    },
+    {
+      "cache_underruns": 0,
+      "case": "long two-source",
+      "maximum_decoded_bytes": 4483240,
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "source_graph_builds": 4,
+      "speed": -4.0,
+      "windows_published": 18
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "native_mix_width": null,
+      "output_channels": 8,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 8,
+          "output_groups": [
+            8
+          ],
+          "track": "1012"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.08266666531562805,
+        "context_ms": 0.6026666611433029,
+        "decode_ms": 4.50141666829586,
+        "first_audio_ms": 12.188708333333333,
+        "graph_ms": 0.6307916641235352,
+        "native_state_ms": 0.0004583299160003662,
+        "ready_ms": 10.396874994039536,
+        "transport_start_ms": 0.007583335041999817
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "native_mix_width": null,
+      "output_channels": 8,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 8,
+          "output_groups": [
+            8
+          ],
+          "track": "1012"
+        }
+      ],
+      "speed": -0.5,
+      "timing": {
+        "capture_ms": 0.08266666531562805,
+        "context_ms": 0.6026666611433029,
+        "decode_ms": 4.50141666829586,
+        "first_audio_ms": 12.188708333333333,
+        "graph_ms": 0.6307916641235352,
+        "native_state_ms": 0.0004583299160003662,
+        "ready_ms": 10.396874994039536,
+        "transport_start_ms": 0.007583335041999817
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "native_mix_width": 6,
+      "output_channels": 8,
+      "sources": [
+        {
+          "channel_expansion": true,
+          "channel_reduction": false,
+          "media_channels": 6,
+          "output_groups": [
+            8
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": true,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            8
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.08812499046325684,
+        "context_ms": 0.6285416632890701,
+        "decode_ms": 5.081749990582466,
+        "first_audio_ms": 13.145083333333334,
+        "graph_ms": 0.6559999883174896,
+        "native_state_ms": 0.0001666545867919922,
+        "ready_ms": 12.939083322882652,
+        "transport_start_ms": 0.007208332419395447
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "native_mix_width": 6,
+      "output_channels": 8,
+      "sources": [
+        {
+          "channel_expansion": true,
+          "channel_reduction": false,
+          "media_channels": 6,
+          "output_groups": [
+            8
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": true,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            8
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": -0.5,
+      "timing": {
+        "capture_ms": 0.08812499046325684,
+        "context_ms": 0.6285416632890701,
+        "decode_ms": 5.081749990582466,
+        "first_audio_ms": 13.145083333333334,
+        "graph_ms": 0.6559999883174896,
+        "native_state_ms": 0.0001666545867919922,
+        "ready_ms": 12.939083322882652,
+        "transport_start_ms": 0.007208332419395447
+      }
+    },
+    {
+      "case": "ordinary six-plus-two native output mapping",
+      "maximum_pcm_error": 0.0
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "native_mix_width": 6,
+      "output_channels": 8,
+      "sources": [
+        {
+          "channel_expansion": true,
+          "channel_reduction": false,
+          "media_channels": 6,
+          "output_groups": [
+            8
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": true,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            8
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.043541669845581055,
+        "context_ms": 0.5458749979734421,
+        "decode_ms": 3.5116249918937683,
+        "first_audio_ms": 8.404791666666666,
+        "graph_ms": 0.5699999928474426,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 8.220541670918465,
+        "transport_start_ms": 0.0038333237171173096
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": true,
+          "media_channels": 8,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.09391666948795319,
+        "context_ms": 0.6795833259820938,
+        "decode_ms": 5.695541664958,
+        "first_audio_ms": 14.486125,
+        "graph_ms": 0.7150000035762787,
+        "native_state_ms": 0.00045834481716156006,
+        "ready_ms": 12.693791672587395,
+        "transport_start_ms": 0.008125007152557373
+      }
+    },
+    {
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.19333332777023315,
+        "context_ms": 0.6982500106096268,
+        "decode_ms": 2.1894166618585587,
+        "first_audio_ms": 10.115166666666667,
+        "graph_ms": 0.8483750075101852,
+        "native_state_ms": 0.00024999678134918213,
+        "ready_ms": 9.901916667819023,
+        "transport_start_ms": 0.006416678428649902
+      }
+    },
+    {
+      "maximum_pcm_error": 1.862645149230957e-09,
+      "native_mix_width": null,
+      "output_channels": 2,
+      "sources": [
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 2,
+          "output_groups": [
+            2
+          ],
+          "track": "1012"
+        },
+        {
+          "channel_expansion": false,
+          "channel_reduction": false,
+          "media_channels": 1,
+          "output_groups": [
+            2
+          ],
+          "track": "1017"
+        }
+      ],
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.14470833539962769,
+        "context_ms": 0.361666664481163,
+        "decode_ms": 1.8959166556596756,
+        "first_audio_ms": 10.651208333333333,
+        "graph_ms": 0.5171249955892563,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 8.889333337545395,
+        "transport_start_ms": 0.00608333945274353
+      }
+    }
+  ],
+  "state": "passed",
+  "test": "U-P0-MULTI-SCRUB-01"
+}
