@@ -2,17 +2,19 @@
 
 ## U-EDIT-02（2026-10-08；U＋P0 仍未完成）
 
-结论：L1 统一命令层已接通真实音频 Clip /轨道时间选区的 Copy、Cut、Paste、Paste Original 与 Duplicate，并加入可重映射全局快捷键。Release 构建成功；`forma_native_audio_clipboard` 专项 **1/1 CTest 通过、0 失败，49 个断言**（5.73秒）。测试使用真实 Tracktion Edit、音频 PCM、渲染/解码、撤销重做与保存重开；这不是实体桌面验收，MIDI/自动化剪贴板也未完成。
+结论：L1 统一命令层已接通真实音频 Clip /轨道时间选区的 Copy、Cut、Paste、Paste Original 与 Duplicate，并加入可重映射全局快捷键。Release 构建成功；`forma_native_audio_clipboard` 专项 **1/1 CTest 通过、0 失败，49 个断言**（5.73秒），使用真实 Tracktion Edit、PCM 渲染/解码、撤销重做与保存重开。随后在 Forma 原生桌面，以本地自有 WAV 实际测试 Cmd+C/X/V/D、Option+Cmd+V、Undo/Redo、另存工程和重新打开；打开后看到原有两段波形与片段，Undo/Redo 栈清空。MIDI/自动化剪贴板未完成。
 
 实现：`src/v2/ClipboardCommands.cpp` 捕获 Tracktion `ClipCopy` 状态、真实源文件 SHA256 与来源偏移，经 L1 校验会话/Revision 后形成有界的会话内快照；`src/v2/ui/WorkspaceClipboard.cpp` 将人类键盘/菜单输入转换为 `clip.copy`、切分/裁剪/删除及时间选区命令。Copy 不增 revision/Undo；其他编辑一次 Plan/一次 Undo，Redo 与 `.tracktionedit` 保存重开恢复真实编辑。L1 拒绝 Agent 伪造本地剪贴板能力，提交幂等重放不会重复创建对象。
 
 行为：Cmd+C/X/V/D 与 Option+Cmd+V 可通过「键位…」重映射。支持最多64个可编辑音频 Clip、8 MiB 状态快照、跨轨目标映射、局部时间范围和相对位置；Paste 替换所选目的区间并保留外侧部分，Paste Original 回到来源位置，Duplicate 插入原区间之后且保留重叠目的媒体。大于8条操作或60秒的破坏性改动要求先预览。原 PCM 不改写；新剪切边界淡化、循环/分组/Warp、离线 Clip FX 和非音频对象不支持；快照不跨工程重开。
 
-验证与边界：专项包含两个重叠 Clip 的真实 Duplicate 保留回归、源 offset/局部切片、Cut/Paste、插件状态、Undo/Redo、保存重开、源媒体哈希冲突和 L1 幂等重试。真实 GUI 的 Copy/Cut/Paste 与桌面快捷键当前未验收，不能由JUCE组件事件或截图替代；U＋P0 仍未完成。
+桌面实测：在新 Forma 检查会话导入仓库自有 `evidence/U/demo/Rhythm study.wav`，实际显示双声道 PCM 波形；选择真实 Clip 后 Cmd+C 的状态提示为“已复制冻结的音频选区”，工程仍为 r1；Cmd+D 形成 r2 两片段，Cmd+Z 回到一段（r3），Cmd+Shift+Z 恢复两段（r4）；Cmd+X 形成 r5，Undo 恢复两段（r6）；Option+Cmd+V 粘回源位置形成 r7；再 Cmd+C/Cmd+V 在光标粘贴并替换目标范围形成 r8，Undo 回 r9。另存到新文件 `evidence/U/demo/Clipboard GUI demo.tracktionedit`，通过原生打开工程文件选择器重新载入，看到 `Rhythm study` 轨道的两段片段、真实波形、r10，以及已禁用的 Undo/Redo。随后“全工程”缩放显示两段不重叠 Clip。截图在本轮桌面工具结果中实时展示；未从桌面接口导出 PNG 文件。
+
+专项包含重叠 Clip 的真实 Duplicate 保留回归、源 offset/局部切片、Cut/Paste、插件状态、Undo/Redo、保存重开、源媒体哈希冲突和 L1 幂等重试。演示只用了自有合成 PCM，没有触碰用户媒体；未以此声称本次播放、录音或 GUI 自定义键位编辑已验收。剪贴板缓冲不跨工程重开；MIDI/自动化对象、循环/分组/Warp 和离线 Clip FX 不支持。U＋P0 仍未完成。
 
 | 需求 | 生产实现 | 验收/差距 |
 |---|---|---|
-| 音频 Clip /时间选区剪贴板 | `ClipboardCommands.cpp`、`ui/WorkspaceClipboard.cpp`、`ui/WorkspaceCommands.cpp`；`ClipboardWorkspaceTests.cpp` | `forma_native_audio_clipboard`：49断言；真实 Tracktion 状态与PCM渲染、局部/跨轨映射、撤销重做和保存重开通过；实体桌面操作待验收 |
+| 音频 Clip /时间选区剪贴板 | `ClipboardCommands.cpp`、`ui/WorkspaceClipboard.cpp`、`ui/WorkspaceCommands.cpp`；`ClipboardWorkspaceTests.cpp` | `forma_native_audio_clipboard`：49断言；真实 Tracktion 状态与PCM渲染、局部/跨轨映射、撤销重做和保存重开通过；桌面快捷键、Undo/Redo、保存重开已实测；完整用户制作验收仍待完成 |
 | MIDI/自动化剪贴板 | 尚未实现 | 不显示为已支持；后续接通 MIDI Clip/音符与钢琴卷帘联动 |
 
 ## U-EDIT-01（2026-10-08；U＋P0 仍未完成）

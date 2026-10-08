@@ -2,7 +2,7 @@
 
 结论：原生组件拆分、固定本地签名、全局命令表和第一版可保存的缩放/滚动/快捷键、Slip/Grid、Selector/Grabber/Trim 与音频 Clip 剪贴板已构建；多片段 Nudge、Tab 边界和光标拆分已有专项验证。U＋P0 尚未完成，M2/M3 冻结保留，M4/M5 暂缓。用户未确认 M1，v1 不退役。
 
-下一可演示步骤：在实体 Forma 桌面验收音频 Clip 的复制、剪切、粘贴、Duplicate 与 Undo；当前专项已验证真实 Tracktion 工程事务、PCM 渲染、重叠保留和保存重开，但桌面交互尚未验收。随后接通 MIDI Clip/音符剪贴板与钢琴卷帘联动，再继续节拍器/预备拍、循环和 Marker。会话内剪贴板快照不持久化；保存重开保留已提交的编辑。
+下一可演示步骤：接通 MIDI Clip/音符剪贴板与钢琴卷帘选区联动；音频 Clip 的 Cmd+C/X/V/D、Option+Cmd+V、Undo/Redo 和保存重开已通过本机桌面实测及真实 Tracktion PCM专项。然后按 P0 顺序完成节拍器/预备拍、循环播放与 Marker/Memory Locations。剪贴板快照只在当前会话有效；保存重开保留已提交的编辑。
 
 本轮桌面按钮 Nudge / Undo 已实测；桌面拖拽控制工具返回 `noWindowsAvailable`，因此 Grid/Trim/跨轨范围的真实鼠标验收仍待执行。现有专项调用真实 JUCE 手势与 Edit，不冒充实体桌面拖拽；没有扩充 CLI 替代验收。
 
