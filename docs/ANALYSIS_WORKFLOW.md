@@ -1,6 +1,6 @@
 # 音频分析与定位
 
-结论：Master、可配置交付检查、原始源片段、轨道插入前后/Bus、处理后事件与连续 LUFS 已接通真实 PCM、GUI 和只读 MCP。本轮 7fa96bb 增加完整频谱和声道频段功率；完整 Release 构建、66/66回归及生产Codex MCP/GUI/人工Undo/实际重开通过，独立全部频点核验6281项通过。结果及边界见 VERIFICATION.md；完整 M3 未验收。
+结论：Master、可配置交付检查、原始源片段、Clip FX 后单片段、轨道插入前后/Bus、处理后事件、连续LUFS和频谱接通真实PCM、GUI与MCP。66ccca7完整Release与68/68回归通过；8415b97尾音权限修正后完整重建、受影响6/6通过（85后端、34原生、13尾音检查）。正式Codex计划/确认/撤销、GUI人工作出的编辑/Undo、关闭重开与独立PCM/全频点/状态核验6270项通过；两提交的资格见VERIFICATION.md，完整M3未验收。
 
 ## 频谱概要增量预算（M3-SPECTRUM-01，实施前）
 
@@ -141,3 +141,14 @@ L1本地locate_loudness校验当前artifact、媒体深哈希、点ID、series�
 2048 帧 hop 的完整窗口等权平均；若末尾未对齐 hop，另加一个以范围末端结束的真实完整窗，final_end_aligned_window=true，window_count 包括该窗。各声道独立 FFT 后按功率平均；声道相位不在频谱求和中取消，实际相关度仍独立测量。所有 2049 bin 保留，边界 0/80/250/2000/6000/20000/Nyquist，超出实际 Nyquist 的分区不返回；以 bin 中心划分而非理想滤波器，DC/Nyquist 包含且不乘二。频谱是加窗平均功率，不能拿总功率代替整段未加窗 RMS 或专业音色判断；原始源不是处理后证据。处理后改动/Undo 令旧谱过期，历史谱可查看但标题明确提示重测，保存重开不复活旧回执。
 
 Spectrum.h/.cpp（脱离 Edit 的后台 PCM）、AudioAnalysis（同一次读盘）、AnalysisPanel/SpectrumView（只读原生控件）及注册表描述；SpectrumFixture/SpectrumTests/SpectrumWorkspaceTests 固定数值、原生链与控件验收。MCP query_analysis 的 spectrum 继承父 artifact，详细字段/权限见 AI_COMMAND_CONTRACT.md；原始源域与 processing 域保持分开。FFT 接口以锁定 JUCE 头文件核验，外部现场参考用已安装 NumPy2.0 的独立 float64 rfft，并以显式 double DFT/时域 Parseval复核：[NumPy 官方 API](https://numpy.org/doc/2.0/reference/generated/numpy.fft.rfft.html)。本机结果及未执行部分见VERIFICATION.md。
+
+
+## 片段效果与独立 tap（M3-CLIPFX-01）
+
+先在Edit中选择真实音频clip，点击底部「片段效果…」。右侧标题为CLIP FX，插入实际EQ/Compressor/Reverb/Delay，参数ID与范围取自实例；旁通、移除、锁定和Undo同用L1。点击「轨道插入」切回原轨道链，片段效果和轨道效果各自保留。片段自动化尚未验收，当前检查器只在停止时允许片段参数编辑。
+
+分析面板选择「Clip FX 后 / 单片段」，下拉框为真实clip，默认范围来自工程起点/终点；可缩到clip内其他48 kHz采样半开范围，不得越出它。信号链是片段增益/声像 → 原生clip插件 → 淡化，不含其他clip、轨道输入/路由/插入/推子/mute/solo/VCA或Master。原始源tap读原媒体帧，两者不能替代。MCP analyze_clip和GUI同用MasterAnalysis准备的detached真实图、同一AudioAnalysis PCM测量；只有成功回执显示完成，事件点击经L1校验并实际定位。
+
+artifact绑定实际clip/插件ID、源offset、范围、媒体哈希和整个Edit的保守链哈希；无关的工程变化也可能使processed过期。人工作出的参数/旁通/移除/Undo使旧processed证据过期，raw源证据保持；重开不复活成功。native五槽预算按整个Plan预检，不静默漏插。循环/分组/warp/伸缩/反向、离线ClipEffects及第三方clip链分析资格待补而明确拒绝；不认证范围外尾音或连续反馈历史。实测结果、故障修复及本机演示路径见VERIFICATION.md。
+
+尾音权限：实测无淡化的原生Delay在clip结束24000后仍输出[26400,31200)的4800帧（峰值0.399999976），clip边界不能作为效果影响边界。尚未资格化完整尾音范围前，影响带FX片段声音及片段插件的编辑要求全时间授权，同时仍检查clip/plugin/轨道目标授权；有限区间拒绝而不扩大权限。预览暴露effect_tail_unqualified，clip.lock仅改元数据仍可精确区间授权。片段超满刻度也不证明最终Master削波，后续处理会改变电平，需独立测量实际输出。

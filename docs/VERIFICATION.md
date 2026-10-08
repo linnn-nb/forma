@@ -1,5 +1,30 @@
 # 验证状态
 
+## M3-CLIPFX-01（2026-10-08）
+
+结论：`66ccca7` 已构建真实 Clip FX 检查器、统一编辑命令和单片段独立 tap；完整Release构建与 **68/68 CTest /976.82秒通过**，全量内后端84项 /95.05秒、原生34项 /10.58秒。`8415b97` 补尾音权限边界后完整重建成功，受影响 **6/6 CTest /127.34秒通过**，其中尾音13项 /1.41秒、后端85项 /95.02秒、原生34项 /10.22秒，另含Scope /MCP协议/原生网关回归。新增注册总数69，未重跑完整69项，两个提交的资格分开记录。正式桌面/Codex现场及独立参考6270项通过；完整M3仍未验收。
+
+功能：选音频片段 → 底部「片段效果…」→ 插入实际 EQ/Compressor/Reverb/Delay；枚举参数、旁通/移除/锁定和Undo经L1。分析面板「Clip FX 后 / 单片段」用该片段范围（48 kHz工程采样），包括Clip Gain/Pan、实际插件和其后淡化；原始源tap仍读未处理媒体的原生帧。整个Edit链保守失效，raw证据只受原媒体/条件影响。
+
+实现与测试：ClipCommands /MixCommands /ParameterCommands /Scope /EngineCommands负责计划、锁定、原生参数历史与加载ID高水位；MasterAnalysis在同一Engine内准备detached单片段Edit，排除其他clip、上游合成器、轨道处理/推子/mute/solo/VCA及Master；AudioAnalysis读取真实PCM，CommandQueue /注册表提供analyze_clip与clip_plugins分页；Workspace /ClipPanel /AnalysisPanel订阅事实。ClipFxTests /ClipFxWorkspaceTests验证生产组件，现场不由测试替身替代。
+
+数值：真实48k双声道脉冲；Clip起点28800、源offset4800、+6 dB与150ms纯湿Delay。风险段准确从[48000,52800)移动为[55200,60000)，4800帧；全部静音边界逐帧符合独立源PCM。Peak/RMS≤3e-6；目标轨道静音/−18 dB推子/轨道Delay/同轨重叠clip及上游真实FourOsc均不进入tap，活动Edit未改动。真实Clip淡化、44.1k→48k的EQ及Compressor/Reverb与同范围正式24-bit WAV对照通过；超满刻度整数导出实际削波，单独报告，不当作浮点等价。
+
+事务：实际插件ID/目标授权、锁定的命令/人工参数、陈旧Agent计划、五槽有序资源预检、重复类型按准确ID移除、复制后插件新ID、移除Undo恢复、MCP幂等/取消/错误对象/不存在参数、保存重开均通过。实测发现加载后删除全部轨道导致惰性ID分配复用旧插件缓存ID（新EQ与旧Delay同为1017），参数历史同步失败；L1接管Edit时先保留完整现存状态的ID高水位，回归确认新轨道/clip/插件不撞已退役的当前会话ID。无新SDK补丁或依赖。
+
+尾音边界：ClipFxTailTests正式24-bit WAV所有76800个声道样本与独立源脉冲/150ms纯湿Delay对照≤3e-6。clip结束24000之后仍输出[26400,31200)的4800帧，峰值0.399999976；Scope因此要求影响带FX片段及片段插件的声音编辑使用全时间授权，目标限制仍保留，有限时间拒绝。预览声明effect_tail_unqualified，clip.lock元数据仍可按精确片段范围授权。GUI明确片段电平不等于最终Master/导出削波；这项保守拒绝不是尾音范围资格。
+
+正式现场：自有float32 /48k双声道脉冲，通过原生文件选择器导入；GUI修剪到[4800,100800)、移动到28800、Clip Gain +6。Codex经正式包内forma-mcp /生产Unix socket查询实际Schema、clip1016和media hash，创建clip.fx.insert计划，真实确认卡片后插入Delay1017 /r5；外部undo_plan再次出现确认卡片，确认后r6实际插件清空，GUI Redo /r7恢复同一ID。GUI将实际feedback设为−30、mix proportion设为1，人工变化捕获至r13。Codex测量clip_post_fx [28800,124800)得到artifact50b90c0ada6d462babe6093039272910；GUI标明片段效果边界，事件点击实际Transport55200 /00:01.150。旁通r14使旧证据current=false，一次人工Undo /r15恢复效果但旧证据仍是历史快照、定位禁用；GUI重测产生22a316b15e1c45af920d4f84c5cebbed。
+
+GUI另存新M3-clip-fx-demo.tracktionedit，真实退出且确认进程已关闭，再启动应用并GUI打开该文件。r16恢复track/clip/plugin/真实参数/原输出，停止/只读/空Undo与Redo、新session token；query_analysis先idle/null。新会话Codex只读重测得到6adf3ddbbd76406c83e676a46a300ad5，三份实际音频测量一致、artifact独立。应用停在真实结果页，测试客户端/bridge已正常退出。文件选择器一次CUA−10005后重新读取并打开实际文件，没有绕过系统权限；关键画面由桌面工具展示，未保存PNG。
+
+独立现场参考 **6270项通过**：已有桌面运行时NumPy2.3.5 /float64，从原始PCM与源offset/+6dB/7200帧Delay独立预测96000帧，全部静音/满刻度边界、Peak/RMS≤3e-6、三份各2049FFT功率、所有频段与每声道功率、Parseval≤2e-6、Agent提交/撤销、人工Undo、定位和重开事实逐项核验。Peak1.59620988369、RMS0.282172708239、4800帧超满刻度、LUFS-I−19.2047704542、TruePeak+5.09431003908dBTP；后两项为原生测量回执，本现场脚本未独立复验响度库。实际作业4499.360583 /4599.789542 /4791.648458 ms、36个RPC最大transport62.9355ms /L1 43.953917ms，12秒/5秒预算未放宽；无实时/大工程/实体录音/音乐听感资格。原媒体SHA256 f80f95e0a6f477f163f907676869df7e72de7c87ac00829c138d7089100863c6保持；最终应用SHA256 bf96fe06f2e118a27a9e784b9dbe50a84735fe37dbf7255a7f2c0291808dd463。
+
+关键本机证据：evidence/M3/summary.md；clip-fx-build-final.log /clip-fx-ctest-full.log、clip-fx-tail-build.log /clip-fx-tail-ctest-final.log、clip-fx-tests.json /clip-fx-workspace-tests.json /clip-fx-tail-tests.json；desktop-clip-fx/mcp-receipts.jsonl /verify-receipts.py /verification.json /verify-output.log、自有WAV与实际演示工程。首轮真实EQ/Delay ID撞缓存的失败和诊断保留。全量TrackAnalysis117.89秒接近原120秒预算，下一步补图准备/资源背压测量，不能靠放宽标准通过。
+
+限制：片段自动化工作流、第三方clip链、离线ClipEffects派生媒体、循环/warp/伸缩/反向/分组资格仍待补，分析明确拒绝。所选范围以外的尾音及从工程零点连续回放的反馈历史未保证；取消不能抢占插件/I/O/图准备。完整M1实体录音/MIDI制作gate、M3压力/PDC/sidechain/单多声道/听感、M4–M6/Windows/发行均未通过。保持原12秒作业/5秒MCP/120秒后端/60秒原生预算，不打DMG、不上传媒体。
+
+
 ## M3-SPECTRUM-01（2026-10-08）
 
 结论：7fa96bb 接通真实 PCM 的完整 4096帧 Hann/2049 bin 频谱、声道频段功率、原生频点/频段检查器和只读 MCP；完整 Release 构建成功，完整 **66/66 CTest /643.57秒通过**。全量内新后端67项 /17.36秒、原生21项 /9.69秒，内部计时17258.246167 /9631.386667 ms。生产 Codex MCP、GUI、人工作出的修改/Undo、实际关闭重开和独立全部频点核验已执行，完整 M3 仍未验收。
