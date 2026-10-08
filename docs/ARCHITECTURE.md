@@ -116,6 +116,8 @@ M1 需要的最小命令集：
 
 **轨道与 Bus（M3-TAP-01）**：L1 在同一 Engine 的 detached render Edit 追加原生 AuxReturn 捕获轨，并在真实目标插件边界插入 AuxSend。保留原轨间路由/原发送/合成器，原直接设备输出成为 None sink，捕获轨 Solo Safe/唯一设备输出；活动 Edit 不修改，帮助轨不保存。pre 在源/合成器/返回后首 FX 前，post 在实际 VolumeAndPan 前，Bus 在目标链末，均排除 Master。回执绑定实际目标/边界描述及完整 Edit 的保守哈希。仅规范化已核对 SDK VolumeAndPan/EQ/Delay 非空曲线的 sampled cache，完整曲线、revision、其他/opaque 状态保持；空曲线仍绑定基值。曲线编辑事务保留显式基值，Undo 移除曲线后恢复，防止异步 Read 留下错误基值。硬件 Insert、含混输入排列或无临时插件槽明确拒绝；动态 PDC/旁链/第三方链/多声道资格未完成。选区反馈历史服从 SDK 离线预热，不宣称与工程零点持续回放相同。MCP analyze_track、GUI 和专项共用同一 L1 入口，见 ANALYSIS_WORKFLOW.md。
 
+**处理后事件（M3-EVENTS-01）**：L1 接受 Master/track/delivery 可选 detector_profile，规范化条件进入幂等指纹和哈希；L2 对本次 render PCM 复用数值检测，显式转换为工程采样与相对 render frame，不混用 raw source 引用。缺省为未分析而非无事件。GUI 检测开关/条件、逐项事件定位和实际条件摘要与 MCP 共用回执，人工变更/Undo 使旧处理证据过期。合并事件 bounded，保留完整族计数和真实省略数，瞬态只是能量上升估计。代码、固定预算和实测结果见 ANALYSIS_WORKFLOW.md /VERIFICATION.md；连续响度、频谱及完整 M3 尚未完成。
+
 ## 5. L3 扩展运行时
 
 扩展是"个性化"的载体。它们只能通过 L1 修改工程，因此天然支持预览、撤销，并能被权限控制。

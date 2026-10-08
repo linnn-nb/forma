@@ -1,5 +1,20 @@
 # 验证状态
 
+## M3-EVENTS-01（2026-10-08）
+
+结论：355c238 接通实际处理后静音门限和瞬态候选，从同一实际 Tracktion render PCM 得到工程位置；GUI 与只读 MCP 共用 L1。完整 Release 构建成功，最终完整 **62/62 CTest 通过 /581.77 秒**（355c238）。本次全量内新后端专项 **62 项 /25.98 秒**、原生专项 **36 项 /14.32 秒**；JSON内部计时25.874671 /14.260675秒，单作业最大4463.347208 /3863.837333 ms。此前分开执行为26.47 /16.25秒，最终以全量为准。前轮新建测试的就绪等待修正随本轮共享源一起重新构建，完整回归中该项4.37秒通过。
+
+音频与权限：真实双声道 44.1/48/96 kHz，非零解码范围/工程起点，静音全部边界、瞬态起点/完整窗结束精确匹配独立 PCM；原生图 Clip Gain +12 dB、fader −18 dB、clip 起点24000、150 ms纯湿Delay，工程 [29013,124013) 共95000帧。pre 的低脉冲实际高于静音门限，Bus 实际低于门限；post 候选真实后移7200采样，raw源保持原生帧。密集100满刻度/100静音/100候选合并展示128、省略172，全计数准确。规范化幂等、条件变更拒绝、未知/NaN/null/越界、取消、真实只读MCP/工具分页、交付风险计数、人工修改/Undo失效、保存重开和原媒体保持通过。原12秒作业、5秒MCP、120秒后端/60秒原生预算保持。缺省检测计数null，不伪造没有事件。
+
+现场已执行：桌面本轮可用，Codex 通过正式包内 forma-mcp 的 stdio/应用 Unix socket 查询真实轨道/片段/插件及 Delay 参数，再发出计划，在原生卡片确认。pre由外部 MCP发起、post由GUI发起，正式 MCP查到相同测量；pre/post静音4段+估计瞬态2个，Bus静音3段+候选2个。首个post候选定位到43200 /00:00.900，实际摘要确认；人工move到30000后r4旧定位禁用，一次GUI Undo恢复24000 /r5，旧processed证据仍过期；外部MCP重测才成为当前新回执。另存M3-events-demo.tracktionedit，不覆盖原件。自有PCM16独立扫描与现场回执 **73项通过**，所有显示边界/窗口、Peak/RMS（≤3e-6）及原输出保持一致；现场分析最大4712.800458 ms，MCP回复最大42.405292 ms。实际关闭应用、完成完整回归后，GUI重开自有演示，r6恢复Clip起点24000/增益+12、轨道−18、Delay150 ms/反馈−30/纯湿、原输出；只读、停止、空Undo/Redo，query_analysis为idle/null。Codex从新会话只读analyze_delivery重测同区间，artifact ebead46c5b244b5f992a7c8f413b99fd /4339.290333 ms，Master静音3段+候选2个、Peak/RMS与独立PCM一致。LUFS-I −38.056690607未达到−14±1目标，TP −17.008688969/满刻度/末尾电平通过，GUI如实显示整体未通过；不调整条件使其通过。候选点击后正式摘要再次确认43200 /00:00.900。应用停留真实结果页，MCP helper已退出；未新增音乐听感、实体录音、实时容量资格。
+
+保留失败：首次测试fixture OutputStream类型不符，按实际JUCE签名修正；首次后端专项只读取MCP工具第一页导致缺项断言，改为逐页读取nextCursor。生产接口/音频预测不改，原预算未放宽；首轮原生专项已通过。原生文件对话框焦点/Unicode输入被桌面工具拒绝或未生效时重新读取，确认实际路径后才导入，不绕过系统安全。现场首次plugin.insert多传ref、一次query_analysis多传session_token均被实际Schema拒绝；纠正请求后取得真实回执，原失败保留。没有新增依赖/SDK补丁、上传音频或DMG。
+
+代码/测试：AudioAnalysis /MasterAnalysis /AnalysisPanel；ProcessedEventsFixture的独立PCM扫描与ProcessedEventsTests、ProcessedEventsWorkspaceTests。本机events-configure.log、events-build-first.log /fixed.log /pagination.log /full.log，events-ctest-first.log /pagination.log /full.log，processed-events-tests.json /processed-events-workspace-tests.json；desktop-events/mcp-receipts.jsonl、verify-receipts.py、verification.json与演示工程。关键画面由桌面工具展示，未保存PNG。应用SHA256 **7a036cdda237b1973fa0c118c41f82047451b5a1c5328cf712a616b40e63d0ef**。
+
+边界：静音是门限段、瞬态为5 ms窗对前20 ms的能量估计，不识别呼吸或表演质量。处理后证据绑定工程版本/媒体/链/条件，原始源证据的映射仍分开。静音与瞬态各保留64、满刻度候选保留128，再合并最多展示128；计数不截断，保留候选不保证是全部事件中最早128段。M3仍部分：连续LUFS曲线、频谱、Clip FX独立边界、范围外尾音和导出文件检查、压力/实时安全资格尚未完成。M1实体制作gate、M4–M6、Windows与发行保留，v1暂不退役。
+
+
 ## M3-TAP-01（2026-10-08）
 
 结论：41d58bd 实现轨道插入前后/Bus 真正原生图测量，8e70394 修复已核对的 VolumeAndPan/EQ/Delay Read 缓存误失效，完整 Release 构建成功。8e70394 首次完整 CTest 为 **59/60，677.48 秒**；失败为新建工程 GUI 测试在异步恢复完成后的下一次 50 ms 刷新前检查按钮。60e6927 仅修正测试为观察真实控件，在既有五秒预算内等待；该专项 **1/1，4.83 秒、34 项**通过。应用二进制未因此改动，**没有再次执行完整 60 项**，不把分开执行写成一次全量通过。

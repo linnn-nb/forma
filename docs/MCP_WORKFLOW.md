@@ -87,3 +87,7 @@
 协议固定核验 [MCP 2025-11-25 lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)、[stdio/custom transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)、[tools/errors](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)，核验日期 2026-10-07（本轮重新读取工具结果与生命周期规范，保持固定版本）。支持协商 2025-03-26、2025-06-18、2025-11-25；未知版本返回支持版本，由客户端决定是否继续。不声称已支持更新的协议或每个客户端实现。
 
 代码：`McpGateway.cpp`、`McpSession.cpp`、`McpStdio.cpp`、`CommandQueue.cpp`、`Workspace.h`。测试：`McpTests.cpp`、`McpWorkspaceTests.cpp`、`RequestRecoveryTests.cpp`；结果与剩余验收见 [VERIFICATION](VERIFICATION.md)。
+
+## 处理后事件分析（M3-EVENTS-01）
+
+analyze_master /analyze_track /analyze_delivery 可传 detector_profile；工具定义由实际注册表生成，tools/list必须读取nextCursor全部分页。显式空对象启用默认五项条件，省略表示未检测静音/瞬态，不能据null计数说没有事件。query_analysis取得真实terminal receipt后检查current、binding中的对象/版本/范围/tap/媒体/链/条件哈希；事件使用工程48 kHz采样，render frame相对本次区间，源分析仍用原生source frame。瞬态候选是估计，不是听感、呼吸或质量结论。只读可分析，无上传；改动和撤销仍走Plan与本地卡片，人工编辑令旧处理证据过期。2026-10-08 Codex通过生产stdio/socket、GUI参数计划/确认、实际pre/post/Bus测量、定位、人工Undo及GUI关闭/重开后的Master交付重测完成现场验证，独立PCM和时限见VERIFICATION.md；完整M3未验收。
