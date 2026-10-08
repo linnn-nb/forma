@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp b/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
-index 5011615..0b23933 100644
+index 5011615..82b69ac 100644
 --- a/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
 @@ -291,7 +291,9 @@ void DeviceManager::initialise (int defaultNumInputs, int defaultNumOutputs)
@@ -13,3 +13,35 @@ index 5011615..0b23933 100644
      rescanWaveDeviceList();
      updateNumCPUs();
  
+@@ -1561,7 +1563,7 @@ bool DeviceManager::hasOutputClipped (bool reset)
+     return hasClipped;
+ }
+ 
+-void DeviceManager::addContext (EditPlaybackContext* c)
++void DeviceManager::addContext (EditPlaybackContext* c, bool waitForStreamAdvance)
+ {
+     TRACKTION_ASSERT_MESSAGE_THREAD
+ 
+@@ -1574,12 +1576,16 @@ void DeviceManager::addContext (EditPlaybackContext* c)
+         activeContexts.addIfNotAlreadyThere (c);
+     }
+ 
+-    for (int i = 200; --i >= 0;)
+-    {
+-        juce::Thread::sleep (1);
+-        if (lastStreamTime != streamTime)
+-            break;
+-    }
++    // The reference range is already seeded under contextLock above. Audition
++    // preparation must not wait on a stopped/failed device clock on the GUI thread.
++    // The first actual device block performs its usual resynchronisation.
++    if (waitForStreamAdvance)
++        for (int i = 200; --i >= 0;)
++        {
++            juce::Thread::sleep (1);
++            if (lastStreamTime != streamTime)
++                break;
++        }
+ }
+ 
+ void DeviceManager::removeContext (EditPlaybackContext* c)

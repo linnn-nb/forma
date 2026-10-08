@@ -1,7 +1,38 @@
+diff --git a/modules/tracktion_engine/playback/tracktion_DeviceManager.h b/modules/tracktion_engine/playback/tracktion_DeviceManager.h
+index 67376c2..312ffcc 100644
+--- a/modules/tracktion_engine/playback/tracktion_DeviceManager.h
++++ b/modules/tracktion_engine/playback/tracktion_DeviceManager.h
+@@ -245,7 +245,7 @@ public:
+     juce::OwnedArray<WaveOutputDevice> waveOutputs;
+ 
+     //==============================================================================
+-    void addContext (EditPlaybackContext*);
++    void addContext (EditPlaybackContext*, bool waitForStreamAdvance = true);
+     void removeContext (EditPlaybackContext*);
+ 
+     //==============================================================================
 diff --git a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
-index 66062ce..e91f8c5 100644
+index 66062ce..29ae9ce 100644
 --- a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
+@@ -503,7 +503,7 @@ EditPlaybackContext::ScopedDeviceListReleaser::~ScopedDeviceListReleaser()
+ }
+ 
+ //==============================================================================
+-EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
++EditPlaybackContext::EditPlaybackContext (TransportControl& tc, bool waitForStreamAdvance)
+     : edit (tc.edit), transport (tc)
+ {
+     if (edit.isRendering())
+@@ -520,7 +520,7 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
+         contextSyncroniser = std::make_unique<ContextSyncroniser>();
+ 
+         // This ensures the referenceSampleRange of the new context has been synced
+-        edit.engine.getDeviceManager().addContext (this);
++        edit.engine.getDeviceManager().addContext (this, waitForStreamAdvance);
+ 
+         // Set the playhead position as early as possible so it doesn't revert to 0 in the TransportControl
+         nodePlaybackContext->playHead.setPosition (toSamples (transport.getPosition(),
 @@ -689,6 +689,9 @@ void EditPlaybackContext::createNode()
      cnp.readAheadTimeStretchNodes = engineBehaviour.enableReadAheadForTimeStretchNodes();
      cnp.insertOptionalLastStageNodeForDevice = insertOptionalLastStageNodeForDeviceCallback;
@@ -25,9 +56,18 @@ index 66062ce..e91f8c5 100644
  {
      createNode();
 diff --git a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h
-index a852ebf..6f0c7cc 100644
+index a852ebf..1430f7b 100644
 --- a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h
 +++ b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h
+@@ -17,7 +17,7 @@ struct CreateNodeParams;
+ class EditPlaybackContext
+ {
+ public:
+-    EditPlaybackContext (TransportControl&);
++    EditPlaybackContext (TransportControl&, bool waitForStreamAdvance = true);
+     ~EditPlaybackContext();
+ 
+     void removeInstanceForDevice (InputDevice&);
 @@ -41,6 +41,9 @@ public:
                                                                                                        const CreateNodeParams&,
                                                                                                        std::unique_ptr<graph::Node>)>);
@@ -46,3 +86,43 @@ index a852ebf..6f0c7cc 100644
  
      std::function<std::unique_ptr<graph::Node> (OutputDevice&,
                                                  const CreateNodeParams&,
+diff --git a/modules/tracktion_engine/playback/tracktion_TransportControl.cpp b/modules/tracktion_engine/playback/tracktion_TransportControl.cpp
+index 1c5ff24..e20a30f 100644
+--- a/modules/tracktion_engine/playback/tracktion_TransportControl.cpp
++++ b/modules/tracktion_engine/playback/tracktion_TransportControl.cpp
+@@ -848,6 +848,22 @@ void TransportControl::ensureContextAllocated (bool alwaysReallocate)
+         playbackContext->createPlayAudioNodesIfNeeded (start);
+ }
+ 
++void TransportControl::prepareAuditionPlayback (TimePosition startTime, std::function<void (EditPlaybackContext&)> configure)
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (! edit.shouldPlay() || edit.isRendering())
++        return;
++
++    if (playbackContext == nullptr)
++    {
++        playbackContext = std::make_unique<EditPlaybackContext> (*this, false);
++        transportState->playbackContextAllocation = transportState->playbackContextAllocation + 1;
++    }
++
++    configure (*playbackContext);
++    playbackContext->createPlayAudioNodes (startTime);
++}
++
+ void TransportControl::freePlaybackContext()
+ {
+     playbackContext.reset();
+diff --git a/modules/tracktion_engine/playback/tracktion_TransportControl.h b/modules/tracktion_engine/playback/tracktion_TransportControl.h
+index fc2e289..b1c6145 100644
+--- a/modules/tracktion_engine/playback/tracktion_TransportControl.h
++++ b/modules/tracktion_engine/playback/tracktion_TransportControl.h
+@@ -211,6 +211,8 @@ public:
+         @param alwaysReallocate If true, this will always create a new playback graph.
+     */
+     void ensureContextAllocated (bool alwaysReallocate = false);
++    /** Prepare an audition graph before any normal source graph is built. Message thread only. */
++    void prepareAuditionPlayback (TimePosition, std::function<void (EditPlaybackContext&)>);
+ 
+     /** Detaches the current EditPlaybackContext, removing it from the DeviceManager.
+         Can be used to free up resources if you have multiple Edits open.

@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-SCRUB-01 续：后台解码与可取消准备（2026-10-09）
+
+结论：Scrubber 的媒体打开、格式探测和 PCM 解码已移到一个后台线程。GUI 显示“正在读取音频”，真正发布原生图后才显示“已就绪”；松手/Escape、人工编辑、正常播放、保存或关闭工程不会迟到启动试听。Release 与固定身份 deep/strict 验签通过；相关 **11/11 通过，0 失败，84.72 秒**，Scrubber **421 项检查**。完整 U＋P0 未完成，不进入 P1。
+
+实现：L1 在 message thread 捕获不可变片段描述、session/revision、视口和设备 generation；单个解码作业以 4096 帧分块读取，按 decoded release/acquire 发布结果。后台不接触 Edit/Engine/GUI。准备时限 1500 ms；最多一个在途作业，取消不等待磁盘，未退出的旧作业期间明确拒绝新请求。发布前重验事实、设备和 Context；已解码但未投递的结果仍可取消。保留 ±2 工程秒、32 源、总 8 MiB、64 路由和原 FX/输出。播放优先于后台分析，无新模型、MCP 或分析工具。
+
+SDK 修复：Tracktion addContext 原有等待设备 streamTime 推进的 200 次 sleep 轮询，在无回调测试时实测 context_ms=299.064、graph_ms=299.120，违反预先声明的 20 ms 图准备预算。新 prepareAuditionPlayback 先配置试听图，Context 注册仍在原锁内初始化 reference range，再由真实设备 block 正常同步；仅试听跳过时钟轮询，普通播放/录音默认行为保留。锁定提交未变。七份补丁从原 pin 独立 apply --check/apply，15 个修改文件逐字一致；CMake exact-diff 验证通过。DeviceManager.cpp 的完整组合差异仍归 initial-midi-scan.patch，其他入口归 scrub-context.patch。
+
+实测：机器回执 evidence/U/scrub-tests.json；37 个记录的真实 PCM 场景 capture **0.020–0.142 ms**、后台 decode **0.379–3.477 ms**、图准备 **0.212–0.717 ms**、ready **2.864–11.019 ms**、首次非零源 PCM **5.377–12.303 ms**。20/20/100 ms 的本地测试预算保持，没有为了通过而放宽。PCM 最大误差 1.1920929e-6，原媒体哈希保持。实际正反/混合采样率/淡化/跨片段/32源求和、原 EQ/Aux 路由、Undo/Redo、保存重开与自定义键继续通过；新增准备期录音拒绝、取消、已解码未发布后松手/超时、人工编辑/视口/实际 Context 丢失、20次快速请求有界、丢失真实媒体失败和关闭所有者的对象回收。相关回归覆盖普通命令/路由/自动化/录音/片段/人工参数/走带/导航/Zoomer/波形。日志 build-v2-tracktion/scrub-async-affected-tests.log、构建日志及独立补丁报告在同目录。
+
+修复过程：初次图准备预算失败后定位上述设备时钟轮询。消除隐式等待暴露普通播放测试的冷文件缓存时序：EnginePlayer 比磁盘线程快，测试现在在固定 2 秒期限内等待真实 hasMappedReader，再逐样本核对，不丢弃错误音频块。Context 丢失故障最初在 null Context 上无实际故障，现先断言确有 Context 再释放。失败均未计入通过；修复后专项与最终相关回归分别通过。
+
+边界：上述测试使用 SDK hosted device 代替物理时钟，运行生产图；不是硬件低延迟、听感、任意第三方准备时限或全引擎 RT 保证。外部插件指纹校验和原生图/插件准备仍在 message thread，仍可能阻塞；只把媒体解码移出。OS 文件打开/读调用不能强制抢占，取消保证不发布旧结果；应用退出时线程池回收可能等待 OS I/O，慢盘/网络盘挂起未注入验证。无长期滑动窗口推进，现有不支持类型继续明确拒绝；临时 Ctrl/细拖、双轨/多声道和完整 U＋P0 待补。
+
+可试：build-v2-tracktion/FormaAsyncScrubPreview.app（org.forma.daw.async-scrub-preview，同固定身份），CommandO 打开已有 scrub-crossclip-demo/Scrubber Demo.tracktionedit；CommandF9 或 Scrub 工具，1.75–2 秒附近左右拖，Option Shuttle，松手/Escape，空格恢复正常播放；另存新文件重开。实际原创诊断 PCM，非实录。Mac 锁定，未执行鼠标/截图/实体试听/真正应用退出重开；只精确关闭本轮预览 PID74856，用户窗口保留。正式 binary SHA256 9c4fab8f4f90ea5b2e1d60b38b1dfd285a417a6bb779454b60a3cf82cfc2dff6，预览 970e331f64fc03645d64b0031df8dbc339e9224240d3b48d05d0f115c31ac83c。不打 DMG。
+
 ## U-P0-SCRUB-01 续：真实淡化与跨片段来源（2026-10-09）
 
 结论：同一音频轨的切点、空隙、重叠和四种淡化已接入正反向Scrubber。每个片段保留源偏移、采样率、Clip Gain/Pan与淡化方向，重叠求和、空隙为真静音；继续经过原轨道FX/发送/Aux/输出。GUI使用原Scrub/CommandF9和拖动，松手/Escape停止；试听不创建工程Undo，工具/自定义键可保存，原编辑仍可Undo/Redo。完整U＋P0尚未完成，不进入P1。

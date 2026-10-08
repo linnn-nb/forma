@@ -17,6 +17,22 @@ public:
     {
         return *c.edit;
     }
+    static std::weak_ptr<ScrubPlayback> auditionLifetime(Commands& c)
+    {
+        return c.scrubPlayback;
+    }
+    static int decoderJobs(Commands& c)
+    {
+        return c.scrubDecoder ? c.scrubDecoder->getNumJobs() : 0;
+    }
+    static void drainDecoder(Commands& c)
+    {
+        const auto until = juce::Time::getMillisecondCounterHiRes() + 2000;
+        while (decoderJobs(c) && juce::Time::getMillisecondCounterHiRes() < until)
+            juce::Thread::sleep(1);
+        if (decoderJobs(c))
+            throw std::runtime_error("test decoder failed to drain within fixed 2-second test timeout");
+    }
 };
 class AudioDeviceTestAccess
 {
@@ -103,6 +119,27 @@ Json beginArgs(Commands& c, int64_t sample = 48000)
         }
     return {{"clip", id}, {"position_samples", sample}, {"session", q["session_token"]}, {"revision", q["revision"]}};
 }
+void awaitScrub(Commands& c)
+{
+    const auto until = juce::Time::getMillisecondCounterHiRes() + 2000;
+    while (c.scrubStatus().value("busy", false) && !c.scrubStatus().value("active", false) &&
+           juce::Time::getMillisecondCounterHiRes() < until)
+        pump(5);
+    if (!c.scrubStatus().value("active", false))
+        throw std::runtime_error("audition did not prepare: " + c.scrubStatus().dump());
+}
+void startScrub(Commands& c, const Json& args)
+{
+    const auto received = c.scrub("begin", args);
+    check(received["preparing"].get<bool>() && !received["active"].get<bool>() && !c.query()["playing"].get<bool>(),
+          "accepted begin reports real preparation, without prematurely claiming native playback");
+    check(received["timing"]["capture_ms"].get<double>() <= 20,
+          "local captured-source preparation respects predeclared 20ms message-thread budget");
+    awaitScrub(c);
+    std::cout << "Actual preparation timings " << c.scrubStatus()["timing"].dump() << std::endl;
+    check(c.scrubStatus()["timing"]["graph_ms"].get<double>() <= 20,
+          "native built-in source graph publication respects predeclared 20ms budget");
+}
 juce::AudioBuffer<float> create(const juce::File& file, double rate = 48000, int channels = 2)
 {
     juce::AudioBuffer<float> b(channels, int(rate * 4));
@@ -154,7 +191,7 @@ double verify(Commands& c, te::test_utilities::EnginePlayer& player, const juce:
 {
     const auto before = c.query();
     const auto view = c.uiState();
-    c.scrub("begin", beginArgs(c, start));
+    startScrub(c, beginArgs(c, start));
     c.scrub("speed", {{"speed", rate}, {"shuttle", std::abs(rate) > 1.}});
     auto audio = player.process(4096);
     double maxError = 0;
@@ -174,6 +211,9 @@ double verify(Commands& c, te::test_utilities::EnginePlayer& player, const juce:
     const auto status = c.scrubStatus();
     check(std::abs(status["position_samples"].get<int64_t>() - (start + 4096 * rate * 48000 / outputRate)) <= 1,
           "audition cursor reports actual processed signed source position");
+    const auto timing = c.scrubStatus()["timing"];
+    check(timing["first_audio_ms"].is_number() && timing["first_audio_ms"].get<double>() <= 100,
+          "actual first nonzero PCM meets predeclared 100ms local hosted-device budget");
     c.scrub("end");
     const auto after = c.query();
     check(!c.scrubStatus()["active"].get<bool>() && !after["playing"].get<bool>(), "end stops native audition");
@@ -186,7 +226,8 @@ double verify(Commands& c, te::test_utilities::EnginePlayer& player, const juce:
                        {"gain", gain},
                        {"source_rate", sourceRate},
                        {"device_rate", outputRate},
-                       {"maximum_pcm_error", maxError}});
+                       {"maximum_pcm_error", maxError},
+                       {"timing", timing}});
     return maxError;
 }
 // Independent scalar oracle: no engine fade/render helpers are used for expected PCM.
@@ -217,7 +258,7 @@ void verifyTimeline(Commands& c, te::test_utilities::EnginePlayer& player, int64
 {
     const auto before = c.query();
     const auto preparedAt = juce::Time::getMillisecondCounterHiRes();
-    c.scrub("begin", beginArgs(c, start));
+    startScrub(c, beginArgs(c, start));
     const auto preparationMs = juce::Time::getMillisecondCounterHiRes() - preparedAt;
     const auto cache = c.scrubStatus();
     check(cache["cached_bytes"].get<int64_t>() <= 8 * 1024 * 1024 && cache["cached_clips"].size() <= 32,
@@ -231,6 +272,9 @@ void verifyTimeline(Commands& c, te::test_utilities::EnginePlayer& player, int64
                 error, std::abs(pcm.getSample(channel, n) - expected(channel, start + n * speed * 48000 / outputRate)));
     std::cout << label << " PCM error " << error << std::endl;
     check(error < 2e-5, label);
+    const auto timing = c.scrubStatus()["timing"];
+    check(timing["first_audio_ms"].is_number() && timing["first_audio_ms"].get<double>() <= 100,
+          "actual first nonzero PCM meets predeclared 100ms local hosted-device budget");
     c.scrub("end");
     const auto after = c.query();
     check(after["tracks"] == before["tracks"] && after["revision"] == before["revision"] &&
@@ -241,7 +285,8 @@ void verifyTimeline(Commands& c, te::test_utilities::EnginePlayer& player, int64
                        {"maximum_pcm_error", error},
                        {"preparation_ms", preparationMs},
                        {"clip_count", cache["cached_clips"].size()},
-                       {"cached_bytes", cache["cached_bytes"]}});
+                       {"cached_bytes", cache["cached_bytes"]},
+                       {"timing", timing}});
 }
 juce::Component* find(juce::Component& p, const juce::String& id)
 {
@@ -286,7 +331,7 @@ int main(int argc, char** argv)
         {
             Commands c(false, std::make_unique<Storage>(folder.getChildFile("prefs")));
             setup(c, source);
-            rejects([&] { c.scrub("begin", beginArgs(c)); }, "begin without audio device refuses truthful execution");
+            rejects([&] { startScrub(c, beginArgs(c)); }, "begin without audio device refuses truthful execution");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
             verify(c, player, reference, 1., 1.);
             verify(c, player, reference, -1., 1.);
@@ -310,6 +355,16 @@ int main(int argc, char** argv)
             pump();
             c.seek(48000);
             c.play();
+            // EnginePlayer advances faster than disk workers. Previously the
+            // synchronous audition constructor incidentally warmed this cache.
+            // Wait on the real normal-play reader, without processing/losing PCM.
+            const te::AudioFile normalSource(TransportTestAccess::engine(c), source);
+            const auto mapDeadline = juce::Time::getMillisecondCounterHiRes() + 2000;
+            while (!TransportTestAccess::engine(c).getAudioFileManager().cache.hasMappedReader(normalSource, 0) &&
+                   juce::Time::getMillisecondCounterHiRes() < mapDeadline)
+                pump(1);
+            check(TransportTestAccess::engine(c).getAudioFileManager().cache.hasMappedReader(normalSource, 0),
+                  "normal source reader actually mapped within fixed two-second test deadline");
             auto ordinary = player.process(4096);
             c.stop();
             double ordinaryError = 0;
@@ -317,13 +372,15 @@ int main(int argc, char** argv)
                 for (int n = 512; n < 4096; ++n)
                     ordinaryError = std::max(ordinaryError, std::abs(double(ordinary.getSample(ch, n)) -
                                                                      reference.getSample(ch, 48000 + n) * 2.));
+            std::cout << "Normal restore error " << ordinaryError << " rms " << ordinary.getRMSLevel(0, 512, 3584)
+                      << std::endl;
             check(ordinaryError < 2e-4 && ordinary.getRMSLevel(0, 512, 3584) > .05,
                   "normal Play after audition restores all original source tracks in native graph");
             results.push_back({{"normal_play_restore_max_error", ordinaryError}});
             auto a = beginArgs(c);
             a["revision"] = a["revision"].get<uint64_t>() - 1;
             rejects([&] { c.scrub("begin", a); }, "stale revision cannot begin audition");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             rejects([&] { c.scrub("speed", {{"speed", 1.1}, {"shuttle", false}}); }, "normal Scrub cannot exceed 1x");
             rejects([&] { c.scrub("speed", {{"speed", 4.1}, {"shuttle", true}}); }, "Shuttle cannot exceed 4x");
             rejects([&] { c.scrub("speed", {{"speed", NAN}, {"shuttle", false}}); }, "nonfinite speed rejected");
@@ -336,14 +393,14 @@ int main(int argc, char** argv)
             pump(1600);
             check(!c.scrubStatus()["active"].get<bool>() && c.scrubStatus()["reason"] == "drag_timeout",
                   "message-thread timeout retires stalled audition with truthful reason");
-            c.scrub("begin", beginArgs(c, 480));
+            startScrub(c, beginArgs(c, 480));
             c.scrub("speed", {{"speed", -1.}, {"shuttle", false}});
             auto boundary = player.process(4096);
             check(c.scrubStatus()["exhausted"].get<bool>() && boundary.getMagnitude(1024, 2048) == 0,
                   "reverse source boundary exhausts and clears output without wrapping");
             pump();
             check(!c.scrubStatus()["active"].get<bool>(), "boundary exhaustion stops native graph");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             TransportTestAccess::edit(c).getTransport().freePlaybackContext();
             pump();
             check(!c.scrubStatus()["active"].get<bool>() &&
@@ -362,7 +419,7 @@ int main(int argc, char** argv)
             run(c, Json::array({op("plugin.insert", {{"track", t}, {"type", "4bandEq"}})}));
             const auto eq = c.query()["tracks"][0]["plugins"][0]["id"];
             run(c, Json::array({op("plugin.parameter", {{"plugin", eq}, {"parameter", "Mid gain 1"}, {"value", 9}})}));
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             c.scrub("speed", {{"speed", -1.}, {"shuttle", false}});
             auto filtered = player.process(4096);
             c.scrub("end");
@@ -374,26 +431,26 @@ int main(int argc, char** argv)
             check(filtered.getRMSLevel(0, 512, 3584) > .005 && filteredDifference > 1e-4,
                   "actual native EQ in original send route measurably filters reversed source");
             results.push_back({{"effect", "native EQ"}, {"max_difference_from_dry_route", filteredDifference}});
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             c.stop();
             check(!c.scrubStatus()["active"].get<bool>(), "normal Stop cancels audition first");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             c.seek(6000);
             check(!c.scrubStatus()["active"].get<bool>() && c.query()["position_samples"] == 6000,
                   "explicit seek cancels audition before positioning normal transport");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             run(c, Json::array({op("track.gain", {{"track", t}, {"db", -8}})}));
             check(!c.scrubStatus()["active"].get<bool>() && c.query()["tracks"][0]["gain_db"] == -8,
                   "L1 edit retires audition before mutating native graph");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             c.undo();
             check(!c.scrubStatus()["active"].get<bool>() &&
                       std::abs(c.query()["tracks"][0]["gain_db"].get<double>() + 6) < 1e-5,
                   "Undo cancels audition and still targets actual engineering transaction");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             c.redo();
             check(!c.scrubStatus()["active"].get<bool>(), "Redo retires audition before native state restoration");
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             auto saved = folder.getChildFile("scrub.tracktionedit");
             c.save(saved);
             check(!c.scrubStatus()["active"].get<bool>(), "save cannot persist a transient audition graph");
@@ -407,7 +464,7 @@ int main(int argc, char** argv)
                                                  {"out_samples", 100},
                                                  {"in_curve", "linear"},
                                                  {"out_curve", "linear"}})}));
-            c.scrub("begin", beginArgs(c));
+            startScrub(c, beginArgs(c));
             check(c.scrubStatus()["active"].get<bool>(),
                   "actual fades no longer block prepared native source audition");
             c.scrub("end");
@@ -419,6 +476,139 @@ int main(int argc, char** argv)
             setup(c, monoFile, false);
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
             verify(c, player, mono, -1., 1., 44100, 48000);
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("async-prefs")));
+            setup(c, source);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            const auto before = c.query();
+            auto pending = c.scrub("begin", beginArgs(c));
+            check(pending["state"] == "preparing" && !pending["active"].get<bool>() && pending["busy"].get<bool>(),
+                  "real background decode starts without a false playback receipt");
+            check(!c.query()["playing"].get<bool>() && player.process(512).getMagnitude(0, 512) == 0,
+                  "no graph or audio is published before asynchronous completion");
+            rejects([&] { c.record(folder); }, "pending preparation excludes recording before any file capture");
+            c.scrub("speed", {{"speed", -.5}, {"shuttle", false}});
+            const auto cancelledAt = juce::Time::getMillisecondCounterHiRes();
+            c.scrub("cancel");
+            check(juce::Time::getMillisecondCounterHiRes() - cancelledAt <= 20,
+                  "cancel does not wait for disk, decoder completion or graph preparation");
+            TransportTestAccess::drainDecoder(c);
+            pump(30);
+            check(!c.scrubStatus().value("busy", false) && !c.query()["playing"].get<bool>() &&
+                      player.process(512).getMagnitude(0, 512) == 0,
+                  "completed cancelled worker cannot resurrect audio or a playback graph");
+            check(c.query()["tracks"] == before["tracks"] && c.query()["revision"] == before["revision"] &&
+                      c.query()["position_samples"] == before["position_samples"],
+                  "cancel during preparation preserves actual project and original transport insertion");
+            c.scrub("begin", beginArgs(c));
+            // Waiting only for the background job, without dispatching the message Timer,
+            // deterministically puts completion ahead of publication/cancellation.
+            TransportTestAccess::drainDecoder(c);
+            check(c.scrubStatus()["preparing"].get<bool>(), "decoded job alone cannot claim graph publication");
+            c.scrub("end");
+            pump(30);
+            check(!c.query()["playing"].get<bool>() && c.scrubStatus()["reason"] == "mouse_release",
+                  "mouse release after decode but before publication prevents delayed startup");
+            c.scrub("begin", beginArgs(c));
+            TransportTestAccess::drainDecoder(c);
+            juce::Thread::sleep(1550);
+            pump(20);
+            check(c.scrubStatus()["state"] == "failed" && c.scrubStatus()["reason"] == "preparation_timeout" &&
+                      !c.query()["playing"].get<bool>(),
+                  "completed decode past fixed 1500ms deadline fails instead of starting late");
+            c.scrub("begin", beginArgs(c));
+            c.play();
+            TransportTestAccess::drainDecoder(c);
+            pump(30);
+            check(c.query()["playing"].get<bool>() && !c.scrubStatus().value("busy", false),
+                  "normal Play cancels pending decode and remains normal after worker completion");
+            c.stop();
+            c.scrub("begin", beginArgs(c));
+            const auto track = c.query()["tracks"][0]["id"];
+            run(c, Json::array({op("track.gain", {{"track", track}, {"db", -6}})}));
+            TransportTestAccess::drainDecoder(c);
+            pump(30);
+            check(!c.query()["playing"].get<bool>() && !c.scrubStatus().value("busy", false) &&
+                      std::abs(c.query()["tracks"][0]["gain_db"].get<double>() + 6) < 1e-5,
+                  "human edit during decode invalidates pending source snapshot without delayed playback");
+            c.undo();
+            pump();
+            c.scrub("begin", beginArgs(c));
+            TransportTestAccess::drainDecoder(c);
+            c.updateUiState({{"span_samples", 123456}}, c.sessionToken());
+            pump(30);
+            check(!c.query()["playing"].get<bool>() && c.scrubStatus()["reason"] == "device_or_transport_interrupted",
+                  "changed view coordinates reject a completed but unposted audition");
+            TransportTestAccess::edit(c).getTransport().ensureContextAllocated();
+            check(TransportTestAccess::edit(c).getTransport().getCurrentPlaybackContext() != nullptr,
+                  "context-loss fault starts with an actual allocated native context");
+            c.scrub("begin", beginArgs(c));
+            TransportTestAccess::drainDecoder(c);
+            TransportTestAccess::edit(c).getTransport().freePlaybackContext();
+            pump(30);
+            check(!c.query()["playing"].get<bool>() && !c.scrubStatus().value("busy", false),
+                  "context loss during preparation cannot recreate a stale playback request");
+            int accepted = 0, refused = 0;
+            for (int i = 0; i < 20; ++i)
+            {
+                try
+                {
+                    c.scrub("begin", beginArgs(c));
+                    ++accepted;
+                }
+                catch (const std::exception&)
+                {
+                    ++refused;
+                }
+                c.scrub("cancel");
+                check(TransportTestAccess::decoderJobs(c) <= 1, "rapid gestures never queue more than one decode job");
+            }
+            TransportTestAccess::drainDecoder(c);
+            pump(30);
+            check(accepted + refused == 20 && !c.query()["playing"].get<bool>(),
+                  "rapid cancellations finish without late audio or an unbounded decode queue");
+            results.push_back(
+                {{"case", "rapid asynchronous cancellation"}, {"accepted", accepted}, {"refused_busy", refused}});
+            c.scrub("begin", beginArgs(c));
+            auto saved = folder.getChildFile("pending-save.tracktionedit");
+            c.save(saved);
+            TransportTestAccess::drainDecoder(c);
+            pump(30);
+            Commands reopened(false, std::make_unique<Storage>(folder.getChildFile("pending-reopen-prefs")));
+            reopened.open(saved);
+            check(stableTracks(reopened) == stableTracks(c) && !reopened.scrubStatus().value("busy", false),
+                  "save while preparing cancels task and reopens without a persisted decoder or audition graph");
+        }
+        {
+            const auto disappearing = folder.getChildFile("missing-source.wav");
+            check(source.copyFileTo(disappearing), "real owned fault source copied without touching original media");
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("missing-prefs")));
+            setup(c, disappearing, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            check(disappearing.deleteFile(), "only the owned fault source removed before decode");
+            c.scrub("begin", beginArgs(c));
+            const auto until = juce::Time::getMillisecondCounterHiRes() + 2000;
+            while (c.scrubStatus().value("busy", false) && juce::Time::getMillisecondCounterHiRes() < until)
+                pump(5);
+            check(c.scrubStatus()["state"] == "failed" && c.scrubStatus()["reason"] == "decode_failed" &&
+                      c.scrubStatus()["error"].is_string() && !c.query()["playing"].get<bool>() &&
+                      player.process(512).getMagnitude(0, 512) == 0,
+                  "actual missing-media decode fails truthfully without playback or a success receipt");
+        }
+        {
+            auto c = std::make_unique<Commands>(false, std::make_unique<Storage>(folder.getChildFile("close-prefs")));
+            setup(*c, source, false);
+            std::weak_ptr<ScrubPlayback> lifetime;
+            {
+                te::test_utilities::EnginePlayer player(TransportTestAccess::engine(*c), device());
+                c->scrub("begin", beginArgs(*c));
+                lifetime = TransportTestAccess::auditionLifetime(*c);
+            }
+            c.reset();
+            pump(30);
+            check(lifetime.expired(),
+                  "closing owning session during real decode retires timers and worker without a late callback");
         }
         {
             Commands c(false, std::make_unique<Storage>(folder.getChildFile("fades-prefs")));
@@ -471,7 +661,7 @@ int main(int argc, char** argv)
             Commands unsupported(false, std::make_unique<Storage>(folder.getChildFile("speed-fade-prefs")));
             unsupported.open(speedFile);
             te::test_utilities::EnginePlayer invalidPlayer(TransportTestAccess::engine(unsupported), device());
-            rejects([&] { unsupported.scrub("begin", beginArgs(unsupported, 6000)); },
+            rejects([&] { startScrub(unsupported, beginArgs(unsupported, 6000)); },
                     "native tape-speed fade cannot be misrepresented as an ordinary gain fade");
         }
         {
@@ -544,7 +734,7 @@ int main(int argc, char** argv)
                                                    {"position_samples", 10000},
                                                    {"ref", "$bad"}}),
                                 op("clip.fx.insert", {{"clip", "$bad"}, {"type", "4bandEq"}})}));
-            rejects([&] { c.scrub("begin", beginArgs(c, 47000)); },
+            rejects([&] { startScrub(c, beginArgs(c, 47000)); },
                     "unsupported neighboring Clip FX rejects whole window instead of silently omitting a source");
             c.undo();
             pump();
@@ -593,7 +783,7 @@ int main(int argc, char** argv)
                     "clip.copy",
                     {{"clip", clip}, {"track", track}, {"position_samples", 0}, {"ref", "$copy" + std::to_string(i)}}));
             run(c, copies);
-            c.scrub("begin", beginArgs(c, 2400));
+            startScrub(c, beginArgs(c, 2400));
             check(c.scrubStatus()["cached_clips"].size() == 32,
                   "32 intersecting actual clips can be prepared within budget");
             c.scrub("speed", {{"speed", -.5}, {"shuttle", false}});
@@ -608,7 +798,7 @@ int main(int argc, char** argv)
             c.scrub("cancel");
             run(c, Json::array({op("clip.copy",
                                    {{"clip", clip}, {"track", track}, {"position_samples", 0}, {"ref", "$excess"}})}));
-            rejects([&] { c.scrub("begin", beginArgs(c, 2400)); },
+            rejects([&] { startScrub(c, beginArgs(c, 2400)); },
                     "33rd intersecting clip refuses whole preparation before publication");
             check(!c.scrubStatus()["active"].get<bool>() && !c.query()["playing"].get<bool>(),
                   "preparation failure leaves no active or audible partial graph");
@@ -628,9 +818,12 @@ int main(int argc, char** argv)
                                                   {"ref", "$large" + std::to_string(i)}}));
             run(c, copies);
             const auto before = c.query();
-            rejects([&] { c.scrub("begin", beginArgs(c, 96000)); },
+            rejects([&] { startScrub(c, beginArgs(c, 96000)); },
                     "aggregate decoded PCM exceeding 8 MiB rejects before graph publication");
-            check(c.query() == before, "failed aggregate preparation preserves every project fact and transport state");
+            const auto after = c.query();
+            check(after["tracks"] == before["tracks"] && after["revision"] == before["revision"] &&
+                      after["position_samples"] == before["position_samples"] && after["playing"] == before["playing"],
+                  "failed aggregate preparation preserves every project fact and transport state");
         }
         {
             Workspace w(false, std::make_unique<Storage>(folder.getChildFile("ui-prefs")));
@@ -657,8 +850,11 @@ int main(int argc, char** argv)
             auto axis = e->coordinates();
             juce::Point<float> p{float(axis.pixelAt(48000)), float(e->rowY(0) + 56)};
             e->mouseDown(event(*e, p));
-            check(c.scrubStatus()["active"].get<bool>() && c.scrubStatus()["cached_clips"].size() == 2,
-                  "native pointer press on second clip prepares both actual neighboring sources through L1");
+            check(c.scrubStatus()["preparing"].get<bool>() && !c.scrubStatus()["active"].get<bool>() &&
+                      c.scrubStatus()["cached_clips"].size() == 2,
+                  "native pointer press reports preparing both actual neighboring sources through L1");
+            awaitScrub(c);
+            AudioDeviceTestAccess::refresh(w);
             pump(20);
             p.x -= 30;
             e->mouseDrag(event(*e, p, true));
@@ -667,11 +863,12 @@ int main(int argc, char** argv)
             e->mouseUp(event(*e, p, true));
             check(!c.scrubStatus()["active"].get<bool>(), "native mouse release retires audition");
             e->mouseDown(event(*e, p));
-            check(c.scrubStatus()["active"].get<bool>(), "second drag can start after release");
+            check(c.scrubStatus()["preparing"].get<bool>(), "second drag can prepare after release");
             check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)) && !c.scrubStatus()["active"].get<bool>(),
                   "Escape immediately cancels real audition");
+            pump(20);
             e->mouseDown(event(*e, p));
-            check(c.scrubStatus()["active"].get<bool>(), "audition begins before resize test");
+            check(c.scrubStatus()["preparing"].get<bool>(), "audition prepares before resize test");
             w.setSize(1650, 950);
             check(!c.scrubStatus()["active"].get<bool>(), "coordinate resize cancels native scrub gesture");
             auto* mappings = w.uiCommands().getKeyMappings();

@@ -298,6 +298,7 @@ void Workspace::initialiseCommandManager()
                 refresh();
             });
     };
+    editArea.onScrubReady = [this] { message(text("Scrubber 已就绪 · 左右拖动试听 · 松手或 Escape 停止")); };
     editArea.onScrubStopped = [this](const std::string& reason)
     {
         if (reason == "source_boundary")
@@ -305,13 +306,22 @@ void Workspace::initialiseCommandManager()
         else if (reason == "drag_timeout")
             message(text("Scrubber 已停止：鼠标未继续拖动"));
         else if (reason == "device_or_transport_interrupted")
-            message(text("Scrubber 已停止：设备或走带状态改变"));
+            message(text("Scrubber 已停止：工程、设备或走带状态改变"));
+        else if (reason == "preparation_timeout")
+            message(text("Scrubber 准备超时；没有启动试听"));
+        else if (reason == "decode_failed" || reason == "graph_failed")
+            message(text("Scrubber 准备失败：") +
+                    text(commands.scrubStatus().value("error", std::string("unknown error"))));
     };
     editArea.onScrub = [this](const std::string& action, const Json& args)
     {
         try
         {
             commands.scrub(action, args);
+            if (action == "begin")
+                message(text("Scrubber 正在读取音频 · 松手或 Escape 取消"));
+            else if (action == "end" || action == "cancel")
+                message(text("Scrubber 已停止"));
             return true;
         }
         catch (const std::exception& e)

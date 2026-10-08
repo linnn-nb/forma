@@ -255,6 +255,7 @@ Commands::~Commands()
     recovery.reset();
     stopTimer();
     stop();
+    scrubDecoder.reset();
     closePluginEditors(true);
     nativeStates.reset();
     edit->getParameterChangeHandler().setUserChangeListener(nullptr);

@@ -8,7 +8,7 @@
 
 | 行为 | 官方依据 | Forma 实现与差异 | 状态 |
 |---|---|---|---|
-| Scrubber与Shuttle | Reference Guide 2026.4印刷883–884页；已核验本地官方PDF | Scrub/可改⌘F9、按拖速真实正反向、Option±4、正常±1；原FX/路由不变。同轨切点/空隙/重叠及四曲线淡化、混合采样率/源偏移。±2工程秒/32源/总8 MiB边界停止；同步准备约1–204 ms，无Clip FX/路由自动化，临时Ctrl/细拖/双轨8声道/选区行为待补 | U-P0-SCRUB-01：194专项、相关8/8、PCM/Undo/重开通过；桌面锁定未验收，部分实现 |
+| Scrubber与Shuttle | Reference Guide 2026.4印刷883–884页；已核验本地官方PDF | Scrub/可改⌘F9、按拖速真实正反向、Option±4、正常±1；原FX/路由不变。同轨切点/空隙/重叠及四曲线淡化、混合采样率/源偏移。单后台解码、可取消准备和发布前重验；±2工程秒/32源/总8 MiB边界停止；无长窗口推进/Clip FX/路由自动化，临时Ctrl/细拖/双轨8声道/选区行为待补 | U-P0-SCRUB-01：421专项、相关11/11、实际PCM/取消/Undo/重开通过；图准备0.212–0.717 ms仅hosted device；桌面锁定未验收，部分实现 |
 | 音频波形幅度与连续Zoomer | Reference 2026.4印刷862–866页（2026-10-09本地核验） | 右侧+/−/1及CommandOption]/[、ControlCommandOption[；Control左右连续水平，上下所点音频轨显示尺度，Single返回/取消、全工程复位、上一缩放恢复比例；schema10视图保存不改gain/Undo。无组联动/二维框选/按钮拖拽/Option按钮返回/MIDI幅度/Overview/Zoom Toggle；Scrubber正反向及跨片段见专行，其他未接通路径不放占位 | U-P0-WAVEFORM-ZOOM-01：106专项、相关11/11、真实PCM/缩略图通过；桌面锁定未验收；完整行为部分 |
 | Zoomer Normal / Single与临时缩放 | Reference Guide 2026.4印刷861–866、881–884页（2026-10-09本地核验） | F5循环、点击减半居中、原始范围适配、Single返回原工具、Option/CommandOptionE上一缩放、OptionF真实选区、ControlCommand标尺临时入口、双击全工程；共享命令/可改键/schema9重开，16条视图历史不进工程Undo。水平最小480采样；连续水平/音频幅度见上行，仍无Command二维框选/MIDI幅度/Overview/Zoom Toggle。Scrubber实际路径见专行；SDK短段循环不冒充拖速正反向 | U-P0-ZOOMER-01：151检查、相关10/10、真实PCM误差0；GUI锁屏未验收；完整行为部分 |
 | 轨道参数视图 | Reference Guide 2026.4印刷页339–342，Track View selector/Changing Track Views；2026-10-09核验 | `ui/TrackHeader.h`读实际参数；`WorkspaceAutomation.cpp`提供Control−片段/音量与ControlCommand←/→，稳定lane ID保存，移除插件保留不可用引用，恢复后重现。无Edit组/所有轨联动，MIDI公共Notes/Clips切换未实现 | 部分；原生组件与重开测试通过，桌面待测 |

@@ -302,6 +302,7 @@ Json Commands::configureInput(const std::string& deviceName)
 Json Commands::record(const juce::File& directory)
 {
     checkThread();
+    require(!scrubPlayback, "finish scrub preparation or audition before recording");
     captureNativeStates();
     const auto readiness = recordingReadiness();
     if (!readiness["ready"].get<bool>())

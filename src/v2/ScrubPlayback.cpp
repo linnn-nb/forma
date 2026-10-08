@@ -24,6 +24,7 @@ public:
     {
         juce::AudioBuffer<float> pcm;
         std::string clip;
+        juce::File file;
         double start = 0, end = 0, offset = 0, fileRate = 0;
         int64_t cacheFirst = 0;
         double fadeIn = 0, fadeOut = 0;
@@ -44,25 +45,50 @@ public:
     std::vector<Segment> segments;
     std::atomic<double> speed{0}, position{0};
     std::atomic<bool> exhausted{false}, enabled{true};
-    std::atomic<uint64_t> serial{0};
+    std::atomic<uint64_t> serial{0}, firstAudioTick{0};
+    std::atomic<bool> decoded{false};
+    // Decode writes below happen-before decoded.release; message thread only
+    // reads them after acquire. Captured source descriptors never change.
+    std::string decodeError;
+    double decodeMs = 0, requestedPosition = 0, firstSecond = 0, lastSecond = 0;
+    double beganAt = 0, captureMs = 0, graphMs = 0, readyMs = 0;
+    double nativeCaptureMs = 0, contextMs = 0, startMs = 0;
+    int64_t beginTick = 0;
+    bool playing = false;
+    Json view;
+    std::function<void()> ready;
     double windowStart = 0, windowEnd = 0, projectRate = 48000;
     int64_t cachedFrames = 0, cachedBytes = 0;
     double returnPosition = 0, requestedAt = 0;
     std::string clip, track, session;
     uint64_t revision = 0, deviceGeneration = 0;
     te::EditPlaybackContext* playbackContext = nullptr;
+    te::EditPlaybackContext* contextAtBegin = nullptr;
     std::set<std::string> included;
     std::function<void(std::string)> finish;
     std::function<bool()> interrupted;
     void timerCallback() override
     {
         std::string reason;
-        if (exhausted.load(std::memory_order_relaxed))
+        if (!playing && juce::Time::getMillisecondCounterHiRes() - beganAt > 1500)
+            reason = "preparation_timeout";
+        else if (exhausted.load(std::memory_order_relaxed))
             reason = "source_boundary";
         else if (interrupted && interrupted())
             reason = "device_or_transport_interrupted";
         else if (juce::Time::getMillisecondCounterHiRes() - requestedAt > 1500)
             reason = "drag_timeout";
+        if (reason.empty() && !playing && decoded.load(std::memory_order_acquire))
+        {
+            if (decodeError.empty())
+            {
+                auto callback = ready;
+                if (callback)
+                    callback();
+                return;
+            }
+            reason = "decode_failed";
+        }
         if (!reason.empty())
         {
             auto callback = finish;
@@ -73,6 +99,78 @@ public:
 };
 namespace
 {
+class DecodeWindow final : public juce::ThreadPoolJob
+{
+public:
+    explicit DecodeWindow(std::shared_ptr<ScrubPlayback> value) : ThreadPoolJob("Scrubber PCM"), state(std::move(value))
+    {
+    }
+    JobStatus runJob() override
+    {
+        const auto started = juce::Time::getMillisecondCounterHiRes();
+        const auto valid = [&]
+        {
+            require(state->enabled.load(std::memory_order_acquire) && !shouldExit(), "scrub preparation cancelled");
+            require(juce::Time::getMillisecondCounterHiRes() - state->beganAt <= 1500, "scrub preparation expired");
+        };
+        try
+        {
+            juce::AudioFormatManager formats;
+            formats.registerBasicFormats();
+            for (auto& segment : state->segments)
+            {
+                valid();
+                // File open, format probing, allocation and chunked reads are worker-only.
+                std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(segment.file));
+                require(reader && reader->sampleRate >= 8000 && reader->sampleRate <= 192000 &&
+                            reader->numChannels >= 1 && reader->numChannels <= 2,
+                        "scrub supports readable mono/stereo PCM");
+                segment.fileRate = reader->sampleRate;
+                const double sourceFirst =
+                    (segment.offset + std::max(segment.start, state->firstSecond) - segment.start) * reader->sampleRate;
+                const double sourceLast =
+                    (segment.offset + std::min(segment.end, state->lastSecond) - segment.start) * reader->sampleRate;
+                require(std::isfinite(sourceFirst) && std::isfinite(sourceLast) && std::abs(sourceFirst) < 1.e15 &&
+                            std::abs(sourceLast) < 1.e15,
+                        "invalid scrub source mapping");
+                if (segment.clip == state->clip)
+                {
+                    const double frame =
+                        (segment.offset + state->requestedPosition - segment.start) * reader->sampleRate;
+                    require(frame >= 0 && frame < reader->lengthInSamples, "scrub source offset outside media");
+                }
+                segment.cacheFirst = int64_t(std::floor(sourceFirst));
+                const auto count = int64_t(std::ceil(sourceLast)) - segment.cacheFirst + 1;
+                require(count > 1 && count <= INT_MAX, "invalid scrub source window");
+                const auto bytes = count * reader->numChannels * sizeof(float);
+                require(bytes <= 8 * 1024 * 1024 - state->cachedBytes, "scrub window exceeds 8 MiB decoded budget");
+                valid();
+                segment.pcm.setSize(int(reader->numChannels), int(count));
+                segment.pcm.clear();
+                for (int offset = 0; offset < int(count); offset += 4096)
+                {
+                    valid();
+                    const auto amount = std::min(4096, int(count) - offset);
+                    require(reader->read(&segment.pcm, offset, amount, segment.cacheFirst + offset, true, true),
+                            "scrub source read failed");
+                }
+                state->cachedFrames += count;
+                state->cachedBytes += bytes;
+            }
+            valid();
+        }
+        catch (const std::exception& e)
+        {
+            state->decodeError = e.what();
+        }
+        state->decodeMs = juce::Time::getMillisecondCounterHiRes() - started;
+        state->decoded.store(true, std::memory_order_release);
+        return jobHasFinished;
+    }
+
+private:
+    std::shared_ptr<ScrubPlayback> state;
+};
 class SignedSource final : public tracktion::graph::Node
 {
 public:
@@ -136,6 +234,9 @@ public:
                                  segment.gainAt(seconds) * (ch == 0 ? segment.leftGain : segment.rightGain);
                     }
                 pc.buffers.audio.getSample(ch, i) = value * envelope;
+                if (value != 0 && envelope != 0 && state->firstAudioTick.load(std::memory_order_relaxed) == 0)
+                    state->firstAudioTick.store(uint64_t(juce::Time::getHighResolutionTicks()),
+                                                std::memory_order_relaxed);
             }
             if (run && rate != 0)
                 cursor += step;
@@ -169,14 +270,31 @@ Json Commands::scrubStatus() const
     Json clips = Json::array();
     for (const auto& segment : s.segments)
         clips.push_back(segment.clip);
-    return {{"active", true},
+    const bool decoded = s.decoded.load(std::memory_order_acquire);
+    const auto firstTick = s.firstAudioTick.load(std::memory_order_relaxed);
+    return {{"active", s.playing},
+            {"busy", true},
+            {"preparing", !s.playing},
+            {"state", s.playing ? "playing" : "preparing"},
+            {"error", decoded && !s.decodeError.empty() ? Json(s.decodeError) : Json(nullptr)},
+            {"timing",
+             {{"capture_ms", s.captureMs},
+              {"decode_ms", decoded ? Json(s.decodeMs) : Json(nullptr)},
+              {"graph_ms", s.playing ? Json(s.graphMs) : Json(nullptr)},
+              {"native_state_ms", s.playing ? Json(s.nativeCaptureMs) : Json(nullptr)},
+              {"context_ms", s.playing ? Json(s.contextMs) : Json(nullptr)},
+              {"transport_start_ms", s.playing ? Json(s.startMs) : Json(nullptr)},
+              {"ready_ms", s.playing ? Json(s.readyMs) : Json(nullptr)},
+              {"first_audio_ms", firstTick ? Json(double(firstTick - uint64_t(s.beginTick)) * 1000 /
+                                                  juce::Time::getHighResolutionTicksPerSecond())
+                                           : Json(nullptr)}}},
             {"clip", s.clip},
             {"track", s.track},
             {"position_samples", std::llround(frame)},
             {"speed", s.speed.load(std::memory_order_relaxed)},
             {"exhausted", s.exhausted.load(std::memory_order_relaxed)},
-            {"cached_frames", s.cachedFrames},
-            {"cached_bytes", s.cachedBytes},
+            {"cached_frames", decoded ? Json(s.cachedFrames) : Json(nullptr)},
+            {"cached_bytes", decoded ? Json(s.cachedBytes) : Json(nullptr)},
             {"cached_clips", clips},
             {"window_start_samples", s.windowStart},
             {"window_end_samples", s.windowEnd}};
@@ -188,11 +306,22 @@ void Commands::stopScrub(const std::string& reason)
     lastScrubStatus = scrubStatus();
     lastScrubStatus["active"] = false;
     lastScrubStatus["reason"] = reason;
+    lastScrubStatus["busy"] = false;
+    lastScrubStatus["preparing"] = false;
+    lastScrubStatus["state"] =
+        reason == "decode_failed" || reason == "preparation_timeout" || reason == "graph_failed" ? "failed" : "stopped";
     auto state = std::move(scrubPlayback);
     state->enabled.store(false, std::memory_order_release);
     state->stopTimer();
     state->finish = {};
+    state->ready = {};
     state->interrupted = {};
+    if (!state->playbackContext)
+    {
+        if (masterAnalysis)
+            masterAnalysis->prioritizePlayback(false);
+        return;
+    }
     auto& transport = edit->getTransport();
     transport.stop(false, false);
     if (auto* context = transport.getCurrentPlaybackContext())
@@ -230,7 +359,10 @@ Json Commands::scrub(const std::string& action, const Json& args)
         return scrubStatus();
     }
     require(action == "begin", "unknown scrub action");
-    require(!scrubPlayback, "scrub already active");
+    require(!scrubPlayback, "scrub already active or preparing");
+    require(!scrubDecoder || scrubDecoder->getNumJobs() == 0, "scrub decoder is finishing a cancelled request");
+    const auto beganAt = juce::Time::getMillisecondCounterHiRes();
+    const auto beginTick = juce::Time::getHighResolutionTicks();
     require(args.is_object() && args.size() == 4 && args.contains("clip") && args["clip"].is_string() &&
                 args.contains("position_samples") && args["position_samples"].is_number_integer() &&
                 args.contains("session") && args["session"].is_string() && args.contains("revision") &&
@@ -249,6 +381,8 @@ Json Commands::scrub(const std::string& action, const Json& args)
     // Validate native route closure; no edits to mute/solo or output connections.
     auto state = std::make_shared<ScrubPlayback>();
     state->projectRate = timelineRate;
+    state->beganAt = beganAt;
+    state->beginTick = beginTick;
     state->track = target->itemID.toString().toStdString();
     std::vector<std::string> pending{state->track};
     bool reachesDevice = false;
@@ -307,10 +441,11 @@ Json Commands::scrub(const std::string& action, const Json& args)
     const double firstSecond = std::max(0., requested - 2.);
     const double lastSecond = requested + 2.;
     double firstClip = lastSecond, lastClip = firstSecond;
-    juce::AudioFormatManager formats;
-    formats.registerBasicFormats();
-    // Every intersecting source is prepared on the message thread before publishing.
-    // The audio node reads only this immutable bounded set, never Edit or disk.
+    state->requestedPosition = requested;
+    state->firstSecond = firstSecond;
+    state->lastSecond = lastSecond;
+    // L1 captures detached source descriptions only; no file probing or reading.
+    // The single background worker never sees Edit, Engine, plugins or GUI.
     for (auto* item : target->getClips())
     {
         const auto pos = item->getPosition();
@@ -321,23 +456,21 @@ Json Commands::scrub(const std::string& action, const Json& args)
         require(state->segments.size() < 32, "scrub window exceeds 32-clip preparation budget");
         auto* clip = dynamic_cast<te::WaveAudioClip*>(item);
         require(clip != nullptr, "scrub window contains a non-audio source");
-        require(audioClipQuery(*clip)["editable_audio"] && !clip->isUsingARA() && clip->getPitchChange() == 0 &&
-                    !clip->effectsEnabled() && clip->getPluginList()->size() == 0,
+        require(!clip->isLooping() && !clip->isGrouped() && !clip->getAutoTempo() && !clip->getAutoPitch() &&
+                    !clip->getWarpTime() && !clip->getIsReversed() && std::abs(clip->getSpeedRatio() - 1) < 1e-9 &&
+                    !clip->isUsingARA() && clip->getPitchChange() == 0 && !clip->effectsEnabled() &&
+                    clip->getPluginList()->size() == 0,
                 "scrub window requires unwarped clips without Clip FX or pitch change");
         require(clip->getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                     clip->getFadeOutBehaviour() == te::AudioClipBase::gainFade,
                 "scrub tape-speed fades not supported yet");
         require(clip->state.getProperty("channels").toString().isEmpty(), "scrub channel masks not supported yet");
-        std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(clip->getOriginalFile()));
-        require(reader && reader->sampleRate >= 8000 && reader->sampleRate <= 192000 && reader->numChannels >= 1 &&
-                    reader->numChannels <= 2,
-                "scrub supports readable mono/stereo PCM");
         ScrubPlayback::Segment segment;
         segment.clip = clip->itemID.toString().toStdString();
         segment.start = start;
         segment.end = end;
         segment.offset = pos.getOffset().inSeconds();
-        segment.fileRate = reader->sampleRate;
+        segment.file = clip->getOriginalFile();
         segment.fadeIn = clip->getFadeIn().inSeconds();
         segment.fadeOut = clip->getFadeOut().inSeconds();
         segment.inCurve = clip->getFadeInType();
@@ -347,28 +480,7 @@ Json Commands::scrub(const std::string& action, const Json& args)
                     segment.inCurve <= te::AudioFadeCurve::sCurve && segment.outCurve >= te::AudioFadeCurve::linear &&
                     segment.outCurve <= te::AudioFadeCurve::sCurve,
                 "invalid scrub fade settings");
-        const double sourceFirst = (segment.offset + std::max(start, firstSecond) - start) * reader->sampleRate;
-        const double sourceLast = (segment.offset + std::min(end, lastSecond) - start) * reader->sampleRate;
-        require(std::isfinite(sourceFirst) && std::isfinite(sourceLast) && std::abs(sourceFirst) < 1.e15 &&
-                    std::abs(sourceLast) < 1.e15,
-                "invalid scrub source mapping");
-        if (clip == c)
-        {
-            const double pressedFrame = (segment.offset + requested - start) * reader->sampleRate;
-            require(pressedFrame >= 0 && pressedFrame < reader->lengthInSamples, "scrub source offset outside media");
-        }
-        // Padding beyond source media is real silence, matching native clip playback.
-        segment.cacheFirst = int64_t(std::floor(sourceFirst));
-        const auto count = int64_t(std::ceil(sourceLast)) - segment.cacheFirst + 1;
-        require(count > 1 && count <= INT_MAX, "invalid scrub source window");
-        const auto bytes = count * reader->numChannels * sizeof(float);
-        require(bytes <= 8 * 1024 * 1024 - state->cachedBytes, "scrub window exceeds 8 MiB decoded budget");
-        segment.pcm.setSize(int(reader->numChannels), int(count));
-        segment.pcm.clear();
-        require(reader->read(&segment.pcm, 0, int(count), segment.cacheFirst, true, true), "scrub source read failed");
         clip->getLiveClipLevel().getLeftAndRightGains(segment.leftGain, segment.rightGain);
-        state->cachedFrames += count;
-        state->cachedBytes += bytes;
         state->segments.push_back(std::move(segment));
         firstClip = std::min(firstClip, start);
         lastClip = std::max(lastClip, end);
@@ -383,50 +495,98 @@ Json Commands::scrub(const std::string& action, const Json& args)
     state->requestedAt = juce::Time::getMillisecondCounterHiRes();
     auto& transport = edit->getTransport();
     state->returnPosition = transport.getPosition().inSeconds();
-    captureNativeStates();
+    state->contextAtBegin = transport.getCurrentPlaybackContext();
+    state->deviceGeneration = audioDeviceGeneration();
+    state->view = uiState();
+    if (!scrubDecoder)
+        scrubDecoder =
+            std::make_unique<juce::ThreadPool>(1, juce::Thread::osDefaultStackSize, juce::Thread::Priority::background);
     if (masterAnalysis)
         masterAnalysis->prioritizePlayback(true);
     scrubPlayback = state;
+    state->finish = [this](std::string reason) { stopScrub(reason); };
+    state->ready = [this] { activateScrub(); };
+    state->interrupted = [this]
+    {
+        const auto& s = *scrubPlayback;
+        return s.session != sessionToken() || s.revision != revision || s.view != uiState() ||
+               audioDeviceGeneration() != s.deviceGeneration || audioConfigurationPending() ||
+               engine.getDeviceManager().deviceManager.getCurrentAudioDevice() == nullptr ||
+               !recordingCapture.is_null() || !capture.is_null() || !parameterCapture.is_null() ||
+               (s.playing ? (!edit->getTransport().isPlaying() ||
+                             edit->getTransport().getCurrentPlaybackContext() != s.playbackContext)
+                          : (edit->getTransport().isPlaying() ||
+                             edit->getTransport().getCurrentPlaybackContext() !=
+                                 (s.playbackContext ? s.playbackContext : s.contextAtBegin)));
+    };
+    state->captureMs = juce::Time::getMillisecondCounterHiRes() - beganAt;
+    state->startTimerHz(120);
+    scrubDecoder->addJob(new DecodeWindow(state), true);
+    return scrubStatus();
+}
+void Commands::activateScrub()
+{
+    checkThread();
+    if (!scrubPlayback || scrubPlayback->playing || !scrubPlayback->decoded.load(std::memory_order_acquire))
+        return;
+    auto state = scrubPlayback;
+    if (!state->enabled.load(std::memory_order_acquire) || state->interrupted() ||
+        juce::Time::getMillisecondCounterHiRes() - state->beganAt > 1500 ||
+        juce::Time::getMillisecondCounterHiRes() - state->requestedAt > 1500)
+    {
+        stopScrub("device_or_transport_interrupted");
+        return;
+    }
+    const auto graphBegan = juce::Time::getMillisecondCounterHiRes();
+    auto& transport = edit->getTransport();
     try
     {
-        transport.ensureContextAllocated();
-        auto* context = transport.getCurrentPlaybackContext();
-        require(context != nullptr, "scrub native playback context unavailable");
-        state->playbackContext = context;
-        state->deviceGeneration = audioDeviceGeneration();
-        context->clearNodes();
-        context->setAuditionGraphCallback(
-            [state](te::CreateNodeParams& params)
+        captureNativeStates();
+        state->nativeCaptureMs = juce::Time::getMillisecondCounterHiRes() - graphBegan;
+        const auto contextBegan = juce::Time::getMillisecondCounterHiRes();
+        require(!state->interrupted(), "scrub version changed during native state capture");
+        transport.prepareAuditionPlayback(
+            tracktion::TimePosition::fromSeconds(state->requestedPosition),
+            [state](te::EditPlaybackContext& context)
             {
-                params.auditionNoLiveInputs = true;
-                params.allowClipSlots = false;
-                params.auditionIncludesTrack = [state](te::Track& t)
-                { return state->included.contains(t.itemID.toString().toStdString()); };
-                params.auditionSource = [state](te::AudioTrack& t,
-                                                const te::CreateNodeParams&) -> std::unique_ptr<tracktion::graph::Node>
-                {
-                    if (t.itemID.toString().toStdString() == state->track)
-                        return std::make_unique<SignedSource>(state);
-                    return std::make_unique<SignedSource>(state, false);
-                };
+                state->playbackContext = &context;
+                context.clearNodes();
+                context.setAuditionGraphCallback(
+                    [state](te::CreateNodeParams& params)
+                    {
+                        params.auditionNoLiveInputs = true;
+                        params.allowClipSlots = false;
+                        params.auditionIncludesTrack = [state](te::Track& t)
+                        { return state->included.contains(t.itemID.toString().toStdString()); };
+                        params.auditionSource =
+                            [state](te::AudioTrack& t,
+                                    const te::CreateNodeParams&) -> std::unique_ptr<tracktion::graph::Node>
+                        {
+                            if (t.itemID.toString().toStdString() == state->track)
+                                return std::make_unique<SignedSource>(state);
+                            return std::make_unique<SignedSource>(state, false);
+                        };
+                    });
             });
-        context->createPlayAudioNodes(tracktion::TimePosition::fromSeconds(requested));
+        state->contextMs = juce::Time::getMillisecondCounterHiRes() - contextBegan;
+        require(state->playbackContext != nullptr, "scrub native playback context unavailable");
+        require(!state->interrupted() && juce::Time::getMillisecondCounterHiRes() - state->beganAt <= 1500,
+                "scrub preparation became stale before playback");
+        const auto startBegan = juce::Time::getMillisecondCounterHiRes();
         transport.play(false);
-        state->finish = [this](std::string reason) { stopScrub(reason); };
-        state->interrupted = [this]
-        {
-            return !edit->getTransport().isPlaying() ||
-                   edit->getTransport().getCurrentPlaybackContext() != scrubPlayback->playbackContext ||
-                   audioDeviceGeneration() != scrubPlayback->deviceGeneration || audioConfigurationPending() ||
-                   engine.getDeviceManager().deviceManager.getCurrentAudioDevice() == nullptr;
-        };
-        state->startTimerHz(30);
+        state->startMs = juce::Time::getMillisecondCounterHiRes() - startBegan;
+        require(transport.isPlaying(), "native scrub transport did not start");
+        state->playing = true;
+        state->graphMs = juce::Time::getMillisecondCounterHiRes() - graphBegan;
+        state->readyMs = juce::Time::getMillisecondCounterHiRes() - state->beganAt;
+        state->ready = {};
     }
-    catch (...)
+    catch (const std::exception& e)
     {
-        stopScrub();
-        throw;
+        state->decodeError = e.what();
+        // A partially prepared context also needs retirement, but never a success state.
+        state->graphMs = juce::Time::getMillisecondCounterHiRes() - graphBegan;
+        stopScrub("graph_failed");
     }
-    return scrubStatus();
 }
 } // namespace ndaw::v2
