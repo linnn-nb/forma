@@ -1,5 +1,11 @@
 # 统一命令契约 v2
 
+## 轨高、颜色与缩放（U-P0-PRESENTATION-01）
+
+track_heights/zoom_presets是schema7 L1 UI属性，视图写入不进领域Undo/revision；高度32–640、五个水平span严格校验。Header拖动布局仅为草稿，松手按session写UI，坐标或目标变化取消。颜色仍用现有track.colour，一次多轨Plan一个Undo，不新增MCP工具。
+
+菜单从统一命令信息和实际键位生成，JUCE自动派发指针保持空，完成回调只invoke一次；轨道上下文先核验session/revision，不得在预检前自动执行。没有上传、外部文件写入或新分析能力。实际PCM和状态证据见VERIFICATION.md。
+
 ## 本地标尺与循环手势（U-P0-RULERS-01）
 
 rulers/main_time_scale/timecode_fps是严格schema6 UI属性，由L1 updateUiState写入，不作为工程编辑历史，也不扩大冻结MCP。timelinePosition(sample)是message-thread本地只读查询，直接读Edit TempoSequence；不接受任意线程修改。

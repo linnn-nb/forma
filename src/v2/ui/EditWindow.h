@@ -1,6 +1,7 @@
 #pragma once
 #include "Theme.h"
 #include "TrackHeader.h"
+#include "TrackPresentation.h"
 #include "EditWindowViews.h"
 #include "Waveforms.h"
 #include "Rulers.h"
@@ -41,6 +42,8 @@ public:
     {
         if (!drag.is_null() && drag.value("session", std::string{}) != value.value("session_token", std::string{}))
             drag = nullptr;
+        if (!resizeTrack.empty() && resizeSession != value.value("session_token", std::string{}))
+            cancelHeightPreview();
         facts = value;
         facts["tracks"] = Json::array();
         for (const auto& t : value["tracks"])
@@ -55,12 +58,34 @@ public:
             ids.push_back(t["id"]);
         if (ids != trackIDs)
         {
+            cancelHeightPreview();
             trackIDs = ids;
             controls.clear();
             columns.clear();
             for (auto& id : ids)
             {
                 auto c = std::make_unique<TrackHeader>(id, false, write, select);
+                c->onOptions = [this](auto id, auto& component, bool strip)
+                {
+                    if (onTrackOptions)
+                        onTrackOptions(id, component, strip);
+                };
+                c->onHeight = [this](auto id, int height, bool finished)
+                {
+                    if (resizeTrack.empty())
+                        resizeSession = facts.value("session_token", std::string{});
+                    resizeTrack = id;
+                    resizeHeight = height;
+                    if (finished)
+                    {
+                        const auto session = resizeSession;
+                        resizeTrack.clear();
+                        if (onTrackHeight)
+                            onTrackHeight(id, height, session);
+                    }
+                    resized();
+                    repaint();
+                };
                 addAndMakeVisible(*c);
                 controls.push_back(std::move(c));
                 auto views = std::make_unique<EditWindowViews>(
@@ -140,11 +165,19 @@ public:
     {
         if (!drag.is_null())
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
-                                    "main_time_scale"})
+                                    "main_time_scale", "track_heights"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                 {
                     drag = nullptr;
                     dragged = false;
+                    break;
+                }
+        if (!resizeTrack.empty())
+            for (const auto* key :
+                 {"track_heights", "row_height", "first_row", "start_samples", "span_samples", "rulers", "edit_views"})
+                if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
+                {
+                    cancelHeightPreview();
                     break;
                 }
         view = value;
@@ -156,6 +189,8 @@ public:
         editing = tools;
         selection = selectedObjects;
     }
+    std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
+    std::function<void(std::string, int, std::string)> onTrackHeight;
     std::function<void(juce::Component&)> onRulersMenu;
     std::function<void(int)> onRulerCommand;
     std::function<void(Json, uint64_t)> onLoopRange;
@@ -212,8 +247,16 @@ public:
     }
     int rowY(int row) const
     {
-        return rulerHeight() + (row - std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1))) *
-                                   view.value("row_height", 144);
+        const int first = std::clamp(view.value("first_row", 0), 0, std::max(0, visibleRows() - 1));
+        return rulerHeight() + (row >= 0 && row < int(rowOffsets.size()) ? rowOffsets[size_t(row)] : 0) -
+               (first < int(rowOffsets.size()) ? rowOffsets[size_t(first)] : 0);
+    }
+    int rowHeight(int row) const
+    {
+        if (row < 0 || row >= int(trackIDs.size()))
+            return view.value("row_height", 144);
+        const auto& id = trackIDs[size_t(row)];
+        return id == resizeTrack ? resizeHeight : TrackPresentation::height(view, id);
     }
     int visibleRows() const
     {
@@ -229,7 +272,8 @@ public:
         const int left = int(std::clamp(axis.pixelAt(c["start_samples"]), -1000000., 1000000.));
         const int right = int(std::clamp(
             axis.pixelAt(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>()), -1000000., 1000000.));
-        return {left, rowY(row) + 12, std::max(3, right - left), view.value("row_height", 144) - 26};
+        const bool micro = rowHeight(row) < 64;
+        return {left, rowY(row) + (micro ? 4 : 12), std::max(3, right - left), rowHeight(row) - (micro ? 8 : 26)};
     }
     void paint(juce::Graphics& g) override
     {
@@ -286,7 +330,7 @@ public:
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
         {
             g.setColour(juce::Colour(facts["tracks"][i]["id"] == selected ? 0xff21313d : 0xff1c2530));
-            g.fillRect(timelineLeft(), rowY(int(i)), getWidth() - timelineLeft(), view.value("row_height", 144) - 1);
+            g.fillRect(timelineLeft(), rowY(int(i)), getWidth() - timelineLeft(), rowHeight(int(i)) - 1);
         }
         for (const auto& line : grid)
         {
@@ -305,7 +349,7 @@ public:
                 if (owners.empty() || std::find(owners.begin(), owners.end(), trackIDs[row]) != owners.end())
                 {
                     g.setColour(accent().withAlpha(.16f));
-                    g.fillRect(left, rowY(int(row)), std::max(1, right - left), view.value("row_height", 144));
+                    g.fillRect(left, rowY(int(row)), std::max(1, right - left), rowHeight(int(row)));
                 }
             g.setColour(accent());
             g.drawVerticalLine(left, rulerHeight(), float(getHeight()));
@@ -316,7 +360,7 @@ public:
             int y = rowY(int(i));
             const auto& t = facts["tracks"][i];
             g.setColour(juce::Colour(0xff33404e));
-            g.drawHorizontalLine(y + view.value("row_height", 144) - 1, 0, float(getWidth()));
+            g.drawHorizontalLine(y + rowHeight(int(i)) - 1, 0, float(getWidth()));
             for (const auto& c : t["clips"])
             {
                 auto rect = clipRect(c, int(i));
@@ -408,6 +452,10 @@ public:
     }
     void resized() override
     {
+        rowOffsets.clear();
+        rowOffsets.push_back(0);
+        for (int i = 0; i < visibleRows(); ++i)
+            rowOffsets.push_back(rowOffsets.back() + rowHeight(i));
         rulerSelector.setBounds(3, 1, 40, 25);
         horizontal.setBounds(timelineLeft(), getHeight() - 14, std::max(1, getWidth() - timelineLeft() - 16), 14);
         vertical.setBounds(getWidth() - 14, rulerHeight(), 14, std::max(1, getHeight() - rulerHeight() - 14));
@@ -417,16 +465,18 @@ public:
         horizontal.setCurrentRange(double(axis.start), double(axis.span), juce::dontSendNotification);
         horizontal.setSingleStepSize(double(axis.span) / 10);
         vertical.setRangeLimits(0, std::max(1, visibleRows()));
-        vertical.setCurrentRange(view.value("first_row", 0),
-                                 std::max(1, (getHeight() - rulerHeight() - 14) / view.value("row_height", 144)),
-                                 juce::dontSendNotification);
+        const int first = std::clamp(view.value("first_row", 0), 0, std::max(0, visibleRows() - 1));
+        int page = 0, used = 0;
+        while (first + page < visibleRows() && used < getHeight() - rulerHeight() - 14)
+            used += rowHeight(first + page++);
+        vertical.setCurrentRange(first, std::max(1, page), juce::dontSendNotification);
         vertical.setSingleStepSize(1);
 
         for (size_t i = 0; i < controls.size(); ++i)
         {
-            controls[i]->setBounds(0, rowY(int(i)), 242, view.value("row_height", 144) - 1);
+            controls[i]->setBounds(0, rowY(int(i)), 242, rowHeight(int(i)) - 1);
             controls[i]->setVisible(rowY(int(i)) >= rulerHeight() && rowY(int(i)) < getHeight() - 16);
-            columns[i]->setBounds(250, rowY(int(i)), timelineLeft() - 250, view.value("row_height", 144) - 1);
+            columns[i]->setBounds(250, rowY(int(i)), timelineLeft() - 250, rowHeight(int(i)) - 1);
             columns[i]->configure(view.value("edit_views", Json::object()), columnWidth());
             columns[i]->setVisible(columnCount() > 0 && controls[i]->isVisible());
         }
@@ -782,8 +832,7 @@ public:
     {
         if (e.x < timelineLeft() || e.y < rulerHeight())
             return;
-        int row = (e.y - rulerHeight()) / view.value("row_height", 144) +
-                  std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
+        const int row = rowAt(e.y);
         if (row >= int(trackIDs.size()))
             return;
         for (const auto& c : facts["tracks"][row]["clips"])
@@ -797,8 +846,11 @@ public:
 private:
     int rowAt(int y) const
     {
-        return (y - rulerHeight()) / view.value("row_height", 144) +
-               std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
+        if (rowOffsets.size() < 2)
+            return 0;
+        const int first = std::clamp(view.value("first_row", 0), 0, std::max(0, visibleRows() - 1));
+        const int offset = rowOffsets[size_t(first)] + y - rulerHeight();
+        return int(std::upper_bound(rowOffsets.begin(), rowOffsets.end(), offset) - rowOffsets.begin()) - 1;
     }
     int64_t snapped(int64_t position, juce::ModifierKeys modifiers) const
     {
@@ -827,6 +879,15 @@ private:
         else
             onViewChange({{"first_row", std::clamp(int(std::llround(position)), 0, std::max(0, visibleRows() - 1))}});
     }
+    void cancelHeightPreview()
+    {
+        resizeTrack.clear();
+        for (auto& c : controls)
+            c->cancelHeightGesture();
+    }
+    std::vector<int> rowOffsets;
+    std::string resizeTrack, resizeSession;
+    int resizeHeight = 144;
     Json rulerContext = Json::object();
     juce::TextButton rulerSelector;
     juce::ScrollBar horizontal{false}, vertical{true};

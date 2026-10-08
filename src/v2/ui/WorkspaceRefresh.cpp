@@ -521,6 +521,7 @@ void Workspace::refresh()
     acceptButton.setEnabled(!pending.is_null() && !playing && !parameterEditing);
     rejectButton.setEnabled(!pending.is_null() || reportShowing);
     auto samples = facts["position_samples"].get<int64_t>();
+    zoomPresets.update(view["span_samples"], view["zoom_presets"]);
     const auto scale = view["main_time_scale"].get<std::string>();
     const auto atCursor = commands.timelinePosition(samples);
     auto display = scale == "samples"    ? juce::String(samples)

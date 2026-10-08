@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-PRESENTATION-01：每轨高度、颜色入口和缩放预设（2026-10-09；增量，U＋P0未完成）
+
+结论：Edit轨道头新增真实高度/颜色菜单；每轨稳定ID保存Micro/Mini/Small/Medium/Large/Jumbo/Extreme七档，也可拖轨道头底边连续调32–640。Ctrl+↑/↓调整所选轨道，Ctrl+Option+↑/↓按比例调全部；原生轨道头、Clip/真实波形、MIDI双击、跨轨选区、滚动与命中改用同一高度前缀坐标，Micro/短轨隐藏放不下的推子等控件。拖动仅本地布局预览，松手L1 UI保存；布局变化、目标移除或会话切换取消草稿，不产生工程Undo/revision。
+
+颜色入口在Edit/Mix轨道头及View菜单，九个真实选项（默认加八色），Ctrl+Option+C循环颜色，可改键位。复用既有track.colour和te::Track属性，所选多轨同一Plan/Undo，原路由和媒体不变；停止时编辑。五个原生缩放预设按钮、View菜单、Ctrl+1…5召回、Ctrl+Shift+1…5/Shift点击保存，右键存取；保存水平span，召回保持当前位置锚点，UI保存不进Undo。窄窗把精确选区按钮收进Edit菜单，为五个预设和所有编辑工具留位。schema7增加track_heights/zoom_presets；旧完整6及5/4/3/2/八字段明确迁移，损坏、非整数、越界和不完整属性整笔拒绝。视图与工程编辑的历史分类遵循当前UI_REBUILD_PLAN。track_heights最多4096条UI引用，超过整笔报错，不限制实际音频轨道数量；失效轨道ID的视图引用保留但不生成轨道。
+
+发现并修复实际菜单重复派发风险：JUCE addCommandItem本身会在PopupMenu完成时异步invoke，旧MenuBar/标尺完成回调又invoke一次。现在addMenuCommand从同一getCommandInfo和键位生成文字/可用/勾选/快捷键，Item不绑定自动执行manager；所有实际执行走完成回调一次。轨道上下文菜单捕获session/revision并先核验，避免自动执行绕过陈旧目标检查。无新MCP工具或依赖。
+
+最终Release及正式/独立预览固定本地身份strict/deep验签通过；受影响CTest **8/8通过、0失败、43.27秒**。新专项 **217项检查**（含逐菜单项确认无自动执行指针），实际原生组件/L1/Edit覆盖非均匀高度、真实PCM片段移动及Undo、跨三轨范围、拖动预览/释放/布局取消、MIDI双击、比例/多选高度、颜色整笔Undo/Redo和Edit/Mix颜色显示、菜单读取不写状态及完成只切一次、五个预设、自定义快捷键实际执行、1120×700布局、旧6迁移/坏字段拒绝和新Workspace保存重开。真实96000帧双声道渲染Peak **0.040000081062316895**，调整前后PCM最大误差 **0**；原PCM SHA256保持。既有Folder/VCA、导航、编辑手势、标尺/循环手柄、Comments、列视图和MIDI停靠回归通过；不是全级回归或性能对照。
+
+初次构建的lambda成员引用和误放的命令分派分支编译问题已修复；首轮7/8，新fixture少了track.create必需ref，补齐后专项通过并扩充Edit/Mix与键位实际执行，再运行最终8项全部通过。机器结果`evidence/U/presentation-tests.json`，保留旧增量原桌面证据不被本次组件重跑覆盖。代码`ui/TrackPresentation.h`、`ZoomPresets.h`、`WorkspacePresentation.cpp`、`TrackHeader.h`、`EditWindow.h`及`UiState.cpp`；测试`tests/v2/PresentationWorkspaceTests.cpp`。
+
+桌面本轮只读核验仍锁定，真实GUI截图/试听/物理键位/实际应用退出重开未执行；组件测试不替代。签名`build-v2-tracktion/FormaTrackPresentationPreview.app`已准备未启动，正式产物`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；无DMG、第二引擎、系统信任改动，原Tracktion子模块修改保留。
+
+边界：Forma轨高档位为自身像素设置；无Fit To Window、Option/Shift批量拖高度或自动Edit组联动，竖向滚动仍按轨道行。颜色只改轨道，Clip随轨道配色，独立Clip/Marker/Group、Hold和通道饱和度未实现。预设只存水平span，未实现Zoom Toggle/波形幅度和音符显示缩放。轨道Volume/Pan/插件自动化视图与曲线编辑、轨道头直接R/I及其他U缺口继续未完成；Undo不跨重开。官方行为依据与差异见UI_PARITY.md；下一项补实际轨道自动化视图，仍不进入P1。
+
 ## U-P0-RULERS-01：七种标尺、主计数器与循环手柄（2026-10-09；增量，U＋P0未完成）
 
 结论：Edit新增可独立开关的Bars|Beats、Min:Sec、Timecode、Samples、Markers、Tempo、Meter。原生「标尺」/View→Rulers共用可重映射命令154–169；⌃⌥1…7切换可选标尺、⌃⌥0全部、⌃⌥9仅保留Main，主标尺不能隐藏。点时间基准名称切Main及主计数器，Option点名称隐藏可选行；主计数器读取当前真实工程位置。Tempo/Meter读实际Edit事件和viewport起点状态，Bars随Tempo/拍号；Samples为48k工程时间域，区别于设备采样率。默认总高78/Marker58，全部176/Marker116；轨道、真实波形、Clip手势、Marker命中和滚动条共用动态采样轴。

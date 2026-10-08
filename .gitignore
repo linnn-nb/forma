@@ -24,3 +24,5 @@ evidence/U/*
 !evidence/U/comments-tests.json
 
 !evidence/U/rulers-tests.json
+
+!evidence/U/presentation-tests.json

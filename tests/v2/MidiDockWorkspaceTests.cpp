@@ -165,7 +165,7 @@ int main(int argc, char** argv)
                                            {"position_samples", 0}})})));
         pump();
         const auto base = c.query();
-        check(w.queryView()["ui_schema"] == 6 && !w.queryView()["midi_dock"].get<bool>(),
+        check(w.queryView()["ui_schema"] == 7 && !w.queryView()["midi_dock"].get<bool>(),
               "new UI schema defaults to full Edit with dock closed");
         auto* edit = dynamic_cast<EditWindow*>(find(w, "edit.timeline"));
         check(edit != nullptr, "actual native Edit timeline is present");
@@ -256,7 +256,7 @@ int main(int argc, char** argv)
                                 "midi_scroll_x", "midi_scroll_y"})
             legacy.erase(key);
         legacy.erase("edit_views");
-        for (const auto* key : {"rulers", "main_time_scale", "timecode_fps"})
+        for (const auto* key : {"rulers", "main_time_scale", "timecode_fps", "track_heights", "zoom_presets"})
             legacy.erase(key);
         legacy["ui_schema"] = 2;
         legacy["workspace"] = "midi";
@@ -266,7 +266,7 @@ int main(int argc, char** argv)
         ui.setProperty("json", text(legacy.dump()), nullptr);
         metadata.addChild(ui, -1, nullptr);
         auto migrated = readUiState(metadata);
-        check(migrated["ui_schema"] == 6 && migrated["workspace"] == "edit" && migrated["midi_dock"] == true,
+        check(migrated["ui_schema"] == 7 && migrated["workspace"] == "edit" && migrated["midi_dock"] == true,
               "previous complete schema2 MIDI workspace migrates to open dock");
         legacy.erase("edit_tool");
         ui.setProperty("json", text(legacy.dump()), nullptr);

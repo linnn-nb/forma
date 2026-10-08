@@ -16,6 +16,7 @@ public:
         reset.onClick = [this] { this->write("audio.meters.reset", Json::object()); };
         addAndMakeVisible(reset);
     }
+    std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
     std::function<void(std::string, int)> onInsert;
     std::function<void(std::string)> onRouting, onComments;
     void update(const Json& facts, const std::string& selected, const Json& device)
@@ -46,6 +47,11 @@ public:
                         if (onComments)
                             onComments(id);
                     });
+                c->onOptions = [this](auto id, auto& component, bool strip)
+                {
+                    if (onTrackOptions)
+                        onTrackOptions(id, component, strip);
+                };
                 addAndMakeVisible(*c);
                 controls.push_back(std::move(c));
             }

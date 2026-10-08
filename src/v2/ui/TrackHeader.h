@@ -48,6 +48,15 @@ public:
             outputSlot.setComponentID("mix.output:" + text(this->id));
         }
 
+        options.setButtonText(text("⋮"));
+        options.setComponentID("track.options:" + text(this->id));
+        options.setTooltip(text("轨道高度 / 颜色"));
+        options.onClick = [this]
+        {
+            if (onOptions)
+                onOptions(this->id, options, this->strip);
+        };
+        addAndMakeVisible(options);
         name.setComponentID("track.select:" + text(this->id));
         name.onClick = [this] { this->select(this->id); };
         mute.setComponentID("track.mute:" + text(this->id));
@@ -193,6 +202,40 @@ public:
                 this->write("track.pan_law", {{"track", this->id}, {"law", laws[i]["id"]}});
         };
     }
+    std::function<void(std::string, juce::Component&, bool)> onOptions;
+    std::function<void(std::string, int, bool)> onHeight;
+    void cancelHeightGesture()
+    {
+        heightGesture = false;
+    }
+    void mouseMove(const juce::MouseEvent& e) override
+    {
+        setMouseCursor(!strip && onHeight && e.y >= getHeight() - 6 ? juce::MouseCursor::UpDownResizeCursor
+                                                                    : juce::MouseCursor::NormalCursor);
+    }
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        if (!strip && onHeight && e.y >= getHeight() - 6 && !e.mods.isPopupMenu())
+        {
+            heightGesture = true;
+            heightStart = getHeight() + 1;
+            screenStart = e.getScreenY();
+            onHeight(id, heightStart, false);
+        }
+    }
+    void mouseDrag(const juce::MouseEvent& e) override
+    {
+        if (heightGesture && onHeight)
+            onHeight(id, std::clamp(heightStart + e.getScreenY() - screenStart, 32, 640), false);
+    }
+    void mouseUp(const juce::MouseEvent& e) override
+    {
+        if (heightGesture && onHeight)
+        {
+            heightGesture = false;
+            onHeight(id, std::clamp(heightStart + e.getScreenY() - screenStart, 32, 640), true);
+        }
+    }
     void update(const Json& value, bool selected)
     {
         facts = value;
@@ -291,7 +334,7 @@ public:
                            text(facts.value("audible", false) ? " · 可听" : " · 已静音 / 非独听"),
                        14, getHeight() - 57, getWidth() - 28, 22, juce::Justification::centred);
         }
-        else
+        else if (getHeight() >= 140)
             g.drawText(text(facts.value("type", std::string("audio"))) + "  |  " +
                            juce::String(facts.value("clips", Json::array()).size()) + text(" 片段"),
                        12, 116, pan.isVisible() ? 128 : getWidth() - 24, 19, juce::Justification::left);
@@ -300,8 +343,13 @@ public:
     {
         int inset = strip ? 12 : 12 + std::min(60, (facts.is_object() ? facts.value("depth", 0) : 0) * 12);
         bool group = !facts.is_null() && facts.contains("capabilities") && facts["capabilities"]["group"].get<bool>();
-        fold.setBounds(inset, 10, 22, 28);
-        name.setBounds(inset + (group ? 26 : 0), 10, getWidth() - inset - 12 - (group ? 26 : 0), 28);
+        const bool shortRow = !strip && getHeight() < 140;
+        const int top = shortRow ? 4 : 10, titleHeight = shortRow ? 22 : 28;
+        fold.setBounds(inset, top, 22, titleHeight);
+        options.setVisible(bool(onOptions));
+        options.setBounds(getWidth() - 30, top, 24, titleHeight);
+        name.setBounds(inset + (group ? 26 : 0), top, getWidth() - inset - (onOptions ? 36 : 12) - (group ? 26 : 0),
+                       titleHeight);
         int width = (getWidth() - 36) / 3;
         mute.setBounds(12, 46, width, 25);
         solo.setBounds(18 + width, 46, width, 25);
@@ -325,6 +373,23 @@ public:
         pan.setBounds(strip ? 12 : getWidth() - 96, strip ? (compact ? 296 : 334) : 76, strip ? getWidth() - 24 : 84,
                       strip ? 30 : 60);
         panLaw.setBounds(12, compact ? 330 : 371, getWidth() - 24, 25);
+        if (!strip)
+        {
+            const bool mini = getHeight() < 60;
+            for (auto* b : {&mute, &solo, &safe})
+                b->setVisible(!mini);
+            if (shortRow)
+            {
+                mute.setBounds(12, 30, width, 22);
+                solo.setBounds(18 + width, 30, width, 22);
+                safe.setBounds(24 + 2 * width, 30, width, 22);
+                gain.setBounds(10, 61, getWidth() - 20, 26);
+            }
+            gain.setVisible(facts.is_object() && facts.contains("capabilities") &&
+                            facts["capabilities"].value("gain", false) && getHeight() >= 94);
+            pan.setVisible(facts.is_object() && facts.contains("capabilities") &&
+                           facts["capabilities"].value("pan", false) && !shortRow);
+        }
     }
 
 private:
@@ -367,6 +432,9 @@ private:
     juce::TextButton sendSlot, outputSlot, comments;
 
     Json facts;
+    bool heightGesture = false;
+    int heightStart = 0, screenStart = 0;
+    juce::TextButton options;
     juce::TextButton name, mute{"M"}, solo{"S"}, safe{"SAFE"}, fold{"v"};
     juce::Slider gain, pan;
     juce::ComboBox panLaw;

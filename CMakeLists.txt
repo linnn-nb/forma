@@ -533,7 +533,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 add_library(ndaw_ui STATIC
   src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
-  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspaceClipboard.cpp)
+  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspacePresentation.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
 target_link_libraries(ndaw_ui PUBLIC ndaw_engine)
 target_link_libraries(NativeDAW PRIVATE ndaw_ui)
@@ -642,3 +642,9 @@ target_sources(ndaw_midi_dock_tests PRIVATE tests/v2/MidiDockWorkspaceTests.cpp)
 target_link_libraries(ndaw_midi_dock_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_midi_dock COMMAND ndaw_midi_dock_tests "${CMAKE_SOURCE_DIR}/evidence/U/midi-dock-tests.json")
 set_tests_properties(forma_native_midi_dock PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_presentation_tests PRODUCT_NAME "ndaw_presentation_tests")
+target_sources(ndaw_presentation_tests PRIVATE tests/v2/PresentationWorkspaceTests.cpp)
+target_link_libraries(ndaw_presentation_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_track_presentation COMMAND ndaw_presentation_tests "${CMAKE_SOURCE_DIR}/evidence/U/presentation-tests.json")
+set_tests_properties(forma_native_track_presentation PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

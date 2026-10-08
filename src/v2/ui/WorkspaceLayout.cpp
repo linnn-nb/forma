@@ -12,84 +12,87 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
     p.setLookAndFeel(&theme);
     if (index == 0)
     {
-        p.addCommandItem(&commandManager, 41);
+        addMenuCommand(p, 41);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 1);
-        p.addCommandItem(&commandManager, 2);
-        p.addCommandItem(&commandManager, 3);
-        p.addCommandItem(&commandManager, 4);
-        p.addCommandItem(&commandManager, 44);
-        p.addCommandItem(&commandManager, 45);
-        p.addCommandItem(&commandManager, 40);
+        addMenuCommand(p, 1);
+        addMenuCommand(p, 2);
+        addMenuCommand(p, 3);
+        addMenuCommand(p, 4);
+        addMenuCommand(p, 44);
+        addMenuCommand(p, 45);
+        addMenuCommand(p, 40);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 5);
+        addMenuCommand(p, 5);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 11);
-        p.addCommandItem(&commandManager, 12);
+        addMenuCommand(p, 11);
+        addMenuCommand(p, 12);
     }
     if (index == 1)
     {
-        p.addCommandItem(&commandManager, 108);
-        p.addCommandItem(&commandManager, 42);
+        addMenuCommand(p, 108);
+        addMenuCommand(p, 42);
         for (int id : {149, 150, 151})
-            p.addCommandItem(&commandManager, id);
+            addMenuCommand(p, id);
         p.addSeparator();
         for (int id : {editCommand::shuffle, editCommand::slip, editCommand::spot, editCommand::grid,
                        editCommand::smart, 130, 131, 132})
-            p.addCommandItem(&commandManager, id);
+            addMenuCommand(p, id);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 6);
-        p.addCommandItem(&commandManager, 7);
+        addMenuCommand(p, 6);
+        addMenuCommand(p, 7);
         p.addSeparator();
         for (int id = editCommand::slip; id <= editCommand::pasteOriginal; ++id)
-            p.addCommandItem(&commandManager, id);
-        p.addCommandItem(&commandManager, editCommand::remove);
+            addMenuCommand(p, id);
+        addMenuCommand(p, editCommand::remove);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 153);
+        addMenuCommand(p, 153);
         for (int id : {140, 141, 142, 143, 144})
-            p.addCommandItem(&commandManager, id);
+            addMenuCommand(p, id);
     }
     if (index == 2)
     {
         for (int id : {100, 101, 102, 103, 104, 105, 106, 107, 109, 110})
-            p.addCommandItem(&commandManager, id);
+            addMenuCommand(p, id);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 8);
-        p.addCommandItem(&commandManager, 9);
-        p.addCommandItem(&commandManager, 10);
-        p.addCommandItem(&commandManager, 145);
+        addMenuCommand(p, 8);
+        addMenuCommand(p, 9);
+        addMenuCommand(p, 10);
+        addMenuCommand(p, 145);
         juce::PopupMenu views;
         for (int id : {146, 147, 148, 152})
-            views.addCommandItem(&commandManager, id);
+            addMenuCommand(views, id);
         p.addSubMenu(text("Edit Window Views"), views);
         p.addSubMenu(text("Rulers"), rulersMenu());
+        p.addSubMenu(text("Track Height"), trackHeightMenu());
+        p.addSubMenu(text("Track Colour"), trackColourMenu());
+        p.addSubMenu(text("Zoom Presets"), zoomPresetMenu());
         p.addSeparator();
-        p.addCommandItem(&commandManager, 13);
-        p.addCommandItem(&commandManager, 14);
-        p.addCommandItem(&commandManager, 43);
-        p.addCommandItem(&commandManager, 133);
+        addMenuCommand(p, 13);
+        addMenuCommand(p, 14);
+        addMenuCommand(p, 43);
+        addMenuCommand(p, 133);
     }
     if (index == 3)
     {
-        p.addCommandItem(&commandManager, 111);
-        p.addCommandItem(&commandManager, 112);
-        p.addCommandItem(&commandManager, 113);
+        addMenuCommand(p, 111);
+        addMenuCommand(p, 112);
+        addMenuCommand(p, 113);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 26);
+        addMenuCommand(p, 26);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 21);
-        p.addCommandItem(&commandManager, 22);
-        p.addCommandItem(&commandManager, 23);
-        p.addCommandItem(&commandManager, 24);
+        addMenuCommand(p, 21);
+        addMenuCommand(p, 22);
+        addMenuCommand(p, 23);
+        addMenuCommand(p, 24);
         p.addSeparator();
-        p.addCommandItem(&commandManager, 25);
+        addMenuCommand(p, 25);
         auto m = queryMcpStatus();
         auto mode = m.contains("permission") ? m["permission"].value("mode", std::string{}) : std::string{};
         p.addSeparator();
-        p.addCommandItem(&commandManager, 30);
-        p.addCommandItem(&commandManager, 31);
-        p.addCommandItem(&commandManager, 32);
-        p.addCommandItem(&commandManager, 33);
+        addMenuCommand(p, 30);
+        addMenuCommand(p, 31);
+        addMenuCommand(p, 32);
+        addMenuCommand(p, 33);
     }
     return p;
 }
@@ -421,12 +424,16 @@ void Workspace::resized()
     undoButton.setBounds(12, 128, 52, 24);
     redoButton.setBounds(70, 128, 52, 24);
     rangeButton.setBounds(132, 128, 110, 24);
-    zoomOut.setBounds(258, 128, 30, 24);
-    zoomIn.setBounds(292, 128, 30, 24);
-    zoomFit.setBounds(326, 128, 70, 24);
-    scrollLeft.setBounds(404, 128, 30, 24);
-    scrollRight.setBounds(438, 128, 30, 24);
-    editingControls.setBounds(476, 128, getWidth() - 486, 24);
+    const int nav = getWidth() < 1260 ? 132 : 258;
+    rangeButton.setVisible(getWidth() >= 1260); // Precise range remains available through Edit menu.
+    zoomOut.setBounds(nav, 128, 30, 24);
+    zoomIn.setBounds(nav + 34, 128, 30, 24);
+    zoomPresets.setBounds(nav + 68, 128, 123, 24);
+    zoomPresets.setVisible(!mix);
+    zoomFit.setBounds(nav + 201, 128, 70, 24);
+    scrollLeft.setBounds(nav + 279, 128, 30, 24);
+    scrollRight.setBounds(nav + 313, 128, 30, 24);
+    editingControls.setBounds(nav + 347, 128, getWidth() - nav - 357, 24);
     editingControls.setVisible(!mix);
     const int left = commands.uiState()["tracks_list"].get<bool>() ? 138 : 0;
     int right = getWidth() - 332, areaHeight = getHeight() - 191;

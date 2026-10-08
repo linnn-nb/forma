@@ -30,6 +30,10 @@ Edit列：在「视图→Edit Window Views」独立打开I/O、Inserts A–E、S
 
 标尺：Edit左上「标尺」或「视图→Rulers」，独立显示七种标尺；Control+Option+0显示全部，Control+Option+9仅保留主标尺，Control+Option+1…7切换其余行（主标尺不可隐藏），可改键位。点时间基准名称切换Main及主计数器，Option点名称隐藏可选行。Loop打开后拖主标尺底部两端手柄改真实循环范围，⌘Z/⌘⇧Z撤销重做；编辑选区保留，视图与循环范围随工程保存。时间码仅24/25/30非丢帧从零显示，帧率位于标尺菜单，视频同步/起始偏移及完整Main相关单位切换尚未接通。
 
+轨高/颜色：点Edit轨道头右侧「⋮」选高度或颜色，拖轨道头底边调高；Control+↑/↓调所选轨道，Control+Option+↑/↓按比例调全部。Mix同一菜单可改颜色，⌘Z/⌘⇧Z整笔撤销/重做；高度是视图设置，随工程保存、不占编辑Undo。Control+Option+C循环轨道颜色，所有命令可改键位。
+
+缩放预设：五个按钮或View→Zoom Presets，Control+1…5召回，Control+Shift+1…5/Shift点击保存当前水平缩放，右键存取。预设随工程保存，召回保持光标锚点；不保存完整工作区，也不改变原音频。
+
 轨道备注：点Edit Comments列或Mix通道底部，或⌘⌥C打开多行编辑；⌘Return应用，Esc取消，留空清除，⌘Z/⌘⇧Z撤销重做。备注随工程保存，开关与快捷键可自定义；需停止播放，当前最多4096字符。
 
 Groups：⌘G选择成员创建独立Mix组，侧栏点名称选成员、勾选框启用/禁用；成员Mute/Solo联动，⌘Z/⌘⇧Z整组撤销重做。⌘⇧G切换启用、⌘⌥G修改组，可重映射；组定义随工程保存。当前仅Mute/Solo，Folder/VCA层级和输出保持；完整编辑组、推子/Pan等联动尚未接通。
@@ -68,6 +72,6 @@ Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine
 
 ## 当前边界
 
-Forma 仍是开发版。U＋P0 尚未完成：Clip/时间选区与三种工具、Slip/Grid、基础 Nudge、边界导航和真实音频 Clip 剪贴板已接通；剪贴板仅支持音频、会话内有效，MIDI/自动化联动未接通。音频Shuffle/Spot/Smart淡化、节拍器/预备拍/循环、Marker与独立MIDI成组编辑已有专项增量；停靠与统一音符选择、Groups/Edit Views和七种标尺已有增量；完整轨道视图、轨高/颜色/缩放预设及其余差距仍待补齐；Undo 跨工程重开恢复也尚未实现。P1–P3 按用户验收顺序推进。麦克风授权跨构建、外部 MIDI、Windows 和发行签名公证尚未验证或完成。
+Forma 仍是开发版。U＋P0 尚未完成：Clip/时间选区与三种工具、Slip/Grid、基础 Nudge、边界导航和真实音频 Clip 剪贴板已接通；剪贴板仅支持音频、会话内有效，MIDI/自动化联动未接通。音频Shuffle/Spot/Smart淡化、节拍器/预备拍/循环、Marker与独立MIDI成组编辑已有专项增量；停靠与统一音符选择、Groups/Edit Views和七种标尺已有增量；每轨高度/颜色入口与五个水平缩放预设已有增量；自动化轨道视图、完整Zoom Toggle及其余差距仍待补齐；Undo 跨工程重开恢复也尚未实现。P1–P3 按用户验收顺序推进。麦克风授权跨构建、外部 MIDI、Windows 和发行签名公证尚未验证或完成。
 
 既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。

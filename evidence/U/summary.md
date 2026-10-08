@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 最新增量：U-P0-PRESENTATION-01（2026-10-09）
+
+每轨高度/底边拖动/统一前缀轴、Edit/Mix颜色入口、五个水平缩放预设已接通，schema7旧版迁移；颜色单笔Undo，视图保存不污染历史。修复菜单自动派发加回调可能执行两次。Release/固定验签、受影响CTest8/8、0失败、43.27秒；专项217检查（含逐菜单项），实际96000帧非零PCM Peak0.040000081/最大误差0，源哈希保持。机器结果`presentation-tests.json`，完整边界及首轮修复见VERIFICATION.md，旧桌面证据原样保留。
+
+解锁后试`build-v2-tracktion/FormaTrackPresentationPreview.app`，轨道头「⋮」与底边、Control↑/↓、五按钮/Control1…5/ControlShift1…5；颜色Undo/Redo，另存新工程重开。预览未启动，桌面锁定，GUI截图/试听/物理键位/应用实际退出重开未执行。完整U＋P0未完成，无DMG；下一项轨道自动化视图与曲线编辑。
+
 ## 最新增量：U-P0-RULERS-01（2026-10-09）
 
 七种可独立显示标尺、Main计数器/实际Tempo/Meter、统一轴与循环手柄已接通；单笔Undo/Redo保留独立编辑选区，保存重开，UI schema6严格旧版迁移，可改快捷键。Release/固定验签通过，最终受影响CTest9/9、0失败、36.51秒；标尺专项82检查。首轮失败均修复并重跑；完整边界及修复见VERIFICATION.md，机器结果`rulers-tests.json`，保留以前各增量的桌面证据不被此次组件重跑覆盖。

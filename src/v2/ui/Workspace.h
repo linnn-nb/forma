@@ -16,6 +16,7 @@
 #include "MemoryLocationsPanel.h"
 #include "SpotPlacementPanel.h"
 #include "MidiDock.h"
+#include "ZoomPresets.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -114,6 +115,15 @@ public:
 
 private:
     juce::PopupMenu rulersMenu();
+    void addMenuCommand(juce::PopupMenu&, int);
+    juce::PopupMenu trackHeightMenu();
+    juce::PopupMenu trackColourMenu();
+    juce::PopupMenu zoomPresetMenu();
+    void showTrackOptions(const std::string&, juce::Component&, bool);
+    void setTrackHeight(const std::string&, int, const std::string&);
+    void executePresentationCommand(int);
+    void showZoomPresetMenu(int, juce::Component&);
+    ZoomPresets zoomPresets;
     void initialiseCommandManager();
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void dispatchCommand(int);

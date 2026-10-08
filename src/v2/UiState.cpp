@@ -6,7 +6,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 6},
+    return {{"ui_schema", 7},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -38,7 +38,9 @@ Json defaults()
               {"tempo", false},
               {"meter", false}}},
             {"main_time_scale", "min_sec"},
-            {"timecode_fps", 24}};
+            {"timecode_fps", 24},
+            {"track_heights", Json::object()},
+            {"zoom_presets", Json::array({48000, 240000, 480000, 1440000, 5760000})}};
 }
 void validate(const Json& value)
 {
@@ -54,7 +56,7 @@ void validate(const Json& value)
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 6)
+    if (value["ui_schema"] != 7)
         throw std::runtime_error("unsupported UI schema");
     const auto& columns = value["edit_views"];
     if (!columns.is_object() || columns.size() != 4)
@@ -75,6 +77,20 @@ void validate(const Json& value)
     if (value["timecode_fps"] != 24 && value["timecode_fps"] != 25 && value["timecode_fps"] != 30)
         throw std::runtime_error("unsupported display frame rate (24/25/30 NDF)");
     const auto max = std::llround(te::Edit::maximumLength * 48000);
+    const auto& heights = value["track_heights"];
+    if (!heights.is_object() || heights.size() > 4096)
+        throw std::runtime_error("invalid track height map");
+    for (auto it = heights.begin(); it != heights.end(); ++it)
+        if (it.key().empty() || it.key().size() > 64 || !it.value().is_number_integer() || it.value() < 32 ||
+            it.value() > 640)
+            throw std::runtime_error("track height requires a stable ID and 32..640");
+    const auto& presets = value["zoom_presets"];
+    if (!presets.is_array() || presets.size() != 5)
+        throw std::runtime_error("five horizontal zoom presets required");
+    for (const auto& span : presets)
+        if (!span.is_number_integer() || span < 480 || span > max)
+            throw std::runtime_error("zoom preset outside session range");
+
     for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height"})
         if (value[key].is_number_unsigned() && value[key].get<uint64_t>() > uint64_t(max))
             throw std::runtime_error("UI integer overflow");
@@ -150,7 +166,7 @@ Json readUiState(const juce::ValueTree& metadata)
         const bool v5 = saved.value("ui_schema", Json(0)) == 5;
         if (v4 || v5)
         {
-            if (saved.size() != result.size() - 3 || !saved.contains("edit_views") ||
+            if (saved.size() != result.size() - 5 || !saved.contains("edit_views") ||
                 !saved["edit_views"].is_object() || saved["edit_views"].size() != (v4 ? 3 : 4))
                 throw std::runtime_error("incomplete legacy Edit views");
             for (const auto* key : {"io", "inserts", "sends"})
@@ -163,6 +179,14 @@ Json readUiState(const juce::ValueTree& metadata)
             for (const auto* key : {"rulers", "main_time_scale", "timecode_fps"})
                 saved[key] = result[key];
             saved["ui_schema"] = 6;
+        }
+        if (saved.value("ui_schema", Json(0)) == 6)
+        {
+            if (saved.size() != result.size() - 2)
+                throw std::runtime_error("incomplete schema6 UI state");
+            saved["track_heights"] = result["track_heights"];
+            saved["zoom_presets"] = result["zoom_presets"];
+            saved["ui_schema"] = 7;
         }
         if (legacy || v2 || v3)
         {
@@ -187,7 +211,7 @@ Json readUiState(const juce::ValueTree& metadata)
                     if (!o.is_object() || o.value("kind", std::string{}) != "clip")
                         throw std::runtime_error("invalid legacy object selection");
         }
-        else if (saved["ui_schema"] != 6 || saved.size() != result.size())
+        else if (saved["ui_schema"] != 7 || saved.size() != result.size())
             throw std::runtime_error("unsupported or incomplete UI schema");
         if (legacy)
             result["ui_schema"] = 1;
@@ -203,7 +227,7 @@ Json readUiState(const juce::ValueTree& metadata)
         result["workspace"] = "edit";
         result["midi_dock"] = true;
     }
-    result["ui_schema"] = 6;
+    result["ui_schema"] = 7;
     validate(result);
     return result;
 }

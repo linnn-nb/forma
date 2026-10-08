@@ -100,6 +100,39 @@ const std::vector<Entry>& entries()
         {167, "Min : Sec · 主时间标尺", "标尺"},
         {168, "Timecode · 主时间标尺", "标尺"},
         {169, "Samples · 主时间标尺", "标尺"},
+        {170, "增高所选轨道", "轨道", juce::KeyPress::upKey, juce::ModifierKeys::ctrlModifier},
+        {171, "降低所选轨道", "轨道", juce::KeyPress::downKey, juce::ModifierKeys::ctrlModifier},
+        {172, "所有轨道比例增高", "视图", juce::KeyPress::upKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {173, "所有轨道比例降低", "视图", juce::KeyPress::downKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {210, "Micro · 所选轨道高度", "轨道"},
+        {211, "Mini · 所选轨道高度", "轨道"},
+        {212, "Small · 所选轨道高度", "轨道"},
+        {213, "Medium · 所选轨道高度", "轨道"},
+        {214, "Large · 所选轨道高度", "轨道"},
+        {215, "Jumbo · 所选轨道高度", "轨道"},
+        {216, "Extreme · 所选轨道高度", "轨道"},
+        {180, "召回缩放预设 1", "缩放", '1', juce::ModifierKeys::ctrlModifier},
+        {185, "保存当前缩放到预设 1", "缩放", '1', juce::ModifierKeys::ctrlModifier | shift},
+        {181, "召回缩放预设 2", "缩放", '2', juce::ModifierKeys::ctrlModifier},
+        {186, "保存当前缩放到预设 2", "缩放", '2', juce::ModifierKeys::ctrlModifier | shift},
+        {182, "召回缩放预设 3", "缩放", '3', juce::ModifierKeys::ctrlModifier},
+        {187, "保存当前缩放到预设 3", "缩放", '3', juce::ModifierKeys::ctrlModifier | shift},
+        {183, "召回缩放预设 4", "缩放", '4', juce::ModifierKeys::ctrlModifier},
+        {188, "保存当前缩放到预设 4", "缩放", '4', juce::ModifierKeys::ctrlModifier | shift},
+        {184, "召回缩放预设 5", "缩放", '5', juce::ModifierKeys::ctrlModifier},
+        {189, "保存当前缩放到预设 5", "缩放", '5', juce::ModifierKeys::ctrlModifier | shift},
+        {199, "默认 · 轨道颜色", "轨道"},
+        {200, "青绿 · 轨道颜色", "轨道"},
+        {201, "蓝 · 轨道颜色", "轨道"},
+        {202, "紫 · 轨道颜色", "轨道"},
+        {203, "粉 · 轨道颜色", "轨道"},
+        {204, "红 · 轨道颜色", "轨道"},
+        {205, "橙 · 轨道颜色", "轨道"},
+        {206, "黄 · 轨道颜色", "轨道"},
+        {207, "灰 · 轨道颜色", "轨道"},
+        {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {152, "Edit Comments 列", "视图", '4', cmd | juce::ModifierKeys::altModifier},
         {153, "编辑轨道备注…", "轨道", 'c', cmd | juce::ModifierKeys::altModifier},
         {146, "Edit I/O 列", "视图", '1', cmd | juce::ModifierKeys::altModifier},
@@ -129,12 +162,12 @@ juce::PopupMenu Workspace::rulersMenu()
     juce::PopupMenu menu;
     menu.setLookAndFeel(&theme);
     for (int id = 154; id <= 162; ++id)
-        menu.addCommandItem(&commandManager, id);
+        addMenuCommand(menu, id);
     juce::PopupMenu main, fps;
     for (int id = 166; id <= 169; ++id)
-        main.addCommandItem(&commandManager, id);
+        addMenuCommand(main, id);
     for (int id = 163; id <= 165; ++id)
-        fps.addCommandItem(&commandManager, id);
+        addMenuCommand(fps, id);
     menu.addSubMenu(text("Main Time Scale"), main);
     menu.addSubMenu(text("Timecode 显示帧率（非同步设置）"), fps);
     return menu;
@@ -169,6 +202,12 @@ void Workspace::initialiseCommandManager()
         pair.first->setComponentID("ui.command:" + juce::String(pair.second));
         addAndMakeVisible(pair.first);
     }
+    addAndMakeVisible(zoomPresets);
+    zoomPresets.connect(commandManager);
+    zoomPresets.onMenu = [this](int i, auto& component) { showZoomPresetMenu(i, component); };
+    editArea.onTrackOptions = mixArea.onTrackOptions = [this](auto id, auto& component, bool strip)
+    { showTrackOptions(id, component, strip); };
+    editArea.onTrackHeight = [this](auto id, int height, auto session) { setTrackHeight(id, height, session); };
     mixArea.onInsert = [this](std::string id, int index) { focusMixInsert(id, index); };
     mixArea.onRouting = [this](std::string id)
     {
@@ -383,6 +422,29 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.setTicked(pianoMode);
             if (id >= 149 && id <= 151)
                 active = !facts.value("playing", false) && (id == 149 || !groupsList.selectedId().empty());
+            if (id == 170 || id == 171 || (id >= 210 && id <= 216))
+            {
+                active = !selectedTrack().is_null();
+                if (active && id >= 210)
+                    info.setTicked(TrackPresentation::height(commands.uiState(), selected) ==
+                                   TrackPresentation::heights()[size_t(id - 210)].pixels);
+            }
+            if (id == 172 || id == 173)
+                active = !facts["tracks"].empty();
+            if (id >= 180 && id <= 184)
+                info.setTicked(commands.uiState()["span_samples"] ==
+                               commands.uiState()["zoom_presets"][size_t(id - 180)]);
+            if (id >= 199 && id <= 208)
+            {
+                const auto track = selectedTrack();
+                active = !track.is_null() && !facts.value("playing", false) && !facts.value("recording", false);
+                if (active && id < 208)
+                {
+                    const auto& colour = TrackPresentation::colours()[size_t(id - 199)];
+                    info.setTicked(track.value("colour", Json(nullptr)) ==
+                                   (id == 199 ? Json(nullptr) : Json(colour.value)));
+                }
+            }
             info.setActive(active);
             return;
         }
@@ -390,6 +452,12 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if ((id >= 170 && id <= 173) || (id >= 180 && id <= 189) || (id >= 199 && id <= 208) || (id >= 210 && id <= 216))
+    {
+        executePresentationCommand(id);
+        return true;
+    }
+
     if (id >= 140 && id <= 144)
     {
         if (id == 140)
