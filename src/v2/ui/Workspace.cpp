@@ -447,7 +447,10 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 bool legacy = pending["operations"][0]["command"] == "session.import_legacy",
                      musical = pending["operations"][0]["command"].get<std::string>().starts_with("midi.notes.");
                 bool external = pending["operations"][0]["command"] == "plugin.external.insert";
-                commands.commit(pending, true);
+                const auto receipt = commands.commit(pending, true);
+                const bool clipboardEdit = pendingClipboardPlan == pending["plan_id"].get<std::string>();
+                if (clipboardEdit)
+                    finishClipboardEdit(receipt);
                 if (external)
                 {
                     auto q = commands.query();
@@ -456,7 +459,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                             pluginSelection = int(t["plugins"].size()) - 1;
                 }
                 pending = nullptr;
-                if (!musical && !external)
+                if (!musical && !external && !clipboardEdit)
                     selected.clear();
                 if (legacy)
                     showLegacyReport();
@@ -474,6 +477,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         bool preview = !pending.is_null();
         reportShowing = false;
         pending = nullptr;
+        pendingClipboard = nullptr;
+        pendingClipboardPlan.clear();
         message(preview ? text("已取消预览，工程未修改") : text("已关闭导入报告"));
         refresh();
     };
@@ -582,6 +587,17 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     editingControls.onSettings = [this](Json patch) { setView(std::move(patch)); };
     editArea.onSnap = [this](int64_t sample, double division) { return commands.snapToGrid(sample, division); };
     editArea.onClipSelection = [this](std::string id, bool additive) { selectAudioClip(id, additive); };
+    editArea.onContext = [this](std::string id)
+    {
+        if (!id.empty() && !selection.contains(id) && selection.range.is_null())
+            selectAudioClip(id);
+        juce::PopupMenu menu;
+        for (int command = editCommand::copy; command <= editCommand::pasteOriginal; ++command)
+            menu.addCommandItem(&commandManager, command);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, editCommand::split);
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&editArea).withParentComponent(this));
+    };
     editArea.onRange = [this](Json range, Json tracks, uint64_t revision)
     { commitTimeSelection(std::move(range), std::move(tracks), revision); };
     for (auto* c : std::initializer_list<juce::Component*>{&toolbar, &transport, &counters})

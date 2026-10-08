@@ -482,9 +482,19 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
             std::string id = a.at("clip");
             if (!hashes.contains(id))
             {
-                auto* c = audioClip(id);
-                require(c != nullptr, "audio clip not found");
-                hashes[id] = mediaHash(c->getOriginalFile());
+                if (const auto* entry = clipboardEntry(id))
+                {
+                    require(actor == "human" && cmd == "clip.copy", "clipboard snapshots are local human copy sources");
+                    hashes[id] = mediaHash(file(entry->facts.at("path")));
+                    require(hashes[id] == entry->facts["media_hash"].get<std::string>(),
+                            "clipboard source media changed");
+                }
+                else
+                {
+                    auto* c = audioClip(id);
+                    require(c != nullptr, "audio clip not found");
+                    hashes[id] = mediaHash(c->getOriginalFile());
+                }
             }
             if (a.contains("media_hash"))
                 require(a.at("media_hash").is_string() && a.at("media_hash").get<std::string>() == hashes.at(id),
@@ -538,6 +548,9 @@ Json Commands::preview(const Json& plan) const
     {
         const auto cmd = op.at("command").get<std::string>();
         const auto& a = op.at("args");
+        if (a.contains("clip") && a["clip"].is_string() && a["clip"].get<std::string>().starts_with("@clipboard:"))
+            require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
+                    "clipboard snapshot expired or unavailable to this actor");
         auto reg = registry();
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
         require(entry != reg.end() && a.is_object(), "unknown command");
@@ -1318,6 +1331,8 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     history.clear();
     historyCursor = 0;
     receipts.clear();
+    activeClipboard.reset();
+    stagedClipboard.reset();
     lastParameterCapture = nullptr;
     parameterFailure = nullptr;
     lastCapture = nullptr;

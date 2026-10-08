@@ -5,7 +5,8 @@ namespace ndaw::desktop
 namespace editCommand
 {
 constexpr int slip = 115, grid = 116, selector = 117, grabber = 118, trim = 119, nudgeBack = 120, nudgeForward = 121,
-              previousBoundary = 122, nextBoundary = 123, split = 124;
+              previousBoundary = 122, nextBoundary = 123, split = 124, copy = 125, cut = 126, paste = 127,
+              duplicate = 128, pasteOriginal = 129;
 }
 // Shared audio/MIDI clip and time selection. IDs are UI references, never permission grants.
 struct SelectionModel

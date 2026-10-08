@@ -1,5 +1,11 @@
 # 更新记录
 
+## 2026-10-08：原生音频剪贴板
+
+- Edit 的 Cmd+C/X/V/D 与 Option+Cmd+V 接入统一命令和可重映射快捷键，支持真实音频 Clip 与轨道时间范围；跨轨道粘贴和选区相对位置通过 Tracktion 编辑事务执行。
+- 剪切/覆盖粘贴保留未覆盖的片段部分与源媒体；复制片段保留目标轨重叠内容；一笔 Undo/Redo，工程保存重开保留已提交结果。会话内剪贴板快照不跨重开，MIDI/自动化剪贴板未实现。
+- Release 构建与 `forma_native_audio_clipboard` 专项通过（1/1 CTest，49 个断言）；包含实际 PCM、Tracktion 渲染/解码、Undo/Redo 与保存重开。实体桌面剪贴板操作仍待验收。
+
 ## 2026-10-08：真实编辑工具与 Nudge
 
 - 原生 Slip/Grid、Selector/Grabber/Trim；按 Tempo Map 精确吸附，Command 临时跳过 Grid；不展示尚未接通的 Shuffle/Spot/Smart Tool。

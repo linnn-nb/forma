@@ -62,6 +62,11 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::altModifier},
         {editCommand::nextBoundary, "下一个片段边界", "编辑", juce::KeyPress::tabKey},
         {editCommand::split, "在光标拆分片段", "编辑", 'e', cmd},
+        {editCommand::copy, "复制音频选区", "编辑", 'c', cmd},
+        {editCommand::cut, "剪切音频选区", "编辑", 'x', cmd},
+        {editCommand::paste, "粘贴音频选区", "编辑", 'v', cmd},
+        {editCommand::duplicate, "复制音频片段到后方", "编辑", 'd', cmd},
+        {editCommand::pasteOriginal, "粘贴到原位置 / 原轨道", "编辑", 'v', cmd | juce::ModifierKeys::altModifier},
         {21, "只读分析", "Agent"},
         {22, "先预览再提交", "Agent"},
         {23, "自动低风险 · 当前轨道", "Agent"},
@@ -147,6 +152,22 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.addDefaultKeypress(
                     id == editCommand::nudgeBack ? juce::KeyPress::numberPadSubtract : juce::KeyPress::numberPadAdd, 0);
             bool active = true;
+            if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
+            {
+                active = !mix && !pianoMode && !facts.value("playing", false) &&
+                         facts.value("parameter_capture", Json(nullptr)).is_null() && pendingClipboardPlan.empty();
+                if (id == editCommand::paste || id == editCommand::pasteOriginal)
+                    active = active && !commands.clipboard().is_null();
+                else
+                {
+                    const auto slices = clipboardSelection();
+                    active = active && !slices.empty();
+                    for (const auto& item : slices)
+                        active = active && item["kind"] == "audio" && item.value("editable_audio", false) &&
+                                 !item.value("offline_clip_effects", false) &&
+                                 (id != editCommand::cut || !item.value("locked", false));
+                }
+            }
             if (id >= editCommand::slip && id <= editCommand::split)
             {
                 active = !mix && !pianoMode;
@@ -202,6 +223,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
+    {
+        executeClipboardCommand(id);
+        return true;
+    }
     if (id >= editCommand::slip && id <= editCommand::split)
     {
         executeEditCommand(id);

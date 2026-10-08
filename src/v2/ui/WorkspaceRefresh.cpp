@@ -333,6 +333,8 @@ void Workspace::refresh()
     if (workspaceSession != commands.sessionToken())
     {
         workspaceSession = commands.sessionToken();
+        pendingClipboard = nullptr;
+        pendingClipboardPlan.clear();
         if (mcp)
             startMcp(Permission::ReadOnly, mcpEndpoint);
         Scope readOnly;

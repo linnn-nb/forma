@@ -120,6 +120,11 @@ private:
     ClipWriter clipWriter();
     void selectAudioClip(const std::string& id, bool additive = false);
     void executeEditCommand(int id);
+    void executeClipboardCommand(int id);
+    Json clipboardSelection() const;
+    void finishClipboardEdit(const Json& receipt);
+    Json pendingClipboard = nullptr;
+    std::string pendingClipboardPlan;
     void commitTimeSelection(Json range, Json tracks, uint64_t revision);
     Json selectedEditClips() const;
     Json selectedAudioClip() const;

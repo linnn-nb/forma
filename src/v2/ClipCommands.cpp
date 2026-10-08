@@ -294,6 +294,31 @@ Json Commands::validateClipPlan(const Json& ops) const
         if (!cmd.starts_with("clip."))
             continue;
         std::string id = a["clip"];
+        if (cmd == "clip.copy")
+            if (const auto* entry = clipboardEntry(id))
+            {
+                const auto& q = entry->facts;
+                Model frozen;
+                frozen.track = q["track"];
+                frozen.start = q["start_samples"];
+                frozen.length = q["length_samples"];
+                frozen.offset = q["source_offset_samples"];
+                frozen.source = q["source_length_samples"];
+                frozen.path = q["path"];
+                if (!hashes.contains(frozen.path))
+                    hashes[frozen.path] = mediaHash(juce::File(juce::String(frozen.path)));
+                require(hashes.at(frozen.path) == q["media_hash"].get<std::string>(),
+                        "clipboard source media changed after planning");
+                frozen.hash = q["media_hash"];
+                frozen.gain = q["gain_db"];
+                frozen.fadeIn = q["fade_in_samples"];
+                frozen.fadeOut = q["fade_out_samples"];
+                frozen.inCurve = q["fade_in_curve"];
+                frozen.outCurve = q["fade_out_curve"];
+                frozen.locked = q["locked"];
+                frozen.fxTypes = q["fx_types"];
+                clips[id] = std::move(frozen);
+            }
         require(clips.contains(id), "audio clip not found or deleted earlier in Plan");
         auto& m = clips.at(id);
         require(m.editable, "editing looped, grouped, reversed, warped or stretched audio is not qualified yet");
@@ -304,7 +329,7 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.hash = hashes.at(m.path);
         }
         require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
-        require(!m.locked || cmd == "clip.lock", "clip is locked");
+        require(!m.locked || cmd == "clip.lock" || cmd == "clip.copy", "clip is locked");
         auto before = m.facts();
         std::string created;
         if (cmd == "clip.move")
@@ -412,6 +437,25 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
         return;
     }
     const std::string id = a["clip"];
+    if (cmd == "clip.copy")
+        if (const auto* entry = clipboardEntry(id))
+        {
+            auto* target = track(a["track"]);
+            require(target != nullptr, "clipboard destination disappeared");
+            auto copy = te::ClipCopy::fromClipboardState(entry->state.createCopy(), false).withNewItemID(*edit);
+            auto* c = dynamic_cast<te::WaveAudioClip*>(te::insertClipCopy(*target, copy));
+            require(c != nullptr, "native clipboard insertion failed");
+            const auto start = pos(a["position_samples"]);
+            c->setSyncType(te::Clip::syncAbsolute);
+            c->setPosition(
+                {{start, start + dur(entry->facts["length_samples"])}, dur(entry->facts["source_offset_samples"])});
+            c->state.setProperty("ndaw_parent_clip", juce::String(entry->facts["clip"].get<std::string>()), &um);
+            c->state.setProperty("ndaw_origin", "clipboard", &um);
+            const auto actual = c->itemID.toString().toStdString();
+            aliases[a["ref"]] = actual;
+            objects.push_back({{"id", actual}, {"kind", "clip"}, {"clipboard_token", id}});
+            return;
+        }
     auto* c = audioClip(aliases.contains(id) ? aliases.at(id) : id);
     require(c != nullptr, "audio clip disappeared");
     auto p = c->getPosition();

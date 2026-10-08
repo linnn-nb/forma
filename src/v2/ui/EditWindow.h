@@ -113,6 +113,7 @@ public:
     std::function<void(Json)> onViewChange;
     std::function<int64_t(int64_t, double)> onSnap;
     std::function<void(std::string, bool)> onClipSelection;
+    std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t)> onRange;
     TimelineCoordinates coordinates() const
     {
@@ -292,6 +293,17 @@ public:
         const auto axis = coordinates();
         const int row = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
         const auto point = snapped(axis.sampleAt(e.x), e.mods);
+        if (e.mods.isPopupMenu())
+        {
+            std::string clip;
+            if (e.y >= Rulers::height && row < int(trackIDs.size()))
+                for (const auto& c : facts["tracks"][row]["clips"])
+                    if (clipRect(c, row).contains(e.getPosition()))
+                        clip = c["id"];
+            if (onContext)
+                onContext(clip);
+            return;
+        }
         dragX = e.x;
         dragScale = axis.span / axis.width;
         dragPoint = axis.sampleAt(e.x);

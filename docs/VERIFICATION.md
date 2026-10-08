@@ -1,5 +1,20 @@
 # 验证状态
 
+## U-EDIT-02（2026-10-08；U＋P0 仍未完成）
+
+结论：L1 统一命令层已接通真实音频 Clip /轨道时间选区的 Copy、Cut、Paste、Paste Original 与 Duplicate，并加入可重映射全局快捷键。Release 构建成功；`forma_native_audio_clipboard` 专项 **1/1 CTest 通过、0 失败，49 个断言**（5.73秒）。测试使用真实 Tracktion Edit、音频 PCM、渲染/解码、撤销重做与保存重开；这不是实体桌面验收，MIDI/自动化剪贴板也未完成。
+
+实现：`src/v2/ClipboardCommands.cpp` 捕获 Tracktion `ClipCopy` 状态、真实源文件 SHA256 与来源偏移，经 L1 校验会话/Revision 后形成有界的会话内快照；`src/v2/ui/WorkspaceClipboard.cpp` 将人类键盘/菜单输入转换为 `clip.copy`、切分/裁剪/删除及时间选区命令。Copy 不增 revision/Undo；其他编辑一次 Plan/一次 Undo，Redo 与 `.tracktionedit` 保存重开恢复真实编辑。L1 拒绝 Agent 伪造本地剪贴板能力，提交幂等重放不会重复创建对象。
+
+行为：Cmd+C/X/V/D 与 Option+Cmd+V 可通过「键位…」重映射。支持最多64个可编辑音频 Clip、8 MiB 状态快照、跨轨目标映射、局部时间范围和相对位置；Paste 替换所选目的区间并保留外侧部分，Paste Original 回到来源位置，Duplicate 插入原区间之后且保留重叠目的媒体。大于8条操作或60秒的破坏性改动要求先预览。原 PCM 不改写；新剪切边界淡化、循环/分组/Warp、离线 Clip FX 和非音频对象不支持；快照不跨工程重开。
+
+验证与边界：专项包含两个重叠 Clip 的真实 Duplicate 保留回归、源 offset/局部切片、Cut/Paste、插件状态、Undo/Redo、保存重开、源媒体哈希冲突和 L1 幂等重试。真实 GUI 的 Copy/Cut/Paste 与桌面快捷键当前未验收，不能由JUCE组件事件或截图替代；U＋P0 仍未完成。
+
+| 需求 | 生产实现 | 验收/差距 |
+|---|---|---|
+| 音频 Clip /时间选区剪贴板 | `ClipboardCommands.cpp`、`ui/WorkspaceClipboard.cpp`、`ui/WorkspaceCommands.cpp`；`ClipboardWorkspaceTests.cpp` | `forma_native_audio_clipboard`：49断言；真实 Tracktion 状态与PCM渲染、局部/跨轨映射、撤销重做和保存重开通过；实体桌面操作待验收 |
+| MIDI/自动化剪贴板 | 尚未实现 | 不显示为已支持；后续接通 MIDI Clip/音符与钢琴卷帘联动 |
+
 ## U-EDIT-01（2026-10-08；U＋P0 仍未完成）
 
 结论：Slip/Grid、Selector/Grabber/Trim、跨轨范围和 Shift Clip 多选、音频组 Nudge、Tab 边界与光标拆分已接通，Release 构建并保持固定签名。相关 6/6 测试通过、0 失败（23.58 秒）；片段关闭与焦点修复后 2/2 复测通过、0 失败（13.68 秒）；最后的无 UI 刷新/同范围选区及 Nudge 版本冲突修正，相关 1/1 复测通过、0 失败（5.49 秒）。最后新专项为 46 个断言，重复复测不加算为独立测试。新增专项包含真实 Edit、实际 JUCE peer、前后 WAV 渲染、保存重开与冲突拒绝；不代表完整工具/模式或实体录音资格。

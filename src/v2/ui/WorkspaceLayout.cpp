@@ -35,7 +35,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addCommandItem(&commandManager, 6);
         p.addCommandItem(&commandManager, 7);
         p.addSeparator();
-        for (int id = editCommand::slip; id <= editCommand::split; ++id)
+        for (int id = editCommand::slip; id <= editCommand::pasteOriginal; ++id)
             p.addCommandItem(&commandManager, id);
     }
     if (index == 2)

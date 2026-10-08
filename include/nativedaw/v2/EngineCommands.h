@@ -48,6 +48,12 @@ public:
     // project transactions, revision and the Agent command registry.
     Json uiState() const;
     Json updateUiState(const Json&, const std::string& expectedSession);
+    // Local clipboard stores frozen native state in L1, never caller-supplied XML.
+    // Copy itself is outside Edit history; cut/paste use ordinary editing Plans.
+    Json prepareClipboard(const Json& clips, const Json& tracks, int64_t start, int64_t end,
+                          const std::string& expectedSession, uint64_t expectedRevision);
+    void acceptClipboard(const std::string& buffer);
+    Json clipboard() const;
     Json exportRequest(bool selection) const;
     Json renderRequest(const juce::File&, const Json&);
     Json save(const juce::File&);
@@ -251,6 +257,18 @@ private:
     juce::File recordingDirectory;
     std::string recordingError;
     te::WaveAudioClip* audioClip(const std::string&) const;
+    struct ClipboardEntry
+    {
+        juce::ValueTree state;
+        Json facts;
+    };
+    struct ClipboardBuffer
+    {
+        Json manifest;
+        std::map<std::string, ClipboardEntry> entries;
+    };
+    std::optional<ClipboardBuffer> activeClipboard, stagedClipboard;
+    const ClipboardEntry* clipboardEntry(const std::string&) const;
     static void registerClipCommands(Json&);
     Json audioClipQuery(te::WaveAudioClip&) const;
     Json validateClipPlan(const Json&) const;
