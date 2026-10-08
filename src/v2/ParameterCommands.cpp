@@ -51,7 +51,7 @@ bool Commands::requestParameterGesture(te::AutomatableParameter& p,bool beginnin
     if(ownedParameterWrites>0)return true;
     juce::ScopedValueSetter<std::string> source(parameterSource,parameterSource=="sdk-parameter"&&nativePluginEditorOpen(p.getOwnerID().toString().toStdString())?"plugin_ui":parameterSource);
     try {
-        checkThread();if(nativeStates&&nativeStates->beforeParameter(p))return false;require(p.getPlugin()!=nullptr,"parameter has no supported plugin owner");
+        checkThread();if(nativeStates&&nativeStates->beforeParameter(p))return false;require(p.getPlugin()!=nullptr,"parameter has no supported plugin owner");if(auto* clip=p.getPlugin()->getOwnerClip())require(!bool(clip->state.getProperty("ndaw_locked",false)),"clip is locked");
         const auto id=key(p);
         reconcileExternalPreparation(p);
         if(!capture.is_null()){
@@ -78,7 +78,7 @@ bool Commands::requestParameterChange(te::AutomatableParameter& p,float value,ju
     if(ownedParameterWrites>0)return true;
     juce::ScopedValueSetter<std::string> source(parameterSource,parameterSource=="sdk-parameter"&&nativePluginEditorOpen(p.getOwnerID().toString().toStdString())?"plugin_ui":parameterSource);
     try {
-        checkThread();if(nativeStates&&nativeStates->beforeParameter(p))return false;require(p.getPlugin()!=nullptr,"parameter has no supported plugin owner");
+        checkThread();if(nativeStates&&nativeStates->beforeParameter(p))return false;require(p.getPlugin()!=nullptr,"parameter has no supported plugin owner");if(auto* clip=p.getPlugin()->getOwnerClip())require(!bool(clip->state.getProperty("ndaw_locked",false)),"clip is locked");
         require(std::isfinite(value)&&value>=p.valueRange.start&&value<=p.valueRange.end,"native parameter value outside actual range");
         require(recordingCapture.is_null(),"stop recording before native parameter edits");
         const auto id=key(p);

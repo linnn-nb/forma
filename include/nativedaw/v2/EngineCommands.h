@@ -117,6 +117,7 @@ private:
     bool externalLayoutChanged(te::ExternalPlugin&);
     static void registerProcessorCommands(Json&);
     Json processorQuery(te::AudioTrack&) const;
+    Json processorQuery(te::PluginList&) const;
     static bool commandProcessor(const te::Plugin&);
     Json parameterQuery(te::Plugin&,te::AutomatableParameter&) const;
     Json processorSummary(te::Plugin&) const;

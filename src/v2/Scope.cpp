@@ -70,7 +70,9 @@ Json Commands::assessScope(const Json& plan,const Scope& scope,const Json& previ
                 if(!gains.contains(id)||a["db"].get<double>()>gains[id])automatic=false;gains[id]=a["db"];
             }else if(cmd=="track.mute"&&!a["enabled"].get<bool>())automatic=false;
         }else if(a.contains("plugin")&&cmd.starts_with("plugin.")){
-            auto id=a["plugin"].get<std::string>();auto* p=plugin(id);require(p||!bounded,"scope requires an existing plugin");object(id,p?p->getOwnerTrack():nullptr);full();impacts.push_back({{"command",cmd},{"object",id},{"extent","whole_track"}});
+            auto id=a["plugin"].get<std::string>();auto* p=plugin(id);require(p||!bounded,"scope requires an existing plugin");
+            if(auto* clip=p?p->getOwnerClip():nullptr){const auto clipID=clip->itemID.toString().toStdString();require(allowed(id,clip->getTrack())||allowed(clipID,clip->getTrack()),"object outside permission scope");const auto pos=clip->getPosition();auto start=std::llround(pos.getStart().inSeconds()*timelineRate),length=std::llround(pos.getLength().inSeconds()*timelineRate);span(start,length);impacts.push_back({{"command",cmd},{"object",id},{"clip",clipID},{"start_samples",start},{"length_samples",length},{"extent","whole_clip"}});}
+            else{object(id,p?p->getOwnerTrack():nullptr);full();impacts.push_back({{"command",cmd},{"object",id},{"extent","whole_track"}});}
         }else if(bounded){
             // Structural/global operations need an unrestricted, explicitly
             // accepted preview until their complete footprint is implemented.

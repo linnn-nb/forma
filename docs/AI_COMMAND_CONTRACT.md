@@ -295,3 +295,14 @@ M3-LUFS-01：所有成功音频分析回执含loudness_curve，紧凑points列[d
 成功分析 receipt 新增 spectrum，和父 artifact 共用实际来源/范围/媒体/链哈希与 current 判断；MCP Schema 和权限不变。bin_power 是全部 2049 个单侧平均线性功率，频率=k×bin_width_hz；FFT4096、hop2048、periodic Hann、内部 float FFT 与 double 功率累计，每窗/声道等权。DC/Nyquist 不乘二，其他 bin 乘二，按 N×window_square_sum 归一化。窗口概要包含 window_count、真实源解码范围、工程 origin 或 null、final_end_aligned_window；不足4096帧 status=insufficient_window、空序列及 null 总功率，不补零假测量。measured 下零功率/null dBFS 表示数字静音；不与缺失测量混淆。
 
 bands 声明半开 bin 分区 first_bin/end_bin、标称 lower/upper Hz、Nyquist 上限的包含性、实际功率/占比和各声道功率；按 bin 中心分组，不当作理想带通滤波器。功率零时 fraction=null。dominant_bin 是真实最高平均功率 bin，静音/不足窗为 null。末端剩余帧用完整尾端对齐窗，额外重叠明确；该概要不携带峰值事件时间，不提供直接 seek 或扩展写权限。频谱≤64 KiB、窗口≤30000、完整artifact仍≤252 KiB，越界拒绝不截断。原时限/单worker不变，测试预算及边界见ANALYSIS_WORKFLOW.md，验证状态见VERIFICATION.md。频谱不是未加窗RMS、PSD/Hz、实时表或音色质量判断；原始源不能解释处理后音频。
+
+
+## 片段效果与独立分析（M3-CLIPFX-01）
+
+`clip.fx.insert(clip,media_hash,type,wet_only?)` 操作所选 WaveAudioClip 的原生 PluginList，类型为实际 EQ/Compressor/Reverb/Delay，不能插入 FourOsc 或凭空参数。native Clip Gain/Pan 在插件之前，淡化在插件之后；既有 `plugin.parameter` / `delay_time` / `bypass` / `remove` 使用该实例的稳定 ID，GUI 片段检查器使用同一命令和 human 手势。原生五槽预算由 SDK 查询，并按一个 Plan 中的插入/移除顺序预检，资源不足拒绝整笔计划。锁定同时约束命令和原生人工作出的参数修改。片段参数写入不扩大自动执行白名单；有限授权检查完整片段采样范围，clip、plugin 或所属轨道授权可用，均不能逃出时间范围。片段自动化工作流尚未验收。
+
+`analyze_clip(session_token,base_revision,clip,start_samples,end_samples,request_key,detector_profile?)` 是只读 MCP 工具，生成 `purpose=clip,tap_point=clip_post_fx` 的真实 artifact。范围为**所选片段内**的48 kHz工程采样半开区间；不是原生媒体帧。L1 用同一 Engine 构造只含该音频片段的 detached Edit，保留片段增益/声像/插件/淡化与音乐上下文，排除其他片段、上游输入/路由、轨道插入/推子/mute/solo/VCA及Master。L2仅渲染、读PCM及测量；没有成功回执不显示完成。
+
+`query_objects(collection=clip_plugins,target=clip,session_token,base_revision)` 分页枚举真实插件；parameters 继续以实际 plugin 为 target。clip 摘要明确 `clip_fx_count` / `clip_fx_collection` / `offline_clip_effects`，参数不塞入概要。artifact 声明实际插件ID、范围、源偏移、媒体SHA256、边界SHA256及整个已提交Edit链SHA256；未相关工程修改也保守使processed过期，原始源证据仍只绑定原媒体和测量条件。重试、取消、GUI定位、Undo和重开遵循现有分析与事务契约。
+
+循环、分组、warp、伸缩、反向、离线 ClipEffects派生媒体和第三方片段插件分析明确拒绝；后续能力仍保留。区间外混响/Delay尾音及从工程零点起的连续反馈历史未获保证。分析预算仍为一个worker、最长300秒、60秒截止和完整252 KiB；不能抢占SDK插件、系统I/O或message-thread图准备。

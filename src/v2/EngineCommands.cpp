@@ -542,6 +542,11 @@ void Commands::open(const juce::File& source) {
 }
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate) {
     checkThread();require(candidate!=nullptr,"invalid Edit replacement");
+    // SDK nextID is lazy after loading. Reserve its high-water mark while the
+    // complete imported state still exists: deletion followed by creation must
+    // not reuse IDs held by Undo or the native plugin cache (including Clip FX).
+    // This advances only the native allocator, not session facts or history.
+    (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     if(masterAnalysis)masterAnalysis->reset();
     auto newInhibitor=std::make_unique<te::Edit::UndoTransactionInhibitor>(*candidate);

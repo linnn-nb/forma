@@ -62,9 +62,8 @@ void Commands::registerProcessorCommands(Json& registry) {
     registry.back()["units"]={{"index","zero-based native SDK program index; does not enumerate a proprietary preset browser"}};
 }
 te::Plugin* Commands::processor(const std::string& id) const {
-    for(auto* t:te::getAudioTracks(*edit))
-        for(auto* p:t->pluginList)
-            if(p->itemID.toString().toStdString()==id && supported(*p))return p;
+    for(auto* p:te::getAllPlugins(*edit,true))
+        if(p->itemID.toString().toStdString()==id && supported(*p))return p;
     return nullptr;
 }
 bool Commands::commandProcessor(const te::Plugin& plugin) {return supported(plugin);}
@@ -93,11 +92,15 @@ Json Commands::processorSummary(te::Plugin& plugin) const {
             {"private_state_interpreted",false}};
     }
     if(auto* delay=dynamic_cast<te::DelayPlugin*>(&plugin))result["delay_time_ms"]=delay->lengthMs.get();
+    if(auto* clip=plugin.getOwnerClip()){result["owner_clip"]=clip->itemID.toString().toStdString();result["automation_workflow_qualified"]=false;}
     return result;
 }
 Json Commands::processorQuery(te::AudioTrack& track) const {
+    return processorQuery(track.pluginList);
+}
+Json Commands::processorQuery(te::PluginList& list) const {
     Json plugins=Json::array();
-    for(auto* plugin:track.pluginList) {
+    for(auto* plugin:list) {
         if(!supported(*plugin))continue;
         Json parameters=Json::array();
         for(auto* p:plugin->getAutomatableParameters()) parameters.push_back(parameterQuery(*plugin,*p));
@@ -111,6 +114,7 @@ Json Commands::processorQuery(te::AudioTrack& track) const {
             for(auto& a:result["parameters"]){a["unit_mapping"]="native Tracktion normalized range; formatted text is not a plain-unit conversion";a["identity_scope"]="Tracktion persisted parameter ID, format adapter index for AU/VST3";}
         }
         if(auto* delay=dynamic_cast<te::DelayPlugin*>(plugin))result["delay_time_ms"]=delay->lengthMs.get();
+        if(auto* clip=plugin->getOwnerClip()){result["owner_clip"]=clip->itemID.toString().toStdString();result["automation_workflow_qualified"]=false;}
         plugins.push_back(result);
     }
     return plugins;
@@ -183,7 +187,7 @@ void Commands::setParameterValue(te::Plugin& p,te::AutomatableParameter& paramet
     if(dynamic_cast<te::ExternalPlugin*>(&p)&&parameter.paramID!="dry level"&&parameter.paramID!="wet level"){require(um.perform(new ExternalParameterAction(p,parameter,value)),"external parameter Undo setup failed");if(nativeStates)nativeStates->noteParameter(p,parameter,value);return;}
     require(um.perform(new ParameterBaseAction(p,parameter.paramID,false)),"parameter history setup failed");
     parameter.setParameter(value,nt);
-    require(um.perform(new ParameterBaseAction(p,parameter.paramID,true)),"parameter history sync failed");
+    if(!um.perform(new ParameterBaseAction(p,parameter.paramID,true)))throw std::runtime_error("parameter history sync failed: plugin="+p.itemID.toString().toStdString()+" type="+p.getPluginType().toStdString()+" parameter="+parameter.paramID.toStdString());
 }
 
 }

@@ -16,7 +16,8 @@ void fades(te::WaveAudioClip& c,int64_t in,int64_t out,const std::string& ci,con
 struct Model {
     int64_t start=0,length=0,offset=0,source=0,fadeIn=0,fadeOut=0;double gain=0;bool locked=false,editable=true;
     std::string track,path,hash,inCurve="linear",outCurve="linear";
-    Json facts()const{return {{"track",track},{"start_samples",start},{"length_samples",length},{"source_offset_samples",offset},{"gain_db",gain},{"fade_in_samples",fadeIn},{"fade_out_samples",fadeOut},{"fade_in_curve",inCurve},{"fade_out_curve",outCurve},{"locked",locked}};}
+    Json fxTypes=Json::array();std::vector<std::string> fxIDs;
+    Json facts()const{return {{"track",track},{"start_samples",start},{"length_samples",length},{"source_offset_samples",offset},{"gain_db",gain},{"fade_in_samples",fadeIn},{"fade_out_samples",fadeOut},{"fade_in_curve",inCurve},{"fade_out_curve",outCurve},{"locked",locked},{"fx_types",fxTypes}};}
     void fitFades(){if(fadeIn+fadeOut>length){const auto total=fadeIn+fadeOut;fadeIn=std::llround(double(fadeIn)*length/total);fadeOut=length-fadeIn;}}
 };
 }
@@ -30,6 +31,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c)const{
         {"source_offset_samples",sample(p.getOffset().inSeconds())},{"source_offset_seconds",p.getOffset().inSeconds()*c.getSpeedRatio()},
         {"speed_ratio",c.getSpeedRatio()},{"source_mapping_available",!c.isLooping()&&!c.getAutoTempo()&&!c.getWarpTime()&&!c.getIsReversed()&&std::isfinite(c.getSpeedRatio())&&c.getSpeedRatio()>0},{"gain_db",c.getGainDB()},{"fade_in_samples",sample(c.getFadeIn().inSeconds())},{"fade_out_samples",sample(c.getFadeOut().inSeconds())},
         {"fade_in_curve",curveName(c.getFadeInType())},{"fade_out_curve",curveName(c.getFadeOutType())},{"locked",bool(c.state.getProperty("ndaw_locked",false))},
+        {"plugins",processorQuery(*c.getPluginList())},{"clip_fx_count",c.getPluginList()->size()},{"offline_clip_effects",c.effectsEnabled()},
         {"legacy_media_available",bool(c.state.getProperty("ndaw_legacy_media_available",true))},{"legacy_id",c.state.getProperty("ndaw_legacy_id").toString().toStdString()},{"legacy_source_id",c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},{"editable_audio",editable},{"parent_clip",c.state.getProperty("ndaw_parent_clip").toString().toStdString()},{"origin",c.state.getProperty("ndaw_origin","import").toString().toStdString()}};
 }
 void Commands::registerClipCommands(Json& r){
@@ -43,12 +45,15 @@ void Commands::registerClipCommands(Json& r){
     add("clip.gain",{{"db",num}},Json::array({"db"}));
     add("clip.fade",{{"in_samples",integer},{"out_samples",integer},{"in_curve",id},{"out_curve",id}},Json::array({"in_samples","out_samples","in_curve","out_curve"}));
     add("clip.lock",{{"locked",{{"type","boolean"}}}},Json::array({"locked"}));
+    Json types=Json::array();for(const auto& p:processorCatalog())if(p["type"]!=te::FourOscPlugin::xmlTypeName)types.push_back(p["type"]);
+    add("clip.fx.insert",{{"type",{{"type","string"},{"enum",types}}},{"wet_only",{{"type","boolean"}}}},Json::array({"type"}));
+    r.back()["test"]="M3-CLIPFX-01";r.back()["units"]["wet_only"]="Reverb only: dry=0, wet=1/3; native clip gain/pan before plugins and fades after plugins";
 }
 Json Commands::validateClipPlan(const Json& ops)const{
-    std::map<std::string,Model> clips;std::map<std::string,std::string> tracks;std::set<std::string> refs;std::map<std::string,std::string> hashes;Json diff=Json::array();
+    std::map<std::string,Model> clips;std::map<std::string,std::string> tracks;std::set<std::string> refs,removedPlugins;std::map<std::string,std::string> hashes;std::map<std::string,std::pair<std::string,std::string>> clipPlugins;Json diff=Json::array();
     for(auto* t:te::getAllTracks(*edit))tracks[t->itemID.toString().toStdString()]=dynamic_cast<te::AudioTrack*>(t)?trackType(*static_cast<te::AudioTrack*>(t)):"folder";
     for(auto* t:te::getAudioTracks(*edit))for(auto* clip:t->getClips())if(auto* c=dynamic_cast<te::WaveAudioClip*>(clip)){
-        auto q=audioClipQuery(*c);Model m;m.track=t->itemID.toString().toStdString();m.start=sample(c->getPosition().getStart().inSeconds());m.length=sample(c->getPosition().getLength().inSeconds());m.offset=q["source_offset_samples"];m.source=sample(c->getSourceLength().inSeconds());m.path=q["path"];m.gain=q["gain_db"];m.fadeIn=q["fade_in_samples"];m.fadeOut=q["fade_out_samples"];m.locked=q["locked"];m.editable=q["editable_audio"];m.inCurve=q["fade_in_curve"];m.outCurve=q["fade_out_curve"];clips[c->itemID.toString().toStdString()]=m;
+        auto q=audioClipQuery(*c);Model m;m.track=t->itemID.toString().toStdString();m.start=sample(c->getPosition().getStart().inSeconds());m.length=sample(c->getPosition().getLength().inSeconds());m.offset=q["source_offset_samples"];m.source=sample(c->getSourceLength().inSeconds());m.path=q["path"];m.gain=q["gain_db"];m.fadeIn=q["fade_in_samples"];m.fadeOut=q["fade_out_samples"];m.locked=q["locked"];m.editable=q["editable_audio"];m.inCurve=q["fade_in_curve"];m.outCurve=q["fade_out_curve"];const auto id=c->itemID.toString().toStdString();for(auto* p:*c->getPluginList()){const auto type=p->getPluginType().toStdString();m.fxTypes.push_back(type);m.fxIDs.push_back(p->itemID.toString().toStdString());clipPlugins[p->itemID.toString().toStdString()]={id,type};}clips[id]=m;
     }
     auto newRef=[&](const Json& a){auto ref=a.at("ref").get<std::string>();require(ref.size()>1&&ref.starts_with("$")&&refs.insert(ref).second,"invalid or duplicate local object reference");return ref;};
     auto bounds=[&](const Model& m){require(m.start>=0&&m.length>0&&m.start<=sample(te::Edit::maximumLength)-m.length,"clip outside supported timeline");require(m.offset>=0&&m.length<=m.source-m.offset,"trim exceeds original source media");};
@@ -56,6 +61,11 @@ Json Commands::validateClipPlan(const Json& ops)const{
         if(cmd.starts_with("clip."))for(const char* key:{"position_samples","start_samples","end_samples"})if(a.contains(key)){auto n=a.at(key).get<int64_t>();require(n>=0&&n<=sample(te::Edit::maximumLength),"clip position outside native 48 hour timeline");}
         if(cmd=="track.create"){auto ref=newRef(a);tracks[ref]=a.value("type",std::string("audio"));continue;}
         if(cmd=="midi.clip.create"||cmd=="midi.note.add"){if(a.contains("ref"))newRef(a);continue;}
+        if(cmd.starts_with("plugin.")&&a.contains("plugin")&&clipPlugins.contains(a["plugin"])){
+            require(!removedPlugins.contains(a["plugin"]),"clip processor removed earlier in Plan");const auto& id=clipPlugins.at(a["plugin"]).first;require(clips.contains(id),"clip processor target deleted earlier in Plan");auto& m=clips.at(id);require(!m.locked,"clip is locked");
+            if(cmd=="plugin.remove"){auto i=std::find(m.fxIDs.begin(),m.fxIDs.end(),a["plugin"].get<std::string>());require(i!=m.fxIDs.end(),"clip processor removed earlier in Plan");m.fxTypes.erase(m.fxTypes.begin()+std::distance(m.fxIDs.begin(),i));m.fxIDs.erase(i);removedPlugins.insert(a["plugin"]);}
+            continue;
+        }
         if(cmd=="clip.import"){
             std::string track=a["track"],path=a["path"];require(tracks.contains(track)&&(tracks[track]=="audio"||tracks[track]=="instrument"),"audio/instrument track required for audio clip");
             juce::File f(juce::String{path});require(mediaHash(f)==a.at("media_hash").get<std::string>(),"media changed since planning");te::AudioFile audio(edit->engine,f);require(audio.isValid()&&audio.getLength()>0,"invalid audio media");
@@ -72,6 +82,10 @@ Json Commands::validateClipPlan(const Json& ops)const{
         else if(cmd=="clip.gain"){double db=a["db"];require(std::isfinite(db)&&db>=-100&&db<=24,"clip gain outside -100..24 dB");m.gain=db;}
         else if(cmd=="clip.fade"){int64_t in=a["in_samples"],out=a["out_samples"];require(in>=0&&out>=0&&in<=m.length&&out<=m.length-in,"fade lengths exceed clip; explicit lengths required");curveType(a["in_curve"]);curveType(a["out_curve"]);m.fadeIn=in;m.fadeOut=out;m.inCurve=a["in_curve"];m.outCurve=a["out_curve"];}
         else if(cmd=="clip.lock")m.locked=a["locked"];
+        else if(cmd=="clip.fx.insert"){
+            require(m.fxTypes.size()<size_t(engine.getEngineBehaviour().getEditLimits().maxPluginsOnClip),"clip processor resource limit reached");
+            require(!a.value("wet_only",false)||a["type"]==te::ReverbPlugin::xmlTypeName,"wet_only requires Reverb");m.fxTypes.push_back(a["type"]);m.fxIDs.push_back("#planned-clip-fx-"+std::to_string(diff.size()));
+        }
         else if(cmd=="clip.split"){
             int64_t point=a["position_samples"];require(point>m.start&&point<m.start+m.length,"split must be strictly inside clip");auto right=m;right.start=point;right.offset+=point-m.start;right.length=m.start+m.length-point;right.fadeIn=0;right.fadeOut=std::min(right.fadeOut,right.length);m.length=point-m.start;m.fadeOut=0;m.fadeIn=std::min(m.fadeIn,m.length);created=newRef(a);clips[created]=right;
         }else if(cmd=="clip.copy"){
@@ -101,6 +115,12 @@ void Commands::executeClipOperation(const std::string& cmd,const Json& a,Json& o
         if(in+out>length){const auto total=in+out;in=std::llround(double(in)*length/total);out=length-in;}
         auto offset=sample(p.getOffset().inSeconds())+start-sample(p.getStart().inSeconds());auto ci=curveName(c->getFadeInType()),co=curveName(c->getFadeOutType());c->setPosition({{pos(start),pos(end)},dur(offset)});fades(*c,in,out,ci,co);
     }else if(cmd=="clip.gain")c->setGainDB(a["db"]);
+    else if(cmd=="clip.fx.insert"){
+        auto p=edit->getPluginCache().createNewPlugin(juce::String(a.at("type").get<std::string>()),{});require(p!=nullptr,"clip processor creation failed");
+        const auto error=c->canAddClipPlugin(p);require(error.isEmpty(),error.toRawUTF8());c->getPluginList()->insertPlugin(p,-1,nullptr);require(c->getPluginList()->contains(p.get()),"clip processor insertion failed");
+        if(a.value("wet_only",false)){auto& reverb=dynamic_cast<te::ReverbPlugin&>(*p);setParameterValue(*p,*reverb.dryParam,0);setParameterValue(*p,*reverb.wetParam,1.f/3);}
+        objects.push_back({{"id",p->itemID.toString().toStdString()},{"kind","plugin"},{"owner_clip",c->itemID.toString().toStdString()}});
+    }
     else if(cmd=="clip.fade")fades(*c,a["in_samples"],a["out_samples"],a["in_curve"],a["out_curve"]);
     else if(cmd=="clip.lock")c->state.setProperty("ndaw_locked",a.at("locked").get<bool>(),&um);
     else if(cmd=="clip.delete")c->removeFromParent();
