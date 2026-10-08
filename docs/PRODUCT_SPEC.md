@@ -1,5 +1,7 @@
 # 产品范围 v2
 
+最新增量M3-RESOURCES-01：真实分析暂停/继续、工作线程停驻ACK、播放优先与取消终态；每轮独立校验共享媒体、完整引用清单和实际阶段/I/O指标。785df48完整Release和71/71回归通过，生产Codex MCP及独立PCM核验通过；本轮生产GUI人工按钮受桌面观察超时影响未验收。128/256/512同源离线图只代表明确负载，完整M3/实体M1/M4–M6仍未完成，见VERIFICATION.md。
+
 M3 最新：Master、可配置交付检查、原始源片段及轨道插入前后/Bus 分析已有实现。轨道测量采样实际原生图边界，保留上游路由/发送/合成器，排除无关设备输出与 Master；GUI/MCP 共用测量与版本、媒体、链哈希。EQ/Delay Read 曲线和 Undo、真实 Aux 增益、正式 WAV 对照有专项测试；本轮完整回归与生产桌面结果见 VERIFICATION.md。原始源证据仍保持原生帧，编辑只更新映射；静音为门限段、瞬态为能量估计，不判断呼吸或表演。处理后静音/瞬态已接通同一render PCM、可配置条件/哈希和工程采样事件定位；Codex生产MCP、GUI确认/测量/人工Undo及独立PCM核验已有本轮证据。未检测显式返回null，不判断呼吸或表演质量。连续LUFS-M/S已实现完整100 ms网格、窗口/点选与原生定位，当前构建/测试证据见VERIFICATION.md；完整M3仍未通过，第三方/PDC/压力待补。Clip FX独立边界、原生片段效果插入/参数/旁通/撤销已接通；ClipFxTests与ClipFxWorkspaceTests的数值/事务/GUI资格见VERIFICATION.md。频谱概要已接通全部2049频点与声道频段功率，具体资格见VERIFICATION.md。
 
 本轮增量（M1-PAN-01）：Edit/Mix 可直接设置真实声像，Mix 可选择原生 Pan Law；GUI 和 Agent 共用可预览、可撤销的 L1 命令。Read/Touch/Latch/Write 声像曲线、单/双声道实际 PCM、EQ/压缩/混响 Aux/发送/MIDI 组合与保存重开有专项；完整 M1 与实体听感仍待验收。亲手试见 PAN_WORKFLOW.md。

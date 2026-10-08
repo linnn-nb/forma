@@ -1,5 +1,29 @@
 # 验证状态
 
+## M3-RESOURCES-01（2026-10-08）
+
+结论：785df48已实现共享媒体每轮独立去重校验、完整引用清单、真实暂停/继续、分阶段墙钟/I/O记录及GUI/MCP。完整Release构建成功；最终专项3/3通过（资源115项、原生控件23项、Master47项）。完整 **71/71 CTest /733.06秒通过**。生产Codex MCP的暂停/继续/取消及独立PCM核验已执行；本轮桌面工具在打开工程后持续超时，生产GUI人工点击未完成，与已通过的原生组件专项分开。
+
+固定负载与实测：M5 Pro /18逻辑CPU、48GiB /Mac17,8、macOS26.6.2(25G83)，自有48k/双声道/2秒float32媒体；128/256/512原生音轨各2片段、−60dB，统一[24013,120013)96000帧。message-thread启动准备19.10/37.80/89.06ms，实际作业墙钟4428.89/4875.53/4926.17ms；心跳最大19.31/56.41/95.56ms、p95均≤12.63ms；完整回执62771/71891/90974字节。对照原始PCM的Peak/RMS≤3e-6，全部真实clip/track ID保留，Edit对象/revision/cursor及原媒体哈希不变。各12秒、准备1000ms、心跳250/50ms、总180秒、252KiB/4096源引用预算不变；不是512轨实时播放资格。
+
+优化前真实失败：128轨/256引用作业在12004.17ms超出12秒，启动17.85ms；当时434次源哈希读取/333113256字节，首轮source_hash4119.08ms、render4866.65ms、measure16.37ms，仍在最后复核。优化后同源每轮只读一次，两次独立深哈希合计1536208字节，保留所有引用；不按mtime跨轮缓存、不移除后校验。基线未完成，不能用其部分值计算完整吞吐提升或声称产品性能对齐。
+
+控制与故障：真实注册表MCP发起512轨分析、pause/停驻确认、相同请求重试；其他actor、非boolean与注入actor字段拒绝。暂停后32个后台请求都返回真实512轨事实，第33个明确背压拒绝，实际最大回复2.827625ms /原250ms预算。暂停后取消收真实cancelled，不能冒充成功。首轮深哈希后停驻，再改一个实际源PCM样本且保持文件大小/mtime，继续后独立复核返回failed /source media changed during analysis，随后原字节和时间戳完整恢复。Master专项含真实CoreAudio输出帧/低电平PCM推进，人工resume不能绕过播放优先；未认证XRUN/RTT/录音缺口或音乐听感。
+
+原生组件自动化：实际Workspace/AnalysisPanel按钮暂停、已停驻文字、继续后完整PCM回执、SHA256字节/次数字段、取消后禁用成功定位与不写Undo/Revision均通过。初次原生终态断言错误地只等100ms，而原面板250ms刷新；改为检查收到真实终态后500ms内传播，消息心跳预算仍250/50ms，面板刷新频率与原12/60秒作业预算未改。不是用手工刷新绕过问题。
+
+生产现场：通过原生文件选择器打开此前自有M3-clip-fx-demo.tracktionedit；选择器「Open」最终可用，点击后MCP确认r16、clip1016、原Delay1017、原输出/源offset/+6dB恢复，停止/只读/空Undo，cursor55200。打开动作CUA返回−10005，之后AX/截图/重新连接仍timeoutReached；process sample显示主线程正常事件循环，生产MCP正常，因此不把最初置灰推测写成产品文件过滤故障，不增加未验证的SDK或权限修补。本轮生产GUI暂停/继续/取消人工点击、结果页与新截图未核验，原生组件23项不是替代证据。
+
+Codex经包内forma-mcp /正式Unix socket，只读查询实际Schema和对象后启动analyze_clip，实际set_analysis_paused确认worker_parked与paused，恢复后完成artifact f24605ec208d471c8d1066e7a60d2d8f。墙钟12070.387917ms含真实停驻7665.242292ms，render4311.096375ms；这项人为暂停验收用原60秒控制deadline，不冒充12秒未暂停容量通过。第二份实际暂停后cancel产出独立cancelled、无peak，停止/空闲；最终未暂停artifact15e73d33c449409ea2a954dff73479a9完成4759.794750ms /原12秒预算，render4665.901833ms，启动4.662917ms、释放1.823083ms。两份前后实际深读各2次/1920088字节，原媒体960044字节、完整引用真实保留。所有24个RPC最大transport29.355291ms，包含错误revision字段和越界工具分页被实际拒绝；纠正后获取真实结果，失败请求保留。客户端/bridge和测试进程均已退出，正式应用保留已重开的自有工程及最终真实分析数据；未确认当前可见页面。
+
+独立现场 **4136项通过**：已有桌面NumPy2.3.5从自有原PCM/sourceoffset/+6dB/7200帧Delay独立预测96000帧，两份全部2049FFT bin、Peak/RMS容差3e-6、事件边界/媒体哈希、停驻ACK/取消终态、原revision/cursor/clip/空Undo保持核验。Peak1.59620988369、RMS0.282172708239，真实风险[55200,60000)4800帧；LUFS/TruePeak本脚本未再独立资格。原SHA256 f80f95e0a6f477f163f907676869df7e72de7c87ac00829c138d7089100863c6保持，应用SHA256 0c76b0fbbef62a9d698b6eebc48985c24f5cd7995e3589f7d83f48ab0fe9fb74。证据desktop-analysis-resources/mcp-receipts.jsonl /verify-receipts.py /verification.json /verify-output.log /open-panel-process-sample.txt；这是正式运行时实测，不是硬编码AI回复或实体制作/音乐听感认证。
+
+实现：MasterAnalysis的L1捕获/tap/图构建、同一Engine/L2驱动；Control检查点承载人工与播放独立请求、parked为实际ACK；CommandQueue/registry生成set_analysis_paused，AnalysisPanel用同一控制。worker只改局部binding/sources，发布描述不可变。HashReads仅计源SHA256的实际文件/字节，不含PCM读写或其他I/O；runtime按完成阶段墙钟报告，尚未完成阶段为0，parked与阶段重叠不能相加，SDK初始化/message hop/预热包含在render里。原SDK默认并行和非抢占插件/I/O仍保留限制，无新依赖/SDK补丁/第二Engine。
+
+证据：evidence/M3/summary.md；analysis-resources-baseline.json/.log（失败保留）、analysis-resources-build-final.log、analysis-resources-focused-tests-final.log、analysis-resources-ctest-full.log、analysis-resource-tests.json、analysis-resource-workspace-tests.json、master-analysis-tests.json。原128/256/512模型与预算见AnalysisResourceTests、AnalysisResourceWorkspaceTests、ANALYSIS_WORKFLOW.md，GUI用旧示例的自有媒体、不覆盖用户原件。
+
+边界：只资格化上述离线同源双声道图与队列；多不同长媒体/密集自动化/插件/PDC/旁链/连续录音和第三方不可抢占压力尚未通过，启动/定位同步深哈希也未全部迁为异步。范围外尾音和交付文件仍待复核。完整M1实体制作gate、完整M3、M4–M6、Windows与发行均未完成，不打DMG、不上传音频。
+
 ## M3-CLIPFX-01（2026-10-08）
 
 结论：`66ccca7` 已构建真实 Clip FX 检查器、统一编辑命令和单片段独立 tap；完整Release构建与 **68/68 CTest /976.82秒通过**，全量内后端84项 /95.05秒、原生34项 /10.58秒。`8415b97` 补尾音权限边界后完整重建成功，受影响 **6/6 CTest /127.34秒通过**，其中尾音13项 /1.41秒、后端85项 /95.02秒、原生34项 /10.22秒，另含Scope /MCP协议/原生网关回归。新增注册总数69，未重跑完整69项，两个提交的资格分开记录。正式桌面/Codex现场及独立参考6270项通过；完整M3仍未验收。
