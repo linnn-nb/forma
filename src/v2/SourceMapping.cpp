@@ -13,7 +13,7 @@ Json projectSourceEvent(const Json& event,const Json& mapping){
     const double sourceBegin=boundary(offset*rate),sourceEnd=boundary((offset+(clipEnd-clipStart)*speed/48000.)*rate);
     const double originalBegin=event.at("source_start_frame"),originalEnd=event.at("source_end_frame");
     if(!std::isfinite(rate)||!std::isfinite(speed)||!std::isfinite(offset)||rate<=0||speed<=0||clipEnd<=clipStart)return nullptr;
-    if(event.at("kind")=="transient_candidate"&&(originalBegin<sourceBegin||originalBegin>=sourceEnd))return nullptr;
+    if((event.at("kind")=="transient_candidate"||event.at("kind")=="loudness_point")&&(originalBegin<sourceBegin||originalBegin>=sourceEnd))return nullptr;
     const double begin=std::max(originalBegin,sourceBegin),end=std::min(originalEnd,sourceEnd);if(end<=begin)return nullptr;
     const auto mappedStart=std::clamp(int64_t(std::llround(clipStart+(begin/rate-offset)*48000./speed)),clipStart,clipEnd-1);
     const auto mappedEnd=std::clamp(int64_t(std::ceil(clipStart+(end/rate-offset)*48000./speed-1e-8)),mappedStart+1,clipEnd);

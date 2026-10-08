@@ -108,3 +108,14 @@ MCP `analyze_delivery` 使用与 `analyze_master` 相同的五个必需参数，
 - 专项和完整回归的实际结果见 `VERIFICATION.md`；本机精简证据为 `evidence/M3/summary.md`。尚未覆盖真实第三方分析链压力、实体输入和听感检查。
 
 2026-10-07 现场增量已执行：Codex 经正式包内 forma-mcp /应用 Unix socket，查询实际 session/revision、clip ID 和范围，发起只读 analyze_delivery，取得真实 passed 回执并在 GUI 显示。GUI 将 TP 条件改为 -15 dBTP 后 completed /failed；人工增益改 +6 dB 后旧证据失效，Codex 重新测得 78000 超满刻度帧/6000 段，点击首段实际定位到 24006。一次 GUI Undo 恢复 -12 dB，重新检查通过并另存新工程。素材为明确标识的自有 1 kHz 合成 PCM，不是麦克风或音乐听感；显示的 128 个边界均与独立原 PCM × 已知增益预测一致。证据 `evidence/M3/desktop-delivery/verification.json` / `mcp-receipts.jsonl`；关键画面已由桌面工具展示。可以打开同目录 `M3-delivery-demo.tracktionedit` 亲手试，重开后需要重新分析，不将保存记录当新回执。
+
+## 连续响度曲线（M3-LUFS-01，实施前预算：2026-10-08）
+
+目标：同一实际PCM分析提供每100 ms的LUFS-M/S序列、原生图曲线和选点定位；Master、track pre/post、Bus、delivery以及raw源共用。采用锁定libebur128 1.2.6（[官方窗口API](https://github.com/jiixyj/libebur128/blob/v1.2.6/ebur128/ebur128.h)，本轮核验）；M窗口4×hop，S窗口30×hop，完整M窗出现后开始记录，不以零补足不足窗。null区分不足窗与负无穷，工程域与原生源帧显式区分。坐标由实际解码帧/采样率推导，独立测试按不同分块喂入锁定库并逐点比较。
+
+固定预算：维持1 worker、300秒选区、60秒墙钟（含暂停）、每作业12秒验收、MCP回复5秒、252 KiB完整回执。每曲线最多3000点、192 KiB，紧凑列[end_frame, M, S]，完整100 ms网格保留、不降采样或静默截断；超预算明确失败。曲线有限值按1e-6 LU量化，逐点对照容差1e-6 LU；已有最大值/Peak/RMS精度保持。末尾不足hop不生成伪测量，实际尾帧数可见。后台/原生专项分别120/60秒；取消沿用既有检查。实时路径不增加工作。
+
+L1本地locate_loudness校验当前artifact、媒体深哈希、点ID、series与完整窗；定位窗最后实际帧（exclusive end−1），raw源经当前clip映射，不把窗尾当音频事件起点。MCP只读query_analysis得到同一曲线与条件，未授予外部直接seek。GUI可查看两条真实曲线、选择M/S及最高有限值、显示实际窗范围并定位；过期禁定位，人工Undo仍是新版本。保存重开后需重新分析，不恢复为当前成功。连续曲线不是实时表、效果尾音完整性或平台认证。
+
+
+使用：完成分析后在结果页下方查看曲线（小窗口可滚动），青色为M、黄色为S。图点击或点ID滑块选择实际网格点；下拉框选择M/S，「最大 M/S」选择最高有限测量值。读数显示真实窗口范围，定位按钮跳到窗最后实际帧并返回工程；连线只辅助阅读，不是网格间额外测量。源模式显示原生源帧，选定当前片段后映射到工程；历史曲线可查但不能定位。纵轴显示−70…0 LUFS，超界实际数值仍保留在读数，null留空。已显式统一ScopedNoDenormals以防SDK工作线程继承状态使极小滤波残留与−∞跨线程不一致；该浮点处理写入回执，不放宽对照容差。

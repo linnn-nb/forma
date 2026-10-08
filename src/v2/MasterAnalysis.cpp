@@ -4,6 +4,7 @@
 #include <nativedaw/v2/DeliveryCheck.h>
 #include <nativedaw/v2/SourceFeatures.h>
 #include <nativedaw/v2/SourceMapping.h>
+#include <nativedaw/v2/LoudnessCurve.h>
 #include <set>
 #include <limits>
 #if JUCE_MAC
@@ -200,6 +201,20 @@ Json MasterAnalysis::control(const std::string& command,const Json& args,const s
     owner.checkThread();poll();
     if(command=="status"){fields(args,{});return status();}
     if(command=="cancel"){fields(args,{"artifact_id"});require(job&&args.at("artifact_id")==job->binding["artifact_id"],"analysis job not pending");require(actor=="human"||actor==job->actor,"analysis cancellation belongs to another client");job->cancel=true;return status();}
+    if(command=="locate_loudness"){
+        fields(args,{"artifact_id","point_index","series","clip_id","base_revision"});require(actor=="human","loudness location is a local GUI control");
+        require(receipt.is_object()&&args.at("artifact_id")==receipt.at("artifact_id"),"analysis artifact unavailable");
+        bool valid=false;try{valid=current(receipt,true);}catch(...){receipt["invalidated"]=true;throw;}if(!valid)receipt["invalidated"]=true;
+        require(valid,"analysis is stale; measure the current project before locating");require(args.at("series").is_string(),"loudness series required");
+        auto point=analysis::loudnessPoint(receipt.at("loudness_curve"),integer(args.at("point_index")),args.at("series"));require(point["status"]!="insufficient_window","loudness window is incomplete");
+        if(receipt["binding"]["purpose"]=="source"){
+            require(integer(args.at("base_revision"))==int64_t(owner.revision),"clip mapping revision conflict; refresh location preview");
+            const auto frame=point.at("source_location_frame").get<int64_t>();const Json event={{"id",point["point_index"]},{"kind","loudness_point"},{"source_start_frame",frame},{"source_end_frame",frame+1}};
+            Json mapped=nullptr;const auto views=sourceMappings(receipt);for(const auto& mapping:views["clips"])if(mapping["clip_id"]==args.at("clip_id"))mapped=analysis::projectSourceEvent(event,mapping);
+            require(mapped.is_object(),"loudness point is not visible in a supported current clip mapping");point["location"]=mapped;owner.seek(mapped["start_samples"]);
+        }else{require(!args.contains("clip_id")&&!args.contains("base_revision"),"processed location does not take source mapping fields");owner.seek(point.at("location_samples"));}
+        return {{"state","located"},{"point",point},{"artifact_id",receipt["artifact_id"]}};
+    }
     if(command=="locate"){
         fields(args,{"artifact_id","event_id","clip_id","base_revision"});require(actor=="human","analysis location is a local GUI control");require(receipt.is_object()&&args.at("artifact_id")==receipt.at("artifact_id"),"analysis artifact unavailable");
         bool valid=false;try{valid=current(receipt,true);}catch(...){receipt["invalidated"]=true;throw;}if(!valid)receipt["invalidated"]=true;
@@ -263,6 +278,10 @@ void Commands::registerAnalysisCommands(Json& registry){
     registry.back()["test"]="M3-TAP-01";
     for(auto& entry:registry)if(entry["id"]=="analysis.master"||entry["id"]=="analysis.track"||entry["id"]=="analysis.delivery"){entry["schema"]["properties"]["detector_profile"]=analysis::sourceProfileSchema();entry["description"]=entry["description"].get<std::string>()+" Optional detector_profile enables measured silence intervals and estimated energy-rise candidates from this rendered tap, with session-sample coordinates and a condition hash; omission means NOT analysed, not absent. Same-key retries must retain the normalized profile. Candidates do not identify breaths or performance quality.";entry["additional_tests"]=Json::array({"M3-EVENTS-01"});}
     add("analysis.status","query_analysis","analysis_status","Read actual analysis progress, provenance and bounded events. Raw source artifacts retain native file frames across move/trim/split and gain/insert edits, with CURRENT mapping_revision and clip views; Processed Master/track artifacts invalidate on processing changes. Optional processed events are session samples, with condition hashes and explicit detection enablement; a transient is an estimate, not quality or breath recognition. current=false means stale or transport is playing; never use stale events for an edit. Source pending progress is unavailable, not a fabricated percentage. Full-scale exceedance is clipping risk, not proof of original damage.",Json::object(),Json::array());
+    for(auto& entry:registry)if(entry.value("execution",std::string{})=="analysis"&&entry["id"]!="analysis.cancel"){
+        entry["description"]=entry["description"].get<std::string>()+" Completed evidence includes loudness_curve columns [decoded_end_frame, momentary_lufs, short_term_lufs] on a complete 100 ms grid after the first 400 ms window; 400 ms M / 3 s S, 1e-6 LU resolution, at most 3000 points. Null is negative infinity once a full window exists, otherwise insufficient_window. Ends are exclusive relative decoded frames; raw curves use native source frames, processed curves session samples via declared origin/rate. No interpolation is measured evidence; no live meter or complete-tail qualification.";
+        auto& tests=entry["additional_tests"];if(!tests.is_array())tests=Json::array();tests.push_back("M3-LUFS-01");
+    }
     add("analysis.cancel","cancel_analysis","analysis_cancel","Cancel your own pending analysis by actual artifact_id. Await the terminal cancelled receipt; cancellation cannot make an analysis successful.",{{"artifact_id",string}},Json::array({"artifact_id"}));
 }
 }

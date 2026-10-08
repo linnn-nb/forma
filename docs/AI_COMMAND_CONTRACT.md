@@ -284,3 +284,8 @@ M3-SOURCE-01：注册表增加只读 `analyze_source_clip`，经同一队列绑�
 M3-TAP-01：`analysis.track` 注册为只读 analysis，MCP 工具名 `analyze_track`。实际目标 `track`、枚举 `tap_point=track_pre_inserts|track_post_inserts|bus`、工程 start_samples/end_samples、session_token/base_revision/request_key 均必需。不能放入编辑 Plan，不能新增任意 path、上传或副作用。L1 将目标边界/路由快照转换为真实原生渲染，回执绑定实际 plugin_boundary_index、before_plugin_id、fader_included/master_included 和 tap 描述哈希。相同请求重试共享实际作业，同键改目标/边界拒绝；后续人工事务令旧 processed 证据过期。原始源测量与 processed 测量的失效条件保持区分。VolumeAndPan/EQ/Delay 非空曲线的已核对 sampled cache 规范化不删除曲线/版本/其他参数，未知插件仍保守失效。曲线 Undo 显式恢复基值。代码、测试和资格边界见 ANALYSIS_WORKFLOW.md /VERIFICATION.md。
 
 M3-EVENTS-01：analysis.master /track /delivery 的可选 detector_profile 使用同一严格条件 Schema，经 L1 规范化进入请求指纹和条件哈希。缺省表示未检测静音/瞬态，计数 null；显式空对象启用默认检测。L2 从本次真实渲染 PCM 产生工程采样事件和相对 render frame；原始 source frame 不混入。查询回执区分测量/估计及工程事实，locate 仍须当前链、版本、媒体核验。改变条件不能重用同一幂等键；人工作用/Undo 不能让旧 processed 回执自动复活。检测不写 Edit，不进编辑 Undo；完整计数与 bounded 展示、省略规则见 ANALYSIS_WORKFLOW.md。
+
+
+M3-LUFS-01：所有成功音频分析回执含loudness_curve，紧凑points列[decoded_end_frame, momentary_lufs, short_term_lufs]；完整100 ms网格从第一个400 ms窗开始，M为4×hop、S为30×hop。有限值1e-6 LU量化，null在完整窗为负无穷，不足窗为insufficient_window；不补零、降采样或隐瞒省略。曲线声明实际rate、origin、decoded_start_frame、窗口帧数和末尾不足hop帧数，源与工程位置不混淆。192 KiB/3000点和完整252 KiB预算越界明确失败；浮点次正规中间值通过ScopedNoDenormals统一归零，退出恢复调用者状态。
+
+本地GUI控制locate_loudness(artifact_id, point_index, series[, clip_id, base_revision])由L1核验当前工程/深媒体哈希和完整窗口，定位exclusive end−1实际帧；raw源经当前clip映射，已裁掉的点明确拒绝。外部Agent只读query_analysis取得相同序列，不能直接调用此本地seek入口。曲线不产生编辑事务，human/Undo改变版本使processed证据过期，raw源只更新映射；保存记录不在重开时恢复为当前成功。实现LoudnessCurve/AudioAnalysis/MasterAnalysis/LoudnessCurveView，测试LoudnessCurveTests/LoudnessCurveWorkspaceTests，边界见ANALYSIS_WORKFLOW.md。

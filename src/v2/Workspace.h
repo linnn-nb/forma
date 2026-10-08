@@ -1,6 +1,7 @@
 #pragma once
 #include <nativedaw/v2/EngineCommands.h>
 #include <nativedaw/v2/SourceMapping.h>
+#include <nativedaw/v2/LoudnessCurve.h>
 #include "CommandFileJob.h"
 #include <nativedaw/v2/McpGateway.h>
 namespace ndaw::v2 {class McpTestAccess;}
