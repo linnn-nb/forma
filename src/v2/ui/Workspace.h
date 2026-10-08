@@ -23,7 +23,7 @@ namespace ndaw::desktop
 #include "../AudioDevicePanel.h"
 #include "../GroupingPanel.h"
 #include "../AutomationPanel.h"
-#include "../PianoRoll.h"
+#include "MidiEditor.h"
 #include "../ClipPanel.h"
 #include "../PluginLibrary.h"
 #include "../RecoveryPanel.h"

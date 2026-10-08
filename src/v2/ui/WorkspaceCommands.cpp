@@ -81,6 +81,11 @@ const std::vector<Entry>& entries()
         {132, "跳到下一个 Marker", "走带", juce::KeyPress::rightKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {133, "打开 Memory Locations", "视图", 'm', shift},
+        {140, "量化所选 MIDI 音符", "MIDI", '0', cmd | juce::ModifierKeys::altModifier},
+        {141, "全选 MIDI 音符", "MIDI", 'a', cmd},
+        {142, "删除所选 MIDI 音符", "MIDI", juce::KeyPress::deleteKey},
+        {143, "MIDI 力度增加", "MIDI", juce::KeyPress::upKey, cmd | juce::ModifierKeys::altModifier},
+        {144, "MIDI 力度减少", "MIDI", juce::KeyPress::downKey, cmd | juce::ModifierKeys::altModifier},
         {21, "只读分析", "Agent"},
         {22, "先预览再提交", "Agent"},
         {23, "自动低风险 · 当前轨道", "Agent"},
@@ -136,6 +141,7 @@ void Workspace::initialiseCommandManager()
         refresh();
     };
     editArea.onViewChange = [this](Json patch) { setView(std::move(patch)); };
+    piano.connect(commandManager);
     commandManager.commandStatusChanged();
 }
 juce::ApplicationCommandTarget* Workspace::getNextCommandTarget()
@@ -212,12 +218,17 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == editCommand::remove)
             {
                 const auto clips = selectedEditClips();
-                active = !mix && !pianoMode && !facts.value("playing", false) && !clips.empty() &&
-                         pendingClipboardPlan.empty();
-                for (const auto& clip : clips)
-                    active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
-                             !clip.value("locked", false);
+                active = pianoMode
+                             ? piano.canQuantize()
+                             : !mix && !facts.value("playing", false) && !clips.empty() && pendingClipboardPlan.empty();
+                if (!pianoMode)
+                    for (const auto& clip : clips)
+                        active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                                 !clip.value("locked", false);
             }
+            if (id >= 140 && id <= 144)
+                active = pianoMode && !facts.value("playing", false) &&
+                         (id == 141 ? !piano.viewedClip().is_null() : piano.canQuantize());
             if (id == 6)
                 active = undoButton.isEnabled();
             if (id == 7)
@@ -266,6 +277,23 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= 140 && id <= 144)
+    {
+        if (id == 140)
+            piano.quantizeSelected();
+        if (id == 141)
+            piano.selectNotes();
+        if (id == 142)
+            piano.deleteNotes();
+        if (id == 143 || id == 144)
+            piano.velocityStep(id == 143 ? 1 : -1);
+        return true;
+    }
+    if (id == editCommand::remove && pianoMode)
+    {
+        piano.deleteNotes();
+        return true;
+    }
     if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
     {
         executeClipboardCommand(id);
@@ -441,7 +469,7 @@ bool Workspace::restoreShortcuts(const juce::XmlElement& xml)
     {
         // Legacy full snapshots predate Smart Tool. Existing unbound commands remain unbound.
         for (const auto& entry : entries())
-            if (entry.id != editCommand::smart)
+            if (entry.id <= editCommand::remove)
                 known.insert(entry.id);
         for (const auto* item : xml.getChildIterator())
             known.insert(item->getStringAttribute("commandId").getHexValue32());

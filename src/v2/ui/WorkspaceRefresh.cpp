@@ -569,7 +569,7 @@ void Workspace::refresh()
     clipsList.setVisible(view["clips_list"].get<bool>());
     commandManager.commandStatusChanged();
     mixArea.update(facts, selected, d);
-    piano.update(selectedTrack(), facts["revision"], playing, music["position_beats"]);
+    piano.update(selectedTrack(), facts["revision"], playing, music["position_beats"], commands.sessionToken());
     auto selectedMidi = pianoMode ? piano.viewedClip() : Json(nullptr);
     commandQueue.setSelection(selected, !selectedMidi.is_null() ? selectedMidi["id"].get<std::string>() : selectedClip);
     refreshInspector();

@@ -108,3 +108,19 @@ macOS 桌面：专用预览使用自有演示 PCM、CoreAudio 48 kHz/512 frames�
 最终真实界面截图通过 CUA 回传本线程，工具未提供文件保存接口，没有另存 PNG。预览 `build-v2-tracktion/FormaSmartToolPreview.app` 停止播放后留供试用；正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。自动测试及替换前预览已退出，用户已有其他窗口不动。没有声称用户已试听、实体录音资格或跨重开 Undo；重开仍清空旧 Undo 栈。
 
 下一项：仍在 U＋P0 补齐 MIDI 钢琴卷帘的鼠标音符/力度编辑与量化手势、剩余侧栏/视图/键位桌面验收；不进入 P1。
+
+## U-P0-MIDI-01：钢琴卷帘成组编辑与力度泳道（2026-10-08；U＋P0 未完成）
+
+结论：原生 MIDI 编辑器可在空白处绘制音符，Shift 点选/⌘A 成组选择，拖动组、左右边缘修剪、⌘垂直拖动或力度泳道改力度；拖拽只预览，松手一笔 L1 Plan / UndoManager 事务。快捷键和按钮来自同一 ApplicationCommandManager：⌘⌥0 直接量化所选，遵循当前编辑器网格与强度；⌘⌥↑/↓ 相对改变组力度，Delete/Backspace 删除所选。可在键位窗口重映射。详细范围变换的原有预览保留；常规手势无需填写采样数。
+
+`src/v2/PianoRoll.h` 迁为 `src/v2/ui/MidiEditor.h`，NoteCanvas 只读真实 MIDI facts，本地 ghosts 不修改 Edit；Workspace 的批量 writer 通过 L1 单笔提交，捕获开始时 revision。相对时差、音程和力度差保持，边界整体夹限；被锁或未验证的 loop/播放量化片段禁止编辑。会话切换/开始播放取消未提交手势，过期 revision 整笔拒绝。没有新引擎、SDK 修改或外部依赖。
+
+测试：Release Forma.app、固定本地身份签名及 strict/deep 验证通过。新增 `forma_native_midi_editor` 与五个相关专项（MIDI transform/原有变换界面/导航/音频编辑/剪贴板）通过；最终6/6通过、0失败，33.75秒；新增专项64项检查。机器结果见 `evidence/U/midi-editor-tests.json`。专项使用真实 Tracktion Edit，验证组移动/左右修剪/力度/删除的一笔 Undo、Redo、量化强度、保存重开、捕获版本拒绝、会话取消、未选成员保留和按键无冲突。FourOsc 前后真实 WAV 解码在固定256帧容差内从53000样本移到48000附近，不宣称随机合成器逐位一致或实体 MIDI 验收。
+
+桌面：CoreAudio 48 kHz /512 frames。四音符组移动 r22，⌘Z 撤回 r23、⌘⇧Z 恢复 r24；空白拖绘增加第5音符 r25；力度手柄把第1音符70改92 r26；⌘⌥0 执行量化 r27，无确认面板。原生文件选择器另存 `evidence/U/demo/MIDI Editor P0 GUI accepted.tracktionedit`，退出该预览后重启，五个真实音符、首音 pitch70 / position60000 / velocity92 与 MIDI 工作区恢复。保存 XML 另行核对稳定ID、5个 NOTE及实际速度。设备走带器实际运行后停止；没有声称用户已试听或物理回环通过。最终构建中以默认键位XML导入只重置自有演示工程旧键位，⌘⌥↑实际使92→93（r29），一次Undo回92（r30）；再另存 `evidence/U/demo/MIDI Editor P0 final.tracktionedit`，保留原验收文件。专用 `build-v2-tracktion/FormaMidiEditorPreview.app` 留供试用；正式构建位于 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+
+边界：成组逐音符 Plan 当前受 L1 64操作预算限制，超出整笔拒绝，不静默丢音符；整体量化使用既有批量命令，范围更大。数值力度滑条设置所有选中音符同一值，鼠标相对手势/快捷键保持原差值。当前钢琴卷帘为独立主视图，尚无 Edit 下方可调停靠、共享对象/时间选择、框选、MIDI复制粘贴、CC泳道或完整 Smart 模式；MIDI 网格/卷帘滚动/音符选择尚未存UI子树。工程音符和插件状态可保存，Undo历史不跨重开。阶段 U＋P0 及实体 MIDI 验收仍未完成。
+
+修复记录：首轮编译发现 getCommandInfo 返回类型错误已修正；首轮新增专项发现力度泳道用整型鼠标y舍入造成一档偏差，改读浮点位置后通过。代码复核修正力度快捷键与原有⌥↑/↓滚动冲突，增加专项断言；直接量化改读实际强度并验证非法输入整笔拒绝。原开发签名脚本主动拒绝专用预览Bundle ID，保留正式脚本限制，预览另以同一本地证书签名/strict验证。上述失败不计为通过。
+
+截图通过 CUA 实时回传本线程；工具无文件保存接口，未声称存在额外PNG。旧Smart专用预览、自动化测试及替换前MIDI实例均退出；其他用户窗口未修改。

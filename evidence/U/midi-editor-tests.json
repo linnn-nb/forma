@@ -1,0 +1,112 @@
+{
+  "checks": 64,
+  "pcm_onset_after": 48000,
+  "pcm_onset_before": 53000,
+  "result": "passed",
+  "scope": "production native gestures, actual L1 Edit and FourOsc render; no hardware MIDI or model claim",
+  "related_ctest": {
+    "passed": 6,
+    "failed": 0,
+    "seconds": 33.75,
+    "tests": [
+      {
+        "name": "tracktion_midi_transform",
+        "seconds": 3.51
+      },
+      {
+        "name": "tracktion_native_midi_transform_workspace",
+        "seconds": 4.76
+      },
+      {
+        "name": "forma_native_ui_navigation",
+        "seconds": 3.34
+      },
+      {
+        "name": "forma_native_editor_interactions",
+        "seconds": 9.84
+      },
+      {
+        "name": "forma_native_audio_clipboard",
+        "seconds": 5.86
+      },
+      {
+        "name": "forma_native_midi_editor",
+        "seconds": 6.43
+      }
+    ]
+  },
+  "build": {
+    "configuration": "Release",
+    "application": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "signature": "fixed local development identity; strict/deep verification passed; not notarized"
+  },
+  "gui": {
+    "scope": "dedicated actual macOS preview; CoreAudio 48 kHz /512 frames",
+    "demonstrated": [
+      "group move",
+      "Undo and Redo",
+      "blank drag creates fifth MIDI note",
+      "velocity handle changes 70 to92",
+      "Command Option0 applies actual quantize",
+      "save close reopen restores five actual notes",
+      "final Command Option Up changes92 to93 and Undo restores92"
+    ],
+    "session": "evidence/U/demo/MIDI Editor P0 final.tracktionedit",
+    "screenshot": "CUA returned inline; no saved PNG",
+    "not_claimed": [
+      "user listening",
+      "physical MIDI input",
+      "hardware loopback",
+      "complete U+P0"
+    ],
+    "saved_notes": [
+      {
+        "p": "70",
+        "b": "0.5",
+        "l": "1.0",
+        "v": "92",
+        "c": "0",
+        "id": "1017"
+      },
+      {
+        "p": "74",
+        "b": "2.0",
+        "l": "1.0",
+        "v": "90",
+        "c": "0",
+        "id": "1018"
+      },
+      {
+        "p": "77",
+        "b": "4.5",
+        "l": "0.5",
+        "v": "80",
+        "c": "0",
+        "id": "1019"
+      },
+      {
+        "p": "80",
+        "b": "6.0",
+        "l": "0.75",
+        "v": "100",
+        "c": "0",
+        "id": "1021"
+      },
+      {
+        "p": "72",
+        "b": "2.5",
+        "l": "1.5",
+        "v": "100",
+        "c": "0",
+        "id": "1023"
+      }
+    ],
+    "saved_velocity_up_key": [
+      {
+        "commandId": "8f",
+        "description": "MIDI 力度增加",
+        "key": "option + command + cursor up"
+      }
+    ]
+  }
+}

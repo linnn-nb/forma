@@ -79,7 +79,18 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
           },
           [this](double beat) { return commands.sampleAtBeat(beat); },
           [this](int64_t start, int64_t end, double snap) { return commands.musicalGrid(start, end, snap); },
-          [this](const auto& cmd, Json args, uint64_t revision) { prepareMidiTransform(cmd, args, revision); })
+          [this](const auto& cmd, Json args, uint64_t revision) { prepareMidiTransform(cmd, args, revision); },
+          [this](Json operations, uint64_t revision)
+          {
+              invoke(
+                  [&]
+                  {
+                      auto plan = commands.makePlan("human", std::move(operations));
+                      plan["base_revision"] = revision;
+                      commands.commit(plan);
+                      message(text("MIDI 成组编辑已提交 · 可撤销"));
+                  });
+          })
 {
     commandClient = commandQueue.connect("agent:command-file", commandScope);
     commandButton.setComponentID("command.menu");

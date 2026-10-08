@@ -1,22 +1,39 @@
 #pragma once
 // Included by Workspace.h inside ndaw::desktop. This view only reads facts and emits L1 commands.
+using MusicalBatchWriter = std::function<void(Json, uint64_t)>;
 using MusicalWriter = std::function<void(const std::string&, Json, uint64_t)>;
 class NoteCanvas final : public juce::Component
 {
 public:
     NoteCanvas(MusicalWriter writer, std::function<int64_t(double)> sample,
-               std::function<Json(int64_t, int64_t, double)> grid, std::function<void()> selection)
-        : write(std::move(writer)), sample(std::move(sample)), grid(std::move(grid)), selection(std::move(selection))
+               std::function<Json(int64_t, int64_t, double)> grid, std::function<void()> selection,
+               MusicalBatchWriter batch)
+        : write(std::move(writer)), batch(std::move(batch)), sample(std::move(sample)), grid(std::move(grid)),
+          selection(std::move(selection))
     {
         setWantsKeyboardFocus(true);
         setComponentID("midi.canvas");
     }
-    void update(const Json& value, uint64_t revision, bool playing, double snap, int width, double positionBeat)
+    void update(const Json& value, uint64_t revision, bool playing, double snap, int width, double positionBeat,
+                const std::string& session = "")
     {
-        if (clip.is_null() != value.is_null() || (!value.is_null() && (clip.is_null() || clip["id"] != value["id"])))
+        if (this->session != session || clip.is_null() != value.is_null() ||
+            (!value.is_null() && (clip.is_null() || clip["id"] != value["id"])))
         {
             selected.clear();
             selectedIDs.clear();
+            dragging = velocityDragging = creating = resizing = trimmingLeft = false;
+            originals.clear();
+            ghost = nullptr;
+            ghosts.clear();
+        }
+        this->session = session;
+        if (playing)
+        {
+            dragging = velocityDragging = creating = resizing = trimmingLeft = false;
+            originals.clear();
+            ghost = nullptr;
+            ghosts.clear();
         }
         clip = value;
         this->revision = revision;
@@ -75,20 +92,132 @@ public:
                 {"position_samples", n["position_samples"]},
                 {"length_samples", n["length_samples"]}};
     }
+    bool editable() const
+    {
+        return !playing && !clip.is_null() && !clip.value("locked", false) &&
+               clip.value("bulk_transform_available", false);
+    }
+    void commitNotes(const Json& notes, uint64_t version, bool deleting = false)
+    {
+        Json operations = Json::array();
+        for (const auto& note : notes)
+        {
+            Json args{{"clip", dragClip.empty() ? clip["id"] : Json(dragClip)}, {"note", note["id"]}};
+            if (!deleting)
+            {
+                const auto start = sample(note["start_beat"]);
+                const auto end = sample(note["start_beat"].get<double>() + note["length_beats"].get<double>());
+                args.update({{"pitch", note["pitch"]},
+                             {"velocity", note["velocity"]},
+                             {"position_samples", start},
+                             {"length_samples", end - start}});
+            }
+            operations.push_back(operation(deleting ? "midi.note.delete" : "midi.note.set", args));
+        }
+        if (operations.empty())
+            return;
+        batch(operations, version);
+    }
+    Json selectedFacts() const
+    {
+        Json notes = Json::array();
+        if (!clip.is_null())
+            for (const auto& n : clip["notes"])
+                if (selectedIDs.contains(n["id"].get<std::string>()))
+                    notes.push_back(n);
+        return notes;
+    }
     void setVelocity(int velocity)
     {
-        auto a = selectedArguments();
-        if (!a.is_null() && !playing && a["velocity"] != velocity)
-        {
-            a["velocity"] = velocity;
-            write("midi.note.set", a, revision);
-        }
+        if (!editable())
+            return;
+        auto notes = selectedFacts();
+        notes.erase(
+            std::remove_if(notes.begin(), notes.end(), [velocity](const Json& n) { return n["velocity"] == velocity; }),
+            notes.end());
+        for (auto& note : notes)
+            note["velocity"] = std::clamp(velocity, 1, 127);
+        dragClip = clip["id"];
+        commitNotes(notes, revision);
     }
     void removeSelected()
     {
-        auto n = selectedNote();
-        if (!n.is_null() && !playing)
-            write("midi.note.delete", {{"clip", clip["id"]}, {"note", n["id"]}}, revision);
+        if (editable())
+        {
+            dragClip = clip["id"];
+            commitNotes(selectedFacts(), revision, true);
+        }
+    }
+    const Json& noteClip() const
+    {
+        return clip;
+    }
+    double pixelsPerBeat() const
+    {
+        return scale();
+    }
+    Json velocityFacts() const
+    {
+        auto notes = clip.is_null() ? Json::array() : clip["notes"];
+        if (dragging && velocityDragging)
+            for (auto& n : notes)
+                for (const auto& preview : ghosts)
+                    if (n["id"] == preview["id"])
+                        n = preview;
+        return notes;
+    }
+    bool beginVelocity(const std::string& key)
+    {
+        if (!editable())
+            return false;
+        for (const auto& n : clip["notes"])
+            if (n["id"] == key)
+            {
+                if (!selectedIDs.contains(key))
+                    selectedIDs = {key};
+                selected = key;
+                original = n;
+                originals = selectedFacts();
+                ghosts = originals;
+                ghost = n;
+                dragClip = clip["id"];
+                dragRevision = revision;
+                dragging = velocityDragging = true;
+                creating = resizing = trimmingLeft = false;
+                selection();
+                return true;
+            }
+        return false;
+    }
+    void previewVelocity(int value)
+    {
+        if (!dragging || !velocityDragging)
+            return;
+        int delta = value - original["velocity"].get<int>();
+        int minimum = 127, maximum = 1;
+        for (const auto& n : originals)
+        {
+            minimum = std::min(minimum, n["velocity"].get<int>());
+            maximum = std::max(maximum, n["velocity"].get<int>());
+        }
+        delta = std::clamp(delta, 1 - minimum, 127 - maximum);
+        ghosts = originals;
+        for (auto& n : ghosts)
+            n["velocity"] = n["velocity"].get<int>() + delta;
+        repaint();
+    }
+    void finishVelocity()
+    {
+        if (!velocityDragging)
+            return;
+        velocityDragging = false;
+        const auto changed = ghosts;
+        ghosts.clear();
+        ghost = nullptr;
+        dragging = false;
+        if (changed != originals && editable())
+            commitNotes(changed, dragRevision);
+        repaint();
     }
     juce::Rectangle<float> noteBounds(const Json& note) const
     {
@@ -143,7 +272,11 @@ public:
         if (dragging && !ghost.is_null())
         {
             g.setOpacity(0.55f);
-            drawNote(g, ghost, juce::Colours::white);
+            if (creating)
+                drawNote(g, ghost, juce::Colours::white);
+            else
+                for (const auto& n : ghosts)
+                    drawNote(g, n, juce::Colours::white);
             g.setOpacity(1);
         }
         const auto local = positionBeat - clip["start_beat"].get<double>();
@@ -155,14 +288,15 @@ public:
     }
     void mouseDown(const juce::MouseEvent& e) override
     {
-        if (playing || clip.is_null() || e.x < 64 || e.y < 32)
+        if (!editable() || e.x < 64 || e.y < 32)
             return;
         grabKeyboardFocus();
         dragRevision = revision;
         dragClip = clip["id"];
         origin = e.position;
         dragging = false;
-        creating = false;
+        creating = velocityDragging = trimmingLeft = false;
+        ghosts.clear();
         for (const auto& n : clip["notes"])
             if (noteBounds(n).contains(e.position))
             {
@@ -180,10 +314,16 @@ public:
                     return;
                 }
                 selected = key;
-                selectedIDs = {key};
+                if (!selectedIDs.contains(key))
+                    selectedIDs = {key};
                 original = n;
                 ghost = n;
-                resizing = e.position.x > noteBounds(n).getRight() - 7;
+                originals = selectedFacts();
+                ghosts = originals;
+                const auto bounds = noteBounds(n);
+                resizing = e.position.x > bounds.getRight() - std::min(7.f, bounds.getWidth() / 3);
+                trimmingLeft = e.position.x < bounds.getX() + std::min(7.f, bounds.getWidth() / 3);
+                velocityDragging = e.mods.isCommandDown();
                 dragging = true;
                 selection();
                 repaint();
@@ -210,20 +350,63 @@ public:
     {
         if (!dragging || clip.is_null())
             return;
-        const auto end = clip["start_beat"].get<double>() + clip["length_beats"].get<double>();
-        if (creating || resizing)
+        const auto clipStart = clip["start_beat"].get<double>();
+        const auto end = clipStart + clip["length_beats"].get<double>();
+        if (velocityDragging)
+        {
+            previewVelocity(original["velocity"].get<int>() + int(std::llround(origin.y - e.y)));
+            return;
+        }
+        if (creating)
         {
             const auto start = ghost["start_beat"].get<double>();
-            const auto cursor = clip["start_beat"].get<double>() + std::round((e.x - 64) / scale() / snap) * snap;
+            const auto cursor = clipStart + std::round((e.x - 64) / scale() / snap) * snap;
             ghost["length_beats"] = std::clamp(cursor - start, std::min(snap, end - start), end - start);
         }
         else
         {
-            const auto delta = std::round((e.x - origin.x) / scale() / snap) * snap;
-            ghost["start_beat"] =
-                std::clamp(original["start_beat"].get<double>() + delta, clip["start_beat"].get<double>(),
-                           end - original["length_beats"].get<double>());
-            ghost["pitch"] = std::clamp(original["pitch"].get<int>() + int(std::round((origin.y - e.y) / 14)), 0, 127);
+            double delta = std::round((e.x - origin.x) / scale() / snap) * snap;
+            double low = -1e9, high = 1e9;
+            int pitchLow = -127, pitchHigh = 127;
+            for (const auto& n : originals)
+            {
+                const double start = n["start_beat"], length = n["length_beats"];
+                if (resizing)
+                {
+                    low = std::max(low, std::min(snap, length) - length);
+                    high = std::min(high, end - start - length);
+                }
+                else if (trimmingLeft)
+                {
+                    low = std::max(low, clipStart - start);
+                    high = std::min(high, length - std::min(snap, length));
+                }
+                else
+                {
+                    low = std::max(low, clipStart - start);
+                    high = std::min(high, end - start - length);
+                }
+                pitchLow = std::max(pitchLow, -n["pitch"].get<int>());
+                pitchHigh = std::min(pitchHigh, 127 - n["pitch"].get<int>());
+            }
+            delta = std::clamp(delta, low, high);
+            const auto pitchDelta = std::clamp(int(std::round((origin.y - e.y) / 14)), pitchLow, pitchHigh);
+            ghosts = originals;
+            for (auto& n : ghosts)
+            {
+                if (resizing)
+                    n["length_beats"] = n["length_beats"].get<double>() + delta;
+                else if (trimmingLeft)
+                {
+                    n["start_beat"] = n["start_beat"].get<double>() + delta;
+                    n["length_beats"] = n["length_beats"].get<double>() - delta;
+                }
+                else
+                {
+                    n["start_beat"] = n["start_beat"].get<double>() + delta;
+                    n["pitch"] = n["pitch"].get<int>() + pitchDelta;
+                }
+            }
         }
         repaint();
     }
@@ -231,7 +414,22 @@ public:
     {
         if (!dragging)
             return;
+        if (velocityDragging)
+        {
+            finishVelocity();
+            return;
+        }
         dragging = false;
+        if (!creating)
+        {
+            auto changed = ghosts;
+            ghosts.clear();
+            ghost = nullptr;
+            repaint();
+            if (changed != originals && editable())
+                commitNotes(changed, dragRevision);
+            return;
+        }
         auto changed = ghost;
         ghost = nullptr;
         repaint();
@@ -248,19 +446,10 @@ public:
             a["note"] = changed["id"];
         write(creating ? "midi.note.add" : "midi.note.set", a, dragRevision);
     }
+    std::function<bool(const juce::KeyPress&)> onCommandKey;
     bool keyPressed(const juce::KeyPress& key) override
     {
-        if (key.getTextCharacter() == 'a' && (key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown()))
-        {
-            selectAll();
-            return true;
-        }
-        if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
-        {
-            removeSelected();
-            return true;
-        }
-        return false;
+        return onCommandKey ? onCommandKey(key) : false;
     }
 
 private:
@@ -281,28 +470,116 @@ private:
         g.fillRect(rect.withWidth(float(note["velocity"].get<int>() / 127.) * rect.getWidth()).removeFromBottom(2));
     }
     MusicalWriter write;
+    MusicalBatchWriter batch;
     std::function<int64_t(double)> sample;
     std::function<Json(int64_t, int64_t, double)> grid;
     std::function<void()> selection;
-    Json clip = nullptr, original = nullptr, ghost = nullptr;
-    std::string selected, dragClip;
+    Json clip = nullptr, original = nullptr, ghost = nullptr, originals = Json::array(), ghosts = Json::array();
+    std::string selected, dragClip, session;
     std::set<std::string> selectedIDs;
     uint64_t revision = 0, dragRevision = 0;
-    bool playing = false, dragging = false, creating = false, resizing = false;
+    bool playing = false, dragging = false, creating = false, resizing = false, trimmingLeft = false,
+         velocityDragging = false;
     double snap = .5, positionBeat = 0;
     juce::Point<float> origin;
+};
+class VelocityLane final : public juce::Component
+{
+public:
+    explicit VelocityLane(NoteCanvas& notes) : notes(notes)
+    {
+        setComponentID("midi.velocity_lane");
+    }
+    void setScroll(int offset)
+    {
+        scroll = offset;
+        repaint();
+    }
+    float x(const Json& n) const
+    {
+        return notes.noteBounds(n).getX() - scroll;
+    }
+    float y(int velocity) const
+    {
+        return float(getHeight() - 8) - float(velocity) / 127.f * (getHeight() - 22);
+    }
+    void paint(juce::Graphics& g) override
+    {
+        g.fillAll(juce::Colour(0xff18212b));
+        g.setColour(juce::Colour(0xff8299aa));
+        g.drawText(text("力度"), 4, 4, 52, 18, juce::Justification::left);
+        g.drawHorizontalLine(getHeight() - 8, 64.f, float(getWidth()));
+        g.saveState();
+        g.reduceClipRegion(64, 0, getWidth() - 64, getHeight());
+        const auto selected = notes.selectedNotes();
+        for (const auto& n : notes.velocityFacts())
+        {
+            g.setColour(std::find(selected.begin(), selected.end(), n["id"]) != selected.end()
+                            ? juce::Colour(0xfff1c975)
+                            : accent());
+            g.drawLine(x(n), y(n["velocity"]), x(n), float(getHeight() - 8), 2.f);
+            g.fillEllipse(x(n) - 4, y(n["velocity"]) - 4, 8, 8);
+        }
+        g.restoreState();
+    }
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        active = false;
+        if (!notes.editable() || e.x < 64)
+            return;
+        Json chosen = nullptr;
+        double nearest = 9.;
+        for (const auto& n : notes.velocityFacts())
+        {
+            const auto distance = std::hypot(x(n) - e.x, y(n["velocity"]) - e.y);
+            if (distance < nearest)
+            {
+                chosen = n;
+                nearest = distance;
+            }
+        }
+        if (!chosen.is_null())
+        {
+            active = notes.beginVelocity(chosen["id"]);
+            if (active)
+                notes.grabKeyboardFocus();
+        }
+    }
+    void mouseDrag(const juce::MouseEvent& e) override
+    {
+        if (active)
+        {
+            notes.previewVelocity(
+                std::clamp(int(std::llround((getHeight() - 8 - e.position.y) * 127. / (getHeight() - 22))), 1, 127));
+            repaint();
+        }
+    }
+    void mouseUp(const juce::MouseEvent&) override
+    {
+        if (active)
+            notes.finishVelocity();
+        active = false;
+        repaint();
+    }
+
+private:
+    NoteCanvas& notes;
+    int scroll = 0;
+    bool active = false;
 };
 class PianoRoll final : public juce::Component
 {
 public:
     PianoRoll(MusicalWriter writer, std::function<int64_t(double)> sample,
-              std::function<Json(int64_t, int64_t, double)> grid, MusicalWriter transform)
-        : canvas(std::move(writer), std::move(sample), grid, [this] { refreshSelection(); }), grid(std::move(grid)),
-          transform(std::move(transform))
+              std::function<Json(int64_t, int64_t, double)> grid, MusicalWriter transform, MusicalBatchWriter batch)
+        : canvas(
+              writer, std::move(sample), grid, [this] { refreshSelection(); }, std::move(batch)),
+          velocityLane(canvas), direct(std::move(writer)), grid(std::move(grid)), transform(std::move(transform))
     {
-        for (auto* c : std::initializer_list<juce::Component*>{
-                 &view, &clips, &snap, &velocity, &remove, &detail, &selectionScope, &strength, &strengthLabel,
-                 &quantize, &semitones, &transpose, &start, &end, &rangeLabel, &selectAll})
+        for (auto* c : std::initializer_list<juce::Component*>{&view, &clips, &snap, &velocity, &remove, &detail,
+                                                               &selectionScope, &strength, &strengthLabel, &quantize,
+                                                               &semitones, &transpose, &start, &end, &rangeLabel,
+                                                               &selectAll, &quickQuantize, &velocityLane})
             addAndMakeVisible(c);
         view.setViewedComponent(&canvas, false);
         view.setScrollBarsShown(true, true);
@@ -361,12 +638,16 @@ public:
         };
         quantize.onClick = [this] { requestTransform(true); };
         transpose.onClick = [this] { requestTransform(false); };
+        quickQuantize.setComponentID("midi.quantize.apply");
+        quickQuantize.onClick = [this] { quantizeSelected(); };
         detail.setFont(juce::FontOptions(12));
         setComponentID("midi.editor");
         view.setViewPosition(0, 32 + (127 - 84) * 14);
     }
-    void update(const Json& track, uint64_t revision, bool playing, double positionBeat)
+    void update(const Json& track, uint64_t revision, bool playing, double positionBeat,
+                const std::string& session = "")
     {
+        this->session = session;
         this->track = track;
         this->revision = revision;
         this->playing = playing;
@@ -393,6 +674,56 @@ public:
             if (ids[i] == chosen)
                 clips.setSelectedId(int(i) + 1, juce::dontSendNotification);
         refreshClip();
+        velocityLane.setScroll(view.getViewPositionX());
+    }
+    bool canQuantize() const
+    {
+        return canvas.editable() && !canvas.selectedNotes().empty();
+    }
+    void quantizeSelected()
+    {
+        if (!canQuantize())
+            return;
+        try
+        {
+            direct("midi.notes.quantize",
+                   {{"clip", currentClip["id"]},
+                    {"selection", "notes"},
+                    {"note_ids", canvas.selectedNotes()},
+                    {"grid_beats", division()},
+                    {"strength", strengthValue()}},
+                   revision);
+        }
+        catch (const std::exception& e)
+        {
+            if (onError)
+                onError(e.what());
+        }
+    }
+    void selectNotes()
+    {
+        canvas.selectAll();
+    }
+    void deleteNotes()
+    {
+        canvas.removeSelected();
+    }
+    void velocityStep(int delta)
+    {
+        const auto n = canvas.selectedNote();
+        if (!n.is_null() && canvas.beginVelocity(n["id"]))
+        {
+            canvas.previewVelocity(n["velocity"].get<int>() + delta);
+            canvas.finishVelocity();
+        }
+    }
+    void connect(juce::ApplicationCommandManager& manager)
+    {
+        canvas.onCommandKey = [&manager, this](const juce::KeyPress& key)
+        { return manager.getKeyMappings()->keyPressed(key, &canvas); };
+        quickQuantize.setCommandToTrigger(&manager, 140, true);
+        selectAll.setCommandToTrigger(&manager, 141, true);
+        remove.setCommandToTrigger(&manager, 142, true);
     }
     Json viewedClip() const
     {
@@ -406,22 +737,28 @@ public:
     std::function<void(std::string)> onError;
     void resized() override
     {
-        clips.setBounds(10, 10, 160, 28);
-        snap.setBounds(180, 10, 142, 28);
-        velocity.setBounds(332, 10, 210, 28);
-        remove.setBounds(552, 10, 140, 28);
-        selectionScope.setBounds(10, 46, 148, 28);
-        strengthLabel.setBounds(168, 46, 64, 28);
-        strength.setBounds(232, 46, 48, 28);
-        quantize.setBounds(290, 46, 112, 28);
-        semitones.setBounds(412, 46, 50, 28);
-        transpose.setBounds(472, 46, 112, 28);
-        selectAll.setBounds(594, 46, 98, 28);
-        rangeLabel.setBounds(10, 82, 180, 28);
-        start.setBounds(190, 82, 152, 28);
-        end.setBounds(352, 82, 152, 28);
+        const double ratio = std::min(1., std::max(.5, (getWidth() - 20.) / 682.));
+        auto place = [ratio](juce::Component& c, int x, int y, int width)
+        { c.setBounds(10 + int((x - 10) * ratio), y, int(width * ratio), 28); };
+        place(clips, 10, 10, 160);
+        place(snap, 180, 10, 142);
+        place(velocity, 332, 10, 210);
+        place(remove, 552, 10, 140);
+        place(selectionScope, 10, 46, 148);
+        place(strengthLabel, 168, 46, 64);
+        place(strength, 232, 46, 48);
+        place(quantize, 290, 46, 112);
+        place(semitones, 412, 46, 50);
+        place(transpose, 472, 46, 112);
+        place(selectAll, 594, 46, 98);
+        place(rangeLabel, 10, 82, 180);
+        place(start, 190, 82, 152);
+        place(end, 352, 82, 152);
+        place(quickQuantize, 552, 82, 140);
         detail.setBounds(12, 116, getWidth() - 24, 26);
-        view.setBounds(0, 184, getWidth(), std::max(0, getHeight() - 184));
+        view.setBounds(0, 184, getWidth(), std::max(0, getHeight() - 274));
+        velocityLane.setBounds(0, std::max(184, getHeight() - 86), getWidth(), 82);
+        velocityLane.setScroll(view.getViewPositionX());
         refreshClip();
         if (!scrolled && getHeight() > 222)
         {
@@ -477,14 +814,17 @@ private:
                         false);
         }
         currentClip = clip;
-        canvas.update(clip, revision, playing, division(), std::max(100, view.getMaximumVisibleWidth()), positionBeat);
+        canvas.update(clip, revision, playing, division(), std::max(100, view.getMaximumVisibleWidth()), positionBeat,
+                      session);
         refreshSelection();
         repaint();
     }
     void refreshSelection()
     {
+        velocityLane.repaint();
+        quickQuantize.setEnabled(canQuantize());
         const auto n = canvas.selectedNote();
-        bool enabled = !n.is_null() && !playing;
+        bool enabled = !n.is_null() && canvas.editable();
         velocity.setEnabled(enabled);
         remove.setEnabled(enabled);
         if (!n.is_null() && !velocity.isMouseButtonDown())
@@ -492,7 +832,11 @@ private:
         const bool editable = !playing && !currentClip.is_null() && !currentClip["notes"].empty();
         selectionScope.setEnabled(editable);
         selectAll.setEnabled(editable);
-        start.setEnabled(editable && selectionScope.getSelectedId() == 3);
+        const bool rangeMode = selectionScope.getSelectedId() == 3;
+        start.setVisible(rangeMode);
+        end.setVisible(rangeMode);
+        rangeLabel.setVisible(rangeMode);
+        start.setEnabled(editable && rangeMode);
         end.setEnabled(start.isEnabled());
         const bool hasSelection = selectionScope.getSelectedId() != 1 || !canvas.selectedNotes().empty(),
                    transformable = !currentClip.is_null() && currentClip.value("bulk_transform_available", false);
@@ -500,7 +844,7 @@ private:
         transpose.setEnabled(editable && hasSelection && transformable);
         strength.setEnabled(editable && transformable);
         semitones.setEnabled(editable && transformable);
-        detail.setText(n.is_null() ? text("空白绘制 · Shift 点选 / ⌘A 全选 · 拖动当前音符 · 右缘改时长")
+        detail.setText(n.is_null() ? text("空白绘制 · Shift 点选 / ⌘A 全选 · 拖动所选音符 · 两缘改时长 · ⌘拖改力度")
                                    : (text("已选 ") + juce::String(int(canvas.selectedNotes().size())) +
                                       text(" · 当前音高 ") + juce::String(n["pitch"].get<int>()) +
                                       text(" · 工程采样 ") + juce::String(n["position_samples"].get<int64_t>()) +
@@ -523,6 +867,15 @@ private:
             throw std::runtime_error("整数格式错误");
         return n;
     }
+    double strengthValue() const
+    {
+        size_t used = 0;
+        auto s = strength.getText().toStdString();
+        double value = std::stod(s, &used);
+        if (used != s.size() || !std::isfinite(value) || value < 0 || value > 100)
+            throw std::runtime_error("量化强度须为 0–100%");
+        return value / 100.;
+    }
     void requestTransform(bool quantising)
     {
         try
@@ -542,13 +895,8 @@ private:
             }
             if (quantising)
             {
-                size_t used = 0;
-                auto s = strength.getText().toStdString();
-                double value = std::stod(s, &used);
-                if (used != s.size() || !std::isfinite(value) || value < 0 || value > 100)
-                    throw std::runtime_error("量化强度须为 0–100%");
                 a["grid_beats"] = division();
-                a["strength"] = value / 100.;
+                a["strength"] = strengthValue();
             }
             else
                 a["semitones"] = integer(semitones, true);
@@ -561,18 +909,20 @@ private:
         }
     }
     NoteCanvas canvas;
+    VelocityLane velocityLane;
+    MusicalWriter direct;
     std::function<Json(int64_t, int64_t, double)> grid;
     MusicalWriter transform;
     juce::Viewport view;
     juce::ComboBox clips, snap, selectionScope;
     juce::Slider velocity;
-    juce::TextButton remove{text("删除当前音符")}, quantize{text("预览量化")}, transpose{text("预览移调")},
-        selectAll{text("全选音符")};
+    juce::TextButton remove{text("删除所选音符")}, quantize{text("预览量化")}, transpose{text("预览移调")},
+        selectAll{text("全选音符")}, quickQuantize{text("量化所选")};
     juce::Label detail, strengthLabel, rangeLabel;
     juce::TextEditor strength, semitones, start, end;
     Json track = nullptr, currentClip = nullptr;
     std::vector<std::string> clipIDs;
-    std::string chosen;
+    std::string chosen, session;
     uint64_t revision = 0;
     bool playing = false, scrolled = false;
     double positionBeat = 0;

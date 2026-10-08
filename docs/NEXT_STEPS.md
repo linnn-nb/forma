@@ -1,9 +1,11 @@
 # 下一步
 
-结论：U-P0-SMART-01 音频 Smart Tool、淡入/淡出拖拽、旧键位表迁移已完成专项和桌面验证；U＋P0 整体仍未完成。M2/M3 冻结保留，M4/M5 暂缓。
+结论：U-P0-MIDI-01 独立钢琴卷帘成组编辑、力度泳道、直接量化已接通；专项与桌面增量验证通过。U＋P0 整体未完成，M2/M3 冻结，M4/M5 暂缓，不进入P1。
 
-亲手试：打开 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，载入 `evidence/U/demo/Smart Tool GUI accepted.tracktionedit`。Cmd+7 开 Smart，上半部拖选区，下半部移动，侧边修剪，顶部圆点调整淡化；松手一笔事务，Cmd+Z/Shift+Cmd+Z 撤销/重做。Smart 状态和真实淡化随工程保存；旧 Undo 栈不跨重开。当前专用预览也已打开并停止播放。
+亲手试：当前打开 `build-v2-tracktion/FormaMidiEditorPreview.app`，工程 `evidence/U/demo/MIDI Editor P0 final.tracktionedit`。空白拖绘音符；Shift点选/⌘A全选；拖动中间移动组、两缘改时长；力度泳道圆点或⌘垂直拖改力度；⌘⌥0遵循卷帘网格/强度量化，⌘⌥↑/↓改力度，Delete删除，⌘Z/⌘⇧Z单笔撤销/重做。全部键位可在「键位…」重映射。正式app `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
 
-下一项明确任务：接通 MIDI 钢琴卷帘的画音符、拖动/修剪、力度和量化手势，共用稳定选择、L1事务、快捷键及保存重开；保留已完成音频编辑行为。
+下一项明确任务：将真实钢琴卷帘接入Edit下方可调停靠区域，并把Clip/Note选择和编辑器位置联动通过同一稳定ID选择模型与L1 UI子树保存。保留现有音频Smart/淡化、Shuffle/Spot和剪贴板行为。
 
-随后补齐 Groups/Clips 侧栏、视图列与更多标尺、轨高/颜色、剩余手动自定义键位和桌面验收。Smart 的 MIDI/自动化分区行为仍未实现；交叉淡化保持 P1。阶段 U＋P0 全部完成后才全量回归并暂停交由用户亲手确认，不提前进入 P1。每个可构建步骤提交推送，不打包未验收 DMG；保留用户工程和预先存在的 Tracktion 子模块修改。
+随后补齐Groups/Clips侧栏、Edit Window Views、更多标尺、轨高/颜色和自定义键位桌面验收。当前独立卷帘网格/滚动/音符选择不跨重开；组手势仍受64操作事务预算，需在阶段完整验收前补大组批量编辑。MIDI/自动化剪贴板、全局Smart与CC未完成；Undo历史不跨重开，不能承诺连续撤回重开前编辑。P1交叉淡化和录音功能继续后置。
+
+阶段U＋P0完成才全量回归并交给用户试用；每个可构建增量提交推送，不打包未验收DMG。保留用户工程及预先存在的Tracktion子模块修改。
