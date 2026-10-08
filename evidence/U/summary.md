@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## 插入跟随与 Shift Scrub 选区（2026-10-09）
+
+结论：实际试听释放定位、Shift再次释放建立选区，一笔human事务Undo/Redo，原生范围／插入点保存重开、全局偏好与自定义键保持；Release／固定验签、相关10/10（79.55秒）、80新检查＋527＋126既有检查通过，新增真实PCM最大误差0.0（容差2e-5）。回执 `scrub-selection-tests.json`，失败修复／最终测试日志／产物哈希见VERIFICATION.md首节；其他历史JSON保持，不用本轮时序覆盖旧证据。
+
+亲手试：`build-v2-tracktion/FormaScrubSelectionPreview.app`打开`scrub-multi-demo/Two-track Scrubber.tracktionedit`；编辑菜单开启插入跟随（ControlOptionShiftF9），Scrub松手定位、ShiftScrub松手选区，CommandZ／ShiftCommandZ，另存重开。Mac锁定未物理操作／实体试听，自有PID52566已核验退出；完整U＋P0未完成，不进P1，不打DMG。一般Selector Shift端点／其他缩放与标尺行为待补。以下保留历史增量。
+
 ## 双轨与真实多声道 Scrubber（2026-10-09）
 
 结论：Release/固定验签、相关8/8（75.22秒）、527原检查＋126新增检查通过。边界入口与跨轨选区首两轨、各源增益/原Aux、真实PCM/Undo/保存重开已接通；8独立源通道hosted输出误差0，六＋二原生输出映射由普通播放独立确认。双源长范围重建后正反连续、18窗口/0缺口，最大PCM误差3.0376644e-9（容差2e-5），最大两槽4,483,240字节；首次出音8.405–14.486ms是hosted测值。回执 `multi-scrub-tests.json` 与更新的 `scrub-tests.json`，详细失败修复、预算、哈希和产物见VERIFICATION.md首节。

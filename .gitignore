@@ -34,3 +34,5 @@ evidence/U/*
 !evidence/U/scrub-tests.json
 
 !evidence/U/multi-scrub-tests.json
+
+!evidence/U/scrub-selection-tests.json

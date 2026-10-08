@@ -1,0 +1,106 @@
+{
+  "checks": 80,
+  "hardware_listening": "not_executed",
+  "pcm": [
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.1119583249092102,
+        "context_ms": 0.7866666615009308,
+        "decode_ms": 1.1391250044107437,
+        "first_audio_ms": 13.1215,
+        "graph_ms": 0.8198750019073486,
+        "native_state_ms": 0.000250011682510376,
+        "ready_ms": 13.047374993562698,
+        "transport_start_ms": 0.006916657090187073
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.035249993205070496,
+        "context_ms": 0.2357916533946991,
+        "decode_ms": 0.5498750060796738,
+        "first_audio_ms": 7.991583333333334,
+        "graph_ms": 0.25712499022483826,
+        "native_state_ms": 0.0001666545867919922,
+        "ready_ms": 7.933499991893768,
+        "transport_start_ms": 0.0038333237171173096
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": -0.5,
+      "timing": {
+        "capture_ms": 0.0690833330154419,
+        "context_ms": 0.517833337187767,
+        "decode_ms": 1.3853333294391632,
+        "first_audio_ms": 5.356791666666667,
+        "graph_ms": 0.5607083290815353,
+        "native_state_ms": 4.166364669799805e-05,
+        "ready_ms": 5.306666657328606,
+        "transport_start_ms": 0.0032499879598617554
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.0338750034570694,
+        "context_ms": 0.47858333587646484,
+        "decode_ms": 1.4984166771173477,
+        "first_audio_ms": 3.7765833333333334,
+        "graph_ms": 0.5093333274126053,
+        "native_state_ms": 0.0,
+        "ready_ms": 3.7160833328962326,
+        "transport_start_ms": 0.002291664481163025
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.06108333170413971,
+        "context_ms": 0.2698333263397217,
+        "decode_ms": 1.7966250032186508,
+        "first_audio_ms": 11.164791666666666,
+        "graph_ms": 0.3047916740179062,
+        "native_state_ms": 0.000125005841255188,
+        "ready_ms": 9.489458337426186,
+        "transport_start_ms": 0.005125001072883606
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.04324999451637268,
+        "context_ms": 0.24654166400432587,
+        "decode_ms": 2.1500833332538605,
+        "first_audio_ms": 8.166625,
+        "graph_ms": 0.2775000035762787,
+        "native_state_ms": 0.0,
+        "ready_ms": 6.4962083250284195,
+        "transport_start_ms": 0.002625003457069397
+      }
+    },
+    {
+      "maximum_pcm_error": 0.0,
+      "speed": 1.0,
+      "timing": {
+        "capture_ms": 0.0728333443403244,
+        "context_ms": 0.5275416672229767,
+        "decode_ms": 1.1709583401679993,
+        "first_audio_ms": null,
+        "graph_ms": 0.5618333369493484,
+        "native_state_ms": 0.0003750026226043701,
+        "ready_ms": 12.766666665673256,
+        "transport_start_ms": 0.006833329796791077
+      }
+    }
+  ],
+  "state": "passed",
+  "test": "U-P0-SCRUB-SELECTION-01"
+}

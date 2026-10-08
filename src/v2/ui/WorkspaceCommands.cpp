@@ -133,6 +133,8 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {254, "编辑插入点跟随 Scrub / Shuttle", "设置", juce::KeyPress::F9Key,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {253, "Scrubber 正反向试听（最多两轨）", "编辑", juce::KeyPress::F9Key, cmd},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
@@ -327,6 +329,9 @@ void Workspace::initialiseCommandManager()
             message(text("Scrubber 准备超时；没有启动试听"));
         else if (reason == "audio_block_exceeded")
             message(text("Scrubber 已停止：设备处理块超出已准备范围"));
+        else if (reason == "selection_commit_failed")
+            message(text("Scrub 选区未提交：") +
+                    text(commands.scrubStatus().value("error", std::string("unknown error"))));
         else if (reason == "cache_refill_failed")
             message(text("Scrubber 缓存读取失败，试听已停止：") +
                     text(commands.scrubStatus().value("error", std::string("unknown error"))));
@@ -338,11 +343,13 @@ void Workspace::initialiseCommandManager()
     {
         try
         {
-            commands.scrub(action, args);
+            const auto receipt = commands.scrub(action, args);
             if (action == "begin")
                 message(text("Scrubber 正在读取音频 · 松手或 Escape 取消"));
             else if (action == "end" || action == "cancel")
-                message(text("Scrubber 已停止"));
+                message(text(action == "end" && receipt.contains("selection_transaction")
+                                 ? "Scrub 定位 / 选区已提交 · 可撤销"
+                                 : "Scrubber 已停止"));
             return true;
         }
         catch (const std::exception& e)
@@ -564,6 +571,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) &&
                          std::any_of(selection.objects.begin(), selection.objects.end(),
                                      [](const auto& o) { return o["kind"] == "automation_point"; });
+            if (id == 254)
+            {
+                active = !commands.scrubStatus().value("busy", false);
+                info.setTicked(commands.scrubPreferences()["insertion_follows"]);
+            }
             if (id == 253)
             {
                 active = !mix && facts["recording_capture"].is_null();
@@ -605,6 +617,20 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 254)
+    {
+        invoke(
+            [&]
+            {
+                const auto next = commands.setScrubPreferences(
+                    {{"insertion_follows", !commands.scrubPreferences()["insertion_follows"].get<bool>()}});
+                message(text(next["insertion_follows"].get<bool>()
+                                 ? "跟随 Scrub 已开启 · 松手定位；Shift 再试听创建选区 · 可撤销"
+                                 : "跟随 Scrub 已关闭 · 松手恢复原插入点"));
+                refresh();
+            });
+        return true;
+    }
     if (id == 253)
     {
         invoke(

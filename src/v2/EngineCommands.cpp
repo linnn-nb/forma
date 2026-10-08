@@ -630,9 +630,10 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human", "Mix group definitions are local GUI only during the U phase");
             // Independent Mix definitions are validated as standalone transactions below.
         }
-        else if (cmd == "session.range.set" || cmd == "session.range.clear")
+        else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set")
         {
-            // Full ordered range preview below, backed by the Edit metadata.
+            require(cmd != "session.insertion.set" || actor == "human", "insertion editing is local human only");
+            // Full ordered range/insertion preview below, backed by the Edit.
         }
         else if (cmd.starts_with("transport."))
         {
@@ -838,7 +839,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             {
                 executeLegacyOperation(a, objects);
             }
-            else if (cmd == "session.range.set" || cmd == "session.range.clear")
+            else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set")
             {
                 executeTimelineOperation(cmd, a);
             }

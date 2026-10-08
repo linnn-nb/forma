@@ -26,10 +26,48 @@ void validateRange(int64_t first, int64_t last)
 {
     require(first >= 0 && last > first && last <= maximum(), "invalid half-open session sample range");
 }
+// Only L1 creates this action. Native transport owns persistence; its plain
+// setPosition API deliberately does not add an Undo action by itself.
+class CursorMove final : public juce::UndoableAction
+{
+public:
+    CursorMove(te::TransportControl& t, int64_t sample)
+        : transport(t), before(t.getPosition()), after(tracktion::TimePosition::fromSeconds(sample / 48000.))
+    {
+    }
+    bool perform() override
+    {
+        transport.setPosition(after);
+        return true;
+    }
+    bool undo() override
+    {
+        transport.setPosition(before);
+        return true;
+    }
+
+private:
+    te::TransportControl& transport;
+    tracktion::TimePosition before, after;
+};
 } // namespace
 void Commands::registerTimelineCommands(Json& registry)
 {
     Json sample = {{"type", "integer"}, {"minimum", 0}, {"maximum", maximum()}};
+    registry.push_back(
+        {{"id", "session.insertion.set"},
+         {"schema",
+          {{"type", "object"},
+           {"properties", {{"position_samples", sample}}},
+           {"required", {"position_samples"}},
+           {"additionalProperties", false}}},
+         {"permission", "edit"},
+         {"risk", "low"},
+         {"reversible", true},
+         {"live", false},
+         {"tool_visibility", "local_gui"},
+         {"test", "U-P0-SCRUB-SELECTION-01"},
+         {"units", {{"position_samples", "48000 Hz session sample position; native transport insertion"}}}});
     for (const auto& command : {std::string("session.range.set"), std::string("session.range.clear")})
     {
         Json properties = Json::object(), required = Json::array();
@@ -79,10 +117,18 @@ Json Commands::validateTimelinePlan(const Json& ops) const
     auto before = timelineRange();
     Json changes = Json::array();
     size_t index = 0;
+    auto insertion = std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate);
     for (const auto& op : ops)
     {
         const std::string cmd = op["command"];
-        if (cmd == "session.range.set" || cmd == "session.range.clear")
+        if (cmd == "session.insertion.set")
+        {
+            const auto next = op["args"].at("position_samples").get<int64_t>();
+            require(next >= 0 && next <= maximum(), "invalid session insertion position");
+            changes.push_back({{"operation_index", index}, {"command", cmd}, {"before", insertion}, {"after", next}});
+            insertion = next;
+        }
+        else if (cmd == "session.range.set" || cmd == "session.range.clear")
         {
             Json after = nullptr;
             if (cmd.ends_with("set"))
@@ -106,7 +152,12 @@ Json Commands::validateTimelinePlan(const Json& ops) const
 void Commands::executeTimelineOperation(const std::string& cmd, const Json& args)
 {
     auto* undo = &edit->getUndoManager();
-    if (cmd == "session.range.clear")
+    if (cmd == "session.insertion.set")
+    {
+        require(undo->perform(new CursorMove(edit->getTransport(), args.at("position_samples").get<int64_t>())),
+                "native insertion transaction failed");
+    }
+    else if (cmd == "session.range.clear")
     {
         metadata.removeProperty("range_start_samples", undo);
         metadata.removeProperty("range_end_samples", undo);

@@ -69,7 +69,8 @@ public:
     double maximumRefillCaptureMs = 0, maximumRefillDecodeMs = 0;
     std::atomic<double> speed{0}, position{0};
     std::atomic<bool> exhausted{false}, enabled{true}, cacheWaiting{false};
-    std::atomic<uint64_t> serial{0}, firstAudioTick{0}, cacheWaitFrames{0}, cacheUnderruns{0};
+    std::atomic<uint64_t> serial{0}, firstAudioTick{0}, cacheWaitFrames{0}, cacheUnderruns{0}, auditionFrames{0};
+    bool insertionFollows = false, extendSelection = false;
     std::atomic<float> sourceEnvelope{0};
     std::atomic<int> staleSourceFrames{0};
     std::atomic<uint64_t> observedSourceSerial{0}, sourceGraphBuilds{0};
@@ -345,7 +346,7 @@ public:
         const bool run = state->enabled.load(std::memory_order_relaxed) && staleFrames < watchdogFrames;
         auto window = state->cache.read();
         bool waited = false;
-        uint64_t waitFrames = 0;
+        uint64_t waitFrames = 0, advancedFrames = 0;
         for (uint32_t i = 0; i < pc.numSamples; ++i)
         {
             const bool sourceWithin = cursor >= state->sourceStart && cursor < state->sourceEnd;
@@ -403,7 +404,10 @@ public:
                     envelope = 0;
                 }
                 else if (within)
+                {
                     cursor += step;
+                    ++advancedFrames;
+                }
                 else
                 {
                     waited = true;
@@ -416,6 +420,7 @@ public:
             state->cacheUnderruns.fetch_add(1, std::memory_order_relaxed);
         state->cacheWaiting.store(waited, std::memory_order_relaxed);
         state->cacheWaitFrames.fetch_add(waitFrames, std::memory_order_relaxed);
+        state->auditionFrames.fetch_add(advancedFrames, std::memory_order_relaxed);
         // Saturate: an indefinitely stalled GUI cannot wrap the watchdog counter.
         staleFrames = std::min(watchdogFrames, staleFrames + int(pc.numSamples));
         state->staleSourceFrames.store(staleFrames, std::memory_order_relaxed);
@@ -540,6 +545,7 @@ Json Commands::scrubStatus() const
                                                   juce::Time::getHighResolutionTicksPerSecond())
                                            : Json(nullptr)}}},
             {"sources", sources},
+            {"audition_frames", s.auditionFrames.load()},
             {"media_channels", channelsReady ? Json(totalChannels) : Json(nullptr)},
             {"clip", s.clip},
             {"track", s.track},
@@ -590,13 +596,75 @@ void Commands::stopScrub(const std::string& reason)
     if (masterAnalysis)
         masterAnalysis->prioritizePlayback(false);
 }
+Json Commands::scrubPreferences() const
+{
+    checkThread();
+    return {{"insertion_follows",
+             engine.getPropertyStorage().getPropertiesFile().getBoolValue("formaScrubInsertionFollows", false)}};
+}
+Json Commands::setScrubPreferences(const Json& value)
+{
+    checkThread();
+    require(!scrubPlayback, "finish Scrubber before changing insertion preference");
+    require(value.is_object() && value.size() == 1 && value.contains("insertion_follows") &&
+                value["insertion_follows"].is_boolean(),
+            "invalid Scrubber preference");
+    auto& properties = engine.getPropertyStorage().getPropertiesFile();
+    const bool before = scrubPreferences()["insertion_follows"];
+    properties.setValue("formaScrubInsertionFollows", value["insertion_follows"].get<bool>());
+    if (!properties.saveIfNeeded())
+    {
+        properties.setValue("formaScrubInsertionFollows", before);
+        throw std::runtime_error("Scrubber preference could not be saved");
+    }
+    return scrubPreferences();
+}
+Json Commands::finishScrubSelection(const std::string& reason)
+{
+    if (!scrubPlayback)
+        return scrubStatus();
+    auto state = scrubPlayback;
+    const bool valid = state->session == sessionToken() && state->revision == revision && state->view == uiState() &&
+                       state->deviceGeneration == audioDeviceGeneration() && !audioConfigurationPending() &&
+                       engine.getDeviceManager().deviceManager.getCurrentAudioDevice() != nullptr &&
+                       (!state->interrupted || !state->interrupted());
+    const bool apply = valid && state->playing && state->insertionFollows && state->auditionFrames.load() > 0;
+    const auto endpoint = std::llround(std::clamp(state->position.load(), state->sourceStart, state->sourceEnd));
+    const auto anchor = std::llround(state->returnPosition * timelineRate);
+    stopScrub(valid ? reason : "device_or_transport_interrupted");
+    if (!apply)
+        return scrubStatus();
+    Json operations = Json::array();
+    if (state->extendSelection && endpoint != anchor)
+        operations.push_back(
+            {{"command", "session.range.set"},
+             {"args", {{"start_samples", std::min(anchor, endpoint)}, {"end_samples", std::max(anchor, endpoint)}}}});
+    else if (!timelineRange().is_null())
+        operations.push_back({{"command", "session.range.clear"}, {"args", Json::object()}});
+    if (endpoint != anchor)
+        operations.push_back({{"command", "session.insertion.set"}, {"args", {{"position_samples", endpoint}}}});
+    if (operations.empty())
+        return scrubStatus();
+    auto plan = makePlan("human", operations);
+    plan["base_revision"] = state->revision;
+    const auto receipt = commit(plan);
+    Json tracks = state->extendSelection ? state->view["selection_tracks"] : Json::array();
+    if (tracks.empty())
+        for (const auto& source : state->sources)
+            tracks.push_back(source.track);
+    updateUiState({{"selection_tracks", tracks}, {"object_selection", Json::array()}}, state->session);
+    lastScrubStatus["selection_transaction"] = receipt;
+    return scrubStatus();
+}
 Json Commands::scrub(const std::string& action, const Json& args)
 {
     checkThread();
     if (action == "end" || action == "cancel")
     {
         require(args.empty(), "scrub stop takes no arguments");
-        stopScrub(action == "end" ? "mouse_release" : "cancelled");
+        if (action == "end")
+            return finishScrubSelection("mouse_release");
+        stopScrub("cancelled");
         return scrubStatus();
     }
     if (action == "speed")
@@ -620,11 +688,14 @@ Json Commands::scrub(const std::string& action, const Json& args)
     require(!scrubDecoder || scrubDecoder->getNumJobs() == 0, "scrub decoder is finishing a cancelled request");
     const auto beganAt = juce::Time::getMillisecondCounterHiRes();
     const auto beginTick = juce::Time::getHighResolutionTicks();
-    require(args.is_object() && (args.size() == 4 || (args.size() == 5 && args.contains("tracks"))) &&
+    require(args.is_object() &&
+                args.size() == 4 + size_t(args.contains("tracks")) + size_t(args.contains("extend_selection")) &&
                 args.contains("clip") && args["clip"].is_string() && args.contains("position_samples") &&
                 args["position_samples"].is_number_integer() && args.contains("session") &&
                 args["session"].is_string() && args.contains("revision") && args["revision"].is_number_unsigned(),
             "invalid scrub begin request");
+    require(!args.contains("extend_selection") || args["extend_selection"].is_boolean(),
+            "invalid scrub selection extension");
     require(args["session"] == sessionToken() && args["revision"] == revision, "stale scrub target");
     require(!audioConfigurationPending() && !edit->getTransport().isPlaying() && !edit->getTransport().isRecording() &&
                 recordingCapture.is_null() && capture.is_null() && parameterCapture.is_null(),
@@ -762,13 +833,33 @@ Json Commands::scrub(const std::string& action, const Json& args)
     state->contextAtBegin = transport.getCurrentPlaybackContext();
     state->deviceGeneration = audioDeviceGeneration();
     state->view = uiState();
+    state->insertionFollows = scrubPreferences()["insertion_follows"];
+    state->extendSelection = args.value("extend_selection", false);
     if (!scrubDecoder)
         scrubDecoder =
             std::make_unique<juce::ThreadPool>(1, juce::Thread::osDefaultStackSize, juce::Thread::Priority::background);
     if (masterAnalysis)
         masterAnalysis->prioritizePlayback(true);
     scrubPlayback = state;
-    state->finish = [this](std::string reason) { stopScrub(reason); };
+    state->finish = [this](std::string reason)
+    {
+        if (reason != "source_boundary")
+        {
+            stopScrub(reason);
+            return;
+        }
+        try
+        {
+            finishScrubSelection(reason);
+        }
+        catch (const std::exception& e)
+        {
+            stopScrub("selection_commit_failed");
+            lastScrubStatus["state"] = "failed";
+            lastScrubStatus["reason"] = "selection_commit_failed";
+            lastScrubStatus["error"] = e.what();
+        }
+    };
     state->ready = [this] { activateScrub(); };
     state->maintain = [this] { advanceScrub(); };
     state->interrupted = [this]

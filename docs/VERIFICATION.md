@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-SCRUB-SELECTION-01：插入跟随与 Shift 选区（2026-10-09）
+
+结论：开启“编辑插入点跟随 Scrub / Shuttle”后，真实试听松手定位插入点；再按 Shift 试听并松手，形成两点间的时间选区。一笔手势提交一笔 human Plan，范围与原生插入点共同 Undo/Redo，实际保存重开保持。偏好是全局设置，默认关闭，独立保存；快捷键可自定义。Release／固定身份 deep/strict 验签通过；相关 **10/10、0失败、79.55秒**，新增 **80** 检查，原 Scrubber **527**、双轨 **126** 检查保持。完整 U＋P0 未完成，不进 P1；以下保留历史资格，当前行为以本节为准。
+
+依据：本地官方 Reference Guide 2026.4 印刷143、883、899页（PDF245、985、1001页），本轮核验全局 Operation 偏好及先 Scrub 定位、再 Shift Scrub 选区的两步行为。`ScrubPlayback.cpp`捕获偏好、原插入点与 Shift 意图；只有实际推进源 PCM 且 session/revision/视图/设备/原生 Context 有效才提交，真实静音也按处理帧数判断，不冒充出音。正常释放与源边界结束可定位，Escape、准备期释放、超时、上下文丢失和人工改动不提交。`TimelineCommands.cpp`的本地 human-only `session.insertion.set`将原生 Transport 位置包装成 UndoableAction，与范围修改进入同一原生 UndoManager 事务；范围／插入差异可预览。GUI命令254复用原生命令表，默认 Control＋Option＋Shift＋F9，菜单勾选和真实保存回执接通；253及旧自定义键保持。UI schema10不变，无新MCP工具、SDK补丁或依赖。
+
+测试：`tests/v2/ScrubSelectionTests.cpp`／`evidence/U/scrub-selection-tests.json`，实际24bit立体声48k WAV与全零WAV经生产Tracktion图，与独立文件解码比较，最大PCM误差 **0.0**（既定容差2e-5未放宽）。覆盖开关／普通及反向Shift／一笔Undo与Redo／取消／迟到解码／无处理帧／人工版本冲突／Context丢失／自然源边界／重复结束／全局偏好与原生位置重开／菜单／重绑定键位／新Workspace加载并执行／Shift中途释放／原媒体哈希。hosted device仅替代实体时钟，不是实体试听或物理释放位置、PDC与整引擎RT认证。capture与图准备原20ms预算通过。相关回归覆盖选区、导航、编辑手势、剪贴板、自动化视图、Zoomer、波形及三个Scrubber套件；最终日志 `build-v2-tracktion/scrub-selection-qualified-tests.log`，构建 `scrub-selection-repair-build.log`。其他历史JSON原样保留，本轮重跑副本在build。
+
+修复：首次原生组件用旧键位XML触发正常迁移，导致手势视图冲突；改用生产shortcutSnapshot，不放宽校验。初次10项回归有2失败：254默认键与旧253自定义键冲突，已改新默认；旧范围测试点击退役按钮，已改当前原生命令42，保留原导出PCM／Undo／重开／MCP范围覆盖并格式化。两项先复测通过，再全10项通过；失败日志保留 `scrub-selection-affected-tests.log`，不计资格。
+
+亲手试：`build-v2-tracktion/FormaScrubSelectionPreview.app`，CommandO打开 `scrub-multi-demo/Two-track Scrubber.tracktionedit`，编辑菜单开启“编辑插入点跟随 Scrub / Shuttle”（默认Control＋Option＋Shift＋F9，可改键）；Scrub／CommandF9试听后松手，再Shift试听后松手；CommandZ／ShiftCommandZ，另存新文件重开。示范为原创诊断PCM，非实录。CUA确认Mac锁定，物理鼠标／键盘／截图／实体试听与应用实际退出重开未执行；自有PID52566按精确路径结束且核验退出，用户窗口保留。正式binary SHA256 `1b3f34bd6ca345835903f6796119f24224b50269e2b855b35a3bb2fd80184cef`；预览 `fcdca76d6432aeff5eec1b8360a134a0820aac88f052cdff0fb49847f6a14512`，bundle org.forma.daw.scrub-selection-preview；均固定身份验签，无DMG。
+
+边界：全局偏好不进入工程Undo；轨道／对象视图选择亦独立，不伪称Undo恢复全部GUI状态；Undo历史不跨重开。实体回调与停止的最终端点时序、任意第三方双轨PDC、输出组与慢盘／耐久仍待实测。保留现有Scrubber缓存／路由／Clip FX／自动化限制。一般Selector／Smart的Shift点击或拖动端点、独立Timeline/Edit链接、连续居中、Shuttle Lock以及其余U＋P0仍未完成。
+
 ## U-P0-MULTI-SCRUB-01：双轨与真实多声道（2026-10-09）
 
 结论：相邻音频轨边界双轨 Scrub、跨轨真实时间选区按时间线顺序试听首两条音频轨已接通；真实媒体合计最多8声道，原FX/Aux/设备输出图保留。Release及固定身份deep/strict验签通过；相关 **8/8、0失败、75.22秒**，原Scrubber **527** 检查、新专项 **126** 检查通过。完整U＋P0未完成，不进P1。以下历史增量保留，当前资格以本节为准。

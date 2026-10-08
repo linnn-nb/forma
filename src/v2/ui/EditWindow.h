@@ -1208,6 +1208,8 @@ private:
             {"clip", clip["id"]}, {"position_samples", sample}, {"session", scrubSession}, {"revision", scrubRevision}};
         if (tracks.size() > 1)
             request["tracks"] = tracks;
+        if (event.mods.isShiftDown())
+            request["extend_selection"] = true;
         scrubGesture = onScrub("begin", request);
         scrubPreparing = scrubGesture;
         scrubBuffering = false;

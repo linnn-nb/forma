@@ -65,9 +65,11 @@ public:
     void play();
     void stop();
     void seek(int64_t);
-    // Local transient audition; no project edit or Agent tool.
+    // Local audition; optional selection edits use the same human Plan/Undo path.
     Json scrub(const std::string& action, const Json& args = Json::object());
     Json scrubStatus() const;
+    Json scrubPreferences() const;
+    Json setScrubPreferences(const Json&);
     Json deviceStatus() const;
     Json outputMeters() const;
     Json outputMeterControl(const std::string&, const Json&);
@@ -108,6 +110,7 @@ private:
     std::unique_ptr<juce::ThreadPool> scrubDecoder;
     void activateScrub();
     void advanceScrub();
+    Json finishScrubSelection(const std::string& reason);
     Json lastScrubStatus = {{"active", false}};
     void stopScrub(const std::string& reason = "stopped");
     friend class MasterAnalysis;
