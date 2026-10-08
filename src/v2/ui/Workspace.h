@@ -9,6 +9,7 @@
 #include "Toolbar.h"
 #include "Transport.h"
 #include "Counters.h"
+#include "EditingControls.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -117,7 +118,10 @@ private:
     static juce::String legacyReportText(const Json& r, bool preview);
     friend class ndaw::v2::RecordingTestAccess;
     ClipWriter clipWriter();
-    void selectAudioClip(const std::string& id);
+    void selectAudioClip(const std::string& id, bool additive = false);
+    void executeEditCommand(int id);
+    void commitTimeSelection(Json range, Json tracks, uint64_t revision);
+    Json selectedEditClips() const;
     Json selectedAudioClip() const;
     Writer writer();
     void message(const juce::String& s);
@@ -165,6 +169,9 @@ private:
     Toolbar toolbar;
     Transport transport;
     Counters counters;
+    EditingControls editingControls;
+    SelectionModel selection;
+    EditingModel editing;
     Theme theme;
     juce::ApplicationCommandManager commandManager;
     std::map<int, std::function<void()>> commandActions;

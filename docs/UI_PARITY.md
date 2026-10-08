@@ -16,7 +16,10 @@
 | 自定义快捷键 | Shortcuts Keyboard Shortcuts，第9页（PDF14） | JUCE 原生命令映射编辑器、XML 导入导出接通；两个即时自定义键及工程保存重开通过专项。真实界面已打开，两个键的完整鼠标编辑验收待做 | 部分 |
 | 直接手势一笔编辑 | Reference Levels of Undo，第154页（PDF256） | 原有片段/轨道参数手势已通过 L1；普通导入已直接生效且一次 Undo/Redo；高风险/外部请求仍预览；当前 Undo 不跨重开保留 | 部分 |
 | Mix 插入槽 A–E | Reference Mix 第12章、255页；Mix Window Controls章节 | 五个真实槽读取实例名、菜单插入内置效果和打开外部插件库，I/O/发送按钮接到检查器；F–J、槽位排序、双击编辑器、逐轨电平仍未完成 | 部分 |
-| 四种编辑模式、Smart Tool、Tab 边界 | Reference 对应 Editing章节；Shortcuts25–29页 | 保留原非破坏性clip操作，新工具/模式需逐项实现和测声音 | 未完成 |
+| Slip / Grid 与工具分工 | Reference 858–861、872、878–880页（PDF 页码加102） | 绝对 Grid 按实际 Tempo Map 精确吸附，Command 暂停吸附；Selector/Grabber/Trim 接通。相对 Grid、Shuffle/Spot、完整 Smart Tool 未接通；MIDI 整片移动/修剪未接通 | 部分；专项已验证，桌面拖拽待实测 |
+| 时间 / 对象选区 | Reference 892、897页 | 音频/MIDI Clip 共用稳定 ID/所属轨道的选择模型，Shift 加选；Selector 跨轨道范围一笔 L1 事务，范围和 UI 引用可保存。音符/自动化点、钢琴卷帘联动、成组鼠标拖动未接通 | 部分；专项已验证 |
+| Nudge | Reference 894、919–921页 | 支持 1 sample、10/100 ms、1/¼ 拍；独立于 Grid，完全选中的合格音频片段共用同一采样偏移，一笔 Undo；锁定/不支持成员拒绝整笔。键盘数字区 ±；另提供逗号/句号便于无数字区键盘。自动化跟随、内容滑移、MIDI 整片 Nudge 未接通 | 部分；专项渲染对照及桌面按钮/Undo 已验证 |
+| Tab 片段边界 / 光标拆分 | Reference 900–901、912页 | Tab/Option+Tab 定位所选轨道真实 Clip 边界；Cmd+E 在光标拆分合格音频，一笔 Undo。边界导航不进编辑历史；瞬态导航、Shift 扩选、范围两端拆分未接通 | 部分；专项已验证 |
 | Marker、Memory Locations、循环与预备拍 | Reference Transport 264页；Shortcuts35/51–52页 | 尚未在新版UI接通，不展示占位开关 | 未完成 |
 
 开源实现审查：Tracktion Engine锁定 `0d4d77c8c9defa6ec2aec6454f634e77bbd13f98`，GPLv3，本机源码和[官方功能清单](https://github.com/Tracktion/tracktion_engine/blob/develop/FEATURES.md)已核对；复用现有播放/录音/效果器/自动化/MIDI/渲染能力，其不提供DAW界面。JUCE锁定8.0.13，AGPLv3，采用原生命令管理和按键映射。Ardour的[Editor源码](https://github.com/Ardour/ardour/blob/master/gtk2_ardour/editor.cc)与当前JUCE/Tracktion对象系统耦合方式不适配，作为布局和行为参考，不引入第二引擎或GTK前端。没有新增第三方UI框架。

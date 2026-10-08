@@ -340,6 +340,29 @@ Json Commands::musicalGrid(int64_t start, int64_t end, double division) const
     }
     return grid;
 }
+int64_t Commands::snapToGrid(int64_t position, double division) const
+{
+    checkThread();
+    const auto maximum = std::llround(te::Edit::maximumLength * 48000);
+    require(position >= 0 && position <= maximum && std::isfinite(division) && division >= 1. / 128 && division <= 32,
+            "invalid editing grid position or division");
+    const auto beat = edit->tempoSequence.toBeats(time(position)).inBeats();
+    const auto lowerBeat = std::floor(beat / division) * division;
+    const auto lower = sampleAtBeat(lowerBeat), upper = sampleAtBeat(lowerBeat + division);
+    return std::clamp(position - lower < upper - position ? lower : upper, int64_t(0), maximum);
+}
+int64_t Commands::offsetByBeats(int64_t position, double beats) const
+{
+    checkThread();
+    const auto maximum = std::llround(te::Edit::maximumLength * 48000);
+    require(position >= 0 && position <= maximum && std::isfinite(beats) && std::abs(beats) <= 32,
+            "invalid musical nudge");
+    const auto target = edit->tempoSequence.toBeats(time(position)).inBeats() + beats;
+    require(target >= 0, "musical nudge would cross session start");
+    const auto result = sampleAtBeat(target);
+    require(result <= maximum, "musical nudge exceeds session length");
+    return result;
+}
 Json Commands::validateMusicPlan(const Json& operations) const
 {
     using Sequence = tracktion::tempo::Sequence;

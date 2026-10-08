@@ -34,6 +34,9 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSeparator();
         p.addCommandItem(&commandManager, 6);
         p.addCommandItem(&commandManager, 7);
+        p.addSeparator();
+        for (int id = editCommand::slip; id <= editCommand::split; ++id)
+            p.addCommandItem(&commandManager, id);
     }
     if (index == 2)
     {
@@ -372,6 +375,8 @@ void Workspace::resized()
     zoomFit.setBounds(326, 128, 70, 24);
     scrollLeft.setBounds(404, 128, 30, 24);
     scrollRight.setBounds(438, 128, 30, 24);
+    editingControls.setBounds(476, 128, getWidth() - 486, 24);
+    editingControls.setVisible(!mix && !pianoMode);
     const int left = commands.uiState()["tracks_list"].get<bool>() ? 138 : 0;
     int right = getWidth() - 332, areaHeight = getHeight() - 191;
     bool clipDock = !selectedClip.empty() && !mix && !pianoMode;

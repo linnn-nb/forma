@@ -79,6 +79,8 @@ public:
     Json nativeStateControl(const std::string&, const Json&);
 
     int64_t sampleAtBeat(double) const;
+    int64_t snapToGrid(int64_t sample, double division) const;
+    int64_t offsetByBeats(int64_t sample, double beats) const;
     Json musicalGrid(int64_t start, int64_t end, double division = 1) const;
     static Json analyse(const juce::File&);
     static std::string mediaHash(const juce::File&);

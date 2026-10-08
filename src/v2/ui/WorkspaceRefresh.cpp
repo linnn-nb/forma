@@ -37,21 +37,22 @@ ClipWriter Workspace::clipWriter()
     };
 }
 
-void Workspace::selectAudioClip(const std::string& id)
+void Workspace::selectAudioClip(const std::string& id, bool additive)
 {
     for (const auto& t : facts["tracks"])
         for (const auto& c : t["clips"])
             if (c["id"] == id)
             {
-                if (c["kind"] == "midi")
-                {
-                    selectedClip.clear();
-                    return;
-                }
+                selection.choose(c, t["id"], additive);
                 selected = t["id"];
-                selectedClip = id;
-                commands.updateUiState({{"workspace", "edit"}}, commands.sessionToken());
+                selectedClip = c["kind"] == "audio" && selection.contains(id) ? id : "";
+                commands.updateUiState({{"workspace", "edit"},
+                                        {"object_selection", selection.objects},
+                                        {"selection_tracks", selection.tracks}},
+                                       commands.sessionToken());
                 refresh();
+                if (isShowing())
+                    grabKeyboardFocus();
                 return;
             }
 }
@@ -170,6 +171,8 @@ void Workspace::select(std::string id)
     {
         selectedClip.clear();
         clipFXInspector = false;
+        commands.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", Json::array({id})}},
+                               commands.sessionToken());
         selected = std::move(id);
         pluginSelection = 0;
         lastPluginIDs.clear();
@@ -401,6 +404,9 @@ void Workspace::refresh()
     }
     facts = commands.query();
     const auto view = commands.uiState();
+    selection.update(facts, view);
+    editing.update(view);
+    editingControls.update(view);
     mix = view["workspace"] == "mix";
     pianoMode = view["workspace"] == "midi";
     if (lastKeymapSession != commands.sessionToken())
@@ -497,6 +503,17 @@ void Workspace::refresh()
         }
         meter.setSelectedId(item, juce::dontSendNotification);
     }
+    if (!selection.objects.empty() && selectedClip.empty())
+    {
+        const auto& primary = selection.objects.back();
+        for (const auto& t : facts["tracks"])
+            for (const auto& c : t["clips"])
+                if (c["id"] == primary["id"] && c["kind"] == "audio")
+                {
+                    selected = t["id"];
+                    selectedClip = c["id"];
+                }
+    }
     auto selectedAudio = selectedAudioClip();
     if (selectedAudio.is_null())
     {
@@ -505,8 +522,12 @@ void Workspace::refresh()
     }
     clipPanel.update(selectedAudio, selected, facts["revision"], facts["position_samples"], playing);
     editArea.setView(view);
+    editArea.setModels(editing, selection);
     const auto viewStart = view["start_samples"].get<int64_t>(), viewSpan = view["span_samples"].get<int64_t>();
-    const double gridDivision = std::max(1., std::pow(2., std::ceil(std::log2(std::max(1., viewSpan / 48000. / 40.)))));
+    const double gridDivision =
+        editing.mode == "grid"
+            ? editing.gridBeats
+            : std::max(1., std::pow(2., std::ceil(std::log2(std::max(1., viewSpan / 48000. / 40.)))));
     editArea.update(facts, selected, commands.musicalGrid(viewStart, viewStart + viewSpan, gridDivision), selectedClip);
     tracksList.update(facts["tracks"], selected);
     clipsList.update(facts["tracks"]);

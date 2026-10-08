@@ -51,6 +51,17 @@ const std::vector<Entry>& entries()
         {108, "快捷键设置…", "设置", 'k', juce::ModifierKeys::ctrlModifier | shift},
         {109, "显示 / 隐藏轨道列表", "视图"},
         {110, "显示 / 隐藏片段列表", "视图"},
+        {editCommand::slip, "Slip 自由编辑", "编辑", juce::KeyPress::F2Key},
+        {editCommand::grid, "Grid 绝对网格", "编辑", juce::KeyPress::F4Key},
+        {editCommand::selector, "Selector 时间选择", "编辑", juce::KeyPress::F7Key},
+        {editCommand::grabber, "Grabber 片段移动", "编辑", juce::KeyPress::F8Key},
+        {editCommand::trim, "Trim 片段修剪", "编辑", juce::KeyPress::F6Key},
+        {editCommand::nudgeBack, "Nudge 左移", "编辑", ','},
+        {editCommand::nudgeForward, "Nudge 右移", "编辑", '.'},
+        {editCommand::previousBoundary, "上一个片段边界", "编辑", juce::KeyPress::tabKey,
+         juce::ModifierKeys::altModifier},
+        {editCommand::nextBoundary, "下一个片段边界", "编辑", juce::KeyPress::tabKey},
+        {editCommand::split, "在光标拆分片段", "编辑", 'e', cmd},
         {21, "只读分析", "Agent"},
         {22, "先预览再提交", "Agent"},
         {23, "自动低风险 · 当前轨道", "Agent"},
@@ -132,7 +143,38 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             info.setInfo(text(e.title), text(e.title), text(e.category), 0);
             if (e.key)
                 info.addDefaultKeypress(e.key, e.modifiers);
+            if (id == editCommand::nudgeBack || id == editCommand::nudgeForward)
+                info.addDefaultKeypress(
+                    id == editCommand::nudgeBack ? juce::KeyPress::numberPadSubtract : juce::KeyPress::numberPadAdd, 0);
             bool active = true;
+            if (id >= editCommand::slip && id <= editCommand::split)
+            {
+                active = !mix && !pianoMode;
+                info.setTicked(id == editCommand::slip       ? editing.mode == "slip"
+                               : id == editCommand::grid     ? editing.mode == "grid"
+                               : id == editCommand::selector ? editing.tool == "selector"
+                               : id == editCommand::grabber  ? editing.tool == "grabber"
+                               : id == editCommand::trim     ? editing.tool == "trim"
+                                                             : false);
+                if (id == editCommand::nudgeBack || id == editCommand::nudgeForward || id == editCommand::split)
+                {
+                    const auto clips = selectedEditClips();
+                    active = active && !facts.value("playing", false) &&
+                             facts.value("parameter_capture", Json(nullptr)).is_null() &&
+                             (!clips.empty() || (id != editCommand::split && !selection.range.is_null()));
+                    bool splitTarget = false;
+                    for (const auto& c : clips)
+                    {
+                        active = active && c["kind"] == "audio" && c.value("editable_audio", false) &&
+                                 !c.value("locked", false);
+                        const auto point = facts.value("position_samples", int64_t(0));
+                        splitTarget |= point > c["start_samples"].get<int64_t>() &&
+                                       point < c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>();
+                    }
+                    if (id == editCommand::split)
+                        active = active && splitTarget;
+                }
+            }
             if (id == 6)
                 active = undoButton.isEnabled();
             if (id == 7)
@@ -160,6 +202,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= editCommand::slip && id <= editCommand::split)
+    {
+        executeEditCommand(id);
+        return true;
+    }
     if (id == 100 || id == 8 || id == 9 || id == 10)
     {
         setView({{"workspace", id == 10 ? "midi" : id == 9 ? "mix" : id == 8 ? "edit" : mix ? "edit" : "mix"}});

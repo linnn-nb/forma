@@ -97,9 +97,12 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     setWantsKeyboardFocus(true);
     clipPanel.onClose = [this]
     {
+        commands.updateUiState({{"object_selection", Json::array()}}, commands.sessionToken());
         selectedClip.clear();
         clipFXInspector = false;
         refresh();
+        if (isShowing())
+            grabKeyboardFocus();
     };
     clipPanel.onEffects = [this]
     {
@@ -574,6 +577,13 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     addAndMakeVisible(tracksList);
     addAndMakeVisible(clipsList);
     initialiseCommandManager();
+    addAndMakeVisible(editingControls);
+    editingControls.connect(commandManager);
+    editingControls.onSettings = [this](Json patch) { setView(std::move(patch)); };
+    editArea.onSnap = [this](int64_t sample, double division) { return commands.snapToGrid(sample, division); };
+    editArea.onClipSelection = [this](std::string id, bool additive) { selectAudioClip(id, additive); };
+    editArea.onRange = [this](Json range, Json tracks, uint64_t revision)
+    { commitTimeSelection(std::move(range), std::move(tracks), revision); };
     for (auto* c : std::initializer_list<juce::Component*>{&toolbar, &transport, &counters})
         addAndMakeVisible(c);
     for (auto* c :

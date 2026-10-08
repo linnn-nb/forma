@@ -1,5 +1,20 @@
 # 验证状态
 
+## U-EDIT-01（2026-10-08；U＋P0 仍未完成）
+
+结论：Slip/Grid、Selector/Grabber/Trim、跨轨范围和 Shift Clip 多选、音频组 Nudge、Tab 边界与光标拆分已接通，Release 构建并保持固定签名。相关 6/6 测试通过、0 失败（23.58 秒）；片段关闭与焦点修复后 2/2 复测通过、0 失败（13.68 秒）；最后的无 UI 刷新/同范围选区及 Nudge 版本冲突修正，相关 1/1 复测通过、0 失败（5.49 秒）。最后新专项为 46 个断言，重复复测不加算为独立测试。新增专项包含真实 Edit、实际 JUCE peer、前后 WAV 渲染、保存重开与冲突拒绝；不代表完整工具/模式或实体录音资格。
+
+| 需求 | 生产实现 | 证据与边界 |
+|---|---|---|
+| P0-EDIT-01 工具与 Grid | `ui/EditingModel.h`、`ui/EditingControls.h`、`ui/EditWindow.h`、`MusicCommands.cpp` | `forma_native_editor_interactions`；120→60 BPM 下 Grid 与 musical Nudge；拖动/点击修剪源映射、一笔 Undo；Command 暂停吸附。相对 Grid / Shuffle / Spot / Smart Tool 未接通 |
+| P0-SELECT-01 选区 | `ui/EditingModel.h`、`UiState.cpp`、`ui/WorkspaceEditing.cpp` | 稳定 Clip/Track 引用、多选、跨轨范围、旧 UI schema 迁移、范围 Undo/Redo、未刷新 UI 的同范围手势与 Nudge 人工改动冲突。音符/自动化点与 MIDI 窗口联动未接通 |
+| P0-NUDGE-01 微移 | `ui/WorkspaceEditing.cpp`、既有 `clip.move` | 1 sample / 10 ms / musical group Nudge；同偏移与单事务；独立解码两份 Tracktion 渲染，移位差异 <1e-5 且非静音；锁定成员整笔停用。自动化跟随和 MIDI 整片移动未接通 |
+| P0-NAV-01 边界 / 拆分 | `ui/WorkspaceCommands.cpp`、`ui/WorkspaceEditing.cpp` | 默认/可改键位，真实边界和稳定源映射，Cmd+E 拆分 Undo。不是瞬态导航或范围两端拆分 |
+| UI-MIGRATE-02 恢复 | `UiState.cpp`、`ui/WorkspaceRefresh.cpp` | UI schema 2 严格校验；旧八字段 UI 迁移；模式/值/Clip 引用重开恢复，新事务 Undo；关闭面板与 Clip 选择的真实 peer 焦点回归。旧 Undo 栈跨重开仍未实现 |
+
+桌面只用自有 PCM 演示工程，实际 Grid/Selector 模式可见，Nudge 工具栏提交让位置 0→480 / 长度保持，r8→r9；Undo 恢复位置 0、r10，回执和原生字段一致。最终截图更新 `evidence/U/edit.png` 与 README 副本。鼠标拖拽控制工具在 Raise 后仍报 `noWindowsAvailable`，所以桌面拖拽尚未执行；普通字符键没有取得状态变化回执，也不计为桌面快捷键通过。不推测锁屏原因，不用额外 CLI 操作冒充验收。旧用户 NativeDAW 窗口与网关保留，新检查实例 `--no-mcp`；没有上传用户音频或扩充 M2/M3。
+
+
 ## U-FOUNDATION-01（2026-10-08；尚非 U＋P0 验收）
 
 结论：固定本地身份签名的 Forma.app、原生 UI 组件与命令表、缩放/滚动/侧栏/键位的 Edit UI 子树、普通导入立即生效和 Mix 真实插入槽已构建。只跑相关测试：8/8 通过、0 失败（32.24 秒）；最后焦点修复重建后相关 3/3 通过、0 失败（10.79 秒）。新 `forma_native_ui_navigation` 包含39项实际 Edit/原生组件断言；这些数量不是独立功能完成数或硬件资格。

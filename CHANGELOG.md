@@ -1,5 +1,11 @@
 # 更新记录
 
+## 2026-10-08：真实编辑工具与 Nudge
+
+- 原生 Slip/Grid、Selector/Grabber/Trim；按 Tempo Map 精确吸附，Command 临时跳过 Grid；不展示尚未接通的 Shuffle/Spot/Smart Tool。
+- 跨轨道时间范围、Shift Clip 多选、音频组 Nudge、Tab 边界和 Cmd+E 光标拆分；一笔 L1 事务，源媒体保留；模式/值/选区引用通过 UI schema 2 保存与旧版本迁移。
+- 新专项用真实前后 WAV 渲染检验统一位移；6 项受影响测试通过，最后两轮相关复测 2/2、1/1 通过。桌面 Nudge 按钮/Undo 真实完成，鼠标控制工具 `noWindowsAvailable`，桌面拖拽验收保留为待执行；跨重开 Undo 仍未实现。
+
 ## 2026-10-08：原生界面基础与固定签名
 
 - 原生 Workspace 拆分到 `src/v2/ui`，clang-format19.1.7/120列；应用名 Forma / org.forma.daw，固定本机代码签名身份。

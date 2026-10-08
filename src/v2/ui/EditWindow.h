@@ -3,6 +3,7 @@
 #include "TrackHeader.h"
 #include "Waveforms.h"
 #include "Rulers.h"
+#include "EditingModel.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -28,6 +29,8 @@ public:
     void update(const Json& value, const std::string& selection, const Json& grid,
                 const std::string& clipSelection = {})
     {
+        if (!drag.is_null() && drag.value("session", std::string{}) != value.value("session_token", std::string{}))
+            drag = nullptr;
         facts = value;
         facts["tracks"] = Json::array();
         for (const auto& t : value["tracks"])
@@ -70,11 +73,16 @@ public:
                     b->setComponentID("clip.select:" + text(id));
                     b->onClick = [this, id, owner = t["id"].get<std::string>()]
                     {
-                        select(owner);
-                        if (selectClip)
-                            selectClip(id);
+                        if (onClipSelection)
+                            onClipSelection(id, juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown());
+                        else
+                        {
+                            select(owner);
+                            if (selectClip)
+                                selectClip(id);
+                        }
                     };
-                    b->setTooltip(text("选择片段 · 波形中拖动移动，左右边缘拖动修剪"));
+                    b->setTooltip(text("选择片段 · 使用移动工具拖动，修剪工具调整边界"));
                     addAndMakeVisible(*b);
                     headers[id] = std::move(b);
                 }
@@ -97,7 +105,15 @@ public:
         resized();
         repaint();
     }
+    void setModels(const EditingModel& tools, const SelectionModel& selectedObjects)
+    {
+        editing = tools;
+        selection = selectedObjects;
+    }
     std::function<void(Json)> onViewChange;
+    std::function<int64_t(int64_t, double)> onSnap;
+    std::function<void(std::string, bool)> onClipSelection;
+    std::function<void(Json, Json, uint64_t)> onRange;
     TimelineCoordinates coordinates() const
     {
         return {view.value("start_samples", int64_t(0)), view.value("span_samples", int64_t(480000)), 250.,
@@ -144,16 +160,22 @@ public:
             g.setColour(juce::Colour(bar ? 0xff536575 : 0xff303b49));
             g.drawVerticalLine(x, Rulers::height, float(getHeight()));
         }
-        if (auto range = facts.value("time_selection", Json(nullptr)); !range.is_null())
+        auto drawSelection = [&](const Json& range, const Json& owners)
         {
-            const auto left = int(std::round(axis.pixelAt(range["start_samples"]))),
-                       right = int(std::round(axis.pixelAt(range["end_samples"])));
-            g.setColour(accent().withAlpha(.14f));
-            g.fillRect(left, 0, std::max(1, right - left), getHeight());
+            if (range.is_null())
+                return;
+            const auto left = int(std::clamp(axis.pixelAt(range["start_samples"]), -1000000., 1000000.)),
+                       right = int(std::clamp(axis.pixelAt(range["end_samples"]), -1000000., 1000000.));
+            for (size_t row = 0; row < trackIDs.size(); ++row)
+                if (owners.empty() || std::find(owners.begin(), owners.end(), trackIDs[row]) != owners.end())
+                {
+                    g.setColour(accent().withAlpha(.16f));
+                    g.fillRect(left, rowY(int(row)), std::max(1, right - left), view.value("row_height", 144));
+                }
             g.setColour(accent());
-            g.drawVerticalLine(left, 0, float(getHeight()));
-            g.drawVerticalLine(right, 0, float(getHeight()));
-        }
+            g.drawVerticalLine(left, Rulers::height, float(getHeight()));
+            g.drawVerticalLine(right, Rulers::height, float(getHeight()));
+        };
         for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
         {
             int y = rowY(int(i));
@@ -193,7 +215,7 @@ public:
                     drawFade(g, rect, in, c.value("fade_in_curve", std::string("linear")), true);
                     drawFade(g, rect, out, c.value("fade_out_curve", std::string("linear")), false);
                 }
-                if (c["id"] == selectedClip)
+                if (selection.contains(c["id"]) || c["id"] == selectedClip)
                 {
                     g.setColour(accent());
                     g.drawRoundedRectangle(rect.toFloat(), 3, 2);
@@ -202,13 +224,21 @@ public:
                 }
             }
         }
+        drawSelection(selection.range, selection.tracks);
         if (!drag.is_null() && dragged)
         {
-            auto preview = drag["clip"];
-            preview["start_samples"] = dragStart;
-            preview["length_samples"] = dragEnd - dragStart;
-            g.setColour(accent().withAlpha(.25f));
-            g.fillRect(clipRect(preview, drag["row"]));
+            if (drag["mode"] == "selection")
+                drawSelection(
+                    {{"start_samples", std::min(dragStart, dragEnd)}, {"end_samples", std::max(dragStart, dragEnd)}},
+                    rangeTracks());
+            else
+            {
+                auto preview = drag["clip"];
+                preview["start_samples"] = dragStart;
+                preview["length_samples"] = dragEnd - dragStart;
+                g.setColour(accent().withAlpha(.25f));
+                g.fillRect(clipRect(preview, drag["row"]));
+            }
         }
         int x = int(std::round(axis.pixelAt(facts.value("position_samples", int64_t(0)))));
         g.setColour(juce::Colour(0xffedca72));
@@ -257,65 +287,101 @@ public:
     {
         drag = nullptr;
         dragged = false;
-        if (e.x < 250)
+        if (e.x < 250 || e.x >= getWidth() - 14 || e.y >= getHeight() - 14)
             return;
-        int row = (e.y - Rulers::height) / view.value("row_height", 144) +
-                  std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
-        auto sample = sampleAt(e.x);
-        if (e.y >= Rulers::height && row >= 0 && row < int(trackIDs.size()))
+        const auto axis = coordinates();
+        const int row = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
+        const auto point = snapped(axis.sampleAt(e.x), e.mods);
+        dragX = e.x;
+        dragScale = axis.span / axis.width;
+        dragPoint = axis.sampleAt(e.x);
+        dragRow = row;
+        endRow = row;
+        if (e.y < Rulers::height || editing.tool == "selector")
         {
-            select(trackIDs[row]);
+            if (!facts.value("playing", false))
+            {
+                drag = {{"mode", "selection"},
+                        {"revision", facts["revision"]},
+                        {"session", facts["session_token"]},
+                        {"all_tracks", e.y < Rulers::height}};
+                dragStart = dragEnd = point;
+            }
+            seek(point);
+            return;
+        }
+        if (e.y >= Rulers::height && row < int(trackIDs.size()))
+        {
             for (const auto c : facts["tracks"][row]["clips"])
                 if (clipRect(c, row).contains(e.getPosition()))
                 {
-                    if (selectClip)
-                        selectClip(c["id"]);
+                    if (onClipSelection)
+                        onClipSelection(c["id"], e.mods.isShiftDown());
+                    else
+                    {
+                        select(trackIDs[row]);
+                        if (selectClip)
+                            selectClip(c["id"]);
+                    }
                     if (c["kind"] == "audio" && c.value("editable_audio", false) && !c.value("locked", false) &&
                         !facts.value("playing", false))
                     {
-                        auto r = clipRect(c, row);
+                        const auto gesture = editing.gesture(e.x, clipRect(c, row));
                         drag = {{"clip", c},
                                 {"revision", facts["revision"]},
+                                {"session", facts["session_token"]},
                                 {"row", row},
-                                {"mode", e.x < r.getX() + 8        ? "left"
-                                         : e.x >= r.getRight() - 8 ? "right"
-                                                                   : "move"}};
-                        dragX = e.x;
+                                {"mode", gesture == EditingModel::Gesture::left    ? "left"
+                                         : gesture == EditingModel::Gesture::right ? "right"
+                                                                                   : "move"}};
                         dragStart = c["start_samples"];
                         dragEnd = dragStart + c["length_samples"].get<int64_t>();
-                        dragScale = coordinates().span / coordinates().width;
+                        if (gesture != EditingModel::Gesture::move)
+                            mouseDrag(e);
                     }
-                    break;
+                    seek(point);
+                    return;
                 }
+            select(trackIDs[row]);
         }
-        seek(sample);
+        seek(point);
     }
     void mouseDrag(const juce::MouseEvent& e) override
     {
         if (drag.is_null())
             return;
-        int64_t delta = std::llround((e.x - dragX) * dragScale);
+        const auto maximum = std::llround(te::Edit::maximumLength * 48000);
+        const auto raw = std::clamp(dragPoint + std::llround((e.x - dragX) * dragScale), int64_t(0), maximum);
+        std::string mode = drag["mode"];
+        if (mode == "selection")
+        {
+            dragEnd = snapped(raw, e.mods);
+            endRow = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
+            dragged = std::abs(e.x - dragX) >= 3 || endRow != dragRow;
+            repaint();
+            return;
+        }
         const auto& c = drag["clip"];
         int64_t start = c["start_samples"], length = c["length_samples"], offset = c["source_offset_samples"],
                 source =
                     std::llround(c["source_frames"].get<int64_t>() / c["source_sample_rate"].get<double>() * 48000);
-        std::string mode = drag["mode"];
         if (mode == "move")
         {
-            dragStart = std::max(int64_t(0), start + delta);
+            dragStart = std::clamp(snapped(std::max(int64_t(0), start + raw - dragPoint), e.mods), int64_t(0),
+                                   maximum - length);
             dragEnd = dragStart + length;
         }
         else if (mode == "left")
         {
-            dragStart = std::clamp(start + delta, std::max(int64_t(0), start - offset), start + length - 1);
+            dragStart = std::clamp(snapped(raw, e.mods), std::max(int64_t(0), start - offset), start + length - 1);
             dragEnd = start + length;
         }
         else
         {
             dragStart = start;
-            dragEnd = std::clamp(start + length + delta, start + 1, start + source - offset);
+            dragEnd = std::clamp(snapped(raw, e.mods), start + 1, start + source - offset);
         }
-        dragged = std::abs(e.x - dragX) >= 3;
+        dragged = mode != "move" || std::abs(e.x - dragX) >= 3;
         repaint();
     }
     void mouseUp(const juce::MouseEvent&) override
@@ -323,17 +389,31 @@ public:
         if (drag.is_null())
             return;
         auto captured = drag;
+        const auto owners = rangeTracks();
         drag = nullptr;
         repaint();
-        if (!dragged || !clipWrite)
+        if (captured["session"] != facts["session_token"])
             return;
         std::string mode = captured["mode"];
+        if (mode == "selection")
+        {
+            if (onRange)
+                onRange(dragged && dragStart != dragEnd ? Json{{"start_samples", std::min(dragStart, dragEnd)},
+                                                               {"end_samples", std::max(dragStart, dragEnd)}}
+                                                        : Json(nullptr),
+                        owners, captured["revision"]);
+            return;
+        }
+        if (!dragged || !clipWrite)
+            return;
+        const auto& original = captured["clip"];
+        if (dragStart == original["start_samples"] &&
+            dragEnd == original["start_samples"].get<int64_t>() + original["length_samples"].get<int64_t>())
+            return;
         if (mode == "move")
-            clipWrite("clip.move", {{"clip", captured["clip"]["id"]}, {"position_samples", dragStart}},
-                      captured["revision"]);
+            clipWrite("clip.move", {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);
         else
-            clipWrite("clip.trim",
-                      {{"clip", captured["clip"]["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
+            clipWrite("clip.trim", {{"clip", original["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
                       captured["revision"]);
     }
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
@@ -381,6 +461,27 @@ public:
     }
 
 private:
+    int rowAt(int y) const
+    {
+        return (y - Rulers::height) / view.value("row_height", 144) +
+               std::min(view.value("first_row", 0), std::max(0, visibleRows() - 1));
+    }
+    int64_t snapped(int64_t position, juce::ModifierKeys modifiers) const
+    {
+        return editing.mode == "grid" && !modifiers.isCommandDown() && onSnap ? onSnap(position, editing.gridBeats)
+                                                                              : position;
+    }
+    Json rangeTracks() const
+    {
+        Json owners = Json::array();
+        if (drag.is_null())
+            return owners;
+        for (int row = 0; row < visibleRows(); ++row)
+            if (drag.value("all_tracks", false) ||
+                (row >= std::min(dragRow, endRow) && row <= std::max(dragRow, endRow)))
+                owners.push_back(trackIDs[size_t(row)]);
+        return owners;
+    }
     void scrollBarMoved(juce::ScrollBar* bar, double position) override
     {
         if (!onViewChange)
@@ -424,11 +525,13 @@ private:
     Waveforms& waves;
     std::function<void(std::string)> openMidi, selectClip;
     std::function<void(const std::string&, Json, uint64_t)> clipWrite;
+    EditingModel editing;
+    SelectionModel selection;
     Json view = Json::object();
     Json facts = Json::object(), grid = Json::array(), drag = nullptr;
     std::string selected, selectedClip;
-    int dragX = 0;
-    int64_t dragStart = 0, dragEnd = 0;
+    int dragX = 0, dragRow = 0, endRow = 0;
+    int64_t dragStart = 0, dragEnd = 0, dragPoint = 0;
     double dragScale = 0;
     bool dragged = false;
     std::vector<std::string> trackIDs;
