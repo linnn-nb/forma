@@ -1,5 +1,12 @@
 # 更新记录
 
+## 2026-10-09：Selector／Smart Shift选区与边界扩展
+
+- Shift点击／拖动改变近端并固定对端，跨锚点／折叠与滚动长选择；Smart选择区／空白轨、音频MIDI和Selector自动化泳道共用规则。
+- 停止时草稿不再提前seek，范围＋原生插入点一笔human事务Undo/Redo；Escape／视图／UI选择变化取消，版本／重开冲突拒绝。无变化明确显示未新增事务。
+- 新原生命令255/256，可改ShiftTab／OptionShiftTab；真实所选clip边界、保存重开与两键改绑后实际执行验证通过。
+- Release／固定验签、相关11/11，提示修复复测2/2，83新检查；Mac锁定未实体操作／试听，完整U＋P0未完成，无DMG。
+
 ## 2026-10-09：Scrub 插入跟随与 Shift 选区
 
 - 编辑菜单全局插入跟随、可改ControlOptionShiftF9；实际试听释放定位，Shift再次试听创建选区；默认关闭、Escape取消不编辑。

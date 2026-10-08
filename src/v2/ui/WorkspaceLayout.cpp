@@ -48,6 +48,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(p, 218);
         addMenuCommand(p, 253);
         addMenuCommand(p, 254);
+        addMenuCommand(p, editCommand::extendPrevious);
+        addMenuCommand(p, editCommand::extendNext);
         p.addSeparator();
         for (int id = 240; id <= 244; ++id)
             addMenuCommand(p, id);
@@ -335,6 +337,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
     if (key == juce::KeyPress::escapeKey && editArea.cancelScrubGesture())
         return true;
     if (key == juce::KeyPress::escapeKey && editArea.cancelZoomGesture())
+        return true;
+    if (key == juce::KeyPress::escapeKey && editArea.cancelTimeSelection())
         return true;
     return commandManager.getKeyMappings()->keyPressed(key, this);
 }

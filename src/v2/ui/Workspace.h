@@ -174,7 +174,7 @@ private:
     void finishClipboardEdit(const Json& receipt);
     Json pendingClipboard = nullptr;
     std::string pendingClipboardPlan;
-    void commitTimeSelection(Json range, Json tracks, uint64_t revision);
+    void commitTimeSelection(Json range, Json tracks, uint64_t revision, std::string session, int64_t insertion);
     Json selectedEditClips() const;
     Json selectedAudioClip() const;
     Writer writer();

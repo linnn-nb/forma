@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## Selector／Smart Shift 选区与边界快捷键（2026-10-09）
+
+结论：端点Shift点击／拖动、跨锚点／长距离滚动、Smart空白轨、音频MIDI和Selector自动化泳道共用真实范围／插入点事务；Undo/Redo、保存重开与两键重绑定后执行通过。Release／固定验签，受影响11/11（81.52秒）；无变化提示修复后2/2（12.72秒），最终83新检查。真实选区WAV最大PCM误差0（预设2e-5），原媒体哈希保持；回执 `selection-extension-tests.json`，范围／证据／失败修复与哈希见VERIFICATION.md首节，历史JSON保持。
+
+可演示：`build-v2-tracktion/FormaSelectorExtensionPreview.app`打开`scrub-multi-demo/Two-track Scrubber.tracktionedit`，F7选区＋Shift改端点、ShiftTab／OptionShiftTab扩展、Command7上半／空白轨选择，CommandZ／ShiftCommandZ，另存重开。CUA明确Mac锁定，无真实截图／实体操作／试听；自有PID70394已核验退出。完整U＋P0未完成，不进P1，不打DMG。以下保留历史增量。
+
 ## 插入跟随与 Shift Scrub 选区（2026-10-09）
 
 结论：实际试听释放定位、Shift再次释放建立选区，一笔human事务Undo/Redo，原生范围／插入点保存重开、全局偏好与自定义键保持；Release／固定验签、相关10/10（79.55秒）、80新检查＋527＋126既有检查通过，新增真实PCM最大误差0.0（容差2e-5）。回执 `scrub-selection-tests.json`，失败修复／最终测试日志／产物哈希见VERIFICATION.md首节；其他历史JSON保持，不用本轮时序覆盖旧证据。

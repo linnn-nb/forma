@@ -26,13 +26,14 @@ Json Workspace::selectedEditClips() const
         }
     return result;
 }
-void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision)
+void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision, std::string session, int64_t insertion)
 {
     midiCommandContext = false;
     invoke(
         [&]
         {
-            if (revision != commands.querySummary()["revision"])
+            const auto current = commands.querySummary();
+            if (revision != current["revision"] || session != current["session_token"].get<std::string>())
                 throw std::runtime_error("project changed during time selection");
             for (const auto& id : tracks)
                 if (std::none_of(facts["tracks"].begin(), facts["tracks"].end(),
@@ -43,21 +44,27 @@ void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision)
                 old.is_null() != range.is_null() ||
                 (!old.is_null() && !range.is_null() &&
                  (old["start_samples"] != range["start_samples"] || old["end_samples"] != range["end_samples"]));
+            Json operations = Json::array();
             if (changed)
+                operations.push_back(operation(range.is_null() ? "session.range.clear" : "session.range.set",
+                                               range.is_null() ? Json::object() : range));
+            if (insertion != current["position_samples"])
+                operations.push_back(operation("session.insertion.set", {{"position_samples", insertion}}));
+            const bool committed = !operations.empty();
+            if (committed)
             {
-                auto plan = commands.makePlan(
-                    "human", Json::array({operation(range.is_null() ? "session.range.clear" : "session.range.set",
-                                                    range.is_null() ? Json::object() : range)}));
+                auto plan = commands.makePlan("human", std::move(operations));
                 plan["base_revision"] = revision;
                 commands.commit(plan);
             }
-            commands.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", tracks}},
-                                   commands.sessionToken());
+            commands.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", tracks}}, session);
             selectedClip.clear();
             clipFXInspector = false;
             if (!tracks.empty())
                 selected = tracks.front();
-            message(range.is_null() ? text("编辑光标已定位") : text("时间选区已提交 · 跨轨道 · 可撤销"));
+            message(committed
+                        ? (range.is_null() ? text("编辑光标已定位 · 可撤销") : text("时间选区已提交 · 跨轨道 · 可撤销"))
+                        : text("编辑光标 / 时间选区保持 · 未新增事务"));
         });
     if (isShowing())
         grabKeyboardFocus();
@@ -104,7 +111,8 @@ void Workspace::executeEditCommand(int id)
             if (workspaceSession != commands.sessionToken() || facts["revision"] != commands.querySummary()["revision"])
                 throw std::runtime_error("project changed before editing command; refresh and retry");
             const auto position = facts["position_samples"].get<int64_t>();
-            if (id == editCommand::previousBoundary || id == editCommand::nextBoundary)
+            const bool extending = id == editCommand::extendPrevious || id == editCommand::extendNext;
+            if (id == editCommand::previousBoundary || id == editCommand::nextBoundary || extending)
             {
                 std::set<int64_t> boundaries;
                 for (const auto& t : facts["tracks"])
@@ -116,18 +124,40 @@ void Workspace::executeEditCommand(int id)
                             boundaries.insert(c["start_samples"].get<int64_t>());
                             boundaries.insert(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>());
                         }
-                if (id == editCommand::nextBoundary)
+                const bool forward = id == editCommand::nextBoundary || id == editCommand::extendNext;
+                const auto edge = extending && !selection.range.is_null()
+                                      ? selection.range[forward ? "end_samples" : "start_samples"].get<int64_t>()
+                                      : position;
+                std::optional<int64_t> target;
+                if (forward)
                 {
-                    const auto next = boundaries.upper_bound(position);
+                    const auto next = boundaries.upper_bound(edge);
                     if (next != boundaries.end())
-                        commands.seek(*next);
+                        target = *next;
                 }
                 else
                 {
-                    const auto next = boundaries.lower_bound(position);
+                    const auto next = boundaries.lower_bound(edge);
                     if (next != boundaries.begin())
-                        commands.seek(*std::prev(next));
+                        target = *std::prev(next);
                 }
+                if (!target)
+                {
+                    message(text("所选轨道没有更多片段边界"));
+                    return;
+                }
+                if (extending)
+                {
+                    const auto anchor = selection.range.is_null()
+                                            ? position
+                                            : selection.range[forward ? "start_samples" : "end_samples"].get<int64_t>();
+                    auto owners = selection.tracks.empty() ? Json::array({selected}) : selection.tracks;
+                    commitTimeSelection(
+                        {{"start_samples", std::min(anchor, *target)}, {"end_samples", std::max(anchor, *target)}},
+                        owners, facts["revision"], workspaceSession, std::min(anchor, *target));
+                    return;
+                }
+                commands.seek(*target);
                 message(text("按当前所选轨道定位片段边界 · 不进行瞬态检测"));
                 return;
             }

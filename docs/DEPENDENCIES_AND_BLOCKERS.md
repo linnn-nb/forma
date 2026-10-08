@@ -1,6 +1,6 @@
 # 依赖与阻塞 v2
 
-当前增量（2026-10-09，Scrub选区）：相关10/10、80新检查及原527＋126通过，固定验签，无新依赖／SDK修改。Mac锁定，实体操作／试听未执行；一般Selector Shift端点、独立Timeline/Edit链接、实体释放时序和第三方双轨PDC待做／待测。现有缓存、声道布局与路由限制保持；完整U＋P0未完成，详见VERIFICATION.md首节。以下保留历史增量。
+当前增量（2026-10-09，Selector端点）：Release／固定验签、相关11/11及提示修复复测2/2、83新检查通过，无新依赖／SDK修改。Mac锁定未实体鼠标／截图／试听；原生范围与插入的自动化保存重开不替代桌面退出重开。独立Timeline/Edit链接、二维Zoomer／MIDI垂直缩放、其他U＋P0及实体多声道／第三方PDC／耐久／Windows仍待做／待验；详见VERIFICATION.md首节。以下保留历史增量。
 
 当前增量（2026-10-09，Scrubber 临时入口）：Selector/Smart选择区Control左拖复用L1试听，Command细拖采用明确十分之一速度策略，松手/Escape保留原工具/选区/版本；不新增工程Undo。Release/固定验签、相关7/7（67.91秒）、527专项/真实PCM通过；Mac锁定未实体试听。双轨/多声道/选区扩展等仍未完成，无新依赖或SDK补丁；见VERIFICATION.md首节。
 

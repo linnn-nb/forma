@@ -9,6 +9,7 @@
 #include "AutomationLane.h"
 #include "ZoomGesture.h"
 #include "ScrubGesture.h"
+#include "TimeSelectionGesture.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -283,6 +284,10 @@ public:
     }
     void setModels(const EditingModel& tools, const SelectionModel& selectedObjects)
     {
+        if (!drag.is_null() && drag.value("mode", std::string{}) == "selection" &&
+            (selectedObjects.tracks != selection.tracks || selectedObjects.objects != selection.objects ||
+             editing.gridBeats != tools.gridBeats))
+            cancelTimeSelection();
         if (editing.tool != tools.tool || editing.mode != tools.mode)
         {
             drag = nullptr;
@@ -337,7 +342,7 @@ public:
     std::function<void(std::string, bool)> onClipSelection;
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
-    std::function<void(Json, Json, uint64_t)> onRange;
+    std::function<void(Json, Json, uint64_t, std::string, int64_t)> onRange;
     std::function<void(std::string)> onComments;
     std::function<void(std::string, int)> onInsert;
     std::function<void(std::string, bool)> onRouting;
@@ -607,9 +612,29 @@ public:
         repaint();
         return true;
     }
+    bool cancelTimeSelection()
+    {
+        if (drag.is_null() || drag.value("mode", std::string{}) != "selection")
+            return false;
+        drag = nullptr;
+        dragged = false;
+        for (auto& lane : automationLanes)
+            lane->cancel();
+        updateAutomation();
+        repaint();
+        return true;
+    }
     void paintOverChildren(juce::Graphics& g) override
     {
         zoomGesture.paint(g, coordinates(), rulerHeight(), getHeight() - 16);
+    }
+    void visibilityChanged() override
+    {
+        if (!isShowing())
+        {
+            cancelTimeSelection();
+            cancelScrubGesture();
+        }
     }
     void resized() override
     {
@@ -618,6 +643,10 @@ public:
             zoomGesture.cancel();
         if (scrubGesture && (scrubLeft != timelineLeft() || scrubWidth != getWidth()))
             cancelScrubGesture();
+        if (!drag.is_null() && drag.value("mode", std::string{}) == "selection" &&
+            (drag.value("canvas_left", timelineLeft()) != timelineLeft() ||
+             drag.value("canvas_width", getWidth()) != getWidth()))
+            cancelTimeSelection();
         rowOffsets.clear();
         rowOffsets.push_back(0);
         for (int i = 0; i < visibleRows(); ++i)
@@ -858,14 +887,9 @@ public:
         if (e.y < rulerHeight() || editing.tool == "selector")
         {
             if (!facts.value("playing", false))
-            {
-                drag = {{"mode", "selection"},
-                        {"revision", facts["revision"]},
-                        {"session", facts["session_token"]},
-                        {"all_tracks", e.y < rulerHeight()}};
-                dragStart = dragEnd = point;
-            }
-            seek(point);
+                beginTimeSelection(e, point);
+            else
+                seek(point);
             return;
         }
         if (e.y >= rulerHeight() && row < int(trackIDs.size()))
@@ -884,14 +908,9 @@ public:
                     if (toolGesture == EditingModel::Gesture::select && editing.tool == "smart")
                     {
                         if (!facts.value("playing", false))
-                        {
-                            drag = {{"mode", "selection"},
-                                    {"revision", facts["revision"]},
-                                    {"session", facts["session_token"]},
-                                    {"all_tracks", false}};
-                            dragStart = dragEnd = point;
-                        }
-                        seek(point);
+                            beginTimeSelection(e, point);
+                        else
+                            seek(point);
                         return;
                     }
                     if (onClipSelection)
@@ -927,6 +946,14 @@ public:
                     seek(point);
                     return;
                 }
+            if (editing.tool == "smart")
+            {
+                if (!facts.value("playing", false))
+                    beginTimeSelection(e, point);
+                else
+                    seek(point);
+                return;
+            }
             select(trackIDs[row]);
         }
         seek(point);
@@ -956,7 +983,7 @@ public:
         {
             dragEnd = snapped(raw, e.mods);
             endRow = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
-            dragged = std::abs(e.x - dragX) >= 3 || endRow != dragRow;
+            dragged = drag.value("extend", false) || std::abs(e.x - dragX) >= 3 || endRow != dragRow;
             repaint();
             return;
         }
@@ -1042,7 +1069,8 @@ public:
                 onRange(dragged && dragStart != dragEnd ? Json{{"start_samples", std::min(dragStart, dragEnd)},
                                                                {"end_samples", std::max(dragStart, dragEnd)}}
                                                         : Json(nullptr),
-                        owners, captured["revision"]);
+                        owners, captured["revision"], captured["session"],
+                        dragged ? std::min(dragStart, dragEnd) : dragStart);
             return;
         }
         if (mode == "loop_start" || mode == "loop_end")
@@ -1123,6 +1151,23 @@ public:
     }
 
 private:
+    void beginTimeSelection(const juce::MouseEvent& e, int64_t point)
+    {
+        const bool extend = e.mods.isShiftDown();
+        drag = {{"mode", "selection"},
+                {"revision", facts["revision"]},
+                {"session", facts["session_token"]},
+                {"all_tracks", e.y < rulerHeight()},
+                {"extend", extend},
+                {"owners", extend ? selection.tracks : Json::array()},
+                {"canvas_left", timelineLeft()},
+                {"canvas_width", getWidth()}};
+        dragStart = TimeSelectionGesture::anchor(facts.value("time_selection", Json(nullptr)),
+                                                 facts.value("position_samples", int64_t(0)), point, extend);
+        dragEnd = point;
+        dragged = extend && dragStart != dragEnd;
+        repaint();
+    }
     std::string viewParameter(const std::string& id) const
     {
         return view.value("track_views", Json::object()).value(id, std::string{});
@@ -1232,13 +1277,14 @@ private:
     }
     Json rangeTracks() const
     {
-        Json owners = Json::array();
+        Json owners = drag.is_null() ? Json::array() : drag.value("owners", Json::array());
         if (drag.is_null())
             return owners;
         for (int row = 0; row < visibleRows(); ++row)
             if (drag.value("all_tracks", false) ||
                 (row >= std::min(dragRow, endRow) && row <= std::max(dragRow, endRow)))
-                owners.push_back(trackIDs[size_t(row)]);
+                if (std::find(owners.begin(), owners.end(), trackIDs[size_t(row)]) == owners.end())
+                    owners.push_back(trackIDs[size_t(row)]);
         return owners;
     }
     void scrollBarMoved(juce::ScrollBar* bar, double position) override

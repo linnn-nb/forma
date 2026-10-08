@@ -685,8 +685,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         menu.addCommandItem(&commandManager, editCommand::remove);
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&editArea).withParentComponent(this));
     };
-    editArea.onRange = [this](Json range, Json tracks, uint64_t revision)
-    { commitTimeSelection(std::move(range), std::move(tracks), revision); };
+    editArea.onRange = [this](Json range, Json tracks, uint64_t revision, std::string session, int64_t insertion)
+    { commitTimeSelection(std::move(range), std::move(tracks), revision, std::move(session), insertion); };
     editArea.onMarkerClick = [this](const std::string& id) { showMemoryLocations(id); };
     for (auto* c : std::initializer_list<juce::Component*>{&toolbar, &transport, &counters})
         addAndMakeVisible(c);

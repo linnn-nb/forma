@@ -1,6 +1,6 @@
 # Forma 架构 v2
 
-当前增量（2026-10-09，Scrub选区）：全局插入跟随偏好由L1保存，不进工程Undo；GUI只传Shift意图，实际PCM推进且版本／视图／设备／Context有效后释放才提交。L1将范围与原生Transport插入点作为同一human Plan／UndoManager事务，CursorMove补足原生setPosition不自动入Undo的行为。取消或失败不编辑，实际回执后才显示提交成功。schema10不变，MCP排除本地插入命令；构建／测试／边界见VERIFICATION.md首节。
+当前增量（2026-10-09，Selector端点）：停止时按下／拖动只建立草稿；Shift改较近端点并固定对端，长选择保留原轨道引用。松手由Workspace将范围和原生插入点作为同一human Plan提交，L1复验session/revision；Escape／坐标／工具／Grid／UI选择改变取消，不留下临时seek。原生命令255/256复用同一事务扩展所选轨道真实片段边界，键位可改。schema10、MCP／分析、SDK及依赖不变；实际资格见VERIFICATION.md首节。
 
 当前增量（2026-10-09，Scrubber 临时入口）：Selector/Smart选择区Control左拖复用L1试听，Command细拖采用明确十分之一速度策略，松手/Escape保留原工具/选区/版本；不新增工程Undo。Release/固定验签、相关7/7（67.91秒）、527专项/真实PCM通过；Mac锁定未实体试听。双轨/多声道/选区扩展等仍未完成，无新依赖或SDK补丁；见VERIFICATION.md首节。
 

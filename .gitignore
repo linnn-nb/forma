@@ -36,3 +36,5 @@ evidence/U/*
 !evidence/U/multi-scrub-tests.json
 
 !evidence/U/scrub-selection-tests.json
+
+!evidence/U/selection-extension-tests.json

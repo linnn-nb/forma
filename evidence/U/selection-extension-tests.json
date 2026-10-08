@@ -1,0 +1,38 @@
+{
+  "checks": 83,
+  "pcm": [
+    {
+      "maximum_pcm_error": 0.0,
+      "preset_tolerance": 2e-05,
+      "render": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 28000,
+        "lufs_i": -24.03610973949703,
+        "media_hash": "ef89c59b8ef813290b1b98f82d3840db3cdb929e0016107171ad5a0e35009dc1",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_selection_extension_tests/forma-selection-7c36553a53b24b0991361e167e338c19/Selected output.wav",
+        "pcm_bits": 24,
+        "peak": 0.08000004291534424,
+        "peak_dbfs": -21.938195600688083,
+        "processing_chain_hash": "a0da15e96f3402ba6456f4140e5e528cf85859a14e0d14d822190893ad8c844b",
+        "range": {
+          "base_revision": 31,
+          "end_samples": 40000,
+          "mode": "selection",
+          "session_token": "3e2901a95fa141ad9da70c029e4a7697",
+          "start_samples": 12000
+        },
+        "render_ms": 483.0475833415985,
+        "revision": 31,
+        "rms": 0.04716551669194463,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.91650067484308
+      }
+    }
+  ],
+  "physical_gui": "not_executed",
+  "state": "passed",
+  "test": "U-P0-SELECTION-01"
+}

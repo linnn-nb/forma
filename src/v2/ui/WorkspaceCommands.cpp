@@ -135,6 +135,9 @@ const std::vector<Entry>& entries()
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {254, "编辑插入点跟随 Scrub / Shuttle", "设置", juce::KeyPress::F9Key,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+        {editCommand::extendPrevious, "选区扩展至上一片段边界", "编辑", juce::KeyPress::tabKey,
+         juce::ModifierKeys::altModifier | shift},
+        {editCommand::extendNext, "选区扩展至下一片段边界", "编辑", juce::KeyPress::tabKey, shift},
         {253, "Scrubber 正反向试听（最多两轨）", "编辑", juce::KeyPress::F9Key, cmd},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
@@ -438,6 +441,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         active = active && splitTarget;
                 }
             }
+            if (id == editCommand::extendPrevious || id == editCommand::extendNext)
+                active =
+                    !mix && !facts.value("playing", false) && facts.value("parameter_capture", Json(nullptr)).is_null();
             if (id == editCommand::remove)
             {
                 const auto clips = selectedEditClips();
@@ -693,7 +699,8 @@ bool Workspace::perform(const InvocationInfo& invocation)
         executeClipboardCommand(id);
         return true;
     }
-    if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
+    if (id == editCommand::extendPrevious || id == editCommand::extendNext || id == editCommand::smart ||
+        id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
         (id >= editCommand::grid && id <= editCommand::split))
     {
         executeEditCommand(id);

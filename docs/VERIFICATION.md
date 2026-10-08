@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-SELECTION-01：Selector／Smart Shift 端点与键盘扩展（2026-10-09）
+
+结论：停止状态下，Selector／Smart选择区域与空白轨可Shift点击或拖动已有时间选区的端点；没有范围时从原生插入点建立长选区。松手一次human Plan共同提交范围与插入点，Undo/Redo及真实保存重开保持；Shift＋Tab／Option＋Shift＋Tab经可改命令255/256扩展所选轨道的下一／上一实际片段边界。Release与固定身份deep/strict验签通过；受影响 **11/11、0失败、81.52秒**。随后仅修正无变化提示并补两条检查，受影响编辑／新选区两项 **2/2、0失败、12.72秒**；最终新专项 **83检查**。完整U＋P0未完成，不进P1；以下保留历史资格。
+
+依据：本地官方 Reference Guide 2026.4 印刷894–895页（PDF996–997），2026-10-09读取Shift端点、滚动后长选择和ShiftTab片段边界行为。Forma明确采用“改较近端点、对端固定”，中点平局改结束端，拖动跨锚点后重排，重合时清范围；不冒称官方公开了距离判定算法。原生共享Transport停在最终范围起点；独立Timeline/Edit选择链接尚未实现，不能视为完整PT选区模型。
+
+实现：`ui/TimeSelectionGesture.h`只计算草稿锚点；`EditWindow.h`在停止时不再mousedown seek，松手传captured session/revision、范围、轨道及插入点。Shift保持原轨道引用并合入此次所触及的可见轨道，音频／MIDI／Selector自动化泳道共用路径；Grid用真实TempoMap、Command本次绕过。`WorkspaceEditing.cpp`先重验L1事实，原生`session.range.*`＋本地human-only `session.insertion.set`进同一UndoManager事务，无变化不新增历史、不显示伪造提交。Escape、坐标／工具／Grid变化、窗口隐藏或轨道／对象选择变化取消草稿；工程版本与重开token冲突拒绝旧松手。播放中仍是原走带seek，不宣称播放中Shift编辑。UI schema10、冻结MCP／分析、依赖及SDK补丁不变；GUI不直接写Edit，实时路径未改。
+
+验证：`tests/v2/SelectionExtensionTests.cpp`／`evidence/U/selection-extension-tests.json`，真实24bit／48k立体声WAV，已有范围缩短／两边扩展／中点／跨锚点／折叠／无变化、长距离滚动、Smart上半／空白轨、三轨音频MIDI、版本冲突与无UI刷新重开冲突、取消／尺寸变化、真实音量泳道点不变、键盘前后边界及耗尽、重绑定两键后新Workspace实际执行、Undo/Redo及原媒体哈希通过。实际导出范围12000–40000为28000帧，独立源偏移PCM最大误差 **0**（预定2e-5未放宽），原10秒离线渲染预算通过。初次夹具缺轨道ref／键位字段错名、重开近起点的预期写错，修正后通过；没有删场景或放宽容差。回归日志 `selector-extension-qualified-tests.log`与`selector-extension-status-qualified-tests.log`，构建`selector-extension-final-build.log`／`selector-extension-status-build.log`在build；其他历史JSON原样保留，重跑副本同目录。
+
+亲手试：打开 `build-v2-tracktion/FormaSelectorExtensionPreview.app`，CommandO打开 `scrub-multi-demo/Two-track Scrubber.tracktionedit`；F7点／拖选区，Shift点靠近任一端或Shift拖动，滚动后Shift点击；ShiftTab／OptionShiftTab按实际片段边界扩展。Command7的Smart上半部／空白轨选择同样支持；CommandZ／ShiftCommandZ，另存新文件重开，两命令可在快捷键设置中改键。示范为原创诊断PCM，非实录。CUA最初库存列表并非可操作证明，实际选预览返回cgWindowNotFound，随后明确Mac锁定；无物理鼠标／键盘／截图／实体试听及应用真实退出重开验收。仅自有PID70394核验路径后SIGTERM并确认退出，最新预览刷新后未启动，用户窗口保留。正式binary SHA256 `d65808d8e05ec10a158246e078754f88aeb0462460616b2180873f9a177ff03a`；预览 `bed6d9d267df2cc006c179026e5acbc6b66725d8c4b47d34a9ca6eba7d0557aa`，bundle org.forma.daw.selector-extension-preview，均固定身份验签，无DMG。
+
+边界：Undo共同恢复工程范围和原生插入，不恢复独立的轨道／对象UI选择，历史不跨重开。尚无独立Timeline/Edit链接、ShiftMarker／Memory Location扩展、选择长度倍增／减半及选区键盘Nudge端点完整行为、自动边缘滚动、Edit组联动。保留真实Scrubber缓存／路由／多声道与第三方PDC限制；实体录音／试听／耐久、Windows／发行未验。下一项Command二维Zoomer框选及后续MIDI垂直缩放、Overview／Zoom Toggle、Tempo／Meter／预后卷标尺仍待补。
+
 ## U-P0-SCRUB-SELECTION-01：插入跟随与 Shift 选区（2026-10-09）
 
 结论：开启“编辑插入点跟随 Scrub / Shuttle”后，真实试听松手定位插入点；再按 Shift 试听并松手，形成两点间的时间选区。一笔手势提交一笔 human Plan，范围与原生插入点共同 Undo/Redo，实际保存重开保持。偏好是全局设置，默认关闭，独立保存；快捷键可自定义。Release／固定身份 deep/strict 验签通过；相关 **10/10、0失败、79.55秒**，新增 **80** 检查，原 Scrubber **527**、双轨 **126** 检查保持。完整 U＋P0 未完成，不进 P1；以下保留历史资格，当前行为以本节为准。
