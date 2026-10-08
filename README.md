@@ -38,7 +38,7 @@ Edit列：在「视图→Edit Window Views」独立打开I/O、Inserts A–E、S
 
 Zoomer：F5循环Normal/Single，点击时间线居中放大、拖范围适配；Single完成后返回原工具。Option点击或⌘⌥E返回上一缩放，OptionF显示编辑选区，ControlCommand在标尺临时缩放；双击缩放工具显示全工程。视口和最多16条历史随工程保存，不占编辑Undo；支持水平缩放和上述音频显示尺度；其余高级缩放仍待实现。
 
-Scrubber：工具栏Scrub／编辑菜单／⌘F9（可改键），在普通音频片段中按住左右拖动正反向试听，Option为Shuttle；松手或Escape停止，空格恢复正常播放。音频经过原FX与Aux/输出，保留工程与Undo；目前单个无淡化/Clip FX/自动化/伸缩的mono/stereo片段，按下点±2秒窗口，边界停止后重新按下。其他路径明确拒绝；它仍是有限增量，尚非完整PT Scrubber，实体试听待验收。
+Scrubber：工具栏Scrub／编辑菜单／⌘F9（可改键），按住左右拖动真实正反向试听，Option为Shuttle；松手或Escape停止，空格恢复正常播放。经过原FX与Aux/输出，同轨切点、空隙、重叠及四曲线淡化/各Clip Gain可试听，支持mono/stereo混合采样率。按下点±2工程秒、最多32源/总8 MiB，边界重新按下；Clip FX/路由自动化/伸缩等明确拒绝。准备目前同步且实测约1–204 ms；完整Scrubber和实体试听仍待验收。
 
 缩放预设：五个按钮或View→Zoom Presets，Control+1…5召回，Control+Shift+1…5/Shift点击保存当前水平缩放，右键存取。预设随工程保存，召回保持光标锚点；不保存完整工作区，也不改变原音频。
 

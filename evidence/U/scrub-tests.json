@@ -1,5 +1,5 @@
 {
-  "checks": 104,
+  "checks": 194,
   "hardware_listening": "not_executed",
   "pcm": [
     {
@@ -89,9 +89,213 @@
     {
       "device_rate": 48000.0,
       "gain": 1.0,
-      "maximum_pcm_error": 1.4901161193847656e-08,
+      "maximum_pcm_error": 0.0,
       "source_rate": 44100.0,
       "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-in matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 1.4429291095297003e-09,
+      "preparation_ms": 203.52258333563805,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-in follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 7.425745331135492e-10,
+      "preparation_ms": 1.1387083381414413,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-out matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 7.326404257573804e-10,
+      "preparation_ms": 1.0531249940395355,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-out follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 1.4478961640751464e-09,
+      "preparation_ms": 1.0410833358764648,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-in matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 3.4133752387088823e-09,
+      "preparation_ms": 202.91404166817665,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-in follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 1.726397847595651e-09,
+      "preparation_ms": 1.0507083237171173,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-out matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 1.7896599809746894e-09,
+      "preparation_ms": 0.9857916682958603,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-out follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 3.6217733256904694e-09,
+      "preparation_ms": 0.911791667342186,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-in matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 2.9610995560917786e-09,
+      "preparation_ms": 203.69158333539963,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-in follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 2.68587825656523e-09,
+      "preparation_ms": 1.349291667342186,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-out matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 2.7230634294748285e-09,
+      "preparation_ms": 1.115958333015442,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-out follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 3.0308406097356855e-09,
+      "preparation_ms": 1.0939583331346512,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-in matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 3.2376233308900604e-09,
+      "preparation_ms": 203.6004583388567,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-in follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 2.5488749808705302e-09,
+      "preparation_ms": 1.1746250092983246,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "forward fade-out matches independent curve PCM",
+      "clip_count": 1,
+      "maximum_pcm_error": 2.5347292580829572e-09,
+      "preparation_ms": 1.1492083370685577,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reverse fade-out follows actual engineering position",
+      "clip_count": 1,
+      "maximum_pcm_error": 3.682056511251919e-09,
+      "preparation_ms": 1.04025000333786,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 816008,
+      "case": "reopened source graph actually applies saved reverse fade",
+      "clip_count": 1,
+      "maximum_pcm_error": 2.5488749808705302e-09,
+      "preparation_ms": 203.6574166715145,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 1144016,
+      "case": "forward audition crosses actual split without source discontinuity",
+      "clip_count": 2,
+      "maximum_pcm_error": 0.0,
+      "preparation_ms": 203.69983333349228,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 1138896,
+      "case": "actual timeline gap emits silence and continues into moved source",
+      "clip_count": 2,
+      "maximum_pcm_error": 0.0,
+      "preparation_ms": 203.7581249922514,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 1170896,
+      "case": "reverse audition crosses moved-source gap and returns to previous actual clip",
+      "clip_count": 2,
+      "maximum_pcm_error": 0.0,
+      "preparation_ms": 1.3618749976158142,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 1144024,
+      "case": "overlap sums actual equal-power clip fades and individual gain",
+      "clip_count": 2,
+      "maximum_pcm_error": 1.070966697269693e-08,
+      "preparation_ms": 203.6824583262205,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 1175216,
+      "case": "reverse overlap uses each clip's independent source time and fade direction",
+      "clip_count": 2,
+      "maximum_pcm_error": 1.18608987215163e-08,
+      "preparation_ms": 203.3510416597128,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 733144,
+      "case": "48k stereo to 44.1k mono cut with fractional source offset maps directly into 96k device",
+      "clip_count": 2,
+      "maximum_pcm_error": 0.0,
+      "preparation_ms": 203.4155833274126,
+      "speed": 1.0
+    },
+    {
+      "cached_bytes": 740492,
+      "case": "reverse mixed-rate cut preserves fractional source offset and mono channel duplication",
+      "clip_count": 2,
+      "maximum_pcm_error": 0.0,
+      "preparation_ms": 1.1635833233594894,
+      "speed": -1.0
+    },
+    {
+      "cached_bytes": 740492,
+      "case": "Undo restores removed neighbor for actual reverse audition",
+      "clip_count": 2,
+      "maximum_pcm_error": 0.0,
+      "preparation_ms": 203.47416666150093,
+      "speed": -1.0
+    },
+    {
+      "case": "32-clip production source",
+      "maximum_pcm_error": 1.1920928955078125e-06
     }
   ],
   "state": "passed",

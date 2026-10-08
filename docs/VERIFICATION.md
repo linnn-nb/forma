@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-SCRUB-01 续：真实淡化与跨片段来源（2026-10-09）
+
+结论：同一音频轨的切点、空隙、重叠和四种淡化已接入正反向Scrubber。每个片段保留源偏移、采样率、Clip Gain/Pan与淡化方向，重叠求和、空隙为真静音；继续经过原轨道FX/发送/Aux/输出。GUI使用原Scrub/CommandF9和拖动，松手/Escape停止；试听不创建工程Undo，工具/自定义键可保存，原编辑仍可Undo/Redo。完整U＋P0尚未完成，不进入P1。
+
+实现：`src/v2/ScrubPlayback.cpp`从单源游标改为工程采样游标，最多32个不可变源窗口；按每段原采样率直接线性插值，支持分数源偏移，避免先合成再反转Master。淡化调用Tracktion公开AudioFadeCurve，按真实片段工程位置计算；倒放不交换fade-in/fade-out。总窗口按按下点±2工程秒、总PCM最多8 MiB、路由最多64。任一相交源为Clip FX/速度淡化/不支持类型/不可读或超限，整笔拒绝且不发布部分图。回调只遍历有界窗口，无新增I/O、锁、分配或SDK补丁。
+
+验证：Release应用/全部受影响目标重建、固定签名deep/strict通过。CTest **8/8通过，0失败，61.78秒**，包含工程命令、Aux路由、音频编辑、走带、UI导航、Zoomer、波形缩放和Scrubber。`tests/v2/ScrubPlaybackTests.cpp` **194检查**，机器回执`evidence/U/scrub-tests.json`：四曲线两端/双向的独立公式PCM核对；切点连续、正反跨空隙、不同Clip Gain的重叠淡化；48k stereo→44.1k mono（1工程采样偏移）→96k设备；删除邻片段后的Undo恢复、实际保存重开淡化和自定义键执行；实际原生文件的速度淡化、邻片段Clip FX、33片段、总8 MiB超限整笔拒绝；32段真实反向PCM求和通过。所有PCM核对最大误差 **1.1920929e-6**（容差2e-5），媒体哈希不变。测试设备仅替代物理时钟，运行生产Tracktion图，不计作实体接口/听感/RT容量认证。
+
+准备耗时：本次hosted-device begin测量（含实际解码及Tracktion图准备）**0.91–203.76 ms**，保存于上述JSON；冷图准备约200 ms且同步message-thread，属于明确待改进交互，不是低延迟资格。异步预取、可取消准备和长范围窗口推进仍未接通；源150 ms看门狗不等于任意插件尾音或硬件deadline保证。仍拒绝Clip FX/ARA/伸缩/变调/循环、通道掩码、路由自动化、Frozen/Submix/Comp、Modulation、Master淡化、生成器/硬件插入/Rack/Sidechain。双轨/8声道、临时Ctrl/细拖和选区行为待补，第三方/压力/听感待验收。
+
+可运行：`build-v2-tracktion/FormaCrossClipScrubPreview.app`（独立org.forma.daw.crossclip-scrub-preview，同固定身份）；CommandO打开`build-v2-tracktion/scrub-crossclip-demo/Scrubber Demo.tracktionedit`，在1.75–2秒交叠处左右拖，Option Shuttle，松手/Escape，空格恢复正常播放；另存新文件重开。工程经L1新建/导入/拆分/移动/淡化/增益/保存，原原创诊断渐升音为24bit/48k/双声道/192000帧，两个实际AUDIOCLIP源引用及源偏移独立核验；不是实录。演示生成运行 **194检查通过**，日志位于build，未覆盖旧演示或用户媒体。媒体SHA256 `c698fbe1d05506e134079eea263ad97ae52dd6d0ef1eabc6c2e657333334ba3f`。
+
+桌面确认Mac锁定，未执行鼠标、截图、实体试听或真正应用退出重开。仅本轮自有预览PID13875被精确SIGTERM且确认退出；既有用户窗口保留。正式binary SHA256 `f8dbd8afa40f3af3baed3ca87d62396269384cba450f315d7391828a3e87143e`，独立预览 `ee97e62edf2a3bc846f7fbbb852594b05a758ebe3ec4ce55e91e5baf2cf97361`。不打DMG，无新MCP/AI/分析资格。
+
 ## U-P0-SCRUB-01：原图正反向单片段试听（2026-10-09；增量）
 
 结论：Edit工具栏Scrub、编辑菜单和可改CommandF9接通实际音频。按下普通音频片段，左右拖动按速度正反向读源；普通限制±1x，Option Shuttle限制±4x。原轨道FX、音量/声像、原输出、发送与Aux继续由Tracktion原图处理，其他源轨和实时输入不参与试听；不修改Mute/Solo/路由，不反转已处理的Master。松手、Escape、窗口/工具/视口变化停止；正常播放恢复全部原轨。试听是瞬态走带控制，不生成编辑Undo，工具和键位存UI schema10；Undo仍针对实际工程编辑，Undo历史不跨重开。

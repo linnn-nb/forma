@@ -93,10 +93,15 @@ Json stableTracks(Commands& c)
 Json beginArgs(Commands& c, int64_t sample = 48000)
 {
     const auto q = c.query();
-    return {{"clip", q["tracks"][0]["clips"][0]["id"]},
-            {"position_samples", sample},
-            {"session", q["session_token"]},
-            {"revision", q["revision"]}};
+    auto id = q["tracks"][0]["clips"][0]["id"];
+    for (const auto& clip : q["tracks"][0]["clips"])
+        if (sample >= clip["start_samples"].get<int64_t>() &&
+            sample < clip["start_samples"].get<int64_t>() + clip["length_samples"].get<int64_t>())
+        {
+            id = clip["id"];
+            break;
+        }
+    return {{"clip", id}, {"position_samples", sample}, {"session", q["session_token"]}, {"revision", q["revision"]}};
 }
 juce::AudioBuffer<float> create(const juce::File& file, double rate = 48000, int channels = 2)
 {
@@ -183,6 +188,60 @@ double verify(Commands& c, te::test_utilities::EnginePlayer& player, const juce:
                        {"device_rate", outputRate},
                        {"maximum_pcm_error", maxError}});
     return maxError;
+}
+// Independent scalar oracle: no engine fade/render helpers are used for expected PCM.
+double fadeGain(const std::string& shape, double alpha)
+{
+    alpha = std::clamp(alpha, 0., 1.);
+    const double angle = alpha * juce::MathConstants<double>::halfPi;
+    if (shape == "convex")
+        return std::sin(angle);
+    if (shape == "concave")
+        return 1 - std::cos(angle);
+    if (shape == "s_curve")
+        return (1 - alpha) * (1 - std::cos(angle)) + alpha * std::sin(angle);
+    return alpha;
+}
+double sampleAt(const juce::AudioBuffer<float>& source, int channel, double frame)
+{
+    if (frame < 0 || frame >= source.getNumSamples())
+        return 0;
+    const auto first = int(std::floor(frame));
+    const float fraction = float(frame - first);
+    const auto* data = source.getReadPointer(std::min(channel, source.getNumChannels() - 1));
+    const float next = first + 1 < source.getNumSamples() ? data[first + 1] : 0;
+    return data[first] + fraction * (next - data[first]);
+}
+void verifyTimeline(Commands& c, te::test_utilities::EnginePlayer& player, int64_t start, double speed,
+                    const std::function<double(int, double)>& expected, const char* label, double outputRate = 48000)
+{
+    const auto before = c.query();
+    const auto preparedAt = juce::Time::getMillisecondCounterHiRes();
+    c.scrub("begin", beginArgs(c, start));
+    const auto preparationMs = juce::Time::getMillisecondCounterHiRes() - preparedAt;
+    const auto cache = c.scrubStatus();
+    check(cache["cached_bytes"].get<int64_t>() <= 8 * 1024 * 1024 && cache["cached_clips"].size() <= 32,
+          "published timeline window respects aggregate PCM and clip-count budgets");
+    c.scrub("speed", {{"speed", speed}, {"shuttle", std::abs(speed) > 1}});
+    auto pcm = player.process(4096);
+    double error = 0;
+    for (int channel = 0; channel < 2; ++channel)
+        for (int n = 512; n < pcm.getNumSamples(); ++n)
+            error = std::max(
+                error, std::abs(pcm.getSample(channel, n) - expected(channel, start + n * speed * 48000 / outputRate)));
+    std::cout << label << " PCM error " << error << std::endl;
+    check(error < 2e-5, label);
+    c.scrub("end");
+    const auto after = c.query();
+    check(after["tracks"] == before["tracks"] && after["revision"] == before["revision"] &&
+              after["position_samples"] == before["position_samples"],
+          "cross-clip audition preserves every actual clip, route and engineering history field");
+    results.push_back({{"case", label},
+                       {"speed", speed},
+                       {"maximum_pcm_error", error},
+                       {"preparation_ms", preparationMs},
+                       {"clip_count", cache["cached_clips"].size()},
+                       {"cached_bytes", cache["cached_bytes"]}});
 }
 juce::Component* find(juce::Component& p, const juce::String& id)
 {
@@ -348,7 +407,10 @@ int main(int argc, char** argv)
                                                  {"out_samples", 100},
                                                  {"in_curve", "linear"},
                                                  {"out_curve", "linear"}})}));
-            rejects([&] { c.scrub("begin", beginArgs(c)); }, "unsupported fades cannot silently audition wrong audio");
+            c.scrub("begin", beginArgs(c));
+            check(c.scrubStatus()["active"].get<bool>(),
+                  "actual fades no longer block prepared native source audition");
+            c.scrub("end");
         }
         {
             const auto monoFile = folder.getChildFile("44100-mono.wav");
@@ -359,11 +421,226 @@ int main(int argc, char** argv)
             verify(c, player, mono, -1., 1., 44100, 48000);
         }
         {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("fades-prefs")));
+            setup(c, source, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            const auto clip = c.query()["tracks"][0]["clips"][0]["id"];
+            for (const std::string shape : {"linear", "convex", "concave", "s_curve"})
+            {
+                run(c, Json::array({op("clip.fade", {{"clip", clip},
+                                                     {"in_samples", 48000},
+                                                     {"out_samples", 48000},
+                                                     {"in_curve", shape},
+                                                     {"out_curve", shape}})}));
+                auto expected = [&](int channel, double position)
+                {
+                    return sampleAt(reference, channel, position) *
+                           fadeGain(shape, std::min(position, 192000 - position) / 48000.);
+                };
+                verifyTimeline(c, player, 6000, 1, expected, "forward fade-in matches independent curve PCM");
+                verifyTimeline(c, player, 6000, -1, expected, "reverse fade-in follows actual engineering position");
+                verifyTimeline(c, player, 186000, 1, expected, "forward fade-out matches independent curve PCM");
+                verifyTimeline(c, player, 186000, -1, expected, "reverse fade-out follows actual engineering position");
+            }
+            c.undo();
+            pump();
+            check(c.query()["tracks"][0]["clips"][0]["fade_in_curve"] == "concave",
+                  "fade audition leaves Undo targeting the previous real fade transaction");
+            c.redo();
+            pump();
+            auto saved = folder.getChildFile("fades-reopen.tracktionedit");
+            c.save(saved);
+            {
+                Commands reopened(false, std::make_unique<Storage>(folder.getChildFile("fades-reopen-prefs")));
+                reopened.open(saved);
+                check(stableTracks(reopened) == stableTracks(c), "all native fade settings survive actual save/reopen");
+                te::test_utilities::EnginePlayer again(TransportTestAccess::engine(reopened), device());
+                verifyTimeline(
+                    reopened, again, 6000, -1, [&](int ch, double position)
+                    { return sampleAt(reference, ch, position) * fadeGain("s_curve", position / 48000.); },
+                    "reopened source graph actually applies saved reverse fade");
+            }
+            // This isolated native-file fault fixture is data, not an Edit-side writer.
+            auto xml = juce::XmlDocument::parse(saved);
+            auto fixture = juce::ValueTree::fromXml(*xml);
+            auto nativeClip = fixture.getChildWithName("TRACK").getChildWithName("AUDIOCLIP");
+            check(nativeClip.isValid(), "saved native fault fixture contains the actual source clip");
+            nativeClip.setProperty("fadeInBehaviour", 1, nullptr);
+            auto speedFile = folder.getChildFile("unsupported-speed-fade.tracktionedit");
+            check(fixture.createXml()->writeTo(speedFile), "native tape-speed fade fixture persisted independently");
+            Commands unsupported(false, std::make_unique<Storage>(folder.getChildFile("speed-fade-prefs")));
+            unsupported.open(speedFile);
+            te::test_utilities::EnginePlayer invalidPlayer(TransportTestAccess::engine(unsupported), device());
+            rejects([&] { unsupported.scrub("begin", beginArgs(unsupported, 6000)); },
+                    "native tape-speed fade cannot be misrepresented as an ordinary gain fade");
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("cuts-prefs")));
+            setup(c, source, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            const auto left = c.query()["tracks"][0]["clips"][0]["id"];
+            run(c, Json::array({op("clip.split", {{"clip", left}, {"position_samples", 48000}, {"ref", "$right"}})}));
+            const auto right = c.query()["tracks"][0]["clips"][1]["id"];
+            verifyTimeline(
+                c, player, 47000, 1, [&](int ch, double p) { return sampleAt(reference, ch, p); },
+                "forward audition crosses actual split without source discontinuity");
+            run(c, Json::array({op("clip.move", {{"clip", right}, {"position_samples", 48640}})}));
+            verifyTimeline(
+                c, player, 47000, 1, [&](int ch, double p)
+                { return p < 48000   ? sampleAt(reference, ch, p)
+                         : p < 48640 ? 0
+                                     : sampleAt(reference, ch, p - 640); },
+                "actual timeline gap emits silence and continues into moved source");
+            verifyTimeline(
+                c, player, 51000, -1, [&](int ch, double p)
+                { return p < 48000   ? sampleAt(reference, ch, p)
+                         : p < 48640 ? 0
+                                     : sampleAt(reference, ch, p - 640); },
+                "reverse audition crosses moved-source gap and returns to previous actual clip");
+
+            run(c, Json::array({op("clip.move", {{"clip", right}, {"position_samples", 47000}}),
+                                op("clip.fade", {{"clip", left},
+                                                 {"in_samples", 0},
+                                                 {"out_samples", 1000},
+                                                 {"in_curve", "linear"},
+                                                 {"out_curve", "convex"}}),
+                                op("clip.fade", {{"clip", right},
+                                                 {"in_samples", 1000},
+                                                 {"out_samples", 0},
+                                                 {"in_curve", "convex"},
+                                                 {"out_curve", "linear"}}),
+                                op("clip.gain", {{"clip", right}, {"db", -6}})}));
+            auto expected = [&](int ch, double p)
+            {
+                double value = p < 48000 ? sampleAt(reference, ch, p) * fadeGain("convex", (48000 - p) / 1000.) : 0;
+                if (p >= 47000)
+                    value += sampleAt(reference, ch, p + 1000) * std::pow(10., -6. / 20) *
+                             fadeGain("convex", (p - 47000) / 1000.);
+                return value;
+            };
+            verifyTimeline(c, player, 46000, 1, expected,
+                           "overlap sums actual equal-power clip fades and individual gain");
+            // Move the right clip earlier so the left clip remains a legal starting target for reverse overlap.
+            run(c, Json::array({op("clip.move", {{"clip", right}, {"position_samples", 45000}})}));
+            verifyTimeline(
+                c, player, 47900, -1,
+                [&](int ch, double p)
+                {
+                    return sampleAt(reference, ch, p) * fadeGain("convex", (48000 - p) / 1000.) +
+                           (p >= 45000 ? sampleAt(reference, ch, p + 3000) * std::pow(10., -6. / 20) *
+                                             fadeGain("convex", (p - 45000) / 1000.)
+                                       : 0);
+                },
+                "reverse overlap uses each clip's independent source time and fade direction");
+            auto saved = folder.getChildFile("cuts-reopen.tracktionedit");
+            c.save(saved);
+            Commands reopened(false, std::make_unique<Storage>(folder.getChildFile("cuts-reopen-prefs")));
+            reopened.open(saved);
+            check(stableTracks(reopened) == stableTracks(c),
+                  "source lineage, cut positions and overlapping fades survive save/reopen");
+            const auto track = c.query()["tracks"][0]["id"];
+            run(c, Json::array({op("clip.import", {{"track", track},
+                                                   {"path", source.getFullPathName().toStdString()},
+                                                   {"position_samples", 10000},
+                                                   {"ref", "$bad"}}),
+                                op("clip.fx.insert", {{"clip", "$bad"}, {"type", "4bandEq"}})}));
+            rejects([&] { c.scrub("begin", beginArgs(c, 47000)); },
+                    "unsupported neighboring Clip FX rejects whole window instead of silently omitting a source");
+            c.undo();
+            pump();
+        }
+        {
+            const auto monoFile = folder.getChildFile("mixed-rate-mono.wav");
+            const auto mono = create(monoFile, 44100, 1);
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("mixed-prefs")));
+            setup(c, source, false);
+            const auto q = c.query();
+            run(c, Json::array(
+                       {op("clip.trim",
+                           {{"clip", q["tracks"][0]["clips"][0]["id"]}, {"start_samples", 0}, {"end_samples", 48000}}),
+                        op("clip.import", {{"track", q["tracks"][0]["id"]},
+                                           {"path", monoFile.getFullPathName().toStdString()},
+                                           {"position_samples", 48000},
+                                           {"ref", "$mono"}}),
+                        op("clip.trim", {{"clip", "$mono"}, {"start_samples", 48001}, {"end_samples", 192000}}),
+                        op("clip.move", {{"clip", "$mono"}, {"position_samples", 48000}})}));
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device(96000));
+            auto expected = [&](int ch, double p)
+            { return p < 48000 ? sampleAt(reference, ch, p) : sampleAt(mono, ch, (p - 48000 + 1) * 44100 / 48000.); };
+            verifyTimeline(c, player, 47000, 1, expected,
+                           "48k stereo to 44.1k mono cut with fractional source offset maps directly into 96k device",
+                           96000);
+            verifyTimeline(c, player, 49000, -1, expected,
+                           "reverse mixed-rate cut preserves fractional source offset and mono channel duplication",
+                           96000);
+            const auto second = c.query()["tracks"][0]["clips"][1]["id"];
+            run(c, Json::array({op("clip.delete", {{"clip", second}})}));
+            c.undo();
+            pump();
+            verifyTimeline(c, player, 49000, -1, expected, "Undo restores removed neighbor for actual reverse audition",
+                           96000);
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("budget-prefs")));
+            setup(c, source, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            auto q = c.query();
+            const auto clip = q["tracks"][0]["clips"][0]["id"], track = q["tracks"][0]["id"];
+            run(c, Json::array({op("clip.trim", {{"clip", clip}, {"start_samples", 0}, {"end_samples", 4800}})}));
+            Json copies = Json::array();
+            for (int i = 0; i < 31; ++i)
+                copies.push_back(op(
+                    "clip.copy",
+                    {{"clip", clip}, {"track", track}, {"position_samples", 0}, {"ref", "$copy" + std::to_string(i)}}));
+            run(c, copies);
+            c.scrub("begin", beginArgs(c, 2400));
+            check(c.scrubStatus()["cached_clips"].size() == 32,
+                  "32 intersecting actual clips can be prepared within budget");
+            c.scrub("speed", {{"speed", -.5}, {"shuttle", false}});
+            auto summed = player.process(4096);
+            double sumError = 0;
+            for (int ch = 0; ch < 2; ++ch)
+                for (int n = 512; n < 4096; ++n)
+                    sumError = std::max(
+                        sumError, std::abs(summed.getSample(ch, n) - 32 * sampleAt(reference, ch, 2400 - n * .5)));
+            check(sumError < 2e-5, "bounded 32-clip callback actually sums all real reversed PCM sources");
+            results.push_back({{"case", "32-clip production source"}, {"maximum_pcm_error", sumError}});
+            c.scrub("cancel");
+            run(c, Json::array({op("clip.copy",
+                                   {{"clip", clip}, {"track", track}, {"position_samples", 0}, {"ref", "$excess"}})}));
+            rejects([&] { c.scrub("begin", beginArgs(c, 2400)); },
+                    "33rd intersecting clip refuses whole preparation before publication");
+            check(!c.scrubStatus()["active"].get<bool>() && !c.query()["playing"].get<bool>(),
+                  "preparation failure leaves no active or audible partial graph");
+            c.undo();
+            pump();
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(folder.getChildFile("bytes-prefs")));
+            setup(c, source, false);
+            te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            auto q = c.query();
+            Json copies = Json::array();
+            for (int i = 0; i < 5; ++i)
+                copies.push_back(op("clip.copy", {{"clip", q["tracks"][0]["clips"][0]["id"]},
+                                                  {"track", q["tracks"][0]["id"]},
+                                                  {"position_samples", 0},
+                                                  {"ref", "$large" + std::to_string(i)}}));
+            run(c, copies);
+            const auto before = c.query();
+            rejects([&] { c.scrub("begin", beginArgs(c, 96000)); },
+                    "aggregate decoded PCM exceeding 8 MiB rejects before graph publication");
+            check(c.query() == before, "failed aggregate preparation preserves every project fact and transport state");
+        }
+        {
             Workspace w(false, std::make_unique<Storage>(folder.getChildFile("ui-prefs")));
             w.setVisible(true);
             w.setSize(1720, 1000);
             auto& c = AudioDeviceTestAccess::owner(w);
             setup(c, source, false);
+            run(c, Json::array({op("clip.split", {{"clip", c.query()["tracks"][0]["clips"][0]["id"]},
+                                                  {"position_samples", 47000},
+                                                  {"ref", "$right"}})}));
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
             AudioDeviceTestAccess::refresh(w);
             check(w.uiCommands().invokeDirectly(253, false), "Scrubber executes through shared CommandManager");
@@ -380,7 +657,8 @@ int main(int argc, char** argv)
             auto axis = e->coordinates();
             juce::Point<float> p{float(axis.pixelAt(48000)), float(e->rowY(0) + 56)};
             e->mouseDown(event(*e, p));
-            check(c.scrubStatus()["active"].get<bool>(), "native pointer press begins L1 source audition");
+            check(c.scrubStatus()["active"].get<bool>() && c.scrubStatus()["cached_clips"].size() == 2,
+                  "native pointer press on second clip prepares both actual neighboring sources through L1");
             pump(20);
             p.x -= 30;
             e->mouseDrag(event(*e, p, true));
@@ -452,6 +730,20 @@ int main(int argc, char** argv)
             writer.reset();
             Commands demo(false, std::make_unique<Storage>(demoFolder.getChildFile("prefs")));
             setup(demo, media, false);
+            const auto left = demo.query()["tracks"][0]["clips"][0]["id"];
+            run(demo, Json::array({op("clip.split", {{"clip", left}, {"position_samples", 96000}, {"ref", "$right"}}),
+                                   op("clip.move", {{"clip", "$right"}, {"position_samples", 84000}}),
+                                   op("clip.fade", {{"clip", left},
+                                                    {"in_samples", 2400},
+                                                    {"out_samples", 12000},
+                                                    {"in_curve", "linear"},
+                                                    {"out_curve", "convex"}}),
+                                   op("clip.fade", {{"clip", "$right"},
+                                                    {"in_samples", 12000},
+                                                    {"out_samples", 2400},
+                                                    {"in_curve", "convex"},
+                                                    {"out_curve", "linear"}}),
+                                   op("clip.gain", {{"clip", "$right"}, {"db", -3}})}));
             demo.updateUiState({{"edit_tool", "scrubber"}, {"span_samples", 192000}}, demo.sessionToken());
             demo.save(session);
             check(session.existsAsFile(), "demonstration saved through actual L1 native Edit writer");

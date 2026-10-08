@@ -20,13 +20,34 @@ static_assert(std::atomic<double>::is_always_lock_free && std::atomic<uint64_t>:
 class ScrubPlayback final : public juce::Timer
 {
 public:
-    juce::AudioBuffer<float> pcm;
+    struct Segment
+    {
+        juce::AudioBuffer<float> pcm;
+        std::string clip;
+        double start = 0, end = 0, offset = 0, fileRate = 0;
+        int64_t cacheFirst = 0;
+        double fadeIn = 0, fadeOut = 0;
+        te::AudioFadeCurve::Type inCurve = te::AudioFadeCurve::linear, outCurve = te::AudioFadeCurve::linear;
+        float leftGain = 1, rightGain = 1;
+        float gainAt(double seconds) const noexcept
+        {
+            float gain = 1;
+            if (fadeIn > 0 && seconds < start + fadeIn)
+                gain *= te::AudioFadeCurve::alphaToGainForType(inCurve,
+                                                               float(std::clamp((seconds - start) / fadeIn, 0., 1.)));
+            if (fadeOut > 0 && seconds > end - fadeOut)
+                gain *= te::AudioFadeCurve::alphaToGainForType(outCurve,
+                                                               float(std::clamp((end - seconds) / fadeOut, 0., 1.)));
+            return gain;
+        }
+    };
+    std::vector<Segment> segments;
     std::atomic<double> speed{0}, position{0};
     std::atomic<bool> exhausted{false}, enabled{true};
     std::atomic<uint64_t> serial{0};
-    double fileRate = 0, sourceStart = 0, sourceEnd = 0, clipStart = 0, offset = 0;
+    double windowStart = 0, windowEnd = 0, projectRate = 48000;
+    int64_t cachedFrames = 0, cachedBytes = 0;
     double returnPosition = 0, requestedAt = 0;
-    float leftGain = 1, rightGain = 1;
     std::string clip, track, session;
     uint64_t revision = 0, deviceGeneration = 0;
     te::EditPlaybackContext* playbackContext = nullptr;
@@ -87,25 +108,34 @@ public:
             staleFrames = 0;
         }
         const auto rate = state->speed.load(std::memory_order_relaxed);
-        const auto step = rate * state->fileRate / outputRate;
+        const auto step = rate * state->projectRate / outputRate;
         const bool run = state->enabled.load(std::memory_order_relaxed) && staleFrames < watchdogFrames;
         for (uint32_t i = 0; i < pc.numSamples; ++i)
         {
-            const bool within = cursor >= state->sourceStart && cursor < state->sourceEnd;
+            const bool within = cursor >= state->windowStart && cursor < state->windowEnd;
             const float goal = run && within && rate != 0 ? 1.f : 0.f;
             envelope += std::clamp(goal - envelope, -1.f / 64.f, 1.f / 64.f);
-            const auto local = cursor - state->sourceStart;
-            const auto first = int64_t(std::floor(local));
-            const auto fraction = float(local - double(first));
-            for (uint32_t c = 0; c < pc.buffers.audio.getNumChannels(); ++c)
+            const double seconds = cursor / state->projectRate;
+            for (uint32_t ch = 0; ch < pc.buffers.audio.getNumChannels(); ++ch)
             {
                 float value = 0;
-                if (within && first >= 0 && first + 1 < state->pcm.getNumSamples())
-                {
-                    const auto* input = state->pcm.getReadPointer(std::min(int(c), state->pcm.getNumChannels() - 1));
-                    value = input[first] + fraction * (input[first + 1] - input[first]);
-                }
-                pc.buffers.audio.getSample(c, i) = value * envelope * (c == 0 ? state->leftGain : state->rightGain);
+                if (within)
+                    for (const auto& segment : state->segments)
+                    {
+                        if (seconds < segment.start || seconds >= segment.end)
+                            continue;
+                        const double local =
+                            (segment.offset + seconds - segment.start) * segment.fileRate - double(segment.cacheFirst);
+                        const auto first = int64_t(std::floor(local));
+                        if (first < 0 || first + 1 >= segment.pcm.getNumSamples())
+                            continue;
+                        const float fraction = float(local - double(first));
+                        const auto* input =
+                            segment.pcm.getReadPointer(std::min(int(ch), segment.pcm.getNumChannels() - 1));
+                        value += (input[first] + fraction * (input[first + 1] - input[first])) *
+                                 segment.gainAt(seconds) * (ch == 0 ? segment.leftGain : segment.rightGain);
+                    }
+                pc.buffers.audio.getSample(ch, i) = value * envelope;
             }
             if (run && rate != 0)
                 cursor += step;
@@ -135,18 +165,21 @@ Json Commands::scrubStatus() const
     if (!scrubPlayback)
         return lastScrubStatus;
     const auto& s = *scrubPlayback;
-    const auto frame = std::clamp(s.position.load(std::memory_order_relaxed), s.sourceStart, s.sourceEnd);
-    const auto seconds = s.clipStart + (frame / s.fileRate - s.offset);
+    const auto frame = std::clamp(s.position.load(std::memory_order_relaxed), s.windowStart, s.windowEnd);
+    Json clips = Json::array();
+    for (const auto& segment : s.segments)
+        clips.push_back(segment.clip);
     return {{"active", true},
             {"clip", s.clip},
             {"track", s.track},
-            {"position_samples", std::llround(seconds * timelineRate)},
+            {"position_samples", std::llround(frame)},
             {"speed", s.speed.load(std::memory_order_relaxed)},
             {"exhausted", s.exhausted.load(std::memory_order_relaxed)},
-            {"cached_frames", s.pcm.getNumSamples()},
-            {"cached_channels", s.pcm.getNumChannels()},
-            {"source_start_frame", s.sourceStart},
-            {"source_end_frame", s.sourceEnd}};
+            {"cached_frames", s.cachedFrames},
+            {"cached_bytes", s.cachedBytes},
+            {"cached_clips", clips},
+            {"window_start_samples", s.windowStart},
+            {"window_end_samples", s.windowEnd}};
 }
 void Commands::stopScrub(const std::string& reason)
 {
@@ -210,16 +243,12 @@ Json Commands::scrub(const std::string& action, const Json& args)
     require(engine.getDeviceManager().deviceManager.getCurrentAudioDevice() != nullptr, "audio device unavailable");
     auto* c = audioClip(args["clip"]);
     require(c != nullptr && dynamic_cast<te::AudioTrack*>(c->getTrack()) != nullptr, "audio clip not found");
-    const auto fact = audioClipQuery(*c);
-    require(fact["editable_audio"] && !c->isUsingARA() && c->getPitchChange() == 0 && !c->effectsEnabled() &&
-                c->getPluginList()->size() == 0 && c->getFadeIn().inSeconds() == 0 && c->getFadeOut().inSeconds() == 0,
-            "first scrub path requires an unwarped clip without Clip FX, pitch change or fades");
-    require(c->state.getProperty("channels").toString().isEmpty(), "scrub channel masks not supported yet");
     auto* target = dynamic_cast<te::AudioTrack*>(c->getTrack());
     require(trackType(*target) == "audio" && target->shouldBePlayed() && !target->isFrozen(te::Track::individualFreeze),
             "scrub requires an audible, unfrozen audio track");
     // Validate native route closure; no edits to mute/solo or output connections.
     auto state = std::make_shared<ScrubPlayback>();
+    state->projectRate = timelineRate;
     state->track = target->itemID.toString().toStdString();
     std::vector<std::string> pending{state->track};
     bool reachesDevice = false;
@@ -272,37 +301,82 @@ Json Commands::scrub(const std::string& action, const Json& args)
     require(edit->masterFadeIn.get().inSeconds() == 0 && edit->masterFadeOut.get().inSeconds() == 0,
             "scrub master fades not supported yet");
     validateExternalRuntime();
+    const double requested = args["position_samples"].get<int64_t>() / timelineRate;
+    require(requested >= c->getPosition().getStart().inSeconds() && requested < c->getPosition().getEnd().inSeconds(),
+            "scrub start outside clip");
+    const double firstSecond = std::max(0., requested - 2.);
+    const double lastSecond = requested + 2.;
+    double firstClip = lastSecond, lastClip = firstSecond;
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
-    std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(c->getOriginalFile()));
-    require(reader && reader->sampleRate >= 8000 && reader->sampleRate <= 192000 && reader->numChannels >= 1 &&
-                reader->numChannels <= 2,
-            "scrub supports readable mono/stereo PCM");
-    const double requested = args["position_samples"].get<int64_t>() / timelineRate;
-    const auto pos = c->getPosition();
-    require(requested >= pos.getStart().inSeconds() && requested < pos.getEnd().inSeconds(),
-            "scrub start outside clip");
-    state->fileRate = reader->sampleRate;
-    state->clipStart = pos.getStart().inSeconds();
-    state->offset = pos.getOffset().inSeconds();
-    const auto frame = (state->offset + requested - state->clipStart) * reader->sampleRate;
-    const auto clipFirst = state->offset * reader->sampleRate;
-    const auto clipLast =
-        std::min(double(reader->lengthInSamples), (state->offset + pos.getLength().inSeconds()) * reader->sampleRate);
-    state->sourceStart = std::max(clipFirst, std::floor(frame - 2 * reader->sampleRate));
-    state->sourceEnd = std::min(clipLast, std::ceil(frame + 2 * reader->sampleRate));
-    require(frame >= state->sourceStart && frame < state->sourceEnd, "scrub source offset outside media");
-    // Source boundaries must be integers for this first fixed-speed mapping.
-    require(std::abs(state->sourceStart - std::round(state->sourceStart)) < 1e-6,
-            "fractional source offset not supported yet");
-    const auto count = int(std::ceil(state->sourceEnd - state->sourceStart)) + 1;
-    require(count > 1 && int64_t(count) * reader->numChannels * sizeof(float) <= 8 * 1024 * 1024,
-            "scrub window exceeds 8 MiB decoded budget");
-    state->pcm.setSize(int(reader->numChannels), count);
-    state->pcm.clear();
-    require(reader->read(&state->pcm, 0, count, int64_t(state->sourceStart), true, true), "scrub source read failed");
-    c->getLiveClipLevel().getLeftAndRightGains(state->leftGain, state->rightGain);
-    state->position.store(frame);
+    // Every intersecting source is prepared on the message thread before publishing.
+    // The audio node reads only this immutable bounded set, never Edit or disk.
+    for (auto* item : target->getClips())
+    {
+        const auto pos = item->getPosition();
+        const double start = pos.getStart().inSeconds(), end = pos.getEnd().inSeconds();
+        require(std::isfinite(start) && std::isfinite(end) && end > start, "invalid scrub clip position");
+        if (end <= firstSecond || start >= lastSecond)
+            continue;
+        require(state->segments.size() < 32, "scrub window exceeds 32-clip preparation budget");
+        auto* clip = dynamic_cast<te::WaveAudioClip*>(item);
+        require(clip != nullptr, "scrub window contains a non-audio source");
+        require(audioClipQuery(*clip)["editable_audio"] && !clip->isUsingARA() && clip->getPitchChange() == 0 &&
+                    !clip->effectsEnabled() && clip->getPluginList()->size() == 0,
+                "scrub window requires unwarped clips without Clip FX or pitch change");
+        require(clip->getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                    clip->getFadeOutBehaviour() == te::AudioClipBase::gainFade,
+                "scrub tape-speed fades not supported yet");
+        require(clip->state.getProperty("channels").toString().isEmpty(), "scrub channel masks not supported yet");
+        std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(clip->getOriginalFile()));
+        require(reader && reader->sampleRate >= 8000 && reader->sampleRate <= 192000 && reader->numChannels >= 1 &&
+                    reader->numChannels <= 2,
+                "scrub supports readable mono/stereo PCM");
+        ScrubPlayback::Segment segment;
+        segment.clip = clip->itemID.toString().toStdString();
+        segment.start = start;
+        segment.end = end;
+        segment.offset = pos.getOffset().inSeconds();
+        segment.fileRate = reader->sampleRate;
+        segment.fadeIn = clip->getFadeIn().inSeconds();
+        segment.fadeOut = clip->getFadeOut().inSeconds();
+        segment.inCurve = clip->getFadeInType();
+        segment.outCurve = clip->getFadeOutType();
+        require(std::isfinite(segment.fadeIn) && std::isfinite(segment.fadeOut) && segment.fadeIn >= 0 &&
+                    segment.fadeOut >= 0 && segment.inCurve >= te::AudioFadeCurve::linear &&
+                    segment.inCurve <= te::AudioFadeCurve::sCurve && segment.outCurve >= te::AudioFadeCurve::linear &&
+                    segment.outCurve <= te::AudioFadeCurve::sCurve,
+                "invalid scrub fade settings");
+        const double sourceFirst = (segment.offset + std::max(start, firstSecond) - start) * reader->sampleRate;
+        const double sourceLast = (segment.offset + std::min(end, lastSecond) - start) * reader->sampleRate;
+        require(std::isfinite(sourceFirst) && std::isfinite(sourceLast) && std::abs(sourceFirst) < 1.e15 &&
+                    std::abs(sourceLast) < 1.e15,
+                "invalid scrub source mapping");
+        if (clip == c)
+        {
+            const double pressedFrame = (segment.offset + requested - start) * reader->sampleRate;
+            require(pressedFrame >= 0 && pressedFrame < reader->lengthInSamples, "scrub source offset outside media");
+        }
+        // Padding beyond source media is real silence, matching native clip playback.
+        segment.cacheFirst = int64_t(std::floor(sourceFirst));
+        const auto count = int64_t(std::ceil(sourceLast)) - segment.cacheFirst + 1;
+        require(count > 1 && count <= INT_MAX, "invalid scrub source window");
+        const auto bytes = count * reader->numChannels * sizeof(float);
+        require(bytes <= 8 * 1024 * 1024 - state->cachedBytes, "scrub window exceeds 8 MiB decoded budget");
+        segment.pcm.setSize(int(reader->numChannels), int(count));
+        segment.pcm.clear();
+        require(reader->read(&segment.pcm, 0, int(count), segment.cacheFirst, true, true), "scrub source read failed");
+        clip->getLiveClipLevel().getLeftAndRightGains(segment.leftGain, segment.rightGain);
+        state->cachedFrames += count;
+        state->cachedBytes += bytes;
+        state->segments.push_back(std::move(segment));
+        firstClip = std::min(firstClip, start);
+        lastClip = std::max(lastClip, end);
+    }
+    require(!state->segments.empty(), "scrub source window empty");
+    state->windowStart = std::max(firstClip, firstSecond) * timelineRate;
+    state->windowEnd = std::min(lastClip, lastSecond) * timelineRate;
+    state->position.store(requested * timelineRate);
     state->clip = args["clip"];
     state->session = sessionToken();
     state->revision = revision;

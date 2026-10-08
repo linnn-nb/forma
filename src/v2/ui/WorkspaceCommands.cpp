@@ -301,7 +301,7 @@ void Workspace::initialiseCommandManager()
     editArea.onScrubStopped = [this](const std::string& reason)
     {
         if (reason == "source_boundary")
-            message(text("Scrubber 已到片段或缓存边界；重新按下可继续试听"));
+            message(text("Scrubber 已到轨道或缓存边界；重新按下可继续试听"));
         else if (reason == "drag_timeout")
             message(text("Scrubber 已停止：鼠标未继续拖动"));
         else if (reason == "device_or_transport_interrupted")
