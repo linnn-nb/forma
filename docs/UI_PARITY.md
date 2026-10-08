@@ -8,14 +8,15 @@
 
 | 行为 | 官方依据 | Forma 实现与差异 | 状态 |
 |---|---|---|---|
-| Zoomer Normal / Single与临时缩放 | Reference Guide 2026.4印刷861–866、881–884页（2026-10-09本地核验） | F5循环、点击减半居中、原始范围适配、Single返回原工具、Option/CommandOptionE上一缩放、OptionF真实选区、ControlCommand标尺临时入口、双击全工程；共享命令/可改键/schema9重开，16条视图历史不进工程Undo。水平最小480采样；无垂直/连续/波形MIDI幅度/Overview/Zoom Toggle。Scrubber仍待实际路径，SDK短段循环不冒充拖速正反向 | U-P0-ZOOMER-01：151检查、相关10/10、真实PCM误差0；GUI锁屏未验收；完整行为部分 |
+| 音频波形幅度与连续Zoomer | Reference 2026.4印刷862–866页（2026-10-09本地核验） | 右侧+/−/1及CommandOption]/[、ControlCommandOption[；Control左右连续水平，上下所点音频轨显示尺度，Single返回/取消、全工程复位、上一缩放恢复比例；schema10视图保存不改gain/Undo。无组联动/二维框选/按钮拖拽/Option按钮返回/MIDI幅度/Overview/Zoom Toggle；Scrubber正反向源路径仍缺，未放占位 | U-P0-WAVEFORM-ZOOM-01：106专项、相关11/11、真实PCM/缩略图通过；桌面锁定未验收；完整行为部分 |
+| Zoomer Normal / Single与临时缩放 | Reference Guide 2026.4印刷861–866、881–884页（2026-10-09本地核验） | F5循环、点击减半居中、原始范围适配、Single返回原工具、Option/CommandOptionE上一缩放、OptionF真实选区、ControlCommand标尺临时入口、双击全工程；共享命令/可改键/schema9重开，16条视图历史不进工程Undo。水平最小480采样；连续水平/音频幅度见上行，仍无Command二维框选/MIDI幅度/Overview/Zoom Toggle。Scrubber仍待实际路径，SDK短段循环不冒充拖速正反向 | U-P0-ZOOMER-01：151检查、相关10/10、真实PCM误差0；GUI锁屏未验收；完整行为部分 |
 | 轨道参数视图 | Reference Guide 2026.4印刷页339–342，Track View selector/Changing Track Views；2026-10-09核验 | `ui/TrackHeader.h`读实际参数；`WorkspaceAutomation.cpp`提供Control−片段/音量与ControlCommand←/→，稳定lane ID保存，移除插件保留不可用引用，恢复后重现。无Edit组/所有轨联动，MIDI公共Notes/Clips切换未实现 | 部分；原生组件与重开测试通过，桌面待测 |
 | 自动化点与Pencil | Reference Guide印刷页1573–1574/1576，Drawing Automation/Using Grabber/Pencil；2026-10-09核验 | `ui/AutomationLane.h`使用实际SDK插值采样，真实点拖动/增删/Pencil自由绘制/Selector共享范围，经L1一次Undo、实际PCM与保存重开。CommandF10选择画笔（现有F10保留预备拍）；32点/64操作超限整体拒绝，256点显示近似。多形状/稀疏化/多点/剪贴板/Trim等未做 | 部分；相关10通过0失败，布局2通过0失败；GUI/试听未执行 |
 | Edit 与 Mix 分工 | Reference 第12章，254–257页 | 已拆 `ui/EditWindow.h`、`ui/MixWindow.h`；原生工具栏/走带/双计数器/两种标尺/侧栏已接通；完整工具与窗口仍待补齐 | 部分 |
 | 工具栏与可隐藏区域 | 257–262页 | 现有全局操作迁入命令表；侧栏可隐藏；未实现的编辑工具不显示 | 部分 |
-| 水平缩放、轨高与预设 | 263页；Shortcuts Zoom章节33页 | T/R、全工程缩放、水平/垂直滚动、Cmd＋滚轮锚点缩放；L1 UI 子树保存；视图不进 Undo。每轨GUI/高度拖动/五个水平预设已接通；完整Zoom Toggle/波形幅度缩放未完成 | 部分；已接通部分专项验证 |
+| 水平缩放、轨高与预设 | 263页；Shortcuts Zoom章节33页 | T/R、全工程缩放、水平/垂直滚动、Cmd＋滚轮锚点缩放；L1 UI 子树保存；视图不进 Undo。每轨GUI/高度拖动/五个水平预设已接通；波形幅度与Control连续缩放见新增行；完整Zoom Toggle未完成 | 部分；已接通部分专项验证 |
 | 每轨高度与轨道颜色入口 | Reference 263、286、317、343–344、378–380页（核验2026-10-09） | 高度按ID保存七档、底边连续拖32–640；Ctrl↑/↓所选、CtrlOption↑/↓全部比例；前缀坐标覆盖选择/Clip/MIDI。Edit/Mix颜色菜单复用原生属性，一笔多轨Undo。自身尺寸，暂无Fit/Option或Shift批量拖/Edit组联动；颜色仅轨道八色加默认，无独立Clip/Marker/Group、Hold/饱和度；短轨隐藏部分控件 | U-P0-PRESENTATION-01：217检查（含菜单项）、受影响8/8、实际PCM误差0通过；桌面锁屏未执行；完整行为部分 |
-| 五个水平Zoom Presets | Reference 867页（核验2026-10-09） | 五按钮/菜单，Ctrl1…5召回、CtrlShift1…5/Shift点击保存/右键存取，可改键位；只存span，召回光标锚点，保存重开不进Undo。与官方长按菜单不同，无Zoom Toggle/波形幅度/音符显示缩放 | 同一专项与回归通过；桌面锁屏未执行；部分 |
+| 五个水平Zoom Presets | Reference 867页（核验2026-10-09） | 五按钮/菜单，Ctrl1…5召回、CtrlShift1…5/Shift点击保存/右键存取，可改键位；只存span，召回光标锚点，保存重开不进Undo。与官方长按菜单不同，预设仅水平；无Zoom Toggle/音符显示缩放，音频幅度由独立显示状态保存 | 同一专项与回归通过；桌面锁屏未执行；部分 |
 | Tracks / Groups、Clips | 314、345–347页 | Tracks/Clips原生列表可选择和隐藏，Clips联动统一对象/父片段高亮；Groups独立Mix Mute/Solo增量已接通；完整分组与排序尚未实现 | 部分 |
 | Groups列表与独立Mix组 | Reference 410–414、420、422–423页（本地PDF核验2026-10-08）；v1 TrackGroups.cpp的首组优先行为 | Tracks下方独立组列表，选成员/名称/Mute/Solo/启用/删除，一事务Undo、缺失引用保留、首启用匹配组优先。组名选成员、勾选框启用（官方点组名启用）；⌘G/⌘⇧G/⌘⌥G可改。本产品⌘⌥3用于Sends列，与官方Groups焦点不同，字母组焦点未实现；无All/排序/隔离/relative fader/Pan/其他属性/Edit组 | U-P0-GROUPS-01：84专项、真实PCM与相关7/7通过；GUI因锁屏未执行；完整行为部分 |
 | Edit Window Views | Reference 257、1434–1436页（核验2026-10-08/09） | I/O、Inserts A–E、Sends A–E、Comments独立菜单/可改⌘⌥1/2/3/4，真实facts与检查器；稳定Send ID、动态时间线原点、schema7保存（旧6/5明确迁移）。无F–J/All/None/Option点击隐藏/槽位排序 | Views46专项；Comments63专项及相关8/8通过；此前EQ/发送GUI Undo/Redo通过，最终GUI保存重开锁屏未执行；部分 |

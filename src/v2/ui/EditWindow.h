@@ -21,6 +21,7 @@ public:
           openMidi(std::move(openMidi)), selectClip(std::move(selectClip)), clipWrite(std::move(clipWrite))
     {
         setComponentID("edit.timeline");
+        addAndMakeVisible(waveformControls);
         rulerSelector.setComponentID("rulers.menu");
         rulerSelector.setButtonText(text("标尺"));
         rulerSelector.setTooltip(text("标尺显示 / 主时间标尺 / 时间码显示帧率"));
@@ -221,7 +222,7 @@ public:
     {
         if (!drag.is_null())
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
-                                    "main_time_scale", "track_heights", "track_views"})
+                                    "main_time_scale", "track_heights", "track_views", "waveform_zoom"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                 {
                     drag = nullptr;
@@ -238,7 +239,7 @@ public:
                 }
         if (zoomGesture.active)
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
-                                    "track_heights", "track_views"})
+                                    "track_heights", "track_views", "waveform_zoom"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                     zoomGesture.cancel();
         view = value;
@@ -318,10 +319,27 @@ public:
     {
         return 250 + columnCount() * columnWidth();
     }
+    void connectWaveformZoom(juce::ApplicationCommandManager& manager)
+    {
+        waveformControls.connect(manager);
+    }
+    double waveformDisplayScale(const std::string& track) const
+    {
+        const auto& draft = zoomGesture.draft();
+        return waveformScale(zoomGesture.active && draft.contains("waveform_zoom") ? draft["waveform_zoom"]
+                                                                                   : view["waveform_zoom"],
+                             track);
+    }
     TimelineCoordinates coordinates() const
     {
-        return {view.value("start_samples", int64_t(0)), view.value("span_samples", int64_t(480000)),
-                double(timelineLeft()), double(std::max(1, getWidth() - timelineLeft() - 16))};
+        const auto& draft = zoomGesture.draft();
+        const auto start = zoomGesture.active && draft.contains("start_samples")
+                               ? draft["start_samples"].get<int64_t>()
+                               : view.value("start_samples", int64_t(0));
+        const auto span = zoomGesture.active && draft.contains("span_samples")
+                              ? draft["span_samples"].get<int64_t>()
+                              : view.value("span_samples", int64_t(480000));
+        return {start, span, double(timelineLeft()), double(std::max(1, getWidth() - timelineLeft() - 16))};
     }
     int rowY(int row) const
     {
@@ -467,7 +485,8 @@ public:
                     {
                         const auto elapsed =
                             std::max(0., (axis.sampleAt(waveRect.getX()) - c["start_samples"].get<int64_t>()) / 48000.);
-                        waves.draw(g, c, waveRect, waveRect.getWidth() / axis.width * axis.span / 48000., elapsed);
+                        waves.draw(g, c, waveRect, waveRect.getWidth() / axis.width * axis.span / 48000., elapsed,
+                                   waveformDisplayScale(t["id"]));
                     }
                     g.setColour(juce::Colour(0xffe6e1b2));
                     auto fadeIn = c.value("fade_in_samples", int64_t(0));
@@ -535,6 +554,7 @@ public:
         if (!zoomGesture.active)
             return false;
         zoomGesture.cancel();
+        resized();
         repaint();
         return true;
     }
@@ -544,19 +564,24 @@ public:
     }
     void resized() override
     {
+        if (zoomGesture.active && !zoomGesture.coordinatesMatch(double(timelineLeft()),
+                                                                double(std::max(1, getWidth() - timelineLeft() - 16))))
+            zoomGesture.cancel();
         rowOffsets.clear();
         rowOffsets.push_back(0);
         for (int i = 0; i < visibleRows(); ++i)
             rowOffsets.push_back(rowOffsets.back() + rowHeight(i));
         rulerSelector.setBounds(3, 1, 40, 25);
         horizontal.setBounds(timelineLeft(), getHeight() - 14, std::max(1, getWidth() - timelineLeft() - 16), 14);
-        vertical.setBounds(getWidth() - 14, rulerHeight(), 14, std::max(1, getHeight() - rulerHeight() - 14));
+        waveformControls.setBounds(getWidth() - 14, rulerHeight(), 14, 54);
+        vertical.setBounds(getWidth() - 14, rulerHeight() + 54, 14, std::max(1, getHeight() - rulerHeight() - 68));
         const auto axis = coordinates();
         horizontal.setRangeLimits(
-            0, double(std::max(facts.value("length_samples", int64_t(0)) + axis.span, axis.start + axis.span)));
+            0, double(std::max(facts.value("length_samples", int64_t(0)) + axis.span, axis.start + axis.span)),
+            juce::dontSendNotification);
         horizontal.setCurrentRange(double(axis.start), double(axis.span), juce::dontSendNotification);
         horizontal.setSingleStepSize(double(axis.span) / 10);
-        vertical.setRangeLimits(0, std::max(1, visibleRows()));
+        vertical.setRangeLimits(0, std::max(1, visibleRows()), juce::dontSendNotification);
         const int first = std::clamp(view.value("first_row", 0), 0, std::max(0, visibleRows() - 1));
         int page = 0, used = 0;
         while (first + page < visibleRows() && used < getHeight() - rulerHeight() - 14)
@@ -643,10 +668,13 @@ public:
         // macOS Ctrl-left-click is also a popup gesture; the documented Cmd+Ctrl ruler chord wins.
         const bool rulerZoom =
             e.y < rulerHeight() && e.mods.isCommandDown() && e.mods.isCtrlDown() && e.mods.isLeftButtonDown();
-        if (rulerZoom || (!e.mods.isPopupMenu() && ZoomGesture::isTool(editing.tool) && e.y >= rulerHeight() &&
-                          rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows()))
+        const bool continuousZoom =
+            e.mods.isCtrlDown() && e.mods.isLeftButtonDown() && ZoomGesture::isTool(editing.tool);
+        if (rulerZoom || ((!e.mods.isPopupMenu() || continuousZoom) && ZoomGesture::isTool(editing.tool) &&
+                          e.y >= rulerHeight() && rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows()))
         {
-            zoomGesture.begin(e, axis, facts, !ZoomGesture::isTool(editing.tool));
+            zoomGesture.begin(e, axis, facts, view, e.y >= rulerHeight() ? trackIDs[size_t(row)] : std::string{},
+                              !ZoomGesture::isTool(editing.tool));
             repaint();
             return;
         }
@@ -799,6 +827,7 @@ public:
         if (zoomGesture.active)
         {
             zoomGesture.move(e);
+            resized();
             repaint();
             return;
         }
@@ -869,6 +898,7 @@ public:
         if (zoomGesture.active)
         {
             const auto request = zoomGesture.finish();
+            resized();
             repaint();
             if (onZoomGesture)
                 onZoomGesture(request, zoomGesture.session, zoomGesture.revision);
@@ -1102,6 +1132,7 @@ private:
     EditingModel editing;
     SelectionModel selection;
     ZoomGesture zoomGesture;
+    WaveformZoomControls waveformControls;
     Json view = Json::object();
     Json facts = Json::object(), grid = Json::array(), drag = nullptr;
     std::string selected, selectedClip;

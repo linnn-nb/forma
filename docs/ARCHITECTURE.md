@@ -1,12 +1,14 @@
 # Forma 架构 v2
 
+当前增量（2026-10-09，Waveform Zoom）：真实波形显示+/−/复位和Control连续水平/所点音频轨垂直缩放接通；schema10保存波形比例与16条联合视图历史，不改声音、不占工程Undo/revision。Release/固定验签、相关11通过0失败，106专项及双声道真实PCM误差0；桌面锁屏未做物理验收。Scrubber SDK缺少按拖速正反向路径，仍未实现，完整U＋P0继续保留。
+
 当前增量（2026-10-09，Zoomer）：Normal/Single、原始采样点击/范围缩放、上一缩放/选区适配、临时标尺入口和双击全工程接通；schema9视图保存不进工程Undo/revision。Release/固定验签、相关10通过0失败，151检查及真实PCM误差0通过；桌面锁定未做物理验收。完整U＋P0未完成，下一项真实Scrub；边界见VERIFICATION.md。
 
 当前UI增量（2026-10-09，Recording Headers）：`ui/TrackRecordingState.h`只读可用性，`ui/WorkspaceRecording.cpp`构建human Plan，`TrackHeader`共用Edit/Mix R/I入口。事实来自现有L1 input查询，message-thread通过track.arm/track.monitor提交；保留缺失引用且允许关闭。一次多轨操作一个Undo，陈旧版本/不可用输入/超64整笔拒绝，未改变UI schema8或MCP/分析资格。细节与实际PCM证据见VERIFICATION.md。
 
 当前UI增量（2026-10-09）：自动化轨道视图、直接点编辑与Pencil接入`ui/AutomationLane.h`；WorkspaceAutomation负责actual参数事实缓存和L1提交，EditWindow只协调统一坐标/工具/对象及时间选择。GUI不直接写te::Edit。原生SDK插值通过L1只读automationCurveRange获取；非零视口、session/revision缓存失效，播放光标/节拍网格读同一facts。结构修改仅停止时允许；一笔手势一Plan/Undo，陈旧草稿取消。
 
-当前UI schema8在schema7之上加track_views，稳定lane引用可保存/恢复，失效插件保留引用并显示不可用；object_selection支持真实automation_point与父track/parameter，选择恢复先读同版本点事实。视图不进Undo；持久工程事实与DSP瞬态观察值分离，重开不承诺跨会话Undo。CommandManager 218、220–226和Header下拉/画笔/菜单共用实际参数；不增加冻结MCP/分析能力。完整资格、32/64手势预算与256显示采样差异见VERIFICATION.md。
+自动化增量引入UI schema8，在schema7之上加track_views，稳定lane引用可保存/恢复，失效插件保留引用并显示不可用；object_selection支持真实automation_point与父track/parameter，选择恢复先读同版本点事实。视图不进Undo；持久工程事实与DSP瞬态观察值分离，重开不承诺跨会话Undo。CommandManager 218、220–226和Header下拉/画笔/菜单共用实际参数；不增加冻结MCP/分析能力。完整资格、32/64手势预算与256显示采样差异见VERIFICATION.md。
 
 日期：2026-10-05；2026-10-08 阶段调整：见 UI_REBUILD_PLAN.md。
 

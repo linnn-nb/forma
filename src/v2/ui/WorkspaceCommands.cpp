@@ -133,6 +133,10 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
+        {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
+        {252, "恢复默认波形显示高度", "缩放", '[',
+         cmd | juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
         {240, "Zoomer · Normal / Single", "缩放", juce::KeyPress::F5Key},
         {241, "Zoomer · Normal", "缩放"},
         {242, "Zoomer · Single（一次后返回原工具）", "缩放"},
@@ -293,6 +297,7 @@ void Workspace::initialiseCommandManager()
                 refresh();
             });
     };
+    editArea.connectWaveformZoom(commandManager);
     editArea.onZoomGesture = [this](Json request, std::string session, uint64_t revision)
     { commitZoomGesture(request, session, revision); };
     editArea.onViewChange = [this](Json patch) { setView(std::move(patch)); };
@@ -504,6 +509,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) &&
                          std::any_of(selection.objects.begin(), selection.objects.end(),
                                      [](const auto& o) { return o["kind"] == "automation_point"; });
+            if (id >= 250 && id <= 252)
+                active = !mix;
             if (id >= 240 && id <= 244)
             {
                 active = !mix;
@@ -538,7 +545,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
-    if (id >= 240 && id <= 244)
+    if ((id >= 240 && id <= 244) || (id >= 250 && id <= 252))
     {
         executeZoomCommand(id);
         return true;
@@ -708,7 +715,10 @@ bool Workspace::perform(const InvocationInfo& invocation)
                 }
                 if (id == 104 || id == 105)
                     first = start + (id == 104 ? -1 : 1) * span / 4;
-                setView({{"start_samples", std::clamp(first, int64_t(0), max - next)}, {"span_samples", next}});
+                Json patch = {{"start_samples", std::clamp(first, int64_t(0), max - next)}, {"span_samples", next}};
+                if (id == 103)
+                    patch["waveform_zoom"] = {{"scale", 1.0}, {"track_scales", Json::object()}};
+                setView(patch);
             });
         return true;
     }
@@ -791,11 +801,13 @@ void Workspace::setView(Json patch)
         [&]
         {
             const auto old = commands.uiState();
-            if (patch.contains("span_samples") && patch["span_samples"] != old["span_samples"])
+            if ((patch.contains("span_samples") && patch["span_samples"] != old["span_samples"]) ||
+                (patch.contains("waveform_zoom") && patch["waveform_zoom"] != old["waveform_zoom"]))
             {
                 auto state = patch.value("zoom_state", old["zoom_state"]);
-                state["history"].push_back(
-                    {{"start_samples", old["start_samples"]}, {"span_samples", old["span_samples"]}});
+                state["history"].push_back({{"start_samples", old["start_samples"]},
+                                            {"span_samples", old["span_samples"]},
+                                            {"waveform_zoom", old["waveform_zoom"]}});
                 if (state["history"].size() > 16)
                     state["history"].erase(state["history"].begin());
                 patch["zoom_state"] = state;

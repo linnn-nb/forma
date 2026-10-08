@@ -41,7 +41,8 @@ public:
             else
                 ++it;
     }
-    void draw(juce::Graphics& g, const Json& clip, juce::Rectangle<int> area, double seconds, double elapsed = 0)
+    void draw(juce::Graphics& g, const Json& clip, juce::Rectangle<int> area, double seconds, double elapsed = 0,
+              double displayScale = 1.)
     {
         auto id = clip["id"].get<std::string>();
         if (thumbs.contains(id))
@@ -49,7 +50,7 @@ public:
             double offset = clip.value("source_offset_seconds", 0.), speed = clip.value("speed_ratio", 1.),
                    gain = std::pow(10., clip.value("gain_db", 0.) / 20);
             thumbs.at(id)->drawChannels(g, area, offset + elapsed * speed, offset + (elapsed + seconds) * speed,
-                                        float(gain));
+                                        float(gain * displayScale));
         }
     }
 

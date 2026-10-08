@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-WAVEFORM-ZOOM-01：波形显示尺度与连续Zoomer（2026-10-09；增量）
+
+结论：Edit右侧滚动条上方新增真实波形显示+/−/1按钮，菜单与可改CommandOption]/[、ControlCommandOption[共用命令250–252。Waveforms读取实际PCM缩略图，显示尺度与Clip Gain/轨道增益分开，不改音频。Zoomer中Control左右拖连续水平缩放、上下拖所点音频轨的显示高度；选择主方向后锁定，本地实时预览，松手经L1保存，Escape取消。Single完成返回此前工具；全工程103/双击恢复默认波形高度，上一缩放恢复时间视口与波形比例。
+
+架构：schema10增加waveform_zoom（全局scale＋按稳定Track ID稀疏track_scales），显示范围1/32–64、最多4096覆盖；全局缩放保持各轨相对比例，到上下界夹限。16条视图历史包含时间视口和波形状态；完整旧9保留原历史/键位并填默认显示尺度，旧8及之前明确迁移，畸形/越界拒绝。视图不增工程revision、不占工程Undo，不承诺跨重开Undo。`WaveformZoom.h`仅显示策略与原生按钮，`ZoomGesture.h`只做本地草稿，`WorkspaceZoom.cpp`走L1 updateUiState；GUI不直接写Edit、无新MCP/分析工具、依赖或第二引擎。布局/视口/工具/版本/会话冲突取消；窗口水平尺寸变化也取消。
+
+验证：Release应用与受影响所有测试重新构建，正式/独立预览固定身份strict/deep验签通过；CTest **11通过、0失败，68.68秒**。新`tests/v2/WaveformZoomTests.cpp` **106检查**：实际两声道分别220/440Hz、48kHz/24-bit、96000帧PCM，两次原生Tracktion渲染非零且所有左右声道最大误差 **0.0**；媒体SHA256 `93599c077523b181fd59f6dacb8e8ce946c85d87c59f9eb89e0175d15da7ba31`保持。实际JUCE缩略图1×/8×白色绘制像素分别 **2048/8192**，不是生成假波形或桌面截图；低分辨率/像素取整不承诺像素面积严格等于比例。原生按钮/Control草稿与提交/Single/上一缩放/窗口变化/人工增益冲突/Undo/保存新Workspace重开/自定义键/夹限/有界历史/严格旧9迁移通过，旧音频编辑、自动化、标尺、Views、MIDI、录音轨头回归通过。仅受影响回归，不是新完整回归或RT/耐久资格。
+
+首轮失败：连续水平草稿调用resized时，ScrollBar setRangeLimits默认发通知，异步写回视图并取消草稿；现在程序布局统一dontSendNotification，真实用户滚动仍经L1。新CMake目标最初未重新配置而不可见，重新配置后构建通过；失败未算通过，最终计数对应修复后的程序与测试。
+
+官方依据：Reference Guide 2026.4印刷862–866页，2026-10-09本地核验，来源/SHA见UI_PARITY.md。边界：当前连续垂直仅音频波形，MIDI Notes/Automation视图不假作波形并明确拒绝；未做编辑组垂直联动、Command二维框选、拖音频+/−按钮连续调幅、Option点这些按钮返回、MIDI垂直/Overview/Zoom Toggle/完整Fit Tracks。全工程这里只恢复音频显示，不冒称MIDI/Tempo Editor全部Fit。
+
+Scrubber仍未实现：锁定SDK setUserDragging产生约80ms的正向小段循环，setSpeedCompensation夹在±10%，不支持官方按鼠标速度连续正反向、点击轨路由与隔离。需要原图源节点适配及实测，不能给短循环换名字后当作完成；未新增假Scrubber按钮，完整要求继续保留。
+
+桌面工具明确Mac锁定，无真实鼠标/物理键盘/截图/试听/应用实际退出重开验收。本轮自有预览PID51708已按精确可执行路径终止且确认不再运行，保留用户窗口。预览`build-v2-tracktion/FormaWaveformZoomPreview.app`可执行文件SHA256 `9f73ebe68bc72561de957e4bb066a49c625d3af7c0a1ebd365fff3168e686133`，正式SHA256 `20c0b44c5b3bb8542a478240b1508cd94925aff5cb0ff5bc740dfc822ed49eff`。亲手试：打开预览，再CommandO打开`build-v2-tracktion/waveform-zoom-demo/Waveform Demo.tracktionedit`（原创真实双声道PCM）；点时间线右侧+/−/1、F5选择Zoomer，Control左右/上下拖、Escape、CommandOptionE；另存新工程重开，CommandZ仍撤销实际编辑。完整U＋P0未完成，不进P1、不打DMG。
+
 ## U-P0-ZOOMER-01：原生水平缩放工具（2026-10-09；增量）
 
 结论：工具栏/菜单/可改F5接通Normal与Single Zoom。点按以原始鼠标采样位置居中、水平span减半；拖范围显示本地黄色预览，松手适配该范围，Grid不改变缩放范围。Single完成后返回原工具；Option点击或CommandOptionE返回上一缩放，OptionF显示真实Edit时间选区，ControlCommand在标尺临时缩放，双击工具按钮显示全工程。四种宽度1120/1189/1300/1600的控件边界通过，窄窗使用短标题。

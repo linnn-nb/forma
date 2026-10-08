@@ -30,6 +30,16 @@ void Workspace::commitZoomGesture(Json request, const std::string& session, uint
             const auto view = commands.uiState();
             if (!request.value("temporary", false) && !ZoomGesture::isTool(view["edit_tool"]))
                 throw std::runtime_error("zoom tool changed");
+            if (request.value("unsupported_vertical", false))
+                throw std::runtime_error("continuous vertical zoom requires an audio track in waveform view");
+            if (request.contains("continuous_patch"))
+            {
+                auto patch = request["continuous_patch"];
+                if (view["edit_tool"] == "zoom_single")
+                    patch["edit_tool"] = view["zoom_state"]["return_tool"];
+                setView(patch);
+                return;
+            }
             if (request["back"])
             {
                 restoreZoom();
@@ -55,6 +65,13 @@ void Workspace::executeZoomCommand(int id)
         [&]
         {
             auto view = commands.uiState();
+            if (id >= 250 && id <= 252)
+            {
+                const auto zoom = id == 252 ? Json{{"scale", 1.0}, {"track_scales", Json::object()}}
+                                            : scaleAllWaveforms(view["waveform_zoom"], id == 250 ? 2. : .5);
+                setView({{"waveform_zoom", zoom}});
+                return;
+            }
             if (id == 243)
             {
                 restoreZoom();

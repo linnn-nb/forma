@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+## 波形显示与连续缩放（U-P0-WAVEFORM-ZOOM-01）
+
+GUI 250–252共用原生命令表，Control Zoomer生成本地continuous_patch，松手捕获原session/revision后经L1 updateUiState提交。schema10 waveform_zoom为全局scale与稀疏track_scales（稳定ID、1/32–64、最多4096），历史仍16条，但每条包括波形状态；旧完整9的历史保留并填默认音频显示，旧8及之前逐级迁移，畸形/越界/未知数据整笔拒绝。全局按钮按比例缩放覆盖轨，到边界夹限；复位清除覆盖。连续草稿不持久化，布局/窗口坐标/版本/工具变化或Escape取消；仅在真实音频波形视图接受垂直操作。渲染/音频gain不改，工程Undo跳过视图。没有新MCP工具或分析能力；按钮只有实际命令回执后更新，状态查询只读。
+
 ## 水平Zoomer视图（U-P0-ZOOMER-01）
 
 ApplicationCommandManager 240–244与Edit本地手势统一进入L1 updateUiState，只有视图写入，不生成领域Plan、不增revision、不占工程Undo。手势捕获session/revision；参数/坐标/工具/布局冲突取消，提交再次核对。schema9 zoom_state含return_tool和最多16个{start_samples,span_samples}历史，span≥480且在工程范围内；未知/损坏状态整笔拒绝。Single只允许返回已实现的非Zoomer工具；旧完整schema8迁移为空历史，保留旧轨道视图/键位。全局命令状态查询只读；新默认键只补新增命令，保留人工改键与解绑。没有新增MCP工具、音频模型或直接Edit写入；历史恢复不重新把当前视口入栈。

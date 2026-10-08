@@ -1,0 +1,10 @@
+{
+  "checks": 106,
+  "normal_thumbnail_ink": 2048,
+  "render_max_error": 0.0,
+  "result": "passed",
+  "scope": "native controls and component mouse/key dispatch, actual PCM thumbnail and Tracktion render; physical desktop gestures separately pending",
+  "source_sha256": "93599c077523b181fd59f6dacb8e8ce946c85d87c59f9eb89e0175d15da7ba31",
+  "ui_schema": 10,
+  "zoomed_thumbnail_ink": 8192
+}

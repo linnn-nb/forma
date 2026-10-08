@@ -28,3 +28,5 @@ evidence/U/*
 !evidence/U/presentation-tests.json
 
 !evidence/U/zoomer-tests.json
+
+!evidence/U/waveform-zoom-tests.json

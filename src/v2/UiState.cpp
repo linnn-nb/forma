@@ -6,7 +6,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 9},
+    return {{"ui_schema", 10},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -41,8 +41,20 @@ Json defaults()
             {"timecode_fps", 24},
             {"track_heights", Json::object()},
             {"track_views", Json::object()},
+            {"waveform_zoom", {{"scale", 1.0}, {"track_scales", Json::object()}}},
             {"zoom_state", {{"return_tool", "grabber"}, {"history", Json::array()}}},
             {"zoom_presets", Json::array({48000, 240000, 480000, 1440000, 5760000})}};
+}
+void validateWaveformZoom(const Json& value)
+{
+    const auto validScale = [](const Json& v)
+    { return v.is_number() && std::isfinite(v.get<double>()) && v >= .03125 && v <= 64.; };
+    if (!value.is_object() || value.size() != 2 || !value.contains("scale") || !validScale(value["scale"]) ||
+        !value.contains("track_scales") || !value["track_scales"].is_object() || value["track_scales"].size() > 4096)
+        throw std::runtime_error("invalid waveform display zoom");
+    for (auto i = value["track_scales"].begin(); i != value["track_scales"].end(); ++i)
+        if (i.key().empty() || i.key().size() > 64 || !validScale(i.value()))
+            throw std::runtime_error("invalid waveform track display zoom");
 }
 void validate(const Json& value)
 {
@@ -58,7 +70,7 @@ void validate(const Json& value)
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 9)
+    if (value["ui_schema"] != 10)
         throw std::runtime_error("unsupported UI schema");
     const auto& columns = value["edit_views"];
     if (!columns.is_object() || columns.size() != 4)
@@ -93,6 +105,7 @@ void validate(const Json& value)
         if (it.key().empty() || it.key().size() > 64 || !it.value().is_string() ||
             it.value().get<std::string>().size() > 256)
             throw std::runtime_error("invalid stable track automation view reference");
+    validateWaveformZoom(value["waveform_zoom"]);
     const auto& zoom = value["zoom_state"];
     const std::set<std::string> returnTools{"selector", "grabber", "trim", "smart", "pencil"};
     if (!zoom.is_object() || zoom.size() != 2 || !zoom.contains("return_tool") || !zoom["return_tool"].is_string() ||
@@ -101,12 +114,13 @@ void validate(const Json& value)
         throw std::runtime_error("invalid zoom return tool or history");
     for (const auto& viewport : zoom["history"])
     {
-        if (!viewport.is_object() || viewport.size() != 2 || !viewport.contains("start_samples") ||
-            !viewport.contains("span_samples") || !viewport["start_samples"].is_number_integer() ||
-            !viewport["span_samples"].is_number_integer() || viewport["start_samples"] < 0 ||
-            viewport["span_samples"] < 480 || viewport["span_samples"] > max ||
+        if (!viewport.is_object() || viewport.size() != 3 || !viewport.contains("waveform_zoom") ||
+            !viewport.contains("start_samples") || !viewport.contains("span_samples") ||
+            !viewport["start_samples"].is_number_integer() || !viewport["span_samples"].is_number_integer() ||
+            viewport["start_samples"] < 0 || viewport["span_samples"] < 480 || viewport["span_samples"] > max ||
             viewport["start_samples"] > max - viewport["span_samples"].get<int64_t>())
             throw std::runtime_error("invalid saved zoom viewport");
+        validateWaveformZoom(viewport["waveform_zoom"]);
     }
     const auto& presets = value["zoom_presets"];
     if (!presets.is_array() || presets.size() != 5)
@@ -198,7 +212,7 @@ Json readUiState(const juce::ValueTree& metadata)
         const bool v5 = saved.value("ui_schema", Json(0)) == 5;
         if (v4 || v5)
         {
-            if (saved.size() != result.size() - 7 || !saved.contains("edit_views") ||
+            if (saved.size() != result.size() - 8 || !saved.contains("edit_views") ||
                 !saved["edit_views"].is_object() || saved["edit_views"].size() != (v4 ? 3 : 4))
                 throw std::runtime_error("incomplete legacy Edit views");
             for (const auto* key : {"io", "inserts", "sends"})
@@ -214,7 +228,7 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 6)
         {
-            if (saved.size() != result.size() - 4)
+            if (saved.size() != result.size() - 5)
                 throw std::runtime_error("incomplete schema6 UI state");
             saved["track_heights"] = result["track_heights"];
             saved["zoom_presets"] = result["zoom_presets"];
@@ -222,17 +236,33 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 7)
         {
-            if (saved.size() != result.size() - 2)
+            if (saved.size() != result.size() - 3)
                 throw std::runtime_error("incomplete schema7 UI state");
             saved["track_views"] = result["track_views"];
             saved["ui_schema"] = 8;
         }
         if (saved.value("ui_schema", Json(0)) == 8)
         {
-            if (saved.size() != result.size() - 1)
+            if (saved.size() != result.size() - 2)
                 throw std::runtime_error("incomplete schema8 UI state");
             saved["zoom_state"] = result["zoom_state"];
             saved["ui_schema"] = 9;
+        }
+        if (saved.value("ui_schema", Json(0)) == 9)
+        {
+            if (saved.size() != result.size() - 1 || !saved.contains("zoom_state") ||
+                !saved["zoom_state"].is_object() || !saved["zoom_state"].contains("history") ||
+                !saved["zoom_state"]["history"].is_array())
+                throw std::runtime_error("incomplete schema9 zoom state");
+            for (auto& entry : saved["zoom_state"]["history"])
+            {
+                if (!entry.is_object() || entry.size() != 2 || !entry.contains("start_samples") ||
+                    !entry.contains("span_samples"))
+                    throw std::runtime_error("invalid legacy zoom history entry");
+                entry["waveform_zoom"] = result["waveform_zoom"];
+            }
+            saved["waveform_zoom"] = result["waveform_zoom"];
+            saved["ui_schema"] = 10;
         }
         if (legacy || v2 || v3)
         {
@@ -257,7 +287,7 @@ Json readUiState(const juce::ValueTree& metadata)
                     if (!o.is_object() || o.value("kind", std::string{}) != "clip")
                         throw std::runtime_error("invalid legacy object selection");
         }
-        else if (saved["ui_schema"] != 9 || saved.size() != result.size())
+        else if (saved["ui_schema"] != 10 || saved.size() != result.size())
             throw std::runtime_error("unsupported or incomplete UI schema");
         if (legacy)
             result["ui_schema"] = 1;
@@ -273,7 +303,7 @@ Json readUiState(const juce::ValueTree& metadata)
         result["workspace"] = "edit";
         result["midi_dock"] = true;
     }
-    result["ui_schema"] = 9;
+    result["ui_schema"] = 10;
     validate(result);
     return result;
 }
