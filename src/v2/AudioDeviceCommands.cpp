@@ -209,6 +209,7 @@ Json Commands::audioCapabilities(const Json& args) const
 Json Commands::audioDeviceControl(const Json& args)
 {
     checkThread();
+    stopScrub();
     fields(args, {"type", "output", "input", "sample_rate", "buffer_frames", "input_channels", "output_channels",
                   "base_setup_hash"});
     checkNames(args);

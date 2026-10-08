@@ -30,3 +30,5 @@ evidence/U/*
 !evidence/U/zoomer-tests.json
 
 !evidence/U/waveform-zoom-tests.json
+
+!evidence/U/scrub-tests.json

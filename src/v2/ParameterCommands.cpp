@@ -76,6 +76,8 @@ void Commands::registerParameterCommands(Json& registry)
 }
 void Commands::beginParameterCapture()
 {
+    checkThread();
+    stopScrub();
     if (!parameterCapture.is_null())
         return;
     require(recordingCapture.is_null(), "stop recording before native parameter edits");

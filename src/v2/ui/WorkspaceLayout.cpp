@@ -46,6 +46,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(p, editCommand::remove);
         addMenuCommand(p, 226);
         addMenuCommand(p, 218);
+        addMenuCommand(p, 253);
         p.addSeparator();
         for (int id = 240; id <= 244; ++id)
             addMenuCommand(p, id);
@@ -330,6 +331,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
     if (auto* focused = juce::Component::getCurrentlyFocusedComponent();
         dynamic_cast<juce::TextEditor*>(focused) && !key.getModifiers().isCommandDown())
         return false;
+    if (key == juce::KeyPress::escapeKey && editArea.cancelScrubGesture())
+        return true;
     if (key == juce::KeyPress::escapeKey && editArea.cancelZoomGesture())
         return true;
     return commandManager.getKeyMappings()->keyPressed(key, this);

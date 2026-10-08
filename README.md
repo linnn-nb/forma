@@ -36,7 +36,9 @@ Edit列：在「视图→Edit Window Views」独立打开I/O、Inserts A–E、S
 
 波形显示：时间线右侧+/−/1，⌘⌥]/[放大缩小、⌃⌘⌥[恢复默认，可自定义键位。Zoomer中按Control左右拖连续水平缩放，上下拖所点音频轨波形高度；松手保存视图，Escape取消。显示幅度不改变声音或占据工程Undo，上一缩放恢复视口和各轨比例；MIDI/自动化视图的垂直缩放仍待实现。
 
-Zoomer：F5循环Normal/Single，点击时间线居中放大、拖范围适配；Single完成后返回原工具。Option点击或⌘⌥E返回上一缩放，OptionF显示编辑选区，ControlCommand在标尺临时缩放；双击缩放工具显示全工程。视口和最多16条历史随工程保存，不占编辑Undo；只支持水平缩放，Scrubber及高级显示缩放仍待实现。
+Zoomer：F5循环Normal/Single，点击时间线居中放大、拖范围适配；Single完成后返回原工具。Option点击或⌘⌥E返回上一缩放，OptionF显示编辑选区，ControlCommand在标尺临时缩放；双击缩放工具显示全工程。视口和最多16条历史随工程保存，不占编辑Undo；支持水平缩放和上述音频显示尺度；其余高级缩放仍待实现。
+
+Scrubber：工具栏Scrub／编辑菜单／⌘F9（可改键），在普通音频片段中按住左右拖动正反向试听，Option为Shuttle；松手或Escape停止，空格恢复正常播放。音频经过原FX与Aux/输出，保留工程与Undo；目前单个无淡化/Clip FX/自动化/伸缩的mono/stereo片段，按下点±2秒窗口，边界停止后重新按下。其他路径明确拒绝；它仍是有限增量，尚非完整PT Scrubber，实体试听待验收。
 
 缩放预设：五个按钮或View→Zoom Presets，Control+1…5召回，Control+Shift+1…5/Shift点击保存当前水平缩放，右键存取。预设随工程保存，召回保持光标锚点；不保存完整工作区，也不改变原音频。
 

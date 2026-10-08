@@ -1,0 +1,99 @@
+{
+  "checks": 104,
+  "hardware_listening": "not_executed",
+  "pcm": [
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": 1.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": -1.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": 0.5
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": -0.5
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": 4.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": -4.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": -1.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 0.0,
+      "source_rate": 48000.0,
+      "speed": -1.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 0.5011872336272722,
+      "maximum_pcm_error": 4.3459085080632676e-09,
+      "source_rate": 48000.0,
+      "speed": -1.0
+    },
+    {
+      "normal_play_restore_max_error": 0.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 0.251188643150958,
+      "maximum_pcm_error": 4.2865641591838255e-09,
+      "source_rate": 48000.0,
+      "speed": -1.0
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 0.12589254117941673,
+      "maximum_pcm_error": 3.124729364145651e-09,
+      "source_rate": 48000.0,
+      "speed": 1.0
+    },
+    {
+      "effect": "native EQ",
+      "max_difference_from_dry_route": 0.017150912520744813
+    },
+    {
+      "device_rate": 48000.0,
+      "gain": 1.0,
+      "maximum_pcm_error": 1.4901161193847656e-08,
+      "source_rate": 44100.0,
+      "speed": -1.0
+    }
+  ],
+  "state": "passed",
+  "test": "U-P0-SCRUB-01"
+}

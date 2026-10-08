@@ -1,8 +1,88 @@
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-index e37d1e4..320a9a0 100644
+index e37d1e4..5df9f8e 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-@@ -2186,7 +2186,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -1571,7 +1571,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+         trackMuteState->setKeepProcessingWhileMuted();
+     }
+ 
+-    std::unique_ptr<Node> node = createClipsNode (at, *clipsMuteState, params);
++    std::unique_ptr<Node> node = params.auditionSource ? params.auditionSource (at, params)
++                                                    : createClipsNode (at, *clipsMuteState, params);
+     if (node)
+     {
+         // When recording, clips should be muted but the plugin should still be audible so use two muting Nodes
+@@ -1586,15 +1587,17 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+                                               std::move (node), false);
+         }
+ 
+-        node = createTrackCompNode (at, std::move (node), params);
++        if (! params.auditionSource)
++            node = createTrackCompNode (at, std::move (node), params);
+     }
+ 
+-    auto liveInputNode = createLiveInputsNode (at, playHeadState, params);
++    auto liveInputNode = params.auditionNoLiveInputs ? std::unique_ptr<Node>{}
++                                                  : createLiveInputsNode (at, playHeadState, params);
+ 
+     if (node && ! at.getListeners().isEmpty())
+         node = makeNode<LiveMidiOutputNode> (at, std::move (node));
+ 
+-    if (node)
++    if (node && ! params.auditionNoLiveInputs)
+         node = makeNode<LiveMidiInjectingNode> (at, std::move (node));
+ 
+     if (node == nullptr && inputTracks.isEmpty() && liveInputNode == nullptr)
+@@ -1735,6 +1738,9 @@ std::unique_ptr<tracktion::graph::Node> createNodeForSubmixTrack (FolderTrack& s
+ //==============================================================================
+ std::unique_ptr<tracktion::graph::Node> createNodeForTrack (Track& track, const CreateNodeParams& params)
+ {
++    if (params.auditionIncludesTrack && ! params.auditionIncludesTrack (track))
++        return {};
++
+     if (auto t = dynamic_cast<AudioTrack*> (&track))
+     {
+         if (! t->isProcessing (true))
+@@ -1968,7 +1974,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+ 
+     for (auto t : getAllTracks (edit))
+     {
+-        if (params.allowedTracks != nullptr && ! params.allowedTracks->contains (t))
++        if ((params.allowedTracks != nullptr && ! params.allowedTracks->contains (t))
++            || (params.auditionIncludesTrack && ! params.auditionIncludesTrack (*t)))
+             continue;
+ 
+         if (auto output = getTrackOutput (*t))
+@@ -2004,7 +2011,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+     {
+         for (auto t : getAllTracks (edit))
+         {
+-            if (params.allowedTracks != nullptr && ! params.allowedTracks->contains (t))
++            if ((params.allowedTracks != nullptr && ! params.allowedTracks->contains (t))
++            || (params.auditionIncludesTrack && ! params.auditionIncludesTrack (*t)))
+                 continue;
+ 
+             if (auto output = getTrackOutput (*t))
+@@ -2141,7 +2149,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+                                                                          ChannelMap::conversion (incomingChannels, deviceChannels));
+         }
+ 
+-        if (edit.isClickTrackDevice (*device))
++        if (edit.isClickTrackDevice (*device) && ! params.auditionSource)
+         {
+             auto clickAndTracksNode = makeSummingNode ({ node.release(),
+                                                          makeNode<ClickNode> (edit, getNumChannelsFromDevice (*device),
+@@ -2171,7 +2179,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+ 
+     for (auto t : getAllTracks (edit))
+     {
+-        if (params.allowedTracks != nullptr && ! params.allowedTracks->contains (t))
++        if ((params.allowedTracks != nullptr && ! params.allowedTracks->contains (t))
++            || (params.auditionIncludesTrack && ! params.auditionIncludesTrack (*t)))
+             continue;
+ 
+         // Skip submix children (they're built by their parent) and tracks with no TrackOutput
+@@ -2186,7 +2195,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
          }
  
          if (auto node = createNodeForTrack (*t, params))
@@ -17,3 +97,20 @@ index e37d1e4..320a9a0 100644
      }
  
      auto sumNode = std::make_unique<SummingNode> (std::move (trackNodes));
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
+index ebd27f6..aa45196 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
++++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
+@@ -35,6 +35,12 @@ struct CreateNodeParams
+     bool allowClipSlots = true;                         /**< If true, track's clip slots will be included, set to false to disable these (which will use a slightly more efficient Node). */
+     bool readAheadTimeStretchNodes = false;             /**< TEMPORARY: If true, real-time time-stretch Nodes will use a larger buffer and background thread to reduce audio CPU use. */
+ 
++    // Per-context transient audition: replace arranger sources before native track FX,
++    // exclude unrelated tracks, and suppress physical/MIDI input. Never used in renders.
++    std::function<std::unique_ptr<graph::Node> (AudioTrack&, const CreateNodeParams&)> auditionSource = {};
++    std::function<bool (Track&)> auditionIncludesTrack = {};
++    bool auditionNoLiveInputs = false;
++
+     /** If set, this will be called for each output device to give an opportunity to add an
+         additional final Node. Unlike EditNodeBuilder::insertOptionalLastStageNode this is
+         carried per graph build (set via EditPlaybackContext) so different Edits can each have

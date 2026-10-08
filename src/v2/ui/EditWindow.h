@@ -50,6 +50,15 @@ public:
         if (zoomGesture.active && (zoomGesture.session != value.value("session_token", std::string{}) ||
                                    zoomGesture.revision != value.value("revision", uint64_t(0))))
             zoomGesture.cancel();
+        if (scrubGesture && (value.value("session_token", std::string{}) != scrubSession ||
+                             value.value("revision", uint64_t(0)) != scrubRevision ||
+                             !value.value("scrub", Json::object()).value("active", false)))
+        {
+            const auto reason = value.value("scrub", Json::object()).value("reason", std::string{});
+            cancelScrubGesture();
+            if (onScrubStopped && !reason.empty())
+                onScrubStopped(reason);
+        }
         facts = value;
         facts["tracks"] = Json::array();
         for (const auto& t : value["tracks"])
@@ -188,7 +197,8 @@ public:
                 {
                     auto b = std::make_unique<juce::TextButton>();
                     b->setComponentID("clip.select:" + text(id));
-                    b->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool), false);
+                    b->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool) && editing.tool != "scrubber",
+                                                false);
                     b->onClick = [this, id, owner = t["id"].get<std::string>()]
                     {
                         if (onClipSelection)
@@ -220,6 +230,14 @@ public:
     }
     void setView(const Json& value)
     {
+        if (scrubGesture)
+            for (const auto* key : {"edit_tool", "start_samples", "span_samples", "first_row", "rulers", "edit_views",
+                                    "track_heights", "track_views"})
+                if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
+                {
+                    cancelScrubGesture();
+                    break;
+                }
         if (!drag.is_null())
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
                                     "main_time_scale", "track_heights", "track_views", "waveform_zoom"})
@@ -256,9 +274,11 @@ public:
         }
         editing = tools;
         for (auto& [id, header] : headers)
-            header->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool), false);
+            header->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool) && editing.tool != "scrubber", false);
         selection = selectedObjects;
     }
+    std::function<bool(const std::string&, const Json&)> onScrub;
+    std::function<void(const std::string&)> onScrubStopped;
     std::function<void(Json, std::string, uint64_t)> onZoomGesture;
     std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
     std::function<void(std::string, int)> onRecordingCommand;
@@ -549,6 +569,16 @@ public:
                        getWidth() - timelineLeft() - 40, 26, juce::Justification::centred);
         }
     }
+    bool cancelScrubGesture()
+    {
+        if (!scrubGesture)
+            return false;
+        scrubGesture = false;
+        if (onScrub)
+            onScrub("cancel", Json::object());
+        repaint();
+        return true;
+    }
     bool cancelZoomGesture()
     {
         if (!zoomGesture.active)
@@ -567,6 +597,8 @@ public:
         if (zoomGesture.active && !zoomGesture.coordinatesMatch(double(timelineLeft()),
                                                                 double(std::max(1, getWidth() - timelineLeft() - 16))))
             zoomGesture.cancel();
+        if (scrubGesture && (scrubLeft != timelineLeft() || scrubWidth != getWidth()))
+            cancelScrubGesture();
         rowOffsets.clear();
         rowOffsets.push_back(0);
         for (int i = 0; i < visibleRows(); ++i)
@@ -676,6 +708,27 @@ public:
             zoomGesture.begin(e, axis, facts, view, e.y >= rulerHeight() ? trackIDs[size_t(row)] : std::string{},
                               !ZoomGesture::isTool(editing.tool));
             repaint();
+            return;
+        }
+        if (editing.tool == "scrubber" && !e.mods.isPopupMenu() && e.y >= rulerHeight() && rowAt(e.y) >= 0 &&
+            rowAt(e.y) < visibleRows())
+        {
+            if (viewParameter(trackIDs[size_t(row)]).empty())
+                for (const auto& clip : facts["tracks"][row]["clips"])
+                    if (clip["kind"] == "audio" && clipRect(clip, row).contains(e.getPosition()) && onScrub)
+                    {
+                        scrubSession = facts["session_token"];
+                        scrubRevision = facts["revision"];
+                        scrubGesture = onScrub("begin", {{"clip", clip["id"]},
+                                                         {"position_samples", axis.sampleAt(e.x)},
+                                                         {"session", scrubSession},
+                                                         {"revision", scrubRevision}});
+                        scrubX = e.x;
+                        scrubTime = juce::Time::getMillisecondCounterHiRes();
+                        scrubLeft = timelineLeft();
+                        scrubWidth = getWidth();
+                        return;
+                    }
             return;
         }
         const auto point = snapped(axis.sampleAt(e.x), e.mods);
@@ -824,6 +877,20 @@ public:
     }
     void mouseDrag(const juce::MouseEvent& e) override
     {
+        if (scrubGesture)
+        {
+            const auto now = juce::Time::getMillisecondCounterHiRes();
+            const auto elapsed = std::max(1., now - scrubTime);
+            const auto maximum = e.mods.isAltDown() ? 4. : 1.;
+            const auto speed =
+                std::clamp((e.x - scrubX) * coordinates().span / coordinates().width / 48000. * 1000. / elapsed,
+                           -maximum, maximum);
+            scrubX = e.x;
+            scrubTime = now;
+            if (!onScrub || !onScrub("speed", {{"speed", speed}, {"shuttle", e.mods.isAltDown()}}))
+                cancelScrubGesture();
+            return;
+        }
         if (zoomGesture.active)
         {
             zoomGesture.move(e);
@@ -895,6 +962,13 @@ public:
     }
     void mouseUp(const juce::MouseEvent&) override
     {
+        if (scrubGesture)
+        {
+            scrubGesture = false;
+            if (onScrub)
+                onScrub("end", Json::object());
+            return;
+        }
         if (zoomGesture.active)
         {
             const auto request = zoomGesture.finish();
@@ -1131,6 +1205,11 @@ private:
     std::function<void(const std::string&, Json, uint64_t)> clipWrite;
     EditingModel editing;
     SelectionModel selection;
+    bool scrubGesture = false;
+    std::string scrubSession;
+    uint64_t scrubRevision = 0;
+    int scrubX = 0, scrubLeft = 0, scrubWidth = 0;
+    double scrubTime = 0;
     ZoomGesture zoomGesture;
     WaveformZoomControls waveformControls;
     Json view = Json::object();

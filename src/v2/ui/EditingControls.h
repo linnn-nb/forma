@@ -37,10 +37,10 @@ public:
         };
         zoomer.setTooltip(
             text("F5 · Normal / Single Zoom；点按居中放大，拖范围，Option返回上一缩放；双击按钮显示工程"));
-        for (auto* b :
-             {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &pencil, &back, &forward, &split})
+        for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &scrubber, &pencil, &back,
+                        &forward, &split})
             addAndMakeVisible(b);
-        for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &pencil})
+        for (auto* b : {&shuffle, &slip, &spot, &grid, &trim, &selector, &grabber, &smart, &scrubber, &pencil})
             b->setToggleable(true);
         smart.setTooltip(
             text("Smart Tool（音频）· 上半部选区，下半部移动，边缘修剪，顶部角点淡化 · ⌘7（兼容数字键盘）"));
@@ -80,6 +80,7 @@ public:
                                                                          {&smart, editCommand::smart},
                                                                          {&back, editCommand::nudgeBack},
                                                                          {&forward, editCommand::nudgeForward},
+                                                                         {&scrubber, 253},
                                                                          {&pencil, 218},
                                                                          {&split, editCommand::split}};
         zoomer.setComponentID("ui.command:240");
@@ -111,6 +112,7 @@ public:
         selector.setToggleState(view["edit_tool"] == "selector", juce::dontSendNotification);
         grabber.setToggleState(view["edit_tool"] == "grabber", juce::dontSendNotification);
         smart.setToggleState(view["edit_tool"] == "smart", juce::dontSendNotification);
+        scrubber.setToggleState(view["edit_tool"] == "scrubber", juce::dontSendNotification);
         pencil.setToggleState(view["edit_tool"] == "pencil", juce::dontSendNotification);
         updating = false;
     }
@@ -124,6 +126,7 @@ public:
         selector.setButtonText(text(compact ? "选" : "选择"));
         grabber.setButtonText(text(compact ? "移" : "移动"));
         pencil.setButtonText(text(compact ? "画" : "画笔"));
+        scrubber.setButtonText(text(compact ? "听" : "Scrub"));
         const int toolWidth = compact ? 29 : 43;
         for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{{&shuffle, compact ? 44 : 50},
                                                                                    {&slip, compact ? 40 : 44},
@@ -133,6 +136,7 @@ public:
                                                                                    {&selector, toolWidth},
                                                                                    {&grabber, toolWidth},
                                                                                    {&smart, compact ? 40 : 48},
+                                                                                   {&scrubber, compact ? 29 : 43},
                                                                                    {&pencil, compact ? 39 : 44}})
         {
             if (button == &trim)
@@ -152,8 +156,8 @@ private:
     ZoomToolButton zoomer;
     bool single = false;
     juce::TextButton shuffle{"Shuffle"}, slip{"Slip"}, spot{"Spot"}, grid{"Grid"}, selector{text("选择")},
-        grabber{text("移动")}, trim{text("修剪")}, smart{text("Smart")}, pencil{text("画笔")}, back{text("−")},
-        forward{"+"}, split{text("拆分")};
+        grabber{text("移动")}, trim{text("修剪")}, smart{text("Smart")}, scrubber{text("Scrub")}, pencil{text("画笔")},
+        back{text("−")}, forward{"+"}, split{text("拆分")};
     juce::ComboBox division, nudge;
     const std::array<double, 4> divisions{1., .5, .25, .125};
     const std::array<std::string, 5> nudges{"sample", "10ms", "100ms", "beat", "quarter-beat"};

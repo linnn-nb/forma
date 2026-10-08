@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+当前增量（2026-10-09，Scrubber）：原Tracktion源节点接通真实正反向单片段试听与Option Shuttle，保留原FX/Aux/输出、停止恢复；CommandF9/工具/键位可保存。Release/固定验签，相关11通过0失败、104专项。无淡化/Clip FX/自动化等片段边界及±2秒缓存限制明确保留；Mac锁定未实试听，完整U＋P0未完成。见VERIFICATION.md。
+
 当前增量（2026-10-09，Waveform Zoom）：真实波形显示+/−/复位和Control连续水平/所点音频轨垂直缩放接通；schema10保存波形比例与16条联合视图历史，不改声音、不占工程Undo/revision。Release/固定验签、相关11通过0失败，106专项及双声道真实PCM误差0；桌面锁屏未做物理验收。Scrubber SDK缺少按拖速正反向路径，仍未实现，完整U＋P0继续保留。
 
 当前增量（2026-10-09，Zoomer）：Normal/Single、原始采样点击/范围缩放、上一缩放/选区适配、临时标尺入口和双击全工程接通；schema9视图保存不进工程Undo/revision。Release/固定验签、相关10通过0失败，151检查及真实PCM误差0通过；桌面锁定未做物理验收。完整U＋P0未完成，下一项真实Scrub；边界见VERIFICATION.md。

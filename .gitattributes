@@ -1,3 +1,6 @@
 
 # Keep the locked JUCE CRLF patch bytes intact.
 patches/juce-au-parameter-cache.patch -text whitespace=-blank-at-eol,cr-at-eol
+
+# Unified diff context includes single-space empty lines; keep patch bytes exact.
+patches/tracktion-*.patch whitespace=-blank-at-eol

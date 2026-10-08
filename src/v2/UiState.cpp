@@ -107,7 +107,7 @@ void validate(const Json& value)
             throw std::runtime_error("invalid stable track automation view reference");
     validateWaveformZoom(value["waveform_zoom"]);
     const auto& zoom = value["zoom_state"];
-    const std::set<std::string> returnTools{"selector", "grabber", "trim", "smart", "pencil"};
+    const std::set<std::string> returnTools{"selector", "grabber", "trim", "smart", "pencil", "scrubber"};
     if (!zoom.is_object() || zoom.size() != 2 || !zoom.contains("return_tool") || !zoom["return_tool"].is_string() ||
         !returnTools.contains(zoom["return_tool"].get<std::string>()) || !zoom.contains("history") ||
         !zoom["history"].is_array() || zoom["history"].size() > 16)
@@ -143,7 +143,7 @@ void validate(const Json& value)
          value["edit_mode"] != "grid") ||
         (value["edit_tool"] != "selector" && value["edit_tool"] != "grabber" && value["edit_tool"] != "trim" &&
          value["edit_tool"] != "smart" && value["edit_tool"] != "pencil" && value["edit_tool"] != "zoomer" &&
-         value["edit_tool"] != "zoom_single"))
+         value["edit_tool"] != "zoom_single" && value["edit_tool"] != "scrubber"))
         throw std::runtime_error("unsupported editing mode or tool");
     const double division = value["grid_beats"];
     if (division != 1. && division != .5 && division != .25 && division != .125)

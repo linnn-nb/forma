@@ -133,6 +133,7 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {253, "Scrubber 正反向试听（单片段）", "编辑", juce::KeyPress::F9Key, cmd},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
         {252, "恢复默认波形显示高度", "缩放", '[',
@@ -296,6 +297,29 @@ void Workspace::initialiseCommandManager()
                 message(text("循环范围已提交 · 可撤销"));
                 refresh();
             });
+    };
+    editArea.onScrubStopped = [this](const std::string& reason)
+    {
+        if (reason == "source_boundary")
+            message(text("Scrubber 已到片段或缓存边界；重新按下可继续试听"));
+        else if (reason == "drag_timeout")
+            message(text("Scrubber 已停止：鼠标未继续拖动"));
+        else if (reason == "device_or_transport_interrupted")
+            message(text("Scrubber 已停止：设备或走带状态改变"));
+    };
+    editArea.onScrub = [this](const std::string& action, const Json& args)
+    {
+        try
+        {
+            commands.scrub(action, args);
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            commands.scrub("cancel");
+            message(text(e.what()));
+            return false;
+        }
     };
     editArea.connectWaveformZoom(commandManager);
     editArea.onZoomGesture = [this](Json request, std::string session, uint64_t revision)
@@ -509,6 +533,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) &&
                          std::any_of(selection.objects.begin(), selection.objects.end(),
                                      [](const auto& o) { return o["kind"] == "automation_point"; });
+            if (id == 253)
+            {
+                active = !mix && facts["recording_capture"].is_null();
+                info.setTicked(editing.tool == "scrubber");
+            }
             if (id >= 250 && id <= 252)
                 active = !mix;
             if (id >= 240 && id <= 244)
@@ -545,6 +574,17 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 253)
+    {
+        invoke(
+            [this]
+            {
+                commands.scrub("cancel");
+                setView({{"edit_tool", "scrubber"}});
+                message(text("Scrubber：普通无淡化音频片段；左右拖动，Option Shuttle，Escape取消；±2秒缓存"));
+            });
+        return true;
+    }
     if ((id >= 240 && id <= 244) || (id >= 250 && id <= 252))
     {
         executeZoomCommand(id);

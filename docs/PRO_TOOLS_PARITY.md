@@ -1,5 +1,7 @@
 > 2026-10-05 方向调整：本文件仅为 Pro Tools 交互与工作流参考清单，不是产品完成度或发布验收门槛。历史状态不能作为 v2 已验证能力。
 
+Scrubber增量核验（2026-10-09）：依据官方2026.4参考手册印刷883–884，已接原图单片段真实正反向源/原FX及输出，±1/Option±4、停止恢复有数值与GUI自动化证据。仍为部分实现：有界±2秒、无Clip FX/淡化/自动化，双轨/8声道/临时Ctrl/细拖/选区行为与实体试听待补。代码ScrubPlayback.cpp、EditWindow.h；测试U-P0-SCRUB-01、evidence/U/scrub-tests.json。参考清单不变为完成度门槛，具体资格见VERIFICATION.md。
+
 > v2 当前事实（2026-10-06）：MIDI/FourOsc、Tempo/拍号和基础钢琴卷帘、层级 Folder/VCA，以及音量/声像/内置参数的 Read/Touch/Latch/Write 自动化已有实际 PCM、GUI、历史/重开验证；完整 MIDI/音乐制作与高级自动化仍是部分实现；SDK 曲线阶跃实测晚 127 帧，不宣称任意采样级精度。当前实现与证据以 docs/VERIFICATION.md 为准，下表继续保留 v1 行为规格，不能据其历史代码或状态宣称 v2 已完成。
 
 

@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+## 本地Scrubber（U-P0-SCRUB-01）
+
+原生命令253仅选择工具，经L1 updateUiState保存schema10；默认CommandF9保留旧F9节拍器，人工解绑/改键照常保留。音频`Commands::scrub(begin/speed/end/cancel)`只供本地UI，message-thread校验当前session/revision、真实Clip和实际路径，走带瞬态不进入Plan/Undo或MCP。begin为clip、整数position_samples、session、unsigned revision；speed为有限数speed和布尔shuttle（±1或±4）。查询返回actual源游标/缓存/是否活动，停止保留实际reason；无执行成功就不显示活动。无新AI工具、Provider、模型或分析资格。正常Play/Stop/Seek、合法提交、Undo/Redo、保存/设备/旁路参数变化先回收试听；未获授权的commit不取消试听。录音互斥，正常播放和工程状态恢复；所选工具可重开，音频窗口不持久化。条件、预算和验证见VERIFICATION.md。
+
 ## 波形显示与连续缩放（U-P0-WAVEFORM-ZOOM-01）
 
 GUI 250–252共用原生命令表，Control Zoomer生成本地continuous_patch，松手捕获原session/revision后经L1 updateUiState提交。schema10 waveform_zoom为全局scale与稀疏track_scales（稳定ID、1/32–64、最多4096），历史仍16条，但每条包括波形状态；旧完整9的历史保留并填默认音频显示，旧8及之前逐级迁移，畸形/越界/未知数据整笔拒绝。全局按钮按比例缩放覆盖轨，到边界夹限；复位清除覆盖。连续草稿不持久化，布局/窗口坐标/版本/工具变化或Escape取消；仅在真实音频波形视图接受垂直操作。渲染/音频gain不改，工程Undo跳过视图。没有新MCP工具或分析能力；按钮只有实际命令回执后更新，状态查询只读。

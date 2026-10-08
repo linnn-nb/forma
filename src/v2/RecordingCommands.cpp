@@ -281,6 +281,8 @@ void Commands::restoreInputAssignments()
 }
 Json Commands::configureInput(const std::string& deviceName)
 {
+    checkThread();
+    stopScrub();
     // The recording inspector is an adapter to the same stopped, permission-
     // checked device control as Audio Settings. It cannot bypass readiness or
     // silently replace the user's sample rate/buffer with a JUCE fallback.

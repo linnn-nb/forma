@@ -17,6 +17,7 @@ class PluginEditorWindows;
 class NativePluginStates;
 class SessionRecovery;
 class MasterAnalysis;
+class ScrubPlayback;
 class Commands : private juce::Timer, private te::ParameterChangeHandler::UserChangeListener
 {
 public:
@@ -64,6 +65,9 @@ public:
     void play();
     void stop();
     void seek(int64_t);
+    // Local transient audition; no project edit or Agent tool.
+    Json scrub(const std::string& action, const Json& args = Json::object());
+    Json scrubStatus() const;
     Json deviceStatus() const;
     Json outputMeters() const;
     Json outputMeterControl(const std::string&, const Json&);
@@ -100,6 +104,9 @@ public:
     Json legacyReports() const;
 
 private:
+    std::shared_ptr<ScrubPlayback> scrubPlayback;
+    Json lastScrubStatus = {{"active", false}};
+    void stopScrub(const std::string& reason = "stopped");
     friend class MasterAnalysis;
     std::unique_ptr<MasterAnalysis> masterAnalysis;
     static void registerAnalysisCommands(Json&);

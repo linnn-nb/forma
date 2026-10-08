@@ -437,7 +437,10 @@ Json Commands::query() const
             {"markers", markerQuery()},
             {"mix_groups", mixGroupsQuery()},
             {"length_samples", std::llround(edit->getLength().inSeconds() * timelineRate)},
-            {"position_samples", std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
+            {"scrub", scrubStatus()},
+            {"position_samples", scrubPlayback
+                                     ? scrubStatus()["position_samples"].get<int64_t>()
+                                     : std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
             {"playing", edit->getTransport().isPlaying()},
             {"can_undo", historyCursor > 0 &&
                              bool(metadata.getChildWithProperty("plan_id", juce::String(history.at(historyCursor - 1)))
@@ -775,6 +778,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     auto reviewed = review(plan, scope);
     require(plan.at("actor") == "human" || accepted || reviewed["permission"]["automatic_allowed"].get<bool>(),
             "preview acceptance required");
+    stopScrub();
     if (edit->getTransport().isPlaying())
         for (const auto& op : plan.at("operations"))
             require(isTrackFlag(op.at("command")) || op.at("command") == "transport.metronome.set" ||
@@ -1017,6 +1021,7 @@ Json Commands::transactionStatus(const std::string& id) const
 Json Commands::undo(const std::string& expected)
 {
     checkThread();
+    stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
     require(!nativeStates ||
@@ -1057,6 +1062,7 @@ Json Commands::undo(const std::string& expected)
 Json Commands::redo()
 {
     checkThread();
+    stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
     require(!nativeStates ||
@@ -1094,6 +1100,7 @@ Json Commands::redo()
 void Commands::play()
 {
     checkThread();
+    stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
     require(parameterCapture.is_null(), "finish native parameter gesture before Play");
@@ -1118,6 +1125,7 @@ void Commands::play()
 void Commands::stop()
 {
     checkThread();
+    stopScrub();
     endParameterGestures();
     {
         ParameterWriteGuard parameterGuard(*this);
@@ -1150,6 +1158,7 @@ void Commands::stop()
 void Commands::seek(int64_t sample)
 {
     checkThread();
+    stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(parameterCapture.is_null(), "finish native parameter gesture before seeking");
     ParameterWriteGuard parameterGuard(*this);
@@ -1316,6 +1325,7 @@ Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
 Json Commands::save(const juce::File& destination)
 {
     checkThread();
+    stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
     require(!nativeStates ||
@@ -1358,7 +1368,9 @@ void Commands::open(const juce::File& source)
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
     checkThread();
+    stopScrub();
     require(candidate != nullptr, "invalid Edit replacement");
+    lastScrubStatus = {{"active", false}};
     // SDK nextID is lazy after loading. Reserve its high-water mark while the
     // complete imported state still exists: deletion followed by creation must
     // not reuse IDs held by Undo or the native plugin cache (including Clip FX).
