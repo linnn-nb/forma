@@ -67,6 +67,16 @@ public:
             for (auto& id : ids)
             {
                 auto c = std::make_unique<TrackHeader>(id, false, write, select);
+                c->onRecordingCommand = [this](auto id, int command)
+                {
+                    if (onRecordingCommand)
+                        onRecordingCommand(id, command);
+                };
+                c->onMonitorMenu = [this](auto id, auto& component)
+                {
+                    if (onMonitorMenu)
+                        onMonitorMenu(id, component);
+                };
                 c->onOptions = [this](auto id, auto& component, bool strip)
                 {
                     if (onTrackOptions)
@@ -157,6 +167,7 @@ public:
         {
             auto item = facts["tracks"][i];
             item["playing"] = facts["playing"];
+            item["recording_controls_pending"] = TrackRecordingState::blocked(facts);
             item["automation_writing"] = !facts["automation_capture"].is_null();
             item["recording"] = !facts["recording_capture"].is_null();
             controls[i]->update(item, trackIDs[i] == selected);
@@ -235,6 +246,8 @@ public:
         selection = selectedObjects;
     }
     std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
+    std::function<void(std::string, int)> onRecordingCommand;
+    std::function<void(std::string, juce::Component&)> onMonitorMenu;
     std::function<void(std::string, int, std::string)> onTrackHeight;
     std::function<void(std::string, std::string)> onTrackView;
     std::function<Json(std::string)> onAutomationQuery;

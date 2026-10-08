@@ -133,6 +133,12 @@ const std::vector<Entry>& entries()
         {206, "黄 · 轨道颜色", "轨道"},
         {207, "灰 · 轨道颜色", "轨道"},
         {208, "循环切换轨道颜色", "轨道", 'c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {230, "切换所选轨道录音待命", "录音", 'r', shift},
+        {231, "切换所选轨道输入监听", "录音", 'i', shift},
+        {232, "所选轨道监听 Off", "录音"},
+        {233, "所选轨道监听 Auto（待命时）", "录音"},
+        {234, "所选轨道监听 On", "录音"},
+        {235, "轨道录音与输入设置…", "录音", 'r', cmd | juce::ModifierKeys::altModifier},
         {218, "Pencil 自动化绘制", "编辑", juce::KeyPress::F10Key, cmd},
         {220, "轨道片段 / 波形视图", "轨道"},
         {221, "轨道音量自动化视图", "轨道"},
@@ -215,6 +221,10 @@ void Workspace::initialiseCommandManager()
     zoomPresets.onMenu = [this](int i, auto& component) { showZoomPresetMenu(i, component); };
     editArea.onTrackOptions = mixArea.onTrackOptions = [this](auto id, auto& component, bool strip)
     { showTrackOptions(id, component, strip); };
+    editArea.onRecordingCommand =
+        mixArea.onRecordingCommand = [this](auto id, int command) { dispatchRecordingCommand(id, command); };
+    editArea.onMonitorMenu =
+        mixArea.onMonitorMenu = [this](auto id, auto& component) { showTrackMonitorMenu(id, component); };
     editArea.onTrackHeight = [this](auto id, int height, auto session) { setTrackHeight(id, height, session); };
     mixArea.onInsert = [this](std::string id, int index) { focusMixInsert(id, index); };
     mixArea.onRouting = [this](std::string id)
@@ -486,6 +496,20 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) &&
                          std::any_of(selection.objects.begin(), selection.objects.end(),
                                      [](const auto& o) { return o["kind"] == "automation_point"; });
+            if (id >= 230 && id <= 235)
+            {
+                active = canRecordingCommand(id);
+                const auto targets = recordingCommandTargets();
+                if (id >= 232 && id <= 234 && !targets.empty())
+                {
+                    const char* mode = id == 232 ? "off" : id == 233 ? "auto" : "on";
+                    info.setTicked(std::all_of(targets.begin(), targets.end(),
+                                               [&](const auto& t) { return t["input"]["monitor"] == mode; }));
+                }
+                if (id == 230 && !targets.empty())
+                    info.setTicked(std::all_of(targets.begin(), targets.end(),
+                                               [](const auto& t) { return t["input"]["armed"].template get<bool>(); }));
+            }
             info.setActive(active);
             return;
         }
@@ -493,6 +517,11 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= 230 && id <= 235)
+    {
+        executeRecordingCommand(id);
+        return true;
+    }
     if (id == 218 || (id >= 220 && id <= 226))
     {
         executeAutomationViewCommand(id);

@@ -122,6 +122,13 @@ private:
     void showTrackOptions(const std::string&, juce::Component&, bool);
     void setTrackHeight(const std::string&, int, const std::string&);
     void executePresentationCommand(int);
+    Json recordingCommandTargets() const;
+    bool canRecordingCommand(int) const;
+    void executeRecordingCommand(int);
+    void dispatchRecordingCommand(const std::string&, int, bool modifiers = true);
+    void showTrackMonitorMenu(const std::string&, juce::Component&);
+    Json recordingTargets = nullptr;
+    std::string recordingAnchor;
     Json cachedAutomation(const std::string&);
     void setTrackView(const std::string&, const std::string&);
     void executeAutomationViewCommand(int);

@@ -1,0 +1,101 @@
+{
+  "checks": 73,
+  "monitor_output_rms": 0.07106047423146852,
+  "recording_receipt": {
+    "actor": "human",
+    "clips": [
+      {
+        "id": "1030",
+        "kind": "audio",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_recording_header_tests/forma-record-header-2966b55eaa134750ac2c8d6ae799d696/Take-01a78343de9143d89547e53c0d7ace8c-1012.wav",
+        "track": "1012"
+      },
+      {
+        "id": "1032",
+        "kind": "audio",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_recording_header_tests/forma-record-header-2966b55eaa134750ac2c8d6ae799d696/Take-fb9d98dd575a42698356b8c9304005f3-1015.wav",
+        "track": "1015"
+      }
+    ],
+    "directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_recording_header_tests/forma-record-header-2966b55eaa134750ac2c8d6ae799d696",
+    "end_samples": 45056,
+    "error": "",
+    "files": [
+      {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 1,
+        "frames": 45568,
+        "lufs_i": -23.00334679809524,
+        "media_hash": "9c3749207d924696ced0902af0a64c943b9fb5881848cb9cd73ab173a0e42a78",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_recording_header_tests/forma-record-header-2966b55eaa134750ac2c8d6ae799d696/Take-01a78343de9143d89547e53c0d7ace8c-1012.wav",
+        "pcm_bits": 24,
+        "peak": 0.10000002384185791,
+        "peak_dbfs": -19.99999792912278,
+        "rms": 0.07071382612244913,
+        "sample_rate": 48000.0,
+        "true_peak_dbtp": -19.987698513506185
+      },
+      {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 1,
+        "frames": 45568,
+        "lufs_i": -23.716433364839524,
+        "media_hash": "40d1ffd61775e0b4d84632c9825be4b331332493743900e0957ba639a9fa1b8c",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_recording_header_tests/forma-record-header-2966b55eaa134750ac2c8d6ae799d696/Take-fb9d98dd575a42698356b8c9304005f3-1015.wav",
+        "pcm_bits": 24,
+        "peak": 0.10000002384185791,
+        "peak_dbfs": -19.99999792912278,
+        "rms": 0.070702652960853,
+        "sample_rate": 48000.0,
+        "true_peak_dbtp": -19.99551693083534
+      }
+    ],
+    "outcome": "success",
+    "plan_id": "80721a8c17294cc8a98d291afdb16113",
+    "processing_stall_budget_ms": 500.0,
+    "start_samples": 0,
+    "state": "committed",
+    "target_results": [
+      {
+        "clips": 1,
+        "kind": "audio",
+        "state": "captured",
+        "track": "1012"
+      },
+      {
+        "clips": 1,
+        "kind": "audio",
+        "state": "captured",
+        "track": "1015"
+      }
+    ],
+    "targets": [
+      "1012",
+      "1015"
+    ],
+    "undo_scope": "Edit clips only; recorded audio files are retained"
+  },
+  "result": "passed",
+  "scope": "native Edit/Mix controls, shared L1 and actual Tracktion hosted PCM/disk graph; not a physical microphone or desktop gesture acceptance",
+  "iteration_verification": {
+    "increment": "U-P0-RECORDING-HEADERS-01",
+    "date": "2026-10-09",
+    "release_build": "passed",
+    "strict_deep_signing": "passed",
+    "preview": "build-v2-tracktion/FormaRecordingHeadersPreview.app",
+    "preview_binary_sha256": "c57f6bc786409ba01fa9432e146020d1b3f8bf832dd39210cc2775f6a7f78c4d",
+    "desktop": "Mac locked; preview not launched; physical gestures, microphone and listening not executed",
+    "affected_ctest": {
+      "passed": 9,
+      "failed": 0,
+      "seconds": 45.83
+    },
+    "specialist_checks": 73,
+    "initial_failures_fixed": [
+      "test track.create refs",
+      "production null facts readiness guard"
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include "TrackRecordingState.h"
 namespace ndaw::desktop
 {
 class TrackHeader final : public juce::Component
@@ -13,6 +14,28 @@ public:
     {
         for (auto* b : {&name, &mute, &solo, &safe, &fold})
             addAndMakeVisible(b);
+        for (auto* b : std::initializer_list<juce::Button*>{&arm, &inputMonitor})
+        {
+            addChildComponent(*b);
+            b->setToggleable(true);
+        }
+        arm.setComponentID("track.record_arm:" + text(this->id));
+        inputMonitor.setComponentID("track.input_monitor:" + text(this->id));
+        arm.onClick = [this]
+        {
+            if (onRecordingCommand)
+                onRecordingCommand(this->id, 230);
+        };
+        inputMonitor.onClick = [this]
+        {
+            if (onRecordingCommand)
+                onRecordingCommand(this->id, 231);
+        };
+        inputMonitor.onMenu = [this]
+        {
+            if (onMonitorMenu)
+                onMonitorMenu(this->id, inputMonitor);
+        };
         addAndMakeVisible(gain);
         if (strip)
         {
@@ -216,6 +239,8 @@ public:
     }
     std::function<void(std::string, juce::Component&, bool)> onOptions;
     std::function<void(std::string, int, bool)> onHeight;
+    std::function<void(std::string, int)> onRecordingCommand;
+    std::function<void(std::string, juce::Component&)> onMonitorMenu;
     std::function<void(std::string, std::string)> onView;
     void configureViews(const Json& lanes, const std::string& parameter)
     {
@@ -290,6 +315,34 @@ public:
             outputSlot.setEnabled(bool(focusRouting));
         }
 
+        const bool recordable = TrackRecordingState::supported(facts);
+        const bool busy = facts.value("recording_controls_pending", true);
+        arm.setEnabled(bool(onRecordingCommand) && TrackRecordingState::canArm(facts, busy));
+        inputMonitor.setEnabled(bool(onRecordingCommand) && TrackRecordingState::canMonitor(facts, busy));
+        if (recordable)
+        {
+            const auto& input = facts["input"];
+            const bool actualMonitor = input.value("monitoring", false);
+            const bool actualRecording = input.value("recording", false);
+            const bool available = input.value("available", false);
+            const auto mode = input.value("monitor", std::string("off"));
+            arm.setToggleState(input.value("armed", false), juce::dontSendNotification);
+            arm.setButtonText(actualRecording ? text("●") : juce::String("R"));
+            arm.setColour(juce::TextButton::buttonOnColourId, juce::Colour(available ? 0xffb94550 : 0xff946e36));
+            inputMonitor.setToggleState(mode != "off", juce::dontSendNotification);
+            inputMonitor.setButtonText(mode == "auto" ? "A" : "I");
+            inputMonitor.setColour(juce::TextButton::buttonOnColourId,
+                                   juce::Colour(actualMonitor ? 0xff318478 : 0xff946e36));
+            const auto source = text(input.value("name", std::string("None")));
+            arm.setTooltip(text("R · 录音待命 / Shift+R · ") + source +
+                           (actualRecording               ? text(" · 实际输入正在录制")
+                            : input.value("armed", false) ? text(" · 已待命；走带录音才会产生片段")
+                                                          : text(" · 未待命")) +
+                           (available ? "" : text(" · 输入不可用；只能解除已有待命")));
+            inputMonitor.setTooltip(text("I · 输入监听 / Shift+I · ") + source + " · " + text(mode) +
+                                    (actualMonitor ? text(" · 实际监听路径已启用") : text(" · 实际监听未启用")) +
+                                    text(" · 右键选择Off / Auto（待命时） / On"));
+        }
         this->selected = selected;
         name.setButtonText(text(facts["name"].get<std::string>()));
         name.setColour(juce::TextButton::buttonColourId, trackColour(facts).darker(selected ? .45f : .75f));
@@ -386,6 +439,23 @@ public:
         mute.setBounds(12, 46, width, 25);
         solo.setBounds(18 + width, 46, width, 25);
         safe.setBounds(24 + 2 * width, 46, width, 25);
+        const bool recordable = TrackRecordingState::supported(facts);
+        const bool showRecording = recordable && (strip || getHeight() >= 60);
+        arm.setVisible(showRecording);
+        inputMonitor.setVisible(showRecording);
+        safe.setButtonText(strip && showRecording ? "SF" : "SAFE");
+        if (showRecording)
+        {
+            const int top = shortRow ? 30 : 46;
+            const int height = shortRow ? 22 : 25;
+            const int availableWidth = getWidth() - 24;
+            int x = 12;
+            for (auto* b : std::initializer_list<juce::Button*>{&arm, &inputMonitor, &solo, &mute, &safe})
+            {
+                b->setBounds(x, top, availableWidth / 5 - 2, height);
+                x += availableWidth / 5;
+            }
+        }
         const bool compact = strip && getHeight() < 580;
         if (strip)
         {
@@ -412,7 +482,7 @@ public:
             const bool mini = getHeight() < 60;
             for (auto* b : {&mute, &solo, &safe})
                 b->setVisible(!mini);
-            if (shortRow)
+            if (shortRow && !showRecording)
             {
                 mute.setBounds(12, 30, width, 22);
                 solo.setBounds(18 + width, 30, width, 22);
@@ -471,6 +541,8 @@ private:
     bool heightGesture = false;
     int heightStart = 0, screenStart = 0;
     juce::TextButton options;
+    InputMonitorButton inputMonitor;
+    juce::TextButton arm{"R"};
     juce::TextButton name, mute{"M"}, solo{"S"}, safe{"SAFE"}, fold{"v"};
     juce::Slider gain, pan;
     juce::ComboBox panLaw;

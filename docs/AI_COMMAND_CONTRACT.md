@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+## 本地录音轨道头（U-P0-RECORDING-HEADERS-01）
+
+GUI命令230–235仅复用已有track.arm/track.monitor；不注册新MCP工具。按钮/菜单/键位生成actor=human、当前session/revision的Plan；available事实决定开启资格，缺失设备仅可关闭，L1提交时再次校验。选择或点击范围构成一笔事务，最多64目标，超限整笔拒绝；Off/Auto/On对应真实模式，Auto不包含PT Punch切换。菜单先检查版本再单次派发，只有commit回执后显示提交；实际监听和录音灯读原生查询。
+
 ## 轨道自动化视图与手势（U-P0-AUTOMATION-VIEWS-01）
 
 schema8增加track_views（稳定track ID→实际lane ID，稀疏UI引用最多4096），object_selection增加automation_point（id、track、parameter、kind）。完整旧7及此前版本明确迁移，不把引用当权限或生成对象。UI写入只走L1 updateUiState，不进入领域Undo/revision；实际选择由同版本曲线事实复核，移除/失效目标不可执行。

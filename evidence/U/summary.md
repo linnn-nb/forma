@@ -1,5 +1,19 @@
 # U 原生界面重构
 
+## U-P0-RECORDING-HEADERS-01：Edit/Mix 录音待命与输入监听（2026-10-09；增量）
+
+结论：音频、MIDI、乐器轨道头接入真实R/I控制；Aux/Folder/VCA不显示伪录音能力。按钮、菜单与可改Shift+R/Shift+I共用ApplicationCommandManager 230–235，复用已有L1 track.arm/track.monitor，一次操作一个human Plan/Undo。CommandOptionR打开真实输入检查器；I右键选择Off、Auto（待命时）、On。单击只操作目标；全局键操作当前所选可录轨，Option点击操作全部可录轨、OptionShift点击操作已选可录轨。多轨开启时任何一个输入不可用整笔拒绝；最多64目标，超限整体拒绝，不静默截断。
+
+事实/状态：输入名称、available、armed、monitor、monitoring、recording来自L1 actual输入实例。实际监听路径启用才显示绿色；只有请求状态则琥珀色，真实capture时R显示圆点。保留缺失输入引用与请求状态，允许解除已有待命/关闭监听，不能重新开启；停止走带才允许结构改动，录音/自动化/参数capture及设备配置期间禁用。GUI不直接写Edit，无新分析/MCP工具、依赖或第二引擎。Micro32px隐藏R/I；64px以上与Mix紧凑条布局验证通过。
+
+验证：Release构建及正式/独立预览固定本地签名strict/deep通过；受影响CTest **9通过、0失败，45.83秒**。新`tests/v2/TrackRecordingHeaderTests.cpp` **73检查**（包括布局/命令可用性，不代表73制作工作流）：实际Tracktion hosted PCM输入，Off/未待命Auto输出静音，On输出RMS **0.07106047423146852**；R/I单轨和多轨一笔Undo/Redo；缺失设备全选拒绝、恢复保留引用；Edit/Mix状态一致；实际两轨录音生成两份48kHz、24-bit、单声道、各45568帧WAV，RMS约0.0707，Stop取得成功回执，单笔撤销移除两个片段且保留媒体，Redo恢复。新Workspace无设备重开保留armed/mode/device和自定义键位，实际重映射键分发解除两轨待命并可Undo。现有音频/MIDI录音、就绪、导航、备注、Views、轨高与自动化回归均通过。机器结果`evidence/U/track-recording-header-tests.json`；测试输入仅用于自动化，不是实体麦克风证据。
+
+首轮失败：新增测试缺少必需的track.create.ref，修正测试Plan；已有录音就绪回归暴露Header初始null事实读取，生产只读策略补空对象保护并全部重跑。最终通过结果对应修复后的二进制；此前失败未算通过。
+
+参考：本地官方Pro Tools Reference Guide 2026.4，印刷762–763、768–769、805–806页，核验2026-10-09。差异：Forma Auto仅“待命时监听”，没有PT播放/录制/Punch之间的Auto Input切换；I切Off↔On，Auto显式菜单，与PT InputOnly↔Auto不同。当前不支持播放中待命、PT Latch Record与Separate Play/Record Faders、MIDI合并/蓝色PDC模式、选择跟随输入、录音组联动；无待命闪烁动画。Option行为代码接通，物理修饰键点击尚未执行，不宣称PT完全一致。
+
+桌面工具明确Mac锁定，本轮无真实鼠标/物理键盘、截图、试听、实体麦克风或应用退出重开验收；新Workspace组件重开不替代实际桌面重启。预览已生成但未启动，不关闭用户既有窗口。打开`build-v2-tracktion/FormaRecordingHeadersPreview.app`，新增音频轨，CommandOptionR配置实际输入及录音目录，R待命、I监听，I右键切模式，录音后Stop、CommandZ/CommandShiftZ，另存新工程重开。完整U＋P0未完成，不进P1，不打DMG；下一项Zoomer/Scrubber和剩余缩放/选区交互。
+
 ## 最新增量：U-P0-AUTOMATION-VIEWS-01（2026-10-09）
 
 实际音量/声像/插件参数轨道视图、点编辑、Pencil、共享Selector范围、原生Grid/播放光标、稳定ID及schema8保存重开已接通；L1一手势一Plan/Undo，版本/目标/视图冲突取消，缺失插件保留引用。Release/固定身份strict/deep验签；受影响回归10通过0失败63.65秒，最后布局补测2通过0失败14.06秒。专项131检查含四宽度逐控件边界；真实96000帧双声道20dB曲线PCM RMS比0.09999989718198776，源SHA不变。结果`automation-timeline-tests.json`，此前各增量证据原样保留。
