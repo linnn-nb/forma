@@ -1,9 +1,9 @@
 # 下一步
 
-结论：Command二维音频框选接通；时间／所点轨道波形尺度共同视图历史返回、Single、保存重开和重绑定键执行通过。Release／固定验签、受影响7/7（两批合计48.88秒）、145波形检查、真实PCM误差0。完整U＋P0未完成，不进P1；M2/M3冻结，M4/M5暂缓。
+结论：Edit轨道MIDI Notes／Clips、全局／每轨纵向缩放、二维框选／Fit、Single、共同视图历史／保存重开／自定义键接通。Release／固定验签、受影响14/14（两批共86.01秒）、97新检查通过；真实FourOsc基频与RMS资格通过，不逐位一致。完整U＋P0未完成，不进P1；M2/M3冻结，M4/M5暂缓。
 
-亲手试：`build-v2-tracktion/FormaBoxZoomPreview.app`，CommandO打开 `scrub-multi-demo/Two-track Scrubber.tracktionedit`；F5选Zoomer，Command从波形声道内部框选，CommandOptionE一次返回，另存重开。零线固定、幅度夹限1/32–64，所点声道定义整轨显示倍率；不是轨高或Gain。Mac锁定，实体GUI／截图／试听未执行；本轮未启动额外预览，无DMG。
+亲手试：build-v2-tracktion/FormaMidiZoomPreview.app，CommandO打开 midi-zoom-demo/MIDI Zoom.tracktionedit，播放真实内置FourOsc；CommandShift]/[及ControlCommandShift[，F5后Control上下拖／Command框选，CommandOptionE；轨道头切Notes／Clips，另存重开。Mac锁定，实体GUI／按键／截图／试听未执行；无额外预览进程或DMG。
 
-下一项明确任务：核验官方MIDI纵向缩放与Fit Notes，接通真实音符视图、共享视图历史、保存重开／键位，验证不改变Note pitch或实际播放。随后Overview／Zoom Toggle、Tempo／Meter／预后卷标尺及组联动；独立Timeline/Edit链接、ShiftMarker／Memory与完整选区工作流继续保留。用户确认完整U＋P0后才进P1。
+下一项明确任务：核验并实现Overview／Zoom Toggle，把编辑选区、水平视口和音频／MIDI显示状态接入原生入口、视图历史与保存重开，验证不改实际工程及音频。随后独立钢琴卷帘纵向缩放、Tempo／Meter／预后卷标尺及编辑组联动；独立Timeline/Edit链接、ShiftMarker／Memory与完整选区工作流仍保留。用户确认完整U＋P0后才进P1。
 
-保留边界：UI轨道／对象选择不随工程Undo恢复；Undo历史不跨重开。二维框选当前只接音频波形，无MIDI／自动化二维拟合或编辑组联动。Scrubber每窗两轨合计32片段／8 MiB、两槽16 MiB、单作业／1.5秒预算不变，Clip FX／自动化／ARA／伸缩／循环／Comp等拒绝范围保持。实体8声道输出、第三方双轨PDC、释放游标时序、高声道192k／慢盘／耐久／Windows与发行待验。
+边界：当前是Edit Notes缩放，独立钢琴卷帘仍为14像素键高。MIDI显示跨度4–128半音、Fit边距是明确Forma策略，未复制官方未公开算法。随机FourOsc按事件、工程及实际频率／RMS验证，不伪称逐位一致。UI选择不随工程Undo恢复，Undo历史不跨重开。Scrubber两轨／32片段／单槽8 MiB／两槽16 MiB／单作业1.5秒及拒绝边界保持；实体接口／第三方PDC／192k慢盘耐久／Windows和发行待验。

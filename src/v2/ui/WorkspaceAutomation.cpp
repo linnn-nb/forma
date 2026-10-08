@@ -18,6 +18,27 @@ void Workspace::setTrackView(const std::string& track, const std::string& parame
     invoke(
         [&]
         {
+            if (parameter == "@midi:notes" || parameter == "@midi:clips")
+            {
+                const auto snapshot = commands.query();
+                const auto found = std::find_if(snapshot["tracks"].begin(), snapshot["tracks"].end(),
+                                                [&](const auto& t) { return t["id"] == track; });
+                if (found == snapshot["tracks"].end() || !MidiZoom::isMidi(*found))
+                    throw std::runtime_error("MIDI track view requires an actual MIDI or instrument track");
+                auto view = commands.uiState();
+                view["midi_zoom"]["tracks"][track] =
+                    MidiZoom::range(view["midi_zoom"], track).json(parameter == "@midi:notes" ? "notes" : "clips");
+                auto views = view["track_views"];
+                views.erase(track);
+                setView({{"midi_zoom", view["midi_zoom"]},
+                         {"track_views", views},
+                         {"object_selection", Json::array()},
+                         {"selection_tracks", Json::array({track})}});
+                selected = track;
+                selectedClip.clear();
+                midiCommandContext = false;
+                return;
+            }
             const auto q = cachedAutomation(track);
             if (!parameter.empty() &&
                 std::none_of(q["lanes"].begin(), q["lanes"].end(), [&](const auto& l) { return l["id"] == parameter; }))

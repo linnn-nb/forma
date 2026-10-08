@@ -139,6 +139,11 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::altModifier | shift},
         {editCommand::extendNext, "选区扩展至下一片段边界", "编辑", juce::KeyPress::tabKey, shift},
         {253, "Scrubber 正反向试听（最多两轨）", "编辑", juce::KeyPress::F9Key, cmd},
+        {257, "MIDI Notes 显示放大", "视图", ']', cmd | shift},
+        {258, "MIDI Notes 显示缩小", "视图", '[', cmd | shift},
+        {259, "MIDI Fit Notes · 适配全部音符", "视图", '[', cmd | shift | juce::ModifierKeys::ctrlModifier},
+        {260, "MIDI Notes 轨道视图", "视图", 'n', cmd | shift | juce::ModifierKeys::ctrlModifier},
+        {261, "MIDI Clips 轨道视图", "视图", 'c', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
         {252, "恢复默认波形显示高度", "缩放", '[',
@@ -587,6 +592,18 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && facts["recording_capture"].is_null();
                 info.setTicked(editing.tool == "scrubber");
             }
+            if (id >= 257 && id <= 261)
+            {
+                const auto view = commands.uiState();
+                active = !mix &&
+                         (id <= 259 ? std::any_of(facts["tracks"].begin(), facts["tracks"].end(), [&](const auto& t)
+                                                  { return MidiZoom::isMidi(t) && MidiZoom::notesView(view, t["id"]); })
+                                    : !selectedTrack().is_null() && MidiZoom::isMidi(selectedTrack()));
+                if (id >= 260 && active)
+                    info.setTicked(view["track_views"].value(selected, std::string{}).empty() &&
+                                   MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
+                                       (id == 260 ? "notes" : "clips"));
+            }
             if (id >= 250 && id <= 252)
                 active = !mix;
             if (id >= 240 && id <= 244)
@@ -650,7 +667,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
             });
         return true;
     }
-    if ((id >= 240 && id <= 244) || (id >= 250 && id <= 252))
+    if ((id >= 240 && id <= 244) || (id >= 250 && id <= 252) || (id >= 257 && id <= 261))
     {
         executeZoomCommand(id);
         return true;
@@ -823,7 +840,10 @@ bool Workspace::perform(const InvocationInfo& invocation)
                     first = start + (id == 104 ? -1 : 1) * span / 4;
                 Json patch = {{"start_samples", std::clamp(first, int64_t(0), max - next)}, {"span_samples", next}};
                 if (id == 103)
+                {
                     patch["waveform_zoom"] = {{"scale", 1.0}, {"track_scales", Json::object()}};
+                    patch["midi_zoom"] = MidiZoom::all(facts, view, 259);
+                }
                 setView(patch);
             });
         return true;
@@ -909,12 +929,14 @@ void Workspace::setView(Json patch, bool zoomGesture)
             const auto old = commands.uiState();
             if ((zoomGesture && patch.contains("start_samples") && patch["start_samples"] != old["start_samples"]) ||
                 (patch.contains("span_samples") && patch["span_samples"] != old["span_samples"]) ||
-                (patch.contains("waveform_zoom") && patch["waveform_zoom"] != old["waveform_zoom"]))
+                (patch.contains("waveform_zoom") && patch["waveform_zoom"] != old["waveform_zoom"]) ||
+                (patch.contains("midi_zoom") && patch["midi_zoom"] != old["midi_zoom"]))
             {
                 auto state = patch.value("zoom_state", old["zoom_state"]);
                 state["history"].push_back({{"start_samples", old["start_samples"]},
                                             {"span_samples", old["span_samples"]},
-                                            {"waveform_zoom", old["waveform_zoom"]}});
+                                            {"waveform_zoom", old["waveform_zoom"]},
+                                            {"midi_zoom", old["midi_zoom"]}});
                 if (state["history"].size() > 16)
                     state["history"].erase(state["history"].begin());
                 patch["zoom_state"] = state;

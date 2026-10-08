@@ -80,7 +80,9 @@ public:
             {
                 const int index = viewChoice.getSelectedId() - 2;
                 if (onView && viewChoice.getSelectedId() > 0)
-                    onView(this->id, index < 0 ? "" : viewLanes.at(size_t(index))["id"].get<std::string>());
+                    onView(this->id, viewChoice.getSelectedId() == 100000 ? "@midi:clips"
+                                     : index < 0                          ? (midiViews ? "@midi:notes" : "")
+                                                 : viewLanes.at(size_t(index))["id"].get<std::string>());
             };
         }
         options.setButtonText(text("⋮"));
@@ -242,18 +244,22 @@ public:
     std::function<void(std::string, int)> onRecordingCommand;
     std::function<void(std::string, juce::Component&)> onMonitorMenu;
     std::function<void(std::string, std::string)> onView;
-    void configureViews(const Json& lanes, const std::string& parameter)
+    void configureViews(const Json& lanes, const std::string& parameter, bool notes = true)
     {
-        if (viewLanes != lanes)
+        const bool midi = facts["type"] == "midi" || facts["type"] == "instrument";
+        if (viewLanes != lanes || midiViews != midi)
         {
+            midiViews = midi;
             viewLanes = lanes;
             viewChoice.clear(juce::dontSendNotification);
-            viewChoice.addItem(text("片段 / 波形 / MIDI"), 1);
+            viewChoice.addItem(text(midi ? "Notes · 音符" : "片段 / 波形"), 1);
+            if (midi)
+                viewChoice.addItem(text("Clips · 片段概览"), 100000);
             int index = 2;
             for (const auto& lane : lanes)
                 viewChoice.addItem(text(lane["name"].get<std::string>()), index++);
         }
-        int index = 1;
+        int index = midi && !notes ? 100000 : 1;
         for (size_t i = 0; i < lanes.size(); ++i)
             if (lanes[i]["id"] == parameter)
                 index = int(i) + 2;
@@ -499,6 +505,7 @@ public:
 private:
     juce::ComboBox viewChoice;
     Json viewLanes = Json::array();
+    bool midiViews = false;
     bool live() const
     {
         return facts.value("playing", false) && facts.value("automation_writing", false) &&

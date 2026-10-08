@@ -329,7 +329,7 @@ int main(int argc, char** argv)
             AudioDeviceTestAccess::refresh(reopened);
             pump();
             check(other.uiState() == savedView,
-                  "new Workspace restores schema10 viewport/tool/zoom history/keys exactly");
+                  "new Workspace restores schema11 viewport/tool/zoom history/keys exactly");
             click(edit(reopened), point(edit(reopened), .5));
             check(other.uiState()["edit_tool"] == "pencil", "saved Single Zoom returns to saved original Pencil tool");
             const auto previous = other.uiState()["zoom_state"]["history"].back();
@@ -346,12 +346,13 @@ int main(int argc, char** argv)
         legacy["ui_schema"] = 8;
         legacy.erase("zoom_state");
         legacy.erase("waveform_zoom");
+        legacy.erase("midi_zoom");
         legacy["edit_tool"] = "smart";
         juce::ValueTree meta("NATIVEDAW"), state("UI");
         state.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(state, -1, nullptr);
         const auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 10 && migrated["track_views"] == legacy["track_views"] &&
+        check(migrated["ui_schema"] == 11 && migrated["track_views"] == legacy["track_views"] &&
                   migrated["zoom_state"]["history"].empty() && migrated["keymap_xml"] == legacy["keymap_xml"],
               "complete schema8 migration preserves all old view facts without invented zoom history");
         legacy.erase("rulers");
@@ -400,7 +401,7 @@ int main(int argc, char** argv)
         check(error <= 1e-7, "actual rendered PCM unchanged by view navigation");
         Json result = {{"result", "passed"},
                        {"checks", checks},
-                       {"ui_schema", 10},
+                       {"ui_schema", 11},
                        {"source_sha256", hash},
                        {"render_max_error", error},
                        {"scope", "production native Zoomer commands and component mouse/key dispatch with real "

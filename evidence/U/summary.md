@@ -1,5 +1,17 @@
 # U 原生界面重构
 
+## U-P0-MIDI-ZOOM-01：Notes／Clips与纵向缩放（2026-10-09）
+
+结论：Edit MIDI／Instrument轨道头明确Notes／Clips，右侧♪按钮、视图菜单及257–259可改CommandShift]/[、ControlCommandShift[共用入口；260/261切换视图。全局只缩放Notes；Control所点轨连续纵向、Command二维框选、Single、全工程Fit、上一视图共同接通。UI schema11在L1保存稳定Track ID的low/high/mode，视图不改Note pitch／velocity／采样事件／gain／轨高／revision或工程Undo。16条历史包含时间／波形／MIDI显示；旧1–10严格迁移，畸形拒绝。
+
+验证：Release／固定本地签名deep/strict通过；受影响14通过0失败，两批13/13（78.52秒）＋专项1/1（7.49秒）。97新检查（不是97个制作流程），回执midi-zoom-tests.json：原生视图／命令／鼠标／自定义键实际执行、全局Clips排除／每轨轴、二维／Single／Escape／human版本冲突、原生Gain Undo/Redo跳过视图、新Workspace保存重开、严格旧10迁移与既有旧1–9回归通过。实际音符绘制覆盖84→294像素；两次实际FourOsc 48k/24bit/双声道各96000帧非零渲染，低音前后65.406391 Hz、高音前后2093.004522 Hz（相对容差0.5%），RMS差0.002207 dB（容差0.25 dB）。源拍位XML浮点重开最大差2.775558e-17拍，仅此字段容差1e-12拍；其余字段／ID／事件采样位置完全相等。
+
+真实性与失败修正：FourOscPlugin.cpp的noteStarted调用MultiVoiceOscillator::start；SDK utilities/tracktion_Oscillators.cpp:203–210明确每次起音random.nextFloat。实际逐样本最大差0.030415，**不逐位一致**；没有降低PCM容差伪称通过，随机插件采用事件／工程事实及相位无关的Hann窗基频投影／RMS验收。最初测试误要求原生XML所有double完全相等、宽跨度最小1像素的音符墨点数必增、随机相位逐样本一致；保留失败日志，分别按序列化／光栅量化／SDK性质修正验收，未修改DSP、种子或引入测试替身。构建midi-zoom-qualified-build.log，最终专项midi-zoom-phase-qualified-tests.log、相关回归midi-zoom-affected-tests.log及诊断日志在build；其他历史JSON原样保留，重跑副本同目录。既有重复静态库链接警告，无错误；无新依赖／SDK补丁／MCP工具／分析或实时路径修改。
+
+边界与依据：本地官方Reference Guide 2026.4印刷863–867页，2026-10-09核验，来源／SHA见UI_PARITY.md。显示跨度4–128半音，Fit从真实所有Clip极值加边距／至少12音，空轨0–127；量化和边距是Forma策略，手册未公开算法。Clips按各Clip实际音符概览并保留Notes原范围；自动化与Clips不参与Notes全局缩放。当前仅Edit轨道Notes，独立钢琴卷帘仍用既有14像素键高；组联动、按钮连续拖／Option返回／顶轨比例、Overview／Zoom Toggle、MIDI CC未做。代码ui/MidiZoom.h统一绘制／轴，ZoomGesture.h／WorkspaceZoom.cpp负责草稿及L1，TrackHeader.h／WorkspaceAutomation.cpp区分视图，UiState.cpp校验和迁移；测试tests/v2/MidiZoomTests.cpp。
+
+亲手试：build-v2-tracktion/FormaMidiZoomPreview.app，CommandO打开midi-zoom-demo/MIDI Zoom.tracktionedit（真实保存3轨／3 MIDI Clip／4 Note、内置FourOsc），播放，CommandShift]/[／ControlCommandShift[，F5后Control上下拖／Command框选，CommandOptionE，轨道头Notes／Clips，另存重开。示范工程SHA256 5309913e7425187675f6d17dc245118f873bc126528a0eb42ed3d8e4dda1a3f4；正式可执行efb95894982f7e835e8c4e43d28d7825ebd735843d221a2a4bf9fdb941966434，预览61174dbccd99d7ec8e1050515de8bc9714acc18c8b7538ca09e86e1689222ad9，固定身份F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F。CUA明确Mac锁定，物理鼠标／默认按键／截图／试听／桌面退出重开未执行；本轮未启动额外预览进程，保留用户窗口。完整U＋P0未完成，不进P1、不打DMG；以下保留历史资格。
+
 ## U-P0-BOX-ZOOM-01：Command 二维音频框选（2026-10-09）
 
 结论：F5 Zoomer 下从真实音频波形声道内 Command 拖框，松手共同适配原始采样时间范围与所点轨道的波形显示尺度；Single 返回原工具，Option／CommandOptionE 一次恢复两轴。视图通过 L1 保存，schema10／16条联合历史沿用，不改变轨道高度、实际 gain、选区、revision 或工程 Undo。最小480采样跨度下只重新居中也记录缩放历史；普通滚动仍不独立入栈。

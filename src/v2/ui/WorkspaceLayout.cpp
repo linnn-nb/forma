@@ -80,6 +80,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSubMenu(text("Track Height"), trackHeightMenu());
         p.addSubMenu(text("Track Colour"), trackColourMenu());
         p.addSubMenu(text("Zoom Presets"), zoomPresetMenu());
+        juce::PopupMenu midiZoom;
+        for (int id = 257; id <= 261; ++id)
+            addMenuCommand(midiZoom, id);
+        p.addSubMenu(text("MIDI Notes / Zoom"), midiZoom);
         p.addSeparator();
         addMenuCommand(p, 13);
         addMenuCommand(p, 14);

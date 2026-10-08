@@ -1,0 +1,19 @@
+{
+  "after_high_hz": 2093.004522404789,
+  "after_low_hz": 65.40639132514966,
+  "before_high_hz": 2093.004522404789,
+  "before_low_hz": 65.40639132514966,
+  "checks": 97,
+  "fitted_note_ink": 294,
+  "fundamental_relative_tolerance": 0.005,
+  "normal_note_ink": 84,
+  "random_phase_pcm_max_difference": 0.03041517734527588,
+  "render_bit_exact": false,
+  "result": "passed",
+  "rms_difference_db": 0.0022072365186818674,
+  "rms_tolerance_db": 0.25,
+  "scope": "production native Note/Clips commands, mouse/key dispatch, schema migration and actual FourOsc render; physical desktop gestures pending",
+  "source_beat_roundtrip_max_error": 2.7755575615628914e-17,
+  "source_beat_tolerance": 1e-12,
+  "ui_schema": 11
+}

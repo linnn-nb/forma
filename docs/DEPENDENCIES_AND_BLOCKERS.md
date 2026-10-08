@@ -1,6 +1,6 @@
 # 依赖与阻塞 v2
 
-当前增量（2026-10-09，二维Zoomer）：Release／固定验签、相关7/7及145波形检查、真实PCM误差0通过，无新依赖／SDK修改。Mac锁定未实体鼠标／截图／试听；组件新Workspace保存重开不替代桌面退出重开。本轮未启动额外预览进程。独立Timeline/Edit链接、MIDI垂直缩放／Overview／Zoom Toggle、其他U＋P0及实体多声道／第三方PDC／耐久／Windows仍待做／待验；详见VERIFICATION.md首节。以下保留历史增量。
+当前增量（2026-10-09，MIDI Zoom）：Release／固定验签、相关14/14及97专项通过，无新依赖／SDK修改。随机FourOsc以实际基频／RMS及工程事件验证，不逐位一致；源拍位XML浮点重开容差明确1e-12拍，其余字段完全相等。Mac锁定，未实体鼠标／按键／截图／试听，无额外预览进程。独立钢琴卷帘纵向／Overview／Zoom Toggle、其他U＋P0与实体输出／第三方PDC／耐久／Windows仍待做／待验；详见VERIFICATION.md首节。以下保留历史增量。
 
 当前增量（2026-10-09，Scrubber 临时入口）：Selector/Smart选择区Control左拖复用L1试听，Command细拖采用明确十分之一速度策略，松手/Escape保留原工具/选区/版本；不新增工程Undo。Release/固定验签、相关7/7（67.91秒）、527专项/真实PCM通过；Mac锁定未实体试听。双轨/多声道/选区扩展等仍未完成，无新依赖或SDK补丁；见VERIFICATION.md首节。
 

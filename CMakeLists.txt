@@ -697,3 +697,10 @@ target_sources(ndaw_selection_extension_tests PRIVATE tests/v2/SelectionExtensio
 target_link_libraries(ndaw_selection_extension_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_selection_extension COMMAND ndaw_selection_extension_tests "${CMAKE_SOURCE_DIR}/evidence/U/selection-extension-tests.json")
 set_tests_properties(forma_native_selection_extension PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Real native MIDI pitch-view scaling, migration, persistence and rendering.
+juce_add_console_app(ndaw_midi_zoom_tests PRODUCT_NAME "ndaw_midi_zoom_tests")
+target_sources(ndaw_midi_zoom_tests PRIVATE tests/v2/MidiZoomTests.cpp)
+target_link_libraries(ndaw_midi_zoom_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_midi_zoom COMMAND ndaw_midi_zoom_tests "${CMAKE_SOURCE_DIR}/evidence/U/midi-zoom-tests.json")
+set_tests_properties(forma_native_midi_zoom PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

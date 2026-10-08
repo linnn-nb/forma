@@ -322,13 +322,17 @@ int main(int argc, char** argv)
         auto legacy = savedView;
         legacy["ui_schema"] = 9;
         legacy.erase("waveform_zoom");
+        legacy.erase("midi_zoom");
         for (auto& h : legacy["zoom_state"]["history"])
+        {
             h.erase("waveform_zoom");
+            h.erase("midi_zoom");
+        }
         juce::ValueTree meta("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 10 && migrated["waveform_zoom"]["scale"] == 1. &&
+        check(migrated["ui_schema"] == 11 && migrated["waveform_zoom"]["scale"] == 1. &&
                   migrated["zoom_state"]["history"].size() == legacy["zoom_state"]["history"].size() &&
                   migrated["keymap_xml"] == legacy["keymap_xml"],
               "complete schema9 migration keeps actual viewport history and keys with unity displays");
@@ -545,7 +549,7 @@ int main(int argc, char** argv)
         check(error <= 1e-7, "real rendered PCM in both channels unchanged by waveform and continuous zoom");
         Json report{{"result", "passed"},
                     {"checks", checks},
-                    {"ui_schema", 10},
+                    {"ui_schema", 11},
                     {"source_sha256", hash},
                     {"render_max_error", error},
                     {"normal_thumbnail_ink", normalInk},

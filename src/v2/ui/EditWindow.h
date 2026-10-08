@@ -24,6 +24,7 @@ public:
     {
         setComponentID("edit.timeline");
         addAndMakeVisible(waveformControls);
+        addAndMakeVisible(midiZoomControls);
         rulerSelector.setComponentID("rulers.menu");
         rulerSelector.setButtonText(text("标尺"));
         rulerSelector.setTooltip(text("标尺显示 / 主时间标尺 / 时间码显示帧率"));
@@ -250,7 +251,7 @@ public:
     {
         if (scrubGesture)
             for (const auto* key : {"edit_tool", "start_samples", "span_samples", "first_row", "rulers", "edit_views",
-                                    "track_heights", "track_views"})
+                                    "track_heights", "track_views", "midi_zoom"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                 {
                     cancelScrubGesture();
@@ -258,7 +259,7 @@ public:
                 }
         if (!drag.is_null())
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
-                                    "main_time_scale", "track_heights", "track_views", "waveform_zoom"})
+                                    "main_time_scale", "track_heights", "track_views", "waveform_zoom", "midi_zoom"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                 {
                     drag = nullptr;
@@ -275,7 +276,7 @@ public:
                 }
         if (zoomGesture.active)
             for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height", "edit_views", "rulers",
-                                    "track_heights", "track_views", "waveform_zoom"})
+                                    "track_heights", "track_views", "waveform_zoom", "midi_zoom"})
                 if (view.value(key, Json(nullptr)) != value.value(key, Json(nullptr)))
                     zoomGesture.cancel();
         view = value;
@@ -366,6 +367,13 @@ public:
     void connectWaveformZoom(juce::ApplicationCommandManager& manager)
     {
         waveformControls.connect(manager);
+        midiZoomControls.connect(manager);
+    }
+    MidiPitchRange midiDisplayRange(const std::string& track) const
+    {
+        const auto& draft = zoomGesture.draft();
+        return MidiZoom::range(
+            zoomGesture.active && draft.contains("midi_zoom") ? draft["midi_zoom"] : view["midi_zoom"], track);
     }
     double waveformDisplayScale(const std::string& track) const
     {
@@ -512,14 +520,10 @@ public:
                 g.fillRoundedRectangle(rect.toFloat(), 3);
                 g.setColour(t["audible"].get<bool>() ? juce::Colour(0xffa2dcd6) : juce::Colour(0xff738995));
                 if (c.value("kind", std::string{}) == "midi")
-                    for (const auto& n : c["notes"])
-                    {
-                        const double p = (n["position_samples"].get<int64_t>() / 48000. - start) / length,
-                                     l = n["length_samples"].get<int64_t>() / 48000. / length;
-                        g.fillRect(rect.getX() + 4 + int(p * (rect.getWidth() - 8)),
-                                   rect.getY() + 28 + int((127 - n["pitch"].get<int>()) / 127. * 72),
-                                   std::max(2, int(l * (rect.getWidth() - 8))), 3);
-                    }
+                    MidiZoom::draw(g, c, rect,
+                                   MidiZoom::entry(view["midi_zoom"], t["id"])["mode"] == "clips"
+                                       ? MidiZoom::fit(Json::array({c}))
+                                       : midiDisplayRange(t["id"]));
                 else
                 {
                     auto waveRect = rect.reduced(0, 25).getIntersection(
@@ -655,7 +659,8 @@ public:
         rulerSelector.setBounds(3, 1, 40, 25);
         horizontal.setBounds(timelineLeft(), getHeight() - 14, std::max(1, getWidth() - timelineLeft() - 16), 14);
         waveformControls.setBounds(getWidth() - 14, rulerHeight(), 14, 54);
-        vertical.setBounds(getWidth() - 14, rulerHeight() + 54, 14, std::max(1, getHeight() - rulerHeight() - 68));
+        midiZoomControls.setBounds(getWidth() - 14, rulerHeight() + 54, 14, 66);
+        vertical.setBounds(getWidth() - 14, rulerHeight() + 120, 14, std::max(1, getHeight() - rulerHeight() - 134));
         const auto axis = coordinates();
         horizontal.setRangeLimits(
             0, double(std::max(facts.value("length_samples", int64_t(0)) + axis.span, axis.start + axis.span)),
@@ -764,6 +769,7 @@ public:
                           e.y >= rulerHeight() && rowAt(e.y) >= 0 && rowAt(e.y) < visibleRows()))
         {
             juce::Rectangle<int> channel;
+            MidiPitchAxis midiAxis;
             if (e.y >= rulerHeight() && e.mods.isCommandDown() && !e.mods.isCtrlDown())
                 for (const auto& clip : facts["tracks"][row]["clips"])
                     if (clip["kind"] == "audio" && clipRect(clip, row).contains(e.getPosition()))
@@ -774,8 +780,16 @@ public:
                         channel = waves.channelAt(clip, area, e.y);
                         break;
                     }
+            if (e.y >= rulerHeight() && e.mods.isCommandDown() && !e.mods.isCtrlDown() &&
+                MidiZoom::isMidi(facts["tracks"][row]) && MidiZoom::notesView(view, trackIDs[size_t(row)]))
+                for (const auto& clip : facts["tracks"][row]["clips"])
+                    if (clip["kind"] == "midi" && MidiZoom::area(clipRect(clip, row)).contains(e.getPosition()))
+                    {
+                        midiAxis = {MidiZoom::area(clipRect(clip, row)), midiDisplayRange(trackIDs[size_t(row)])};
+                        break;
+                    }
             zoomGesture.begin(e, axis, facts, view, e.y >= rulerHeight() ? trackIDs[size_t(row)] : std::string{},
-                              !ZoomGesture::isTool(editing.tool), channel);
+                              !ZoomGesture::isTool(editing.tool), channel, midiAxis);
             repaint();
             return;
         }
@@ -1205,7 +1219,8 @@ private:
                 if (lane["id"] == parameter)
                     selectedLane = lane;
             }
-            controls[i]->configureViews(options, parameter);
+            controls[i]->configureViews(options, parameter,
+                                        MidiZoom::entry(view["midi_zoom"], trackIDs[i])["mode"] == "notes");
             if (parameter.empty())
             {
                 automationLanes[i]->cancel();
@@ -1362,6 +1377,7 @@ private:
     int scrubLeft = 0, scrubWidth = 0;
     ZoomGesture zoomGesture;
     WaveformZoomControls waveformControls;
+    MidiZoomControls midiZoomControls;
     Json view = Json::object();
     Json facts = Json::object(), grid = Json::array(), drag = nullptr;
     std::string selected, selectedClip;

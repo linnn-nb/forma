@@ -2,6 +2,7 @@
 #include "TimelineCoordinates.h"
 #include "Theme.h"
 #include "WaveformZoom.h"
+#include "MidiZoom.h"
 namespace ndaw::desktop
 {
 // A local view draft. This class never writes Edit or changes the audio graph.
@@ -13,7 +14,8 @@ public:
         return tool == "zoomer" || tool == "zoom_single";
     }
     void begin(const juce::MouseEvent& e, const TimelineCoordinates& axis, const Json& facts, const Json& view,
-               const std::string& owner = {}, bool isTemporary = false, juce::Rectangle<int> channel = {})
+               const std::string& owner = {}, bool isTemporary = false, juce::Rectangle<int> channel = {},
+               MidiPitchAxis notes = {})
     {
         active = true;
         temporary = isTemporary;
@@ -24,10 +26,16 @@ public:
         continuous = e.mods.isCtrlDown() && !isTemporary && !owner.empty() && !reverse;
         rectangular = e.mods.isCommandDown() && !e.mods.isCtrlDown() && !isTemporary && !reverse;
         channelBounds = channel;
-        verticalAvailable = false;
+        verticalAvailable = midiAvailable = false;
+        midiAxis = notes;
         for (const auto& t : facts["tracks"])
             if (t["id"] == track)
+            {
                 verticalAvailable = t["type"] == "audio" && view["track_views"].value(track, std::string{}).empty();
+                midiAvailable = MidiZoom::isMidi(t) && MidiZoom::notesView(view, track);
+            }
+        if (rectangular && midiAvailable)
+            channelBounds = midiAxis.area;
         direction.clear();
         preview = Json::object();
         y = endY = e.y;
@@ -61,6 +69,13 @@ public:
                     std::clamp(waveformScale(zoom, track) * std::exp2(std::clamp(-dy / 40., -20., 20.)), .03125, 64.);
                 preview = {{"waveform_zoom", zoom}};
             }
+            if (direction == "vertical" && midiAvailable)
+            {
+                auto zoom = originalView["midi_zoom"];
+                zoom["tracks"][track] =
+                    MidiZoom::scaled(MidiZoom::range(zoom, track), std::exp2(std::clamp(dy / 40., -20., 20.))).json();
+                preview = {{"midi_zoom", zoom}};
+            }
             return;
         }
         last = captured.sampleAt(std::clamp(e.x, int(captured.left), int(captured.left + captured.width)));
@@ -72,10 +87,24 @@ public:
         active = false;
         if (continuous && dragged)
             return {{"temporary", temporary},
-                    {"unsupported_vertical", direction == "vertical" && !verticalAvailable},
+                    {"unsupported_vertical", direction == "vertical" && !verticalAvailable && !midiAvailable},
                     {"continuous_patch", preview}};
         if (rectangular && dragged)
         {
+            if (midiAvailable && midiAxis.area.getHeight() >= 3 && std::abs(endY - y) >= 3 && first != last &&
+                std::abs(captured.pixelAt(last) - x) >= 3)
+            {
+                const int a = midiAxis.pitchAt(y), b = midiAxis.pitchAt(endY);
+                auto zoom = originalView["midi_zoom"];
+                zoom["tracks"][track] = MidiZoom::centered((a + b) * .5, std::abs(a - b) + 1).json();
+                return {{"temporary", temporary},
+                        {"back", false},
+                        {"range", true},
+                        {"start_samples", std::min(first, last)},
+                        {"end_samples", std::max(first, last)},
+                        {"point_samples", first},
+                        {"midi_zoom", zoom}};
+            }
             const auto scale = verticalAvailable ? fitWaveformBox(waveformScale(originalView["waveform_zoom"], track),
                                                                   channelBounds, y, endY)
                                                  : std::optional<double>{};
@@ -131,9 +160,10 @@ private:
     TimelineCoordinates captured;
     int x = 0, y = 0, endY = 0;
     juce::Rectangle<int> channelBounds;
+    MidiPitchAxis midiAxis;
     std::string track, direction;
     Json originalView, preview = Json::object();
-    bool continuous = false, verticalAvailable = false, rectangular = false;
+    bool continuous = false, verticalAvailable = false, midiAvailable = false, rectangular = false;
     int64_t first = 0, last = 0;
     bool reverse = false, dragged = false, temporary = false;
 };
