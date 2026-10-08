@@ -16,6 +16,20 @@
 | 预备拍 | 同上、`ui/WorkspaceRefresh.cpp`、`QueryCommands.cpp` | 关闭/1拍/2拍/1小节/2小节；CountIn 以 session metadata 为权威；实际录音前硬件计数流程待测 |
 | 快捷键与统一事务 | `ui/WorkspaceCommands.cpp`、`EngineCommands.cpp` | F9/F10 命令映射、15 个 GUI/工程断言；桌面键位设置后实体键盘实按待测 |
 
+## U-P0-LOOP-01（2026-10-08；U＋P0 仍未完成）
+
+结论：循环播放已接入统一命令层、Tracktion 原生走带器及可重映射的 `L` 命令。开启时把当前采样选区固化为独立循环范围；循环状态与范围属于同一 Edit UndoManager 事务，可撤销/重做并随 `.tracktionedit` 保存重开。没有选区或有效旧循环范围时命令会拒绝启用。
+
+验证：Release 应用与 `ndaw_loop_playback_tests` 构建通过；`forma_native_loop_playback` 1/1 CTest 通过，22 项检查。真实 Tracktion 图渲染了 96,000 帧 / 48 kHz PCM，24,000 样本循环的周期误差为 0，RMS 0.1034236。专项覆盖命令校验、Undo/Redo、保存重开、GUI 开关、快捷键注册和实际渲染；数值见 `evidence/U/loop-tests.json`。
+
+桌面实测：在 Forma 原生界面选择 `[0,96000)` 样本，点击“循环”并实际按 `L` 两次切换；工具栏显示范围 `0–96000`，Undo/Redo 均有提交回执。另存到 `evidence/U/demo/Loop playback GUI demo.tracktionedit` 后通过打开工程对话框重新载入，循环按钮仍显示该范围；在真实 CoreAudio MacBook Pro 扬声器输出下播放，走带位置从 1.770 秒回卷至 0.405 秒，再次停止。没有做物理回环录制或声学测量；CUA 实时界面截图未导出成本地 PNG。该演示工程与演示 WAV 处于忽略目录，不进入源码提交。
+
+| 需求 | 生产实现 | 验收与边界 |
+|---|---|---|
+| 循环区间与状态 | `src/v2/TransportCommands.cpp`、Tracktion `TransportControl` 状态 | 采样范围单独保存；一次 L1/Edit Undo 事务；无范围拒绝；保存重开与循环 PCM 通过 |
+| 原生控制与快捷键 | `src/v2/ui/Workspace.cpp`、`WorkspaceCommands.cpp`、`WorkspaceRefresh.cpp`、`WorkspaceLayout.cpp` | 工具栏、走带菜单及可重映射 `L`；键位命令自动化检查及桌面实体按键已测 |
+| 完整循环录音 | 尚未实现 | 仍属 P1；本项仅实现循环播放，不表示录音 Take/Playlist 已支持 |
+
 ## U-EDIT-02（2026-10-08；U＋P0 仍未完成）
 
 结论：L1 统一命令层已接通真实音频 Clip /轨道时间选区的 Copy、Cut、Paste、Paste Original 与 Duplicate，并加入可重映射全局快捷键。Release 构建成功；`forma_native_audio_clipboard` 专项 **1/1 CTest 通过、0 失败，49 个断言**（5.73秒），使用真实 Tracktion Edit、PCM 渲染/解码、撤销重做与保存重开。随后在 Forma 原生桌面，以本地自有 WAV 实际测试 Cmd+C/X/V/D、Option+Cmd+V、Undo/Redo、另存工程和重新打开；打开后看到原有两段波形与片段，Undo/Redo 栈清空。MIDI/自动化剪贴板未完成。

@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include <cmath>
 
 namespace ndaw::v2
 {
@@ -64,32 +65,96 @@ void Commands::registerTransportCommands(Json& registry)
                             {"reversible", true},
                             {"live", true},
                             {"test", "U-P0-TRANSPORT-01"}});
+
+    registry.push_back(Json{{"id", "transport.loop.set"},
+                            {"schema",
+                             {{"type", "object"},
+                              {"properties", {{"enabled", enabled}}},
+                              {"required", {"enabled"}},
+                              {"additionalProperties", false}}},
+                            {"permission", "edit"},
+                            {"risk", "low"},
+                            {"reversible", true},
+                            {"live", true},
+                            {"test", "U-P0-LOOP-01"}});
 }
 
 Json Commands::transportSettingsQuery() const
 {
     const auto mode = int(metadata.getProperty("count_in_mode", int(te::Edit::CountIn::none)));
+    Json loopRange = nullptr;
+    if (metadata.getProperty("loop_range_configured", false))
+    {
+        const auto nativeRange = edit->getTransport().getLoopRange();
+        const auto start = int64_t(std::llround(nativeRange.getStart().inSeconds() * 48000.0));
+        const auto end = int64_t(std::llround(nativeRange.getEnd().inSeconds() * 48000.0));
+        if (start >= 0 && end > start)
+            loopRange = {{"start_samples", start},
+                         {"end_samples", end},
+                         {"length_samples", end - start},
+                         {"timebase", "session_samples"},
+                         {"sample_rate", 48000}};
+    }
     return {{"metronome_enabled", edit->clickTrackEnabled.get()},
             {"click_output", edit->getClickTrackDevice().toStdString()},
             {"count_in_mode", encodeCountIn(mode)},
             {"count_in_beats", encodeCountIn(mode) == "unsupported" ? 0 : edit->getNumCountInBeats()},
-            {"count_in_source", "session_metadata"}};
+            {"count_in_source", "session_metadata"},
+            {"loop_enabled", edit->getTransport().looping.get()},
+            {"loop_range", loopRange}};
 }
 
 Json Commands::validateTransportPlan(const Json& operations) const
 {
     bool metronome = edit->clickTrackEnabled.get();
+    bool loopEnabled = edit->getTransport().looping.get();
     auto mode = int(metadata.getProperty("count_in_mode", int(te::Edit::CountIn::none)));
+    auto selection = timelineRange();
+    auto loopRange = transportSettingsQuery().value("loop_range", Json(nullptr));
     Json diff = Json::array();
     for (const auto& operation : operations)
     {
         const auto command = operation.at("command").get<std::string>();
         const auto& args = operation.at("args");
-        if (command == "transport.metronome.set")
+        if (command == "session.range.set")
+        {
+            const auto start = args.at("start_samples").get<int64_t>();
+            const auto end = args.at("end_samples").get<int64_t>();
+            if (start < 0 || end <= start)
+                throw std::runtime_error("invalid time selection for loop playback");
+            selection = {{"start_samples", start},
+                         {"end_samples", end},
+                         {"length_samples", end - start},
+                         {"timebase", "session_samples"},
+                         {"sample_rate", 48000}};
+        }
+        else if (command == "session.range.clear")
+        {
+            selection = nullptr;
+        }
+        else if (command == "transport.metronome.set")
         {
             const auto next = args.at("enabled").get<bool>();
             diff.push_back({{"command", command}, {"before", metronome}, {"after", next}});
             metronome = next;
+        }
+        else if (command == "transport.loop.set")
+        {
+            const auto next = args.at("enabled").get<bool>();
+            const auto previousRange = loopRange;
+            if (next && !selection.is_null())
+                loopRange = selection;
+            if (next && loopRange.is_null())
+                throw std::runtime_error("select a time range before enabling loop playback");
+            if (next && (loopRange.at("start_samples").get<int64_t>() < 0 ||
+                         loopRange.at("end_samples").get<int64_t>() <= loopRange.at("start_samples").get<int64_t>()))
+                throw std::runtime_error("invalid saved loop range");
+            diff.push_back({{"command", command},
+                            {"before", loopEnabled},
+                            {"after", next},
+                            {"before_range", previousRange},
+                            {"after_range", loopRange}});
+            loopEnabled = next;
         }
         else if (command == "transport.count_in.set")
         {
@@ -117,6 +182,28 @@ void Commands::executeTransportOperation(const std::string& command, const Json&
         // Tracktion stores this value globally. The session metadata above is the
         // authoritative, undoable state; this mirrors it into the native recorder.
         edit->setCountInMode(decodeCountIn(mode));
+        return;
+    }
+    if (command == "transport.loop.set")
+    {
+        const auto enabled = args.at("enabled").get<bool>();
+        auto& transport = edit->getTransport();
+        if (enabled)
+        {
+            const auto selection = timelineRange();
+            if (!selection.is_null())
+            {
+                const auto start = selection.at("start_samples").get<int64_t>();
+                const auto end = selection.at("end_samples").get<int64_t>();
+                auto state = transport.state;
+                state.setProperty(te::IDs::loopPoint1, double(start) / 48000.0, &undo);
+                state.setProperty(te::IDs::loopPoint2, double(end) / 48000.0, &undo);
+                metadata.setProperty("loop_range_configured", true, &undo);
+            }
+            if (!metadata.getProperty("loop_range_configured", false))
+                throw std::runtime_error("select a time range before enabling loop playback");
+        }
+        transport.state.setProperty(te::IDs::looping, enabled, &undo);
         return;
     }
     throw std::runtime_error("unknown transport operation");

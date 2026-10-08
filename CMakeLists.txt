@@ -594,3 +594,9 @@ target_sources(ndaw_transport_workspace_tests PRIVATE tests/v2/TransportWorkspac
 target_link_libraries(ndaw_transport_workspace_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_transport_controls COMMAND ndaw_transport_workspace_tests "${CMAKE_SOURCE_DIR}/evidence/U/transport-tests.json")
 set_tests_properties(forma_native_transport_controls PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_loop_playback_tests PRODUCT_NAME "ndaw_loop_playback_tests")
+target_sources(ndaw_loop_playback_tests PRIVATE tests/v2/LoopPlaybackTests.cpp)
+target_link_libraries(ndaw_loop_playback_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_loop_playback COMMAND ndaw_loop_playback_tests "${CMAKE_SOURCE_DIR}/evidence/U/loop-tests.json")
+set_tests_properties(forma_native_loop_playback PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

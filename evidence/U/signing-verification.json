@@ -1,5 +1,5 @@
 {
-  "binary_sha256": "bf40849bf67f858c4d68f47e719f022700925cf9dd20da6ae3730dce3b1d1f90",
+  "binary_sha256": "7b530bdcdca8c006ea249ba6966eea19926a15e389b8ff2506cfb36454730c77",
   "strict_deep_exit": 0,
   "requirements_exit": 0,
   "requirements": "designated => identifier \"org.forma.daw\" and certificate leaf = H\"f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f\"",
@@ -15,15 +15,15 @@
   "latest_release_verification": {
     "strict_deep_exit": 0,
     "designated_requirement_exit": 0,
-    "binary_sha256": "bce7556d55977c48f4c911372fb3d82b69d3762fedae93dd32735c053ea22c36"
+    "binary_sha256": "7b530bdcdca8c006ea249ba6966eea19926a15e389b8ff2506cfb36454730c77"
   },
   "latest_editor_test": {
-    "name": "forma_native_audio_clipboard",
+    "name": "forma_native_loop_playback",
     "passed": 1,
     "failed": 0,
-    "checks": 49,
-    "duration_seconds": 5.73,
-    "evidence": "evidence/U/clipboard-tests.json"
+    "checks": 22,
+    "duration_seconds": 1.85,
+    "evidence": "evidence/U/loop-tests.json"
   },
   "local_signing_verification": {
     "certificate_sha1": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",

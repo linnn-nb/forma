@@ -221,11 +221,10 @@ private:
     juce::TextButton newTrack{text("新增轨道")}, importButton{text("导入音频")}, openButton{text("打开工程")},
         saveButton{text("另存工程")}, exportButton{text("导出 WAV")}, editButton{"EDIT"}, mixButton{"MIX"},
         returnButton{"|<"}, stopButton{text("停止")}, playButton{text("播放")}, recordButton{text("● 录音")},
-        metronomeButton{text("节拍器")},
-        undoButton{"Undo"}, redoButton{"Redo"}, insertButton{text("插入")}, bypassButton{text("旁通")},
-        editorButton{text("插件窗口")}, removeButton{text("移除")}, stateRetryButton{text("重试读取")},
-        stateRestoreButton{text("还原已知状态")}, programButton{text("切换 Program")}, acceptButton{text("接受计划")},
-        rejectButton{text("取消")};
+        metronomeButton{text("节拍器")}, loopButton{text("循环")}, undoButton{"Undo"}, redoButton{"Redo"},
+        insertButton{text("插入")}, bypassButton{text("旁通")}, editorButton{text("插件窗口")},
+        removeButton{text("移除")}, stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
+        programButton{text("切换 Program")}, acceptButton{text("接受计划")}, rejectButton{text("取消")};
     juce::TextButton insertTab{text("插入 / 参数")}, routingTab{text("I/O / 发送")}, groupTab{text("组织")},
         autoTab{text("自动化")}, recordTab{text("录音")};
     juce::TextButton audioSettingsButton{text("音频设置…")}, commandButton{text("命令 · 预览")},

@@ -206,6 +206,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     trackType.setSelectedId(1, juce::dontSendNotification);
     trackType.setComponentID("track.type");
     metronomeButton.setComponentID("transport.metronome");
+    loopButton.setComponentID("transport.loop");
+    loopButton.setTooltip(text("循环播放当前时间选区；启用后循环区独立保存。L 切换，可自定义键位"));
     countInMode.setComponentID("transport.count_in");
     countInMode.addItem(text("预备拍：关闭"), 1);
     countInMode.addItem(text("预备拍：1 拍"), 2);
@@ -622,6 +624,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                                  &editButton, &mixButton, &pianoButton, &shortcutsButton})
         toolbar.attach(*c);
     toolbar.attach(metronomeButton);
+    toolbar.attach(loopButton);
     toolbar.attach(countInMode);
     for (auto* c : {&returnButton, &stopButton, &playButton, &recordButton})
         transport.attach(*c);

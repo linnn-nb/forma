@@ -55,6 +55,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
     {
         p.addCommandItem(&commandManager, 111);
         p.addCommandItem(&commandManager, 112);
+        p.addCommandItem(&commandManager, 113);
         p.addSeparator();
         p.addCommandItem(&commandManager, 26);
         p.addSeparator();
@@ -353,6 +354,7 @@ void Workspace::resized()
     exportButton.setBounds(466, 4, 76, 27);
     metronomeButton.setBounds(550, 4, 80, 27);
     countInMode.setBounds(634, 4, 132, 27);
+    loopButton.setBounds(774, 4, 64, 27);
     editButton.setBounds(getWidth() - 314, 4, 64, 27);
     mixButton.setBounds(getWidth() - 244, 4, 64, 27);
     pianoButton.setBounds(getWidth() - 174, 4, 86, 27);

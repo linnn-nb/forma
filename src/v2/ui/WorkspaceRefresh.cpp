@@ -405,14 +405,28 @@ void Workspace::refresh()
         }
     }
     facts = commands.query();
-    static const std::array<std::pair<const char*, int>, 5> countInModes{{
-        {"none", 1}, {"one_beat", 2}, {"two_beats", 3}, {"one_bar", 4}, {"two_bars", 5}}};
+    static const std::array<std::pair<const char*, int>, 5> countInModes{
+        {{"none", 1}, {"one_beat", 2}, {"two_beats", 3}, {"one_bar", 4}, {"two_bars", 5}}};
     const auto transportSettings = facts.value("transport_settings", Json::object());
     updatingTransportControls = true;
     metronomeButton.setToggleState(transportSettings.value("metronome_enabled", false), juce::dontSendNotification);
     metronomeButton.setTooltip(text("Tracktion 原生节拍器 · 输出：") +
-                                text(transportSettings.value("click_output", std::string("未知"))) +
-                                text(" · F9 切换，键位可自定义"));
+                               text(transportSettings.value("click_output", std::string("未知"))) +
+                               text(" · F9 切换，键位可自定义"));
+    loopButton.setToggleState(transportSettings.value("loop_enabled", false), juce::dontSendNotification);
+    juce::String loopTooltip = text("循环播放；按 L 切换，键位可自定义");
+    const auto loopRange = transportSettings.value("loop_range", Json(nullptr));
+    const bool canToggleLoop = transportSettings.value("loop_enabled", false) || !loopRange.is_null() ||
+                               !facts.value("time_selection", Json(nullptr)).is_null();
+    loopButton.setEnabled(canToggleLoop && !facts.value("recording", false) &&
+                          facts.value("recording_capture", Json(nullptr)).is_null() &&
+                          facts.value("parameter_capture", Json(nullptr)).is_null());
+    if (loopRange.is_null())
+        loopTooltip += text(" · 先创建时间选区");
+    else
+        loopTooltip += text(" · ") + text(std::to_string(loopRange.value("start_samples", int64_t(0)))) + text("–") +
+                       text(std::to_string(loopRange.value("end_samples", int64_t(0)))) + text(" 样本");
+    loopButton.setTooltip(loopTooltip);
     const auto mode = transportSettings.value("count_in_mode", std::string("none"));
     const auto modeItem = std::find_if(countInModes.begin(), countInModes.end(),
                                        [&](const auto& candidate) { return mode == candidate.first; });

@@ -39,7 +39,7 @@ Release 使用登录钥匙串中的 Forma 固定自签名证书 SHA1 `F28B79FBF4
 
 ## 剩余与下一步
 
-第一批 Clip/时间选区、Slip/Grid、吸附/Nudge、Tab 边界和真实音频剪贴板已接通；接下来验收实体桌面剪贴板操作、接通 MIDI/自动化剪贴板及钢琴卷帘联动，再完成 Smart Tool/Shuffle/Spot、淡化、节拍器/预备拍、循环与 Marker、其他标尺和视图列、Groups、Mix 自动化及真实逐轨电平。会话内剪贴板快照不跨重开，已提交编辑会保留。Undo 历史跨重开恢复仍未实现。U＋P0 完成后全量回归并暂停由用户试用，不提前推进 P1。
+第一批 Clip/时间选区、Slip/Grid、吸附/Nudge、Tab 边界和真实音频剪贴板已接通；后续继续接通 MIDI/自动化剪贴板及钢琴卷帘联动、Smart Tool/Shuffle/Spot、淡化、Marker、其他标尺和视图列、Groups、Mix 自动化及真实逐轨电平。节拍器/预备拍和循环播放已有独立验收记录。会话内剪贴板快照不跨重开，已提交编辑会保留。Undo 历史跨重开恢复仍未实现。U＋P0 完成后全量回归并暂停由用户试用，不提前推进 P1。
 
 第二步提交：`ba58508`；已原子推送到 GitHub `main` 与 `v2-tracktion`，远端两分支核验为 `ba585085d7f693fab0a328ac37dfb23cb1e79514`。预先存在的 Tracktion 子模块工作区修改保留，未暂存或重置。
 
@@ -64,3 +64,11 @@ MIDI/自动化剪贴板和 MIDI 钢琴卷帘选区联动未完成；剪贴板本
 最终构建签名严格校验与精确叶证书条件校验均退出 0（`signing-verification.json`）；截图对应最终界面代码，只早于最后两处无视觉差异的 L1 revision 冲突保护修正。未把组件测试当作桌面拖拽或麦克风权限验收。
 
 U-EDIT-01 提交：`328e49dad21455df986e19a068ca8bb93a1f2d89`；已原子推送并核对 GitHub main / v2-tracktion 同一提交。本地 main 同步快进。仅保留预先存在的 Tracktion SDK 六份已记录补丁，未暂存或重置子模块。测试进程已退出；自有 Forma 演示窗口及旧用户 NativeDAW 窗口保留。
+
+## U-P0-LOOP-01：循环播放（增量，P0 未完成）
+
+Release app 与循环专项构建通过；`forma_native_loop_playback` 1/1 CTest、22 项检查通过。真实 Tracktion 48 kHz PCM 输出 96,000 帧，24,000 样本循环最大周期误差 0，RMS 0.1034236029；完整数值见 `loop-tests.json`。
+
+桌面通过实际 `L` 键和工具栏切换循环，工程回执可撤销/重做；样本范围 `[0,96000)`。另存 `demo/Loop playback GUI demo.tracktionedit` 并从原生文件对话框重开后，循环范围仍可见；实际 CoreAudio 输出播放时走带从 1.770 秒回卷至 0.405 秒。桌面监听设备为 MacBook Pro 扬声器；未做扬声器物理回环采集或声学测量，CUA 实时截图未另存 PNG。演示工程/WAV 在忽略目录中，仅供本机手动打开。
+
+命令、Undo、Redo、GUI/快捷键映射和保存重开对应 `src/v2/TransportCommands.cpp`、`src/v2/ui/WorkspaceCommands.cpp` 与 `tests/v2/LoopPlaybackTests.cpp`。循环录音、Punch、Take/Playlist/Comp 仍属未完成的 P1；下一项按顺序做 Marker/Memory Locations。U＋P0 整体仍未验收。

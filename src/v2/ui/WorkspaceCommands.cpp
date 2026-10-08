@@ -69,6 +69,7 @@ const std::vector<Entry>& entries()
         {editCommand::pasteOriginal, "粘贴到原位置 / 原轨道", "编辑", 'v', cmd | juce::ModifierKeys::altModifier},
         {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
         {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
+        {113, "切换循环播放", "走带", 'l'},
         {21, "只读分析", "Agent"},
         {22, "先预览再提交", "Agent"},
         {23, "自动低风险 · 当前轨道", "Agent"},
@@ -101,6 +102,7 @@ void Workspace::initialiseCommandManager()
                                                                               {&playButton, 80},
                                                                               {&recordButton, 83},
                                                                               {&metronomeButton, 111},
+                                                                              {&loopButton, 113},
                                                                               {&undoButton, 6},
                                                                               {&redoButton, 7},
                                                                               {&rangeButton, 42},
@@ -207,8 +209,18 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == 83)
                 active = recordButton.isEnabled();
             if (id == 111 || id == 112)
-                active = !facts.value("recording", false) && facts.value("recording_capture", Json(nullptr)).is_null() &&
+                active = !facts.value("recording", false) &&
+                         facts.value("recording_capture", Json(nullptr)).is_null() &&
                          facts.value("parameter_capture", Json(nullptr)).is_null();
+            if (id == 113)
+            {
+                const auto settings = facts.value("transport_settings", Json::object());
+                const bool available = settings.value("loop_enabled", false) ||
+                                       !settings.value("loop_range", Json(nullptr)).is_null() ||
+                                       !facts.value("time_selection", Json(nullptr)).is_null();
+                active = !facts.value("recording", false) && available;
+                info.setTicked(settings.value("loop_enabled", false));
+            }
             if (id == 111)
                 info.setTicked(facts.value("transport_settings", Json::object()).value("metronome_enabled", false));
             if (id == 45)
@@ -313,10 +325,17 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 112)
     {
         static const std::array<const char*, 5> modes{"none", "one_beat", "two_beats", "one_bar", "two_bars"};
-        const auto current = facts.value("transport_settings", Json::object()).value("count_in_mode", std::string("none"));
+        const auto current =
+            facts.value("transport_settings", Json::object()).value("count_in_mode", std::string("none"));
         auto found = std::find(modes.begin(), modes.end(), current);
         const auto next = found == modes.end() || ++found == modes.end() ? modes.front() : *found;
         write("transport.count_in.set", {{"mode", next}});
+        return true;
+    }
+    if (id == 113)
+    {
+        const auto enabled = !facts.value("transport_settings", Json::object()).value("loop_enabled", false);
+        write("transport.loop.set", {{"enabled", enabled}});
         return true;
     }
     if (auto action = commandActions.find(id); action != commandActions.end())

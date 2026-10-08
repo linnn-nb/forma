@@ -9,4 +9,5 @@ evidence/U/*
 !evidence/U/summary.md
 !evidence/U/transport-tests.json
 !evidence/U/signing-verification.json
+!evidence/U/loop-tests.json
 .DS_Store
