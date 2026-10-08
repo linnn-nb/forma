@@ -22,3 +22,5 @@ evidence/U/*
 !evidence/U/groups-tests.json
 
 !evidence/U/comments-tests.json
+
+!evidence/U/rulers-tests.json

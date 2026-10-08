@@ -521,9 +521,17 @@ void Workspace::refresh()
     acceptButton.setEnabled(!pending.is_null() && !playing && !parameterEditing);
     rejectButton.setEnabled(!pending.is_null() || reportShowing);
     auto samples = facts["position_samples"].get<int64_t>();
-    auto ms = samples / 48;
-    counter.setText(juce::String::formatted("%02lld:%02lld.%03lld", ms / 60000, (ms / 1000) % 60, ms % 1000),
-                    juce::dontSendNotification);
+    const auto scale = view["main_time_scale"].get<std::string>();
+    const auto atCursor = commands.timelinePosition(samples);
+    auto display = scale == "samples"    ? juce::String(samples)
+                   : scale == "timecode" ? TimelineCoordinates::frames(samples, view["timecode_fps"].get<int>())
+                   : scale == "bars_beats"
+                       ? juce::String(atCursor["bar"].get<int>()) + " | " +
+                             juce::String(std::floor(atCursor["beat"].get<double>() * 1000 + 1e-9) / 1000, 3)
+                       : TimelineCoordinates::minutesSeconds(samples);
+    counter.setText(display, juce::dontSendNotification);
+    counter.setTooltip(text(scale) +
+                       (scale == "timecode" ? " · " + juce::String(view["timecode_fps"].get<int>()) + " fps NDF" : ""));
     deviceFacts = commands.deviceStatus();
     const auto& d = deviceFacts;
     device.setText((d.value("available", false)
@@ -586,7 +594,8 @@ void Workspace::refresh()
         editing.mode == "grid"
             ? editing.gridBeats
             : std::max(1., std::pow(2., std::ceil(std::log2(std::max(1., viewSpan / 48000. / 40.)))));
-    editArea.update(facts, selected, commands.musicalGrid(viewStart, viewStart + viewSpan, gridDivision), selectedClip);
+    editArea.update(facts, selected, commands.musicalGrid(viewStart, viewStart + viewSpan, gridDivision), selectedClip,
+                    commands.timelinePosition(viewStart));
     tracksList.update(facts["tracks"], selected, selection.tracks);
     groupsList.update(facts["mix_groups"], facts["tracks"], selection.tracks, facts.value("playing", false));
     clipsList.update(facts["tracks"], selection.objectIDs);

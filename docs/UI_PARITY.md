@@ -2,7 +2,7 @@
 
 结论：U＋P0 正在实现；下表是行为依据与差异，不是已完成声明。参照窗口结构和操作，不复制商标、图标、配色或专有资产。
 
-资料核验：2026-10-08。官方 Reference Guide 2026.4，本机 PDF SHA256 `884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8`；官方 Shortcuts Guide 2025.6（最新可直接核验的快捷键文档，不能冒充 2026.4）。以下手册页码均为印刷页，PDF 页＝印刷页＋102。
+资料核验：2026-10-08/09。官方 Reference Guide 2026.4，本机 PDF SHA256 `884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8`；官方 Shortcuts Guide 2025.6（最新可直接核验的快捷键文档，不能冒充 2026.4）。以下手册页码均为印刷页，PDF 页＝印刷页＋102。
 
 来源：[Reference Guide](https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf)；[Shortcuts Guide](https://resources.avid.com/SupportFiles/PT/Pro_Tools_Shortcuts_2025.6.pdf)。
 
@@ -13,8 +13,9 @@
 | 水平缩放、轨高与预设 | 263页；Shortcuts Zoom章节33页 | T/R、全工程缩放、水平/垂直滚动、Cmd＋滚轮锚点缩放；L1 UI 子树保存；视图不进 Undo。轨高数值可保存，轨高 GUI/缩放预设未完成 | 部分；已接通部分专项验证 |
 | Tracks / Groups、Clips | 314、345–347页 | Tracks/Clips原生列表可选择和隐藏，Clips联动统一对象/父片段高亮；Groups独立Mix Mute/Solo增量已接通；完整分组与排序尚未实现 | 部分 |
 | Groups列表与独立Mix组 | Reference 410–414、420、422–423页（本地PDF核验2026-10-08）；v1 TrackGroups.cpp的首组优先行为 | Tracks下方独立组列表，选成员/名称/Mute/Solo/启用/删除，一事务Undo、缺失引用保留、首启用匹配组优先。组名选成员、勾选框启用（官方点组名启用）；⌘G/⌘⇧G/⌘⌥G可改。本产品⌘⌥3用于Sends列，与官方Groups焦点不同，字母组焦点未实现；无All/排序/隔离/relative fader/Pan/其他属性/Edit组 | U-P0-GROUPS-01：84专项、真实PCM与相关7/7通过；GUI因锁屏未执行；完整行为部分 |
-| Edit Window Views | Reference 257、1434–1436页（核验2026-10-08/09） | I/O、Inserts A–E、Sends A–E、Comments独立菜单/可改⌘⌥1/2/3/4，真实facts与检查器；稳定Send ID、动态时间线原点、schema5保存。无F–J/All/None/Option点击隐藏/槽位排序 | Views46专项；Comments63专项及相关8/8通过；此前EQ/发送GUI Undo/Redo通过，最终GUI保存重开锁屏未执行；部分 |
+| Edit Window Views | Reference 257、1434–1436页（核验2026-10-08/09） | I/O、Inserts A–E、Sends A–E、Comments独立菜单/可改⌘⌥1/2/3/4，真实facts与检查器；稳定Send ID、动态时间线原点、schema6保存（旧5明确迁移）。无F–J/All/None/Option点击隐藏/槽位排序 | Views46专项；Comments63专项及相关8/8通过；此前EQ/发送GUI Undo/Redo通过，最终GUI保存重开锁屏未执行；部分 |
 | Track Comments | Reference 329、1435页（本地官方PDF核验2026-10-09） | Edit可隐藏列/Mix底部读同一实际备注，独立多行对话框，⌘⌥C/⌘Return/Esc；限停止编辑，4096字符。与官方轨名/备注合并对话框不同；track.comment local_gui，L1扩展属性及Undo，schema5列开关迁移 | U-P0-COMMENTS-01：63专项，撤销/新Workspace保存重开/版本与权限通过；真实桌面因锁屏未执行 |
+| 七种标尺与Main Time Scale | Reference 1118–1122页（本地官方PDF核验2026-10-09） | Bars/Beats、Min:Sec、Timecode、Samples、Markers、Tempo、Meter可独立显示；All/None（保留主标尺）、Option点名隐藏、点时间基准名切Main；主计数器和真实Tempo/Meter跟随Edit。固定顺序；仅24/25/30 NDF从零显示，无分数/drop/start offset/视频同步；Start/End/Length/Grid/Nudge未全部跟随Main，Tempo/Meter标尺编辑与预后卷未实现。停止时循环手柄一事务并保留独立编辑选区 | U-P0-RULERS-01：已接通，验证见VERIFICATION.md；桌面锁定，完整行为部分 |
 | Cmd+= 切换 Edit/Mix | Shortcuts Window Menu，51页（PDF56） | ApplicationCommandManager 同一操作；绑定及保存重开通过组件测试。桌面工具实际注入 Shift+Cmd+加号，等号本键待人工实测 | 部分；桌面键位待确认 |
 | 自定义快捷键 | Shortcuts Keyboard Shortcuts，第9页（PDF14） | JUCE 原生命令映射编辑器、XML 导入导出接通；两个即时自定义键及工程保存重开通过专项。真实界面已打开，两个键的完整鼠标编辑验收待做 | 部分 |
 | 直接手势一笔编辑 | Reference Levels of Undo，第154页（PDF256） | 原有片段/轨道参数手势已通过 L1；普通导入已直接生效且一次 Undo/Redo；高风险/外部请求仍预览；当前 Undo 不跨重开保留 | 部分 |

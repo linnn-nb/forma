@@ -23,7 +23,10 @@ struct TimelineCoordinates
     }
     static juce::String frames(int64_t sample, int fps = 30)
     {
-        const auto frame = std::llround(sample / 48000. * fps);
+        if (fps != 24 && fps != 25 && fps != 30)
+            throw std::runtime_error("unsupported display frame rate");
+        // A sample belongs to the containing frame; round-to-nearest mislabels its latter half.
+        const auto frame = std::max(int64_t(0), sample) / (48000 / fps);
         return juce::String::formatted("%02lld:%02lld:%02lld:%02lld", frame / (fps * 3600), (frame / (fps * 60)) % 60,
                                        (frame / fps) % 60, frame % fps);
     }

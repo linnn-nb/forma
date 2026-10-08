@@ -62,6 +62,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id : {146, 147, 148, 152})
             views.addCommandItem(&commandManager, id);
         p.addSubMenu(text("Edit Window Views"), views);
+        p.addSubMenu(text("Rulers"), rulersMenu());
         p.addSeparator();
         p.addCommandItem(&commandManager, 13);
         p.addCommandItem(&commandManager, 14);

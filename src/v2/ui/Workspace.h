@@ -113,6 +113,7 @@ public:
     }
 
 private:
+    juce::PopupMenu rulersMenu();
     void initialiseCommandManager();
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void dispatchCommand(int);

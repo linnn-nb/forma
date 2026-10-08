@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-RULERS-01：七种标尺、主计数器与循环手柄（2026-10-09；增量，U＋P0未完成）
+
+结论：Edit新增可独立开关的Bars|Beats、Min:Sec、Timecode、Samples、Markers、Tempo、Meter。原生「标尺」/View→Rulers共用可重映射命令154–169；⌃⌥1…7切换可选标尺、⌃⌥0全部、⌃⌥9仅保留Main，主标尺不能隐藏。点时间基准名称切Main及主计数器，Option点名称隐藏可选行；主计数器读取当前真实工程位置。Tempo/Meter读实际Edit事件和viewport起点状态，Bars随Tempo/拍号；Samples为48k工程时间域，区别于设备采样率。默认总高78/Marker58，全部176/Marker116；轨道、真实波形、Clip手势、Marker命中和滚动条共用动态采样轴。
+
+开启已有循环后，停止时拖主标尺底部两端手柄，预览不写Edit，松手一个L1 Plan/UndoManager事务；新循环捕获后恢复原Edit选区。一笔Undo/Redo精确恢复，真实工程保存重开保留端点。原revision/session冲突拒绝，不覆盖后续人工修改；标尺/列/坐标布局在手势中变动取消。UI schema6只存视图，新增三个字段严格校验，完整schema5/4/3/2及旧八字段明确迁移，坏字段不局部写入；不增加revision或Undo。修复Marker点击在临时Json数组销毁后读取指针的问题，现先复制目标及位置。
+
+Release构建通过，正式Forma.app和独立FormaRulersPreview.app固定本地身份strict/deep验签通过。最终受影响CTest **9/9通过、0失败、36.51秒**；新标尺专项 **82项检查**，覆盖真实原生控件/L1/Edit、帧边界与整数Samples标记、Tempo/Meter、主计数器、七行布局/1120×700、四种timebase选择、Marker定位、实际PCM Clip移动/Undo、循环起止/Undo/Redo、独立Edit选区、陈旧计划拒绝、布局取消、坏Schema、旧5迁移、自定义键位和新Workspace保存重开。原PCM哈希与Clip映射不变。相关音乐/循环保留真实Tracktion输出验证；导航、编辑、Marker、Comments、列视图和MIDI停靠回归通过。非全级回归，不代表硬件播放或听感验收。
+
+首轮6/9失败已排查：新fixture误用beat参数，改为注册表定义的position_samples；旧循环测试要求窄窗显示被收进菜单的按钮，现同时核验窄窗命令和宽窗控件；旧音乐断言误把真实会随Tempo变化的bar/beat当常量，现独立验证所有其余Clip事实/哈希与实际变化的小节坐标，渲染onset预算保持。标尺测试还明确按JUCE MouseEvent取整及拖动采样计算，不能要求鼠标落在不对应整数像素的任意采样点。所有失败修复后重新执行最终九项。机器结果`evidence/U/rulers-tests.json`；代码`ui/Rulers.h`、`EditWindow.h`、`WorkspaceCommands.cpp`、`WorkspaceRefresh.cpp`、`src/v2/UiState.cpp`、`MusicCommands.cpp`，测试`tests/v2/RulersWorkspaceTests.cpp`。
+
+桌面仍锁定，真实GUI截图/试听/物理快捷键/实际应用退出重开未执行；组件测试不替代。独立签名预览`build-v2-tracktion/FormaRulersPreview.app`已准备未启动，没有新增测试窗口；生产产物`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。无新依赖、第二引擎、冻结MCP工具、DMG或系统信任修改，用户窗口与原Tracktion子模块修改保留。
+
+边界：固定标尺顺序；仅24/25/30 fps NDF从零显示，无分数/丢帧/视频同步/起始偏移。Main只切主计数器，Start/End/Length/Grid/Nudge/预后卷未全量跟随；Tempo/Meter行不能直接编辑。停止时改循环；预后卷手柄未实现，Undo历史不跨重开。参照官方2026.4印刷页1118–1122，差异见UI_PARITY.md，不宣称Pro Tools全行为完成。下一项轨道视图/高度/颜色与缩放预设；完整U＋P0及P1–P3继续未完成。
+
 ## U-P0-COMMENTS-01：真实轨道备注（2026-10-09；增量，U＋P0未完成）
 
 结论：Edit新增可独立开关的Comments列，Mix每条通道底部显示同一实际备注；点备注或⌘⌥C打开原生多行编辑器，⌘Return应用，Esc取消。⌘⌥4切换Edit列，两项全局命令可改键位。audio/midi/instrument/aux/folder/vca均支持中文多行文本，空白清除；应用一笔human事务，Undo/Redo恢复文字，真实`.tracktionedit`新Workspace保存重开保留。

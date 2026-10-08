@@ -333,6 +333,23 @@ int64_t Commands::sampleAtBarBeat(int bar, double beat) const
             "bar and beat position exceeds the session timeline");
     return result;
 }
+Json Commands::timelinePosition(int64_t position) const
+{
+    checkThread();
+    require(position >= 0 && position <= std::llround(te::Edit::maximumLength * timelineRate),
+            "timeline position outside Edit range");
+    auto& seq = edit->tempoSequence;
+    const auto now = time(position);
+    const auto bb = seq.toBarsAndBeats(now);
+    auto& meter = seq.getTimeSigAt(now);
+    return {{"position_samples", position},
+            {"bar", bb.bars + 1},
+            {"beat", bb.beats.inBeats() + 1},
+            {"position_beats", seq.toBeats(now).inBeats()},
+            {"bpm", seq.getBpmAt(now)},
+            {"numerator", meter.numerator.get()},
+            {"denominator", meter.denominator.get()}};
+}
 Json Commands::musicalGrid(int64_t start, int64_t end, double division) const
 {
     checkThread();

@@ -1,0 +1,64 @@
+{
+  "checks": 82,
+  "result": "passed",
+  "scope": "real native components and Edit; closed audio device; desktop acceptance unexecuted",
+  "ui_schema": 6,
+  "production_binary_sha256": "9631509a1235a84ff728ddb3f28916f6606fec6043ddf2087cfae6f01117f0fe",
+  "preview_path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/FormaRulersPreview.app",
+  "preview_bundle_id": "org.forma.daw.rulers-preview",
+  "signature": "designated => identifier \"org.forma.daw.rulers-preview\" and certificate root = H\"f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f\"",
+  "strict_deep_verification": "passed",
+  "desktop_acceptance": "unexecuted: Mac locked; preview prepared, not launched",
+  "milestone": "U-P0-RULERS-01",
+  "verified_at": "2026-10-09",
+  "affected_ctest": {
+    "passed": 9,
+    "failed": 0,
+    "seconds": 36.51,
+    "tests": [
+      "tracktion_music_notes",
+      "forma_native_ui_navigation",
+      "forma_native_editor_interactions",
+      "forma_native_loop_playback",
+      "forma_native_markers",
+      "forma_native_rulers",
+      "forma_native_comments",
+      "forma_native_edit_views",
+      "forma_native_midi_dock"
+    ]
+  },
+  "build": {
+    "configuration": "Release",
+    "result": "passed",
+    "full_phase_regression": "unexecuted: affected tests only"
+  },
+  "reference": {
+    "product": "Pro Tools",
+    "version": "2026.4",
+    "printed_pages": [
+      1118,
+      1119,
+      1120,
+      1121,
+      1122
+    ],
+    "url": "https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf",
+    "local_pdf_sha256": "884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8"
+  },
+  "limits": [
+    "fixed ruler order",
+    "integer 24/25/30 NDF display from zero only; no video sync or session offset",
+    "Main changes counter; Grid/Nudge/start/end/length not all switched",
+    "Tempo/Meter lanes read-only",
+    "loop edge edits while stopped",
+    "Undo history not persisted across reopen",
+    "desktop locked: GUI acceptance, listening and physical keyboard unexecuted"
+  ],
+  "repairs": [
+    "Marker hit copied before temporary facts expire",
+    "new fixture uses registered sample-based Tempo/Meter arguments",
+    "loop regression now checks narrow-window menu/key path and wide-window button",
+    "music regression verifies sample/media invariance separately from expected changed bar/beat",
+    "selection check follows actual JUCE round-to-integer mouse coordinates"
+  ]
+}

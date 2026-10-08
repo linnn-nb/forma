@@ -236,6 +236,12 @@ int main(int argc, char** argv)
             workspace.setVisible(true);
             workspace.setSize(1120, 700);
             settle(100);
+            juce::ApplicationCommandInfo narrowLoop(113);
+            workspace.getCommandInfo(113, narrowLoop);
+            check(!find(workspace, "transport.loop") && narrowLoop.shortName.isNotEmpty(),
+                  "narrow window retains registered loop menu and keyboard action without overlapping toolbar");
+            workspace.setSize(1600, 1000);
+            settle();
             auto* loopButton = dynamic_cast<juce::Button*>(find(workspace, "transport.loop"));
             check(loopButton != nullptr, "native toolbar exposes a dedicated loop playback control");
             check(!loopButton->getToggleState(), "native loop control starts unchecked in a new Edit");

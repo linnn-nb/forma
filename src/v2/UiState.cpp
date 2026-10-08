@@ -6,7 +6,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 5},
+    return {{"ui_schema", 6},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -28,7 +28,17 @@ Json defaults()
             {"midi_pixels_per_beat", 72.},
             {"midi_scroll_x", 0},
             {"midi_scroll_y", 746},
-            {"edit_views", {{"io", false}, {"inserts", false}, {"sends", false}, {"comments", false}}}};
+            {"edit_views", {{"io", false}, {"inserts", false}, {"sends", false}, {"comments", false}}},
+            {"rulers",
+             {{"bars_beats", true},
+              {"min_sec", true},
+              {"timecode", false},
+              {"samples", false},
+              {"markers", true},
+              {"tempo", false},
+              {"meter", false}}},
+            {"main_time_scale", "min_sec"},
+            {"timecode_fps", 24}};
 }
 void validate(const Json& value)
 {
@@ -44,7 +54,7 @@ void validate(const Json& value)
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 5)
+    if (value["ui_schema"] != 6)
         throw std::runtime_error("unsupported UI schema");
     const auto& columns = value["edit_views"];
     if (!columns.is_object() || columns.size() != 4)
@@ -52,6 +62,18 @@ void validate(const Json& value)
     for (const auto* key : {"io", "inserts", "sends", "comments"})
         if (!columns.contains(key) || !columns[key].is_boolean())
             throw std::runtime_error("invalid Edit view switch");
+    const auto& rulers = value["rulers"];
+    if (!rulers.is_object() || rulers.size() != 7)
+        throw std::runtime_error("invalid ruler switches");
+    for (const auto* key : {"bars_beats", "min_sec", "timecode", "samples", "markers", "tempo", "meter"})
+        if (!rulers.contains(key) || !rulers[key].is_boolean())
+            throw std::runtime_error("invalid ruler switch");
+    const auto main = value["main_time_scale"].get<std::string>();
+    if ((main != "bars_beats" && main != "min_sec" && main != "timecode" && main != "samples") ||
+        !rulers[main].get<bool>())
+        throw std::runtime_error("main time scale must be a visible timebase ruler");
+    if (value["timecode_fps"] != 24 && value["timecode_fps"] != 25 && value["timecode_fps"] != 30)
+        throw std::runtime_error("unsupported display frame rate (24/25/30 NDF)");
     const auto max = std::llround(te::Edit::maximumLength * 48000);
     for (const auto* key : {"start_samples", "span_samples", "first_row", "row_height"})
         if (value[key].is_number_unsigned() && value[key].get<uint64_t>() > uint64_t(max))
@@ -125,16 +147,22 @@ Json readUiState(const juce::ValueTree& metadata)
         const bool v2 = saved.value("ui_schema", Json(0)) == 2;
         const bool v3 = saved.value("ui_schema", Json(0)) == 3;
         const bool v4 = saved.value("ui_schema", Json(0)) == 4;
-        if (v4)
+        const bool v5 = saved.value("ui_schema", Json(0)) == 5;
+        if (v4 || v5)
         {
-            if (saved.size() != result.size() || !saved.contains("edit_views") || !saved["edit_views"].is_object() ||
-                saved["edit_views"].size() != 3)
-                throw std::runtime_error("incomplete schema4 Edit views");
+            if (saved.size() != result.size() - 3 || !saved.contains("edit_views") ||
+                !saved["edit_views"].is_object() || saved["edit_views"].size() != (v4 ? 3 : 4))
+                throw std::runtime_error("incomplete legacy Edit views");
             for (const auto* key : {"io", "inserts", "sends"})
                 if (!saved["edit_views"].contains(key) || !saved["edit_views"][key].is_boolean())
-                    throw std::runtime_error("invalid schema4 Edit view switch");
-            saved["edit_views"]["comments"] = false;
-            saved["ui_schema"] = 5;
+                    throw std::runtime_error("invalid legacy Edit view switch");
+            if (v4)
+                saved["edit_views"]["comments"] = false;
+            else if (!saved["edit_views"].contains("comments") || !saved["edit_views"]["comments"].is_boolean())
+                throw std::runtime_error("invalid legacy Comments view switch");
+            for (const auto* key : {"rulers", "main_time_scale", "timecode_fps"})
+                saved[key] = result[key];
+            saved["ui_schema"] = 6;
         }
         if (legacy || v2 || v3)
         {
@@ -159,7 +187,7 @@ Json readUiState(const juce::ValueTree& metadata)
                     if (!o.is_object() || o.value("kind", std::string{}) != "clip")
                         throw std::runtime_error("invalid legacy object selection");
         }
-        else if (saved["ui_schema"] != 5 || saved.size() != result.size())
+        else if (saved["ui_schema"] != 6 || saved.size() != result.size())
             throw std::runtime_error("unsupported or incomplete UI schema");
         if (legacy)
             result["ui_schema"] = 1;
@@ -175,7 +203,7 @@ Json readUiState(const juce::ValueTree& metadata)
         result["workspace"] = "edit";
         result["midi_dock"] = true;
     }
-    result["ui_schema"] = 5;
+    result["ui_schema"] = 6;
     validate(result);
     return result;
 }

@@ -7,7 +7,11 @@
 
 当前原生 UI 位于 `src/v2/ui/`：Workspace 负责组件编排，Edit/Mix、走带、计数器、标尺、列表、快捷键设置各自独立。`WorkspaceCommands.cpp` 的 ApplicationCommandManager 是已迁移全局操作的共同入口；`UiState.cpp` 在 message thread 验证并写入 `Edit/NATIVEDAW/UI`，保存缩放/滚动/侧栏/键位，不使用 UndoManager。人工单文件导入直接形成一个 human Plan；外部请求和高风险操作仍保留预览。统一选区与工具模型、完整窗口结构和跨重开 Undo 尚未完成；下文旧 M 里程碑按本文顶部当前阶段安排冻结或后置。
 
-`EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track/Note ID 管理对象选择，Note引用必须携带父Clip，卷帘与时间线共用父片段高亮；音符时间范围和自动化点联动仍待接入。工具/网格/Nudge 值及UI选区存schema5，同时保存MIDI停靠/高度/目标Clip/网格/尺度/滚动和四个edit_views布尔开关；旧八字段及完整schema2/schema3/schema4明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
+标尺schema6增加七个精确布尔开关、main_time_scale和24/25/30 NDF显示帧率；主标尺必须可见。固定顺序的各行高度共同决定Track/Clip/Marker命中、波形及滚动布局。ApplicationCommandManager 154–169供菜单、标尺名和可重映射键位使用；UI开关不增revision/Undo。L1只读timelinePosition(sample)从实际TempoSequence取得指定位置的小节/拍/BPM/拍号，不注册新MCP工具。主计数器同步显示单位；Grid/Nudge等仍按各自控件，未全量跟随主标尺。
+
+循环手柄仅在停止时编辑真实transport_settings.loop_range；拖动本地预览，松手提交一份Plan：临时session.range.set→transport.loop.set→恢复原Edit选区（或clear）。一个UndoManager事务保留独立循环范围与编辑选区，原revision/session用于冲突校验。坐标、标尺或行布局在手势中变化则取消草稿。时间码目前从零显示整数帧率非丢帧，不代表视频同步/起始偏移；Tempo/Meter行只读现有事实。
+
+`EditingModel` 决定工具/模式手势，`SelectionModel` 以稳定 Clip/Track/Note ID 管理对象选择，Note引用必须携带父Clip，卷帘与时间线共用父片段高亮；音符时间范围和自动化点联动仍待接入。工具/网格/Nudge 值及UI选区存schema6，同时保存MIDI停靠/高度/目标Clip/网格/尺度/滚动和四个edit_views布尔开关；旧八字段及完整schema2/schema3/schema4/schema5明确迁移，损坏或未知版本拒绝。时间范围仍使用现有 `session.range.set/clear` 事务；UI 对象引用不进入 Undo。L1 的只读 `snapToGrid/offsetByBeats` 使用真实 TempoSequence，不依赖稀疏绘制网格；多片段 Nudge 共用最早起点算出的采样偏移，保持相对时差。没有新增 MCP 工具或第二套音频模型。
 
 音频 Smart Tool 以 EditingModel 的位置分区解析手势，EditWindow 在本地保持拖拽预览，松手通过既有 ClipWriter/L1 提交单笔真实淡化/移动/修剪。Smart 是UI工具状态，淡化是Edit事实；全局MIDI/自动化分区尚未实现。Edit下方停靠钢琴卷帘由 `ui/MidiEditor.h` 读取真实音符并预览成组移动/两缘修剪/力度，松手通过Workspace批量writer进入一笔L1事务；全局量化/全选/删除/力度快捷键来自统一命令表。会话切换取消手势，捕获revision拒绝过期编辑；卷帘对象选择与Edit共用稳定ID；MidiDockDivider只做布局预览，松手经L1 UI保存。全局命令145（⌘⌥M）与按钮共用开关，键盘焦点区分音符和音频编辑。键位完整XML增加 formaCommands 已知命令清单，加载/导入只为新增命令补未占用的默认键，保留人工解绑与冲突映射；迁移写入L1 UI子树，不增加工程revision/Undo。
 
@@ -15,7 +19,7 @@ EditWindowViews只读实际插件、发送和I/O facts；插入/路由/指定发
 
 独立Mix组由L1 MixGroupCommands保存在Edit/NATIVEDAW/MIX_GROUPS schema1，成员与组织层级分离。原生GroupsList/MixGroupEditor只读facts、产出命令；定义变更单独事务，捕获版本拒绝旧草稿；本阶段仅human改组，tool_visibility=local_gui不派生新MCP工具。track.mute/solo在Plan阶段按首个匹配的启用组展开；requested_operations保存初始锚点，预览/权限/提交再次验证所有受影响对象，拒绝剔除成员和资源超限。删除成员保留缺失引用；禁用/修复后才恢复相关联动，Undo恢复原ID。成员选择写UI，组定义写Undo。推子/Pan/录音/编辑组属性仍待实现。
 
-轨道Comments由L1 HierarchyCommands以`ndaw_comment`扩展Track ValueTree，query读真实文字；TrackCommentsPanel只保留本地草稿，显式应用时提交带原session/revision的human Plan，用Edit UndoManager撤销。Edit/Mix共用字段和原生入口；UI schema5新增第四列开关并严格迁移schema4。全局152/153来自可重映射命令表；对话框取消/确认与输入不透传时间线快捷键。当前只允许停止时改备注，tool_visibility=local_gui且限制human，冻结MCP不扩展。
+轨道Comments由L1 HierarchyCommands以`ndaw_comment`扩展Track ValueTree，query读真实文字；TrackCommentsPanel只保留本地草稿，显式应用时提交带原session/revision的human Plan，用Edit UndoManager撤销。Edit/Mix共用字段和原生入口；第四列开关在schema5引入，当前schema6保持并严格迁移schema4/5。全局152/153来自可重映射命令表；对话框取消/确认与输入不透传时间线快捷键。当前只允许停止时改备注，tool_visibility=local_gui且限制human，冻结MCP不扩展。
 
 ## 0. 定位与前提
 

@@ -1,5 +1,11 @@
 # 统一命令契约 v2
 
+## 本地标尺与循环手势（U-P0-RULERS-01）
+
+rulers/main_time_scale/timecode_fps是严格schema6 UI属性，由L1 updateUiState写入，不作为工程编辑历史，也不扩大冻结MCP。timelinePosition(sample)是message-thread本地只读查询，直接读Edit TempoSequence；不接受任意线程修改。
+
+循环手柄复用既有session.range.set/clear和transport.loop.set，临时选区捕获新循环后恢复旧Edit选区。一份human Plan、一个Undo；提交核验鼠标按下时的session/revision，陈旧手势失败，不显示成功。无额外文件写入、上传、模型调用或授权入口。Grid吸附使用既有L1 snapToGrid；界面布局变动取消未提交手势。
+
 ## 独立Mix组（U-P0-GROUPS-01）
 
 领域命令group.create/update（id/name/members/enabled/mute/solo）、group.enabled与group.delete由注册表给出Schema，低风险、可撤销、非live，定义变更为单独事务。已有query事实新增mix_groups；组定义标记tool_visibility=local_gui，preview要求actor=human；MCP工具生成跳过该标记，且外部generic plan也不能绕过actor验证，不新增工具入口，M2/M3仍冻结。现有外部track.mute/solo服从相同展开与权限验证。结构命令按现有Scope规则需要不受限的预览权限，不能使用成员范围假冒结构授权。

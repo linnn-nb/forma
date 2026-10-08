@@ -84,6 +84,22 @@ const std::vector<Entry>& entries()
         {149, "新建 Mix 组…", "组", 'g', cmd},
         {150, "启用 / 禁用所选 Mix 组", "组", 'g', cmd | shift},
         {151, "修改所选 Mix 组…", "组", 'g', cmd | juce::ModifierKeys::altModifier},
+        {154, "Bars | Beats 标尺", "标尺", '1', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {155, "Min : Sec 标尺", "标尺", '2', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {156, "Timecode 标尺", "标尺", '3', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {157, "Samples 标尺", "标尺", '4', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {158, "Markers 标尺", "标尺", '5', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {159, "Tempo 标尺", "标尺", '6', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {160, "Meter 标尺", "标尺", '7', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {161, "显示所有已支持标尺", "标尺", '0', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {162, "只显示主时间标尺", "标尺", '9', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {163, "24 fps NDF · 从零显示", "标尺"},
+        {164, "25 fps NDF · 从零显示", "标尺"},
+        {165, "30 fps NDF · 从零显示", "标尺"},
+        {166, "Bars | Beats · 主时间标尺", "标尺"},
+        {167, "Min : Sec · 主时间标尺", "标尺"},
+        {168, "Timecode · 主时间标尺", "标尺"},
+        {169, "Samples · 主时间标尺", "标尺"},
         {152, "Edit Comments 列", "视图", '4', cmd | juce::ModifierKeys::altModifier},
         {153, "编辑轨道备注…", "轨道", 'c', cmd | juce::ModifierKeys::altModifier},
         {146, "Edit I/O 列", "视图", '1', cmd | juce::ModifierKeys::altModifier},
@@ -108,6 +124,21 @@ const std::vector<Entry>& entries()
     return list;
 }
 } // namespace
+juce::PopupMenu Workspace::rulersMenu()
+{
+    juce::PopupMenu menu;
+    menu.setLookAndFeel(&theme);
+    for (int id = 154; id <= 162; ++id)
+        menu.addCommandItem(&commandManager, id);
+    juce::PopupMenu main, fps;
+    for (int id = 166; id <= 169; ++id)
+        main.addCommandItem(&commandManager, id);
+    for (int id = 163; id <= 165; ++id)
+        fps.addCommandItem(&commandManager, id);
+    menu.addSubMenu(text("Main Time Scale"), main);
+    menu.addSubMenu(text("Timecode 显示帧率（非同步设置）"), fps);
+    return menu;
+}
 void Workspace::initialiseCommandManager()
 {
     commandManager.registerAllCommandsForTarget(this);
@@ -170,6 +201,35 @@ void Workspace::initialiseCommandManager()
     {
         mixArea.onRouting(id);
         routing.selectSend(send);
+    };
+    editArea.onRulerCommand = [this](int id) { commandManager.invokeDirectly(id, false); };
+    editArea.onRulersMenu = [this](juce::Component& target)
+    {
+        rulersMenu().showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&target).withParentComponent(this),
+                                   [safe = juce::Component::SafePointer<Workspace>(this)](int id)
+                                   {
+                                       if (safe && id)
+                                           safe->commandManager.invokeDirectly(id, false);
+                                   });
+    };
+    editArea.onLoopRange = [this](Json range, uint64_t revision)
+    {
+        invoke(
+            [&]
+            {
+                const auto previous = commands.query()["time_selection"];
+                Json ops = Json::array(
+                    {operation("session.range.set", range), operation("transport.loop.set", {{"enabled", true}})});
+                ops.push_back(previous.is_null()
+                                  ? operation("session.range.clear", Json::object())
+                                  : operation("session.range.set", {{"start_samples", previous["start_samples"]},
+                                                                    {"end_samples", previous["end_samples"]}}));
+                auto plan = commands.makePlan("human", ops);
+                plan["base_revision"] = revision;
+                commands.commit(plan);
+                message(text("循环范围已提交 · 可撤销"));
+                refresh();
+            });
     };
     editArea.onViewChange = [this](Json patch) { setView(std::move(patch)); };
     piano.connect(commandManager);
@@ -306,6 +366,17 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                                                 : id == 147 ? "inserts"
                                                                 : id == 148 ? "sends"
                                                                             : "comments"]);
+            if (id >= 154 && id <= 160)
+            {
+                const auto& ruler = Rulers::entries()[size_t(id - 154)];
+                const auto view = commands.uiState();
+                info.setTicked(view["rulers"][ruler.key]);
+                active = view["main_time_scale"] != ruler.key;
+            }
+            if (id >= 163 && id <= 165)
+                info.setTicked(commands.uiState()["timecode_fps"] == (id == 163 ? 24 : id == 164 ? 25 : 30));
+            if (id >= 166 && id <= 169)
+                info.setTicked(commands.uiState()["main_time_scale"] == Rulers::entries()[size_t(id - 166)].key);
             if (id == 153)
                 active = !facts.value("playing", false) && !selectedTrack().is_null();
             if (id == 145)
@@ -393,6 +464,32 @@ bool Workspace::perform(const InvocationInfo& invocation)
         const auto* key = id == 146 ? "io" : id == 147 ? "inserts" : id == 148 ? "sends" : "comments";
         columns[key] = !columns[key].get<bool>();
         setView({{"edit_views", columns}});
+        return true;
+    }
+    if (id >= 154 && id <= 169)
+    {
+        auto view = commands.uiState();
+        auto rulers = view["rulers"];
+        Json patch = Json::object();
+        if (id <= 160)
+        {
+            const auto* key = Rulers::entries()[size_t(id - 154)].key;
+            if (view["main_time_scale"] != key)
+                rulers[key] = !rulers[key].get<bool>();
+        }
+        else if (id == 161 || id == 162)
+            for (const auto& entry : Rulers::entries())
+                rulers[entry.key] = id == 161 || view["main_time_scale"] == entry.key;
+        else if (id <= 165)
+            patch["timecode_fps"] = id == 163 ? 24 : id == 164 ? 25 : 30;
+        else
+        {
+            const auto* key = Rulers::entries()[size_t(id - 166)].key;
+            patch["main_time_scale"] = key;
+            rulers[key] = true;
+        }
+        patch["rulers"] = rulers;
+        setView(patch);
         return true;
     }
     if (id >= 101 && id <= 110)

@@ -236,6 +236,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     for (const auto& p : Commands::processorCatalog())
         pluginType.addItem(text(p["name"].get<std::string>()), pluginType.getNumItems() + 1);
     pluginType.setSelectedId(1, juce::dontSendNotification);
+    counter.setComponentID("transport.main_counter");
     counter.setFont(juce::FontOptions(25, juce::Font::bold));
     device.setFont(juce::FontOptions(11));
     status.setFont(juce::FontOptions(12));

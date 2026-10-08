@@ -74,7 +74,19 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
         if(!writer)throw std::runtime_error("absolute audio fixture writer failed");juce::AudioBuffer<float> pcm(2,48000);pcm.clear();pcm.setSample(0,200,0.1f);if(!writer->writeFromAudioSampleBuffer(pcm,0,48000))throw std::runtime_error("absolute audio fixture write failed");
     }auto hash=Commands::mediaHash(media);commit(absolute,Json::array({op("track.create",{{"name","Absolute audio"},{"ref","$a"}}),op("clip.import",{{"track","$a"},{"path",media.getFullPathName().toStdString()},{"position_samples",48000}})}));
     const auto audioBefore=absolute.query()["tracks"][0]["clips"];commit(absolute,Json::array({op("tempo.set",{{"position_samples",0},{"bpm",60}})}));
-    check(absolute.query()["tracks"][0]["clips"]==audioBefore&&audioBefore[0]["timebase"]=="samples"&&Commands::mediaHash(media)==hash,"Tempo leaves imported audio sample positions and original media hash unchanged");
+    auto audioAfter = absolute.query()["tracks"][0]["clips"];
+    auto beforeSamples = audioBefore, afterSamples = audioAfter;
+    for (auto* clips : {&beforeSamples, &afterSamples})
+        for (auto& item : *clips)
+        {
+            item.erase("bar");
+            item.erase("beat");
+        }
+    check(afterSamples == beforeSamples && audioBefore[0]["timebase"] == "samples" && Commands::mediaHash(media) == hash,
+          "Tempo leaves imported audio sample positions and original media hash unchanged");
+    check(audioBefore[0]["bar"] == 1 && audioBefore[0]["beat"] == 3. && audioAfter[0]["bar"] == 1 &&
+              audioAfter[0]["beat"] == 2.,
+          "same absolute audio position reports actual changed musical coordinates after Tempo edit");
     auto absoluteAudio=render(absolute,folder,"absolute audio after Tempo");check(onset(absoluteAudio)==48200,"sample timebase audio stays at original rendered frame after Tempo change");
     const std::string audioTrack=absolute.query()["tracks"][0]["id"];fails([&]{absolute.makePlan("human",Json::array({op("midi.clip.create",{{"track",audioTrack},{"ref","$bad"},{"name","Unsupported"},{"position_samples",0},{"length_samples",96000}})}));},"audio track without instrument rejects musical clip creation");
     Json summary{{"result","passed"},{"checks",checks},{"a4_onset_frame",start},{"a4_frequency_hz",hz},{"a4_rms",energy},{"renders",renders},{"scope","real Tracktion MIDI, FourOsc PCM and Undo; MIDI hardware input/recording and listening remain unqualified"}};
