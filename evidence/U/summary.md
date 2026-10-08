@@ -8,13 +8,13 @@
 
 SDK：仍锁定原Tracktion提交0d4d77c8c9defa6ec2aec6454f634e77bbd13f98，没有第二引擎或固定IPC。原`tracktion-render-bus-only.patch`扩展为每图源替换/源轨过滤/禁止Live MIDI与输入/禁止Click的钩子，保留原Bus render修复；新增`tracktion-scrub-context.patch`为每Context配置入口。CMake核验全部实际diff字节；从pin取12个修改文件，在独立临时目录逐一apply --check/apply，最终全部源字节一致通过。其他已有SDK修复保持。
 
-验证：Release Forma.app构建、固定本地身份签名与deep/strict验签通过。相关11/11通过、0失败、73.01秒；新增`forma_native_scrub`104项检查，机器回执`evidence/U/scrub-tests.json`。48k双声道真实24bit WAV通过±1/±0.5/±4读源核对，unity误差0；移动、源偏移修剪、Clip Gain、正常播放恢复其他轨、原Aux输出/发送、原EQ可测响应、44.1k mono→48k输出均实测。最高采样核对误差1.49e-8；真实EQ相对干路径差异0.01715。版本/设备缺失/活动录音拒绝、边界/超时、Context失效、停止/Seek/编辑/Undo/Redo/保存互斥、GUI原生手势和自定义键位重开执行通过。宿主测试设备只替代物理设备时钟；处理的是生产Tracktion图，不计为实体麦克风、听感或硬件资格。重开比较保留全部稳定路由/FX/媒体字段，只排除当前设备显示名；Undo后的浮点增益用1e-5 dB容差。
+验证：Release Forma.app构建、固定本地身份签名与deep/strict验签通过。相关11/11通过、0失败、73.01秒；新增`forma_native_scrub`104项检查，机器回执`evidence/U/scrub-tests.json`。48k双声道真实24bit WAV通过±1/±0.5/±4读源核对，unity误差0；移动、源偏移修剪、Clip Gain、正常播放恢复其他轨、原Aux输出/发送、原EQ可测响应、44.1k mono→48k输出均实测。最高采样核对误差1.49e-8；真实EQ相对干路径差异0.01715。版本/设备缺失/试听期间录音请求拒绝、边界/超时、Context失效、停止/Seek/编辑/Undo/Redo/保存互斥、GUI原生手势和自定义键位重开执行通过。宿主测试设备只替代物理设备时钟；处理的是生产Tracktion图，不计为实体麦克风、听感或硬件资格。重开比较保留全部稳定路由/FX/媒体字段，只排除当前设备显示名；Undo后的浮点增益用1e-5 dB容差。
 
 边界：目前仅普通、可映射、无淡化/Clip FX/ARA/变调/伸缩/循环的单个mono/stereo片段，clip通道掩码、Frozen/Submix/Comp、Modulation、Master淡化、路由自动化、生成器/硬件插入/Rack/Sidechain明确拒绝；原生EQ及发送验证不能推为任意第三方资格。窗口准备仍同步message-thread，慢盘/解码/第三方准备无法抢占，异步预取和跨片段/长范围仍待接入；±4x为线性插值试听，不是高质量时间伸缩或完整PT Scrubber。双轨/8声道、Selector/Smart临时Ctrl入口、细拖、选区扩展/插入跟随、第三方与听感/压力/故障硬件仍未验收。
 
 桌面工具确认Mac锁定，没有截图、实体鼠标/键盘/听感或真正应用退出重开验收。自有预览PID29323已按精确路径SIGTERM并确认退出，其余窗口保留。正式binary SHA256 `b63355d5074f43f8e582936def4ababf57baf19eca18b70a112b55de895ada6a`；独立`build-v2-tracktion/FormaScrubPreview.app`（org.forma.daw.scrub-preview）同身份验签，binary SHA256 `666beac3c4cb2d8aa072c6fe1f943d777235d6b18ebe24e4a5056b0079a7f500`。亲手试：打开预览，CommandO打开`build-v2-tracktion/scrub-demo/Scrubber Demo.tracktionedit`（实际原创4秒渐升音WAV）；中部按住左右拖/Option Shuttle/松手/Escape，空格回正常播放，也可导入自己的普通音频。演示工程由L1新建/导入/UI写入/保存，不覆盖现有文件；它是诊断音频，不是实录。完整U＋P0仍未完成，不进P1，不打DMG。
 
-修复：首编修正SDK完整Node头/类型与JUCE writer类型；首次数值验收发现Undo增益浮点舍入与重开设备名称变化，分别按明确容差和稳定字段核对；设备Context看门狗补全实际起始Context/设备generation后，重跑最终受影响回归通过。上述失败未计为通过。
+修复：首编修正SDK完整Node头/类型与JUCE writer类型；首次数值验收发现Undo增益浮点舍入与重开设备名称变化，分别按明确容差和稳定字段核对；设备Context看门狗补全实际起始Context/设备generation后，重跑最终受影响回归通过。演示生成器复核发现`File(argv[2])`误读中文路径，改为显式UTF-8后在正确目录重新生成；107项演示资格运行通过，并独立核验保存AUDIOCLIP的绝对引用及实际PCM24/48k/2声道/192000帧。误编码的自有文件移到build下诊断归档，未删用户文件。上述失败未计为通过。
 
 ## U-P0-WAVEFORM-ZOOM-01：波形显示尺度与连续Zoomer（2026-10-09；增量）
 

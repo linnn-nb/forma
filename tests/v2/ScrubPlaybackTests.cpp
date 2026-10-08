@@ -427,7 +427,7 @@ int main(int argc, char** argv)
         }
         if (argc > 2)
         {
-            auto demoFolder = juce::File(argv[2]);
+            auto demoFolder = juce::File(juce::String::fromUTF8(argv[2]));
             demoFolder.createDirectory();
             auto media = demoFolder.getChildFile("Scrub source.wav");
             auto session = demoFolder.getChildFile("Scrubber Demo.tracktionedit");
