@@ -1,3 +1,7 @@
+U-P0-MUSICAL-CURVES-01（2026-10-10）：ClipboardBuffer 保存值复制的原生 core::tempo::Sequence、源状态hash与 beats/samples/mixed 分类；复制后人工改 Tempo 不重释源快照。MusicalCurveMap.cpp 按源/目的 native section 分段仿射映射，沿用有界 Bezier 投影；强曲线跳变只跨相邻48k目的样本，零点入阶保留首样本。8192派生点/65536原点/64操作/8MiB快照预算不变；混合timebase曲线与Shuffle明确拒绝。
+
+MIDI粘贴改用私有 AutomationClipboard 写入器，保留 copy_from 原点的附加属性并分配新ID；共享 attachCurve 在首次写入时将 detached curve 挂入 native parent，同笔 Undo，避免仅内存有声但保存丢失。MusicCommands 只读源音符/CC、源时间允许负的工程映射位置，编辑请求仍限制非负合法范围。GUI摘要只读实际preview，不写Edit；无新SDK/依赖/实时路径/MCP工具。SDK模型getter差异仍待修复，不作为本增量通过项。
+
 # Forma 架构 v2
 
 U-P0-MIDI-RANGE-01（2026-10-10）：L1 `prepareMidiRangeClipboard` 从实际 Edit 组与 MIDI/instrument 轨读取半开选区，复用会话绑定的私有快照；源片段树不破坏，片段事实裁到实际边界。manifest 的 source_range、range_timebase、完整样本/音乐边界和轨序保留首尾空白及空轨，空选区不生成假片段。`midiClipPasteRange` 计算整个目的范围，含空白；当前纯 MIDI 范围要求单一片段时间基准，空轨默认音乐时间。

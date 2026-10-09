@@ -177,6 +177,22 @@ Json Commands::captureMidiClipClipboard(const Json& clips, const Json& range, co
         buffer.manifest["source_range"] = true;
         buffer.manifest["range_timebase"] = timebases.empty() ? "beats" : *timebases.begin();
     }
+    buffer.manifest["automation_timebase"] =
+        timebases.size() > 1 ? "mixed"
+                             : (range.is_null() ? (timebases.empty() ? "beats" : *timebases.begin())
+                                                : buffer.manifest["range_timebase"].get<std::string>());
+    // Copy the actual native map after forcing pending Tempo/Meter updates.
+    // It remains immutable when the human edits Tempo after Copy.
+    edit->tempoSequence.toBeats(time(first));
+    const auto& nativeMap = edit->tempoSequence.getInternalSequence();
+    tracktion::tempo::Sequence::Position pos(nativeMap);
+    size_t sections = 1;
+    while (pos.next())
+        require(++sections <= 65536, "clipboard Tempo map exceeds 65536 native sections");
+    bytes += sections * sizeof(tracktion::tempo::Sequence::Section);
+    require(bytes <= 8 * 1024 * 1024, "clipboard Tempo snapshot exceeds 8 MiB");
+    buffer.tempoSnapshot.emplace(nativeMap);
+    buffer.manifest["source_tempo_hash"] = hash(edit->tempoSequence.getState());
     buffer.manifest["start_samples"] = first;
     buffer.manifest["end_samples"] = last;
     buffer.manifest["start_beat"] = firstBeat;
@@ -365,27 +381,6 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                                                          {"position_samples", point},
                                                          {"removal_end_samples", end},
                                                          {"mode", mode}});
-                // The shared seconds-curve copier must not silently mismatch a musical envelope.
-                if (!curve["lanes"].empty() && point != b->manifest["start_samples"].get<int64_t>())
-                {
-                    const int64_t sourceFirst = b->manifest["start_samples"], sourceLast = b->manifest["end_samples"];
-                    require(
-                        end - point == sourceLast - sourceFirst,
-                        "musical clipboard changes elapsed duration; automation time remapping not implemented yet");
-                    const auto& seq = edit->tempoSequence;
-                    auto interior = [&](int64_t event)
-                    { return (event > sourceFirst && event < sourceLast) || (event > point && event < end); };
-                    for (auto* tempo : seq.getTempos())
-                        require(!interior(sample(seq.toTime(tempo->getStartBeat()))),
-                                "MIDI automation with internal Tempo changes requires time remapping");
-                    for (auto* meter : seq.getTimeSigs())
-                        require(!interior(sample(seq.toTime(meter->getStartBeat()))),
-                                "MIDI automation with internal Meter changes requires time remapping");
-                    const double bpm = seq.getBeatsPerSecondAt(time(sourceFirst));
-                    for (const auto at : {sourceLast - 1, point, end - 1})
-                        require(std::abs(seq.getBeatsPerSecondAt(time(at)) - bpm) < 1e-12,
-                                "MIDI automation with Tempo ramps requires time remapping");
-                }
                 automation.push_back(std::move(curve));
             }
             if (mode == "replace")
@@ -445,7 +440,27 @@ void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, J
         if (!c["before"].is_null())
             states[c["clip"]] = te::ClipCopy::fromClip(*midiClip(c["clip"])).getState().createCopy();
     for (const auto& curve : change["automation"])
-        executeAutomationCurveChanges(curve, objects);
+        if (cmd == "midi.clips.erase")
+            executeAutomationCurveChanges(curve, objects);
+        else
+        {
+            const auto* buffer = clipboardBuffer(a.at("clipboard"));
+            const auto& targets = a.at("tracks");
+            auto target = std::find(targets.begin(), targets.end(), curve.at("track"));
+            require(target != targets.end(), "automation destination layout changed");
+            executeAutomationClipboard(
+                {{"clipboard", a.at("clipboard")},
+                 {"source_track", buffer->manifest["tracks"][size_t(target - targets.begin())]},
+                 {"track", curve.at("track")},
+                 {"position_samples", a.at("position_samples")},
+                 {"removal_end_samples",
+                  change["range"].is_null()
+                      ? midiClipPasteRange(a.at("clipboard"), a.at("position_samples"))["end_samples"]
+                      : change["range"]["end_samples"]},
+                 {"mode", a.at("mode")},
+                 {"state_hash", curve.at("state_hash")}},
+                objects);
+        }
     auto& undo = edit->getUndoManager();
     for (const auto& item : change["clips"])
     {

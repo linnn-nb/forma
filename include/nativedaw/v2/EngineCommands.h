@@ -367,6 +367,7 @@ private:
             float minimum, maximum;
         };
         Json manifest;
+        std::optional<tracktion::tempo::Sequence> tempoSnapshot;
         std::map<std::string, ClipboardEntry> entries;
         std::map<std::string, std::vector<Lane>> automation;
     };

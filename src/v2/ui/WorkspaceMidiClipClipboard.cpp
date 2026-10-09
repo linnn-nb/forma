@@ -101,7 +101,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             {
                 pending = plan;
                 pendingClipboardPlan = plan["plan_id"];
-                previewText.setText(text(preview.dump(2)));
+                previewText.setText(shufflePreviewText(preview));
                 message(text("MIDI 片段大范围编辑 · 请预览后接受或拒绝"));
                 return;
             }

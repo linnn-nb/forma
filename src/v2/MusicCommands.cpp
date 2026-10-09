@@ -25,6 +25,14 @@ int64_t samples(tracktion::TimePosition time)
             "musical position exceeds sample representation");
     return std::llround(value);
 }
+int64_t sourceSamples(tracktion::TimePosition time)
+{
+    const double value = time.inSeconds() * 48000.;
+    require(std::isfinite(value) && value > double(std::numeric_limits<int64_t>::min()) &&
+                value < double(std::numeric_limits<int64_t>::max()),
+            "musical source position exceeds signed sample representation");
+    return std::llround(value);
+}
 void range(const Json& a)
 {
     auto start = a.at("position_samples").get<int64_t>(), length = a.at("length_samples").get<int64_t>();
@@ -65,8 +73,8 @@ template <class Sequence> Json noteFacts(const NoteModel& n, const ClipModel& c,
             {"source_beat", n.source},
             {"length_beats", n.length},
             {"start_beat", c.content + n.source},
-            {"position_samples", samples(begin)},
-            {"length_samples", samples(end) - samples(begin)}};
+            {"position_samples", sourceSamples(begin)},
+            {"length_samples", sourceSamples(end) - sourceSamples(begin)}};
 }
 template <class Sequence> std::vector<std::string> selectNotes(const Json& a, const ClipModel& c, const Sequence& seq)
 {
@@ -377,8 +385,8 @@ Json Commands::midiQuery(te::MidiClip& clip) const
                          {"source_beat", n->getStartBeat().inBeats()},
                          {"length_beats", n->getLengthBeats().inBeats()},
                          {"start_beat", edit->tempoSequence.toBeats(begin).inBeats()},
-                         {"position_samples", samples(begin)},
-                         {"length_samples", samples(end) - samples(begin)}});
+                         {"position_samples", sourceSamples(begin)},
+                         {"length_samples", sourceSamples(end) - sourceSamples(begin)}});
     }
     Json controllers = Json::array();
     for (auto* e : clip.getSequence().getControllerEvents())
@@ -386,7 +394,7 @@ Json Commands::midiQuery(te::MidiClip& clip) const
                                {"raw_value", e->getControllerValue()},
                                {"metadata", e->getMetadata()},
                                {"source_beat", e->getBeatPosition().inBeats()},
-                               {"position_samples", samples(e->getEditTime(clip))}});
+                               {"position_samples", sourceSamples(e->getEditTime(clip))}});
     return {{"notes", notes},
             {"controller_events", controllers},
             {"sysex_count", clip.getSequence().getNumSysExEvents()},
@@ -547,7 +555,7 @@ Json Commands::validateMusicPlan(const Json& operations) const
                      m->getContentStartBeat().inBeats(),
                      samples(p.getStart()),
                      samples(p.getEnd()),
-                     samples(p.getStartOfSource()),
+                     sourceSamples(p.getStartOfSource()),
                      m->getSyncType() == te::Clip::syncBarsBeats,
                      m->isLooping(),
                      {}};

@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 namespace ndaw::v2::curve_edit
 {
+void attachCurve(te::AutomationCurve&, juce::UndoManager*);
 constexpr size_t maximumPoints = 65536, maximumDerived = 8192;
 constexpr double relativeError = 1e-7;
 struct Point
@@ -19,4 +20,7 @@ std::vector<Point> slice(const std::vector<Point>&, double low, double high, dou
 float nativeValue(const std::vector<Point>&, double at);
 std::vector<Point> startSlice(const std::vector<Point>&, double low, double high, double tolerance,
                               bool destinationZero);
+std::vector<Point> musicalSlice(const std::vector<Point>&, const tracktion::tempo::Sequence& source,
+                                const tracktion::tempo::Sequence& destination, double originBeat, double start,
+                                double high, double tolerance);
 } // namespace ndaw::v2::curve_edit

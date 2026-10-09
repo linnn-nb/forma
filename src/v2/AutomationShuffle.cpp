@@ -4,6 +4,18 @@ namespace ndaw::v2
 {
 namespace curve_edit
 {
+void attachCurve(te::AutomationCurve& curve, juce::UndoManager* um)
+{
+    // A parameter without previous automation owns a detached curve. Direct
+    // POINT writes preserve opaque attributes, but must also perform the
+    // parent attachment that native addPoint normally supplies.
+    if (curve.getNumPoints() > 0 && !curve.state.getParent().isValid())
+    {
+        if (!curve.parentState.isValid())
+            throw std::runtime_error("native automation parent is missing");
+        curve.parentState.addChild(curve.state, -1, um);
+    }
+}
 void require(bool ok, const char* why)
 {
     if (!ok)
@@ -310,6 +322,7 @@ void Commands::executeAutomationCurveChanges(const Json& changes, Json& objects)
                 child.setProperty("ndaw_id", juce::Uuid().toString(), nullptr);
             curve.state.addChild(child, -1, um);
         }
+        attachCurve(curve, um);
         a->updateStream();
     }
 }

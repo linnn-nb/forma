@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-MUSICAL-CURVES-01（2026-10-10）：延续本文已有官方剪贴板/Automation Follows Edit章节作为交互参考，本轮未新增PT实机对照。MIDI大范围编辑卡片展示实际轨道名、当前标尺范围、新增/移除/保留边界片段与每条曲线点数；音乐映射标为“跟随小节与拍”，不显示内部Plan JSON。WorkspaceEditing/WorkspaceMidiClipClipboard只读preview，原接受/拒绝/Undo入口保留。自动组件路由已验证，Mac锁定实体未验；不宣称完整PT音乐自动化等价。
+
 U-P0-MIDI-CLIPS-01：主时间线完整MIDI对象的标准剪贴板命令已接入L1原生事务，保留NOTE/CONTROL/SYSEX原生状态，原位置粘贴回源布局。实现依据为锁定Tracktion SDK ClipOwner.cpp的ClipCopy与MidiClip原生源时间模型；未运行Pro Tools对照，不宣称全部MIDI工作流对齐。部分源范围、Shuffle、混合媒体和跨Tempo自动化还未实现，继续保留差距。
 
 U-P0-MIDI-CLIPBOARD-01：2026-10-10核验官方 Pro Tools Reference Guide 2026.4，印刷854/PDF956 Paste Command、印刷1115–1116/PDF1217–1218 Copying and Pasting Events in the MIDI Event List：普通Paste替换，Merge MIDI保留目标事件。本产品当前只实现钢琴卷帘的明确所选音符：CmdC/X/V/D及OptionCmdV可改键；默认Paste替换音乐范围内的目标音符起点，Duplicate为合并，Paste Original回到实际源轨/Clip。一笔L1 Undo、保存重开，MidiClipboard.cpp / WorkspaceMidiClipboard.cpp / MidiClipboardTests；所测路径自动已验证，实体Mac锁定未执行。不是完整PT MIDI工作流等价；跨边界长音符、范围/整片段、CC随剪贴板、Shuffle、MPE与独立Merge菜单仍待补/实测。官方来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本地SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。

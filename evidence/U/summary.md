@@ -1,3 +1,7 @@
+U-P0-MUSICAL-CURVES-01（2026-10-10）：主时间线 MIDI 整片段/选区粘贴的自动化按复制时源 Tempo 与当前目的 Tempo/Meter 重映射，覆盖变速曲线；保留空白、原生点附加属性和同笔 Undo/Redo/保存重开。大范围预览改为轨道、范围、片段与曲线变化摘要。Release/固定签名通过；19 项不同受影响 CTest 最终通过，3517 检查（新276）。Mac锁定，实体操作/试听未执行；完整 U＋P0 未完成，不进 P1。
+
+本节替代历史“音乐自动化时间重映射未实现”的差距；混合媒体/时间基准、Shuffle、部分循环仍待补。SDK编辑 getter 与真实播放插值不一致尚未修复。证据见 VERIFICATION 本增量；下一项先统一 SDK 读取与播放并补秒基强曲线边界资格，再完成混合媒体与 Shuffle。
+
 U-P0-MIDI-RANGE-01（2026-10-10）：主时间线 MIDI 选区 Copy/Cut/Paste/Duplicate/Paste Original 已接 L1 与原生 ClipCopy，保留整个选区的空白和空轨；剪切与替换保留两侧非破坏性片段。单笔 Undo/Redo、保存重开、既有可改快捷键与真实 FourOsc 渲染验证通过。Release/固定叶证书验签通过，11 项不同受影响 CTest、1508 检查（专项64）；Mac锁定，实体操作和试听未执行。完整 U＋P0 未完成，不进 P1。此节替代历史“纯 MIDI 源范围禁用/未实现”；混合媒体、Shuffle、不同时间基准及音乐自动化重映射仍保留差距。
 
 证据：midi-range-tests.json / midi-range-qualification.json / midi-range-before-patch.txt / midi-range-regression.txt / midi-range-build.txt / midi-range-shortcut-failure.txt；10份历史JSON已按原SHA恢复。原生CC起点32→96，区间外SysEx不再重放，原始raw导出保留；真实FourOsc发声点288000/预算64样本，尾部RMS检查通过。SDK新补丁干净pin应用/逆向还原逐字节通过，完整CMake白名单校验通过。无本轮实体截图或新GUI进程。演示OpenMidiRangeDemo.command，下一项音乐自动化时间映射。

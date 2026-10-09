@@ -1,5 +1,7 @@
 > 本文件为交互与工作流参考清单，不是全量产品验收门槛。
 
+U-P0-MUSICAL-CURVES-01（2026-10-10）：只按交互参考推进，不新增 Pro Tools 实机等价资格。MIDI整片段与范围的原生曲线已按实际源/目的 Tempo、Meter、ramp 映射，标准菜单/可改键、可读预览、Undo/Redo、保存重开与真实PCM通过专项。代码 MusicalCurveMap/AutomationClipboard/MidiClipClipboard/MusicCommands 与 WorkspaceMidiClipClipboard；测试 MusicalClipboardTests，证据见VERIFICATION。状态：所测48k路径自动已验证；实体GUI待实测，完整工作流部分实现。混合媒体/时间基准、Shuffle、部分循环及SDK模型getter差异仍在差距表，无新增外部授权依赖。
+
 U-P0-MIDI-RANGE-01（2026-10-10）：范围选择、保留静音、复制/剪切/原位置粘贴和单笔Undo作为交互参考；本轮没有新增Pro Tools实机对照资格，不宣称行为或性能等价。Forma纯MIDI/instrument主时间线范围保留空轨/首尾空白，使用实际Tempo映射，边界片段非破坏性保留；曲线Cut及原位置Paste同笔跟随。实现 MidiClipClipboard.cpp / WorkspaceMidiClipClipboard / Scope，验收及证据见VERIFICATION最新节。状态：上述自动受测路径已验证，完整范围工作流部分实现；实体GUI待实测，混合媒体、Shuffle、音乐曲线映射、循环/MPE仍有差距。无新外部授权依赖；Tracktion第十一份SDK补丁记录并锁定。
 
 U-P0-AUTOMATION-CLIPS-CLEAR-01：参考 Pro Tools Reference Guide 2026.4，核验日2026-10-09：印刷1552–1553/PDF1654–1655 Automation Follows Edit，印刷1546/PDF1648剪切/复制自动化说明，以及印刷857/859整片段Shuffle编辑；本地已读官方手册，来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。 Forma普通整片段Cut锚定两侧/Delete移除半开区间原点，Shuffle按各轨所选区间并集收缩曲线和后续片段，空隙保持；菜单/可改键/检查器共用L1、预览与单笔Undo、保存/Open。实现AudioClipClearCommands.cpp、AutomationClear.cpp、WorkspaceClipboard/Editing/ClipPanel；AutomationClipClearTests与14项相关CTest、实体检查器操作见VERIFICATION。状态：上述受测路径已验证；完整工作流部分实现。差距：闭包对象必须显式完整选择，不等长交错组可能拒绝；秒基曲线/默认读取器，移动/Trim/MIDI跟随未完成；不宣称完整Pro Tools等价，无新外部依赖。

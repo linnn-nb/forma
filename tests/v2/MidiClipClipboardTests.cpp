@@ -434,9 +434,14 @@ int main(int argc, char** argv)
               "one Undo restores native MIDI clip and complete fader curve");
         args["clipboard"] = withAutomation["id"];
         const auto protectedState = c.query();
-        rejects([&] { c.makePlan("human", Json::array({operation("midi.clips.paste", args)})); },
-                "elapsed-duration-changing MIDI paste refuses unimplemented automation remapping");
-        check(c.query() == protectedState, "refused musical automation mapping leaves entire project intact");
+        auto musicalPaste = c.commit(c.makePlan("human", Json::array({operation("midi.clips.paste", args)})));
+        const auto mappedCurves = c.automationQuery(destination);
+        check(std::any_of(mappedCurves["lanes"].begin(), mappedCurves["lanes"].end(),
+                          [](const Json& lane) { return lane["parameter"] == "volume" && !lane["points"].empty(); }),
+              "elapsed-duration-changing MIDI paste maps actual automation");
+        c.undo(musicalPaste["plan_id"]);
+        check(c.query()["tracks"] == protectedState["tracks"],
+              "musical automation Undo restores entire native project");
         args["tracks"] = Json::array({owner});
         args["position_samples"] = 48000;
         auto originalCurvePlan = c.makePlan("human", Json::array({operation("midi.clips.paste", args)}));
@@ -454,9 +459,10 @@ int main(int argc, char** argv)
         check(c.midiClipPasteExtent(withAutomation["id"], 576000)[0]["length_samples"] == 144000,
               "equal total duration can still hide an internal Tempo change");
         const auto nonlinearState = c.query();
-        rejects([&] { c.makePlan("human", Json::array({operation("midi.clips.paste", args)})); },
-                "equal-duration nonlinear Tempo profile refuses unmapped automation");
-        check(c.query() == nonlinearState, "nonlinear automation refusal preserves all native state");
+        auto nonlinearPaste = c.commit(c.makePlan("human", Json::array({operation("midi.clips.paste", args)})));
+        check(nonlinearPaste["state"] == "committed", "equal-duration nonlinear Tempo profile maps actual automation");
+        c.undo(nonlinearPaste["plan_id"]);
+        check(c.query()["tracks"] == nonlinearState["tracks"], "nonlinear automation Undo restores all native state");
         rejects(
             [&]
             {
@@ -494,7 +500,7 @@ int main(int argc, char** argv)
                     {"onset_budget_samples", 64},
                     {"onset_samples", firstOnset},
                     {"demo", demo.getFullPathName().toStdString()},
-                    {"limits", "mixed audio/MIDI, Shuffle, tempo-remapped automation not implemented"}};
+                    {"limits", "mixed audio/MIDI, mixed timebases, Shuffle and advanced MIDI not qualified"}};
         if (argc > 1)
         {
             std::ofstream out(argv[1]);

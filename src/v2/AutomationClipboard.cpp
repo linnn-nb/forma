@@ -255,8 +255,17 @@ Json Commands::automationClipboardChanges(const Json& args) const
     const int64_t duration =
         buffer->manifest["end_samples"].get<int64_t>() - buffer->manifest["start_samples"].get<int64_t>();
     require(first >= 0 && end >= first && duration > 0, "invalid automation paste bounds");
-    const double start = first / timelineRate, length = duration / timelineRate;
-    const double rightStart = (mode == "shuffle" ? end / timelineRate : start + length);
+    const bool midi = buffer->manifest.value("kind", std::string{}) == "midi_clips";
+    const auto timebase = buffer->manifest.value("automation_timebase", std::string{"samples"});
+    require(!midi || timebase != "mixed" || buffer->automation.empty(),
+            "mixed MIDI timebase automation requires interval-specific mapping");
+    const bool musical = midi && timebase == "beats";
+    require(!musical || (buffer->tempoSnapshot.has_value() && mode != "shuffle"),
+            "musical clipboard map missing or unsupported Shuffle");
+    const double start = first / timelineRate,
+                 length = musical ? (end - first) / timelineRate : duration / timelineRate;
+    require(length > 0, "invalid musical automation extent");
+    const double rightStart = (mode == "shuffle" || musical ? end / timelineRate : start + length);
     const double delta = mode == "shuffle" ? start + length - rightStart : 0;
     const auto captured = buffer->automation.find(sourceTrack);
     std::map<std::string, int> mapping;
@@ -327,9 +336,19 @@ Json Commands::automationClipboardChanges(const Json& args) const
             {
                 const auto source = read(captured->second[match->second].state);
                 const double low = buffer->manifest["start_samples"].get<int64_t>() / timelineRate;
-                body = startSlice(source, low, low + length - 1 / timelineRate, tolerance, first == 0);
-                for (auto& pt : body)
-                    pt.time += start - low;
+                if (musical)
+                {
+                    edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(start));
+                    body = musicalSlice(source, *buffer->tempoSnapshot, edit->tempoSequence.getInternalSequence(),
+                                        buffer->manifest.at("start_beat"), start, start + length - 1 / timelineRate,
+                                        tolerance);
+                }
+                else
+                {
+                    body = startSlice(source, low, low + length - 1 / timelineRate, tolerance, first == 0);
+                    for (auto& pt : body)
+                        pt.time += start - low;
+                }
             }
             else
             {
@@ -385,14 +404,17 @@ Json Commands::automationClipboardChanges(const Json& args) const
                             remaining.at(point["id"].get<std::string>()) != point;
             for (const auto& point : final)
                 affected += point["id"].get<std::string>().empty();
-            lanes.push_back({{"lane", id},
-                             {"name", parameter->getPluginAndParamName().toStdString()},
-                             {"before", serialise(before)},
-                             {"after", final},
-                             {"state_hash", hash(curve.state)},
-                             {"explicit_base", base},
-                             {"source_index", pasted ? match->second : -1},
-                             {"native_error_bound", tolerance}});
+            lanes.push_back(
+                {{"lane", id},
+                 {"name", parameter->getPluginAndParamName().toStdString()},
+                 {"before", serialise(before)},
+                 {"after", final},
+                 {"state_hash", hash(curve.state)},
+                 {"explicit_base", base},
+                 {"source_index", pasted ? match->second : -1},
+                 {"native_error_bound", tolerance},
+                 {"time_mapping", musical ? "native_musical" : "seconds"},
+                 {"source_tempo_hash", musical ? buffer->manifest.at("source_tempo_hash") : Json(nullptr)}});
         }
     const auto text = lanes.dump();
     return {{"track", target},
@@ -433,6 +455,7 @@ void Commands::executeAutomationClipboard(const Json& args, Json& objects)
                 state.setProperty("ndaw_id", juce::Uuid().toString(), nullptr);
             curve.state.addChild(state, -1, um);
         }
+        attachCurve(curve, um);
         parameter->updateStream();
     }
 }

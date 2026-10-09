@@ -1,0 +1,169 @@
+{
+  "state": "passed",
+  "unique_ctests": 19,
+  "checks": 3517,
+  "new_checks": 276,
+  "historical_reports_restored": 18,
+  "fresh_reports": [
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/midi-clips-tests.json",
+      "sha256": "43d0cfc56a802b809fbc487bdf289c75bf07ae487dcf21f3a26d53c5e5121ddf",
+      "checks": 71
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/midi-range-tests.json",
+      "sha256": "95c72e3e124b1f86e88e15ca580f2628fa428e91977ff9437cc1c63333e94ff6",
+      "checks": 64
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/automation-clipboard-tests.json",
+      "sha256": "66eff8980a61497ec8f65c90762b85f426ebca153b0e7649add85451e06dfc2e",
+      "checks": 234
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/automation-clip-clear-tests.json",
+      "sha256": "3ac121742b05ff8f482eeda7684a52d893d96d0bcbf7a26bc0b2eda97a7d8c9b",
+      "checks": 432
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/midi-clipboard-tests.json",
+      "sha256": "ea18021ed75a4bd6edfa253ded5586051407d5c03211690fa87f09549d69eb74",
+      "checks": 131
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/midi-timing-tests.json",
+      "sha256": "cc25573cead4f88cadc82ad0ec73c486d793aa3f5edb46ce316cc9e60dd7bf34",
+      "checks": 248
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/clipboard-tests.json",
+      "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386",
+      "checks": 49
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/editor-tests.json",
+      "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1",
+      "checks": 81
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/scope-tests.json",
+      "sha256": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21",
+      "checks": 38
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/protocol-tests.json",
+      "sha256": "7c9dad09aed4c2475b7afa5f9879b65df942a84a14c72eab4d8c2fee4512442c",
+      "checks": 96
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/music-tests.json",
+      "sha256": "237f9da27b4e3ce0f7bdda8ef84666ef2a12d00a35c46bf9e066815227e3a4b8",
+      "checks": 44
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/music-workspace-tests.json",
+      "sha256": "482bbcbda93e1e007d6faf746ac8b011ba0dc5391989a70a489391d68ebc4694",
+      "checks": 23
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/midi-transform-tests.json",
+      "sha256": "8510761653bd717757bd4b0c05925d7ea798785ec5b01f349f31384ae79e2840",
+      "checks": 81
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/music-events-tests.json",
+      "sha256": "3458c41398dd21cbdff1844472bf3bb5f2d91b8171cda120623716a1e6be260a",
+      "checks": 96
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/automation-move-tests.json",
+      "sha256": "e15dcd8d069ed90b8ce0780f0994fdc8b5310cb1ed1a0f256decb0651aafdb3d",
+      "checks": 499
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/automation-clear-tests.json",
+      "sha256": "be03990a0f7d0967fd522c27885db755a38f5b50e2295a7e9a67e2e874f23270",
+      "checks": 394
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/automation-view-range-tests.json",
+      "sha256": "6cefce3e0c4b65555db19969088541e82b10934edf301dc91ab4a7ea849fc134",
+      "checks": 351
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-fresh/automation-shuffle-tests.json",
+      "sha256": "c046121a23ebdc4da2b2c4b6ff469afd7f60d7860f4dd8eb5b86958843d606b1",
+      "checks": 309
+    }
+  ],
+  "logs": [
+    {
+      "path": "build-v2-tracktion/musical-curves-final-test.log",
+      "sha256": "f85b46781a5fe14d0d07baa6813f107075286203a2c0ff885b487098342bd571"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-regression-test.log",
+      "sha256": "ec89df1a5d313c0fcd57387122879a9ef88b85af76946334ca8f40a7395dc85e"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-whole-final-test.log",
+      "sha256": "fec49dcaaf98a9b9872dcb5d4682d686d36a09953612d88ef3f66b32cb33d437"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-regression-build.log",
+      "sha256": "19e6f0e75a970cb0c038a5c2a73e9dcd517bb4eb54a877fdcb19bdf353983e5c"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-build.log",
+      "sha256": "4b010b5bb385c8ef85039c64c46a9f6e25597a99469afbeb28c590e59c112ce3"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-signature.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-preview-signature.log",
+      "sha256": "95fcdd7a217b84a9a5277d49f017e9bbe0e65f5d47aad7cd016a5b3d62a811b0"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-playback-test.log",
+      "sha256": "d5e831f4a7e0479ae7cd0d040230b25f0949d9fb0ce3aabf15c2030d6875edee"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-tempo-test.log",
+      "sha256": "efe3713017cf65a44467d74c9ab4049931b39f0152fc822ddd33b5d592d73c28"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-complete-test.log",
+      "sha256": "3d7894678e2ebb4565ffe195fe943f6707c598aa24b4ea94ff3f585b5e7ae0da"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-zero-open-test.log",
+      "sha256": "1994aae340e12e6da7f20eea6ce44bd29fe667f286fe0aa954f38b5cfccd9255"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-gui-test.log",
+      "sha256": "d5603a1047f91372d4251504fda829dc48bafeab9eefd35cb2903018641471c0"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-preview-build.log",
+      "sha256": "5b51848b2a6bbc12cd3ae505ff94ac2a0df8474ccbf1215dcaf0e91bd211bf8c"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-preview-test.log",
+      "sha256": "11766fd4c718ce7c6e60130f8c084c4e193f2963814d6e7b19d4d1ea81992c5f"
+    },
+    {
+      "path": "build-v2-tracktion/musical-curves-format.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "build": "Release; fixed leaf and identifier requirement verified",
+  "gui": "Mac locked; physical GUI/listening not run; no preview launched",
+  "gaps": [
+    "SDK editor getValueAt coefficient doubled vs real AutomationIterator; measured, not fixed",
+    "mixed media/timebases, Shuffle, partial loops not implemented/qualified",
+    "48 kHz discontinuity sample guards; other device-rate guards not qualified"
+  ],
+  "preview": "human-readable actual MIDI changes; latest three affected GUI routes passed"
+}

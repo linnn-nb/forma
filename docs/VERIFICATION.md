@@ -1,5 +1,18 @@
 # 验证状态
 
+## U-P0-MUSICAL-CURVES-01（2026-10-10）
+
+结论：Release构建、固定证书/Bundle ID验签通过。19项不同受影响CTest最终通过，共3517检查；其中新MusicalClipboardTests 276检查。先18项回归17通过，整MIDI测试把FourOsc首参数误当推子而失败，改为枚举真实volume后单项通过；界面摘要修改后再跑整片段/范围/音乐专项3项，全部通过。不是完整U＋P0验收。
+
+- 18组实际native曲线（0、±.25、±.5、±.75、±1；硬Tempo与ramp，含7/8）对真实AutomationIterator逐13个目的样本及跳变相邻样本比较。最大原生误差1.7881393433e-7；预算预设为1e-7实际参数跨度＋两份float ULP，未降低。frozen source/current destination及零点首阶分别最大1.7881393433e-7、1.1920928955e-7。
+- 实际原生WAV渲染，独立解码校验48k/stereo/576000帧；已知左右PCM经过粘贴曲线的真实推子，两段稳定窗口与-18/-6 dB预期最大差1.3850631479e-7（预算2e-5），源PCM哈希不变。不是麦克风实录或主观听感资格。
+- 真实点附加属性、新ID、Scope超范围拒绝、幂等、人工Tempo使旧Plan过期；重规划用冻结源，撤销不抹去后来的人工Tempo。Save→Undo→Redo→Open、首次空曲线挂入Edit、负源事件保存重开通过。GUI共享CmdC/V、大变更预览/拒绝/接受及一笔Undo通过组件路由；既有可改键由整片段/范围回归验证。
+- 失败均保留在本地日志：SDK编辑getValueAt会将权重乘2，播放Iterator用原值；最初模型getter期望不符，改用独立真实播放迭代器，容差不变，SDK差异0.0156433880仍记录待修。强±.75跳变被截段拉成斜坡已通过目的样本guard修复；原生Tempo合法移动源曲线的测试预期已改为冻结旧iterator并核对新人工曲线；负源事件引发消息回调异常、首次detached曲线保存丢失均有生产修复和专项。GUI测试使用真实select回调，避免仅修改UI列表却粘贴到另一活跃轨道。
+
+边界：单一音乐时间基准、秒基native参数曲线、停止状态、现有匹配实际插件身份/参数范围。48k工程样本接缝以外设备率、通用秒基切段的强曲线跳变边界需补专项；混合媒体/timebase、Shuffle、部分循环、MPE、多Take、满载、第三方、硬件MIDI、耐久、Windows未获本增量资格。SDK编辑getter差异未修；不宣称所有native曲线API一致。Mac锁定，实体GUI/试听未执行，未启动预览窗口。
+
+亲手试 build-v2-tracktion/OpenMusicalCurvesDemo.command：工程已选源1–3秒范围，CmdC；点目的轨及约8秒插入点，CmdV，查看范围/曲线摘要并接受，试听、CmdZ/ShiftCmdZ；CmdS另存新副本后重开。生产程序 NativeDAW_artefacts/Release/Forma.app，独立固定签名 MusicalCurvesPreview.app，预览禁用MCP。18份历史JSON按原SHA恢复；最新报告/hash留 musical-curves-fresh 与 qualification。证据 evidence/U/musical-curves-{tests,qualification}.json、musical-curves-regression.txt；无DMG。下一项见NEXT_STEPS。
+
 ## U-P0-MIDI-RANGE-01（2026-10-10）
 
 结论：纯MIDI/instrument主时间线范围剪贴板自动验证通过；Release构建和固定叶证书deep/strict验签通过。专项64检查、4.83秒；相关10/10、127.65秒；合计11项不同CTest、1508检查，未降低预算。Mac锁定，实体鼠标/键盘、设备试听未执行；组件快捷键测试不替代实体验收。完整U＋P0未完成，不进P1。

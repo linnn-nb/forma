@@ -1,3 +1,7 @@
+U-P0-MUSICAL-CURVES-01（2026-10-10）：既有 human/local_gui midi.clips.erase/paste Schema 与权限不变，不新增MCP工具。Copy冻结源音乐映射及hash；preview lanes 记录 time_mapping=native_musical/seconds 与 source_tempo_hash，完整前后原生点仍供Scope与重编译校验。源快照不能由外部JSON注入；人工改Tempo使旧Plan过期，重新规划保留新人工状态，幂等重试不重复粘贴。
+
+一个native事务包含曲线挂接/点状态、MIDI片段与选区；保存后Undo/Redo与重开验证通过。查询中的源音符/CC position_samples 可为负，表示保留的片段外事件；不夹零、不删事件，不扩大编辑参数范围。GUI大范围卡片只展示可读影响，真实committed回执才报告提交。混合timebase曲线/Shuffle拒绝；资格与已知SDK差距见VERIFICATION。
+
 # 统一命令契约 v2
 
 U-P0-MIDI-RANGE-01（2026-10-10）：不新增外部工具。human/local_gui midi.clips.erase/paste 延续既有参数 Schema；clipboard 是L1在指定session/revision读取Edit后生成的不透明token，外部JSON不得提供原生状态。范围快照含 source_range=true、range_timebase、start/end_samples、start/end_beat、原生轨序（包含空轨），条目保持完整源树但其可见片段事实裁到选区；Copy不占Undo/revision。范围只接受纯MIDI/instrument、单一timebase，预算64源片段/64轨/8MiB。

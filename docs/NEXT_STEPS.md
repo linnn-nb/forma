@@ -1,9 +1,9 @@
 # 下一步
 
-结论：纯MIDI/instrument主时间线选区Copy/Cut/Paste/Duplicate/Paste Original已接L1，保留空轨/首尾静音与完整原生事件；曲线Cut/原位置Paste同笔Undo。Release/固定签名、11项1508检查（新专项64）通过，真实FourOsc发声点288000符合64样本预算。完整U＋P0未完成，不进P1。
+结论：MIDI整片段与选区的音乐自动化时间映射已实现，可读大范围预览、同笔Undo/Redo与保存重开通过。Release/固定签名、19项不同受影响CTest最终通过，3517检查（新276）；真实推子PCM最大差1.3851e-7，预算2e-5。完整U＋P0未完成，不进P1。
 
-亲手试 `build-v2-tracktion/OpenMidiRangeDemo.command`：F7选择主时间线范围，CmdC/X/D、OptionCmdV回原位置；选目标MIDI轨及插入点CmdV，CmdZ/ShiftCmdZ；CmdS另存新副本后重开。生产程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+亲手试 `build-v2-tracktion/OpenMusicalCurvesDemo.command`：源1–3秒范围CmdC，选目的轨/约8秒插入点CmdV，预览接受、试听、CmdZ/ShiftCmdZ，CmdS新副本并重开。生产产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；预览未在锁定桌面启动，实体GUI/听感未执行。
 
-下一项明确任务：音乐剪贴板的原生自动化时间映射，覆盖源/目的Tempo、Meter与变速曲线，避免按秒平移错位；实际预览、Scope、同笔Undo、保存重开和真实渲染均需验证。之后统一混合媒体选区与Shuffle；完成其余U＋P0和完整实体验收，用户确认后才进P1。
+下一项：统一SDK编辑getter与真实播放插值，补通用秒基强曲线跳变边界的专项资格；再接混合媒体选区及Shuffle，完成其余U＋P0和完整实体验收，由用户确认后进入P1。已知getter差异是工程缺陷，不是外部授权阻塞。
 
-本轮CUA确认Mac锁定，实体操作/试听未执行；未启动新GUI进程，无残留新窗口。无新授权阻塞；Tracktion/JUCE pin不变，第十一份MIDI边界SDK补丁记录并验证，原十份保留，无新MCP/分析器/DMG。M2/M3冻结、M4/M5暂缓；循环/MPE、多Take、满载、硬件MIDI、第三方、耐久、Windows和发布级验收未完成。详见VERIFICATION与DEPENDENCIES_AND_BLOCKERS。
+没有新授权、SDK/依赖或实时路径变更，11份既有补丁保持；M2/M3冻结、M4/M5暂缓。部分循环、混合timebase、MPE、多Take、满载、硬件/第三方、其他设备率接缝、耐久、Windows及发布级验收未完成。详见VERIFICATION与DEPENDENCIES_AND_BLOCKERS。

@@ -466,9 +466,12 @@ int main(int argc, char** argv)
         args["clipboard"] = buffer["id"];
         args["tracks"] = Json::array({destination, emptyDestination});
         const auto untouched = c.query();
-        rejects([&] { c.makePlan("human", Json::array({operation("midi.clips.paste", args)})); },
-                "range automation with changed Tempo duration refuses unsupported remapping");
-        check(c.query() == untouched, "refused musical curve paste preserves project state");
+        const auto musicalPaste = c.commit(c.makePlan("human", Json::array({operation("midi.clips.paste", args)})));
+        check(musicalPaste["state"] == "committed",
+              "range automation with changed Tempo duration commits musical mapping");
+        c.undo(musicalPaste["plan_id"]);
+        check(c.query()["tracks"] == untouched["tracks"], "musical range Undo restores project state");
+
         args["position_samples"] = 96000;
         args["tracks"] = Json::array({owner, empty});
         const auto curvePaste = run(c, Json::array({operation("midi.clips.paste", args)}));

@@ -328,6 +328,40 @@ void Workspace::executeEditCommand(int id)
 
 juce::String Workspace::shufflePreviewText(const Json& preview) const
 {
+    if (preview.contains("midi_changes") && !preview["midi_changes"].empty())
+    {
+        const auto view = commands.uiState();
+        auto position = [&](int64_t at)
+        { return text(commands.formatTimelinePosition(at, view["main_time_scale"], view["timecode_fps"])); };
+        juce::String out = text("MIDI 编辑 · 待确认\n\n原始音符、控制器与媒体保留。接受后可整笔撤销。\n");
+        for (const auto& change : preview["midi_changes"])
+        {
+            out += change["command"] == "midi.clips.erase" ? text("\n剪切所选内容\n") : text("\n粘贴复制的内容\n");
+            if (!change["range"].is_null())
+                out += text("范围：") + position(change["range"]["start_samples"]) + text(" → ") +
+                       position(change["range"]["end_samples"]) + text("（包含选区空白）\n");
+            for (const auto& id : change["range_tracks"])
+                out += text("轨道：") + trackName(id.get<std::string>()) + "\n";
+            int added = 0, removed = 0, retained = 0;
+            for (const auto& clip : change["clips"])
+                if (clip["after"].is_null())
+                    ++removed;
+                else if (clip["after"].contains("clipboard_token"))
+                    ++added;
+                else
+                    ++retained;
+            out += text("新增片段：") + juce::String(added) + text(" · 移除片段：") + juce::String(removed) +
+                   text(" · 保留边界片段：") + juce::String(retained) + "\n";
+            for (const auto& automation : change["automation"])
+                for (const auto& lane : automation["lanes"])
+                    out += text("自动化 · ") + trackName(automation["track"].get<std::string>()) + " · " +
+                           text(lane["name"].get<std::string>()) + "：" + juce::String(int(lane["before"].size())) +
+                           " → " + juce::String(int(lane["after"].size())) + text(" 点 · ") +
+                           (lane.value("time_mapping", std::string{}) == "native_musical" ? text("跟随小节与拍\n")
+                                                                                          : text("按时间编辑\n"));
+        }
+        return out + text("\n这里只显示计划影响；接受后请试听，再决定保留或撤销。\n");
+    }
     const bool independent = preview.contains("automation_range");
     const bool paste = (preview.contains("clipboard_paste") && !preview["clipboard_paste"].is_null()) ||
                        (independent && preview["automation_range"]["action"] == "paste");

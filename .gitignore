@@ -88,3 +88,7 @@ evidence/U/*
 !evidence/U/midi-clips-tests.json
 !evidence/U/midi-clips-qualification.json
 !evidence/U/midi-clips-regression.txt
+
+!evidence/U/musical-curves-tests.json
+!evidence/U/musical-curves-qualification.json
+!evidence/U/musical-curves-regression.txt
