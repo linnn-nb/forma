@@ -79,6 +79,8 @@ public:
     Json midiClipPasteRange(const std::string& clipboard, int64_t position) const;
     Json midiClipPasteExtent(const std::string& clipboard, int64_t position) const;
     Json prepareTimelineClipClipboard(const Json& clips, const std::string& expectedSession, uint64_t expectedRevision);
+    Json prepareTimelineFromAudioClipboard(const std::string& clipboard, const std::string& expectedSession,
+                                           uint64_t expectedRevision);
     Json prepareTimelineRangeClipboard(const Json& tracks, int64_t first, int64_t last,
                                        const std::string& expectedSession, uint64_t expectedRevision);
     Json timelineClipPasteRange(const std::string& clipboard, int64_t position) const;

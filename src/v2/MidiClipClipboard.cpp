@@ -338,6 +338,82 @@ Json Commands::midiClipPasteExtent(const std::string& id, int64_t point) const
     require(b && b->manifest["kind"] == "midi_clips", "MIDI clipboard required");
     return timelineClipPasteExtent(id, point);
 }
+Json Commands::prepareTimelineFromAudioClipboard(const std::string& id, const std::string& session,
+                                                 uint64_t expectedRevision)
+{
+    checkThread();
+    captureNativeStates();
+    require(session == sessionToken() && expectedRevision == revision && !edit->getTransport().isPlaying() &&
+                capture.is_null() && parameterCapture.is_null() && recordingCapture.is_null() &&
+                !audioConfigurationPending(),
+            "stop active processing or refresh before adapting audio clipboard");
+    require(!nativeStates ||
+                (!nativeStates->query()["pending"].get<bool>() && nativeStates->query()["failure"].is_null()),
+            "resolve native plugin state before adapting clipboard");
+    const auto* original = clipboardBuffer(id);
+    require(original && original->manifest["session_token"] == session && original->manifest["kind"] == "audio",
+            "actual same-session audio clipboard required");
+    ClipboardBuffer buffer;
+    buffer.manifest = original->manifest;
+    buffer.manifest["id"] = juce::Uuid().toString().toStdString();
+    buffer.manifest["kind"] = "timeline_clips";
+    buffer.manifest["entries"] = Json::array();
+    buffer.manifest["source_range"] = true;
+    buffer.manifest["range_timebase"] = "samples";
+    buffer.manifest["automation_timebase"] = "samples";
+    buffer.manifest["track_timebases"] = Json::object();
+    buffer.manifest["adapted_from"] = id;
+    buffer.manifest["projection_policy"] = "frozen audio and curves stay sample-based; beat readouts use current Tempo";
+    edit->tempoSequence.toBeats(time(0));
+    const auto& seq = edit->tempoSequence.getInternalSequence();
+    buffer.tempoSnapshot.emplace(seq);
+    buffer.manifest["source_tempo_hash"] = hash(edit->tempoSequence.getState());
+    buffer.manifest["start_beat"] = seq.toBeats(time(buffer.manifest["start_samples"])).inBeats();
+    buffer.manifest["end_beat"] = seq.toBeats(time(buffer.manifest["end_samples"])).inBeats();
+    size_t bytes = 0, sections = 1;
+    tracktion::tempo::Sequence::Position pos(seq);
+    while (pos.next())
+        require(++sections <= 65536, "adapted clipboard exceeds native Tempo section budget");
+    bytes += sections * sizeof(tracktion::tempo::Sequence::Section);
+    for (const auto& item : original->manifest["entries"])
+    {
+        const auto& entry = original->entries.at(item.at("token"));
+        auto facts = entry.facts;
+        require(facts["editable_audio"].get<bool>() && facts["default_reader"].get<bool>() &&
+                    !facts["offline_clip_effects"].get<bool>(),
+                "audio clipboard mapping is not qualified");
+        const int64_t start = facts["start_samples"], end = start + facts["length_samples"].get<int64_t>();
+        facts["kind"] = "audio";
+        facts["timebase"] = "samples";
+        facts["start_seconds"] = start / rate;
+        facts["end_seconds"] = end / rate;
+        facts["start_beat"] = seq.toBeats(time(start)).inBeats();
+        facts["length_beats"] = seq.toBeats(time(end)).inBeats() - facts["start_beat"].get<double>();
+        facts["offset_beats"] =
+            facts["source_offset_seconds"].get<double>() * edit->tempoSequence.getBeatsPerSecondAt(time(start));
+        auto state = entry.state.createCopy();
+        juce::MemoryOutputStream out;
+        state.writeToStream(out);
+        bytes += out.getDataSize();
+        const auto token = "@clipboard:" + juce::Uuid().toString().toStdString();
+        buffer.entries.emplace(token, ClipboardEntry{state, facts});
+        buffer.manifest["entries"].push_back({{"token", token}, {"clip", item["clip"]}, {"track", item["track"]}});
+    }
+    buffer.automation = original->automation; // Frozen original samples, never recapture current curves.
+    for (const auto& [owner, lanes] : buffer.automation)
+        for (const auto& lane : lanes)
+        {
+            juce::MemoryOutputStream out;
+            lane.state.writeToStream(out);
+            bytes += out.getDataSize();
+        }
+    require(bytes <= 8 * 1024 * 1024, "adapted clipboard exceeds 8 MiB; original remains accepted");
+    for (const auto& owner : buffer.manifest["tracks"])
+        buffer.manifest["track_timebases"][owner.get<std::string>()] = "samples";
+    buffer.manifest["state_bytes"] = bytes;
+    stagedClipboard = std::move(buffer);
+    return stagedClipboard->manifest; // Accept only after the actual edit receipt; cancel keeps original.
+}
 Json Commands::timelineClipPasteExtent(const std::string& id, int64_t point) const
 {
     checkThread();

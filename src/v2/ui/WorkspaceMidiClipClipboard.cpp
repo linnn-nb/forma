@@ -8,6 +8,30 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
         id == editCommand::copy || id == editCommand::cut || id == editCommand::duplicate || deleting;
     const auto slices = capturing ? clipboardSelection() : Json::array();
     const auto existing = commands.clipboard();
+    Json pasteTargets = Json::array();
+    if (!capturing && !existing.is_null())
+    {
+        if (id == editCommand::pasteOriginal)
+            pasteTargets = existing["tracks"];
+        else
+        {
+            const auto first = std::find_if(facts["tracks"].begin(), facts["tracks"].end(),
+                                            [&](const Json& t) { return t["id"] == selected; });
+            if (first != facts["tracks"].end())
+                for (size_t i = 0; i < existing["tracks"].size() && (first + i) != facts["tracks"].end(); ++i)
+                    pasteTargets.push_back((first + i)->at("id"));
+        }
+    }
+    const bool adaptAudio =
+        !capturing && !existing.is_null() && existing.value("kind", std::string{}) == "audio" &&
+        std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
+                    [&](const Json& t)
+                    {
+                        return std::find(pasteTargets.begin(), pasteTargets.end(), t["id"]) != pasteTargets.end() &&
+                               (t.value("automation_edit_basis", std::string{"auto"}) != "auto" ||
+                                std::any_of(t["clips"].begin(), t["clips"].end(),
+                                            [](const Json& c) { return c["kind"] == "midi"; }));
+                    });
     const bool range = selection.objects.empty() && !selection.range.is_null() && !selection.tracks.empty();
     const bool explicitCurveBasis =
         capturing && std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
@@ -29,11 +53,12 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                                 });
     if (deleting && (!range || editing.mode != "shuffle"))
         return false;
-    if (capturing ? (!explicitCurveBasis && !midiRange &&
-                     (slices.empty() ||
-                      std::none_of(slices.begin(), slices.end(), [](const Json& c) { return c["kind"] == "midi"; })))
-                  : (existing.is_null() || (existing.value("kind", std::string{}) != "midi_clips" &&
-                                            existing.value("kind", std::string{}) != "timeline_clips")))
+    if (capturing
+            ? (!explicitCurveBasis && !midiRange &&
+               (slices.empty() ||
+                std::none_of(slices.begin(), slices.end(), [](const Json& c) { return c["kind"] == "midi"; })))
+            : (!adaptAudio && (existing.is_null() || (existing.value("kind", std::string{}) != "midi_clips" &&
+                                                      existing.value("kind", std::string{}) != "timeline_clips"))))
         return false;
     invoke(
         [&]
@@ -47,7 +72,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                         facts["revision"] == commands.querySummary()["revision"] && pending.is_null(),
                     "refresh project or resolve pending preview before timeline editing");
             require(editing.mode != "shuffle" || id == editCommand::copy || id == editCommand::duplicate ||
-                        (capturing ? range : existing.value("source_range", false)),
+                        (capturing ? range : adaptAudio || existing.value("source_range", false)),
                     "MIDI/mixed Shuffle requires a range selection; object Shuffle is not qualified");
             pendingClipboard = nullptr;
             pendingClipboardPlan.clear();
@@ -68,8 +93,12 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                 std::any_of(slices.begin(), slices.end(),
                                             [](const Json& c) { return c["kind"] == "audio"; }) ||
                                 timebases.size() > 1
-                          : existing["kind"] == "timeline_clips";
-            Json buffer = existing;
+                          : adaptAudio || existing["kind"] == "timeline_clips";
+            Json buffer = adaptAudio ? commands.prepareTimelineFromAudioClipboard(existing["id"], workspaceSession,
+                                                                                  facts["revision"])
+                                     : existing;
+            if (adaptAudio)
+                pendingClipboard = buffer;
             if (capturing)
             {
                 Json clips = Json::array();

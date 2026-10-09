@@ -363,7 +363,7 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
             if (change.contains("automation_edit_bases"))
                 for (const auto& [id, basis] : change["automation_edit_bases"].items())
                     if (basis != "auto")
-                        out += text("共享曲线映射 · ") + trackName(id) + text("：") +
+                        out += text("共享曲线跟随 · ") + trackName(id) + text("：") +
                                (basis == "beats" ? text("小节拍") : text("采样")) + text("（不改片段基准）\n");
             int added = 0, removed = 0, retained = 0;
             for (const auto& clip : change["clips"])
