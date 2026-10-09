@@ -80,7 +80,7 @@ Json Commands::automationClearChanges(const Json& args) const
     const auto suffixTimebase = args.value("suffix_timebase", std::string{"samples"});
     require(suffixTimebase == "samples" || suffixTimebase == "beats" || suffixTimebase == "mixed",
             "invalid Shuffle clock");
-    require(suffixTimebase != "beats" || (!objectEdit && ripple), "musical collapse requires one selected range");
+    require(suffixTimebase != "beats" || ripple, "musical collapse requires a Shuffle edit");
     edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(intervals.front().first / timelineRate));
     Json lanes = Json::array();
     size_t inputs = 0, derived = 0, affected = 0;

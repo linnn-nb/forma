@@ -578,8 +578,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                                        (!clips.empty() || laterAudio) && pending.is_null();
                     if (!midiKeyboardFocus())
                         for (const auto& clip : clips)
-                            active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
-                                     !clip.value("locked", false);
+                            active = active && !clip.value("locked", false) &&
+                                     ((clip["kind"] == "audio" && clip.value("editable_audio", false)) ||
+                                      (!selection.objects.empty() && clip["kind"] == "midi"));
                     if (shuffleRange && !mix && !midiKeyboardFocus())
                     {
                         const auto owners = commands.editGroupTracks(selection.tracks);

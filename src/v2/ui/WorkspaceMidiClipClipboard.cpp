@@ -51,7 +51,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                                                      t["id"]) != selection.tracks.end() &&
                                                            (t["type"] == "midi" || t["type"] == "instrument");
                                                 });
-    if (deleting && (!range || editing.mode != "shuffle"))
+    if (deleting && range && editing.mode != "shuffle")
         return false;
     if (capturing
             ? (!explicitCurveBasis && !midiRange &&
@@ -71,9 +71,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             require(workspaceSession == commands.sessionToken() &&
                         facts["revision"] == commands.querySummary()["revision"] && pending.is_null(),
                     "refresh project or resolve pending preview before timeline editing");
-            require(editing.mode != "shuffle" || id == editCommand::copy || id == editCommand::duplicate ||
-                        (capturing ? range : adaptAudio || existing.value("source_range", false)),
-                    "MIDI/mixed Shuffle requires a range selection; object Shuffle is not qualified");
+
             pendingClipboard = nullptr;
             pendingClipboardPlan.clear();
             const auto owners = range ? commands.editGroupTracks(selection.tracks) : selection.tracks;
@@ -138,6 +136,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             {
                 ops.push_back(operation(mixed ? "timeline.clips.erase" : "midi.clips.erase",
                                         {{"clipboard", buffer["id"]},
+                                         {"action", deleting ? "delete" : "cut"},
                                          {"ripple", editing.mode == "shuffle"},
                                          {"ripple_mapping", commands.shuffleOptions()["mapping"]}}));
                 if (editing.mode == "shuffle")

@@ -292,6 +292,7 @@ void Commands::registerMusicCommands(Json& registry)
         {"unit", "48000 Hz session samples, or native Tracktion meter divisions"},
         {"amount", "signed edge displacement; samples integral; beats preserve source duration on move"}};
     add("midi.clips.erase", {{"clipboard", str},
+                             {"action", {{"type", "string"}, {"enum", {"cut", "delete"}}}},
                              {"ripple", {{"type", "boolean"}}},
                              {"state_hash", str},
                              {"ripple_mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}}});
@@ -299,6 +300,7 @@ void Commands::registerMusicCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
     add("timeline.clips.erase", {{"clipboard", str},
+                                 {"action", {{"type", "string"}, {"enum", {"cut", "delete"}}}},
                                  {"ripple", {{"type", "boolean"}}},
                                  {"state_hash", str},
                                  {"ripple_mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}}});

@@ -524,7 +524,8 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
     require(b && b->manifest["session_token"] == sessionToken() &&
                 b->manifest["kind"] == (timeline ? "timeline_clips" : "midi_clips"),
             "timeline clip clipboard expired");
-    Json changes = Json::array(), automation = Json::array();
+    Json changes = Json::array(), automation = Json::array(), objectIntervals = Json::array();
+    std::map<std::string, std::string> objectCurveBases;
     auto append = [&](te::Clip& c, Json after, bool clone = false)
     {
         require(!bool(c.state.getProperty("ndaw_locked", false)), "affected timeline clip is locked");
@@ -535,8 +536,9 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                            {"clone", clone}});
     };
     const bool ripple = cmd.ends_with(".erase") ? a.value("ripple", false) : a.at("mode") == "shuffle";
-    require(!ripple || b->manifest.value("source_range", false),
-            "timeline Shuffle requires a range snapshot, including empty tracks and gaps");
+    const bool objectRipple = ripple && cmd.ends_with(".erase") && !b->manifest.value("source_range", false);
+    const std::string action = cmd.ends_with(".erase") ? a.value("action", std::string{"cut"}) : "paste";
+    require(action == "cut" || action == "delete" || action == "paste", "invalid timeline erase action");
     const std::string rippleMapping = a.value("ripple_mapping", std::string{"samples"});
     require(rippleMapping == "samples" || rippleMapping == "native", "invalid Shuffle mapping");
     int64_t displacement = 0, removalEnd = 0;
@@ -547,7 +549,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         displacementBeats = edit->tempoSequence.toBeats(time(destinationEnd)).inBeats() -
                             edit->tempoSequence.toBeats(time(removalEnd)).inBeats();
     };
-    auto shifted = [&](Json f, int64_t delta)
+    auto shifted = [&](Json f, int64_t delta, double beatDelta)
     {
         if (delta == 0)
             return f;
@@ -557,15 +559,15 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         if (f["kind"] == "midi" && f["timebase"] == "beats" && rippleMapping == "native")
         {
             auto& seq = edit->tempoSequence;
-            const double beat = f["start_beat"].get<double>() + displacementBeats;
+            const double beat = f["start_beat"].get<double>() + beatDelta;
             const auto movedStart = seq.toTime(tracktion::BeatPosition::fromBeats(beat));
             const auto movedEnd =
                 seq.toTime(tracktion::BeatPosition::fromBeats(beat + f["length_beats"].get<double>()));
-            const double movedOffset =
-                f["looped"].get<bool>() ? f["offset_beats"].get<double>() / seq.getBeatsPerSecondAt(movedStart)
-                                        : (movedStart - seq.toTime(tracktion::BeatPosition::fromBeats(
-                                                            f["content_start_beat"].get<double>() + displacementBeats)))
-                                              .inSeconds();
+            const double movedOffset = f["looped"].get<bool>()
+                                           ? f["offset_beats"].get<double>() / seq.getBeatsPerSecondAt(movedStart)
+                                           : (movedStart - seq.toTime(tracktion::BeatPosition::fromBeats(
+                                                               f["content_start_beat"].get<double>() + beatDelta)))
+                                                 .inSeconds();
             require(sample(movedStart) >= 0 && sample(movedEnd) > sample(movedStart) &&
                         movedEnd.inSeconds() <= te::Edit::maximumLength && std::isfinite(movedOffset) &&
                         movedOffset >= 0,
@@ -629,7 +631,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         for (const auto& e : b->manifest["entries"])
             selected.insert(e["clip"].get<std::string>());
         const bool range = b->manifest.value("source_range", false);
-        if (ripple)
+        if (ripple && range)
         {
             removalEnd = b->manifest["end_samples"];
             setDisplacement(b->manifest["start_samples"].get<int64_t>());
@@ -670,19 +672,88 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                 {
                     append(*c, timelineClipFragment(*c, begin, first));
                     if (last > end)
-                        append(*c, shifted(timelineClipFragment(*c, end, last), displacement), true);
+                        append(*c, shifted(timelineClipFragment(*c, end, last), displacement, displacementBeats), true);
                 }
                 else if (last > end)
-                    append(*c, shifted(timelineClipFragment(*c, end, last), displacement));
+                    append(*c, shifted(timelineClipFragment(*c, end, last), displacement, displacementBeats));
                 else
                     append(*c, nullptr);
             }
         }
-        if (ripple)
+        if (ripple && range)
             for (const auto& owner : b->manifest["tracks"])
                 for (auto* c : track(owner)->getClips())
                     if (sample(c->getPosition().getStart()) >= removalEnd)
-                        append(*c, shifted(timelineClipFacts(*c), displacement));
+                        append(*c, shifted(timelineClipFacts(*c), displacement, displacementBeats));
+        if (objectRipple)
+            for (const auto& ownerJSON : b->manifest["tracks"])
+            {
+                const std::string owner = ownerJSON;
+                auto* t = track(owner);
+                std::vector<std::pair<int64_t, int64_t>> intervals, merged;
+                for (const auto& entry : b->manifest["entries"])
+                    if (entry["track"] == owner)
+                    {
+                        const auto f = timelineClipFacts(*timelineClip(entry["clip"]));
+                        intervals.emplace_back(f["start_samples"],
+                                               f["start_samples"].get<int64_t>() + f["length_samples"].get<int64_t>());
+                    }
+                require(!intervals.empty(), "object Shuffle track has no selected media");
+                std::sort(intervals.begin(), intervals.end());
+                for (const auto& interval : intervals)
+                    if (merged.empty() || interval.first > merged.back().second)
+                        merged.push_back(interval);
+                    else
+                        merged.back().second = std::max(merged.back().second, interval.second);
+                Json declared = Json::array();
+                int64_t removedSamples = 0;
+                double removedBeats = 0;
+                for (const auto& [first, last] : merged)
+                {
+                    const double beats = edit->tempoSequence.toBeats(time(last)).inBeats() -
+                                         edit->tempoSequence.toBeats(time(first)).inBeats();
+                    declared.push_back({{"start_samples", first}, {"end_samples", last}, {"removed_beats", beats}});
+                    removedSamples += last - first;
+                    removedBeats += beats;
+                }
+                std::set<std::string> survivingBases;
+                for (auto* c : t->getClips())
+                {
+                    if (selected.contains(c->itemID.toString().toStdString()))
+                        continue;
+                    const int64_t first = sample(c->getPosition().getStart()), last = sample(c->getPosition().getEnd());
+                    int64_t removed = 0;
+                    double beats = 0;
+                    for (const auto& [begin, end] : merged)
+                    {
+                        require(last <= begin || first >= end,
+                                "object Shuffle overlaps unselected media; include it or use Slip");
+                        if (end <= first)
+                        {
+                            removed += end - begin;
+                            beats += edit->tempoSequence.toBeats(time(end)).inBeats() -
+                                     edit->tempoSequence.toBeats(time(begin)).inBeats();
+                        }
+                    }
+                    if (removed)
+                    {
+                        auto f = timelineClipFacts(*c);
+                        survivingBases.insert(f["timebase"].get<std::string>());
+                        append(*c, shifted(std::move(f), -removed, -beats));
+                    }
+                }
+                const auto explicitBasis = automationEditBasis(owner);
+                objectCurveBases[owner] = rippleMapping != "native" ? "samples"
+                                          : explicitBasis != "auto" ? explicitBasis
+                                          : survivingBases.empty()  ? (trackType(*t) == "audio" ? "samples" : "beats")
+                                          : survivingBases.size() == 1 ? *survivingBases.begin()
+                                                                       : "mixed";
+                objectIntervals.push_back({{"track", owner},
+                                           {"intervals", declared},
+                                           {"removed_samples", removedSamples},
+                                           {"removed_beats", removedBeats},
+                                           {"curve_timebase", objectCurveBases.at(owner)}});
+            }
         if (editingOptions()["automation_follows_edit"].get<bool>())
             for (const auto& owner : b->manifest["tracks"])
             {
@@ -690,9 +761,10 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                 for (const auto& e : b->manifest["entries"])
                     if (e["track"] == owner)
                         clips.push_back(e["clip"]);
-                Json args{{"track", owner}, {"action", "cut"}, {"ripple", ripple}};
+                Json args{{"track", owner}, {"action", action}, {"ripple", ripple}};
                 if (ripple && rippleMapping == "native")
-                    args["suffix_timebase"] = timelineShuffleTimebase(owner, removalEnd);
+                    args["suffix_timebase"] = objectRipple ? objectCurveBases.at(owner.get<std::string>())
+                                                           : timelineShuffleTimebase(owner, removalEnd);
                 if (range)
                 {
                     args["start_samples"] = b->manifest["start_samples"];
@@ -749,7 +821,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                     if (sample(p.getStart()) >= removalEnd)
                     {
                         if (displacement != 0)
-                            append(*clip, shifted(timelineClipFacts(*clip), displacement));
+                            append(*clip, shifted(timelineClipFacts(*clip), displacement, displacementBeats));
                         continue;
                     }
                     auto* c = clip;
@@ -763,10 +835,13 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                     {
                         append(*c, timelineClipFragment(*c, begin, point));
                         if (last > removalEnd)
-                            append(*c, shifted(timelineClipFragment(*c, removalEnd, last), displacement), true);
+                            append(*c,
+                                   shifted(timelineClipFragment(*c, removalEnd, last), displacement, displacementBeats),
+                                   true);
                     }
                     else if (last > removalEnd)
-                        append(*c, shifted(timelineClipFragment(*c, removalEnd, last), displacement));
+                        append(*c,
+                               shifted(timelineClipFragment(*c, removalEnd, last), displacement, displacementBeats));
                     else
                         append(*c, nullptr);
                 }
@@ -794,11 +869,13 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         {"clips", changes},
         {"automation", automation},
         {"automation_edit_bases", bases},
-        {"range", b->manifest.value("source_range", false)
-                      ? (cmd.ends_with(".erase") ? Json{{"start_samples", b->manifest["start_samples"]},
-                                                        {"end_samples", b->manifest["end_samples"]}}
-                                                 : timelineClipPasteRange(a.at("clipboard"), a.at("position_samples")))
-                      : Json(nullptr)},
+        {"action", action},
+        {"selection_kind", b->manifest.value("source_range", false) ? "range" : "objects"},
+        {"object_intervals", objectIntervals},
+        {"range", !cmd.ends_with(".erase") ? timelineClipPasteRange(a.at("clipboard"), a.at("position_samples"))
+                  : b->manifest.value("source_range", false) ? Json{{"start_samples", b->manifest["start_samples"]},
+                                                                    {"end_samples", b->manifest["end_samples"]}}
+                                                             : Json(nullptr)},
         {"range_tracks", cmd.ends_with(".erase") ? b->manifest["tracks"] : a.at("tracks")},
         {"ripple", ripple},
         {"displacement_samples", displacement},
@@ -806,9 +883,10 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         {"ripple_mapping", rippleMapping},
         {"destination_tempo_hash", ripple ? Json(hash(edit->tempoSequence.getState())) : Json(nullptr)},
         {"removal_end_samples", removalEnd},
-        {"suffix_policy", rippleMapping == "native"
-                              ? "audio/sample MIDI: common samples; beat MIDI: common native beats"
-                              : "common samples; MIDI requires a constant Tempo/Meter corridor"},
+        {"suffix_policy",
+         objectRipple ? "per-track selected interval union; gaps retained; per-clip accumulated displacement"
+         : rippleMapping == "native" ? "audio/sample MIDI: common samples; beat MIDI: common native beats"
+                                     : "common samples; MIDI requires a constant Tempo/Meter corridor"},
         {"range_timebase", b->manifest.value("range_timebase", "per_clip")},
         {"mapping_policy", "audio retains samples; MIDI retains native timebase; mixed range covers both envelopes"},
         {"controller_policy", "native clip subtree retained, including CC, SysEx, takes and opaque fields"}};

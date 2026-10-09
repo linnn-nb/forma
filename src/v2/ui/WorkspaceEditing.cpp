@@ -340,14 +340,30 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                                  : text("MIDI 编辑 · 待确认\n\n原始音符、控制器与媒体保留。接受后可整笔撤销。\n");
         for (const auto& change : preview[mixed ? "timeline_changes" : "midi_changes"])
         {
-            out += change["command"].get<std::string>().ends_with(".erase") ? text("\n剪切所选内容\n")
-                                                                            : text("\n粘贴复制的内容\n");
+            out += change["command"].get<std::string>().ends_with(".erase")
+                       ? (change.value("action", std::string{"cut"}) == "delete" ? text("\n删除所选内容\n")
+                                                                                 : text("\n剪切所选内容\n"))
+                       : text("\n粘贴复制的内容\n");
             if (!change["range"].is_null())
                 out += text("范围：") + position(change["range"]["start_samples"]) + text(" → ") +
                        position(change["range"]["end_samples"]) + text("（包含选区空白）\n");
             if (change.value("ripple", false))
             {
-                if (change.value("ripple_mapping", std::string{"samples"}) == "native")
+                if (change.contains("object_intervals") && !change["object_intervals"].empty())
+                {
+                    out += text("整片段 Shuffle：每轨只收拢所选片段占用区间的并集，保留间隙。\n");
+                    for (const auto& owner : change["object_intervals"])
+                    {
+                        out += trackName(owner["track"].get<std::string>()) + text("：移除 ") +
+                               juce::String(owner["removed_samples"].get<int64_t>()) + text(" 采样 / ") +
+                               juce::String(owner["removed_beats"].get<double>(), 6) + text(" 拍\n");
+                        for (const auto& interval : owner["intervals"])
+                            out += text("  区间：") + position(interval["start_samples"]) + text(" → ") +
+                                   position(interval["end_samples"]) + "\n";
+                    }
+                    out += text("片段按所选 Shuffle 模式位移；共享曲线按轨道基准跟随。\n");
+                }
+                else if (change.value("ripple_mapping", std::string{"samples"}) == "native")
                     out += text("Shuffle 原时间基准：音频按采样，MIDI 音乐片段按拍。\n采样位移：") +
                            juce::String(change["displacement_samples"].get<int64_t>()) + text("；音乐位移：") +
                            juce::String(change["displacement_beats"].get<double>(), 6) +
