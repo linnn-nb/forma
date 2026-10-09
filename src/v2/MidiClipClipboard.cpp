@@ -78,6 +78,18 @@ te::Clip* Commands::timelineClip(const std::string& id) const
                 return c;
     return nullptr;
 }
+std::string Commands::timelineShuffleTimebase(const std::string& id, int64_t removalEnd) const
+{
+    auto* t = track(id);
+    require(t != nullptr, "Shuffle track disappeared");
+    std::set<std::string> bases;
+    for (auto* c : t->getClips())
+        if (sample(c->getPosition().getEnd()) > removalEnd)
+            bases.insert(timelineClipFacts(*c)["timebase"].get<std::string>());
+    if (bases.empty())
+        return trackType(*t) == "audio" ? "samples" : "beats";
+    return bases.size() == 1 ? *bases.begin() : "mixed";
+}
 Json Commands::timelineClipFacts(te::Clip& clip) const
 {
     if (auto* c = dynamic_cast<te::MidiClip*>(&clip))
@@ -426,13 +438,51 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
     const bool ripple = cmd.ends_with(".erase") ? a.value("ripple", false) : a.at("mode") == "shuffle";
     require(!ripple || b->manifest.value("source_range", false),
             "timeline Shuffle requires a range snapshot, including empty tracks and gaps");
+    const std::string rippleMapping = a.value("ripple_mapping", std::string{"samples"});
+    require(rippleMapping == "samples" || rippleMapping == "native", "invalid Shuffle mapping");
     int64_t displacement = 0, removalEnd = 0;
+    double displacementBeats = 0;
+    auto setDisplacement = [&](int64_t destinationEnd)
+    {
+        displacement = destinationEnd - removalEnd;
+        displacementBeats = edit->tempoSequence.toBeats(time(destinationEnd)).inBeats() -
+                            edit->tempoSequence.toBeats(time(removalEnd)).inBeats();
+    };
     auto shifted = [&](Json f, int64_t delta)
     {
         if (delta == 0)
             return f;
         const double start = f["start_seconds"], end = f["end_seconds"], offset = f["source_offset_seconds"];
         const double shift = delta / rate;
+
+        if (f["kind"] == "midi" && f["timebase"] == "beats" && rippleMapping == "native")
+        {
+            auto& seq = edit->tempoSequence;
+            const double beat = f["start_beat"].get<double>() + displacementBeats;
+            const auto movedStart = seq.toTime(tracktion::BeatPosition::fromBeats(beat));
+            const auto movedEnd =
+                seq.toTime(tracktion::BeatPosition::fromBeats(beat + f["length_beats"].get<double>()));
+            const double movedOffset =
+                f["looped"].get<bool>() ? f["offset_beats"].get<double>() / seq.getBeatsPerSecondAt(movedStart)
+                                        : (movedStart - seq.toTime(tracktion::BeatPosition::fromBeats(
+                                                            f["content_start_beat"].get<double>() + displacementBeats)))
+                                              .inSeconds();
+            require(sample(movedStart) >= 0 && sample(movedEnd) > sample(movedStart) &&
+                        movedEnd.inSeconds() <= te::Edit::maximumLength && std::isfinite(movedOffset) &&
+                        movedOffset >= 0,
+                    "musical Shuffle suffix exceeds session or native source bounds");
+            f["start_seconds"] = movedStart.inSeconds();
+            f["end_seconds"] = movedEnd.inSeconds();
+            f["start_samples"] = sample(movedStart);
+            f["length_samples"] = sample(movedEnd) - sample(movedStart);
+            f["start_beat"] = beat;
+            f["content_start_beat"] =
+                seq.toBeats(movedStart - tracktion::TimeDuration::fromSeconds(movedOffset)).inBeats();
+            f["source_offset_seconds"] = movedOffset;
+            f["offset_beats"] = movedOffset * seq.getBeatsPerSecondAt(movedStart);
+            f["suffix_timebase"] = "beats";
+            return f;
+        }
         require(sample(tracktion::TimePosition::fromSeconds(start + shift)) >= 0 &&
                     end + shift <= te::Edit::maximumLength,
                 "Shuffle suffix exceeds session bounds");
@@ -483,7 +533,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         if (ripple)
         {
             removalEnd = b->manifest["end_samples"];
-            displacement = b->manifest["start_samples"].get<int64_t>() - removalEnd;
+            setDisplacement(b->manifest["start_samples"].get<int64_t>());
         }
         if (range)
         {
@@ -542,6 +592,8 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                     if (e["track"] == owner)
                         clips.push_back(e["clip"]);
                 Json args{{"track", owner}, {"action", "cut"}, {"ripple", ripple}};
+                if (ripple && rippleMapping == "native")
+                    args["suffix_timebase"] = timelineShuffleTimebase(owner, removalEnd);
                 if (range)
                 {
                     args["start_samples"] = b->manifest["start_samples"];
@@ -567,7 +619,8 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         require(removalEnd >= point && removalEnd <= std::llround(te::Edit::maximumLength * rate) &&
                     (ripple || removalEnd == end),
                 "invalid timeline replacement/removal range");
-        displacement = ripple ? end - removalEnd : 0;
+        if (ripple)
+            setDisplacement(end);
         std::set<std::string> unique;
         for (size_t i = 0; i < targets.size(); ++i)
         {
@@ -584,6 +637,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                                                          {"track", target},
                                                          {"position_samples", point},
                                                          {"removal_end_samples", removalEnd},
+                                                         {"ripple_mapping", rippleMapping},
                                                          {"mode", mode}});
                 automation.push_back(std::move(curve));
             }
@@ -645,9 +699,13 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         {"range_tracks", cmd.ends_with(".erase") ? b->manifest["tracks"] : a.at("tracks")},
         {"ripple", ripple},
         {"displacement_samples", displacement},
+        {"displacement_beats", displacementBeats},
+        {"ripple_mapping", rippleMapping},
+        {"destination_tempo_hash", ripple ? Json(hash(edit->tempoSequence.getState())) : Json(nullptr)},
         {"removal_end_samples", removalEnd},
-        {"suffix_policy",
-         "common sample shift; native MIDI events retained only within one constant Tempo/Meter corridor"},
+        {"suffix_policy", rippleMapping == "native"
+                              ? "audio/sample MIDI: common samples; beat MIDI: common native beats"
+                              : "common samples; MIDI requires a constant Tempo/Meter corridor"},
         {"range_timebase", b->manifest.value("range_timebase", "per_clip")},
         {"mapping_policy", "audio retains samples; MIDI retains native timebase; mixed range covers both envelopes"},
         {"controller_policy", "native clip subtree retained, including CC, SysEx, takes and opaque fields"}};
@@ -681,6 +739,7 @@ void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, J
                                         {"track", curve.at("track")},
                                         {"position_samples", a.at("position_samples")},
                                         {"removal_end_samples", change["removal_end_samples"]},
+                                        {"ripple_mapping", change["ripple_mapping"]},
                                         {"mode", a.at("mode")},
                                         {"state_hash", curve.at("state_hash")}},
                                        objects);

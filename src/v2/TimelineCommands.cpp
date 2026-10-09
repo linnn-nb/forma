@@ -65,6 +65,18 @@ void Commands::registerTimelineCommands(Json& registry)
                         {"live", false},
                         {"tool_visibility", "local_gui"},
                         {"test", "U-P0-AUTOMATION-FOLLOW-01"}});
+    registry.push_back({{"id", "session.shuffle.mapping.set"},
+                        {"schema",
+                         {{"type", "object"},
+                          {"properties", {{"mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}}}},
+                          {"required", {"mapping"}},
+                          {"additionalProperties", false}}},
+                        {"permission", "edit"},
+                        {"risk", "low"},
+                        {"reversible", true},
+                        {"live", false},
+                        {"tool_visibility", "local_gui"},
+                        {"test", "U-P0-MUSICAL-SHUFFLE-01"}});
     Json sample = {{"type", "integer"}, {"minimum", 0}, {"maximum", maximum()}};
     registry.push_back(
         {{"id", "session.insertion.set"},
@@ -140,6 +152,29 @@ Json readEditingOptions(const juce::ValueTree& metadata)
     // Canonical persisted 0/1 integers survive Tracktion XML's string representation.
     return {{"schema", 1}, {"automation_follows_edit", enabled == 1}};
 }
+Json readShuffleOptions(const juce::ValueTree& metadata)
+{
+    juce::ValueTree state;
+    for (const auto child : metadata)
+        if (child.hasType("SHUFFLE_OPTIONS"))
+        {
+            require(!state.isValid(), "duplicate saved Shuffle options");
+            state = child;
+        }
+    if (!state.isValid())
+        return {{"schema", 1}, {"mapping", "samples"}}; // Preserve old project behaviour.
+    require(state.getNumChildren() == 0 && state.getNumProperties() == 2 && state.hasProperty("schema") &&
+                state.hasProperty("mapping") && savedSample(state["schema"]) == 1,
+            "invalid saved Shuffle options schema/fields");
+    const auto mapping = state["mapping"].toString().toStdString();
+    require(mapping == "samples" || mapping == "native", "invalid saved Shuffle mapping");
+    return {{"schema", 1}, {"mapping", mapping}};
+}
+Json Commands::shuffleOptions() const
+{
+    checkThread();
+    return readShuffleOptions(metadata);
+}
 Json Commands::editingOptions() const
 {
     checkThread();
@@ -159,7 +194,17 @@ Json Commands::validateTimelinePlan(const Json& ops) const
     for (const auto& op : ops)
     {
         const std::string cmd = op["command"];
-        if (cmd == "session.automation_follows_edit.set")
+        if (cmd == "session.shuffle.mapping.set")
+        {
+            require(ops.size() == 1 && !edit->getTransport().isPlaying(),
+                    "stop before a standalone Shuffle mapping edit");
+            const std::string mapping = op.at("args").at("mapping");
+            require(mapping == "samples" || mapping == "native", "invalid Shuffle mapping");
+            const auto original = shuffleOptions().at("mapping").get<std::string>();
+            require(mapping != original, "Shuffle mapping is already selected");
+            changes.push_back({{"operation_index", index}, {"command", cmd}, {"before", original}, {"after", mapping}});
+        }
+        else if (cmd == "session.automation_follows_edit.set")
         {
             require(ops.size() == 1, "editing option must be a standalone transaction");
             require(!edit->getTransport().isPlaying(), "stop playback before changing editing options");
@@ -199,7 +244,13 @@ Json Commands::validateTimelinePlan(const Json& ops) const
 void Commands::executeTimelineOperation(const std::string& cmd, const Json& args)
 {
     auto* undo = &edit->getUndoManager();
-    if (cmd == "session.automation_follows_edit.set")
+    if (cmd == "session.shuffle.mapping.set")
+    {
+        auto state = metadata.getOrCreateChildWithName("SHUFFLE_OPTIONS", undo);
+        state.setProperty("schema", 1, undo);
+        state.setProperty("mapping", juce::String(args.at("mapping").get<std::string>()), undo);
+    }
+    else if (cmd == "session.automation_follows_edit.set")
     {
         auto state = metadata.getOrCreateChildWithName("EDIT_OPTIONS", undo);
         state.setProperty("schema", 1, undo);

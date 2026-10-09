@@ -130,4 +130,37 @@ std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion
         result.insert(result.begin(), {start, value, 0, {}});
     return result;
 }
+std::vector<Point> musicalSuffix(const std::vector<Point>& source, const tracktion::tempo::Sequence& seq,
+                                 double sourceStart, double destinationStart, double tolerance)
+{
+    const double origin = seq.toBeats(time(sourceStart)).inBeats();
+    const double delta = seq.toBeats(time(destinationStart)).inBeats() - origin;
+    const double last = std::max(sourceStart, source.back().time);
+    const double end = seq.toTime(beat(seq.toBeats(time(last)).inBeats() + delta)).inSeconds();
+    require(end >= destinationStart && end <= te::Edit::maximumLength, "musical suffix exceeds session bounds");
+    if (last == sourceStart)
+    {
+        auto tail = startSlice(source, sourceStart, last, tolerance, destinationStart == 0);
+        for (auto& p : tail)
+            p.time = destinationStart;
+        return tail;
+    }
+    return musicalSlice(source, seq, seq, origin, destinationStart, end, tolerance);
+}
+std::vector<Point> musicalCollapse(const std::vector<Point>& source, const tracktion::tempo::Sequence& seq,
+                                   double first, double last, double tolerance)
+{
+    auto result = collapse(source, first, last, tolerance);
+    std::erase_if(result, [&](const Point& p) { return p.time >= first; });
+    auto suffix = musicalSuffix(source, seq, last, first, tolerance);
+    std::set<std::string> rightIDs;
+    for (const auto& p : suffix)
+        if (!p.id.empty())
+            rightIDs.insert(p.id);
+    for (auto& p : result)
+        if (rightIDs.contains(p.id))
+            p.id.clear();
+    result.insert(result.end(), suffix.begin(), suffix.end());
+    return result;
+}
 } // namespace ndaw::v2::curve_edit

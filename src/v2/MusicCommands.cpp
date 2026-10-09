@@ -291,11 +291,17 @@ void Commands::registerMusicCommands(Json& registry)
     timing["units"] = {
         {"unit", "48000 Hz session samples, or native Tracktion meter divisions"},
         {"amount", "signed edge displacement; samples integral; beats preserve source duration on move"}};
-    add("midi.clips.erase", {{"clipboard", str}, {"ripple", {{"type", "boolean"}}}, {"state_hash", str}});
+    add("midi.clips.erase", {{"clipboard", str},
+                             {"ripple", {{"type", "boolean"}}},
+                             {"state_hash", str},
+                             {"ripple_mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}}});
     registry.back()["schema"]["required"] = {"clipboard"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
-    add("timeline.clips.erase", {{"clipboard", str}, {"ripple", {{"type", "boolean"}}}, {"state_hash", str}});
+    add("timeline.clips.erase", {{"clipboard", str},
+                                 {"ripple", {{"type", "boolean"}}},
+                                 {"state_hash", str},
+                                 {"ripple_mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}}});
     registry.back()["schema"]["required"] = {"clipboard"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
@@ -304,6 +310,7 @@ void Commands::registerMusicCommands(Json& registry)
                                  {"position_samples", position},
                                  {"removal_end_samples", position},
                                  {"state_hash", str},
+                                 {"ripple_mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}},
                                  {"mode", {{"type", "string"}, {"enum", {"replace", "overlay", "shuffle"}}}}});
     registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";
@@ -313,6 +320,7 @@ void Commands::registerMusicCommands(Json& registry)
                              {"position_samples", position},
                              {"removal_end_samples", position},
                              {"state_hash", str},
+                             {"ripple_mapping", {{"type", "string"}, {"enum", {"samples", "native"}}}},
                              {"mode", {{"type", "string"}, {"enum", {"replace", "overlay", "shuffle"}}}}});
     registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";

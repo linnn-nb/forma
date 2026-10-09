@@ -346,10 +346,18 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                 out += text("范围：") + position(change["range"]["start_samples"]) + text(" → ") +
                        position(change["range"]["end_samples"]) + text("（包含选区空白）\n");
             if (change.value("ripple", false))
-                out += text("Shuffle：后方音频、MIDI 和曲线共同移动 ") +
-                       juce::String(change["displacement_samples"].get<int64_t>()) +
-                       text(" 个工程采样；保留空轨与空白。\nMIDI 后方内容仅支持恒定 Tempo / "
-                            "拍号区间；\n速度图与未选轨道保持原位置。\n");
+            {
+                if (change.value("ripple_mapping", std::string{"samples"}) == "native")
+                    out += text("Shuffle 原时间基准：音频按采样，MIDI 音乐片段按拍。\n采样位移：") +
+                           juce::String(change["displacement_samples"].get<int64_t>()) + text("；音乐位移：") +
+                           juce::String(change["displacement_beats"].get<double>(), 6) +
+                           text(" 拍。变速后各轨实际秒位移可能不同，曲线跟随各自基准。\n");
+                else
+                    out += text("Shuffle 采样模式：后方内容共同移动 ") +
+                           juce::String(change["displacement_samples"].get<int64_t>()) +
+                           text(" 个工程采样；MIDI 仅支持恒定 Tempo / 拍号区间。\n");
+                out += text("速度图与未选轨道保持原位置；保留空轨与空白。\n");
+            }
             for (const auto& id : change["range_tracks"])
                 out += text("轨道：") + trackName(id.get<std::string>()) + "\n";
             int added = 0, removed = 0, retained = 0;

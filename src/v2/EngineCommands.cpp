@@ -433,6 +433,7 @@ Json Commands::query() const
     return {{"session_token", sessionToken()},
             {"time_selection", timelineRange()},
             {"editing_options", editingOptions()},
+            {"shuffle_options", shuffleOptions()},
             {"recording_readiness", recordingReadiness()},
             {"audio_configuration", audioConfiguration},
             {"native_plugin_states", nativeStates ? nativeStates->query() : Json(nullptr)},
@@ -774,9 +775,10 @@ Json Commands::preview(const Json& plan) const
             // Independent Mix definitions are validated as standalone transactions below.
         }
         else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set" ||
-                 cmd == "session.automation_follows_edit.set")
+                 (cmd == "session.automation_follows_edit.set" || cmd == "session.shuffle.mapping.set"))
         {
-            require((cmd != "session.insertion.set" && cmd != "session.automation_follows_edit.set") ||
+            require((cmd != "session.insertion.set" && cmd != "session.automation_follows_edit.set" &&
+                     cmd != "session.shuffle.mapping.set") ||
                         actor == "human",
                     "insertion and editing options are local human only");
             // Full ordered range/insertion preview below, backed by the Edit.
@@ -866,10 +868,15 @@ Json Commands::preview(const Json& plan) const
     auto rangeDiff = validateTimelinePlan(ops);
     Json editingDiff = Json::array();
     for (const auto& change : rangeDiff)
-        if (change["command"] == "session.automation_follows_edit.set")
+        if ((change["command"] == "session.automation_follows_edit.set" ||
+             change["command"] == "session.shuffle.mapping.set"))
             editingDiff.push_back(change);
-    rangeDiff.erase(std::remove_if(rangeDiff.begin(), rangeDiff.end(), [](const auto& change)
-                                   { return change["command"] == "session.automation_follows_edit.set"; }),
+    rangeDiff.erase(std::remove_if(rangeDiff.begin(), rangeDiff.end(),
+                                   [](const auto& change)
+                                   {
+                                       return (change["command"] == "session.automation_follows_edit.set" ||
+                                               change["command"] == "session.shuffle.mapping.set");
+                                   }),
                     rangeDiff.end());
     const auto trackDiff = validateHierarchyPlan(ops);
     const auto panDiff = validatePanPlan(ops);
@@ -1012,7 +1019,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                 executeLegacyOperation(a, objects);
             }
             else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set" ||
-                     cmd == "session.automation_follows_edit.set")
+                     (cmd == "session.automation_follows_edit.set" || cmd == "session.shuffle.mapping.set"))
             {
                 executeTimelineOperation(cmd, a);
             }
@@ -1577,6 +1584,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     readEditingOptions(candidate->state.getChildWithName("NATIVEDAW"));
+    readShuffleOptions(candidate->state.getChildWithName("NATIVEDAW"));
     readRollState(candidate->state.getChildWithName("NATIVEDAW"));
     for (auto* location : candidate->getMarkerManager().getMarkers())
         if (location)

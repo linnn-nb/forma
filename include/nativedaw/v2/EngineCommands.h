@@ -56,6 +56,7 @@ public:
     Json redo();
     Json render(const juce::File&, int64_t start, int64_t end);
     Json timelineRange() const;
+    Json shuffleOptions() const;
     Json editingOptions() const; // Persisted engineering options; changes use a human Plan and native Undo.
     // Local L5 view preferences. Persisted under Edit/NATIVEDAW/UI, outside
     // project transactions, revision and the Agent command registry.
@@ -273,6 +274,7 @@ private:
     Json captureTimelineClipClipboard(const Json& clips, const Json& range, const std::string&, uint64_t,
                                       bool midiOnly);
     te::Clip* timelineClip(const std::string&) const;
+    std::string timelineShuffleTimebase(const std::string& track, int64_t removalEnd) const;
     Json timelineClipFacts(te::Clip&) const;
     Json timelineClipFragment(te::Clip&, int64_t low, int64_t high) const;
     Json midiClipClipboardChange(const std::string&, const Json&, size_t) const;

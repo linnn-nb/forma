@@ -38,6 +38,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id : {editCommand::shuffle, editCommand::slip, editCommand::spot, editCommand::grid,
                        editCommand::smart, 130, 131, 132})
             addMenuCommand(p, id);
+        juce::PopupMenu shuffleMapping;
+        addMenuCommand(shuffleMapping, editCommand::shuffleSamples);
+        addMenuCommand(shuffleMapping, editCommand::shuffleNative);
+        p.addSubMenu(text("Shuffle 时间基准"), shuffleMapping);
         p.addSeparator();
         addMenuCommand(p, 6);
         addMenuCommand(p, 7);

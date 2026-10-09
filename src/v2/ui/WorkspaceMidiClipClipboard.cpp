@@ -95,7 +95,9 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             if (id == editCommand::cut || deleting)
             {
                 ops.push_back(operation(mixed ? "timeline.clips.erase" : "midi.clips.erase",
-                                        {{"clipboard", buffer["id"]}, {"ripple", editing.mode == "shuffle"}}));
+                                        {{"clipboard", buffer["id"]},
+                                         {"ripple", editing.mode == "shuffle"},
+                                         {"ripple_mapping", commands.shuffleOptions()["mapping"]}}));
                 if (editing.mode == "shuffle")
                 {
                     const int64_t point = buffer["start_samples"];
@@ -132,6 +134,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                          {"tracks", targets},
                                          {"position_samples", point},
                                          {"removal_end_samples", removalEnd},
+                                         {"ripple_mapping", commands.shuffleOptions()["mapping"]},
                                          {"mode", id == editCommand::duplicate ? "overlay"
                                                   : ripple                     ? "shuffle"
                                                                                : "replace"}}));

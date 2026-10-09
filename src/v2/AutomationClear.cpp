@@ -77,6 +77,11 @@ Json Commands::automationClearChanges(const Json& args) const
                 "invalid automation clear interval");
         intervals.emplace_back(first, last);
     }
+    const auto suffixTimebase = args.value("suffix_timebase", std::string{"samples"});
+    require(suffixTimebase == "samples" || suffixTimebase == "beats" || suffixTimebase == "mixed",
+            "invalid Shuffle clock");
+    require(suffixTimebase != "beats" || (!objectEdit && ripple), "musical collapse requires one selected range");
+    edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(intervals.front().first / timelineRate));
     Json lanes = Json::array();
     size_t inputs = 0, derived = 0, affected = 0;
     for (auto* plugin : t->pluginList)
@@ -87,6 +92,7 @@ Json Commands::automationClearChanges(const Json& args) const
             auto& curve = parameter->getCurve();
             if (!curve.getNumPoints())
                 continue;
+            require(suffixTimebase != "mixed", "one Shuffle suffix mixes timebases with shared automation");
             require(curve.timeBase == te::AutomationCurve::TimeBase::time,
                     "range clear requires seconds-based native curves");
             const auto source = read(curve.state);
@@ -101,7 +107,10 @@ Json Commands::automationClearChanges(const Json& args) const
             const double tolerance = span * relativeError;
             for (auto it = intervals.rbegin(); it != intervals.rend(); ++it)
             {
-                after = ripple ? collapse(after, it->first / timelineRate, it->second / timelineRate, tolerance)
+                after = ripple ? (suffixTimebase == "beats"
+                                      ? musicalCollapse(after, edit->tempoSequence.getInternalSequence(),
+                                                        it->first / timelineRate, it->second / timelineRate, tolerance)
+                                      : collapse(after, it->first / timelineRate, it->second / timelineRate, tolerance))
                                : clearRange(after, it->first / timelineRate, it->second / timelineRate, tolerance,
                                             action == "cut");
                 require(after.size() <= maximumPoints, "clip clear exceeds intermediate native point budget");
@@ -145,6 +154,7 @@ Json Commands::automationClearChanges(const Json& args) const
     return {{"track", target},
             {"action", action},
             {"ripple", ripple},
+            {"suffix_timebase", suffixTimebase},
             {"intervals", ranges},
             {"start_samples", intervals.front().first},
             {"end_samples", intervals.back().second},

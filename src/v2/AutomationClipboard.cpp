@@ -288,6 +288,9 @@ Json Commands::automationClipboardChanges(const Json& args) const
             ? timelineClipPasteRange(args.at("clipboard"), first)["end_samples"].get<int64_t>() / timelineRate
             : (timeline ? rightStart : start + length);
     const double delta = mode == "shuffle" ? commonEnd - rightStart : 0;
+    const auto suffixTimebase = mode == "shuffle" && args.value("ripple_mapping", std::string{"samples"}) == "native"
+                                    ? timelineShuffleTimebase(target, end)
+                                    : "samples";
     const auto captured = buffer->automation.find(sourceTrack);
     std::map<std::string, int> mapping;
     if (captured != buffer->automation.end())
@@ -335,6 +338,7 @@ Json Commands::automationClipboardChanges(const Json& args) const
             const bool pasted = match != mapping.end();
             if (!pasted && (mode != "shuffle" || !curve.getNumPoints()))
                 continue;
+            require(suffixTimebase != "mixed", "one Shuffle suffix mixes timebases with a shared automation lane");
             require(curve.timeBase == te::AutomationCurve::TimeBase::time,
                     "paste requires seconds-based destination automation");
             require(std::isfinite(parameter->valueRange.start) && std::isfinite(parameter->valueRange.end) &&
@@ -381,9 +385,16 @@ Json Commands::automationClipboardChanges(const Json& args) const
             // Hold its last copied automation value there, then restore the real destination suffix.
             if (timeline && commonEnd - 1 / timelineRate > body.back().time)
                 body.push_back({commonEnd - 1 / timelineRate, body.back().value, 0, {}});
-            auto right = startSlice(native, rightStart, std::max(rightStart, native.back().time), tolerance, false);
-            for (auto& pt : right)
-                pt.time += delta;
+            std::vector<Point> right;
+            if (suffixTimebase == "beats")
+                right =
+                    musicalSuffix(native, edit->tempoSequence.getInternalSequence(), rightStart, commonEnd, tolerance);
+            else
+            {
+                right = startSlice(native, rightStart, std::max(rightStart, native.back().time), tolerance, false);
+                for (auto& pt : right)
+                    pt.time += delta;
+            }
             // A point at a join belongs to the shifted right side; never duplicate
             // its stable ID in the prefix. Pasted points always receive new IDs.
             std::set<std::string> rightIDs;
@@ -443,6 +454,7 @@ Json Commands::automationClipboardChanges(const Json& args) const
                  {"common_end_seconds", mode == "shuffle" ? commonEnd : rightStart},
                  {"suffix_source_start_seconds", rightStart},
                  {"suffix_displacement_seconds", delta},
+                 {"suffix_timebase", suffixTimebase},
                  {"source_tempo_hash", musical ? buffer->manifest.at("source_tempo_hash") : Json(nullptr)}});
         }
     const auto text = lanes.dump();

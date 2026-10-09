@@ -21,6 +21,10 @@ float nativeValue(const std::vector<Point>&, double at);
 double adjacentTimelineSample(double at, bool before);
 std::vector<Point> startSlice(const std::vector<Point>&, double low, double high, double tolerance,
                               bool destinationZero);
+std::vector<Point> musicalSuffix(const std::vector<Point>&, const tracktion::tempo::Sequence&, double sourceStart,
+                                 double destinationStart, double tolerance);
+std::vector<Point> musicalCollapse(const std::vector<Point>&, const tracktion::tempo::Sequence&, double first,
+                                   double last, double tolerance);
 std::vector<Point> musicalSlice(const std::vector<Point>&, const tracktion::tempo::Sequence& source,
                                 const tracktion::tempo::Sequence& destination, double originBeat, double start,
                                 double high, double tolerance);

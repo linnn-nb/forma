@@ -53,6 +53,10 @@ const std::vector<Entry>& entries()
         {109, "显示 / 隐藏轨道列表", "视图"},
         {110, "显示 / 隐藏片段列表", "视图"},
         {editCommand::shuffle, "Shuffle 涟漪编辑", "编辑", juce::KeyPress::F1Key},
+        {editCommand::shuffleSamples, "Shuffle：统一采样位移", "编辑", juce::KeyPress::F1Key,
+         juce::ModifierKeys::altModifier},
+        {editCommand::shuffleNative, "Shuffle：片段原时间基准", "编辑", juce::KeyPress::F1Key,
+         juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {editCommand::slip, "Slip 自由编辑", "编辑", juce::KeyPress::F2Key},
         {editCommand::spot, "Spot 按小节与拍置入", "编辑", juce::KeyPress::F3Key},
         {editCommand::grid, "Grid 绝对网格", "编辑", juce::KeyPress::F4Key},
@@ -735,6 +739,13 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id == editCommand::shuffleSamples || id == editCommand::shuffleNative)
+            {
+                active = !facts.value("playing", false) && pending.is_null() &&
+                         commands.querySummary().value("object_pages_available", false);
+                info.setTicked(commands.shuffleOptions()["mapping"] ==
+                               (id == editCommand::shuffleNative ? "native" : "samples"));
+            }
             if (id == 283)
             {
                 active = !facts.value("playing", false) && pending.is_null() &&
@@ -815,6 +826,23 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == editCommand::shuffleSamples || id == editCommand::shuffleNative)
+    {
+        invoke(
+            [&]
+            {
+                if (!pending.is_null())
+                    throw std::runtime_error("先接受或取消当前预览");
+                const std::string mapping = id == editCommand::shuffleNative ? "native" : "samples";
+                if (commands.shuffleOptions()["mapping"] == mapping)
+                    return;
+                commands.commit(commands.makePlan(
+                    "human", Json::array({operation("session.shuffle.mapping.set", {{"mapping", mapping}})})));
+                message(text(mapping == "native" ? "Shuffle 原基准：音频按采样，MIDI按拍 · 可撤销"
+                                                 : "Shuffle 采样模式：公共秒位移 · 可撤销"));
+            });
+        return true;
+    }
     if (id == 283)
     {
         invoke(
