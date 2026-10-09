@@ -1,9 +1,9 @@
 # 下一步
 
-结论：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 接通统一L1，支持原生属性克隆、新ID、单笔Undo、保存重开和可改键；Original回源轨/Clip，修复MIDI误入音频检查器。Release/固定验签、11项受影响测试1114检查（新131）通过。完整U＋P0未完成，不进P1。
+结论：主时间线完整MIDI对象Copy/Cut/Paste/Duplicate/Paste Original已接通L1与原生ClipCopy，保留NOTE/CC/SysEx、channel及附加属性；音乐片段/源偏移按实际Tempo映射，替换保留目的左右片段。单笔Undo、保存重开、键位和真实FourOsc验证通过，9项不同测试1194检查（新69），Release/固定验签通过。完整U＋P0未完成，不进P1。
 
-亲手试 `build-v2-tracktion/OpenMidiClipboardDemo.command`：已选两个音符，CmdC/X/D，OptionCmdV回原位置；ControlOptionShiftV为自定义Paste。CmdZ/ShiftCmdZ，CmdS新副本、CmdO重开。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+亲手试 `build-v2-tracktion/OpenMidiClipsDemo.command`：选主时间线MIDI片段，CmdC/X/D、OptionCmdV；ControlOptionShiftV为演示保存的Paste键，选目的轨和插入点再粘贴。CmdZ/ShiftCmdZ、另存新副本/重开。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
 
-下一项：主时间线整MIDI片段与范围剪贴板、音符/CC/SysEx等真实原生状态和时间映射；接入现有Copy/Cut/Paste/Duplicate/Shuffle及自动化跟随事务，保留源状态、Undo/保存/快捷键。随后完成其余U＋P0缺口与完整鼠标/键盘验收，用户确认后才进P1。
+下一项：MIDI源范围剪贴板，保留选区空白、真实音符/CC/SysEx及源映射；之后统一混合媒体、Shuffle与Tempo/Meter自动化时间映射。当前未实现范围复制明确禁用；跨Tempo曲线映射拒绝，不能把等时长当等价映射。补齐其余U＋P0和完整实体验收，用户确认后才进入P1。
 
-本轮Mac锁定，实体操作/试听未执行；仅本轮PID85399已结束。无新授权/依赖阻塞，M2/M3冻结、M4/M5暂缓；未新增SDK/实时路径/DMG，硬件实录、听感、第三方、耐久、Windows和发布级验收仍未完成。
+本轮CUA确认Mac锁定，实体操作/试听未执行；未启动新GUI进程，无残留新窗口。无新授权或依赖阻塞。M2/M3冻结、M4/M5暂缓；未新增SDK/实时路径/DMG。循环/MPE、多Take、满载预算、硬件MIDI、第三方、耐久、Windows和发布级验收仍未完成。

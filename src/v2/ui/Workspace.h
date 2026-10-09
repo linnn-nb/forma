@@ -189,6 +189,7 @@ private:
     juce::String shufflePreviewText(const Json& preview) const;
     void executeClipboardCommand(int id);
     void executeMidiClipboardCommand(int id);
+    bool executeMidiTimelineClipboardCommand(int);
     Json automationRangeTargets() const;
     bool executeAutomationClipboardCommand(int id);
     Json clipboardSelection() const;

@@ -283,6 +283,15 @@ void Commands::registerMusicCommands(Json& registry)
     timing["units"] = {
         {"unit", "48000 Hz session samples, or native Tracktion meter divisions"},
         {"amount", "signed edge displacement; samples integral; beats preserve source duration on move"}};
+    add("midi.clips.erase", {{"clipboard", str}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
+    add("midi.clips.paste", {{"clipboard", str},
+                             {"tracks", {{"type", "array"}, {"items", str}, {"maxItems", 64}}},
+                             {"position_samples", position},
+                             {"mode", {{"type", "string"}, {"enum", {"replace", "overlay"}}}}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
     add("midi.notes.erase", {{"clip", str}, {"note_ids", {{"type", "array"}, {"items", str}, {"maxItems", 4096}}}});
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIDI-CLIPBOARD-01";
@@ -731,6 +740,20 @@ Json Commands::validateMusicPlan(const Json& operations) const
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
         }
+        else if (cmd.starts_with("midi.clips."))
+        {
+            require(std::count_if(operations.begin(), operations.end(), [](const Json& o)
+                                  { return o["command"].template get<std::string>().starts_with("midi.clips."); }) == 1,
+                    "one atomic MIDI clip operation per Plan");
+            require(std::all_of(operations.begin(), operations.end(),
+                                [&](const Json& o)
+                                {
+                                    return o == op || o["command"] == "session.range.set" ||
+                                           o["command"] == "session.insertion.set";
+                                }),
+                    "MIDI clip clipboard cannot be combined with other engineering edits");
+            diff.push_back(midiClipClipboardChange(cmd, a, index));
+        }
         else if (cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
         {
             require(operations.size() == 1, "MIDI clipboard requires one atomic operation per Plan");
@@ -809,6 +832,11 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
     auto& seq = edit->tempoSequence;
     auto& um = edit->getUndoManager();
+    if (cmd.starts_with("midi.clips."))
+    {
+        executeMidiClipClipboard(cmd, a, objects);
+        return;
+    }
     if (cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
     {
         executeMidiClipboard(cmd, a, objects);

@@ -49,7 +49,9 @@ Json Commands::automationClearChanges(const Json& args) const
         std::set<std::string> ids;
         for (const auto& id : args.at("clips"))
         {
-            auto* clip = audioClip(id.get<std::string>());
+            te::Clip* clip = audioClip(id.get<std::string>());
+            if (!clip)
+                clip = midiClip(id.get<std::string>());
             require(clip && clip->getTrack() == t && ids.insert(id.get<std::string>()).second,
                     "automation clear requires actual unique clips on its track");
             const auto pos = clip->getPosition();

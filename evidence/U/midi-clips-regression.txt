@@ -1,0 +1,60 @@
+U-P0-MIDI-CLIPS-01: 9 distinct tests / 1194 checks.
+Core + related 8/8, 100.31 s; after final GUI guard current 5/5, 39.61 s; final native channel qualification 1/1, 5.87 s.
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  56: tracktion_permission_scope
+1/8 Test  #56: tracktion_permission_scope ...........   Passed    2.50 sec
+    Start  68: tracktion_mcp_protocol
+2/8 Test  #68: tracktion_mcp_protocol ...............   Passed    1.02 sec
+    Start  75: forma_native_editor_interactions
+3/8 Test  #75: forma_native_editor_interactions .....   Passed   10.05 sec
+    Start  76: forma_native_audio_clipboard
+4/8 Test  #76: forma_native_audio_clipboard .........   Passed    6.65 sec
+    Start  80: forma_native_midi_editor
+5/8 Test  #80: forma_native_midi_editor .............   Passed    7.56 sec
+    Start 109: forma_native_automation_clipboard
+6/8 Test #109: forma_native_automation_clipboard ....   Passed   29.18 sec
+    Start 113: forma_native_automation_clip_clear
+7/8 Test #113: forma_native_automation_clip_clear ...   Passed   33.01 sec
+    Start 117: forma_native_midi_clipboard
+8/8 Test #117: forma_native_midi_clipboard ..........   Passed   10.33 sec
+
+100% tests passed, 0 tests failed out of 8
+
+Total Test time (real) = 100.31 sec
+
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  75: forma_native_editor_interactions
+1/5 Test  #75: forma_native_editor_interactions ...   Passed   10.26 sec
+    Start  76: forma_native_audio_clipboard
+2/5 Test  #76: forma_native_audio_clipboard .......   Passed    6.21 sec
+    Start  80: forma_native_midi_editor
+3/5 Test  #80: forma_native_midi_editor ...........   Passed    6.62 sec
+    Start 117: forma_native_midi_clipboard
+4/5 Test #117: forma_native_midi_clipboard ........   Passed   10.21 sec
+    Start 118: forma_native_midi_clip_timeline
+5/5 Test #118: forma_native_midi_clip_timeline ....   Passed    6.30 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =  39.61 sec
+
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 118: forma_native_midi_clip_timeline
+1/1 Test #118: forma_native_midi_clip_timeline ...   Passed    5.86 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   5.87 sec
+
+Final native group-membership regression (69 checks):
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 118: forma_native_midi_clip_timeline
+1/1 Test #118: forma_native_midi_clip_timeline ...   Passed    6.20 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   6.21 sec

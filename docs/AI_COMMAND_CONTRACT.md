@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-MIDI-CLIPS-01：midi.clips.erase/paste 注册为 human/local_gui，未增加MCP工具。clipboard 是L1不透明会话token，仅冻结真实原生ClipCopy；外部XML/虚构参数不成为权威。preview返回midi_changes[].clips与automation，含源状态hash、目的片段范围、保留边界片段；提交重编译，实际回执给出native midi_clip ID及clipboard_token。Undo/Redo、版本冲突、幂等沿用现有事务。未资格的范围/Shuffle/Tempo曲线重映射明确拒绝，不报告完成。
+
 U-P0-MIDI-CLIPBOARD-01：midi.notes.erase={clip,note_ids}；midi.notes.paste={clip,clipboard,placement:cursor/original/after,position_samples,mode:replace/merge}。仅human/local_gui，不发布MCP工具，每Plan一项原子批量操作。clipboard是L1生成的活跃/暂存快照ID，禁止外部XML或音符状态注入；original/after要求position_samples=0并使用冻结的原始音乐边界，cursor用当前Tempo换算48k工程样本。replace清理目标半开音乐区间的音符起点，再克隆；merge保留原音符；两者保留既有CC。before/after预览与Scope一致，native Undo/Redo及revision/幂等保持，重试标记replayed并返回原对象ID，不重复执行。Copy不编辑工程；Cut只在真实提交回执后接受快照。测试MidiClipboardTests，新131检查。
 
 U-P0-MIDI-TIME-01：midi.notes.time 仅 actor=human、tool_visibility=local_gui，不发布 MCP 工具。参数为 clip 稳定ID、selection=notes、note_ids 唯一ID数组（1–4096）、edge=move/start/end、unit=samples/beats、非零 amount（绝对值≤2880000，samples须整数）。单位为48k工程样本或原生音乐单位；目前 GUI 提供1样本/10ms/100ms/1拍/四分之一拍。预览返回每个音符 before/after，Scope核对源与目标；锁定、过期版本、未知ID、Clip越界、音符倒置或小于一个工程样本整笔拒绝。调用完成以真实 committed 回执为准，一笔 native Undo/Redo，未选音符/CC/音高/力度/静音保持；MusicCommands/MidiTimingTests，248专项。

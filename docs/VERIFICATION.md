@@ -1,5 +1,18 @@
 # 验证状态
 
+## U-P0-MIDI-CLIPS-01（2026-10-10）
+
+结论：主时间线完整MIDI对象Copy/Cut/Paste/Duplicate/Paste Original自动验证通过，Release和固定叶证书deep/strict验签通过。9项不同CTest、1194检查（新69）；相关8/8为100.31秒，最后GUI保护后5/5为39.61秒，最终channel专项5.87秒，最终组变更专项6.21秒。完整U＋P0未完成，不进P1。
+
+- 实现 src/v2/MidiClipClipboard.cpp、ui/WorkspaceMidiClipClipboard.cpp、MusicCommands/EngineCommands/Scope、原有键位注册表；AutomationClear增加实际MidiClip区间读取。测试 tests/v2/MidiClipClipboardTests.cpp / forma_native_midi_clip_timeline。真实两乐器轨、带源偏移的MidiClip、分数beat与duration、release velocity/颜色/opaque属性、原生channelNumber=3、SDK创建的CONTROL和SYSEX数据。完整子树克隆、目的区间左右保留片段、单笔Undo/Redo、保存后Undo/Open、主时间线默认与自定义键、Original回源布局均通过。
+- 六beat、源三秒的片段在120→60 BPM目标变为六秒；raw源音符时间和duration预算1e-11 beat，未下调。独立解码Tracktion FourOsc stereo48k/768000帧WAV，最终实际onset312000样本、预设312000、固定64样本包络预算。较早运行312001也在预算内；随机合成器不作逐位或听感声明。
+- 真实曲线：整MIDI片段Cut与原位置Paste同笔修改fader曲线，单Undo同时恢复；源/目标跨Tempo改变时长或内部Tempo/Meter/ramp重映射未完成，完整拒绝并保持工程。测试特设总时长仍相同、内部Tempo改变的例子，拒绝通过。版本冲突、幂等、未知token、禁止AI actor、重复bulk操作、锁定目标、实际Scope、重复/失效源ID和失败保留旧剪贴板通过；Copy后人工改变Edit组，Cut重新检查当前成员与对象闭包，拒绝遗漏新成员并保持人工组状态。
+- 边界：源范围（包括外侧空白）、混合audio/MIDI、Shuffle及音乐自动化时间映射尚未实现；GUI源范围Copy禁用，防止静默丢选区。原生循环、多Take/MPE、多声道、64片段/8MiB/128影响对象满载、硬件MIDI、第三方与耐久未获得本增量资格。大范围预览卡片已有生产路径，尚未实体操作或满载测试。
+- 早期编译double .v与string/Json类型错误已修复；CMake新target先重配置再构建。目的原生秒数保留double，不用工程样本舍入改变音乐duration；测试改查实际SEQUENCE channelNumber，不把未使用root属性当channel证据。8份历史JSON按原SHA逐字节恢复，最新hash/count收进qualification，无重复DMG。
+- CUA实际getState确认Mac锁定；本轮未启动应用/测试预览窗口，无需清理新GUI进程。实体鼠标/键盘、播放设备与试听未执行，无截图。组件测试不替代实体验收。生产程序 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；独立演示 build-v2-tracktion/OpenMidiClipsDemo.command，预览Bundle ID独立、固定证书签名，未宣称跨构建麦克风资格。
+
+亲手试：选中主时间线MIDI片段，CmdC/X/D、OptionCmdV，CmdZ/ShiftCmdZ；演示保存的ControlOptionShiftV为自定义Paste，选目标MIDI轨及插入点后使用。CmdS新副本/重开。证据 midi-clips-tests.json / midi-clips-regression.txt / midi-clips-qualification.json。下一项是MIDI源范围（含空白、CC/SysEx边界）、混合媒体、Shuffle和音乐曲线映射，不扩充MCP/分析、SDK或实时路径。
+
 ## U-P0-MIDI-CLIPBOARD-01（2026-10-10）
 
 结论：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 自动验证通过，Release/固定叶证书deep/strict验签通过。11项不同受影响CTest、1114检查（新131）；10项相关91.18秒，最终5项UI＋新专项6/6、58.67秒，新专项10.62秒。完整U＋P0未完成，不进P1。

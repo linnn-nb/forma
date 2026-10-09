@@ -1,0 +1,110 @@
+{
+  "requirement": "U-P0-MIDI-CLIPS-01",
+  "state": "automated_passed",
+  "date": "2026-10-10",
+  "distinct_tests": 9,
+  "checks": 1194,
+  "new_checks": 69,
+  "related": [
+    {
+      "path": "evidence/U/clipboard-tests.json",
+      "checks": 49,
+      "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386"
+    },
+    {
+      "path": "evidence/U/midi-clipboard-tests.json",
+      "checks": 131,
+      "sha256": "c00b149acde9745e4afb296eaa22be109d8355842a03e0da0b692cd2d4f6e929"
+    },
+    {
+      "path": "evidence/U/midi-editor-tests.json",
+      "checks": 64,
+      "sha256": "7ef4995c45a51d6aed9b7d809c0337ce93e1f9d2bb22bc7659af3e3d0ac99ce8"
+    },
+    {
+      "path": "evidence/U/editor-tests.json",
+      "checks": 81,
+      "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1"
+    },
+    {
+      "path": "evidence/M1/scope-tests.json",
+      "checks": 38,
+      "sha256": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21"
+    },
+    {
+      "path": "evidence/M2/protocol-tests.json",
+      "checks": 96,
+      "sha256": "7c9dad09aed4c2475b7afa5f9879b65df942a84a14c72eab4d8c2fee4512442c"
+    },
+    {
+      "path": "evidence/U/automation-clipboard-tests.json",
+      "checks": 234,
+      "sha256": "adcb8489ddef97d200ce4f856b38911dec04d043c7142b73362a402428bf1168"
+    },
+    {
+      "path": "evidence/U/automation-clip-clear-tests.json",
+      "checks": 432,
+      "sha256": "68158e71f54197b06a7268485f1a752a15060bc01dca9f101f04d8c628be9621"
+    }
+  ],
+  "logs": [
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-build.log",
+      "sha256": "870cb4192d4fffcb4de04b90bc13d1eed8ef253285c78a1844aa5c2e663566de"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-build-2.log",
+      "sha256": "c6ec69ed984c7e5bc32d91303096c075ef82d18125fa5a55eed59697e66342a7"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-build-3.log",
+      "sha256": "d12e651af8fcf5c968d6c47e5ff6d480c0e419604ba6b0076953f0b02249d621"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-test.log",
+      "sha256": "eee06fde5adeaebf0c13b18b562f1edcb05291720fcad4d6df8f76525028cbf8"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-extra-test.log",
+      "sha256": "14922608ee6fa83ec1485c5b64fe8b843b1f5d4ee424469768106a061f6e87a1"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-current-regression-test.log",
+      "sha256": "6939ca687a197d52619a7c73ef4bbc73774c30c27a6eae6cf6342789a5d4c4a5"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-final-ui-test.log",
+      "sha256": "df395c1fe49df42b96ef23d4d7df01c7621b986ddf2f273b3c3ca7bf505acfc1"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-channel-test.log",
+      "sha256": "cebed36ece4cc663aed6aa39281986d19f884b440fc04d3cd582324c3a644f94"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-final-ui-build.log",
+      "sha256": "ceace892a27990dc2677249a78989afc929da2c5f37ecc572bbaea7b1cfdbdbb"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-group-build.log",
+      "sha256": "f5e0f08894e454d66db691fda2ee9471e5ae9e05a96b1c5ee5474bac8208539f"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-group-test.log",
+      "sha256": "e5de41b8795db96b996c1de1c57964150d933415b59ea3e40ff30ddf9936fe64"
+    }
+  ],
+  "new_receipt_sha256": "2a09d69ccbf1179a161d9aba0b1f26f18b186a40aec3163616cfc15989b68b70",
+  "desktop": "CUA getState confirmed Mac locked; no app started, no physical GUI or listening verification",
+  "signature": "fixed authorized leaf f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f; deep/strict leaf verification exit 0",
+  "limits": "partial source range, mixed audio/MIDI, Shuffle, tempo-remapped automation not implemented; loop/MPE/multitake/multichannel/hardware/full resource budgets remain unqualified",
+  "fixes": [
+    "Compiler double .v and string/Json comparison fixed",
+    "New CMake target configured before use",
+    "Preserved raw destination seconds rather than rounding musical duration",
+    "Equal elapsed duration does not qualify Tempo/Meter automation mapping",
+    "GUI source ranges disabled instead of dropping outer gaps",
+    "Native SEQUENCE channelNumber checked, not an unused root attribute",
+    "Cut revalidates current Edit group membership and object closure after Copy"
+  ],
+  "historical_receipts": "8 prior JSON files restored byte-for-byte with original SHA256"
+}

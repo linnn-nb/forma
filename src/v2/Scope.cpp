@@ -158,6 +158,39 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 }
             require(found || !bounded, "unable to resolve clip permission footprint");
         }
+        else if (cmd.starts_with("midi.clips."))
+        {
+            for (const auto& change : preview["midi_changes"])
+                if (change["operation_index"] == index)
+                {
+                    for (const auto& c : change["clips"])
+                        for (const char* side : {"before", "after"})
+                            if (!c[side].is_null())
+                            {
+                                const auto& v = c[side];
+                                auto* t = domainTrack(v["track"]);
+                                object(c["before"].is_null() ? v["track"].get<std::string>()
+                                                             : c["clip"].get<std::string>(),
+                                       t);
+                                span(v["start_samples"], v["length_samples"]);
+                                impacts.push_back({{"command", cmd},
+                                                   {"object", c["clip"]},
+                                                   {"track", v["track"]},
+                                                   {"side", side},
+                                                   {"start_samples", v["start_samples"]},
+                                                   {"length_samples", v["length_samples"]}});
+                            }
+                    for (const auto& curve : change["automation"])
+                        if (!curve["lanes"].empty())
+                        {
+                            object(curve["track"], domainTrack(curve["track"]));
+                            full(); // Boundary anchors can affect a neighbouring curve segment.
+                            impacts.push_back(
+                                {{"command", cmd}, {"object", curve["track"]}, {"extent", "whole_track_automation"}});
+                        }
+                }
+            automatic = false;
+        }
         else if (cmd.starts_with("midi.note"))
         {
             auto* c = midiClip(a["clip"]);

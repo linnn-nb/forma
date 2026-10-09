@@ -72,6 +72,8 @@ void Workspace::executeClipboardCommand(int id)
     }
     if (executeAutomationClipboardCommand(id))
         return;
+    if (executeMidiTimelineClipboardCommand(id))
+        return;
     invoke(
         [&]
         {

@@ -1,5 +1,7 @@
 U-P0-TRIM-NUDGE-01（2026-10-09）：四个音频边界 Nudge 命令已接编辑/右键菜单、默认小键盘与可改键；共用 human L1 clip.trim/native Undo。五种 Nudge、变速边界、编辑组、锁定/源越界拒绝、Undo/Redo/保存重开和原媒体不变通过；声像读数与轨道视图控件重叠已修复，完整参数名保留在菜单/tooltip。Release/固定验签、6项受影响CTest最终通过，633检查（新189）。Mac在原生菜单验收中锁定，实体修剪/保存未完成；仅本轮PID95816以SIGTERM退出143，旧窗口保留。当前 Trim 保留工程时间上的曲线，PT边界自动化等价未验证；完整U＋P0未完成，不进P1。
 
+U-P0-MIDI-CLIPS-01（2026-10-10）：主时间线所选完整MIDI片段的Copy/Cut/Paste/Duplicate/Paste Original接通真实原生状态；音乐时间基准按实际Tempo映射片段和源偏移，保留音符、CC、SysEx、channel及附加属性。一笔Undo、保存重开及自定义快捷键。默认Paste替换，Duplicate叠加；替换保留目的区间两边的非破坏性片段。完整U＋P0仍未完成：部分源范围、混合媒体、Shuffle和跨Tempo自动化跟随待补，不进入P1。
+
 U-P0-MIDI-CLIPBOARD-01（2026-10-10）：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 接通既有菜单和可改键；原生音符属性保留、副本新ID、一笔human L1/native Undo、保存重开。默认Paste替换目标音符起点，Duplicate合并；Paste Original回源轨/源片段。Release/固定验签通过，11项不同受影响CTest、1114检查（新131）通过。Mac锁定，实体操作/试听未执行。整MIDI片段、范围/CC剪贴板和完整U＋P0仍未完成，不进入P1。
 
 U-P0-MIDI-TIME-01（2026-10-09）：钢琴卷帘所选音符接通 Nudge、起点/终点修剪，共用既有菜单与可改键；一笔 human L1/native Undo，保存重开及重开后的首个快捷键已验证。Release/固定证书验签通过；10项不同受影响CTest、1032检查（新248）通过。真实FourOsc渲染首个发声点48000→48480，实移480样本；Mac锁定，实体操作/试听未执行，无新截图。完整U＋P0未完成，不进P1；下一项MIDI复制剪切粘贴。

@@ -453,10 +453,19 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         {
                             const auto slices = clipboardSelection();
                             active = active && !slices.empty();
+                            if (!slices.empty())
+                                active = active && std::all_of(slices.begin(), slices.end(), [&](const Json& c)
+                                                               { return c["kind"] == slices.front()["kind"]; });
                             for (const auto& item : slices)
-                                active = active && item["kind"] == "audio" && item.value("editable_audio", false) &&
-                                         !item.value("offline_clip_effects", false) &&
-                                         (id != editCommand::cut || !item.value("locked", false));
+                                active =
+                                    active &&
+                                    ((item["kind"] == "audio" && item.value("editable_audio", false) &&
+                                      !item.value("offline_clip_effects", false)) ||
+                                     (item["kind"] == "midi" && !selection.objects.empty() &&
+                                      item["slice_start"] == item["start_samples"] &&
+                                      item["slice_end"].get<int64_t>() == item["start_samples"].get<int64_t>() +
+                                                                              item["length_samples"].get<int64_t>())) &&
+                                    (id != editCommand::cut || !item.value("locked", false));
                         }
                     }
                     if (midiKeyboardFocus())

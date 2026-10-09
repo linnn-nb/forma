@@ -84,3 +84,7 @@ evidence/U/*
 !evidence/U/midi-clipboard-tests.json
 !evidence/U/midi-clipboard-qualification.json
 !evidence/U/midi-clipboard-regression.txt
+
+!evidence/U/midi-clips-tests.json
+!evidence/U/midi-clips-qualification.json
+!evidence/U/midi-clips-regression.txt

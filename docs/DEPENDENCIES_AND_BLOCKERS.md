@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+U-P0-MIDI-CLIPS-01：无新增依赖、SDK补丁或授权阻塞；保留既有Tracktion修改。Mac锁定由CUA实际查询确认，实体操作/试听未执行，本轮未启动预览进程。范围剪贴板、Shuffle和Tempo/Meter曲线重映射是未完成工程任务；循环边界、MPE、多Take、64片段/8MiB满载及硬件MIDI也未获新资格。M2/M3冻结，M4/M5暂缓，U＋P0未完成。
+
 U-P0-MIDI-CLIPBOARD-01（2026-10-10）：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 接通既有菜单和可改键；原生音符属性保留、副本新ID、一笔human L1/native Undo、保存重开。默认Paste替换目标音符起点，Duplicate合并；Paste Original回源轨/源片段。Release/固定验签通过，11项不同受影响CTest、1114检查（新131）通过。Mac锁定，实体操作/试听未执行。整MIDI片段、范围/CC剪贴板和完整U＋P0仍未完成，不进入P1。 无新授权或依赖阻塞，现有Tracktion/JUCE pin与SDK补丁保留。M2/M3冻结、M4/M5暂缓；没有实体MIDI、第三方、耐久、Windows或发布级新增资格。
 
 U-P0-MIDI-TIME-01（2026-10-09）：钢琴卷帘所选音符接通 Nudge、起点/终点修剪，共用既有菜单与可改键；一笔 human L1/native Undo，保存重开及重开后的首个快捷键已验证。Release/固定证书验签通过；10项不同受影响CTest、1032检查（新248）通过。真实FourOsc渲染首个发声点48000→48480，实移480样本；Mac锁定，实体操作/试听未执行，无新截图。完整U＋P0未完成，不进P1；下一项MIDI复制剪切粘贴。 无新授权/下载/付费阻塞；现有Tracktion/JUCE pin与十份SDK补丁原样保留。Mac锁定只阻塞实体界面验收，不阻塞代码提交；无麦克风/耐久/Windows新资格。M2/M3冻结，M4/M5暂缓。

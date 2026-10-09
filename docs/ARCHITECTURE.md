@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+U-P0-MIDI-CLIPS-01：L1 MidiClipClipboard.cpp 新增会话绑定的 midi_clips 私有快照，复用 te::ClipCopy::fromClip / withNewItemID / insertClipCopy；保留完整原生子树和分数 beat，而非只重建音符。human/local_gui midi.clips.erase/paste 每Plan仅一个原子片段操作，可附原生选区/插入点操作；Scope解析真实片段before/after，带曲线时保守使用全轨时间权限。Copy不占Undo/revision；编辑一个native Undo，revision/幂等/锁定/组闭包保持；Cut在提交前再次检查当前Edit组，不能沿用Copy时的旧组成员。副本全部原生ID重映射，边界左右片段保持源内容映射。64源片段/8MiB快照/128影响对象预算；只在消息线程修改Edit。WorkspaceMidiClipClipboard分流既有主时间线快捷键；MCP、SDK和实时路径不新增。
+
+自动化复用既有冻结与曲线写入器；AutomationClear仅扩展实际原生MidiClip的区间读取。整片段Cut/原位置或恒速等时长Paste同笔跟随；跨Tempo/Meter或改变时长的曲线重映射尚未实现，拒绝而不静默错位。部分源范围、混合audio/MIDI、Shuffle及循环边界切片继续补齐。
+
 U-P0-MIDI-CLIPBOARD-01：MidiClipboard.cpp 在 L1 复用已有 staged/active ClipboardBuffer；Copy 冻结真实 NOTE ValueTree、源工程beat与范围，不写Edit/Undo。新 human/local_gui midi.notes.erase/paste 每Plan一个操作；当前Note快照1–4096、≤8MiB，失败保持旧剪贴板。preview/commit验证会话、版本、原生Clip、锁定与可播放边界；Scope覆盖真实删除/新增音符位置。执行复用 SDK MidiList::addNote(const MidiNote&)/removeNote，副本/native子ID重新分配、音乐间距和原duration保留。WorkspaceMidiClipboard 只生成Plan及更新L1 UI状态，Paste Original解析实际源轨/Clip，MIDI选择不传入音频检查器。Open清除会话绑定的剪贴板；无新SDK/依赖/实时路径/MCP工具。
 
 U-P0-MIDI-TIME-01：MusicCommands.cpp 注册本地 human 专用 midi.notes.time；WorkspaceEditing/Commands 与 MidiEditor 将既有六个 Nudge/Trim GUI 命令编译为一笔 Plan。原生序列的未舍入源 beat 与 Tempo 映射是事实，samples 为48k工程样本，音乐移动精确保留原 duration；首尾修剪保留另一端。Scope覆盖每个音符 before/after，锁定/版本/范围/处理限制先校验；原生 setStartAndLength 只在 L1/message thread 执行。WorkspaceRefresh 在重开时恢复已保存音符选区的命令上下文，不写工程或抢文字焦点。无新依赖、SDK或实时路径，MCP工具保持冻结。普通音频 Edit→Trim 保留曲线的策略现有官方参考依据，见 UI_PARITY；不扩大为全部模式等价。

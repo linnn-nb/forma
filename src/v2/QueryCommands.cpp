@@ -316,6 +316,7 @@ Json Commands::queryObjects(const Json& args) const
                             facts["length_beats"] = midi->getLengthInBeats().inBeats();
                             facts["content_start_beat"] = midi->getContentStartBeat().inBeats();
                             facts["looped"] = midi->isLooping();
+                            facts["locked"] = bool(midi->state.getProperty("ndaw_locked", false));
                         }
                         if (auto* wave = dynamic_cast<te::WaveAudioClip*>(&clip))
                         {
