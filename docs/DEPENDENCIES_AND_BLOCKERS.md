@@ -1,5 +1,9 @@
 # 依赖与阻塞 v2
 
+U-P0-AUTOMATION-READBACK-01（2026-10-10）：无新授权、下载、付费或依赖版本变更。Tracktion/JUCE pin保持；原11补丁字节不变，新增消息线程读取补丁，12补丁/22文件干净pin复现及未知修改拒绝通过。Release和固定本地证书验签通过，SDK getter 差异已修复；本节替代下方历史“尚未修复”描述。
+
+CUA本轮确认Mac锁定，实体GUI/听感未执行，未启动新预览或操作用户窗口。通用秒基强曲线边界及其他设备率、混合媒体/timebase、Shuffle、部分循环仍是工程缺口；满载、硬件/第三方全面兼容、耐久、Windows与发布未获本轮资格。15项3120检查不扩大为完整U＋P0；M2/M3冻结、M4/M5暂缓。
+
 U-P0-MUSICAL-CURVES-01（2026-10-10）：无新授权/下载/付费阻塞；Tracktion/JUCE pin与11份SDK补丁保持，无新依赖、第二引擎、插件IPC、MCP工具或DMG。Release/固定签名通过。Mac锁定仅阻塞实体GUI/试听，未新开预览窗口。
 
 已确认软件差距：SDK编辑getter对Bezier权重×2、真实播放Iterator用原权重；本增量以真实播放/PCM资格为准，getter尚未修复。通用秒基强曲线跳变接缝及其他设备率仍需专项资格；混合媒体/timebase、Shuffle、部分循环是未完成工程工作。19项3517检查不扩大为完整U＋P0/硬件/耐久/Windows/发布资格；M2/M3冻结、M4/M5暂缓。

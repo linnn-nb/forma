@@ -1,0 +1,134 @@
+{
+  "state": "passed",
+  "distinct_ctests": 15,
+  "checks": 3120,
+  "new_readback_checks": 119,
+  "probes": 1525032,
+  "ctest_seconds": 286.63,
+  "final_public_control_check_seconds": 1.51,
+  "tests": [
+    {
+      "name": "forma_native_automation_readback",
+      "checks": 119,
+      "fresh_sha256": "9dfb852a453edc6e4854e9f460b2f82c11ff136b720c92fcf37c57b91ee09402",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_readback.json"
+    },
+    {
+      "name": "forma_native_musical_clipboard",
+      "checks": 278,
+      "fresh_sha256": "4709af75f4f581d6fce11acf297d70e38a6ad1f6c0fa187dd358442d5596b3de",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_musical_clipboard.json"
+    },
+    {
+      "name": "forma_native_automation_timeline",
+      "checks": 143,
+      "fresh_sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_timeline.json"
+    },
+    {
+      "name": "forma_native_automation_shuffle",
+      "checks": 309,
+      "fresh_sha256": "6d29fa2fa36a3f221805479a7fcd699c0a5d780ee551c462e756e2f59c2fbf4e",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_shuffle.json"
+    },
+    {
+      "name": "forma_native_automation_clipboard",
+      "checks": 234,
+      "fresh_sha256": "7cef1edccc0d61d7a88712a00af9832b7cf2c2d6f31ec021ef1628a71682dacc",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_clipboard.json"
+    },
+    {
+      "name": "forma_native_automation_follow",
+      "checks": 74,
+      "fresh_sha256": "ac95f76c45d4502faf7331087f28d1035c19cbc883d15e012338050096fce0e5",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_follow.json"
+    },
+    {
+      "name": "forma_native_automation_clear",
+      "checks": 394,
+      "fresh_sha256": "da4dfccbbe9df5257d78c03823486c78636d5d97edf197f079328c23a27c24f2",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_clear.json"
+    },
+    {
+      "name": "forma_native_automation_view_range",
+      "checks": 351,
+      "fresh_sha256": "91375363d13681e407c5a7ea385cfcfc4fd0d607956d3f2a64c315150e477a1a",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_view_range.json"
+    },
+    {
+      "name": "forma_native_automation_clip_clear",
+      "checks": 432,
+      "fresh_sha256": "1458abf3e4529d84f355dd3c4b5ee91073becf6e419f0ffbfd347875c336b834",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_clip_clear.json"
+    },
+    {
+      "name": "forma_native_automation_move",
+      "checks": 499,
+      "fresh_sha256": "24ba5d912b0d3ec22987ad416410817f52d88c82e05f9b4220f1093f3fbeee10",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_automation_move.json"
+    },
+    {
+      "name": "forma_native_midi_clip_timeline",
+      "checks": 71,
+      "fresh_sha256": "7ac9d9b56e34281edee5cf8d9dc36256fdd0569aa0e38855ebccc3b4e8c55198",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_midi_clip_timeline.json"
+    },
+    {
+      "name": "forma_native_midi_range_timeline",
+      "checks": 64,
+      "fresh_sha256": "4f32fee593765fd54ad4cdc3e0a0ab138d8da2051121cb930404d0dc2432f2b2",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/forma_native_midi_range_timeline.json"
+    },
+    {
+      "name": "tracktion_automation_audio",
+      "checks": 59,
+      "fresh_sha256": "38d941673cff1e8931c4e08875ebfa29c6de687ced4dce26d25b23766fe0a8aa",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/tracktion_automation_audio.json"
+    },
+    {
+      "name": "tracktion_native_automation_workspace",
+      "checks": 25,
+      "fresh_sha256": "cd1a0e61409c702aae11842b9e931af2856aa2700e47031854d5c6e1b46aa9a7",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/tracktion_native_automation_workspace.json"
+    },
+    {
+      "name": "tracktion_external_plugin_automation",
+      "checks": 68,
+      "fresh_sha256": "4560f27f1c28bd7eb68b47a34d2dc977f7eaee6f56b40e6d03cb5453fe61fe23",
+      "fresh_report": "build-v2-tracktion/automation-readback-fresh/tracktion_external_plugin_automation.json"
+    }
+  ],
+  "patch_audit": {
+    "state": "passed",
+    "original_patch_bytes_preserved": 11,
+    "recorded_patches": 12,
+    "files_byte_matched": 22,
+    "clean_pin_apply_and_reverse": true
+  },
+  "unrecorded_sdk_change_rejected": true,
+  "historical_reports_restored": 14,
+  "editor_getter_discrepancy": 0.0,
+  "maximum_pcm_error": 1.3850631478545816e-07,
+  "maximum_musical_native_error": 1.7881393432617188e-07,
+  "signature": "org.forma.daw fixed leaf deep/strict passed",
+  "demo": {
+    "app": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MusicalCurvesPreview.app",
+    "launcher": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/OpenMusicalCurvesDemo.command",
+    "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/musical-curves-demos/musical-curves-b5619746438542e2b556ea96c8c40271/MusicalCurvesDemo.tracktionedit",
+    "signature": "passed",
+    "launched": false
+  },
+  "desktop": "CUA reports Mac locked; no native GUI preview launched; physical workflow/listening not executed",
+  "boundaries": [
+    "native getter/control readback, not general seconds slice discontinuity qualification",
+    "no added callback or device-rate/endurance/Windows qualification",
+    "full U+P0 unfinished; M2/M3 frozen and M4/M5 deferred"
+  ],
+  "logs": {
+    "automation-readback-before.txt": "78415efc40d43956eaa8fbf5e94a432af70197eab1b2f433008e0f5056fbaa03",
+    "automation-readback-regression.txt": "3b585834f2c714428068fddee66af5197d2ce1251c064887317114ce221b8f2e",
+    "automation-readback-controls-final.txt": "d5d6f176ab0b9cd9af95aafeb7fab40521122826e647123f87498f4ca7dc00d8",
+    "automation-readback-build.log": "8695f489c004f634ffd5276506eee44385c41723f8a74e72945cb1acf9040730",
+    "automation-readback-audit-rejection.log": "04bbba12224034794fb9bbf8e1c9013db71e4a2b23ed07038de54af3a030f3c0"
+  }
+}

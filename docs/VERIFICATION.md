@@ -1,5 +1,17 @@
 # 验证状态
 
+## U-P0-AUTOMATION-READBACK-01（2026-10-10）
+
+结论：Release构建及 `org.forma.daw` 固定叶证书deep/strict验签通过。受影响15/15 CTest通过，286.63秒；最终公共控制点追加检查单项通过1.51秒，合计3120个不重复命名检查，新专项119。CUA确认Mac锁定，实体GUI/试听未执行；没有启动新的预览窗口。不是完整U＋P0验收，不进P1。
+
+- `AutomationReadbackTests.cpp`：秒/拍曲线×升/降×9种shape共36组；Tempo变化位于曲线段内，跨120/60/180 BPM与7/8事件。1525032个位置探测（每17个48k工程样本及精确端点前后样本），legacy秒getter、typed-time、typed-beat分别对同输入的实际原生AutomationIterator要求float精确相等，不放宽容差。公开Bezier控制点保留原权重和时间基准；重合点/空曲线默认值、原生曲线XML未改变通过。其余SDK曲线API未声称全面一致。
+- `MusicalClipboardTests`最终278检查：硬Tempo/ramp两例getter差异均0；18组剪贴板曲线实际native误差最大1.7881393433e-7，原预算1e-7参数跨度＋两份float ULP不变。真实推子→48k/stereo/576000帧WAV，独立解码，PCM最大差1.3850631479e-7，原2e-5预算及源哈希不变。共享GUI快捷键/预览、Undo/Redo/Save/Open由原生组件和L1回归通过，不替代实体试听。
+- 相关回归包含时间线、Clipboard/Shuffle/Follow/Clear/ViewRange/ClipClear/Move、MIDI整片段/范围、音量Read/Touch/Latch/Write与现有第三方插件自动化；只跑受影响项。14份历史JSON按原SHA恢复，新报告在ignored `automation-readback-fresh`，计数/hash在qualification，历史差异0.0156433880报告不改写。
+- 补丁可复现：干净Tracktion pin应用12补丁后22文件逐字节相等、逆序恢复clean；既有11补丁SHA保持。向SDK临时追加未记录comment，CMake确实拒绝；恢复原字节后配置通过。只读消息线程修复，真实播放Iterator代码不改，不据此宣称实时性能或音质提升。
+- 原失败 `automation-readback-before.txt`：shape=.25，0.000354s处native=.200064、seconds=.200035、typed-beats=.200071；修复系数与输入时间基准后相同播放参照通过。最终追加36项公共控制点检查同样通过。
+
+证据 `evidence/U/automation-readback-{tests,qualification}.json`、`automation-readback-{before,regression}.txt`。演示启动器 `build-v2-tracktion/OpenMusicalCurvesDemo.command` 已换为新生产二进制与新实测工程，独立固定签名、禁用MCP；未启动。源1–3秒CmdC，目的轨约8秒CmdV，预览接受、Space试听、CmdZ/ShiftCmdZ，CmdS新副本并重开。通用秒基截段强曲线跳变接缝仍需专项；混合媒体/timebase、Shuffle、部分循环、其他设备率/满载/硬件/耐久/Windows未获新资格。下一项见NEXT_STEPS。
+
 ## U-P0-MUSICAL-CURVES-01（2026-10-10）
 
 结论：Release构建、固定证书/Bundle ID验签通过。19项不同受影响CTest最终通过，共3517检查；其中新MusicalClipboardTests 276检查。先18项回归17通过，整MIDI测试把FourOsc首参数误当推子而失败，改为枚举真实volume后单项通过；界面摘要修改后再跑整片段/范围/音乐专项3项，全部通过。不是完整U＋P0验收。

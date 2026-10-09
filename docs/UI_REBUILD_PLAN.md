@@ -1,3 +1,7 @@
+U-P0-AUTOMATION-READBACK-01（2026-10-10）：自动化模型读取与真实播放迭代器已统一，包括秒/拍输入转换、Bezier 原权重、阶跃和重合点。Release/固定签名通过；15 项不同受影响 CTest 最终通过，3120 检查（新专项119），另有1525032个位置探测要求原生float精确相等。Mac仍锁定，实体操作/试听未执行，未启动新窗口；完整U＋P0未完成，不进P1。
+
+本节替代历史“SDK getter 差异尚未修复”；原始失败与旧报告保留。通用秒基强曲线截段边界、混合媒体/timebase及Shuffle仍需补齐。M2/M3冻结、M4/M5暂缓；证据见VERIFICATION最新节，亲手试更新后的 `build-v2-tracktion/OpenMusicalCurvesDemo.command`。
+
 U-P0-MUSICAL-CURVES-01（2026-10-10）：主时间线 MIDI 整片段/选区粘贴的自动化按复制时源 Tempo 与当前目的 Tempo/Meter 重映射，覆盖变速曲线；保留空白、原生点附加属性和同笔 Undo/Redo/保存重开。大范围预览改为轨道、范围、片段与曲线变化摘要。Release/固定签名通过；19 项不同受影响 CTest 最终通过，3517 检查（新276）。Mac锁定，实体操作/试听未执行；完整 U＋P0 未完成，不进 P1。
 
 本节替代历史“音乐自动化时间重映射未实现”的差距；混合媒体/时间基准、Shuffle、部分循环仍待补。SDK编辑 getter 与真实播放插值不一致尚未修复。证据见 VERIFICATION 本增量；下一项先统一 SDK 读取与播放并补秒基强曲线边界资格，再完成混合媒体与 Shuffle。

@@ -212,12 +212,12 @@ int main(int argc, char** argv)
                 check(xml->writeTo(fixture), "owned native curve fixture saved");
                 w.openSession(fixture);
                 pump();
-                if (shape == .25 && !ramp)
+                if (shape == .25)
                 {
                     editorGetterDiscrepancy = std::abs(double(AudioDeviceTestAccess::editorValue(c, source, .5)) -
                                                        AudioDeviceTestAccess::value(c, source, .5));
-                    std::cout << "KNOWN_GAP SDK editor getter differs from actual audio iterator by "
-                              << editorGetterDiscrepancy << std::endl;
+                    check(editorGetterDiscrepancy == 0,
+                          "SDK editor getter exactly matches actual audio iterator after curved clipboard setup");
                 }
                 const auto frozenMap = AudioDeviceTestAccess::tempo(c);
                 const int64_t first = 24000, last = 288000, target = 384000;

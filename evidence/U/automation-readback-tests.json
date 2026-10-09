@@ -1,0 +1,188 @@
+{
+  "budget": "exact native float equality for every getter/playback comparison",
+  "cases": [
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": 0.25
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": 0.0
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": -0.25
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": 0.5
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": -0.5
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": 0.75
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": -0.75
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": 1.0
+    },
+    {
+      "musical": false,
+      "reverse": false,
+      "shape": -1.0
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": 0.25
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": 0.0
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": -0.25
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": 0.5
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": -0.5
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": 0.75
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": -0.75
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": 1.0
+    },
+    {
+      "musical": false,
+      "reverse": true,
+      "shape": -1.0
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": 0.25
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": 0.0
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": -0.25
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": 0.5
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": -0.5
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": 0.75
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": -0.75
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": 1.0
+    },
+    {
+      "musical": true,
+      "reverse": false,
+      "shape": -1.0
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": 0.25
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": 0.0
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": -0.25
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": 0.5
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": -0.5
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": 0.75
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": -0.75
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": 1.0
+    },
+    {
+      "musical": true,
+      "reverse": true,
+      "shape": -1.0
+    }
+  ],
+  "checks": 119,
+  "probes": 1525032,
+  "state": "passed"
+}

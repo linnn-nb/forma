@@ -1,0 +1,164 @@
+diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp b/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp
+index 7d578c3..e3c1cad 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp
++++ b/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp
+@@ -153,108 +153,60 @@ TimeDuration AutomationCurve::getLength() const
+ }
+ 
+ //==============================================================================
+-float AutomationCurve::getValueAt (EditPosition editPos, float defaultValue) const
++namespace
+ {
+-    TRACKTION_ASSERT_MESSAGE_THREAD
+-    const auto index = nextIndexAfter (editPos);
+-    const auto time = toUnderlying (editPos);
+-
+-    auto numPoints = getNumPoints();
+-
+-    if (index <= 0)
+-        return numPoints > 0 ? getPointValue (0)
+-                             : defaultValue;
+-
+-    if (index >= numPoints)
+-        return getPointValue (numPoints - 1);
+-
+-    auto p1 = state.getChild (index - 1);
+-    auto p2 = state.getChild (index);
+-
+-    const double time1 = p1.getProperty (IDs::t);
+-    const float curve1 = p1.getProperty (IDs::c);
+-    const float value1 = p1.getProperty (IDs::v);
+-
+-    const double time2 = p2.getProperty (IDs::t);
+-    const float value2 = p2.getProperty (IDs::v);
++float readNativeCurve (const AutomationCurve& curve, double position, float defaultValue)
++{
++    const auto size = curve.getNumPoints();
++    if (size == 0)
++        return defaultValue;
+ 
+-    if (curve1 == 0.0f)
+-    {
+-        auto alpha = (float) ((time - time1) / (time2 - time1));
+-        return value1 + alpha * (value2 - value1);
+-    }
++    if (position < toUnderlying (curve.getPointPosition (0)))
++        return curve.getPointValue (0);
+ 
+-    if (curve1 >= -0.5f && curve1 <= 0.5f)
+-    {
+-        auto bezierPoint = getBezierPoint (index - 1);
+-        return static_cast<float> (getBezierYFromX (time, time1, value1, toUnderlying (bezierPoint.time), bezierPoint.value, time2, value2));
+-    }
++    // Match AutomationIterator's strict endpoint ordering, including steps
++    // and coincident points. Do not reuse nextIndexAfter's different overloads.
++    int index = 0;
++    while (index + 1 < size && toUnderlying (curve.getPointPosition (index + 1)) < position)
++        ++index;
+ 
+-    double x1, x2;
+-    float y1, y2;
+-    getBezierEnds (index - 1, x1, y1, x2, y2);
++    if (index == size - 1)
++        return curve.getPointValue (index);
+ 
+-    if (time >= time1 && time <= x1)
+-        return value1;
++    const auto p1 = curve.getPoint (index);
++    const auto p2 = curve.getPoint (index + 1);
++    const double t1 = toUnderlying (p1.time), t2 = toUnderlying (p2.time);
++    const auto v1 = p1.value, v2 = p2.value, c = p1.curve;
++    if (t1 == t2)
++        return v2;
++    if (c == 0.0f)
++        return v1 + (v2 - v1) * static_cast<float> ((position - t1) / (t2 - t1));
+ 
+-    if (time >= x2 && time <= time2)
+-        return value2;
++    // Keep the control point in double precision, as actual playback does.
++    const auto bp = core::getBezierPoint (t1, v1, t2, v2, c);
++    if (c >= -0.5f && c <= 0.5f)
++        return static_cast<float> (core::getBezierYFromX (position, t1, v1, bp.first, bp.second, t2, v2));
+ 
+-    auto bezierPoint = getBezierPoint (index - 1);
+-    return static_cast<float> (getBezierYFromX (time, x1, y1, toUnderlying (bezierPoint.time), bezierPoint.value, x2, y2));
++    const auto ends = core::getBezierEnds (t1, v1, t2, v2, c);
++    if (position >= t1 && position <= ends.x1)
++        return v1;
++    if (position >= ends.x2 && position <= t2)
++        return v2;
++    return static_cast<float> (core::getBezierYFromX (position, ends.x1, ends.y1, bp.first, bp.second, ends.x2, ends.y2));
++}
+ }
+ 
+-float AutomationCurve::getValueAt (TimePosition timePos, float defaultValue) const
++float AutomationCurve::getValueAt (EditPosition editPos, float defaultValue) const
+ {
+     TRACKTION_ASSERT_MESSAGE_THREAD
+-    const auto index = nextIndexAfter (timePos);
+-    const auto time = timePos.inSeconds();
+-
+-    auto numPoints = getNumPoints();
+-
+-    if (index <= 0)
+-        return numPoints > 0 ? getPointValue (0)
+-                             : defaultValue;
+-
+-    if (index >= numPoints)
+-        return getPointValue (numPoints - 1);
+-
+-    auto p1 = state.getChild (index - 1);
+-    auto p2 = state.getChild (index);
+-
+-    const double time1 = p1.getProperty (IDs::t);
+-    const float curve1 = p1.getProperty (IDs::c);
+-    const float value1 = p1.getProperty (IDs::v);
+-
+-    const double time2 = p2.getProperty (IDs::t);
+-    const float value2 = p2.getProperty (IDs::v);
+-
+-    auto& ts = getTempoSequence (edit);
+-
+-    if (curve1 == 0.0f)
+-    {
+-        auto alpha = (float) ((time - time1) / (time2 - time1));
+-        return value1 + alpha * (value2 - value1);
+-    }
+-
+-    if (curve1 >= -0.5f && curve1 <= 0.5f)
+-    {
+-        auto bezierPoint = getBezierPoint (index - 1);
+-        return static_cast<float> (static_cast<float> (getBezierYFromX (time, time1, value1, toTime (bezierPoint.time, ts).inSeconds(), bezierPoint.value, time2, value2)));
+-    }
+-
+-    double x1, x2;
+-    float y1, y2;
+-    getBezierEnds (index - 1, x1, y1, x2, y2);
+-
+-    if (time >= time1 && time <= x1)
+-        return value1;
+-
+-    if (time >= x2 && time <= time2)
+-        return value2;
++    const double position = timeBase == TimeBase::time ? toTime (editPos, edit.tempoSequence).inSeconds()
++                                                       : toBeats (editPos, edit.tempoSequence).inBeats();
++    return readNativeCurve (*this, position, defaultValue);
++}
+ 
+-    auto bezierPoint = getBezierPoint (index - 1);
+-    return static_cast<float> (getBezierYFromX (time, x1, y1, toTime (bezierPoint.time, ts).inSeconds(), bezierPoint.value, x2, y2));
++float AutomationCurve::getValueAt (TimePosition timePos, float defaultValue) const
++{
++    return getValueAt (EditPosition (timePos), defaultValue);
+ }
+ 
+ static double getDistanceFromLine (double& x, double& y,
+@@ -898,7 +850,7 @@ CurvePoint AutomationCurve::getBezierPoint (int index) const noexcept
+     auto y1 = getPointValue (index);
+     auto x2 = toUnderlying (getPointPosition  (index + 1));
+     auto y2 = getPointValue (index + 1);
+-    auto c  = juce::jlimit (-1.0f, 1.0f, getPointCurve (index) * 2.0f);
++    auto c  = getPointCurve (index);
+ 
+     auto [x, y] = core::getBezierPoint (x1, y1, x2, y2, c);
+ 

@@ -1,3 +1,7 @@
+U-P0-AUTOMATION-READBACK-01（2026-10-10）：新增第十二份记录补丁 `patches/tracktion-automation-readback.patch`，只改消息线程 AutomationCurve 的只读 getter/Bezier control；按曲线自身 timeBase 换算输入，以双精度控制点与真实 AutomationIterator 相同端点顺序求值。既有实际播放迭代器和原十一补丁字节不变，不改变保存格式、POINT或实时处理路径。
+
+CMake按diff文件头排序，再截取原始块逐字节审计，避免新文件插在旧多文件补丁中迫使重写旧补丁；未知SDK改动仍被拒绝。干净pin应用12补丁、22文件字节相等、逆序恢复通过。L1/Undo/actor/revision/权限不变，测试 `AutomationReadbackTests.cpp` 和 `MusicalClipboardTests.cpp`；通用秒基截段跳变边界仍需专项，不能据getter通过扩大为全部曲线API已验证。
+
 U-P0-MUSICAL-CURVES-01（2026-10-10）：ClipboardBuffer 保存值复制的原生 core::tempo::Sequence、源状态hash与 beats/samples/mixed 分类；复制后人工改 Tempo 不重释源快照。MusicalCurveMap.cpp 按源/目的 native section 分段仿射映射，沿用有界 Bezier 投影；强曲线跳变只跨相邻48k目的样本，零点入阶保留首样本。8192派生点/65536原点/64操作/8MiB快照预算不变；混合timebase曲线与Shuffle明确拒绝。
 
 MIDI粘贴改用私有 AutomationClipboard 写入器，保留 copy_from 原点的附加属性并分配新ID；共享 attachCurve 在首次写入时将 detached curve 挂入 native parent，同笔 Undo，避免仅内存有声但保存丢失。MusicCommands 只读源音符/CC、源时间允许负的工程映射位置，编辑请求仍限制非负合法范围。GUI摘要只读实际preview，不写Edit；无新SDK/依赖/实时路径/MCP工具。SDK模型getter差异仍待修复，不作为本增量通过项。
