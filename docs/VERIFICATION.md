@@ -1,5 +1,17 @@
 # 验证状态
 
+## U-P0-MIDI-TIME-01（2026-10-09）
+
+结论：所选 MIDI 音符 Nudge 与起点/终点修剪通过自动验证；Release及 org.forma.daw 固定叶证书 deep/strict 验签通过。10项不同受影响CTest、1032检查：新专项248（19.75秒），相关9项784；最后UI上下文修改后5项再验46.79秒。未扩大完整U＋P0验收，不进P1。
+
+- 代码：MusicCommands/EngineCommands/Scope、MidiEditor、WorkspaceEditing/Commands/Refresh；测试 tests/v2/MidiTimingTests.cpp / forma_native_midi_timing。六方向×五种Nudge共30有效组合，真实两段Tempo、两个含分数源beat/静音的选中音符与一个未选音符、实际原生CC数据；单笔Undo/Redo、六个10ms方向Save后Undo/Open、稳定ID/附加原生属性、音高/力度/静音/CC保持。
+- 固定容差：与独立分段Tempo公式的最大beat差0，预算1e-11；原生XML重开三项beat双精度字段最大差4.440892098500626e-16，仍用原1e-11预算，其余事实精确一致。音乐移动的原始duration及内存Undo/Redo严格相等。真实FourOsc stereo48k WAV独立解码，实际onset 48000→48480，差480样本；既定64样本包络预算保持，不宣称随机合成器逐位一致/听感通过。
+- 原生组件自定义ControlOptionShiftN、键位Save/Open、重开首个默认Option小键盘+、Scope同时覆盖源与目标、锁定、陈旧Plan/人工交错、Clip越界、倒置/过短音符、未知ID、非整数samples及Agent身份拒绝通过。4096为实现的单次选区上限，未专门施加4096边界压力资格。现有music_notes/midi_transform/permission_scope/mcp_protocol及navigation/editor/midi_editor/automation_timeline/boundary_nudge回归通过；9份历史JSON按原SHA逐字节恢复，最新回执及hash在qualification。
+- 发现并修复：Scope遗漏新批量命令，现含真实before/after；早期Save精确JSON比较发现原生XML的double ULP，仅三beat字段按已有预算核对；合法测试负载延长源音符，仍保留倒置/过短拒绝；重开首键未进入MIDI上下文，现由持久真实选区恢复，不新增Undo、不抢输入框。原失败输出hash及最终日志hash保留。
+- 桌面：本轮生产二进制隔离预览/固定签名启动，CUA报告Mac锁定，实体键盘/保存/Undo/Open/试听未执行，无截图；仅本轮PID63200 SIGTERM清理、exec143，进程已不存在，旧用户窗口保留。亲手试 build-v2-tracktion/OpenMidiTimingDemo.command：已选两个音符，ControlOptionShiftN右移10ms，Option＋小键盘±修起点、Command＋小键盘±修终点，⌘Z/Shift⌘Z，⌘S另存新副本、⌘O重开。
+
+边界：停止状态、单个可编辑非循环MIDI Clip的所选音符；原生播放量化/Groove拒绝，CC不随音符时间编辑移动。MIDI剪贴板、整片段/CC/轨道自动化跟随、混合拍号/播放时Nudge、实体MIDI设备未获得本增量资格。音频Edit→Trim曲线保持有官方印刷1546页参考，模式特殊行为仍待核验。无新依赖/SDK/实时路径/MCP工具/DMG。证据：evidence/U/midi-timing-{tests,qualification}.json、midi-timing-regression.txt。
+
 ## U-P0-TRIM-NUDGE-01（2026-10-09）
 
 结论：四个音频起点/终点 Nudge 修剪命令与轨道头声像布局已实现；Release/固定叶证书deep/strict验签通过，6/6不同受影响CTest最终通过、633检查（专项189，相关444）。专项16.39秒，五项相关40.32秒。完整U＋P0未完成，不进P1。

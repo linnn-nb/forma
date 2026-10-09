@@ -1,9 +1,9 @@
 # 下一步
 
-结论：音频起点/终点四个 Nudge 修剪命令接通编辑/右键菜单及可改键，一笔human L1/native Undo；轨道头声像读数不再覆盖参数视图。Release/固定验签通过；受影响6/6测试、633检查（新189），真实PCM内部比对差0，原媒体保留。完整U＋P0未完成，不进P1。
+结论：所选 MIDI 音符 Nudge、起点/终点修剪已接统一L1，一笔Undo、保存重开、可改键；修复重开首键命令上下文。Release/固定验签、10项受影响测试1032检查（新248）通过。完整U＋P0未完成，不进入P1。
 
-亲手试 `build-v2-tracktion/OpenBoundaryNudgeDemo.command`：示例真实双声道诊断音频已选中，编辑→修剪（Nudge），或Control+Option+Shift+K将起点右移10ms；⌘Z/Shift⌘Z；⌘S另存新副本、⌘O重开。默认Option＋小键盘±改起点，Command＋小键盘±改终点；键位菜单可改。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+亲手试 `build-v2-tracktion/OpenMidiTimingDemo.command`：已选两个音符，Control+Option+Shift+N右移10ms；默认小键盘±移动，Option＋小键盘±修起点、Command＋小键盘±修终点。⌘Z/Shift⌘Z；⌘S保存新副本、⌘O重开。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
 
-下一项：桌面解锁后完成本增量实体修剪/Undo/保存/Open；明确音频Trim的自动化边界策略并取得可核验参考，随后MIDI与剩余U＋P0。当前Trim保留工程时间曲线，未声明Pro Tools边界自动化等价；模式特有语义、播放中Nudge与MIDI尚未获本增量资格。
+下一项：MIDI剪贴板，先接所选音符Copy/Cut/Paste/Duplicate，再接整MIDI片段和范围；共享现有菜单/键位、L1事务和权限，保留原生CC/附加状态，验证Undo/保存重开及源/工程音乐位置映射。普通音频Edit→Trim保留曲线已有官方印刷1546页依据；鼠标/Shuffle等模式差异、播放中Nudge和完整U＋P0仍待补。
 
-本轮Mac在菜单展开后锁定，未完成实体执行，无新截图；仅本轮预览PID95816以SIGTERM结束143、旧用户窗口保留。无需新授权；M2/M3冻结、M4/M5暂缓。无新依赖/SDK/RT/DMG，听感、实录、第三方、耐久、Windows和发布级验收仍未完成。详见VERIFICATION顶部。
+本轮Mac锁定，实体键盘/保存/试听未执行；仅本轮预览PID63200已结束。无新授权/依赖阻塞，M2/M3冻结、M4/M5暂缓。未新增SDK/实时路径/DMG；实录、听感、第三方、耐久、Windows和发布级验收仍未完成。

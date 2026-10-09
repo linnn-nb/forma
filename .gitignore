@@ -76,3 +76,7 @@ evidence/U/*
 !evidence/U/boundary-nudge-tests.json
 !evidence/U/boundary-nudge-regression.txt
 !evidence/U/boundary-nudge-qualification.json
+
+!evidence/U/midi-timing-tests.json
+!evidence/U/midi-timing-regression.txt
+!evidence/U/midi-timing-qualification.json

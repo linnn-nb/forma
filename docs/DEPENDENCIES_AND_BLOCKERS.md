@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+U-P0-MIDI-TIME-01（2026-10-09）：钢琴卷帘所选音符接通 Nudge、起点/终点修剪，共用既有菜单与可改键；一笔 human L1/native Undo，保存重开及重开后的首个快捷键已验证。Release/固定证书验签通过；10项不同受影响CTest、1032检查（新248）通过。真实FourOsc渲染首个发声点48000→48480，实移480样本；Mac锁定，实体操作/试听未执行，无新截图。完整U＋P0未完成，不进P1；下一项MIDI复制剪切粘贴。 无新授权/下载/付费阻塞；现有Tracktion/JUCE pin与十份SDK补丁原样保留。Mac锁定只阻塞实体界面验收，不阻塞代码提交；无麦克风/耐久/Windows新资格。M2/M3冻结，M4/M5暂缓。
+
 U-P0-TRIM-NUDGE-01（2026-10-09）：无新授权/依赖阻塞。现有Tracktion/JUCE pin和十份SDK补丁保留。Mac验收途中锁定，实体修剪/保存待用户解锁后继续；不以组件测试冒充实体通过。PT Trim自动化边界缺少可运行对照，保留差距；M2/M3冻结、M4/M5暂缓，完整U＋P0未完成。
 
 U-P0-AUTOMATION-CLIPS-MOVE-01：无新授权或依赖阻塞；Release/固定签名、16项受影响测试最终通过。Tracktion/JUCE pin、十份SDK补丁原样保留，无新实时路径/DMG。Trim/MIDI、完整U＋P0未完成，不进P1；秒基/稳定Clip对象、有曲线的extent复合Plan及模糊重叠映射限制见VERIFICATION。实录/听感/第三方/耐久/Windows/麦克风权限跨构建未获本增量资格。M2/M3冻结，M4/M5暂缓。

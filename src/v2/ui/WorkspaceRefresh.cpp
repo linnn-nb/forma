@@ -368,6 +368,7 @@ void Workspace::refreshInspector()
 
 void Workspace::refresh()
 {
+    const bool sessionChanged = workspaceSession != commands.sessionToken();
     if (exportPanel && exportPanel->isVisible())
         exportPanel->update(commands.analysisStatus());
     if (analysisPanel && analysisPanel->isVisible() && juce::Time::getMillisecondCounterHiRes() - analysisRefresh > 250)
@@ -375,7 +376,7 @@ void Workspace::refresh()
         analysisRefresh = juce::Time::getMillisecondCounterHiRes();
         analysisPanel->update(commands.analysisStatus());
     }
-    if (workspaceSession != commands.sessionToken())
+    if (sessionChanged)
     {
         workspaceSession = commands.sessionToken();
         if (mixGroupEditor)
@@ -475,7 +476,7 @@ void Workspace::refresh()
     followEditButton.setTooltip(
         text("自动化跟随编辑 · Control Option A，可改键、撤销并随工程保存。当前覆盖范围 "
              "Shuffle 与普通范围/整片段剪切删除、音频粘贴及整音频片段移动（拖拽、Spot、Nudge）；"
-             "Trim 和 MIDI 待补。"));
+             "Trim 保留工程时间曲线；整 MIDI 片段联动待补。"));
     const auto rollSettings = transportSettings["roll"];
     rollButton.setToggleState(rollSettings["pre_enabled"].get<bool>() || rollSettings["post_enabled"].get<bool>(),
                               juce::dontSendNotification);
@@ -671,6 +672,10 @@ void Workspace::refresh()
                  midiView, selection.notesFor(midiView["midi_clip"].get<std::string>()));
     const auto currentMidi = piano.viewedClip();
     const auto currentID = currentMidi.is_null() ? "" : currentMidi["id"].get<std::string>();
+    // Restoring a persisted note selection intentionally suppresses onSelection
+    // writes. Restore its command domain as well, without stealing text focus.
+    if (sessionChanged && pianoMode && !selection.notesFor(currentID).empty())
+        midiCommandContext = true;
     if (currentID != commands.uiState()["midi_clip"].get<std::string>())
         commands.updateUiState({{"midi_clip", currentID}}, commands.sessionToken());
     auto selectedMidi = pianoMode ? piano.viewedClip() : Json(nullptr);

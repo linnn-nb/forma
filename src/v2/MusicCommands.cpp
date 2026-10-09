@@ -43,7 +43,7 @@ struct ClipModel
     int64_t absoluteStart = 0, absoluteEnd = 0, absoluteContent = 0;
     bool beats = true, looped = false;
     std::map<std::string, NoteModel> notes;
-    bool playbackProcessed = false;
+    bool playbackProcessed = false, locked = false;
 };
 std::string transformRestriction(te::MidiClip& c)
 {
@@ -140,6 +140,48 @@ NoteModel transformNote(const std::string& cmd, const Json& a, const ClipModel& 
     }
     return n;
 }
+template <class Sequence>
+NoteModel transformTimingNote(const Json& a, const ClipModel& c, NoteModel n, const Sequence& seq)
+{
+    require(!c.locked, "MIDI clip is locked");
+    const std::string edge = a.at("edge"), unit = a.at("unit");
+    const double amount = a.at("amount");
+    require(std::isfinite(amount) && amount != 0, "empty or invalid MIDI timing offset");
+    require(unit == "beats" || (unit == "samples" && std::trunc(amount) == amount), "sample offset must be integral");
+    double first = c.content + n.source, last = first + n.length;
+    if (unit == "beats")
+    {
+        if (edge != "end")
+            first += amount;
+        if (edge != "start")
+            last += amount;
+    }
+    else
+    {
+        auto shifted = [&](double beat)
+        {
+            const double seconds = seq.toTime(tracktion::BeatPosition::fromBeats(beat)).inSeconds() + amount / 48000.;
+            require(seconds >= 0, "MIDI timing offset crosses session start");
+            return seq.toBeats(tracktion::TimePosition::fromSeconds(seconds)).inBeats();
+        };
+        if (edge != "end")
+            first = shifted(first);
+        if (edge != "start")
+            last = shifted(last);
+    }
+    require(first >= c.start && first >= c.content && last <= c.end && last > first,
+            "MIDI timing edit exceeds playable clip or inverts a note; entire Plan rejected");
+    require(samples(seq.toTime(tracktion::BeatPosition::fromBeats(last))) >
+                samples(seq.toTime(tracktion::BeatPosition::fromBeats(first))),
+            "MIDI note shorter than one session sample");
+    if (edge != "end")
+        n.source = first - c.content;
+    // Musical moves preserve the original source duration exactly, including
+    // imported sub-sample beats. Trims retain the opposite project beat edge.
+    if (!(edge == "move" && unit == "beats"))
+        n.length = last - first;
+    return n;
+}
 } // namespace
 void Commands::registerMusicCommands(Json& registry)
 {
@@ -227,6 +269,20 @@ void Commands::registerMusicCommands(Json& registry)
     transform("midi.notes.quantize", {{"grid_beats", {{"type", "number"}, {"minimum", 1. / 128}, {"maximum", 32}}},
                                       {"strength", {{"type", "number"}, {"minimum", 0}, {"maximum", 1}}}});
     transform("midi.notes.transpose", {{"semitones", {{"type", "integer"}, {"minimum", -127}, {"maximum", 127}}}});
+    transform("midi.notes.time", {{"edge", {{"type", "string"}, {"enum", {"move", "start", "end"}}}},
+                                  {"unit", {{"type", "string"}, {"enum", {"samples", "beats"}}}},
+                                  {"amount", {{"type", "number"}, {"minimum", -2880000}, {"maximum", 2880000}}}});
+    auto& timing = registry.back();
+    timing["tool_visibility"] = "local_gui";
+    timing["test"] = "U-P0-MIDI-TIME-01";
+    timing["schema"]["properties"]["selection"]["enum"] = {"notes"};
+    timing["schema"]["properties"]["note_ids"]["maxItems"] = 4096;
+    timing["schema"]["required"].push_back("note_ids");
+    timing["schema"]["properties"].erase("range_start_samples");
+    timing["schema"]["properties"].erase("range_end_samples");
+    timing["units"] = {
+        {"unit", "48000 Hz session samples, or native Tracktion meter divisions"},
+        {"amount", "signed edge displacement; samples integral; beats preserve source duration on move"}};
 }
 std::string Commands::trackType(te::AudioTrack& t) const
 {
@@ -320,6 +376,7 @@ Json Commands::midiQuery(te::MidiClip& clip) const
             {"content_start_beat", clip.getContentStartBeat().inBeats()},
             {"midi_channel", clip.getMidiChannel().getChannelNumber()},
             {"looped", clip.isLooping()},
+            {"locked", bool(clip.state.getProperty("ndaw_locked", false))},
             {"bulk_transform_available", transformRestriction(clip).empty()},
             {"bulk_transform_restriction", transformRestriction(clip)}};
 }
@@ -475,6 +532,7 @@ Json Commands::validateMusicPlan(const Json& operations) const
                      m->getSyncType() == te::Clip::syncBarsBeats,
                      m->isLooping(),
                      {}};
+                s.locked = bool(m->state.getProperty("ndaw_locked", false));
                 s.playbackProcessed = !transformRestriction(*m).empty() && !m->isLooping();
                 for (auto* n : m->getSequence().getNotes())
                     s.notes[id(n->state)] = {n->getStartBeat().inBeats(), n->getLengthBeats().inBeats(),
@@ -663,7 +721,7 @@ Json Commands::validateMusicPlan(const Json& operations) const
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
         }
-        else if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose")
+        else if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time")
         {
             const std::string target = a.at("clip");
             require(clips.contains(target), "MIDI clip not found");
@@ -672,7 +730,8 @@ Json Commands::validateMusicPlan(const Json& operations) const
             for (const auto& key : selectNotes(a, c, seq))
             {
                 auto before = c.notes.at(key);
-                auto after = transformNote(cmd, a, c, before);
+                auto after = cmd == "midi.notes.time" ? transformTimingNote(a, c, before, seq)
+                                                      : transformNote(cmd, a, c, before);
                 auto next = noteFacts(after, c, seq);
                 require(next["length_samples"].get<int64_t>() > 0, "transformed note shorter than one session sample");
                 notes.push_back({{"note", key}, {"before", noteFacts(before, c, seq)}, {"after", next}});
@@ -853,13 +912,14 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
     auto* c = midiClip(a.at("clip"));
     require(c != nullptr, "MIDI clip disappeared");
     te::MidiNote* note = nullptr;
-    if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose")
+    if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time")
     {
         ClipModel model;
         model.start = c->getStartBeat().inBeats();
         model.end = c->getEndBeat().inBeats();
         model.content = c->getContentStartBeat().inBeats();
         model.looped = c->isLooping();
+        model.locked = bool(c->state.getProperty("ndaw_locked", false));
         model.playbackProcessed = !transformRestriction(*c).empty() && !c->isLooping();
         std::map<std::string, te::MidiNote*> actual;
         for (auto* n : c->getSequence().getNotes())
@@ -878,9 +938,11 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
             }
         for (const auto& key : selectNotes(a, model, seq))
         {
-            const auto before = model.notes.at(key), after = transformNote(cmd, a, model, before);
+            const auto before = model.notes.at(key), after = cmd == "midi.notes.time"
+                                                                 ? transformTimingNote(a, model, before, seq)
+                                                                 : transformNote(cmd, a, model, before);
             auto* n = actual.at(key);
-            if (after.source != before.source)
+            if (after.source != before.source || after.length != before.length)
                 n->setStartAndLength(tracktion::BeatPosition::fromBeats(after.source),
                                      tracktion::BeatDuration::fromBeats(after.length), &um);
             if (after.pitch != before.pitch)

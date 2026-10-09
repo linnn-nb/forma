@@ -791,6 +791,12 @@ public:
     {
         return canvas.editable() && !canvas.selectedNotes().empty();
     }
+    Json timingSelection() const
+    {
+        if (!canQuantize())
+            return nullptr;
+        return {{"clip", currentClip["id"]}, {"note_ids", canvas.selectedNotes()}, {"revision", revision}};
+    }
     void quantizeSelected()
     {
         if (!canQuantize())

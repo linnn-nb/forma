@@ -677,6 +677,8 @@ Json Commands::preview(const Json& plan) const
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
+        if (cmd == "midi.notes.time")
+            require(actor == "human", "MIDI timing edits are local GUI only during U phase");
         if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set" ||
             cmd == "location.recall" || cmd.starts_with("location.roll."))
             require(actor == "human", "ruler editing is local GUI only during U phase");

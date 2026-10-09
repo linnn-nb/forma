@@ -1,0 +1,56 @@
+U-P0-MIDI-TIME-01: final results; 10 distinct tests / 1032 checks (248 new).
+Core tests precede the final UI-only session-context fix; all 5 affected UI tests rerun after that fix.
+
+midi-timing-context-test.log
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 116: forma_native_midi_timing
+1/1 Test #116: forma_native_midi_timing .........   Passed   19.75 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =  19.75 sec
+
+midi-timing-related-tests.log
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  34: tracktion_music_notes
+1/9 Test  #34: tracktion_music_notes ..............   Passed    6.71 sec
+    Start  36: tracktion_midi_transform
+2/9 Test  #36: tracktion_midi_transform ...........   Passed    4.42 sec
+    Start  56: tracktion_permission_scope
+3/9 Test  #56: tracktion_permission_scope .........   Passed    2.86 sec
+    Start  68: tracktion_mcp_protocol
+4/9 Test  #68: tracktion_mcp_protocol .............   Passed    1.18 sec
+    Start  74: forma_native_ui_navigation
+5/9 Test  #74: forma_native_ui_navigation .........   Passed    3.74 sec
+    Start  75: forma_native_editor_interactions
+6/9 Test  #75: forma_native_editor_interactions ...   Passed   10.46 sec
+    Start  80: forma_native_midi_editor
+7/9 Test  #80: forma_native_midi_editor ...........   Passed    7.01 sec
+    Start  87: forma_native_automation_timeline
+8/9 Test  #87: forma_native_automation_timeline ...   Passed    8.17 sec
+    Start 115: forma_native_boundary_nudge
+9/9 Test #115: forma_native_boundary_nudge ........   Passed   16.81 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Total Test time (real) =  61.37 sec
+
+midi-timing-final-ui-regression.log
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  74: forma_native_ui_navigation
+1/5 Test  #74: forma_native_ui_navigation .........   Passed    3.77 sec
+    Start  75: forma_native_editor_interactions
+2/5 Test  #75: forma_native_editor_interactions ...   Passed   10.47 sec
+    Start  80: forma_native_midi_editor
+3/5 Test  #80: forma_native_midi_editor ...........   Passed    7.13 sec
+    Start  87: forma_native_automation_timeline
+4/5 Test  #87: forma_native_automation_timeline ...   Passed    8.60 sec
+    Start 115: forma_native_boundary_nudge
+5/5 Test #115: forma_native_boundary_nudge ........   Passed   16.82 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =  46.79 sec

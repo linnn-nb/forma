@@ -1,5 +1,9 @@
 # Forma 交互参考
 
+U-P0-MIDI-TIME-01：核验官方 Pro Tools Reference Guide 2026.4（2026-10-09），印刷919/PDF1021 Nudge、印刷1019–1020/PDF1121–1122 Trimming MIDI Notes with Nudge。所选音符小键盘±移动，Option＋小键盘±改起点，Command＋小键盘±改终点；Forma复用菜单和可改键，一笔L1/native Undo、保存重开。实现 MusicCommands/WorkspaceEditing/WorkspaceCommands/MidiEditor，测试 MidiTimingTests；所测停止状态单Clip、多选音符路径已验证，实体桌面锁定未执行。播放中、整MIDI片段/CC随片段编辑、混合拍号与完整PT行为待补/实测。
+
+同一官方手册印刷1546/PDF1648 Multiple Edit Playlists and Audio Track Automation 明确：Edit→Trim 不改变底层自动化；MIDI CC（Mute例外）存于Clip并随Clip编辑。音频普通非破坏性 Trim 保留工程时间曲线的策略因此有参考依据，BoundaryNudgeTests仍为实际证据；此结论只替代相应旧“缺少参考”记录，不能推广到全部鼠标/Shuffle/TCE模式或Pro Tools运行对照。源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本地PDF SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。
+
 U-P0-TRIM-NUDGE-01（2026-10-09）：参考官方Pro Tools Reference Guide 2026.4，印刷919/PDF1021 Trimming with Nudge，核验2026-10-09；Option＋小键盘±改起点，Command＋小键盘±改终点。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf（本地SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8）；官方操作说明 https://apps.avid.com/proToolsFirstHelp/version12.3/enu/Pro%20Tools%20First%20Help/ed4.clips.26.12.html 。实现WorkspaceEditing/Commands/Layout和EditingModel；BoundaryNudgeTests实测。状态：受测音频命令已验证，完整工作流部分实现；曲线保留工程时间，Trim边界自动化、MIDI/播放时Nudge、模式特殊行为不声明PT等价；多目标音乐单位使用最早边界公共偏移。原生菜单确认，实体执行中Mac锁定。
 
 U-P0-AUTOMATION-CLIPS-MOVE-01：参考官方Pro Tools Reference Guide 2026.4，核验2026-10-09；印刷1552–1553/PDF1654–1655 Automation Follows Edit、印刷1582–1584/PDF1684–1686边界锚点/Master View/Slip重叠说明。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本地SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。整音频Clip移动冻结源曲线，锚定空隙并覆盖目标；Grabber/Nudge/Spot/检查器同用L1、可改键/Undo/保存。实现AutomationMove.cpp，测试AutomationMoveTests与16项回归、实体Nudge见VERIFICATION。状态：受测整片段路径已验证，完整交互部分实现；不声明Shuffle重新排序、跨轨拖动、Trim、MIDI或完整PT等价。不同偏移源重叠/目标交叉明确拒绝。截图中长参数名与声像读数拥挤仍需修整。

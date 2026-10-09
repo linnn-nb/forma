@@ -172,7 +172,7 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 span(std::llround(pos.getStart().inSeconds() * timelineRate),
                      std::llround(pos.getLength().inSeconds() * timelineRate));
             }
-            if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose")
+            if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time")
             {
                 for (const auto& change : preview["midi_changes"])
                     if (change["operation_index"] == index)

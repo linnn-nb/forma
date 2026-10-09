@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-MIDI-TIME-01：MusicCommands.cpp 注册本地 human 专用 midi.notes.time；WorkspaceEditing/Commands 与 MidiEditor 将既有六个 Nudge/Trim GUI 命令编译为一笔 Plan。原生序列的未舍入源 beat 与 Tempo 映射是事实，samples 为48k工程样本，音乐移动精确保留原 duration；首尾修剪保留另一端。Scope覆盖每个音符 before/after，锁定/版本/范围/处理限制先校验；原生 setStartAndLength 只在 L1/message thread 执行。WorkspaceRefresh 在重开时恢复已保存音符选区的命令上下文，不写工程或抢文字焦点。无新依赖、SDK或实时路径，MCP工具保持冻结。普通音频 Edit→Trim 保留曲线的策略现有官方参考依据，见 UI_PARITY；不扩大为全部模式等价。
+
 U-P0-TRIM-NUDGE-01（2026-10-09）：GUI命令630–633只生成clip.trim；同笔human Plan，使用L1现有组展开、媒体hash、版本、边界和native Undo校验。音乐Nudge按最早选中边界计算公共样本偏移，保留组相位/边界差；停止且完整可编辑音频目标才启用。只增GUI命令，不扩充冻结MCP、schema、依赖、SDK或实时路径。当前曲线留在工程时间；PT Trim自动化边界资格仍待核验。TrackHeader声像数值改右侧，避免覆盖轨道视图；完整参数身份不截断。
 
 U-P0-AUTOMATION-CLIPS-MOVE-01：AutomationMove.cpp在实际编辑组展开之后，为human clip.move编译automation.clips.move={track,moves:[{clip,position_samples}],state_hash}；preview/commit核对完整重编译结果。冻结原曲线→锚定源空隙→覆盖目标→移动Clip，一笔native Undo；原点ID/附加属性保留。相同偏移源区间合并；不同偏移源重叠或目标交叉拒绝，无曲线轨保留普通音频重叠。共享曲段器用最大有界居中弦，实际误差仍为1e-7参数跨度＋float ULP，8192派生点/65536点/64操作预算不变。秒基/human/local_gui；已有曲线的拆分/修剪/删除/导入/复制与移动复合Plan拒绝。无新SDK、依赖、MCP工具或实时路径；测试AutomationMoveTests，实测见VERIFICATION。

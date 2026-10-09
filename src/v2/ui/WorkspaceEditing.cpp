@@ -120,6 +120,35 @@ void Workspace::executeEditCommand(int id)
             if (workspaceSession != commands.sessionToken() || facts["revision"] != commands.querySummary()["revision"])
                 throw std::runtime_error("project changed before editing command; refresh and retry");
             const auto position = facts["position_samples"].get<int64_t>();
+            if (midiKeyboardFocus() &&
+                (editCommand::boundaryNudge(id) || id == editCommand::nudgeBack || id == editCommand::nudgeForward))
+            {
+                const auto notes = piano.timingSelection();
+                require(!notes.is_null() && notes["revision"] == facts["revision"],
+                        "MIDI selection changed before timing edit");
+                const int direction =
+                    id == editCommand::nudgeBack || id == editCommand::trimStartBack || id == editCommand::trimEndBack
+                        ? -1
+                        : 1;
+                const bool musical = editing.nudge == "beat" || editing.nudge == "quarter-beat";
+                const double amount = direction * (musical                     ? (editing.nudge == "beat" ? 1. : .25)
+                                                   : editing.nudge == "sample" ? 1.
+                                                   : editing.nudge == "10ms"   ? 480.
+                                                                               : 4800.);
+                Json args{{"clip", notes["clip"]},
+                          {"selection", "notes"},
+                          {"note_ids", notes["note_ids"]},
+                          {"edge", !editCommand::boundaryNudge(id)       ? "move"
+                                   : id <= editCommand::trimStartForward ? "start"
+                                                                         : "end"},
+                          {"unit", musical ? "beats" : "samples"},
+                          {"amount", amount}};
+                const auto receipt =
+                    commands.commit(commands.makePlan("human", Json::array({operation("midi.notes.time", args)})));
+                require(receipt.value("state", std::string{}) == "committed", "MIDI timing edit did not commit");
+                message(text("音符时间已编辑 · 保留音高 / 力度 / MIDI 控制器 · 一次 Undo"));
+                return;
+            }
             if (editCommand::boundaryNudge(id))
             {
                 const auto clips = selectedEditClips();

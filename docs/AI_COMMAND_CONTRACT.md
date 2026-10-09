@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-MIDI-TIME-01：midi.notes.time 仅 actor=human、tool_visibility=local_gui，不发布 MCP 工具。参数为 clip 稳定ID、selection=notes、note_ids 唯一ID数组（1–4096）、edge=move/start/end、unit=samples/beats、非零 amount（绝对值≤2880000，samples须整数）。单位为48k工程样本或原生音乐单位；目前 GUI 提供1样本/10ms/100ms/1拍/四分之一拍。预览返回每个音符 before/after，Scope核对源与目标；锁定、过期版本、未知ID、Clip越界、音符倒置或小于一个工程样本整笔拒绝。调用完成以真实 committed 回执为准，一笔 native Undo/Redo，未选音符/CC/音高/力度/静音保持；MusicCommands/MidiTimingTests，248专项。
+
 U-P0-AUTOMATION-CLIPS-MOVE-01：human原始clip.move（稳定Clip ID、整数48k position_samples）先展开实际编辑组，L1追加automation.clips.move。moves最多64且Clip唯一；实际归属和state_hash由事实生成。preview/commit核对requested_operations与全部重编译操作，拒绝裸内部操作/篡改；媒体hash、revision/session、锁定/Scope、幂等及同笔Undo保持。已有曲线的extent复合Plan与模糊重叠整笔拒绝；无曲线不加曲线操作。GUI手势立即提交，不新增Agent/MCP工具或资格，M2/M3冻结。测试U-P0-AUTOMATION-CLIPS-MOVE-01，499检查。
 
 U-P0-AUTOMATION-CLIPS-CLEAR-01：本地GUI专用 makeAudioClipClearPlan 编译 audio_clip_clear schema1，字段严格为schema整数1、clips实际唯一ID、action=cut/delete、ripple布尔。automation.clips.clear 参数为实际track/clips/action/ripple/state_hash；原生片段范围来自事实，不由外部提交任意区间。actor限定human/local_gui；preview/commit校验整个描述符、操作列表、媒体/处理状态、锁定、编辑组闭包、版本和会话；重试返回原回执。Curve write→Clip delete→Shuffle moves同一Undo事务；Cut仅成功回执后接纳冻结剪贴板。检查器待确认返回false并保留草稿，拒绝不改工程。新操作不对Agent/MCP开放，M2/M3冻结。测试U-P0-AUTOMATION-CLIPS-CLEAR-01，证据automation-clip-clear-tests.json（432检查）。

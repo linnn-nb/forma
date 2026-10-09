@@ -511,6 +511,10 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                  !clip.value("locked", false);
                 }
+                if (midiKeyboardFocus() &&
+                    (editCommand::boundaryNudge(id) || id == editCommand::nudgeBack || id == editCommand::nudgeForward))
+                    active = !mix && !facts.value("playing", false) && piano.canQuantize() &&
+                             facts.value("parameter_capture", Json(nullptr)).is_null() && pending.is_null();
                 if (id == editCommand::extendPrevious || id == editCommand::extendNext)
                     active = !mix && !facts.value("playing", false) &&
                              facts.value("parameter_capture", Json(nullptr)).is_null();
