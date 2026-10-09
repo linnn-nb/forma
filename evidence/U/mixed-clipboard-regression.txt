@@ -1,0 +1,10 @@
+Final qualification: source 453780e, Release, 15/15 CTest passed, 2555 checks, 255.21 s; old 14 receipts restored.
+Native mixed fixture: 94 checks, 8192 iterator probes; curve max 1.1920928955e-7, PCM max 2.3841857910e-7, silent peak 0.
+Early Undo test compared live gain_db, not engineering state. Corrected oracle retains explicit bases and ALL actual automation lanes; no production CurveBaseAction change retained.
+MIDI tail test initially included legitimately retained destination performance after 8 s. Isolated the pasted held note through L1 boundary removal, then real FourOsc sound/release passed.
+Large Duplicate correctly creates a preview for nonlinear curve point impact. Test now verifies read-only preview and real acceptance. Duplicate no longer replaces the accepted clipboard.
+REAL save failure before patch: OPEN_DIFF source base_gain_db -18 -> -24, destination base_gain_db -18 -> -30.000001907; all corresponding explicit_value fields changed. Custom key restored correctly.
+Overbroad all-parameter serialization candidate caused REAL static Clip EQ regression: UNDO_DIFF /0/clips/0/plugins/0/parameters/4/value and current_value expected -6 -> actual +3; display became +3.00 dB.
+Final patch always serializes automated bases; static parameters retain original conditional/property Undo semantics. Dedicated actual audio clipboard replay passed; final 15-test matrix rebuilt/re-run passed. Obsolete failed candidate runner terminated with its owned child; no final count derived from it.
+Fixed signature verification passed for org.forma.daw and org.forma.preview.mixedclipboard; different signature blocks are expected; 25 payload sections equal. Preview not launched.
+Mac locked; physical GUI/listening unexecuted; full U+P0 not complete.

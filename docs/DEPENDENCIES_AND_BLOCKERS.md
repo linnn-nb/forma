@@ -1,3 +1,5 @@
+U-P0-MIXED-CLIPBOARD-01（2026-10-10）：无新增依赖/证书，固定签名两bundle已核验。Tracktion锁定提交/JUCE版本及12 SDK补丁数量不变；仅serialization补丁更新，保证有曲线参数的显式基础值保存，静态参数不添冗余覆盖。干净源文件正反应用、其他补丁字节不变及CMake完整diff通过；哈希见evidence/U/mixed-serialization-patch.json。最终15受影响CTest通过。Mac锁定，实体GUI/试听未执行；混合Shuffle、同轨含曲线的混合基准、Warp、部分循环与完整U＋P0仍未完成。无新DMG/MCP/模型服务或系统安全变更。
+
 # 依赖与阻塞 v2
 
 U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）：无新授权/下载/付费/依赖版本阻塞；原12份SDK补丁字节保持。Release/固定签名与最后14项3951检查通过。秒基强曲线截段和音乐映射近采样边界缺陷已修复，覆盖48k工程样本，本节替代历史“尚无专项”描述；其他设备率/连续时间等价仍待验证。

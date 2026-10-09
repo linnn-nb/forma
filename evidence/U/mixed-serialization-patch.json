@@ -1,0 +1,23 @@
+{
+  "state": "passed",
+  "pin": "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98",
+  "patch": "patches/tracktion-serialization-parameters.patch",
+  "original_sha256": "3f39f3ac76fe9b43eb65d608035c589a6347d5bea540ee6fcbd2e1899913b161",
+  "patched_sha256": "233e75fa71f081f70c1918e562b26c038a06b6da257472b677dfda25c4b5f93a",
+  "patch_sha256": "dc52ab7afbba5cc5795778558ac29903b85c0e9ba33c024e198979a297c0a293",
+  "forward_reverse_exact": true,
+  "other_patches_unchanged": [
+    "juce-au-parameter-cache.patch",
+    "tracktion-absolute-source-phase.patch",
+    "tracktion-automation-readback.patch",
+    "tracktion-clip-order-boundary.patch",
+    "tracktion-four-osc-flush.patch",
+    "tracktion-initial-midi-scan.patch",
+    "tracktion-midi-event-boundaries.patch",
+    "tracktion-recording-status.patch",
+    "tracktion-render-bus-only.patch",
+    "tracktion-reverb-wet-tail.patch",
+    "tracktion-scrub-context.patch",
+    "tracktion-user-parameter-boundary.patch"
+  ]
+}

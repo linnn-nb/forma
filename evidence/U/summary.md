@@ -1,3 +1,9 @@
+U-P0-MIXED-CLIPBOARD-01（2026-10-10）：混合音频/MIDI对象与范围的Copy/Cut/Paste/Duplicate/Paste Original接通L1原生快照，保留空轨、空白、两侧片段、Clip EQ、CC/SysEx、曲线与基础值；共用可改键、一笔Undo/Redo和保存重开。Release/固定签名通过；最终15/15受影响CTest、2555检查、255.21秒（专项94，8192原生值探测），真实PCM最大差2.384185791e-7。Mac锁定，实体操作/试听未执行，预览未启动；完整U＋P0未完成，不进P1。
+
+此节替代历史混合媒体范围“未实现”，仅限本次受测路径。同轨混合基准且有曲线、Shuffle、Warp和部分循环仍拒绝；下一项混合范围Shuffle。M2/M3冻结，M4/M5暂缓。
+
+证据：mixed-clipboard-tests/qualification/regression、mixed-serialization-patch；历史14回执原SHA恢复。实测原生曲线误差1.192092896e-7；实际44.1k源、EQ、FourOsc与3个WAV通过，空白尾部0。SDK保存基础值真实失败及静态EQ回归已修复；最终候选15项全部通过，旧候选中止不计。演示OpenMixedClipboardDemo.command未启动。
+
 U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）：修复强曲线截段丢失跳变两侧、音乐映射把极近采样边界误吸附的问题；GUI继续共用原有L1事务与可改键。Release/固定签名、最后一版14/14受影响CTest通过，3951检查；576边界组合/3192948位置探测与49个真实片段移动组合通过。Mac锁定，实体操作/试听未执行，未启动新预览；完整U＋P0未完成，不进P1。
 
 本节替代历史“通用秒基强曲线边界尚无专项”的差距，仅覆盖48k工程样本，不扩大到其他设备率/连续时间精确等价。演示 `build-v2-tracktion/OpenStrongCurvesDemo.command` 已准备；下一项混合音频/MIDI选区与Shuffle。M2/M3冻结、M4/M5暂缓，详情见VERIFICATION。

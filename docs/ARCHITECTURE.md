@@ -1,3 +1,7 @@
+U-P0-MIXED-CLIPBOARD-01（2026-10-10）：主时间线混合音频/MIDI共用L1原生ClipCopy快照与事务，GUI不写Edit。`MidiClipClipboard.cpp`保留纯MIDI兼容入口，新增`prepareTimelineClipClipboard/prepareTimelineRangeClipboard`和`timeline.clips.erase/paste`；纯音频旧路径保留。范围含空轨与空白，音频保留采样基准、MIDI保留原基准；混合范围取秒/拍两种完整包络的较大者，不裁短任一媒体。自动化按源轨冻结的基准映射，短包络之后保持末值到共同结束，再恢复真实目的曲线。同轨混合基准且有曲线时整笔拒绝，尚不支持Shuffle。
+
+SDK序列化补丁保留所有有曲线参数的显式基础值，避免异步显示属性覆盖基础值；静态参数维持原有条件序列化与Undo，不保存冗余覆盖。12个Tracktion补丁数量、引擎提交和JUCE版本不变，仅修改既有serialization补丁；完整资格见VERIFICATION。M2/M3冻结，M4/M5暂缓。
+
 U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）：L1曲段器 `AutomationShuffle.cpp::fragment` 对±.5至±1之间的原生强曲线保留跳变两侧，前后只用严格相邻48k工程样本连接；递归最多增加一层，8192派生点预算不变。`adjacentTimelineSample` 以规范样本时间的严格比较确定邻点，不用epsilon把原POINT吸附到整数采样。`MusicalCurveMap.cpp` 共用该计算；秒基与音乐位置的原点/ID仍由既有写入器保存，同笔native Undo。
 
 只有非实时L1规划改变，不改SDK、插件处理或音频回调。测试 `AutomationBoundaryTests.cpp` 比较实际AutomationIterator的576组合；`AutomationMoveTests.cpp` 增补原生点前后相邻样本、49移动组合、强曲线GUI与真实WAV。测试偏好/渲染产物隔离在自有目录；无新命令、存储schema、MCP工具或依赖。混合媒体/时间基准与完整Shuffle仍待实现。

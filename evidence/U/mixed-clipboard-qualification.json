@@ -1,0 +1,129 @@
+{
+  "state": "passed",
+  "source_commit": "453780eed00566315906a882019541ed95ee029d",
+  "tests_passed": 15,
+  "tests_failed": 0,
+  "checks": 2555,
+  "seconds": 255.21,
+  "tests": [
+    {
+      "name": "tracktion_music_notes",
+      "checks": 44,
+      "seconds": 6.77624,
+      "receipt_sha256": "7940460b46dbc0f6f6596960cdc1f13436edc823bc73e011b1170b78844e0111",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/M1/music-tests.json"
+    },
+    {
+      "name": "tracktion_automation_audio",
+      "checks": 59,
+      "seconds": 15.0297,
+      "receipt_sha256": "fedc795af587577f05f37f21a5e55eab6ef1e7a612c5df8fec3fc7fede2ace3f",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/M1/automation-tests.json"
+    },
+    {
+      "name": "tracktion_native_automation_workspace",
+      "checks": 25,
+      "seconds": 7.86721,
+      "receipt_sha256": "cd1a0e61409c702aae11842b9e931af2856aa2700e47031854d5c6e1b46aa9a7",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/M1/automation-workspace-tests.json"
+    },
+    {
+      "name": "tracktion_permission_scope",
+      "checks": 38,
+      "seconds": 2.97809,
+      "receipt_sha256": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/M1/scope-tests.json"
+    },
+    {
+      "name": "forma_native_ui_navigation",
+      "checks": 48,
+      "seconds": 3.73254,
+      "receipt_sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/navigation-tests.json"
+    },
+    {
+      "name": "forma_native_audio_clipboard",
+      "checks": 49,
+      "seconds": 5.78419,
+      "receipt_sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/clipboard-tests.json"
+    },
+    {
+      "name": "forma_native_automation_shuffle",
+      "checks": 309,
+      "seconds": 39.4388,
+      "receipt_sha256": "7667e19c848dfba2e2f1f43c79d8daff1093ba4bf194ebfd1f7ce040962f5fa7",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/automation-shuffle-tests.json"
+    },
+    {
+      "name": "forma_native_automation_clipboard",
+      "checks": 234,
+      "seconds": 28.3136,
+      "receipt_sha256": "e8dff08edb8d997917fbf2e21bef5d4f5231a5fd337ea95f3677507ae2a13e6a",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/automation-clipboard-tests.json"
+    },
+    {
+      "name": "forma_native_automation_clear",
+      "checks": 394,
+      "seconds": 22.5883,
+      "receipt_sha256": "1a32a053b887b6940ee77ec22823266af5f1a71941ef79a105f43ae87a2b531c",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/automation-clear-tests.json"
+    },
+    {
+      "name": "forma_native_automation_move",
+      "checks": 717,
+      "seconds": 71.6812,
+      "receipt_sha256": "da4a93dd5e130124bd243300aef20200337c416701c6f9dc5102254ccd19adef",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/automation-move-tests.json"
+    },
+    {
+      "name": "forma_native_midi_clipboard",
+      "checks": 131,
+      "seconds": 9.45421,
+      "receipt_sha256": "3a3ac80027c780dc01a726df9f664093e19087b0e177ad49e9aabb3973fe2286",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/midi-clipboard-tests.json"
+    },
+    {
+      "name": "forma_native_midi_clip_timeline",
+      "checks": 71,
+      "seconds": 5.65233,
+      "receipt_sha256": "a39cbb8ebac78e8983b6e2f0864acabd54e61c8505232b7b9cffdb0d494b3c34",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/midi-clips-tests.json"
+    },
+    {
+      "name": "forma_native_midi_range_timeline",
+      "checks": 64,
+      "seconds": 4.994,
+      "receipt_sha256": "8d334e419e127cbf0ef1789636d75c5a76ddabe29cf42c476168f24630871341",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/midi-range-tests.json"
+    },
+    {
+      "name": "forma_native_mixed_clipboard",
+      "checks": 94,
+      "seconds": 12.8286,
+      "receipt_sha256": "8c0e5df167af6627d69c7a7606f4502a6f9bd300786d95a9528517bf9df1a243",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/mixed-clipboard-tests.json"
+    },
+    {
+      "name": "forma_native_musical_clipboard",
+      "checks": 278,
+      "seconds": 18.066,
+      "receipt_sha256": "8cc725913372307fa0c17c6f6a43a31069a3df2cd2201ae2b3b1bb69e7dc8c7d",
+      "fresh_receipt": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-qualification/fresh/evidence/U/musical-curves-tests.json"
+    }
+  ],
+  "historical_receipts_restored": 14,
+  "mac_locked": true,
+  "physical_gui_and_listening": "not executed",
+  "release_signed": true,
+  "preview_launched": false,
+  "scope": "tested mixed native clipboard paths; full U+P0 incomplete",
+  "junit_seconds": 255.0,
+  "signatures": {
+    "identity": "f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f",
+    "production_bundle": "org.forma.daw",
+    "preview_bundle": "org.forma.preview.mixedclipboard",
+    "payload_sections_equal": 25,
+    "preview_launched": false
+  }
+}

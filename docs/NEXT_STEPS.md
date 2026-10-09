@@ -1,9 +1,9 @@
 # 下一步
 
-结论：强曲线秒基截段与音乐映射的近采样边界已修复。Release/固定签名、最后14项受影响CTest通过，3951检查；576边界组合/3192948探测，49移动组合及真实WAV误差达标。完整U＋P0未完成，不进P1。
+结论：混合音频/MIDI对象及完整选区剪贴板已接通；保存自动化基础值与静态EQ Undo兼容问题已修复。Release/固定签名、最终15/15受影响CTest通过，2555检查（专项94），255.21秒；完整U＋P0未完成，不进P1。
 
-亲手试 `build-v2-tracktion/OpenStrongCurvesDemo.command`：真实PCM/.75曲线，已选第二片段，ControlOptionShiftJ再Nudge 10ms，CmdZ/ShiftCmdZ；Grabber拖拽、F3 Spot；CmdS另存新副本、CmdO重开。生产程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；预览固定签名、禁用MCP，Mac锁定未启动，实体操作/听感未执行。
+亲手试build-v2-tracktion/OpenMixedClipboardDemo.command：先保存退出旧Forma，打开已选源四轨2–3秒的真实工程，CmdC；Selector选目的四轨6–8秒，ControlOptionShiftJ粘贴，卡片接受、Space试听、CmdZ/ShiftCmdZ，CmdS新副本并CmdO重开。原生生产程序NativeDAW_artefacts/Release/Forma.app；预览固定签名、关闭MCP，Mac锁定未启动，实体操作/试听未执行。
 
-下一项：统一混合audio/MIDI的剪贴板，先接完整对象/选区与空轨空白保留，明确秒/拍混合范围的锚点和边界映射，再接Shuffle；源/目的版本与类型校验、单笔Undo/Redo、Save/Open与现有可改键必须一致。当前拒绝分支位于 MidiClipClipboard.cpp / WorkspaceMidiClipClipboard.cpp，不得静默掉音频或改变音乐事件时长。
+下一项：在已有混合ClipCopy与逐轨时间映射上接通范围Shuffle Cut/Delete与Paste，移动后续实际音频/MIDI及原生曲线，保留空轨空白。明确非等长秒/拍包络插入/替换规则与Tempo变化，给出真实范围预览；版本/媒体/锁定/Scope、单笔Undo/Redo、Save/Open、可改键和实际WAV必须验证。不要并存第二引擎或只解除拒绝开关。
 
-本增量仅获48k工程样本资格，其他设备率/连续时间精确等价需补；部分循环、MPE、多Take、满载、硬件/第三方、耐久、Windows与发布级仍未完成。原12 SDK补丁、依赖和实时路径不改；M2/M3冻结、M4/M5暂缓。用户完成U＋P0实体验收后再进P1。
+同轨混合基准且有曲线、部分循环、Warp、多Take/MPE仍待补/资格；48k工程样本之外、满载/设备实录/第三方/耐久/Windows/发布级未完成。M2/M3冻结，M4/M5暂缓；U＋P0由用户实体验收后才进入P1。

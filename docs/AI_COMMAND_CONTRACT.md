@@ -1,3 +1,7 @@
+U-P0-MIXED-CLIPBOARD-01（2026-10-10）：`timeline.clips.erase {clipboard}`与`timeline.clips.paste {clipboard,tracks,position_samples,mode}`为human/local_gui命令，不增加MCP工具。mode仅replace/overlay；一次Plan一个剪贴板操作，可附session.range.set/insertion.set。剪贴板是L1在指定session/revision捕获的不透明token，外部不能注入XML/原生状态；预算64源对象/64轨/8MiB，预览最多128对象变化，不是工程总轨数限制。
+
+manifest.kind=timeline_clips，包含完整源范围、track_timebases、冻结Tempo及媒体哈希。采样音频保持秒偏移；MIDI保留原时间基准和完整NOTE/CONTROL/SYSEX、Take及附加属性。混合范围涵盖两种完整时长，较短轨道的自动化末值保持到共同结束；该规则是Forma明确策略，不声明PT等价。preview.timeline_changes包含clips/automation/range/range_tracks/mapping_policy；曲线记录content_end_seconds与common_end_seconds。Scope覆盖空轨和保留边界，曲线为保守全轨范围。提交重新编译并核对媒体/对象/版本，真实回执给出新native ID，幂等重试不重复创建。Copy不进入Undo，Cut/Paste及曲线同笔Undo/Redo；Duplicate不替换已接受剪贴板。RAM剪贴板不假装随工程保存；工程内容与可改键保存重开。Shuffle、Warp、部分循环及同轨含自动化的混合基准仍明确拒绝。
+
 U-P0-MUSICAL-CURVES-01（2026-10-10）：既有 human/local_gui midi.clips.erase/paste Schema 与权限不变，不新增MCP工具。Copy冻结源音乐映射及hash；preview lanes 记录 time_mapping=native_musical/seconds 与 source_tempo_hash，完整前后原生点仍供Scope与重编译校验。源快照不能由外部JSON注入；人工改Tempo使旧Plan过期，重新规划保留新人工状态，幂等重试不重复粘贴。
 
 一个native事务包含曲线挂接/点状态、MIDI片段与选区；保存后Undo/Redo与重开验证通过。查询中的源音符/CC position_samples 可为负，表示保留的片段外事件；不夹零、不删事件，不扩大编辑参数范围。GUI大范围卡片只展示可读影响，真实committed回执才报告提交。混合timebase曲线/Shuffle拒绝；资格与已知SDK差距见VERIFICATION。

@@ -1,3 +1,5 @@
+U-P0-MIXED-CLIPBOARD-01（2026-10-10）：沿用本文已核验的Reference Guide 2026.4 Paste Command（印刷854/PDF956）和Automation Follows Edit（印刷1552–1553/PDF1654–1655）作为命令/事务交互参考。本轮未新增PT运行对照。主时间线音频/MIDI共用CmdC/X/V/D、OptionCmdV及可改键；Copy保持完整选择，Duplicate叠加并保留原剪贴板，普通Paste替换并保留两侧片段。大范围卡片展示实际轨道、范围、新增/移除/边界片段与曲线变化；混合范围说明采样/音乐基准及较短包络后的保持规则。该混合时长策略为Forma显式设计，不声明PT等价。实现WorkspaceMidiClipClipboard/WorkspaceCommands/WorkspaceEditing与L1；自动组件路由、接受/拒绝/Undo和保存重开见MixedClipboardTests与VERIFICATION，Mac锁定，实体操作/试听未执行。
+
 # Forma 交互参考
 
 U-P0-MUSICAL-CURVES-01（2026-10-10）：延续本文已有官方剪贴板/Automation Follows Edit章节作为交互参考，本轮未新增PT实机对照。MIDI大范围编辑卡片展示实际轨道名、当前标尺范围、新增/移除/保留边界片段与每条曲线点数；音乐映射标为“跟随小节与拍”，不显示内部Plan JSON。WorkspaceEditing/WorkspaceMidiClipClipboard只读preview，原接受/拒绝/Undo入口保留。自动组件路由已验证，Mac锁定实体未验；不宣称完整PT音乐自动化等价。

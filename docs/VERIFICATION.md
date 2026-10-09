@@ -1,3 +1,15 @@
+U-P0-MIXED-CLIPBOARD-01（2026-10-10）：混合音频/MIDI对象与范围的Copy/Cut/Paste/Duplicate/Paste Original接通L1原生快照，保留空轨、空白、两侧片段、Clip EQ、CC/SysEx、曲线与基础值；共用可改键、一笔Undo/Redo和保存重开。Release/固定签名通过；最终15/15受影响CTest、2555检查、255.21秒（专项94，8192原生值探测），真实PCM最大差2.384185791e-7。Mac锁定，实体操作/试听未执行，预览未启动；完整U＋P0未完成，不进P1。
+
+此节替代历史混合媒体范围“未实现”，仅限本次受测路径。同轨混合基准且有曲线、Shuffle、Warp和部分循环仍拒绝；下一项混合范围Shuffle。M2/M3冻结，M4/M5暂缓。
+
+证据：evidence/U/mixed-clipboard-tests.json、mixed-clipboard-qualification.json、mixed-clipboard-regression.txt、mixed-serialization-patch.json；14份历史回执已按原SHA恢复，最终原始日志与新回执在build-v2-tracktion/mixed-qualification。主源码ed7d95f，静态参数兼容修复453780e；整个最终测试使用453780e源代码与最后重建的二进制，旧候选测试在发现真实EQ回归后中止，不计为资格。
+
+混合范围按各片段原基准映射，共同结束取采样/音乐完整包络较大值；短包络的曲线保持末值再接目的后缀。94检查覆盖真实44.1k stereo源→48k WAV、真实FourOsc发声/释放、空轨曲线、部分源范围与完整对象、锁定/权限/版本/媒体哈希拒绝、幂等、原始媒体不变，以及原生组件快捷键/预览/接受/拒绝/Undo/Redo/Save/Open。原生8192探测最大误差1.192092896e-7，预算为1e-7原生推子范围加每个参考值两float ULP；PCM预算2e-5，片段切缝±2048样本仍不计入旧相位比较，静音尾部peak=0。MIDI释放测试通过L1移除原本会在8秒恢复的目的边界演奏，再实际渲染；没有把合法后续内容当成卡音。
+
+保存专项发现SDK缓存等值不代表自动化附属属性已包含基础值。更新既有serialization补丁，始终序列化有曲线参数的显式值；静态参数保持原条件，防止旧覆盖块在Undo恢复+3dB而应为−6dB。修复前真实Open/静态EQ差异保留。原12个Tracktion补丁数量不变，仅本补丁更新；干净pin单文件正向/逆向逐字节通过，其他11个SDK及JUCE补丁未变，完整CMake严格diff核对通过。未扩大冻结MCP/分析、依赖版本、实时路径或设备资格。
+
+演示：build-v2-tracktion/OpenMixedClipboardDemo.command（独立org.forma.preview.mixedclipboard，固定签名，--no-mcp，未启动）；生产app位于NativeDAW_artefacts/Release/Forma.app。两份签名均实核验，25个Mach-O代码/数据section相同，签名块随bundle身份改变。先正常保存退出旧Forma，再开演示；源四轨2–3秒已选，CmdC，Selector选择目的四轨6–8秒，ControlOptionShiftJ粘贴，预览接受、Space试听、CmdZ/ShiftCmdZ、CmdS新副本与CmdO重开。RAM剪贴板不随文件保存，Ready工程重开后的首次CmdC自动验证通过。完整U＋P0、硬件/第三方/耐久/Windows/发布级未获新资格，无新DMG或实体截图。
+
 # 验证状态
 
 ## U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）
