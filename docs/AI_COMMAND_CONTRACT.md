@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
+
 ## 本地Zoom Toggle（U-P0-ZOOM-TOGGLE-01）
 
 原生命令263进入／返回（E）、264取消保留视图（OptionShiftE）、265保持轨道视图（ControlOptionE）、266偏好（CommandOptionShiftE）、267清除保留视图（Option点亮按钮／菜单），可重绑，文本输入拒绝键盘派发。UI通过L1保存schema12；active时任何L1视图补丁捕获9字段saved，out记录进入前状态，目标为可见实际selection_tracks；No Change／保持视图不恢复自动化或Notes/Clips模式，shared Grid不回滚人工改值。普通Toggle不生成工程事务或revision。

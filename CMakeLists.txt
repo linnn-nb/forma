@@ -710,3 +710,8 @@ target_sources(ndaw_zoom_toggle_tests PRIVATE tests/v2/ZoomToggleTests.cpp)
 target_link_libraries(ndaw_zoom_toggle_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_zoom_toggle COMMAND ndaw_zoom_toggle_tests "${CMAKE_SOURCE_DIR}/evidence/U/zoom-toggle-tests.json")
 set_tests_properties(forma_native_zoom_toggle PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_piano_pitch_tests PRODUCT_NAME "ndaw_piano_pitch_tests")
+target_sources(ndaw_piano_pitch_tests PRIVATE tests/v2/PianoPitchTests.cpp)
+target_link_libraries(ndaw_piano_pitch_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_piano_pitch COMMAND ndaw_piano_pitch_tests "${CMAKE_SOURCE_DIR}/evidence/U/piano-pitch-tests.json")

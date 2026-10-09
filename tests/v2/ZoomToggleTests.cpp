@@ -457,11 +457,12 @@ int main(int argc, char** argv)
         auto legacy = good;
         legacy["ui_schema"] = 11;
         legacy.erase("zoom_toggle");
+        legacy.erase("midi_note_height");
         juce::ValueTree meta("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         const auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 12 && migrated["zoom_toggle"] == defaultZoomToggle() &&
+        check(migrated["ui_schema"] == 13 && migrated["zoom_toggle"] == defaultZoomToggle() &&
                   migrated["zoom_state"] == good["zoom_state"],
               "complete schema11 migration preserves existing zoom history and supplies inactive Toggle");
         legacy.erase("midi_zoom");
@@ -486,7 +487,7 @@ int main(int argc, char** argv)
         check(error <= 1e-7, "actual rendered stereo PCM unchanged by Toggle workflows");
         Json receipt = {{"result", "passed"},
                         {"checks", checks},
-                        {"ui_schema", 12},
+                        {"ui_schema", 13},
                         {"render_max_error", error},
                         {"source_sha256", hash},
                         {"audio_display_scale", scale},

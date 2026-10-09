@@ -1,5 +1,15 @@
 # 验证状态
 
+## U-P0-PIANO-PITCH-01：钢琴卷帘音高缩放（2026-10-09）
+
+结论：原生+/−/N、选中与全部音符适配、ControlOption滚轮连续缩放、默认键高复位、滚动及L1保存重开接通。Release和固定签名deep/strict通过；专项57检查通过，另12项受影响回归通过、0失败（85.77秒），不是全量验收。实际48k/24bit双声道源、两次各48000帧渲染，PCM最大差0；原媒体SHA保持。
+
+真实MIDI在变化后的浮点键高下绘制、组移调两半音、右缘裁剪和力度编辑；工程修改一笔human Plan，Undo/Redo通过。视图不占Undo/revision，独立Edit Notes范围不受影响；旧1–12严格迁移到schema13，增加midi_note_height（.25–48px），滚动界限随内容高度变化。原生新Workspace保存重开、自定义键重新执行、键位文本焦点保护和最低1120窗口入口通过。
+
+第一轮自定义键重开失败，定位并修复旧窗口异步键位通知覆盖新会话：changeListenerCallback检测会话后先恢复新工程映射。第二轮WAV整文件哈希不同，未误报音频不同，最终实际解码、校验格式/帧数并逐样本比较PCM差0；原源哈希仍严格校验。关键输出：evidence/U/piano-pitch-tests.json及piano-pitch-affected-tests.txt；代码/边界见U证据首节。
+
+Mac明确锁定，实体鼠标、默认键、试听和桌面重开未执行；LaunchServices接受独立预览启动，随后仅结束本轮PID1374，旧窗口保留。无截图、无DMG。U＋P0仍未完成、不进入P1；渲染资格只覆盖真实音频+无合成器MIDI数据，不代表实体MIDI输出或乐器试听。
+
 ## U-P0-ZOOM-TOGGLE-01：选区与存储视图切换（2026-10-09）
 
 结论：E进入／返回、OptionShiftE取消、ControlOptionE保持轨道视图、Option点亮按钮清除、原生偏好／Last Used／换轨跟随／保存重开及改键执行接通。Release及固定身份deep/strict验签通过；受影响12项最终通过、0失败（初批10项通过，修正Zoomer键位夹具后2项复测通过）。新专项135检查，真实48k／24bit／双声道96000帧PCM前后最大差0、源媒体哈希保持。波形显示适配比例8.861538（512采样缩略峰值近似）；MIDI选区仅含36音高，实际显示31–42，排除范围外96音高。折叠范围一笔human事务，Undo/Redo跳过显示状态。

@@ -58,7 +58,9 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
                         int high = 72;
                         for (const auto& n : c["notes"])
                             high = std::max(high, n["pitch"].get<int>());
-                        patch["midi_scroll_y"] = 32 + (127 - std::min(127, high + 2)) * 14;
+                        patch["midi_scroll_y"] =
+                            int(std::lround(PianoPitchAxis{commands.uiState()["midi_note_height"].get<double>()}.top(
+                                std::min(127, high + 2))));
                         patch["midi_scroll_x"] = 0;
                     }
                 }

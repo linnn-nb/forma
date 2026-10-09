@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+当前增量（2026-10-09）：独立钢琴卷帘音高缩放和选中/全部适配已接通，不改Edit轨道的Notes范围。原生+/−/N位于卷帘右上方，滚轮、可改键、保存重开和真实MIDI手势通过专项；实体界面/试听待解锁后验证。参考官方2026.4手册第1068页（MIDI Editor Zoom Controls）及第871页（连续MIDI缩放）；核验日期2026-10-09，来源https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，本地PDF SHA884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。键位268–272是Forma独立卷帘入口，不宣称完整Pro Tools映射；资格见VERIFICATION.md首节。
+
 结论：U＋P0 正在实现；下表是行为依据与差异，不是已完成声明。参照窗口结构和操作，不复制商标、图标、配色或专有资产。
 
 资料核验：2026-10-08/09。官方 Reference Guide 2026.4，本机 PDF SHA256 `884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8`；官方 Shortcuts Guide 2025.6（最新可直接核验的快捷键文档，不能冒充 2026.4）。以下手册页码均为印刷页，PDF 页＝印刷页＋102。

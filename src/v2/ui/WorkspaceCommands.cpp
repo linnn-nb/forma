@@ -149,6 +149,16 @@ const std::vector<Entry>& entries()
         {265, "Zoom Toggle · 保持轨道视图", "缩放", 'e',
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {266, "Zoom Toggle 偏好…", "设置", 'e', cmd | shift | juce::ModifierKeys::altModifier},
+        {268, "钢琴卷帘 · 音高显示放大", "缩放", juce::KeyPress::upKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {269, "钢琴卷帘 · 音高显示缩小", "缩放", juce::KeyPress::downKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {270, "钢琴卷帘 · 适配所选 / 全部音符", "缩放", 'f',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {271, "钢琴卷帘 · 适配片段全部音符", "缩放", 'f',
+         shift | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {272, "钢琴卷帘 · 恢复默认键高", "缩放", '0',
+         shift | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {267, "清除 Zoom Toggle · 保留当前视图", "缩放"},
         {262, "Overview · 256 采样/像素", "缩放", '0', cmd | shift | juce::ModifierKeys::altModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
@@ -612,6 +622,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id >= 268 && id <= 272)
+                active = !mix && pianoMode && piano.canPitchZoom();
             if (id >= 250 && id <= 252)
                 active = !mix;
             if (id >= 263 && id <= 267)
@@ -662,6 +674,19 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= 268 && id <= 272)
+    {
+        if (invocation.invocationMethod == InvocationInfo::fromKeyPress)
+        {
+            for (auto* c = invocation.originatingComponent; c; c = c->getParentComponent())
+                if (dynamic_cast<juce::TextEditor*>(c))
+                    return false;
+            if (dynamic_cast<juce::TextEditor*>(juce::Component::getCurrentlyFocusedComponent()))
+                return false;
+        }
+        piano.pitchZoom(id);
+        return true;
+    }
     if (id >= 263 && id <= 267)
     {
         if (invocation.invocationMethod == InvocationInfo::fromKeyPress)
@@ -1027,6 +1052,13 @@ void Workspace::changeListenerCallback(juce::ChangeBroadcaster*)
 {
     if (loadingKeymap)
         return;
+    // A queued change from the old window may arrive after a native file has opened.
+    // Restore that session's mappings before any UI write; never persist the old defaults over them.
+    if (lastKeymapSession != commands.sessionToken())
+    {
+        refresh();
+        return;
+    }
     auto xml = shortcutSnapshot();
     if (!xml)
         return;

@@ -86,6 +86,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         juce::PopupMenu midiZoom;
         for (int id = 257; id <= 261; ++id)
             addMenuCommand(midiZoom, id);
+        for (int id = 268; id <= 272; ++id)
+            addMenuCommand(midiZoom, id);
         p.addSubMenu(text("MIDI Notes / Zoom"), midiZoom);
         p.addSeparator();
         addMenuCommand(p, 13);

@@ -152,6 +152,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         try
         {
             commands.updateUiState(patch, workspaceSession);
+            if (patch.contains("midi_note_height"))
+                refresh();
         }
         catch (const std::exception& e)
         {

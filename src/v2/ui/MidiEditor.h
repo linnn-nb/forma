@@ -15,7 +15,7 @@ public:
         setComponentID("midi.canvas");
     }
     void update(const Json& value, uint64_t revision, bool playing, double snap, int width, double positionBeat,
-                const std::string& session = "", double zoom = 72.)
+                const std::string& session = "", double zoom = 72., double noteHeight = 14.)
     {
         if (this->session != session || clip.is_null() != value.is_null() ||
             (!value.is_null() && (clip.is_null() || clip["id"] != value["id"])))
@@ -27,6 +27,9 @@ public:
             ghost = nullptr;
             ghosts.clear();
         }
+        if (this->zoom != zoom || axis.height != noteHeight || this->snap != snap || this->revision != revision)
+            cancelGesture();
+        axis.height = noteHeight;
         this->session = session;
         if (playing)
         {
@@ -50,7 +53,7 @@ public:
         if (selectedNote().is_null())
             selected = selectedIDs.empty() ? "" : *selectedIDs.begin();
         setSize(std::max(width, clip.is_null() ? width : 64 + int(clip["length_beats"].get<double>() * zoom)),
-                32 + 128 * 14);
+                axis.contentHeight());
         repaint();
     }
     Json selectedNote() const
@@ -239,8 +242,9 @@ public:
     juce::Rectangle<float> noteBounds(const Json& note) const
     {
         const auto start = note["start_beat"].get<double>() - clip["start_beat"].get<double>();
-        return {float(64 + start * scale()), float(32 + (127 - note["pitch"].get<int>()) * 14 + 1),
-                float(std::max(3., note["length_beats"].get<double>() * scale())), 12};
+        return {float(64 + start * scale()), float(axis.top(note["pitch"]) + std::min(1., axis.height / 8.)),
+                float(std::max(3., note["length_beats"].get<double>() * scale())),
+                float(axis.height - 2 * std::min(1., axis.height / 8.))};
     }
     void paint(juce::Graphics& g) override
     {
@@ -248,16 +252,17 @@ public:
         g.setFont(juce::FontOptions(10));
         for (int pitch = 127; pitch >= 0; --pitch)
         {
-            int y = 32 + (127 - pitch) * 14;
+            const float y = float(axis.top(pitch));
             const int pc = pitch % 12;
             bool black = pc == 1 || pc == 3 || pc == 6 || pc == 8 || pc == 10;
             g.setColour(juce::Colour(black ? 0xff202933 : 0xff26333e));
-            g.fillRect(64, y, getWidth() - 64, 14);
+            g.fillRect(64.f, y, float(getWidth() - 64), float(axis.height));
             g.setColour(juce::Colour(black ? 0xff111923 : 0xffcad6dd));
-            g.fillRect(0, y, 62, 13);
+            g.fillRect(0.f, y, 62.f, float(axis.height * .93));
             g.setColour(black ? juce::Colour(0xffa4b6c5) : juce::Colour(0xff22313c));
-            if (pc == 0)
-                g.drawText("C" + juce::String(pitch / 12 - 1), 4, y, 54, 14, juce::Justification::centredRight);
+            if (pc == 0 && axis.height >= 10.)
+                g.drawText("C" + juce::String(pitch / 12 - 1), 4, int(y), 54, int(axis.height),
+                           juce::Justification::centredRight);
         }
         g.setColour(juce::Colour(0xff344453));
         g.fillRect(0, 0, getWidth(), 32);
@@ -358,7 +363,7 @@ public:
         ghost = {{"id", ""},
                  {"start_beat", clip["start_beat"].get<double>() + local},
                  {"length_beats", std::min(snap, clip["length_beats"].get<double>() - local)},
-                 {"pitch", pitchAt(e.y)},
+                 {"pitch", pitchAt(e.position.y)},
                  {"velocity", 100}};
         selection();
         repaint();
@@ -407,7 +412,8 @@ public:
                 pitchHigh = std::min(pitchHigh, 127 - n["pitch"].get<int>());
             }
             delta = std::clamp(delta, low, high);
-            const auto pitchDelta = std::clamp(int(std::round((origin.y - e.y) / 14)), pitchLow, pitchHigh);
+            const auto pitchDelta =
+                std::clamp(int(std::round((origin.y - e.position.y) / axis.height)), pitchLow, pitchHigh);
             ghosts = originals;
             for (auto& n : ghosts)
             {
@@ -463,6 +469,26 @@ public:
             a["note"] = changed["id"];
         write(creating ? "midi.note.add" : "midi.note.set", a, dragRevision);
     }
+    double noteHeight() const
+    {
+        return axis.height;
+    }
+    void cancelGesture()
+    {
+        dragging = velocityDragging = creating = resizing = trimmingLeft = false;
+        originals.clear();
+        ghost = nullptr;
+        ghosts.clear();
+        repaint();
+    }
+    std::function<void(double, double)> onPitchZoom;
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
+    {
+        if (e.mods.isAltDown() && e.mods.isCtrlDown() && onPitchZoom)
+            onPitchZoom(std::exp(double(wheel.deltaY) * 2.), e.position.y);
+        else
+            juce::Component::mouseWheelMove(e, wheel);
+    }
     std::function<bool(const juce::KeyPress&)> onCommandKey;
     bool keyPressed(const juce::KeyPress& key) override
     {
@@ -474,9 +500,9 @@ private:
     {
         return zoom;
     }
-    static int pitchAt(int y)
+    int pitchAt(double y) const
     {
-        return std::clamp(127 - (y - 32) / 14, 0, 127);
+        return axis.pitchAt(y);
     }
     void drawNote(juce::Graphics& g, const Json& note, juce::Colour colour)
     {
@@ -484,7 +510,8 @@ private:
         g.setColour(colour);
         g.fillRoundedRectangle(rect, 2);
         g.setColour(colour.darker(.7f));
-        g.fillRect(rect.withWidth(float(note["velocity"].get<int>() / 127.) * rect.getWidth()).removeFromBottom(2));
+        g.fillRect(rect.withWidth(float(note["velocity"].get<int>() / 127.) * rect.getWidth())
+                       .removeFromBottom(float(std::min(2., axis.height / 4.))));
     }
     MusicalWriter write;
     MusicalBatchWriter batch;
@@ -497,6 +524,7 @@ private:
     uint64_t revision = 0, dragRevision = 0;
     bool playing = false, dragging = false, creating = false, resizing = false, trimmingLeft = false,
          velocityDragging = false;
+    PianoPitchAxis axis;
     double snap = .5, positionBeat = 0, zoom = 72.;
     juce::Point<float> origin;
 };
@@ -612,10 +640,11 @@ public:
               std::move(batch)),
           velocityLane(canvas), direct(std::move(writer)), grid(std::move(grid)), transform(std::move(transform))
     {
-        for (auto* c : std::initializer_list<juce::Component*>{&view, &clips, &snap, &velocity, &remove, &detail,
-                                                               &selectionScope, &strength, &strengthLabel, &quantize,
-                                                               &semitones, &transpose, &start, &end, &rangeLabel,
-                                                               &selectAll, &quickQuantize, &velocityLane, &advanced})
+        for (auto* c : std::initializer_list<juce::Component*>{
+                 &view,           &clips,    &snap,          &velocity,  &remove,        &detail,
+                 &selectionScope, &strength, &strengthLabel, &quantize,  &semitones,     &transpose,
+                 &start,          &end,      &rangeLabel,    &selectAll, &quickQuantize, &velocityLane,
+                 &advanced,       &pitchIn,  &pitchOut,      &pitchFit})
             addAndMakeVisible(c);
         view.setViewedComponent(&canvas, false);
         view.setScrollBarsShown(true, true);
@@ -638,6 +667,11 @@ public:
                 onView({{"midi_scroll_x", view.getViewPositionX()}, {"midi_scroll_y", view.getViewPositionY()}});
             repaint();
         };
+        pitchIn.setTooltip(text("钢琴卷帘音高放大 · Control Option ↑"));
+        pitchOut.setTooltip(text("钢琴卷帘音高缩小 · Control Option ↓"));
+        pitchFit.setTooltip(text("适配所选音符，未选时适配片段全部音符 · Control Option F"));
+        canvas.onPitchZoom = [this](double ratio, double canvasY)
+        { setPitchHeight(noteHeight * ratio, canvasY - view.getViewPositionY()); };
         advanced.setComponentID("midi.advanced");
         advanced.onClick = [this]
         {
@@ -712,6 +746,7 @@ public:
                                                              : 3,
                                juce::dontSendNotification);
             zoom = ui["midi_pixels_per_beat"];
+            noteHeight = ui["midi_note_height"];
             const auto wanted = ui["midi_clip"].get<std::string>();
             if (!wanted.empty())
                 chosen = wanted;
@@ -798,6 +833,59 @@ public:
         quickQuantize.setCommandToTrigger(&manager, 140, true);
         selectAll.setCommandToTrigger(&manager, 141, true);
         remove.setCommandToTrigger(&manager, 142, true);
+        for (auto [button, id] :
+             std::vector<std::pair<juce::TextButton*, int>>{{&pitchIn, 268}, {&pitchOut, 269}, {&pitchFit, 270}})
+        {
+            button->setComponentID("ui.command:" + juce::String(id));
+            button->setCommandToTrigger(&manager, id, true);
+        }
+    }
+    bool canPitchZoom() const
+    {
+        return !currentClip.is_null() && view.getMaximumVisibleHeight() >= 32;
+    }
+    void setPitchHeight(double nextHeight, double anchor)
+    {
+        if (!canPitchZoom() || !onView || !std::isfinite(nextHeight))
+            return;
+        nextHeight = PianoPitchAxis::bounded(nextHeight);
+        anchor = std::clamp(anchor, 0., double(view.getMaximumVisibleHeight()));
+        const PianoPitchAxis axis{noteHeight};
+        const int y =
+            std::clamp(int(std::lround(axis.anchoredScroll(nextHeight, view.getViewPositionY(), anchor))), 0,
+                       std::max(0, PianoPitchAxis{nextHeight}.contentHeight() - view.getMaximumVisibleHeight()));
+        onView({{"midi_note_height", nextHeight}, {"midi_scroll_x", view.getViewPositionX()}, {"midi_scroll_y", y}});
+    }
+    void pitchZoom(int command)
+    {
+        if (!canPitchZoom() || !onView)
+            return;
+        if (command == 268 || command == 269 || command == 272)
+        {
+            setPitchHeight(command == 272 ? 14. : noteHeight * (command == 268 ? 1.25 : .8),
+                           view.getMaximumVisibleHeight() * .5);
+            return;
+        }
+        auto notes = command == 270 ? canvas.selectedFacts() : Json::array();
+        if (notes.empty())
+            notes = currentClip["notes"];
+        int low = 127, high = 0;
+        for (const auto& n : notes)
+        {
+            low = std::min(low, n["pitch"].get<int>());
+            high = std::max(high, n["pitch"].get<int>());
+        }
+        if (notes.empty())
+        {
+            low = 0;
+            high = 127;
+        }
+        low = std::max(0, low - 2);
+        high = std::min(127, high + 2);
+        const double height = PianoPitchAxis::bounded(double(view.getMaximumVisibleHeight()) / (high - low + 1));
+        const int y = std::clamp(int(std::lround(PianoPitchAxis{height}.top(high))), 0,
+                                 std::max(0, PianoPitchAxis{height}.contentHeight() - view.getMaximumVisibleHeight()));
+        onView({{"midi_note_height", height}, {"midi_scroll_x", view.getViewPositionX()}, {"midi_scroll_y", y}});
     }
     Json viewedClip() const
     {
@@ -862,6 +950,9 @@ public:
         detail.setBounds(12, detailed ? 112 : 36, getWidth() - 24, 22);
         rulerTop = detailed ? 138 : 60;
         noteTop = rulerTop + 24;
+        pitchIn.setBounds(getWidth() - 98, rulerTop + 2, 28, 20);
+        pitchOut.setBounds(getWidth() - 66, rulerTop + 2, 28, 20);
+        pitchFit.setBounds(getWidth() - 34, rulerTop + 2, 28, 20);
         view.setBounds(0, noteTop, getWidth(), std::max(0, getHeight() - noteTop - 68));
         velocityLane.setBounds(0, std::max(noteTop, getHeight() - 64), getWidth(), 60);
         refreshClip();
@@ -918,7 +1009,7 @@ private:
         }
         currentClip = clip;
         canvas.update(clip, revision, playing, division(), std::max(100, view.getMaximumVisibleWidth()), positionBeat,
-                      session, zoom);
+                      session, zoom, noteHeight);
         refreshSelection();
         repaint();
     }
@@ -1021,6 +1112,7 @@ private:
     juce::Slider velocity;
     juce::TextButton remove{text("删除所选音符")}, quantize{text("预览量化")}, transpose{text("预览移调")},
         selectAll{text("全选音符")}, quickQuantize{text("量化所选")}, advanced{text("变换…")};
+    juce::TextButton pitchIn{"+"}, pitchOut{text("−")}, pitchFit{"N"};
     juce::Label detail, strengthLabel, rangeLabel;
     juce::TextEditor strength, semitones, start, end;
     Json track = nullptr, currentClip = nullptr;
@@ -1029,5 +1121,5 @@ private:
     uint64_t revision = 0;
     bool playing = false, restoring = false, detailed = false;
     int rulerTop = 60, noteTop = 84;
-    double positionBeat = 0, zoom = 72.;
+    double positionBeat = 0, zoom = 72., noteHeight = 14.;
 };

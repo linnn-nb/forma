@@ -1,0 +1,30 @@
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+      Start 75: forma_native_editor_interactions
+ 1/12 Test #75: forma_native_editor_interactions ...   Passed    9.74 sec
+      Start 80: forma_native_midi_editor
+ 2/12 Test #80: forma_native_midi_editor ...........   Passed    6.49 sec
+      Start 81: forma_native_rulers
+ 3/12 Test #81: forma_native_rulers ................   Passed    5.51 sec
+      Start 82: forma_native_comments
+ 4/12 Test #82: forma_native_comments ..............   Passed    4.62 sec
+      Start 84: forma_native_edit_views
+ 5/12 Test #84: forma_native_edit_views ............   Passed    3.60 sec
+      Start 85: forma_native_midi_dock
+ 6/12 Test #85: forma_native_midi_dock .............   Passed    3.36 sec
+      Start 86: forma_native_track_presentation
+ 7/12 Test #86: forma_native_track_presentation ....   Passed    6.37 sec
+      Start 87: forma_native_automation_timeline
+ 8/12 Test #87: forma_native_automation_timeline ...   Passed    7.62 sec
+      Start 89: forma_native_zoomer
+ 9/12 Test #89: forma_native_zoomer ................   Passed   12.20 sec
+      Start 90: forma_native_waveform_zoom
+10/12 Test #90: forma_native_waveform_zoom .........   Passed   11.84 sec
+      Start 95: forma_native_midi_zoom
+11/12 Test #95: forma_native_midi_zoom .............   Passed    7.48 sec
+      Start 96: forma_native_zoom_toggle
+12/12 Test #96: forma_native_zoom_toggle ...........   Passed    6.91 sec
+
+100% tests passed, 0 tests failed out of 12
+
+Total Test time (real) =  85.77 sec

@@ -7,7 +7,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 12},
+    return {{"ui_schema", 13},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -27,6 +27,7 @@ Json defaults()
             {"midi_clip", ""},
             {"midi_grid_beats", .5},
             {"midi_pixels_per_beat", 72.},
+            {"midi_note_height", 14.},
             {"midi_scroll_x", 0},
             {"midi_scroll_y", 746},
             {"edit_views", {{"io", false}, {"inserts", false}, {"sends", false}, {"comments", false}}},
@@ -83,12 +84,14 @@ void validate(const Json& value)
     {
         if (!value.contains(it.key()) || value[it.key()].type() != it.value().type())
         {
+            if (it.key() == "midi_note_height" && value.contains(it.key()) && value[it.key()].is_number())
+                continue;
             // nlohmann distinguishes positive integer storage; accept both integer signs.
             if (!it.value().is_number_integer() || !value.contains(it.key()) || !value[it.key()].is_number_integer())
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 12)
+    if (value["ui_schema"] != 13)
         throw std::runtime_error("unsupported UI schema");
     const auto& columns = value["edit_views"];
     if (!columns.is_object() || columns.size() != 4)
@@ -245,8 +248,11 @@ void validate(const Json& value)
     }
     if (value["midi_dock_height"].get<int64_t>() < 220 || value["midi_dock_height"].get<int64_t>() > 1200 ||
         value["midi_scroll_x"].get<int64_t>() < 0 || value["midi_scroll_x"].get<int64_t>() > 2000000 ||
-        value["midi_scroll_y"].get<int64_t>() < 0 || value["midi_scroll_y"].get<int64_t>() > 1824 ||
-        value["midi_pixels_per_beat"].get<double>() < 16 || value["midi_pixels_per_beat"].get<double>() > 512 ||
+        value["midi_scroll_y"].get<int64_t>() < 0 ||
+        value["midi_scroll_y"].get<int64_t>() > std::ceil(32 + 128 * value["midi_note_height"].get<double>()) ||
+        !std::isfinite(value["midi_note_height"].get<double>()) || value["midi_note_height"] < .25 ||
+        value["midi_note_height"] > 48. || value["midi_pixels_per_beat"].get<double>() < 16 ||
+        value["midi_pixels_per_beat"].get<double>() > 512 ||
         !std::isfinite(value["midi_pixels_per_beat"].get<double>()) ||
         (value["midi_grid_beats"] != .25 && value["midi_grid_beats"] != .5 && value["midi_grid_beats"] != 1.) ||
         value["midi_clip"].get<std::string>().size() > 64)
@@ -283,7 +289,7 @@ Json readUiState(const juce::ValueTree& metadata)
         const bool v5 = saved.value("ui_schema", Json(0)) == 5;
         if (v4 || v5)
         {
-            if (saved.size() != result.size() - 10 || !saved.contains("edit_views") ||
+            if (saved.size() != result.size() - 11 || !saved.contains("edit_views") ||
                 !saved["edit_views"].is_object() || saved["edit_views"].size() != (v4 ? 3 : 4))
                 throw std::runtime_error("incomplete legacy Edit views");
             for (const auto* key : {"io", "inserts", "sends"})
@@ -299,7 +305,7 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 6)
         {
-            if (saved.size() != result.size() - 7)
+            if (saved.size() != result.size() - 8)
                 throw std::runtime_error("incomplete schema6 UI state");
             saved["track_heights"] = result["track_heights"];
             saved["zoom_presets"] = result["zoom_presets"];
@@ -307,21 +313,21 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 7)
         {
-            if (saved.size() != result.size() - 5)
+            if (saved.size() != result.size() - 6)
                 throw std::runtime_error("incomplete schema7 UI state");
             saved["track_views"] = result["track_views"];
             saved["ui_schema"] = 8;
         }
         if (saved.value("ui_schema", Json(0)) == 8)
         {
-            if (saved.size() != result.size() - 4)
+            if (saved.size() != result.size() - 5)
                 throw std::runtime_error("incomplete schema8 UI state");
             saved["zoom_state"] = result["zoom_state"];
             saved["ui_schema"] = 9;
         }
         if (saved.value("ui_schema", Json(0)) == 9)
         {
-            if (saved.size() != result.size() - 3 || !saved.contains("zoom_state") ||
+            if (saved.size() != result.size() - 4 || !saved.contains("zoom_state") ||
                 !saved["zoom_state"].is_object() || !saved["zoom_state"].contains("history") ||
                 !saved["zoom_state"]["history"].is_array())
                 throw std::runtime_error("incomplete schema9 zoom state");
@@ -337,7 +343,7 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 10)
         {
-            if (saved.size() != result.size() - 2 || !saved.contains("zoom_state") ||
+            if (saved.size() != result.size() - 3 || !saved.contains("zoom_state") ||
                 !saved["zoom_state"].is_object() || !saved["zoom_state"].contains("history") ||
                 !saved["zoom_state"]["history"].is_array())
                 throw std::runtime_error("incomplete schema10 zoom state");
@@ -353,10 +359,17 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 11)
         {
-            if (saved.size() != result.size() - 1)
+            if (saved.size() != result.size() - 2)
                 throw std::runtime_error("incomplete schema11 UI state");
             saved["zoom_toggle"] = defaultZoomToggle();
             saved["ui_schema"] = 12;
+        }
+        if (saved.value("ui_schema", Json(0)) == 12)
+        {
+            if (saved.size() != result.size() - 1 || saved.contains("midi_note_height"))
+                throw std::runtime_error("incomplete schema12 UI state");
+            saved["midi_note_height"] = 14.;
+            saved["ui_schema"] = 13;
         }
         if (legacy || v2 || v3)
         {
@@ -381,7 +394,7 @@ Json readUiState(const juce::ValueTree& metadata)
                     if (!o.is_object() || o.value("kind", std::string{}) != "clip")
                         throw std::runtime_error("invalid legacy object selection");
         }
-        else if (saved["ui_schema"] != 12 || saved.size() != result.size())
+        else if (saved["ui_schema"] != 13 || saved.size() != result.size())
             throw std::runtime_error("unsupported or incomplete UI schema");
         if (legacy)
             result["ui_schema"] = 1;
@@ -397,7 +410,7 @@ Json readUiState(const juce::ValueTree& metadata)
         result["workspace"] = "edit";
         result["midi_dock"] = true;
     }
-    result["ui_schema"] = 12;
+    result["ui_schema"] = 13;
     validate(result);
     return result;
 }

@@ -16,6 +16,7 @@
 #include "MemoryLocationsPanel.h"
 #include "SpotPlacementPanel.h"
 #include "MidiDock.h"
+#include "PianoPitchAxis.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
 #include "../TimelineState.h"

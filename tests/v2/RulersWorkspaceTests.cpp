@@ -302,13 +302,13 @@ int main(int argc, char** argv)
         auto old = beforeBad;
         old["ui_schema"] = 5;
         for (const auto* key : {"rulers", "main_time_scale", "timecode_fps", "track_heights", "zoom_presets",
-                                "track_views", "zoom_state", "waveform_zoom", "midi_zoom", "zoom_toggle"})
+                                "track_views", "zoom_state", "waveform_zoom", "midi_zoom", "zoom_toggle", "midi_note_height"})
             old.erase(key);
         juce::ValueTree meta("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(old.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 12 && migrated["rulers"] == Rulers::defaults() &&
+        check(migrated["ui_schema"] == 13 && migrated["rulers"] == Rulers::defaults() &&
                   migrated["edit_views"] == old["edit_views"],
               "complete schema5 migrates preserving prior columns and default ruler geometry");
         old.erase("row_height");
@@ -348,7 +348,7 @@ int main(int argc, char** argv)
               "all ruler and loop edits preserve original PCM hash and clip mapping");
         Json report{{"result", "passed"},
                     {"checks", checks},
-                    {"ui_schema", 12},
+                    {"ui_schema", 13},
                     {"scope", "real native components and Edit; closed audio device; desktop acceptance unexecuted"}};
         if (argc > 1)
         {

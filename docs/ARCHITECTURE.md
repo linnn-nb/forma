@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
+
 当前UI增量（2026-10-09，Zoom Toggle）：schema12新增zoom_toggle，7项偏好、active、9字段out/saved、稳定targets及冻结的恢复策略。WorkspaceZoomToggle／ZoomToggle负责只读规划、GUI入口和L1写入；UiState::prepareUiStatePatch提供同一套纯预检，L1捕获所有活跃视图旁路更新到saved。普通缩放不进工程Undo；Remove Range由一笔human Plan提交range.clear＋insertion.set，完整UI预检在前。旧1–11严格迁移，Zoomer16条历史仍为原4字段；Toggle使用独立9字段基线。Waveforms只拟合真实已载入的源缩略峰值，不增加分析／MCP资格或RT路径；实际验证见VERIFICATION.md首节。
 
 当前UI增量（2026-10-09，Overview）：原生命令262、视图菜单与Command点Zoomer共用WorkspaceZoom→L1 updateUiState，span=实际时间线可绘制像素×256。保持中心并只夹水平位置，不改工具／纵向／轨高／选区／revision／工程Undo。沿用schema11及16条联合缩放历史，重复相同比例不入栈；窗口后来调整时仍保留采样跨度，再调用重新计算。无新SDK／实时／MCP／分析修改；Zoom Toggle未完成，完整资格见VERIFICATION.md首节。

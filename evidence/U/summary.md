@@ -1,5 +1,19 @@
 # U 原生界面重构
 
+## U-P0-PIANO-PITCH-01（2026-10-09）
+
+结果：Release/固定身份deep/strict通过；新专项57检查通过，另外12项相关回归通过0失败，85.77秒。专项直接执行成功（非本轮CTest批次中的一项）；见piano-pitch-tests.json和piano-pitch-affected-tests.txt。构建/诊断输出位于build-v2-tracktion/piano-pitch-*.log，旧回执保持原历史。
+
+功能与代码：ui/PianoPitchAxis.h是键盘、音符、绘制、组拖拽共同的浮点音高轴；MidiEditor.h接原生+/−/N、所选/全部适配、ControlOption滚轮指针锚定、滚动和尺度变化取消编辑草稿。WorkspaceCommands.cpp注册268–272并防文本输入误触；WorkspaceLayout.cpp菜单/键位设置共用注册表。WorkspaceRefresh.cpp换片段滚动也读该尺度。UiState.cpp仅L1存储，schema13及旧1–12迁移；视图不占工程Undo/revision，MIDI编辑沿现有humanPlan/nativeUndo。
+
+亲手试：build-v2-tracktion/FormaPianoPitchPreview.app，双击实际MIDI片段；编辑器标尺右侧+/−/N。ControlOption↑/↓缩放，ControlOptionF适配所选（空选则全部），ControlOptionShiftF强制全部，ControlOptionShift0复位；ControlOption滚轮以指针音高为锚连续缩放。键位设置可改，保存重开保留高度、滚动、选中及自定义键。可直接打开专项test_directory中的PianoPitch.tracktionedit，包含真实MIDI和实际220Hz源音频。
+
+证据：原生浮点尺度两音符移动两半音、一笔事务/Undo/Redo、绘制实际65音高、右缘裁剪实际时长、力度真实修改且不变音高、几何变化取消陈旧草稿、原生文件关闭/重开、自定义键执行、文本输入与最小窗口控制。实际双声道48k/24bit源，前后各48000帧导出格式验证，PCM最大差0；source SHA256 4f5d5ec0dbb66946ef0b6d4052bf09a7fdf2ae39897ebad2b36a67ad9a7fe4a1。MIDI轨无虚拟乐器，音频证明不扩张成乐器/实体MIDI验收。
+
+修正：旧会话异步键位通知先写入默认键，已在会话变化时优先恢复实际新映射，专项以不强制refresh的立即重开重现并验证。WAV整文件哈希因容器内容不同未通过，最终按真实解码PCM比较，不放宽1e-7预定音频容差。键高.25–48px，低于1px是密集概览，精确单音符编辑需放大；内容边缘锚点受滚动边界约束。Fit按当前窗口高度一次适配，不宣称自动响应后续窗口变化。未扩展冻结MCP/分析、SDK或依赖。
+
+GUI：getApp返回Mac锁定；无实体鼠标/默认键/试听/重开或截图。仅本轮LaunchServices预览PID1374已停止，无残留；旧窗口保留。正式二进制SHA256 4043d3966d2e085152c0b028abb1b3ce528374cb88d6f08d5380d3503b8e433f；预览SHA256 b0c0d3b7eef619006ab14ffeedf77b5a68ac7fcad49d9f369527794012acfcba。完整U＋P0未完成，无全量回归/DMG。
+
 ## U-P0-ZOOM-TOGGLE-01：原生选区／存储视图切换（2026-10-09）
 
 结论：263–267接通E进入／返回、OptionShiftE取消保留当前、ControlOptionE保持轨道视图、CommandOptionShiftE偏好、Option点亮按钮清除。原生ZT/Toggle按钮亮灯、7项偏好、Selection/Last Used、六档高度、三种当前可用视图、独立Grid、换轨跟随与多轨Fit例外实际执行。UI schema12保存9字段out/saved、稳定targets及进入时恢复策略；L1捕获所有活跃旁路视图补丁，不改工程事实／revision／Undo。Remove Range预检完整视图后提交一个human版本绑定Plan(range.clear＋insertion.set)，真实Undo/Redo通过。没有新RT、依赖、SDK、MCP或分析资格。
