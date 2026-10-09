@@ -72,3 +72,7 @@ evidence/U/*
 !evidence/U/automation-move-regression.txt
 !evidence/U/automation-move-qualification.json
 !evidence/U/automation-move-desktop.jpg
+
+!evidence/U/boundary-nudge-tests.json
+!evidence/U/boundary-nudge-regression.txt
+!evidence/U/boundary-nudge-qualification.json

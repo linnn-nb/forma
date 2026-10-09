@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-TRIM-NUDGE-01（2026-10-09）：GUI命令630–633只生成clip.trim；同笔human Plan，使用L1现有组展开、媒体hash、版本、边界和native Undo校验。音乐Nudge按最早选中边界计算公共样本偏移，保留组相位/边界差；停止且完整可编辑音频目标才启用。只增GUI命令，不扩充冻结MCP、schema、依赖、SDK或实时路径。当前曲线留在工程时间；PT Trim自动化边界资格仍待核验。TrackHeader声像数值改右侧，避免覆盖轨道视图；完整参数身份不截断。
+
 U-P0-AUTOMATION-CLIPS-MOVE-01：AutomationMove.cpp在实际编辑组展开之后，为human clip.move编译automation.clips.move={track,moves:[{clip,position_samples}],state_hash}；preview/commit核对完整重编译结果。冻结原曲线→锚定源空隙→覆盖目标→移动Clip，一笔native Undo；原点ID/附加属性保留。相同偏移源区间合并；不同偏移源重叠或目标交叉拒绝，无曲线轨保留普通音频重叠。共享曲段器用最大有界居中弦，实际误差仍为1e-7参数跨度＋float ULP，8192派生点/65536点/64操作预算不变。秒基/human/local_gui；已有曲线的拆分/修剪/删除/导入/复制与移动复合Plan拒绝。无新SDK、依赖、MCP工具或实时路径；测试AutomationMoveTests，实测见VERIFICATION。
 
 U-P0-AUTOMATION-CLIPS-CLEAR-01：新增 L1 AudioClipClearCommands，封闭 audio_clip_clear schema1={clips稳定ID数组,action:cut/delete,ripple:bool}；human/local_gui，preview/commit按事实重编译全部操作，和其他描述符互斥，拒绝裸 automation.clips.clear。完整显式编辑组对象闭包、源hash、曲线hash、revision/session和幂等约束不变。每轨实际区间排序合并，保留空隙；Shuffle拒绝未选重叠片段/不可移动后续片段，按区间并集长度移动。曲线先写再删除/移动对象，全部一笔native Undo。AutomationClear复用原生切段器/float曲线写入器，右至左处理区间，保留1e-7原生参数跨度投影预算、8192派生点/65536点和64操作上限。GUI ClipPanel返回bool，待预览时false，不清草稿或伪称已提交；立即刷新预览按钮。无新引擎、SDK补丁、依赖、MCP工具或实时路径。实现和测试位置见VERIFICATION本增量。

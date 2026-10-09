@@ -45,6 +45,11 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id = editCommand::slip; id <= editCommand::pasteOriginal; ++id)
             addMenuCommand(p, id);
         addMenuCommand(p, editCommand::remove);
+        juce::PopupMenu trimNudge;
+        for (int id : {editCommand::trimStartBack, editCommand::trimStartForward, editCommand::trimEndBack,
+                       editCommand::trimEndForward})
+            addMenuCommand(trimNudge, id);
+        p.addSubMenu(text("修剪（Nudge）"), trimNudge);
         addMenuCommand(p, 226);
         addMenuCommand(p, 280);
         addMenuCommand(p, 218);

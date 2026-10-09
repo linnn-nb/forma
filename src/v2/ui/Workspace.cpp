@@ -777,6 +777,10 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         menu.addSeparator();
         menu.addCommandItem(&commandManager, editCommand::split);
         menu.addCommandItem(&commandManager, editCommand::spot);
+        juce::PopupMenu trims;
+        for (int command = editCommand::trimStartBack; command <= editCommand::trimEndForward; ++command)
+            trims.addCommandItem(&commandManager, command);
+        menu.addSubMenu(text("修剪（Nudge）"), trims);
         menu.addCommandItem(&commandManager, editCommand::remove);
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&editArea).withParentComponent(this));
     };

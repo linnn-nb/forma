@@ -164,8 +164,7 @@ public:
         pan.setRange(-1, 1, .01);
         pan.setDoubleClickReturnValue(true, 0);
         pan.setSliderStyle(strip ? juce::Slider::LinearHorizontal : juce::Slider::RotaryHorizontalVerticalDrag);
-        pan.setTextBoxStyle(strip ? juce::Slider::TextBoxRight : juce::Slider::TextBoxBelow, false, strip ? 58 : 76,
-                            20);
+        pan.setTextBoxStyle(juce::Slider::TextBoxRight, false, strip ? 58 : 50, 20);
         pan.textFromValueFunction = [](double p)
         {
             return std::abs(p) <= .005
@@ -266,6 +265,7 @@ public:
         viewChoice.setSelectedId(index, juce::dontSendNotification);
         if (!parameter.empty() && index == 1)
             viewChoice.setText(text("自动化目标不可用"), juce::dontSendNotification);
+        viewChoice.setTooltip(text("轨道视图 · 片段 / 音量 / 声像 / 实际插件参数\n当前：") + viewChoice.getText());
     }
     void cancelHeightGesture()
     {
@@ -478,8 +478,8 @@ public:
                        : hasPan ? getWidth() - 112
                                 : getWidth() - 20,
                        strip ? std::max(32, getHeight() - faderTop - 71) : 29);
-        pan.setBounds(strip ? 12 : getWidth() - 96, strip ? (compact ? 296 : 334) : 76, strip ? getWidth() - 24 : 84,
-                      strip ? 30 : 60);
+        pan.setBounds(strip ? 12 : getWidth() - 96, strip ? (compact ? 296 : 334) : 82, strip ? getWidth() - 24 : 84,
+                      strip ? 30 : 29);
         panLaw.setBounds(12, compact ? 330 : 371, getWidth() - 24, 25);
         if (!strip)
         {

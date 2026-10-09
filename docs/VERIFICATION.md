@@ -1,5 +1,17 @@
 # 验证状态
 
+## U-P0-TRIM-NUDGE-01（2026-10-09）
+
+结论：四个音频起点/终点 Nudge 修剪命令与轨道头声像布局已实现；Release/固定叶证书deep/strict验签通过，6/6不同受影响CTest最终通过、633检查（专项189，相关444）。专项16.39秒，五项相关40.32秒。完整U＋P0未完成，不进P1。
+
+- 实现：src/v2/ui/EditingModel.h、WorkspaceCommands/Editing/Layout/Workspace、TrackHeader；测试 tests/v2/BoundaryNudgeTests.cpp / forma_native_boundary_nudge。GUI只生成既有L1 clip.trim Plan，一笔human native Undo；编辑组展开、hash/版本/锁定/源边界复用现有实现。四个默认键位与编辑/右键菜单及可改键共享注册表；停止/完整可编辑音频目标才启用。
+- 真实6秒48k/24-bit stereo源、Volume/Pan/实际EQ三条曲线。四方向×sample/10ms/100ms/beat/quarter-beat共20组合；120→60BPM实测边界锚点，源偏移、稳定曲线点属性、单笔Undo/Redo、四方向Save后Undo/Open、原媒体SHA256、自定义ControlOptionShiftK、编辑组不同边界与锁定/源越界整笔拒绝通过。实际原生菜单completion直接执行四个sample负载。当前曲线**保留在工程时间**，不是将Trim跟随资格冒充完成。
+- 实际Tracktion stereo WAV独立头信息/PCM验证；起点右移100ms后，起点前PCM为0，内部PCM与原处理链渲染最大差0，既定预算2e-5、边缘各2048帧排除。不能推广到边界瞬态、第三方或主观听感。四种140/180/280/640高轨道头的可见声像/视图控件无交叠；真实完整参数名tooltip保持。五项相关为navigation/editor_interactions/automation_timeline/group_transforms/clip_time；历史JSON测试后按原SHA逐字节恢复，新运行hash/检查数保存在专项qualification。
+- 首轮编译及测试失败：新增Make目标清单需重启调用、JUCE菜单API参数数目、自动化点fixture缺ref、现有菜单completion而非JUCE自动command/action分发与测试检查不匹配；修正测试入口，使用实际menuItemSelected和命令执行回执验证，没有降低数值/时间/撤销断言。原失败输出与最终日志hash保留在evidence/U/boundary-nudge-qualification.json，本地完整日志在ignored build。
+- 原生桌面：同一生产二进制/固定证书隔离预览、真实CoreAudio外置耳机48k/512；打开工程并展开编辑→修剪子菜单看到四项，点击执行时Mac锁定。**未完成实体修剪/保存/Undo/Open，无本轮新截图或听感通过声明**。仅本轮PID95816因锁定SIGTERM清理，exec143；用户旧预览保留。亲手试 build-v2-tracktion/OpenBoundaryNudgeDemo.command；菜单修剪（Nudge）或ControlOptionShiftK改起点，⌘Z/Shift⌘Z，⌘S新副本、⌘O重开。
+
+边界：普通非破坏性音频边缘修剪；多目标音乐单位按最早选中边界计算公共样本偏移。Pro Tools Trim边界自动化、模式特有行为、MIDI与播放时Nudge仍待核验/实现；无新依赖、SDK、RT路径、MCP工具或DMG。下一项先完成实体验收及Trim明确的自动化边界语义，再补MIDI与剩余U＋P0。
+
 ## U-P0-AUTOMATION-CLIPS-MOVE-01（2026-10-09）
 
 结论：整音频片段 Move/Grabber/Nudge/Spot/检查器的秒基原生自动化跟随、编辑组、单笔 Undo/Redo、保存重开与可改键已验证。Release 构建与固定叶证书 deep/strict 验签通过；16项不同受影响CTest最终通过，2988检查（新499，既有2489）。15项相关229.11秒；最后受影响clip/editor/clip_time三项通过，随后新专项1/1、43.86秒。完整U＋P0未完成，不进P1。

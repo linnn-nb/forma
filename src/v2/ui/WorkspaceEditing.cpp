@@ -120,6 +120,48 @@ void Workspace::executeEditCommand(int id)
             if (workspaceSession != commands.sessionToken() || facts["revision"] != commands.querySummary()["revision"])
                 throw std::runtime_error("project changed before editing command; refresh and retry");
             const auto position = facts["position_samples"].get<int64_t>();
+            if (editCommand::boundaryNudge(id))
+            {
+                const auto clips = selectedEditClips();
+                require(!clips.empty(), "select complete audio clips before boundary Nudge");
+                const bool startEdge = id == editCommand::trimStartBack || id == editCommand::trimStartForward;
+                const int direction = id == editCommand::trimStartBack || id == editCommand::trimEndBack ? -1 : 1;
+                int64_t anchor = std::numeric_limits<int64_t>::max();
+                for (const auto& clip : clips)
+                {
+                    require(clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                                !clip.value("locked", false),
+                            "entire boundary Nudge refused: unsupported or locked audio clip");
+                    const int64_t edge =
+                        clip["start_samples"].get<int64_t>() + (startEdge ? 0 : clip["length_samples"].get<int64_t>());
+                    anchor = std::min(anchor, edge);
+                }
+                // One shared offset, evaluated at the selected edge (not at the
+                // playhead). Edit-group expansion can then validate every peer.
+                const int64_t delta =
+                    editing.nudge == "beat" || editing.nudge == "quarter-beat"
+                        ? commands.offsetByBeats(anchor, direction * (editing.nudge == "beat" ? 1. : .25)) - anchor
+                        : direction * int64_t(editing.nudge == "sample" ? 1
+                                              : editing.nudge == "10ms" ? 480
+                                                                        : 4800);
+                Json operations = Json::array();
+                for (const auto& clip : clips)
+                {
+                    const int64_t first = clip["start_samples"].get<int64_t>() + (startEdge ? delta : 0),
+                                  last = clip["start_samples"].get<int64_t>() + clip["length_samples"].get<int64_t>() +
+                                         (startEdge ? 0 : delta);
+                    require(first >= 0 && last > first, "entire boundary Nudge would cross start or invert a clip");
+                    operations.push_back(operation(
+                        "clip.trim", {{"clip", clip["id"]}, {"start_samples", first}, {"end_samples", last}}));
+                }
+                // Native track curves remain at project time for this ordinary
+                // nondestructive edge edit. Do not claim PT boundary equivalence.
+                const auto receipt = commands.commit(commands.makePlan("human", std::move(operations)));
+                require(receipt.value("state", std::string{}) == "committed", "boundary Nudge did not commit");
+                message(text(startEdge ? "Trim 起点已按 Nudge 修剪 · 曲线保留在工程时间 · 一次 Undo"
+                                       : "Trim 终点已按 Nudge 修剪 · 曲线保留在工程时间 · 一次 Undo"));
+                return;
+            }
             const bool extending = id == editCommand::extendPrevious || id == editCommand::extendNext;
             if (id == editCommand::previousBoundary || id == editCommand::nextBoundary || extending)
             {

@@ -63,6 +63,14 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::commandModifier},
         {editCommand::nudgeBack, "Nudge 左移", "编辑", ','},
         {editCommand::nudgeForward, "Nudge 右移", "编辑", '.'},
+        {editCommand::trimStartBack, "Trim 起点左移（Nudge）", "编辑", juce::KeyPress::numberPadSubtract,
+         juce::ModifierKeys::altModifier},
+        {editCommand::trimStartForward, "Trim 起点右移（Nudge）", "编辑", juce::KeyPress::numberPadAdd,
+         juce::ModifierKeys::altModifier},
+        {editCommand::trimEndBack, "Trim 终点左移（Nudge）", "编辑", juce::KeyPress::numberPadSubtract,
+         juce::ModifierKeys::commandModifier},
+        {editCommand::trimEndForward, "Trim 终点右移（Nudge）", "编辑", juce::KeyPress::numberPadAdd,
+         juce::ModifierKeys::commandModifier},
         {editCommand::previousBoundary, "上一个片段边界", "编辑", juce::KeyPress::tabKey,
          juce::ModifierKeys::altModifier},
         {editCommand::nextBoundary, "下一个片段边界", "编辑", juce::KeyPress::tabKey},
@@ -492,6 +500,16 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                             active = active && splitTarget;
                         }
                     }
+                }
+                if (editCommand::boundaryNudge(id))
+                {
+                    const auto clips = selectedEditClips();
+                    active = !mix && !midiKeyboardFocus() && !facts.value("playing", false) &&
+                             facts.value("parameter_capture", Json(nullptr)).is_null() &&
+                             pendingClipboardPlan.empty() && !clips.empty();
+                    for (const auto& clip : clips)
+                        active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                                 !clip.value("locked", false);
                 }
                 if (id == editCommand::extendPrevious || id == editCommand::extendNext)
                     active = !mix && !facts.value("playing", false) &&
@@ -958,8 +976,8 @@ bool Workspace::perform(const InvocationInfo& invocation)
         executeClipboardCommand(id);
         return true;
     }
-    if (id == editCommand::extendPrevious || id == editCommand::extendNext || id == editCommand::smart ||
-        id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
+    if (editCommand::boundaryNudge(id) || id == editCommand::extendPrevious || id == editCommand::extendNext ||
+        id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
         (id >= editCommand::grid && id <= editCommand::split))
     {
         executeEditCommand(id);

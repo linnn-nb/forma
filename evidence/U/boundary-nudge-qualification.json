@@ -1,0 +1,106 @@
+{
+  "requirement": "U-P0-TRIM-NUDGE-01",
+  "verified_on": "2026-10-09",
+  "release_build": "passed",
+  "fixed_leaf_signature": "passed",
+  "final_ctest_tests": 6,
+  "final_checks": 633,
+  "new_checks": 189,
+  "ctest_seconds": {
+    "new": 16.39,
+    "related": 40.32
+  },
+  "fresh_related_reports": {
+    "evidence/U/group-transforms-tests.json": {
+      "sha256": "a4cfa3a90db3ab0d3e28e1a0c543efec00e9f1c5040fb08daa1a48b560307def",
+      "checks": 96,
+      "state": null
+    },
+    "evidence/U/editor-tests.json": {
+      "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1",
+      "checks": 81,
+      "state": null
+    },
+    "evidence/U/clip-time-tests.json": {
+      "sha256": "afe04b6a7927bfa7b86c3df6e30eecf6402f88f2131ef786f0d4f41d17879790",
+      "checks": 76,
+      "state": null
+    },
+    "evidence/U/navigation-tests.json": {
+      "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df",
+      "checks": 48,
+      "state": null
+    },
+    "evidence/U/automation-timeline-tests.json": {
+      "sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f",
+      "checks": 143,
+      "state": null
+    }
+  },
+  "pcm": {
+    "budget": 2e-05,
+    "max_error": 0.0,
+    "channels": 2,
+    "sample_rate": 48000,
+    "frames": 288000,
+    "comparison": "interior after start Trim; 2048-frame boundary exclusion; pre-trim-region independently silent"
+  },
+  "desktop": {
+    "state": "partial",
+    "observed": "own production-binary preview opened; Edit submenu displayed four enabled Trim Nudge items",
+    "interrupted": "The Mac is locked and automatic unlock could not unlock it.",
+    "physical_trim_save_undo_open": "not_completed",
+    "owned_pid": 95816,
+    "cleanup": "SIGTERM; exec exit 143; old user preview windows untouched"
+  },
+  "unverified": [
+    "Pro Tools Trim boundary automation parity",
+    "physical trim/save/reopen for this increment",
+    "complete U+P0",
+    "hardware recording/listening/third-party/Windows/endurance"
+  ],
+  "failures_before_repair": [
+    "first multi-target Make invocation regenerated its target list: app built, newly added test target required a second invocation",
+    "JUCE containsCommandItem takes one argument; compile call corrected",
+    "automation.point.add fixture omitted required unique ref; actual L1 rejected it; fixture corrected",
+    "JUCE containsCommandItem/action checks mismatched existing menu-completion dispatch; recursive enabled item check plus actual menuItemSelected trim execution replaced invalid harness assertions"
+  ],
+  "logs": {
+    "boundary-nudge-final-build.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-final-build.log",
+      "sha256": "f16cd5881effe1aaeeb56202166cba318006251b8d89d433ac164b0b5cf833c8"
+    },
+    "boundary-nudge-rebuild-4.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-rebuild-4.log",
+      "sha256": "342f457df980a7256130827bd1dded6b585301054df4539b04db54848476bf14"
+    },
+    "boundary-nudge-fourth-test.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-fourth-test.log",
+      "sha256": "3ccd2d8ce93ff6c1fa545758c1879a9241e8a80e7570742581b04d7deceedfdf"
+    },
+    "boundary-nudge-related-tests.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-related-tests.log",
+      "sha256": "d7158d063541a41b7ded72d33f72bdd079e06e961d57f17d11f3e7b0e098d777"
+    },
+    "boundary-nudge-build-failed-menu-api.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-build-failed-menu-api.log",
+      "sha256": "ff8535a2265b76785b3604b5c53981d1e7bb3fa532ca53c85c24fc2ed72913f9"
+    },
+    "boundary-nudge-first-test.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-first-test.log",
+      "sha256": "38676e6dd3f3060236135f4b958cc3bd339251cb940e4736291a69b1b1d0f204"
+    },
+    "boundary-nudge-second-test.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-second-test.log",
+      "sha256": "7c2b545233c4697ff8ed5b8d17890050d0e9099db416a6cb3a3efacfe0418f26"
+    },
+    "boundary-nudge-third-test.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-third-test.log",
+      "sha256": "cd178f55ad54a1c10427a03c9d1e6133e6d50abf3acd547d3e811534d98fc060"
+    },
+    "boundary-nudge-desktop.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-desktop.log",
+      "sha256": "74f6bb7f58fc86fe8134ac593f3ac9fceea8b6fff934e296cd77415d1343501c"
+    }
+  }
+}
