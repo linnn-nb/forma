@@ -291,22 +291,30 @@ void Commands::registerMusicCommands(Json& registry)
     timing["units"] = {
         {"unit", "48000 Hz session samples, or native Tracktion meter divisions"},
         {"amount", "signed edge displacement; samples integral; beats preserve source duration on move"}};
-    add("midi.clips.erase", {{"clipboard", str}});
+    add("midi.clips.erase", {{"clipboard", str}, {"ripple", {{"type", "boolean"}}}, {"state_hash", str}});
+    registry.back()["schema"]["required"] = {"clipboard"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
-    add("timeline.clips.erase", {{"clipboard", str}});
+    add("timeline.clips.erase", {{"clipboard", str}, {"ripple", {{"type", "boolean"}}}, {"state_hash", str}});
+    registry.back()["schema"]["required"] = {"clipboard"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
     add("timeline.clips.paste", {{"clipboard", str},
                                  {"tracks", {{"type", "array"}, {"items", str}, {"maxItems", 64}}},
                                  {"position_samples", position},
-                                 {"mode", {{"type", "string"}, {"enum", {"replace", "overlay"}}}}});
+                                 {"removal_end_samples", position},
+                                 {"state_hash", str},
+                                 {"mode", {{"type", "string"}, {"enum", {"replace", "overlay", "shuffle"}}}}});
+    registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
     add("midi.clips.paste", {{"clipboard", str},
                              {"tracks", {{"type", "array"}, {"items", str}, {"maxItems", 64}}},
                              {"position_samples", position},
-                             {"mode", {{"type", "string"}, {"enum", {"replace", "overlay"}}}}});
+                             {"removal_end_samples", position},
+                             {"state_hash", str},
+                             {"mode", {{"type", "string"}, {"enum", {"replace", "overlay", "shuffle"}}}}});
+    registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
     add("midi.notes.erase", {{"clip", str}, {"note_ids", {{"type", "array"}, {"items", str}, {"maxItems", 4096}}}});
@@ -770,9 +778,13 @@ Json Commands::validateMusicPlan(const Json& operations) const
                                 [&](const Json& o)
                                 {
                                     return o == op || o["command"] == "session.range.set" ||
-                                           o["command"] == "session.insertion.set";
+                                           o["command"] == "session.insertion.set" ||
+                                           o["command"] == "session.range.clear";
                                 }),
                     "MIDI clip clipboard cannot be combined with other engineering edits");
+            require(!(a.value("ripple", false) || a.value("mode", std::string{}) == "shuffle") ||
+                        a.contains("state_hash"),
+                    "Shuffle requires a sealed native preview from makePlan");
             diff.push_back(midiClipClipboardChange(cmd, a, index));
         }
         else if (cmd == "midi.notes.erase" || cmd == "midi.notes.paste")

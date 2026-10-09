@@ -613,8 +613,9 @@ int main(int argc, char** argv)
                     {"maximum_pcm_error", pcmError},
                     {"silent_peak", silentPeak},
                     {"demo", demo.getFullPathName().toStdString()},
-                    {"limits", "Shuffle, partial MIDI loops, warped audio and same-track mixed timebase automation "
-                               "remain refused; physical GUI/listening unexecuted"}};
+                    {"limits",
+                     "Object Shuffle, partial MIDI loops, warped audio and same-track mixed timebase automation "
+                     "remain refused; physical GUI/listening unexecuted"}};
         if (argc > 1)
         {
             std::ofstream out(argv[1]);

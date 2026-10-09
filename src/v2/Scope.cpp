@@ -168,7 +168,8 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                         {
                             object(id, domainTrack(id));
                             const int64_t first = change["range"]["start_samples"],
-                                          last = change["range"]["end_samples"];
+                                          last = std::max(change["range"]["end_samples"].get<int64_t>(),
+                                                          change.value("removal_end_samples", int64_t{0}));
                             span(first, last - first);
                             impacts.push_back({{"command", cmd},
                                                {"object", id},

@@ -3,7 +3,9 @@ namespace ndaw::desktop
 {
 bool Workspace::executeMidiTimelineClipboardCommand(int id)
 {
-    const bool capturing = id == editCommand::copy || id == editCommand::cut || id == editCommand::duplicate;
+    const bool deleting = id == editCommand::remove;
+    const bool capturing =
+        id == editCommand::copy || id == editCommand::cut || id == editCommand::duplicate || deleting;
     const auto slices = capturing ? clipboardSelection() : Json::array();
     const auto existing = commands.clipboard();
     const bool range = selection.objects.empty() && !selection.range.is_null() && !selection.tracks.empty();
@@ -14,6 +16,8 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                                                      t["id"]) != selection.tracks.end() &&
                                                            (t["type"] == "midi" || t["type"] == "instrument");
                                                 });
+    if (deleting && (!range || editing.mode != "shuffle"))
+        return false;
     if (capturing ? (!midiRange && (slices.empty() || std::none_of(slices.begin(), slices.end(),
                                                                    [](const Json& c) { return c["kind"] == "midi"; })))
                   : (existing.is_null() || (existing.value("kind", std::string{}) != "midi_clips" &&
@@ -30,7 +34,9 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             require(workspaceSession == commands.sessionToken() &&
                         facts["revision"] == commands.querySummary()["revision"] && pending.is_null(),
                     "refresh project or resolve pending preview before timeline editing");
-            require(editing.mode != "shuffle" || id == editCommand::copy, "mixed/MIDI Shuffle is not implemented yet");
+            require(editing.mode != "shuffle" || id == editCommand::copy || id == editCommand::duplicate ||
+                        (capturing ? range : existing.value("source_range", false)),
+                    "MIDI/mixed Shuffle requires a range selection; object Shuffle is not qualified");
             pendingClipboard = nullptr;
             pendingClipboardPlan.clear();
             const auto owners = range ? commands.editGroupTracks(selection.tracks) : selection.tracks;
@@ -86,9 +92,17 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                 }
             }
             Json ops = Json::array();
-            if (id == editCommand::cut)
-                ops.push_back(
-                    operation(mixed ? "timeline.clips.erase" : "midi.clips.erase", {{"clipboard", buffer["id"]}}));
+            if (id == editCommand::cut || deleting)
+            {
+                ops.push_back(operation(mixed ? "timeline.clips.erase" : "midi.clips.erase",
+                                        {{"clipboard", buffer["id"]}, {"ripple", editing.mode == "shuffle"}}));
+                if (editing.mode == "shuffle")
+                {
+                    const int64_t point = buffer["start_samples"];
+                    ops.push_back(operation("session.range.clear", Json::object()));
+                    ops.push_back(operation("session.insertion.set", {{"position_samples", point}}));
+                }
+            }
             else
             {
                 const int64_t point = id == editCommand::duplicate       ? buffer["end_samples"].get<int64_t>()
@@ -108,24 +122,31 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                     for (size_t i = 0; i < buffer["tracks"].size(); ++i)
                         targets.push_back((first + i)->at("id"));
                 }
+                const bool ripple = editing.mode == "shuffle" && id != editCommand::duplicate;
+                const int64_t end = commands.timelineClipPasteRange(buffer["id"], point)["end_samples"];
+                const int64_t removalEnd = ripple && id != editCommand::pasteOriginal && !selection.range.is_null()
+                                               ? selection.range["end_samples"].get<int64_t>()
+                                               : (ripple ? point : end);
                 ops.push_back(operation(mixed ? "timeline.clips.paste" : "midi.clips.paste",
                                         {{"clipboard", buffer["id"]},
                                          {"tracks", targets},
                                          {"position_samples", point},
-                                         {"mode", id == editCommand::duplicate ? "overlay" : "replace"}}));
-                const int64_t end = commands.timelineClipPasteRange(buffer["id"], point)["end_samples"];
+                                         {"removal_end_samples", removalEnd},
+                                         {"mode", id == editCommand::duplicate ? "overlay"
+                                                  : ripple                     ? "shuffle"
+                                                                               : "replace"}}));
                 ops.push_back(operation("session.range.set", {{"start_samples", point}, {"end_samples", end}}));
                 ops.push_back(operation("session.insertion.set", {{"position_samples", point}}));
             }
             const auto plan = commands.makePlan("human", ops);
             const auto preview = commands.preview(plan);
-            if (capturing && id != editCommand::duplicate)
+            if (capturing && id != editCommand::duplicate && !deleting)
                 pendingClipboard = buffer;
             const auto& impact = preview[mixed ? "timeline_changes" : "midi_changes"][0];
             size_t points = 0;
             for (const auto& a : impact["automation"])
                 points += a["affected_points"].get<size_t>();
-            if (impact["clips"].size() > 8 || points > 128 ||
+            if (impact.value("ripple", false) || impact["clips"].size() > 8 || points > 128 ||
                 buffer["end_samples"].get<int64_t>() - buffer["start_samples"].get<int64_t>() > 60 * 48000)
             {
                 pending = plan;

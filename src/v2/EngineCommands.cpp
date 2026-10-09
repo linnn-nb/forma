@@ -513,6 +513,11 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
             if (a.contains("ref"))
                 hashes[a.at("ref")] = actual;
         }
+        else if ((cmd.starts_with("timeline.clips.") || cmd.starts_with("midi.clips.")) &&
+                 (a.value("ripple", false) || a.value("mode", std::string{}) == "shuffle"))
+        {
+            a["state_hash"] = midiClipClipboardChange(cmd, a, 0)["state_hash"];
+        }
         else if (cmd.starts_with("clip."))
         {
             std::string id = a.at("clip");

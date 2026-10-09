@@ -345,6 +345,11 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
             if (!change["range"].is_null())
                 out += text("范围：") + position(change["range"]["start_samples"]) + text(" → ") +
                        position(change["range"]["end_samples"]) + text("（包含选区空白）\n");
+            if (change.value("ripple", false))
+                out += text("Shuffle：后方音频、MIDI 和曲线共同移动 ") +
+                       juce::String(change["displacement_samples"].get<int64_t>()) +
+                       text(" 个工程采样；保留空轨与空白。\nMIDI 后方内容仅支持恒定 Tempo / "
+                            "拍号区间；\n速度图与未选轨道保持原位置。\n");
             for (const auto& id : change["range_tracks"])
                 out += text("轨道：") + trackName(id.get<std::string>()) + "\n";
             int added = 0, removed = 0, retained = 0;
@@ -356,7 +361,15 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                 else
                     ++retained;
             out += text("新增片段：") + juce::String(added) + text(" · 移除片段：") + juce::String(removed) +
-                   text(" · 保留边界片段：") + juce::String(retained) + "\n";
+                   text(" · 修改 / 保留片段：") + juce::String(retained) + "\n";
+            if (change.value("ripple", false))
+                for (const auto& clip : change["clips"])
+                    if (!clip["before"].is_null() && !clip["after"].is_null() &&
+                        clip["before"]["start_samples"] != clip["after"]["start_samples"])
+                        out += text("移动 · ") + trackName(clip["before"]["track"].get<std::string>()) + " · " +
+                               text(clip["before"]["kind"].get<std::string>()) + "：" +
+                               position(clip["before"]["start_samples"]) + text(" → ") +
+                               position(clip["after"]["start_samples"]) + "\n";
             for (const auto& automation : change["automation"])
                 for (const auto& lane : automation["lanes"])
                     out += text("自动化 · ") + trackName(automation["track"].get<std::string>()) + " · " +
@@ -402,6 +415,8 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
 void Workspace::executeDeleteCommand()
 {
     if (executeAutomationClipboardCommand(editCommand::remove))
+        return;
+    if (executeMidiTimelineClipboardCommand(editCommand::remove))
         return;
     invoke(
         [&]

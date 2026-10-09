@@ -262,11 +262,10 @@ Json Commands::automationClipboardChanges(const Json& args) const
     require(!midi || timebase != "mixed" || buffer->automation.empty(),
             "mixed MIDI timebase automation requires interval-specific mapping");
     const bool musical = (midi || timeline) && timebase == "beats";
-    require(!musical || (buffer->tempoSnapshot.has_value() && mode != "shuffle"),
-            "musical clipboard map missing or unsupported Shuffle");
+    require(!musical || buffer->tempoSnapshot.has_value(), "musical clipboard map missing or unsupported Shuffle");
     const double start = first / timelineRate;
     double contentEnd = end / timelineRate;
-    if (timeline)
+    if (timeline || (midi && mode == "shuffle"))
     {
         contentEnd = start + duration / timelineRate;
         if (musical)
@@ -278,12 +277,17 @@ Json Commands::automationClipboardChanges(const Json& args) const
                                                                buffer->manifest["start_beat"].get<double>()))
                     .inSeconds();
         }
-        require(std::llround(contentEnd * timelineRate) <= end, "track automation exceeds common clipboard envelope");
+        require(mode == "shuffle" || std::llround(contentEnd * timelineRate) <= end,
+                "track automation exceeds common clipboard envelope");
     }
     const double length = musical || timeline ? contentEnd - start : duration / timelineRate;
     require(length > 0, "invalid musical automation extent");
     const double rightStart = (mode == "shuffle" || musical || timeline ? end / timelineRate : start + length);
-    const double delta = mode == "shuffle" ? start + length - rightStart : 0;
+    const double commonEnd =
+        mode == "shuffle" && (timeline || midi)
+            ? timelineClipPasteRange(args.at("clipboard"), first)["end_samples"].get<int64_t>() / timelineRate
+            : (timeline ? rightStart : start + length);
+    const double delta = mode == "shuffle" ? commonEnd - rightStart : 0;
     const auto captured = buffer->automation.find(sourceTrack);
     std::map<std::string, int> mapping;
     if (captured != buffer->automation.end())
@@ -375,8 +379,8 @@ Json Commands::automationClipboardChanges(const Json& args) const
             body.back().curve = 0;
             // A shorter clock envelope leaves silence before the common end.
             // Hold its last copied automation value there, then restore the real destination suffix.
-            if (timeline && rightStart - 1 / timelineRate > body.back().time)
-                body.push_back({rightStart - 1 / timelineRate, body.back().value, 0, {}});
+            if (timeline && commonEnd - 1 / timelineRate > body.back().time)
+                body.push_back({commonEnd - 1 / timelineRate, body.back().value, 0, {}});
             auto right = startSlice(native, rightStart, std::max(rightStart, native.back().time), tolerance, false);
             for (auto& pt : right)
                 pt.time += delta;
@@ -436,7 +440,9 @@ Json Commands::automationClipboardChanges(const Json& args) const
                  {"native_error_bound", tolerance},
                  {"time_mapping", musical ? "native_musical" : "seconds"},
                  {"content_end_seconds", contentEnd},
-                 {"common_end_seconds", rightStart},
+                 {"common_end_seconds", mode == "shuffle" ? commonEnd : rightStart},
+                 {"suffix_source_start_seconds", rightStart},
+                 {"suffix_displacement_seconds", delta},
                  {"source_tempo_hash", musical ? buffer->manifest.at("source_tempo_hash") : Json(nullptr)}});
         }
     const auto text = lanes.dump();

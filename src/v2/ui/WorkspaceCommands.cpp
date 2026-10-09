@@ -568,6 +568,20 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         for (const auto& clip : clips)
                             active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                      !clip.value("locked", false);
+                    if (shuffleRange && !mix && !midiKeyboardFocus())
+                    {
+                        const auto owners = commands.editGroupTracks(selection.tracks);
+                        bool mediaRange = !owners.empty();
+                        for (const auto& owner : owners)
+                        {
+                            auto t = std::find_if(facts["tracks"].begin(), facts["tracks"].end(),
+                                                  [&](const Json& track) { return track["id"] == owner; });
+                            mediaRange =
+                                mediaRange && t != facts["tracks"].end() &&
+                                ((*t)["type"] == "audio" || (*t)["type"] == "midi" || (*t)["type"] == "instrument");
+                        }
+                        active = mediaRange && !facts.value("playing", false) && pending.is_null();
+                    }
                     if (!mix && !midiKeyboardFocus() && !automationRangeTargets().empty())
                         active = !facts.value("playing", false) && !selection.range.is_null() &&
                                  selection.objects.empty() && pending.is_null();
