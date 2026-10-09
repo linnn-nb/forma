@@ -223,13 +223,18 @@ void Workspace::executeClipboardCommand(int id)
                     if (!clip.starts_with("$") && !clip.starts_with("@clipboard:"))
                         touchedClips.insert(clip);
                 }
+            const auto preview = commands.preview(plan);
+            size_t automationImpact = 0;
+            for (const auto& change : preview["automation_changes"])
+                automationImpact += change["affected_points"].get<size_t>();
             if (destructive &&
-                (touchedClips.size() > 8 ||
+                (touchedClips.size() > 8 || automationImpact > 128 ||
                  buffer["end_samples"].get<int64_t>() - buffer["start_samples"].get<int64_t>() > 60 * 48000))
             {
                 pending = plan;
                 pendingClipboardPlan = plan["plan_id"];
-                previewText.setText(text(commands.preview(plan).dump(2)));
+                previewText.setText(plan.contains("shuffle_range") ? shufflePreviewText(preview)
+                                                                   : text(preview.dump(2)));
                 message(text("大范围剪切 / 替换 · 请预览后接受或拒绝"));
                 return;
             }

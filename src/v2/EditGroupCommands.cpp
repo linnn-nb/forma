@@ -177,10 +177,13 @@ Json Commands::shuffleRangeOperations(const Json& request) const
     {
         if (std::find(owners.begin(), owners.end(), owner["id"]) == owners.end())
             continue;
-        const auto automation = automationQuery(owner["id"]);
-        for (const auto& lane : automation["lanes"])
-            if (!lane["points"].empty())
-                throw std::runtime_error("范围 Shuffle 的自动化跟随编辑尚未接通；本次未修改工程");
+        Json automationArgs{{"track", owner["id"]}, {"start_samples", first}, {"end_samples", last}};
+        const auto automation = automationShuffleChanges(automationArgs);
+        if (!automation["lanes"].empty())
+        {
+            automationArgs["state_hash"] = automation["state_hash"];
+            append("automation.range.shuffle", automationArgs);
+        }
         for (const auto& clip : owner["clips"])
         {
             const int64_t begin = clip["start_samples"], end = begin + clip["length_samples"].get<int64_t>();
@@ -224,7 +227,8 @@ Json Commands::shuffleRangeOperations(const Json& request) const
                 append("clip.delete", {{"clip", middle}, {"media_hash", hash}});
         }
     }
-    if (operations.empty())
+    if (std::none_of(operations.begin(), operations.end(),
+                     [](const Json& op) { return op["command"].get<std::string>().starts_with("clip."); }))
         throw std::runtime_error("no audio at or after the selected Shuffle range");
     operations.push_back({{"command", "session.range.clear"}, {"args", Json::object()}});
     operations.push_back({{"command", "session.insertion.set"}, {"args", {{"position_samples", first}}}});

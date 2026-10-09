@@ -38,3 +38,11 @@ evidence/U/*
 !evidence/U/scrub-selection-tests.json
 
 !evidence/U/selection-extension-tests.json
+
+!evidence/U/automation-shuffle-tests.json
+
+!evidence/U/shuffle-automation-ranges-tests.json
+
+!evidence/U/automation-shuffle-regression.txt
+
+!evidence/U/automation-shuffle-qualification.json

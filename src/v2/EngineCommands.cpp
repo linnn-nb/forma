@@ -584,6 +584,9 @@ Json Commands::preview(const Json& plan) const
     {
         const auto cmd = op.at("command").get<std::string>();
         const auto& a = op.at("args");
+        if (cmd == "automation.range.shuffle")
+            require(actor == "human" && plan.contains("shuffle_range"),
+                    "automation range follow requires a locally compiled human Shuffle Plan");
         if (a.contains("clip") && a["clip"].is_string() && a["clip"].get<std::string>().starts_with("@clipboard:"))
             require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
                     "clipboard snapshot expired or unavailable to this actor");
@@ -738,7 +741,7 @@ Json Commands::preview(const Json& plan) const
     const auto panDiff = validatePanPlan(ops);
     const auto clipDiff = validateClipPlan(ops);
     validateRecordingPlan(ops);
-    validateAutomationPlan(ops);
+    const auto automationDiff = validateAutomationPlan(ops);
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
     const auto transportDiff = validateTransportPlan(ops);
@@ -749,6 +752,7 @@ Json Commands::preview(const Json& plan) const
             {"audio_verified", false},
             {"time_selection_changes", rangeDiff},
             {"clip_changes", clipDiff},
+            {"automation_changes", automationDiff},
             {"track_changes", trackDiff},
             {"pan_changes", panDiff},
             {"midi_changes", midiDiff},

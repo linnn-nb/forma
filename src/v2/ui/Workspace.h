@@ -186,6 +186,7 @@ private:
     void selectAudioClip(const std::string& id, bool additive = false);
     void executeEditCommand(int id);
     void executeDeleteCommand();
+    juce::String shufflePreviewText(const Json& preview) const;
     void executeClipboardCommand(int id);
     Json deleteClipOperations(bool ripple) const;
     Json clipboardSelection() const;

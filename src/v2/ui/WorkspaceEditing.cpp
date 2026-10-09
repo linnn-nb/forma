@@ -334,6 +334,23 @@ Json Workspace::deleteClipOperations(bool ripple) const
     return operations;
 }
 
+juce::String Workspace::shufflePreviewText(const Json& preview) const
+{
+    juce::String out = text("范围 Shuffle · 待确认\n\n音频片段变更：") +
+                       juce::String(int(preview["clip_changes"].size())) + text("\n原媒体保留；接受后可整笔撤销。\n");
+    for (const auto& change : preview["automation_changes"])
+    {
+        out += text("\n自动化跟随 · ") + trackName(change["track"].get<std::string>()) + text("\n受影响点：") +
+               juce::String(change["affected_points"].get<int>()) + text(" · 新增边界点：") +
+               juce::String(change["derived_points"].get<int>()) + text("\n");
+        for (const auto& lane : change["lanes"])
+            out += text(lane["name"].get<std::string>()) + text("：") + juce::String(int(lane["before"].size())) +
+                   text(" → ") + juce::String(int(lane["after"].size())) + text(" 点\n边界段最大插值误差 ≤ ") +
+                   juce::String(lane["native_error_bound"].get<double>(), 8) +
+                   text(" 原生参数单位，另有 float 舍入。\n");
+    }
+    return out + text("\n只重建被切口截断的弯曲段；其他点保持 ID。\n实际声音仍需试听。\n");
+}
 void Workspace::executeDeleteCommand()
 {
     invoke(
@@ -353,21 +370,26 @@ void Workspace::executeDeleteCommand()
                 if (op["args"].contains("clip") && !op["args"]["clip"].get<std::string>().starts_with("$"))
                     touched.insert(op["args"]["clip"].get<std::string>());
             plan["base_revision"] = facts["revision"];
+            const auto preview = commands.preview(plan);
+            size_t automationImpact = 0;
+            for (const auto& change : preview["automation_changes"])
+                automationImpact += change["affected_points"].get<size_t>();
             if (selection.objects.empty() && !selection.range.is_null() &&
-                (touched.size() > 8 ||
+                (touched.size() > 8 || automationImpact > 128 ||
                  selection.range["end_samples"].get<int64_t>() - selection.range["start_samples"].get<int64_t>() >
                      60 * 48000))
             {
                 require(pending.is_null(), "accept or reject the existing preview before a large range Delete");
                 pending = plan;
-                previewText.setText(text(commands.preview(plan).dump(2)));
+                previewText.setText(shuffleRange ? shufflePreviewText(preview) : text(preview.dump(2)));
                 message(text("大范围删除 · 请预览后接受或取消"));
                 return;
             }
             const auto receipt = commands.commit(plan);
             require(receipt.value("state", std::string{}) == "committed", "clip deletion did not commit");
             refresh();
-            message(text(ripple ? "Shuffle Delete 已提交 · 后续片段按时间推进 · 一次 Undo" : "片段已删除 · 一次 Undo"));
+            message(text(ripple ? "Shuffle Delete 已提交 · 后续片段与自动化按时间推进 · 一次 Undo"
+                                : "片段已删除 · 一次 Undo"));
         });
     if (isShowing())
         grabKeyboardFocus();

@@ -1,5 +1,9 @@
 U-P0-SRC-PHASE-01：默认原生 WaveNode 按绝对源位置重采样，混合48k/44.1k范围Shuffle已恢复；原失败负载PCM最大差1.1921e-7（原2e-5预算不变）、Paste Original差0。Release/固定签名、11/11受影响回归（1872检查、94.09秒）与实机改键/Undo/Redo/另存/Open/播放通过；原始媒体不改。非默认直接/HQ读取器、自动化跟随与完整Shuffle/U＋P0仍未完成；不进入P1。下文保留历史增量，旧混合率失败已在默认路径被本节资格替代。
 
+U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：分组音频范围 Shuffle Cut/Delete 会跟随音量、声像和实际插件参数自动化，可预览、拒绝、整笔撤销/重做和保存重开；复用可自定义 Delete/Cut 快捷键。771 点曲线在真实桌面完成编辑、另存、撤销与 Open；另修复保存参数缓存破坏 Undo 的原生故障。Release、9 项受影响回归/最终 885 检查通过（专项 95＋309），真实渲染 PCM 差 4.7684e-7（固定 2e-5 预算）。
+
+亲手试 `build-v2-tracktion/OpenAutomationShuffleDemo.command`：范围已选 1–2 秒，Shuffle/Phase pair 编辑组；Control+Option+Shift+D 显示预览，接受后 CmdZ / ShiftCmdZ，CmdS 新副本 / CmdO 重开，Space 播放停止。音频是低幅真实诊断 PCM，不代表音乐听感验收。全局跟随开关、whole-clip/Paste/Trim/拖拽/MIDI 跟随以及完整 U＋P0 未完成，不进入 P1。以下为历史增量。
+
 当前已验证增量 U-P0-MEMORY-ROLL-01：位置记忆可保存/移除预后卷时长并原子召回位置、选区和时长，保留当前开关；可撤销、重做、保存重开、改键。76专项、受影响5项最终通过与桌面原生文件对话框重开已验。完整U＋P0仍未完成；Next 为时间范围 Shuffle 涟漪编辑。
 
 当前U-P0-CLIP-TIME-01：片段检查器按主标尺输入分:秒、工程样本、小节|拍或24/25/30 NDF；淡化明确为毫秒，源偏移明确为源秒/实际文件PCM帧。Tab/ShiftTab、Esc、可自定义提交键、单笔Undo/Redo及保存重开接通。未改字段保留帧下精度，切换单位不重解释已有草稿，非法和过期值不写工程。76专项和7项375检查通过，桌面操作/另存/Open/重开改键执行通过。完整U＋P0未验收，不进P1；听感、实体麦克风与Windows未新增资格。

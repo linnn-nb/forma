@@ -146,6 +146,11 @@ void Commands::registerAutomationCommands(Json& registry)
         registry[i]["units"] = {{"parameter", "volume / pan / vca or enumerated owner-ID::parameter-ID"},
                                 {"value", "fader: dB (-60..6); other: actual native range"},
                                 {"position_samples", "session samples at 48000 Hz; curve uses native SDK timebase"}};
+    add("automation.range.shuffle",
+        {{"track", string}, {"start_samples", position}, {"end_samples", position}, {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-SHUFFLE-AUTOMATION-01";
+    registry.back()["units"] = {{"start_samples", "48000 Hz session samples"}, {"end_samples", "exclusive"}};
 }
 void Commands::initialiseAutomationIDs(juce::UndoManager* um)
 {
@@ -225,21 +230,26 @@ Json Commands::automationCurveRange(const std::string& target, const std::string
     auto* a = automationParameter(target, parameter);
     require(a != nullptr, "parameter not enumerated on target");
     Json values = Json::array();
+    std::unique_ptr<te::AutomationIterator> iterator;
+    if (a->getCurve().getNumPoints())
+        iterator = std::make_unique<te::AutomationIterator>(*a);
     for (int i = 0; i < count; ++i)
     {
         auto pos = start + std::llround((end - start) * double(i) / (count - 1));
+        if (iterator)
+            iterator->setPosition(tracktion::TimePosition::fromSeconds(pos / timelineRate));
         values.push_back(
             {{"position_samples", pos},
-             {"value", toValue(*a, a->getCurve().getValueAt(tracktion::TimePosition::fromSeconds(pos / timelineRate),
-                                                            a->getCurrentExplicitValue()))}});
+             {"value", toValue(*a, iterator ? iterator->getCurrentValue() : a->getCurrentExplicitValue())}});
     }
     return values;
 }
-void Commands::validateAutomationPlan(const Json& operations) const
+Json Commands::validateAutomationPlan(const Json& operations) const
 {
     if (std::none_of(operations.begin(), operations.end(), [](const auto& op)
                      { return op.at("command").template get<std::string>().starts_with("automation."); }))
-        return;
+        return Json::array();
+    Json changes = Json::array();
     struct Lane
     {
         double lo, hi;
@@ -305,6 +315,15 @@ void Commands::validateAutomationPlan(const Json& operations) const
                     "unsupported automation mode");
             continue;
         }
+        if (cmd == "automation.range.shuffle")
+        {
+            auto change = automationShuffleChanges(args);
+            require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
+                    "Shuffle automation state changed");
+            change["command"] = cmd;
+            changes.push_back(std::move(change));
+            continue;
+        }
         const std::string parameter = resolved(track, args.at("parameter"));
         require(tracks.at(track).contains(parameter), "automation target removed or unavailable");
         auto& lane = tracks.at(track).at(parameter);
@@ -337,9 +356,15 @@ void Commands::validateAutomationPlan(const Json& operations) const
                 lane.points[point] = args.at("position_samples");
         }
     }
+    return changes;
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
+    if (cmd == "automation.range.shuffle")
+    {
+        executeAutomationShuffle(args, objects);
+        return;
+    }
     auto* t = domainTrack(args.at("track"));
     require(t != nullptr, "automation target disappeared");
     if (cmd == "automation.mode")

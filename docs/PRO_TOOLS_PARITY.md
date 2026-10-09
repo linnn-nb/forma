@@ -1,4 +1,8 @@
 编辑组最新增量（U-P0-GROUP-TRANSFORMS-01，2026-10-09）：同组whole-clip修剪、淡化和Clip Gain已接通，来源为实际Tracktion Edit，保留成员原差异；89专项与实际PCM通过，实体淡化/撤销/另存/重开已有回执。关联方式与相对淡化/增益规则为Forma明确策略，不能当作Pro Tools任意区间编辑的完整等价。具体功能/测试/差异见UI_PARITY与VERIFICATION首节。
+
+> 本文件仍为交互与工作流参考，不是全量产品验收门槛。
+
+U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：核验官方 Pro Tools Reference Guide 2026.4（核验日 2026-10-09）印刷 1552–1553 / PDF 1654–1655 的 Automation Follows Edit，以及印刷 857/859 的范围 Shuffle Cut/Delete。来源：https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256：884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。Forma 当前只实现音频范围 Shuffle Cut/Delete 时曲线跟随，始终跟随，没有全局开关；不声明 whole-clip/Paste/Trim/拖拽/MIDI 或完整 PT 行为等价。AutomationShuffle.cpp / EditGroupCommands.cpp / ShuffleRangeTests.cpp / AutomationShuffleTests.cpp，状态：所述范围已验证，整个工作流部分实现。9 项相关回归、真实 PCM、Undo/重开/改键与实体 GUI 的范围见 VERIFICATION 首节。
 > 2026-10-05 方向调整：本文件仅为 Pro Tools 交互与工作流参考清单，不是产品完成度或发布验收门槛。历史状态不能作为 v2 已验证能力。
 
 参考更新 U-P0-SHUFFLE-RANGE-01：2026.4官方手册印刷857、859 / PDF959、961页已从既有PDF核验（2026-10-09）；范围Cut/Delete前移后方片段并保留剩余空隙。Forma48k音频范围＋编辑组＋Undo/重开/键位已验证；44.1k声音实验超预算、自动化跟随未实现并明确拒绝。Shuffle完整行为状态仍部分实现；对应代码EditGroupCommands/WorkspaceEditing/WorkspaceClipboard、测试ShuffleRangeTests及evidence/U/shuffle-*。该清单仍是交互参考，不作为全量产品完成门槛。

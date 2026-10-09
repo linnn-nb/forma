@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：新增 `automation.range.shuffle`（track、start_samples、end_samples、state_hash），仅 local_gui / human 且绑定完整 `shuffle_range` 编译结果；单位为 48000 Hz 工程样本、右边界排除。查询、preview、commit 均基于 native curve，返回 typed `automation_changes`；重新编译比较完整组操作并校验曲线 XML SHA256，版本/锁定/Scope/幂等/捕获状态及 64 原语预算保持。参数只接受实际枚举实例，秒时间基曲线；陈旧 hash、篡改、外部 actor 或超点预算均原子拒绝。
+
+曲线与音频属于同一事务，Undo/Redo 不分拆。大量边界补点时 GUI 显示影响数量、参数名和插值误差，Reject 不更改音频、曲线或剪贴板。只有真实提交回执才显示提交；派生参数保存缓存不产生额外人类事务。测试 ShuffleRangeTests（95）/AutomationShuffleTests（309）及资格报告；冻结 MCP/分析范围保持。
+
 U-P0-SRC-PHASE-01：默认混合采样率源可使用既有human shuffle_range Plan；未新增命令、MCP工具或协议。L1不修改媒体/导入/读取设置，默认读取器修复在锁定SDK补丁。非默认直接读取器、自动化曲线、MIDI/锁定/超预算继续明确拒绝，失败不改版本/工程。仍是原版本校验、完整组原语比对、Scope、幂等与一笔Undo；81专项及GUI快捷键/撤销/重开通过。
 
 U-P0-MEMORY-ROLL-01：`location.roll.capture`、`location.roll.clear`、`location.recall` 只接受稳定 marker ID，human-only/local_gui、低风险可逆、停止时 standalone Plan。预览实际时长或插入点/选区/完整 roll before/after；召回只替换保存的时长。复用 actor/session/revision/幂等/Scope/真实回执与单笔 Undo。混合操作 Plan 明确拒绝；未扩展冻结的 MCP tools，query.markers 增加可为空的 roll_times 事实。

@@ -12,6 +12,19 @@ public:
     {
         return w.pending;
     }
+    static void snapshot(Commands& c)
+    {
+        c.recoverySnapshot();
+    }
+    static bool follow(Commands& c, const std::string& track)
+    {
+        // Exercise the real native follower, as an idle desktop parameter can
+        // differ from its explicit base after Redo. Cold snapshots alone do
+        // not exercise the SDK's binary parameter serialisation branch.
+        auto* parameter = c.automationParameter(track, "volume");
+        parameter->updateToFollowCurve(tracktion::TimePosition::fromSeconds(1.5));
+        return parameter->getCurrentValue() != parameter->getCurrentExplicitValue();
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -532,10 +545,89 @@ int main(int argc, char** argv)
                                                                {"curve", 0.}})}));
         const auto automationBefore = c.query();
         const auto curves = c.automationQuery(b);
-        fails([&] { c.makeShuffleRangePlan(Json::array({a}), 48000, 96000); },
-              "linked automation explicitly refuses unimplemented follow-edit semantics");
-        check(c.query()["tracks"] == automationBefore["tracks"] && c.automationQuery(b) == curves,
-              "automation refusal preserves all curve points and audio");
+        const auto automationPlan = c.makeShuffleRangePlan(Json::array({a}), 48000, 96000);
+        check(c.preview(automationPlan)["automation_changes"].size() == 1,
+              "linked native automation follows same grouped Shuffle Plan");
+        c.commit(automationPlan);
+        pump();
+        bool movedPoint = false;
+        const auto shiftedAutomation = c.automationQuery(b);
+        for (const auto& lane : shiftedAutomation["lanes"])
+            for (const auto& pt : lane["points"])
+                movedPoint |= pt["position_samples"] == 112000;
+        check(movedPoint, "linked native stable automation point shifts by exact selected duration");
+        c.undo();
+        pump();
+        auto restoredCurves = c.automationQuery(b);
+        restoredCurves["revision"] = curves["revision"];
+        check(c.query()["tracks"] == automationBefore["tracks"] && restoredCurves == curves,
+              "one grouped Undo restores all audio and native automation");
+        w.openSession(ready);
+        pump();
+        run(c, Json::array({operation("automation.point.add", {{"track", b},
+                                                               {"parameter", "volume"},
+                                                               {"ref", "$curve-first"},
+                                                               {"position_samples", 0},
+                                                               {"value", -6.},
+                                                               {"curve", -.75}}),
+                            operation("automation.point.add", {{"track", b},
+                                                               {"parameter", "volume"},
+                                                               {"ref", "$curve-last"},
+                                                               {"position_samples", 300000},
+                                                               {"value", -24.},
+                                                               {"curve", 0.}})}));
+        pump();
+        range(w, c, 48000, 96000, Json::array({a}));
+        const auto curvedBefore = c.automationQuery(b);
+        const auto curvedClips = c.query()["tracks"];
+        Json trackViews = Json::object();
+        for (const auto& lane : curvedBefore["lanes"])
+            if (lane["parameter"] == "volume")
+                trackViews[b] = lane["id"];
+        c.updateUiState({{"track_views", trackViews}}, c.sessionToken());
+        pump();
+        const auto automationReady = folder.getChildFile("AutomationShuffleReady.tracktionedit");
+        c.save(automationReady);
+        check(w.uiCommands().invokeDirectly(editCommand::remove, true),
+              "curved range Delete dispatches actual GUI command");
+        pump();
+        check(!AudioDeviceTestAccess::pending(w).is_null() && c.query()["tracks"] == curvedClips,
+              "large boundary projection requires preview before changing any grouped audio");
+        auto* previewText = dynamic_cast<juce::TextEditor*>(find(w, "legacy.report"));
+        check(previewText && previewText->getText().contains(juce::String::fromUTF8("自动化跟随")) &&
+                  previewText->getText().contains(juce::String::fromUTF8("插值误差")),
+              "native confirmation shows actual automation impact and bounded shape approximation");
+        click(w, "plan.reject");
+        check(c.automationQuery(b) == curvedBefore && c.query()["tracks"] == curvedClips,
+              "reject leaves native curves and linked audio untouched");
+        check(w.uiCommands().getKeyMappings()->keyPressed(custom, &w), "custom Delete key previews curved Shuffle");
+        pump();
+        click(w, "plan.accept");
+        check(c.automationQuery(b)["lanes"] != curvedBefore["lanes"] &&
+                  byID(c.query()["tracks"], a1)["start_samples"] == 132000,
+              "accept changes real native curves and grouped clips together");
+        key(w, 'z');
+        auto curvedUndo = c.automationQuery(b);
+        curvedUndo["revision"] = curvedBefore["revision"];
+        check(curvedUndo == curvedBefore && c.query()["tracks"] == curvedClips,
+              "CmdZ restores the entire accepted curve and grouped clip transaction");
+        check(w.keyPressed(
+                  juce::KeyPress('z', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 'z')),
+              "CmdShiftZ restores accepted automation transaction");
+        pump();
+        const auto curveSaved = folder.getChildFile("AutomationCollapsed.tracktionedit");
+        check(AudioDeviceTestAccess::follow(c, b), "native follower differs from explicit base before parameter save");
+        c.save(curveSaved);
+        AudioDeviceTestAccess::snapshot(c);
+        pump();
+        key(w, 'z');
+        auto afterSavedUndo = c.automationQuery(b);
+        afterSavedUndo["revision"] = curvedBefore["revision"];
+        check(afterSavedUndo == curvedBefore && c.query()["tracks"] == curvedClips,
+              "save and recovery flush after Redo do not introduce an untracked Undo transaction");
+        w.openSession(curveSaved);
+        pump();
+        check(c.automationQuery(b)["lanes"] != curvedBefore["lanes"], "saved projected curve reopens in native GUI");
         w.openSession(ready);
         pump();
         // Actual Edit workload, not a mock: 65 later clips exceed the fixed Plan limit.
@@ -568,6 +660,7 @@ int main(int argc, char** argv)
             {"paste_pcm_max_error", pasteError},
             {"source_time_reopen_error_seconds", sourceTimeError},
             {"demo", ready.getFullPathName().toStdString()},
+            {"automation_demo", automationReady.getFullPathName().toStdString()},
             {"budgets", {{"pcm_error", 2e-5}, {"split_edge_exclusion_frames", 2048}, {"source_time_seconds", 1e-12}}},
             {"scope", "real native Edit, group Shuffle partial/gap Cut/Delete, strict preview and permissions, native "
                       "Undo, PCM render, GUI keys, save/reopen; physical desktop separate"}};

@@ -1,5 +1,9 @@
 # Forma 交互参考
 
+> 本文件仍为交互与工作流参考，不是全量产品验收门槛。
+
+U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：核验官方 Pro Tools Reference Guide 2026.4（核验日 2026-10-09）印刷 1552–1553 / PDF 1654–1655 的 Automation Follows Edit，以及印刷 857/859 的范围 Shuffle Cut/Delete。来源：https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256：884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。Forma 当前只实现音频范围 Shuffle Cut/Delete 时曲线跟随，始终跟随，没有全局开关；不声明 whole-clip/Paste/Trim/拖拽/MIDI 或完整 PT 行为等价。AutomationShuffle.cpp / EditGroupCommands.cpp / ShuffleRangeTests.cpp / AutomationShuffleTests.cpp，状态：所述范围已验证，整个工作流部分实现。9 项相关回归、真实 PCM、Undo/重开/改键与实体 GUI 的范围见 VERIFICATION 首节。
+
 U-P0-SRC-PHASE-01：延续已核验Reference Guide2026.4印刷857/859页的范围Cut/Delete行为。默认48k/44.1k音频及分数源时间已通过原负载声音验证、组联动、一次Undo/Redo、改键/保存重开与实体播放；最大PCM差1.1921e-7，原2e-5容差和切点±2048帧保持。81专项与11/11相关回归通过。非默认直接读取器、自动化跟随、Shuffle Paste/Trim/拖拽和MIDI仍未完成；完整Shuffle状态仍为部分实现。
 
 U-P0-CLIP-TIME-01：2026-10-09核验官方Reference Guide 2026.4印刷1118–1122页（PDF1220–1224）：Main Time Scale影响Start/End/Length等时间值，Bars|Beats由Tempo/Meter决定，Samples用于精确编辑。Forma将同一单位规则接入自有Clip检查器；分数源时间单独显示、淡化ms、Tab导航和⌘Return提交为本产品策略，不宣称复制完整PT Spot/分字段计数器。只支持24/25/30 NDF，不支持Feet+Frames/DF/专有同步；未改时间码字段保持帧下实际样本值。76专项/375相关检查及实体桌面通过；完整U＋P0未验收。来源沿用下方官方链接及本机PDF SHA。

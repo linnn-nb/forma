@@ -259,7 +259,9 @@ private:
     Json automationLaneQuery(te::AutomatableParameter&) const;
     Json automationPointQuery(te::AutomatableParameter&, int) const;
     te::AutomatableParameter* automationParameter(const std::string& track, const std::string& parameter) const;
-    void validateAutomationPlan(const Json&) const;
+    Json validateAutomationPlan(const Json&) const;
+    Json automationShuffleChanges(const Json&) const;
+    void executeAutomationShuffle(const Json&, Json&);
     void executeAutomationOperation(const std::string&, const Json&, Json&);
     void initialiseAutomationIDs(juce::UndoManager* = nullptr);
     void beginAutomationCapture();

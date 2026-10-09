@@ -1,5 +1,9 @@
 # 依赖与阻塞 v2
 
+U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：无新授权、收费或依赖下载阻塞。新增可复现 SDK 派生参数保存补丁，保持 Tracktion pin / JUCE / 既有补丁，CMake 精确 diff 与独立临时目录 apply / 字节对比 / reverse 通过；固定本地身份 deep/strict/叶证书条件验签通过。9 项回归及新增 native follower→Save→Undo 检查通过，实体窗口编辑/保存/Undo/Open/播放已验；仅退出本轮自有两个预览，旧用户窗口保留。
+
+全局 Automation Follows Edit 开关、Shuffle Paste/Trim/拖拽/whole-clip/MIDI、完整 U＋P0 仍待完成；非默认直接/HQ 读取路径、SDK 实时锁/cache、主观听感、实体多轨麦克风、耐久和 Windows 未获新资格。没有 DMG/全量测试或 MCP/分析扩展。以下历史“自动化范围 Shuffle 拒绝”已在本节明确范围被替代。
+
 U-P0-SRC-PHASE-01：无新增依赖或授权阻塞。新增可复现Tracktion默认WaveNode源相位补丁，pin不变、原补丁保留、CMake逐字验证；clean pin正反应用及字节比对通过。原混合48k/44.1k Shuffle声音失败在默认路径修复：最大PCM差1.1921e-7，原2e-5预算未改。直接sinc/HQ/伸缩读取器仍未资格并拒绝该路径；本次不是HQ SRC/抗混叠或完整SDK实时资格。11/11/1872检查、签名与桌面Save/Open/播放通过。自动化跟随、完整U＋P0、听感/实录/耐久/Windows仍未完成。
 
 U-P0-MEMORY-ROLL-01：无新授权或依赖阻塞；无新增SDK/实时修改，原第三方变更保留。Release固定签名、76专项、5项受影响最终通过；桌面改键/Undo/另存/Open重开通过。完整U＋P0及硬件录音/耐久、None与其余记忆属性、范围Shuffle/组MIDI与自动化/完整组视图行为仍未完成；不进入P1，不打DMG。

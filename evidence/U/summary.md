@@ -1,5 +1,12 @@
 # U 原生界面重构
 
+## U-P0-SHUFFLE-AUTOMATION-01 · 2026-10-09
+
+分组音频范围 Shuffle Cut/Delete 跟随真实音量/声像/插件曲线，同笔 Undo/Redo、中文影响预览/Reject/Accept、改键、保存重开与实体窗口已验；保存参数缓存破坏 Undo 的实体故障已修。Release/固定签名，9/9 回归（142.15 秒），native follower→Save→Undo 新检查 1/1（15.25 秒）；最终 885 不重复检查，专项 95＋309。九曲线归一化差 1.7881e-7 / 固定 4e-7；独立 native 编辑参考与实际 WAV PCM 差 4.7684e-7 / 原 2e-5，切点 ±2048 排除。拼接已处理 WAV 的旧 0.0010097 失败保留、参照已纠正，没改预算；不是主观听感或硬件回采通过。
+
+亲手试 OpenAutomationShuffleDemo.command，ControlOptionShiftD/CmdX 预览，接受后 CmdZ/ShiftCmdZ，CmdS/CmdO/Space。GUI 存储恢复 7 clip/771 点，CoreAudio 外置耳机 48k/512 观察时钟与实际 fader 变化，本轮自有预览已退出。关键输出 automation-shuffle-tests.json、shuffle-automation-ranges-tests.json、automation-shuffle-regression.txt、automation-shuffle-qualification.json；原历史报告不改。跟随开关、Shuffle Paste/Trim/拖拽/MIDI 与完整 U＋P0 未完成，下一项 Shuffle Paste；不进 P1/扩 AI/打 DMG。资格细节及源码/测试链接见 VERIFICATION 首节。
+
+
 ## U-P0-SRC-PHASE-01 · 2026-10-09
 
 默认混合率Shuffle恢复：原48k/44.1k负载PCM差1.1921e-7（原2e-5/±2048边界预算未改），源哈希等于旧失败夹具，Paste Original差0。锁定WaveNode源相位补丁与预分配窗口、fresh apply/reverse、签名通过。11/11受影响回归、1872检查、94.09秒（Shuffle81，源映射588）；源四输入/输出率、两偏移、三block共96条件无边界排除，解析误差1.84038e-7、移位/分块差7.45058e-9、所测C++分配/释放0。实体改键/Delete、Undo/Redo、另存/Open和CoreAudio播放通过，本轮窗口已退。

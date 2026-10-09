@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：音频范围 Shuffle Cut/Delete 现在由 L1 编译分组 clip 原语与 `automation.range.shuffle`，一个 human Plan / native UndoManager 事务同时保存曲线、片段、插入点和选区。GUI 只产出 Plan；预览包含真实原生点 ID、前后时间/数值/曲线、媒体与曲线 hash，提交重新核验。只截断边界段按实际 SDK DSP 插值核投影，未触及的完整段保留原 ID/形状/额外属性；误差界为原生参数跨度的 1e-7 加 float 存储舍入，接缝最多占最后一个 48k 工程样本。每轨 65536 输入点 / 8192 派生点预算，超限整笔拒绝。
+
+参数曲线显示查询改用原生 AutomationIterator，与实际 DSP 相同；不是更换 DSP。新增锁定 `tracktion-serialization-parameters.patch`，仅将 L1 保存触发的派生参数二进制缓存排除出 Undo，不改变显式参数/曲线编辑和未跟踪事务守卫；pin 及原补丁保留。独立临时目录 clean-pin apply / 原生字节比较 / reverse 通过，CMake 精确 diff 通过。实体 Save→Undo 的原故障和修复后通过均记录。命令/渲染实现见 AutomationShuffle.cpp、AutomationCommands.cpp、EditGroupCommands.cpp；不新增实时处理、AI/MCP 工具或第二引擎。以下历史限制由本节在所测范围替代。
+
 U-P0-SRC-PHASE-01：L0新增锁定的tracktion-absolute-source-phase.patch，默认WaveNode以double绝对源位置和原五点四阶Lagrange核读取相邻源样本，不再用每块取整端点估算比例或跨块历史。源窗在prepareToPlay预分配，处理不借ScratchBuffer或增PDC；Tracktion文件cache原3ms/离线5000ms读取策略保留，未获整个SDK硬实时资格。CMake精确diff包含原补丁及新补丁，fresh apply/reverse验证。L1解除非48k限制，仅拒绝已知未资格的canUseProxy=false非默认读取路径；原导入设置/媒体、Plan/Actor/Revision/Scope/事务/schema均保持。GUI继续只产出Plan；11/11回归与实体原生保存/Open/播放通过。
 
 U-P0-MEMORY-ROLL-01：MarkerClip 可选 `NDAW_LOCATION_ROLL` schema1 仅存 pre_samples/post_samples；旧工程缺失表示不参与召回。candidate Edit 在替换前严格验证字段、范围和重复子节点。L1 的 human/local_gui `location.roll.capture/clear`、`location.recall` 为 standalone Plan；召回预览包含插入点、选区与 roll before/after，执行复用 native CursorMove、range、transport.roll.set，同一 Undo；当前启用状态保留。GUI 不写 Edit，标尺不先 seek，成功回执才报提交。新键位281/282及共享275/277均由现有命令表保存；MCP/分析保持冻结。

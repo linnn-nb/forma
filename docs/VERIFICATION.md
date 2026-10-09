@@ -1,5 +1,18 @@
 # 验证状态
 
+## U-P0-SHUFFLE-AUTOMATION-01 · 2026-10-09
+
+结论：音频时间范围 Shuffle Cut/Delete 的编辑组与原生音量/声像/真实 EQ 参数曲线在同笔事务跟随，键位、Reject/Accept、Undo/Redo、保存重开通过；实体 Save→Undo 原故障已修复并复测。Release/固定叶证书 deep/strict 验签通过。受影响 9/9 CTest（142.15 秒），新增 native follower 保存检查再跑范围测试 1/1（15.25 秒），最新九项共 **885 个不重复检查**：音频自动化 59、原生自动化界面 25、恢复 52、自动化时间线 143、剪贴板 49、编辑 81、分组范围 72、Shuffle 范围 95、曲线 Shuffle 309。之前报告按字节保留，新记录在 automation-shuffle-regression.txt / automation-shuffle-qualification.json；完整 U＋P0 未完成。
+
+`tests/v2/AutomationShuffleTests.cpp`：九种 native c=0/±.25/±.5/±.75/±1 的音量、声像和实际枚举 EQ Mid gain1；每 48 工程帧原生 DSP 曲线比较，最大归一化差 **1.7881393432617188e-7**（固定 4e-7）。独立 native Edit 手工排列原始媒体、每 16 帧原 DSP 曲线取样形成参考，真实 stereo 48k WAV 解码比较最大 PCM 差 **4.76837158203125e-7**（原 2e-5，切点 ±2048 帧排除）。原先“拼接已处理的 WAV”比较 0.0010097026825 失败，保留夹具；该参照混入原生 fader 平滑/EQ 历史，不是相同后续处理。改为手工编辑未处理源的独立 native 参考，没有放宽预算。步进、零起点、分数点、重合点、无内部点斜坡、恒定尾部、稳定 ID/额外属性、状态 hash/篡改/外部身份/重试/人工版本冲突与 65537 点实际超预算整笔拒绝均验证。
+
+`ShuffleRangeTests.cpp` 的 95 检查含真实 48k/44.1k 音频与组、769 个边界派生点的中文确认、拒绝、ControlOptionShiftD、CmdZ/ShiftCmdZ、保存/Open；显式调用真实 native follower，使当前值不同于 explicit base 后保存及 recoverySnapshot 再 Undo。新增 SDK serialization patch 仅让派生 parameters 二进制缓存不进入 Undo，不放宽未跟踪事务守卫。pin 不改、原补丁保留，CMake 全 diff 与仓库外临时目录 clean-pin apply/源码逐字节比较/reverse 通过。冷快照测试曾未复现实体故障，不能当作原故障重现；新增 follower 检查覆盖实际保存分支。
+
+实体自有固定签名 Preview2：预览/Cancel/Accept，Undo/Redo，原生另存 `AutomationShuffleDesktopFixed.tracktionedit` 后 Undo 成功，原生 Open 恢复 7 个音频 clip / 771 点音量曲线。外置耳机 CoreAudio 48k/512，Play 观察工程时钟 1.245 秒、实际自动化 fader -22.5 dB；Stop 12.498 秒后 Quit，仅关闭本轮预览。截图已在对话显示，没有虚构本地 PNG。未测硬件回采/主观听感/设备 deadline；过了媒体尾部的截图 master -inf 不能当非零输出证据，声音数值资格来自真实渲染解码。
+
+边界：只支持音频范围 Cut/Delete、秒基曲线；当前 Cut 剪贴板仍只保存音频，不保留被剪切的曲线快照，不能把音频 Paste Original 当作自动化恢复，需 Undo 恢复原曲线；仍无全局 Automation Follows Edit 开关、whole-clip/Paste/Trim/拖拽/MIDI 跟随。边界只截断段投影，原生跨度相对 1e-7＋float ULP，接缝最后一个 48k 样本，65536 输入/8192 派生点每轨预算；超过阈值用户预览确认。GUI 显示查询按 DSP iterator 核，不是新增实时算法。MCP/分析冻结，未增加第二引擎、RT/耐久/Windows/完整 Pro Tools 资格；无 DMG。
+
+
 ## U-P0-SRC-PHASE-01 · 2026-10-09
 
 结论：原失败的默认48k/44.1k范围Shuffle负载通过，最大PCM差1.1920928955078125e-7；原2e-5容差、切点±2048帧及400000→352000帧负载均保持。Paste Original差0、源时间保存重开误差2.22e-16秒。不是用48k替换失败源；新旧夹具两份源文件SHA256独立比对相同，旧失败证据继续保留。81专项，11/11受影响CTest、1872检查、94.09秒，Release/固定叶证书deep/strict验签通过。完整U＋P0未完成。

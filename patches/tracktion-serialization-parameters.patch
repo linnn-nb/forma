@@ -1,0 +1,23 @@
+diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp b/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
+index 3d96b8c..c2dc1a5 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
++++ b/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
+@@ -318,12 +318,14 @@ void AutomatableEditItem::saveChangedParametersToState()
+     }
+ 
+     stream.flush();
+-    auto um = &edit.getUndoManager();
+-
++    // This binary block is a serialisation of already-authoritative explicit
++    // parameter values, not a new user edit. After Undo/Redo, using the UndoManager
++    // here creates an unnamed transaction and can invalidate the host's history.
++    // Parameter setters and curve edits retain their normal undo semantics.
+     if (stream.getDataSize() > 0)
+-        elementState.setProperty (IDs::parameters, stream.getMemoryBlock(), um);
++        elementState.setProperty (IDs::parameters, stream.getMemoryBlock(), nullptr);
+     else
+-        elementState.removeProperty (IDs::parameters, um);
++        elementState.removeProperty (IDs::parameters, nullptr);
+ }
+ 
+ void AutomatableEditItem::restoreChangedParametersFromState()
