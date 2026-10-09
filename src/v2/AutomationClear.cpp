@@ -92,7 +92,8 @@ Json Commands::automationClearChanges(const Json& args) const
             auto& curve = parameter->getCurve();
             if (!curve.getNumPoints())
                 continue;
-            require(suffixTimebase != "mixed", "one Shuffle suffix mixes timebases with shared automation");
+            require(suffixTimebase != "mixed",
+                    "mixed Shuffle suffix shares automation: select its sample or beat curve edit basis");
             require(curve.timeBase == te::AutomationCurve::TimeBase::time,
                     "range clear requires seconds-based native curves");
             const auto source = read(curve.state);

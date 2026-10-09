@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "TimelineState.h"
 namespace ndaw::v2
 {
 namespace
@@ -114,6 +115,7 @@ Json Commands::hierarchyQuery(te::Track& t) const
         t.getColour().isTransparent() ? Json(nullptr) : Json("#" + t.getColour().toDisplayString(false).toStdString());
     if (auto* a = dynamic_cast<te::AudioTrack*>(&t))
     {
+        facts["automation_edit_basis"] = readAutomationEditBasis(a->state);
         facts["gain_db"] = a->getVolumePlugin()->getVolumeDb();
         facts["base_gain_db"] = te::volumeFaderPositionToDB(a->getVolumePlugin()->volParam->getCurrentExplicitValue());
         facts["automation_volume_points"] = a->getVolumePlugin()->volParam->getCurve().getNumPoints();

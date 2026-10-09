@@ -256,7 +256,8 @@ Json Commands::automationClipboardChanges(const Json& args) const
         buffer->manifest["end_samples"].get<int64_t>() - buffer->manifest["start_samples"].get<int64_t>();
     require(first >= 0 && end >= first && duration > 0, "invalid automation paste bounds");
     const bool midi = buffer->manifest.value("kind", std::string{}) == "midi_clips";
-    const bool timeline = buffer->manifest.value("kind", std::string{}) == "timeline_clips";
+    const bool timeline = buffer->manifest.value("kind", std::string{}) == "timeline_clips" ||
+                          (midi && buffer->manifest.contains("track_timebases"));
     const auto timebase = timeline ? buffer->manifest.at("track_timebases").at(sourceTrack).get<std::string>()
                                    : buffer->manifest.value("automation_timebase", std::string{"samples"});
     require(!midi || timebase != "mixed" || buffer->automation.empty(),
@@ -338,7 +339,8 @@ Json Commands::automationClipboardChanges(const Json& args) const
             const bool pasted = match != mapping.end();
             if (!pasted && (mode != "shuffle" || !curve.getNumPoints()))
                 continue;
-            require(suffixTimebase != "mixed", "one Shuffle suffix mixes timebases with a shared automation lane");
+            require(suffixTimebase != "mixed",
+                    "mixed Shuffle suffix shares automation: select its sample or beat curve edit basis");
             require(curve.timeBase == te::AutomationCurve::TimeBase::time,
                     "paste requires seconds-based destination automation");
             require(std::isfinite(parameter->valueRange.start) && std::isfinite(parameter->valueRange.end) &&

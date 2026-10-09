@@ -42,6 +42,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(shuffleMapping, editCommand::shuffleSamples);
         addMenuCommand(shuffleMapping, editCommand::shuffleNative);
         p.addSubMenu(text("Shuffle 时间基准"), shuffleMapping);
+        juce::PopupMenu curveBasis;
+        for (int id : {editCommand::curveBasisAuto, editCommand::curveBasisSamples, editCommand::curveBasisBeats})
+            addMenuCommand(curveBasis, id);
+        p.addSubMenu(text("轨道曲线映射（原生剪贴板 / Shuffle）"), curveBasis);
         p.addSeparator();
         addMenuCommand(p, 6);
         addMenuCommand(p, 7);

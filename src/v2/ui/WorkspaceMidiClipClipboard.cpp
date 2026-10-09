@@ -9,6 +9,17 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
     const auto slices = capturing ? clipboardSelection() : Json::array();
     const auto existing = commands.clipboard();
     const bool range = selection.objects.empty() && !selection.range.is_null() && !selection.tracks.empty();
+    const bool explicitCurveBasis =
+        capturing && std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
+                                 [&](const Json& t)
+                                 {
+                                     const bool chosen =
+                                         range ? std::find(selection.tracks.begin(), selection.tracks.end(), t["id"]) !=
+                                                     selection.tracks.end()
+                                               : std::any_of(slices.begin(), slices.end(),
+                                                             [&](const Json& c) { return c["track"] == t["id"]; });
+                                     return chosen && t.value("automation_edit_basis", std::string{"auto"}) != "auto";
+                                 });
     const bool midiRange = range && std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
                                                 [&](const Json& t)
                                                 {
@@ -18,8 +29,9 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                                 });
     if (deleting && (!range || editing.mode != "shuffle"))
         return false;
-    if (capturing ? (!midiRange && (slices.empty() || std::none_of(slices.begin(), slices.end(),
-                                                                   [](const Json& c) { return c["kind"] == "midi"; })))
+    if (capturing ? (!explicitCurveBasis && !midiRange &&
+                     (slices.empty() ||
+                      std::none_of(slices.begin(), slices.end(), [](const Json& c) { return c["kind"] == "midi"; })))
                   : (existing.is_null() || (existing.value("kind", std::string{}) != "midi_clips" &&
                                             existing.value("kind", std::string{}) != "timeline_clips")))
         return false;
@@ -44,14 +56,15 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             for (const auto& c : slices)
                 timebases.insert(c.value("timebase", std::string{"samples"}));
             const bool mixed =
-                capturing ? (midiRange &&
-                             std::any_of(owners.begin(), owners.end(),
-                                         [&](const Json& id)
-                                         {
-                                             return std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
-                                                                [&](const Json& t)
-                                                                { return t["id"] == id && t["type"] == "audio"; });
-                                         })) ||
+                capturing ? explicitCurveBasis ||
+                                (midiRange &&
+                                 std::any_of(owners.begin(), owners.end(),
+                                             [&](const Json& id)
+                                             {
+                                                 return std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
+                                                                    [&](const Json& t)
+                                                                    { return t["id"] == id && t["type"] == "audio"; });
+                                             })) ||
                                 std::any_of(slices.begin(), slices.end(),
                                             [](const Json& c) { return c["kind"] == "audio"; }) ||
                                 timebases.size() > 1
@@ -83,7 +96,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                     commands.acceptClipboard(buffer["id"]);
                     if (mixed)
                     {
-                        message(text("已复制音频与 MIDI · 保留原生片段、空白及空轨"));
+                        message(text("已复制原生时间线 · 保留片段、曲线基准、空白及空轨"));
                         return;
                     }
                     message(text(range ? "已复制 MIDI 选区 · 保留空白、音符与控制器"

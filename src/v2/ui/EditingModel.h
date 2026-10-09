@@ -8,7 +8,8 @@ constexpr int shuffle = 114, slip = 115, grid = 116, selector = 117, grabber = 1
               nudgeForward = 121, previousBoundary = 122, nextBoundary = 123, split = 124, copy = 125, cut = 126,
               paste = 127, duplicate = 128, pasteOriginal = 129, spot = 134, remove = 135, smart = 136,
               extendPrevious = 255, extendNext = 256, trimStartBack = 630, trimStartForward = 631, trimEndBack = 632,
-              trimEndForward = 633, shuffleSamples = 634, shuffleNative = 635;
+              trimEndForward = 633, shuffleSamples = 634, shuffleNative = 635, curveBasisAuto = 636,
+              curveBasisSamples = 637, curveBasisBeats = 638;
 inline bool boundaryNudge(int id)
 {
     return id >= trimStartBack && id <= trimEndForward;

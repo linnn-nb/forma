@@ -57,6 +57,7 @@ public:
     Json render(const juce::File&, int64_t start, int64_t end);
     Json timelineRange() const;
     Json shuffleOptions() const;
+    std::string automationEditBasis(const std::string& track) const;
     Json editingOptions() const; // Persisted engineering options; changes use a human Plan and native Undo.
     // Local L5 view preferences. Persisted under Edit/NATIVEDAW/UI, outside
     // project transactions, revision and the Agent command registry.

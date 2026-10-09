@@ -57,6 +57,12 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::altModifier},
         {editCommand::shuffleNative, "Shuffle：片段原时间基准", "编辑", juce::KeyPress::F1Key,
          juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+        {editCommand::curveBasisAuto, "轨道曲线映射：自动", "编辑", juce::KeyPress::F5Key,
+         juce::ModifierKeys::altModifier},
+        {editCommand::curveBasisSamples, "轨道曲线映射：采样", "编辑", juce::KeyPress::F6Key,
+         juce::ModifierKeys::altModifier},
+        {editCommand::curveBasisBeats, "轨道曲线映射：小节拍", "编辑", juce::KeyPress::F7Key,
+         juce::ModifierKeys::altModifier},
         {editCommand::slip, "Slip 自由编辑", "编辑", juce::KeyPress::F2Key},
         {editCommand::spot, "Spot 按小节与拍置入", "编辑", juce::KeyPress::F3Key},
         {editCommand::grid, "Grid 绝对网格", "编辑", juce::KeyPress::F4Key},
@@ -466,7 +472,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                                                    {
                                                                        return t["id"] == id &&
                                                                               (t["type"] == "midi" ||
-                                                                               t["type"] == "instrument");
+                                                                               t["type"] == "instrument" ||
+                                                                               t.value("automation_edit_basis",
+                                                                                       std::string{"auto"}) != "auto");
                                                                    });
                                             });
                             active = active && (!slices.empty() || midiRange);
@@ -739,6 +747,17 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id >= editCommand::curveBasisAuto && id <= editCommand::curveBasisBeats)
+            {
+                const auto t = selectedTrack();
+                active = !facts.value("playing", false) && pending.is_null() && !t.is_null() &&
+                         t.contains("automation_edit_basis") &&
+                         commands.querySummary().value("object_pages_available", false);
+                if (active)
+                    info.setTicked(t["automation_edit_basis"] == (id == editCommand::curveBasisAuto      ? "auto"
+                                                                  : id == editCommand::curveBasisSamples ? "samples"
+                                                                                                         : "beats"));
+            }
             if (id == editCommand::shuffleSamples || id == editCommand::shuffleNative)
             {
                 active = !facts.value("playing", false) && pending.is_null() &&
@@ -826,6 +845,25 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= editCommand::curveBasisAuto && id <= editCommand::curveBasisBeats)
+    {
+        invoke(
+            [&]
+            {
+                if (!pending.is_null())
+                    throw std::runtime_error("先接受或取消当前预览");
+                const std::string basis = id == editCommand::curveBasisAuto      ? "auto"
+                                          : id == editCommand::curveBasisSamples ? "samples"
+                                                                                 : "beats";
+                if (commands.automationEditBasis(selected) == basis)
+                    return;
+                commands.commit(
+                    commands.makePlan("human", Json::array({operation("track.automation_edit_basis.set",
+                                                                      {{"track", selected}, {"basis", basis}})})));
+                message(text("轨道剪贴板 / 原基准 Shuffle 曲线映射已设置 · 片段基准保持 · 可撤销"));
+            });
+        return true;
+    }
     if (id == editCommand::shuffleSamples || id == editCommand::shuffleNative)
     {
         invoke(

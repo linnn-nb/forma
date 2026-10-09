@@ -82,6 +82,9 @@ std::string Commands::timelineShuffleTimebase(const std::string& id, int64_t rem
 {
     auto* t = track(id);
     require(t != nullptr, "Shuffle track disappeared");
+    const auto explicitBasis = automationEditBasis(id);
+    if (explicitBasis != "auto")
+        return explicitBasis;
     std::set<std::string> bases;
     for (auto* c : t->getClips())
         if (sample(c->getPosition().getEnd()) > removalEnd)
@@ -309,15 +312,19 @@ Json Commands::captureTimelineClipClipboard(const Json& clips, const Json& range
     buffer.manifest["start_beat"] = firstBeat;
     buffer.manifest["end_beat"] = lastBeat;
     captureClipboardAutomation(buffer, bytes);
-    if (!midiOnly)
+    if (!midiOnly || std::any_of(buffer.manifest["tracks"].begin(), buffer.manifest["tracks"].end(),
+                                 [&](const Json& id) { return automationEditBasis(id.get<std::string>()) != "auto"; }))
     {
         buffer.manifest["track_timebases"] = Json::object();
         for (const auto& id : buffer.manifest["tracks"])
         {
             const auto& bases = trackBases[id];
-            require(bases.size() <= 1 || !buffer.automation.contains(id.get<std::string>()),
-                    "one track mixes timebases with automation; choose a uniform track before Copy");
-            buffer.manifest["track_timebases"][id.get<std::string>()] = bases.size() == 1 ? *bases.begin() : "samples";
+            const auto explicitBasis = automationEditBasis(id.get<std::string>());
+            require(
+                explicitBasis != "auto" || bases.size() <= 1 || !buffer.automation.contains(id.get<std::string>()),
+                "mixed track shares automation: select its sample or beat clipboard/Shuffle curve basis before Copy");
+            buffer.manifest["track_timebases"][id.get<std::string>()] =
+                explicitBasis != "auto" ? explicitBasis : (bases.size() == 1 ? *bases.begin() : "samples");
         }
     }
     buffer.manifest["state_bytes"] = bytes;
@@ -414,6 +421,22 @@ Json Commands::timelineClipPasteRange(const std::string& id, int64_t point) cons
     else
         for (const auto& c : entries)
             end = std::max(end, c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>());
+    // The complete common envelope includes frozen curve mappings as well as clips.
+    // An explicit beat curve on a sample-based source may outlast its audio at the destination Tempo.
+    if (b->manifest.contains("track_timebases"))
+        for (const auto& [owner, basis] : b->manifest["track_timebases"].items())
+            if (b->automation.contains(owner))
+            {
+                int64_t curveEnd =
+                    point + b->manifest["end_samples"].get<int64_t>() - b->manifest["start_samples"].get<int64_t>();
+                if (basis == "beats")
+                {
+                    const auto beat = edit->tempoSequence.toBeats(time(point)).inBeats();
+                    curveEnd = sample(edit->tempoSequence.toTime(tracktion::BeatPosition::fromBeats(
+                        beat + b->manifest["end_beat"].get<double>() - b->manifest["start_beat"].get<double>())));
+                }
+                end = std::max(end, curveEnd);
+            }
     require(end > point && end <= std::llround(te::Edit::maximumLength * rate), "timeline range paste exceeds session");
     return {{"start_samples", point}, {"end_samples", end}};
 }
@@ -686,11 +709,15 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         }
     }
     require(changes.size() <= 128, "timeline edit exceeds 128 object changes");
+    Json bases = Json::object();
+    for (const auto& owner : (cmd.ends_with(".erase") ? b->manifest["tracks"] : a.at("tracks")))
+        bases[owner.get<std::string>()] = automationEditBasis(owner.get<std::string>());
     Json result{
         {"command", cmd},
         {"operation_index", index},
         {"clips", changes},
         {"automation", automation},
+        {"automation_edit_bases", bases},
         {"range", b->manifest.value("source_range", false)
                       ? (cmd.ends_with(".erase") ? Json{{"start_samples", b->manifest["start_samples"]},
                                                         {"end_samples", b->manifest["end_samples"]}}

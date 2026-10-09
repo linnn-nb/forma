@@ -351,7 +351,7 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                     out += text("Shuffle 原时间基准：音频按采样，MIDI 音乐片段按拍。\n采样位移：") +
                            juce::String(change["displacement_samples"].get<int64_t>()) + text("；音乐位移：") +
                            juce::String(change["displacement_beats"].get<double>(), 6) +
-                           text(" 拍。变速后各轨实际秒位移可能不同，曲线跟随各自基准。\n");
+                           text(" 拍。变速后各轨实际秒位移可能不同；共享曲线按轨道声明的映射基准。\n");
                 else
                     out += text("Shuffle 采样模式：后方内容共同移动 ") +
                            juce::String(change["displacement_samples"].get<int64_t>()) +
@@ -360,6 +360,11 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
             }
             for (const auto& id : change["range_tracks"])
                 out += text("轨道：") + trackName(id.get<std::string>()) + "\n";
+            if (change.contains("automation_edit_bases"))
+                for (const auto& [id, basis] : change["automation_edit_bases"].items())
+                    if (basis != "auto")
+                        out += text("共享曲线映射 · ") + trackName(id) + text("：") +
+                               (basis == "beats" ? text("小节拍") : text("采样")) + text("（不改片段基准）\n");
             int added = 0, removed = 0, retained = 0;
             for (const auto& clip : change["clips"])
                 if (clip["after"].is_null())

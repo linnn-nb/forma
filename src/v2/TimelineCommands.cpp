@@ -53,6 +53,23 @@ private:
 } // namespace
 void Commands::registerTimelineCommands(Json& registry)
 {
+    registry.push_back(
+        {{"id", "track.automation_edit_basis.set"},
+         {"schema",
+          {{"type", "object"},
+           {"properties",
+            {{"track", {{"type", "string"}}}, {"basis", {{"type", "string"}, {"enum", {"auto", "samples", "beats"}}}}}},
+           {"required", {"track", "basis"}},
+           {"additionalProperties", false}}},
+         {"permission", "edit"},
+         {"risk", "low"},
+         {"reversible", true},
+         {"live", false},
+         {"tool_visibility", "local_gui"},
+         {"test", "U-P0-SHARED-CLOCK-01"},
+         {"units",
+          {{"basis", "timeline clipboard and native range Shuffle curve mapping only; does not change clip sync or "
+                     "native curve playback timebase"}}}});
     registry.push_back({{"id", "session.automation_follows_edit.set"},
                         {"schema",
                          {{"type", "object"},
@@ -175,6 +192,31 @@ Json Commands::shuffleOptions() const
     checkThread();
     return readShuffleOptions(metadata);
 }
+std::string readAutomationEditBasis(const juce::ValueTree& trackState)
+{
+    juce::ValueTree state;
+    for (const auto child : trackState)
+        if (child.hasType("NDAW_AUTOMATION_EDIT_BASIS"))
+        {
+            require(!state.isValid(), "duplicate track automation edit basis");
+            state = child;
+        }
+    if (!state.isValid())
+        return "auto";
+    require(state.getNumChildren() == 0 && state.getNumProperties() == 2 && state.hasProperty("schema") &&
+                state.hasProperty("basis") && savedSample(state["schema"]) == 1,
+            "invalid saved track automation edit basis fields/schema");
+    const auto basis = state["basis"].toString().toStdString();
+    require(basis == "samples" || basis == "beats", "invalid saved track automation edit basis");
+    return basis;
+}
+std::string Commands::automationEditBasis(const std::string& id) const
+{
+    checkThread();
+    auto* t = track(id);
+    require(t != nullptr, "automation edit basis requires an audio, MIDI, instrument or Aux track");
+    return readAutomationEditBasis(t->state);
+}
 Json Commands::editingOptions() const
 {
     checkThread();
@@ -194,7 +236,18 @@ Json Commands::validateTimelinePlan(const Json& ops) const
     for (const auto& op : ops)
     {
         const std::string cmd = op["command"];
-        if (cmd == "session.shuffle.mapping.set")
+        if (cmd == "track.automation_edit_basis.set")
+        {
+            require(ops.size() == 1 && !edit->getTransport().isPlaying(),
+                    "stop before a standalone track automation edit basis change");
+            const std::string id = op.at("args").at("track"), basis = op.at("args").at("basis");
+            require(basis == "auto" || basis == "samples" || basis == "beats", "invalid automation edit basis");
+            const auto original = automationEditBasis(id);
+            require(basis != original, "automation edit basis is already selected");
+            changes.push_back(
+                {{"operation_index", index}, {"command", cmd}, {"track", id}, {"before", original}, {"after", basis}});
+        }
+        else if (cmd == "session.shuffle.mapping.set")
         {
             require(ops.size() == 1 && !edit->getTransport().isPlaying(),
                     "stop before a standalone Shuffle mapping edit");
@@ -244,7 +297,21 @@ Json Commands::validateTimelinePlan(const Json& ops) const
 void Commands::executeTimelineOperation(const std::string& cmd, const Json& args)
 {
     auto* undo = &edit->getUndoManager();
-    if (cmd == "session.shuffle.mapping.set")
+    if (cmd == "track.automation_edit_basis.set")
+    {
+        auto* t = track(args.at("track"));
+        require(t != nullptr, "automation edit basis track disappeared");
+        const std::string basis = args.at("basis");
+        if (basis == "auto")
+            t->state.removeChild(t->state.getChildWithName("NDAW_AUTOMATION_EDIT_BASIS"), undo);
+        else
+        {
+            auto state = t->state.getOrCreateChildWithName("NDAW_AUTOMATION_EDIT_BASIS", undo);
+            state.setProperty("schema", 1, undo);
+            state.setProperty("basis", juce::String(basis), undo);
+        }
+    }
+    else if (cmd == "session.shuffle.mapping.set")
     {
         auto state = metadata.getOrCreateChildWithName("SHUFFLE_OPTIONS", undo);
         state.setProperty("schema", 1, undo);
