@@ -1,0 +1,18 @@
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  77: forma_native_transport_controls
+1/6 Test  #77: forma_native_transport_controls ...   Passed    2.08 sec
+    Start  78: forma_native_loop_playback
+2/6 Test  #78: forma_native_loop_playback ........   Passed    2.38 sec
+    Start  81: forma_native_rulers
+3/6 Test  #81: forma_native_rulers ...............   Passed    5.56 sec
+    Start  98: forma_native_music_events
+4/6 Test  #98: forma_native_music_events .........   Passed    6.64 sec
+    Start  99: forma_native_roll_playback
+5/6 Test  #99: forma_native_roll_playback ........   Passed   10.37 sec
+    Start 100: tracktion_selection_output_gate
+6/6 Test #100: tracktion_selection_output_gate ...   Passed    6.54 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  33.58 sec

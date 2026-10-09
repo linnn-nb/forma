@@ -145,6 +145,45 @@ int main(int argc, char** argv)
                "negative duration rejected atomically");
         reject([&] { c.commit(c.makePlan("agent:external", Json::array({operation("transport.roll.set", roll)}))); },
                "frozen Agent tool path does not gain ruler edit permissions");
+        for (const auto& unit : {"samples", "min_sec", "bars_beats"})
+            for (int64_t anchor : {int64_t(0), int64_t(48000), int64_t(72000)})
+                for (int64_t length : {int64_t(0), int64_t(37), int64_t(12001), int64_t(96000), int64_t(3600048)})
+                    for (bool pre : {true, false})
+                        check(c.parseRollDuration(c.formatRollDuration(length, anchor, pre, unit, 24), anchor, pre,
+                                                  unit, 24) == length,
+                              "sample/seconds/native-beat duration preserves exact samples including pre-zero");
+        for (int fps : {24, 25, 30})
+        {
+            const int64_t frame = 48000 / fps;
+            check(c.parseRollDuration("00:01:02:03", 48000, false, "timecode", fps) == 62 * 48000 + 3 * frame,
+                  "actual NDF frame rate determines duration");
+            check(c.formatRollDuration(frame * 17 + 1, 48000, true, "timecode", fps) == "00:00:00:17",
+                  "timecode display reports containing frame rather than changing sub-frame samples");
+            reject([&] { c.parseRollDuration("00:00:00:" + std::to_string(fps), 0, false, "timecode", fps); },
+                   "out-of-range frame rejected");
+        }
+        for (const auto& invalidText : {"nan", "-1", "1e6", "00:60", "1:2:3", "0.25bad", "999999999999"})
+            reject([&] { c.parseRollDuration(invalidText, 48000, true, "min_sec", 24); },
+                   "invalid seconds syntax or timeline overflow rejected");
+        reject([&] { c.parseRollDuration("9223372036854775808", 0, true, "samples", 24); },
+               "sample integer overflow rejected");
+        reject([&] { c.parseRollDuration("1", 0, true, "min_sec", 29); }, "unsupported frame-rate context rejected");
+        c.commit(
+            c.makePlan("human", Json::array({operation("tempo.event.create", {{"beat_position", 4.}, {"bpm", 60.}})})));
+        const auto anchor = c.sampleAtBeat(6.);
+        check(c.parseRollDuration("4", anchor, true, "bars_beats", 24) == 144000 &&
+                  c.parseRollDuration("4", c.sampleAtBeat(2.), false, "bars_beats", 24) == 144000,
+              "pre and post duration cross actual Tempo change instead of fixed BPM multiplication");
+        check(c.formatRollDuration(144000, anchor, true, "bars_beats", 24) == "4.000000000",
+              "native Tempo map duration displays the inverse musical length");
+        c.undo();
+        c.commit(c.makePlan("human",
+                            Json::array({operation("meter.event.create",
+                                                   {{"beat_position", 4.}, {"numerator", 3}, {"denominator", 8}})})));
+        check(c.parseRollDuration("2", c.sampleAtBeat(4.), false, "bars_beats", 24) ==
+                  c.sampleAtBeat(6.) - c.sampleAtBeat(4.),
+              "musical duration follows native Meter-dependent beat length");
+        c.undo();
         pump();
         invoke(w, 279);
         auto input = [&](const char* id, const char* value)
@@ -153,7 +192,7 @@ int main(int argc, char** argv)
             check(t != nullptr, "real roll input visible");
             t->setText(value, false);
         };
-        input("transport.roll.pre_samples", "12000");
+        input("transport.roll.pre_samples", "0.25");
         invoke(w, 275);
         check(c.query()["transport_settings"]["roll"]["pre_samples"] == 12000,
               "native panel commits actual pre-roll duration");
@@ -167,7 +206,7 @@ int main(int argc, char** argv)
               "invalid numeric text preserves panel and actual facts");
         invoke(w, 277);
         invoke(w, 279);
-        input("transport.roll.pre_samples", "13000");
+        input("transport.roll.pre_samples", "0.270833333");
         const auto track = c.query()["tracks"][0]["id"];
         c.commit(c.makePlan("human", Json::array({operation("track.gain", {{"track", track}, {"db", -1.}})})));
         invoke(w, 275);
@@ -176,10 +215,96 @@ int main(int argc, char** argv)
         invoke(w, 277);
         c.undo();
         pump();
+        const auto originalView = c.uiState();
+        auto timecodeRulers = originalView["rulers"];
+        timecodeRulers["timecode"] = true;
+        c.updateUiState({{"main_time_scale", "timecode"}, {"timecode_fps", 25}, {"rulers", timecodeRulers}},
+                        c.sessionToken());
+        auto subFrame = roll;
+        subFrame["pre_samples"] = 12001;
+        c.commit(c.makePlan("human", Json::array({operation("transport.roll.set", subFrame)})));
+        pump();
+        invoke(w, 279);
+        auto* preEditor = dynamic_cast<juce::TextEditor*>(find(w, "transport.roll.pre_samples"));
+        check(preEditor && preEditor->getText() == "00:00:00:06", "real panel uses current main ruler and 25fps NDF");
+        auto* preToggle = dynamic_cast<juce::ToggleButton*>(find(w, "transport.roll.pre"));
+        check(preToggle != nullptr, "actual pre-roll toggle available");
+        preToggle->setToggleState(false, juce::dontSendNotification);
+        input("transport.roll.post_samples", "00:00:00:07");
+        invoke(w, 275);
+        check(c.query()["transport_settings"]["roll"]["pre_samples"] == 12001 &&
+                  c.query()["transport_settings"]["roll"]["post_samples"] == 13440 &&
+                  !c.query()["transport_settings"]["roll"]["pre_enabled"].get<bool>(),
+              "checkbox preserves exact sub-frame pre length while edited post becomes seven native frames");
+        const auto unitFile = dir.getChildFile("RollUnits.tracktionedit");
+        c.save(unitFile);
+        {
+            Workspace restored(false, std::make_unique<Storage>(dir.getChildFile("unit-reopen")));
+            restored.setVisible(true);
+            restored.setSize(1600, 1000);
+            auto& owner = AudioDeviceTestAccess::owner(restored);
+            owner.open(unitFile);
+            pump();
+            check(owner.query()["transport_settings"]["roll"] == c.query()["transport_settings"]["roll"] &&
+                      owner.uiState()["main_time_scale"] == "timecode" && owner.uiState()["timecode_fps"] == 25,
+                  "native close reopen preserves frame-edited post and exact disabled sub-frame pre");
+            invoke(restored, 279);
+            auto* restoredInput = dynamic_cast<juce::TextEditor*>(find(restored, "transport.roll.pre_samples"));
+            check(restoredInput && restoredInput->getText() == "00:00:00:06",
+                  "reopened panel displays restored main ruler frame format");
+        }
+        c.undo();
+        check(c.query()["transport_settings"]["roll"] == subFrame,
+              "one native Undo restores unit-entry and checkbox together");
+        c.redo();
+        check(c.query()["transport_settings"]["roll"]["pre_samples"] == 12001, "Redo retains unquantised duration");
+        c.undo();
+        c.undo();
+        c.updateUiState({{"main_time_scale", "bars_beats"}}, c.sessionToken());
+        pump();
+        invoke(w, 279);
+        input("transport.roll.pre_samples", "0.5");
+        invoke(w, 275);
+        check(c.query()["transport_settings"]["roll"]["pre_samples"] == 12000,
+              "real main Bars Beats panel submits musical duration through L1");
+        c.undo();
+        c.updateUiState({{"main_time_scale", originalView["main_time_scale"]},
+                         {"timecode_fps", originalView["timecode_fps"]},
+                         {"rulers", originalView["rulers"]}},
+                        c.sessionToken());
+        pump();
         auto* edit = dynamic_cast<EditWindow*>(find(w, "edit.timeline"));
         check(edit != nullptr, "actual timeline visible");
         const auto point = RollRuler::flag(c.query(), c.uiState(), edit->coordinates(), true).getCentre().toFloat();
         check(point.x > edit->coordinates().left, "actual pre-roll flag located on main ruler");
+        auto disabled = roll;
+        disabled["pre_enabled"] = false;
+        disabled["post_enabled"] = false;
+        c.commit(c.makePlan("human", Json::array({operation("transport.roll.set", disabled)})));
+        pump();
+        const auto grayFlag = RollRuler::flag(c.query(), c.uiState(), edit->coordinates(), true);
+        check(!grayFlag.isEmpty() && grayFlag.getCentre().toFloat() == point,
+              "disabled pre-roll retains stored position and hit target on main ruler");
+        juce::Image flagImage(juce::Image::ARGB, edit->getWidth(), Rulers::height(c.uiState()), true);
+        juce::Graphics graphics(flagImage);
+        RollRuler painter;
+        painter.paint(graphics, c.query(), c.uiState(), edit->coordinates());
+        check(flagImage.getPixelAt(grayFlag.getX() + 7, grayFlag.getY() + 2) == juce::Colour(0xff697785),
+              "production ruler paints disabled flag gray from actual saved facts");
+        const auto grayDestination = juce::Point<float>{float(edit->coordinates().pixelAt(36000)), point.y};
+        edit->mouseDown(event(*edit, point));
+        edit->mouseDrag(event(*edit, grayDestination));
+        check(c.query()["transport_settings"]["roll"] == disabled,
+              "disabled flag drag leaves facts untouched until release");
+        edit->mouseUp(event(*edit, grayDestination));
+        pump();
+        check(!c.query()["transport_settings"]["roll"]["pre_enabled"].get<bool>() &&
+                  std::abs(c.query()["transport_settings"]["roll"]["pre_samples"].get<int64_t>() - 12000) < 400,
+              "gray flag moves duration without silently enabling playback roll");
+        c.undo();
+        check(c.query()["transport_settings"]["roll"] == disabled, "gray flag Undo restores disabled settings");
+        c.undo();
+        pump();
         edit->mouseDown(event(*edit, point));
         const auto destination = juce::Point<float>{float(edit->coordinates().pixelAt(36000)), point.y};
         edit->mouseDrag(event(*edit, destination));

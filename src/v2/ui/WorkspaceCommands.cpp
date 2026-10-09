@@ -1253,11 +1253,21 @@ void Workspace::showRollSettings()
                 {
                     return std::string(e.what());
                 }
+            },
+            [this](int64_t duration, int64_t anchor, bool pre, const std::string& unit, int fps)
+            { return commands.formatRollDuration(duration, anchor, pre, unit, fps); },
+            [this](const std::string& input, int64_t anchor, bool pre, const std::string& unit, int fps,
+                   const Json& facts)
+            {
+                if (facts["session_token"] != commands.sessionToken() ||
+                    facts["revision"] != commands.query()["revision"])
+                    throw std::runtime_error("工程已修改，请重新打开预后卷设置");
+                return commands.parseRollDuration(input, anchor, pre, unit, fps);
             });
         addChildComponent(*rollPanel);
         rollPanel->connect(commandManager);
     }
-    rollPanel->show(commands.query());
+    rollPanel->show(commands.query(), commands.uiState());
     rollPanel->setBounds(getLocalBounds());
     rollPanel->setVisible(true);
     rollPanel->toFront(true);

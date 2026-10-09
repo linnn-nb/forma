@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-ROLL-TIME-01（2026-10-09）
+
+结果：Release/固定deep/strict验签；193专项＋受影响6/6、0失败，33.58秒。主标尺时长输入（秒/分:秒、样本、24/25/30 NDF、实际拍数）通过L1真实TempoSequence转换；关闭灰旗绘制/命中/拖动保持关闭，单笔Undo/Redo、精确子帧保留、原生保存/新Workspace重开和可改键接通。代码/例值/边界见VERIFICATION首节，三份roll-time证据为本增量核心。
+
+亲手试：FormaRollTimePreview.app打开roll-time-preview.json的RollUnits.tracktionedit；已选25fps主标尺，预卷关闭/12001样本，后卷7帧。CommandShiftK打开设置、CommandReturn提交、CommandK成对开关；拖/双击灰旗，Undo/Redo，另存重开。切换主标尺后重新打开面板使用对应单位；本面板单位打开时冻结。测试诊断PCM非实录/制作示范。
+
+Mac locked，未实体点击/键盘/试听，无截图/DMG；仅本轮94602已结束，旧用户窗口保留。无新依赖/SDK/MCP，完整U＋P0未完成；录音/循环预后卷、Memory恢复、多字段导航、外部MIDI精确停止及实体/第三方PDC/听感待验。下一项编辑组联动与统一选择。
+
 ## U-P0-ROLL-BOUNDARY-01（2026-10-09）
 
 结果：Release/固定验签，受影响10/10、0失败、86.56秒；新52与既有62检查通过。实际hosted stereo四采样率、末端块内最后帧/其后0.5秒、Click、真实wet Reverb Aux、停止尾音和后续连续播放验证；截止后PCM0。123采样native PDC测试误差0，预分配测试图C++分配/释放0（非第三方/完整SDKRT资格）。代码/边界/失败修复见VERIFICATION首节；四份selection-output-gate证据为本增量核心。

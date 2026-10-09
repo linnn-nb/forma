@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+最新结论（U-P0-ROLL-TIME-01）：无新依赖或SDK补丁；Release/固定签名通过，193专项与6/6受影响回归通过（33.58秒）。主时间单位输入与关闭灰旗接通同一L1事务。Mac锁定阻止实体GUI/试听，已结束仅本轮预览PID94602；继续不受阻塞的U＋P0工程工作。Bars|Beats目前拍数输入，NDF仅24/25/30；录音/循环预后卷、外部MIDI精确截止、第三方动态PDC/多输出、实体麦克风/MIDI、听感/耐久/Windows/发行仍未验，完整U＋P0未完成。
+
 当前增量（2026-10-09，区间波形截止）：Release/固定验签、受影响10/10、86.56秒，新52与既有62专项通过。实际hosted四采样率stereo、Click和wet Reverb Aux在最近设备样本截止，之后PCM0；native走带/光标和外部MIDI仍依赖消息线程。更新已记录per-device hook到Click之后，fresh patch/CMake exact diff通过，其他补丁保留。Mac locked未实体点击/试听，仅本轮3676结束；完整U＋P0未完成、不进P1，M2/M3冻结、M4/M5暂缓；见VERIFICATION首节。
 
 当前增量（2026-10-09，选区播放/预后卷）：原生面板、主标尺旗标、可改键、human Undo/Redo与保存重开接通真实Tracktion；受影响8/8通过、专项62检查，Release/固定验签通过。实际hosted输出终点超出1216采样，SDK25Hz停止非采样精确、录音/循环预后卷未实现。Mac锁定，实体操作/试听未执行；仅本轮预览62331结束，旧窗口保留。完整U＋P0未完成、不进P1，无新依赖/SDK补丁；M2/M3冻结、M4/M5暂缓。详见VERIFICATION.md首节。

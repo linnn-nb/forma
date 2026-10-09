@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-ROLL-TIME-01：预后卷时间单位与关闭旗标（2026-10-09）
+
+结论：Release原生应用构建、固定身份deep/strict验签通过；193专项＋6/6受影响回归，0失败，33.58秒。代码为RollTime.cpp、EngineCommands.h、RollPanel.h、RollRuler.h和WorkspaceCommands.cpp；测试为RollPlaybackTests.cpp。没有新SDK补丁/依赖/AI工具。完整U＋P0未完成，不进入P1。
+
+L1消息线程使用实际TempoSequence换算，主单位为秒数/分:秒、样本、24/25/30 NDF、拍数；打开面板时冻结单位/帧率/边界/版本。前卷向前、后卷向后跨速度变化，初始Tempo支持零点前外推；Bars|Beats当前输入拍数，不是小节|拍分字段。90组样本/秒/拍往返（含37、12001等非整帧长度与零点前），三种帧率，非法后缀/NaN/指数/负数/范围/整数溢出均验证。真实新增60BPM事件后4拍预/后卷跨原120BPM区间都得到144000样本；3/8拍号以原生sampleAtBeat验证，未固定BPM乘法。
+
+真实面板25fps显示12001样本为00:00:00:06，关闭pre开关保留12001；输入post 00:00:00:07得到13440样本，整笔Undo/Redo和新Workspace重开保留精确字段及主标尺。灰旗生产绘制颜色与命中、局部拖稿、松手时长提交、保持关闭与Undo通过。保存改键后重开实际执行ControlOptionR；默认CommandK入口仍执行。原生标尺回归含上下区循环手柄编辑，走带、音乐事件、Loop、SelectionOutputGate实际音频回归全过。既有源SHA9cd7158460ebefa243de80a8801851e479fef26b578682547cb4b8330138fcf3不变，实际pre/post输出峰0.0499999523/0.1999999285。
+
+本轮native走带实际停止97472样本，计划96000（差1472）；不得把wave截止资格扩张为整个Transport停止采样级。外部MIDI、录音/循环预后卷、实体监听/听感、第三方动态PDC与多输出仍待验。测试PCM是诊断信号，非实录或音乐制作示范；跨重开Undo历史不承诺。
+
+证据：evidence/U/roll-time-tests.json、roll-time-affected-tests.txt、roll-time-preview.json；历史JSON保留原提交，相关重跑位于忽略的build-v2-tracktion/roll-time-rerun-*.json。构建日志roll-time-final-build.log，初次编译修正文件局部time助手作用域，不改变要求/容差；专项和最终CTest均通过。
+
+GUI：LaunchServices启动已签名FormaRollTimePreview.app打开实际RollUnits.tracktionedit；CUA确认Mac locked，未实体点击/键盘/试听或截图。仅本轮PID94602已结束并核验，无残留，旧用户窗口保留。产物/工程路径和SHA见preview JSON。无全量回归或DMG。
+
 ## U-P0-ROLL-BOUNDARY-01：区间波形输出截止（2026-10-09）
 
 结论：Release构建/固定身份deep/strict验签通过；受影响10/10、0失败、86.56秒；新专项52检查，既有预后卷62检查亦通过。实际Tracktion hosted stereo输出在44.1/48/96/192kHz（128/256/512帧）下，区间末端最近设备采样起及其后0.5秒的左右PCM峰值均0；最后允许的干声帧保留。原生Click和真实发送→wet-only Reverb Aux同样截止，恢复GUI后停止尾音仍0，显式Stop退役状态，连续播放恢复非零输出。不是实体设备/听感/往返延迟资格。

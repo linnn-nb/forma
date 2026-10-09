@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+预后卷时间输入（U-P0-ROLL-TIME-01）：L1 RollTime.cpp 提供消息线程只读格式化／解析，输入来自打开面板时的主标尺与帧率。秒数／分:秒、工程样本、24/25/30 NDF 和实际 TempoSequence 拍数均转换回同一 48k 工程样本；拍数以前卷选区起点／后卷终点为锚，跨 Tempo/Meter，并在零点之前按原生初始速度外推。GUI 不直接读写 Edit。未改字段保留原始样本，时间码显示帧下余量不被开关截短；解析前和提交时检查 session/revision。仍是一笔 transport.roll.set/native Undo，无新持久 schema、依赖、SDK补丁或 MCP 工具。
+
+RollRuler 关闭时保留灰色旗标和真实存储位置，拖动仅改时长、不自动启用；循环优先时也灰显。旗标上半区与下半区循环手柄各自命中；原生标尺回归通过。面板冻结可见单位，UI单位随后变化不改变该输入解释。Release/固定验签、193专项和6/6受影响回归通过（33.58秒）；实体GUI/试听仍未验，边界见VERIFICATION。
+
 区间波形边界（U-P0-ROLL-BOUNDARY-01）：L1在prepareAuditionPlayback只配置最终wave输出节点，不换源/路由；SelectionOutputGate持有不可变范围与原子启用/进展，prepare换算设备样本并读取实际输入PDC，回调复制预分配缓冲、清区间外帧，不改Edit。更新记录SDK per-device hook到Click之后/设备映射之前，覆盖hardware wave分支；离线Render路径不带该瞬态callback。pin保持，fresh apply/reverse与CMake全diff校验。
 
 自然区间结束保留掩码以阻止SDK尾音回漏，显式Stop/Seek/Play/Record退役并恢复普通图；失败/中断退役，save不包含瞬态节点，adopt旧Edit回收后新会话不继承。最近设备样本音频截止已做四采样率stereo/Click/Aux软件验证；native 25Hz走带/光标停止与CPU处理、外部MIDI仍依赖消息线程，不声称整个Transport采样级。实体停止态监听、动态第三方PDC、多输出与听感未验；旧段落的25Hz声音截止限制已由本增量在所测wave范围替代。

@@ -99,6 +99,9 @@ public:
     int64_t snapToGrid(int64_t sample, double division) const;
     int64_t offsetByBeats(int64_t sample, double beats) const;
     Json timelinePosition(int64_t samples) const; // Local read API; no new MCP tool.
+    std::string formatRollDuration(int64_t duration, int64_t anchor, bool pre, const std::string& unit, int fps) const;
+    int64_t parseRollDuration(const std::string& input, int64_t anchor, bool pre, const std::string& unit,
+                              int fps) const;
     Json musicalGrid(int64_t start, int64_t end, double division = 1) const;
     static Json analyse(const juce::File&);
     static std::string mediaHash(const juce::File&);

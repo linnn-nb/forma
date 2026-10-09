@@ -5,8 +5,11 @@ namespace ndaw::desktop
 class RollPanel final : public juce::Component
 {
 public:
+    using Format = std::function<std::string(int64_t, int64_t, bool, const std::string&, int)>;
+    using Parse = std::function<int64_t(const std::string&, int64_t, bool, const std::string&, int, const Json&)>;
     using Submit = std::function<std::string(Json, uint64_t, const std::string&)>;
-    explicit RollPanel(Submit submit) : submit(std::move(submit))
+    explicit RollPanel(Submit submit, Format format, Parse parse)
+        : submit(std::move(submit)), format(std::move(format)), parse(std::move(parse))
     {
         setComponentID("transport.roll.panel");
         for (auto* c :
@@ -15,9 +18,11 @@ public:
         pre.setComponentID("transport.roll.pre");
         post.setComponentID("transport.roll.post");
         preTime.setComponentID("transport.roll.pre_samples");
+        preTime.setInputRestrictions(64);
+        postTime.setInputRestrictions(64);
         postTime.setComponentID("transport.roll.post_samples");
-        pre.setButtonText(text("预卷 · 48k工程样本"));
-        post.setButtonText(text("后卷 · 48k工程样本"));
+        pre.setButtonText(text("预卷"));
+        post.setButtonText(text("后卷"));
         title.setText(text("选区播放 · 预卷 / 后卷"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
     }
@@ -28,35 +33,51 @@ public:
         apply.setCommandToTrigger(&manager, 275, true);
         cancel.setCommandToTrigger(&manager, 277, true);
     }
-    void show(const Json& facts)
+    void show(const Json& facts, const Json& view)
     {
         snapshot = facts;
+        unit = view.value("main_time_scale", std::string("min_sec"));
+        fps = view.value("timecode_fps", 24);
+        const auto range = facts.value("time_selection", Json(nullptr));
+        preAnchor = range.is_null() ? facts["position_samples"].get<int64_t>() : range["start_samples"].get<int64_t>();
+        postAnchor = range.is_null() ? preAnchor : range["end_samples"].get<int64_t>();
         const auto roll = facts["transport_settings"]["roll"];
         pre.setToggleState(roll["pre_enabled"], juce::dontSendNotification);
         post.setToggleState(roll["post_enabled"], juce::dontSendNotification);
-        preTime.setText(juce::String(roll["pre_samples"].get<int64_t>()), false);
-        postTime.setText(juce::String(roll["post_samples"].get<int64_t>()), false);
-        hint.setText(text("停止时设置，可撤销、保存。先创建时间选区再播放；循环模式优先，不应用预后卷。录音预后卷尚未接"
-                          "通。波形输出截止到最近设备采样；走带状态停止仍经消息线程。外部MIDI截止尚待验证。"),
+        originalPre = format(roll["pre_samples"], preAnchor, true, unit, fps);
+        originalPost = format(roll["post_samples"], postAnchor, false, unit, fps);
+        preTime.setText(text(originalPre), false);
+        postTime.setText(text(originalPost), false);
+        const auto label = unit == "samples"      ? text("样本 · 48k工程时间")
+                           : unit == "bars_beats" ? text("拍数 · 实际Tempo Map")
+                           : unit == "timecode"   ? juce::String(fps) + text("fps NDF · HH:MM:SS:FF")
+                                                  : text("时长 · 分:秒 或秒数");
+        pre.setButtonText(text("预卷 · ") + label);
+        post.setButtonText(text("后卷 · ") + label);
+        preTime.setTooltip(label);
+        postTime.setTooltip(label);
+        hint.setText(text("用于选区播放；循环播放不应用预后卷，录音预后卷尚未提供。灰旗可调，勾选后启用。"
+                          "未更改的字段保留精确时长（包括不足一帧）。拍数按选区边界和实际速度／拍号换算；"
+                          "输入单位在打开面板时固定。"),
                      juce::dontSendNotification);
     }
     void execute()
     {
         try
         {
-            auto integer = [](const juce::TextEditor& e)
+            // Unchanged display text preserves the exact stored samples, including sub-frame durations.
+            auto duration = [&](const juce::TextEditor& input, bool before)
             {
-                const auto value = e.getText().toStdString();
-                size_t used = 0;
-                const int64_t n = std::stoll(value, &used);
-                if (used != value.size() || n < 0)
-                    throw std::runtime_error("请输入完整非负样本整数");
-                return n;
+                const auto value = input.getText().toStdString();
+                return value == (before ? originalPre : originalPost)
+                           ? snapshot["transport_settings"]["roll"][before ? "pre_samples" : "post_samples"]
+                                 .get<int64_t>()
+                           : parse(value, before ? preAnchor : postAnchor, before, unit, fps, snapshot);
             };
             Json args{{"pre_enabled", pre.getToggleState()},
                       {"post_enabled", post.getToggleState()},
-                      {"pre_samples", integer(preTime)},
-                      {"post_samples", integer(postTime)}};
+                      {"pre_samples", duration(preTime, true)},
+                      {"post_samples", duration(postTime, false)}};
             const auto error = submit(args, snapshot["revision"], snapshot["session_token"]);
             if (!error.empty())
                 throw std::runtime_error(error);
@@ -87,6 +108,11 @@ public:
 
 private:
     Submit submit;
+    Format format;
+    Parse parse;
+    std::string unit, originalPre, originalPost;
+    int fps = 24;
+    int64_t preAnchor = 0, postAnchor = 0;
     Json snapshot;
     juce::ToggleButton pre, post;
     juce::TextEditor preTime, postTime;

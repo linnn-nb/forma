@@ -12,8 +12,6 @@ public:
         if (range.is_null())
             return {};
         const auto settings = facts["transport_settings"]["roll"];
-        if (!settings[pre ? "pre_enabled" : "post_enabled"].get<bool>())
-            return {};
         const int64_t anchor = range[pre ? "start_samples" : "end_samples"];
         const int64_t duration = settings[pre ? "pre_samples" : "post_samples"];
         const int64_t sample = pre ? std::max(int64_t(0), anchor - duration)
@@ -35,8 +33,10 @@ public:
             const auto b = flag(displayed, view, axis, pre);
             if (b.isEmpty())
                 continue;
-            g.setColour(facts["transport_settings"].value("loop_enabled", false) ? juce::Colour(0xff697785)
-                                                                                 : juce::Colour(0xffe6bc62));
+            const bool enabled = displayed["transport_settings"]["roll"][pre ? "pre_enabled" : "post_enabled"];
+            g.setColour(!enabled || facts["transport_settings"].value("loop_enabled", false)
+                            ? juce::Colour(0xff697785)
+                            : juce::Colour(0xffe6bc62));
             juce::Path shape;
             if (pre)
                 shape.addTriangle(float(b.getX()), float(b.getY()), float(b.getRight()), float(b.getY()),

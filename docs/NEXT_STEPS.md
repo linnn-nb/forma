@@ -1,11 +1,11 @@
 # 下一步
 
-结论：区间波形输出在最近设备采样截止；Release/固定deep/strict签名、10/10受影响回归与新52检查通过（86.56秒），既有预后卷62检查保持。真实hosted四采样率stereo、Click、wet Reverb Aux、停止尾音和连续播放恢复验证；GUI停滞时截止后PCM0。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。
+结论：预后卷主标尺时间单位和关闭灰旗已接通；Release/固定deep/strict签名、193专项与6/6受影响回归通过，0失败，33.58秒。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。
 
-亲手试：build-v2-tracktion/FormaSelectionGatePreview.app，打开 /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_roll_playback_tests/forma-roll-f68c6ab256684f79a4d7d0c530ab466c/Roll.tracktionedit。已有1–1.5秒范围和前后各0.5秒；本工程设置键已改为ControlOptionR（新工程默认CommandShiftK），CommandK开关，CommandReturn提交/空格/旗标拖动双击/Undo/Redo/保存重开。source为测试诊断PCM非实录，不是制作示范。
+亲手试：build-v2-tracktion/FormaRollTimePreview.app打开 /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_roll_playback_tests/forma-roll-1057187860d74ae5af682fbfc410479f/RollUnits.tracktionedit。已有1–1.5秒范围、25fps NDF主标尺；pre关闭且精确12001样本、post7帧。CommandShiftK设置、CommandReturn提交、CommandK成对开关；灰旗拖动/双击、Undo/Redo、另存重开。更换主标尺后重新打开设置，输入单位才改变。夹具为测试诊断PCM，非实录或制作示范。
 
-本轮启动并核验仅3676，Mac locked无法点击/试听，已结束并确认无残留，旧用户窗口保留；预览可在解锁后打开，无新DMG。产物/fixture/SHA与补丁可重现证据见selection-output-gate-preview.json与selection-output-gate-patch.json。
+支持：秒数/分:秒、48k工程样本、24/25/30 NDF、实际Tempo/Meter拍数；Bars|Beats当前是拍数，不是小节|拍分字段。未改文本保留精确样本，灰旗拖动不自动启用。证据/产物SHA见roll-time-tests.json、roll-time-affected-tests.txt、roll-time-preview.json。
 
-下一项明确任务：预后卷主时间单位输入与禁用灰旗交互，仍通过同一human事务/版本校验、保存重开与自定义快捷键；随后编辑组联动、更多对象/时间选择与Marker/Memory工作流。第三方动态PDC/多输出生命周期及停止态实体监听资格仍须补，不把测试native123采样延迟当第三方验证。
+GUI：Mac锁定，实体点击/键盘/试听未执行；仅本轮94602已停止，无残留，旧窗口保留。无DMG。实体设备/动态第三方PDC、多输出、停止态监听、去点击听感与耐久仍待验；native走带/光标停止依赖消息线程、外部MIDI没有精确边界，录音/循环预后卷未实现。
 
-native走带/光标与CPU图停止仍依赖消息线程（测试故意停滞，实际走带55353–55417而目标31459）；外部MIDI没有精确边界，录音/循环预后卷未实现。波形是硬截止、听感/去点击策略未验。实体麦克风/MIDI、耐久、Windows/发行未验；用户亲手确认完整U＋P0后进入P1。旧媒体不覆盖，跨重开Undo历史不承诺。
+下一项明确任务：编辑组联动——停止态同组片段与时间选择联动，在现有稳定对象/选择模型上由同一human Plan提交，单笔Undo/Redo、保存重开和自定义快捷键；同步保持非组目标和原始媒体。之后完善Marker/Memory预后卷恢复与字段导航。用户亲手确认完整U＋P0后才进入P1。旧媒体不覆盖，跨重开Undo历史不承诺。
