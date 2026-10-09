@@ -1126,16 +1126,25 @@ void Commands::play()
     }
     catch (...)
     {
+        releaseRollGraph();
         finishAutomationCapture();
         throw;
     }
 }
 void Commands::stop()
 {
+    stopTransport(false);
+}
+void Commands::stopTransport(bool preserveRollBoundary)
+{
     checkThread();
     stopScrub();
     if (!rollPlayback.is_null() && (rollPlayback["state"] == "playing" || rollPlayback["state"] == "requested"))
+    {
         rollPlayback["state"] = "cancelled";
+    }
+    if (!preserveRollBoundary)
+        releaseRollGraph();
     endParameterGestures();
     {
         ParameterWriteGuard parameterGuard(*this);
@@ -1178,6 +1187,7 @@ void Commands::seek(int64_t sample)
     require(recordingCapture.is_null(), "stop recording before seeking");
     if (!rollPlayback.is_null() && (rollPlayback["state"] == "playing" || rollPlayback["state"] == "requested"))
         stop();
+    releaseRollGraph();
     require(capture.is_null(), "stop automation writing before seeking");
     require(sample >= 0 && sample <= std::llround(te::Edit::maximumLength * timelineRate),
             "position outside session range");
@@ -1404,6 +1414,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     externalPreparedRates.clear();
     externalParameterLayouts.clear();
     undoBoundaryInhibitor.reset();
+    releaseRollGraph();
     edit = std::move(candidate);
     rollPlayback = nullptr;
     undoBoundaryInhibitor = std::move(newInhibitor);

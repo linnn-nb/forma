@@ -37,7 +37,7 @@ public:
         preTime.setText(juce::String(roll["pre_samples"].get<int64_t>()), false);
         postTime.setText(juce::String(roll["post_samples"].get<int64_t>()), false);
         hint.setText(text("停止时设置，可撤销、保存。先创建时间选区再播放；循环模式优先，不应用预后卷。录音预后卷尚未接"
-                          "通。结束检测使用Tracktion原生25Hz定时器，非采样级停止；GUI阻塞会延迟停止。"),
+                          "通。波形输出截止到最近设备采样；走带状态停止仍经消息线程。外部MIDI截止尚待验证。"),
                      juce::dontSendNotification);
     }
     void execute()

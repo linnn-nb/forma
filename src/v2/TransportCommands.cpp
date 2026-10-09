@@ -3,6 +3,7 @@
 #include <charconv>
 #include "TimelineState.h"
 #include "OutputProbe.h"
+#include "SelectionOutputGate.h"
 
 namespace ndaw::v2
 {
@@ -150,7 +151,8 @@ Json Commands::transportSettingsQuery() const
             {"loop_enabled", edit->getTransport().looping.get()},
             {"loop_range", loopRange},
             {"roll", readRollState(metadata)},
-            {"roll_playback", rollPlayback}};
+            {"roll_playback", rollPlayback},
+            {"audio_gate_active", rollGate != nullptr && rollGate->enabled.load(std::memory_order_acquire)}};
 }
 
 Json Commands::validateTransportPlan(const Json& operations) const
@@ -280,6 +282,7 @@ void Commands::executeTransportOperation(const std::string& command, const Json&
 
 bool Commands::beginRollPlayback()
 {
+    releaseRollGraph();
     const auto roll = readRollState(metadata);
     rollPlayback = nullptr;
     if (edit->getTransport().looping.get())
@@ -297,21 +300,57 @@ bool Commands::beginRollPlayback()
     const auto end = std::min(std::llround(te::Edit::maximumLength * 48000.),
                               last + (roll["post_enabled"].get<bool>() ? roll["post_samples"].get<int64_t>() : 0));
     const auto firstFrame = outputProbe ? outputProbe->frames.load(std::memory_order_relaxed) : 0;
+    rollGate = std::make_shared<SelectionOutputGateState>();
+    rollGate->startSeconds = start / 48000.;
+    rollGate->endSeconds = end / 48000.;
+    auto state = rollGate;
+    edit->getTransport().prepareAuditionPlayback(
+        tracktion::TimePosition::fromSeconds(start / 48000.),
+        [state](te::EditPlaybackContext& context)
+        {
+            context.clearNodes();
+            context.setInsertOptionalLastStageNodeForDeviceCallback(
+                [state](te::OutputDevice& device, const te::CreateNodeParams& params,
+                        std::unique_ptr<tracktion::graph::Node> input) -> std::unique_ptr<tracktion::graph::Node>
+                {
+                    if (dynamic_cast<te::WaveOutputDevice*>(&device))
+                        return std::make_unique<SelectionOutputGate>(std::move(input), params.processState, state);
+                    return input;
+                });
+        });
     edit->getTransport().playSectionAndReset(
         {tracktion::TimePosition::fromSeconds(start / 48000.), tracktion::TimePosition::fromSeconds(end / 48000.)});
     rollPlayback = {
-        {"state", "requested"},   {"frames_at_start", firstFrame},
-        {"start_samples", start}, {"end_samples", end},
-        {"selection", range},     {"stop_accuracy", "Tracktion message-thread 25Hz section stop; not sample-accurate"}};
+        {"state", "requested"},
+        {"frames_at_start", firstFrame},
+        {"start_samples", start},
+        {"end_samples", end},
+        {"selection", range},
+        {"stop_accuracy", "wave audio gated at nearest device sample; native transport stops on message thread"}};
     rollProgressFrames = firstFrame;
     rollProgressTime = juce::Time::getMillisecondCounterHiRes();
     startTimerHz(20);
     return true;
 }
+void Commands::releaseRollGraph()
+{
+    if (!rollGate)
+        return;
+    rollGate->enabled.store(false, std::memory_order_release);
+    if (auto* context = edit->getTransport().getCurrentPlaybackContext())
+        context->setInsertOptionalLastStageNodeForDeviceCallback({});
+    rollGate.reset();
+}
 void Commands::advanceRollPlayback()
 {
     if (rollPlayback.is_null() || (rollPlayback["state"] != "playing" && rollPlayback["state"] != "requested"))
         return;
+    if (rollGate)
+        rollPlayback["audio_boundary"] = {
+            {"reached", rollGate->reached.load(std::memory_order_acquire)},
+            {"processed_blocks", rollGate->processedBlocks.load(std::memory_order_relaxed)},
+            {"end_samples", rollPlayback["end_samples"]},
+            {"external_midi", "not gated; message-thread native stop"}};
     const auto frames = outputProbe ? outputProbe->frames.load(std::memory_order_relaxed) : 0;
     const auto now = juce::Time::getMillisecondCounterHiRes();
     const auto* context = edit->getTransport().getCurrentPlaybackContext();
@@ -341,7 +380,9 @@ void Commands::advanceRollPlayback()
     }
     if (rollPlayback["state"] == "interrupted")
         rollPlayback["error"] = "native transport stopped before the selected end";
-    stop();
+    // Keep the completed range mask while the SDK still drains its graph.
+    // An explicit Stop/Seek/Play/Record retires it and restores normal monitoring.
+    stopTransport(rollPlayback["state"] == "stopped");
 }
 
 void Commands::restoreTransportSettings()

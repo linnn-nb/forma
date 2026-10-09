@@ -24,7 +24,7 @@ open build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app
 
 使用「文件→导入音频」，直接在光标处创建轨道和片段，一次 Undo 撤销；空格播放/停止，T/R 水平缩放，Option＋方向键滚动，Cmd+= 切换 Edit/Mix。「键位…」可以即时编辑和导入导出快捷键，视图与键位随 `.tracktionedit` 保存。Edit 中可选择 Shuffle/Slip/Spot/Grid、选择/移动/修剪工具。Cmd+7 开音频 Smart Tool：上半部选区、下半部移动、边缘修剪、顶部圆点拖淡入淡出；松手一笔 Undo，淡化随工程保存。Grid 跟随 Tempo Map；Command 拖动临时取消吸附。逗号/句号或数字区 ± 执行 Nudge，Tab/Option+Tab 跳片段边界，Cmd+E 在光标拆分音频。选中音频 Clip 或轨道时间选区后，可用 Cmd+C/X/V/D 复制、剪切、粘贴、复制片段，Option+Cmd+V 粘回源位置；都能在「键位…」重映射。粘贴会替换目的区间，复制片段会保留重叠的现有内容；剪切保留原始媒体。剪贴板当前只存于本次打开的会话，工程重开后已提交的编辑仍保留，剪贴板需重新复制。MIDI/自动化剪贴板、MIDI 整片移动/修剪尚未接通；当前 Undo 历史只在本次打开期间保留。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
 
-选区播放：CommandShiftK打开预卷/后卷设置（48k工程采样），CommandK切换；主标尺旗标拖动或双击，一笔Undo，保存重开并可改快捷键。关闭roll时仍按选区播放，Loop模式优先；录音预后卷尚未接通。结束采用Tracktion消息线程定时器，存在超出，不代表采样级截止。
+选区播放：CommandShiftK打开预卷/后卷设置（48k工程采样），CommandK切换；主标尺旗标拖动或双击，一笔Undo，保存重开并可改快捷键。关闭roll时仍按选区播放，Loop模式优先；录音预后卷尚未接通。波形输出在最近设备采样截止；走带/光标停止与外部MIDI仍经消息线程，实体多输出/第三方PDC/听感未完成验证。
 
 时间线自动化：轨道头下拉选择音量、声像或实际插件参数，Control−切片段/音量，ControlCommand←/→切前后视图；选择画笔（CommandF10）绘制，移动工具拖点或双击加点，Option点删除、Backspace删除所选点。Selector仍拖时间范围。停止时松手一次事务，Undo/Redo、参数点与视图可保存重开；键位可改。当前每笔32个不同采样点、最多64操作，超限整体拒绝；曲线以256个SDK采样点显示，音频使用原生自动化。多点/自动化剪贴板、其他Pencil形状和高级模式仍未完成；最新桌面验收受锁屏阻塞。
 

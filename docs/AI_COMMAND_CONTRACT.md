@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-ROLL-BOUNDARY-01：沿用既有human/local_gui transport.roll.set与session范围事务；音频图在L1消息线程准备。查询新增瞬态transport_settings.audio_gate_active，roll_playback.audio_boundary包含reached/processed_blocks/end_samples与external_midi说明；只有实际wave图处理才能置reached。声音截止按最近设备样本，actual_stop_samples继续报告真实native走带停止位置，不伪造为计划值。节点不保存、无新命令或冻结MCP工具；Undo/保存/改键资格由既有62回归保持。
+
 ## 选区播放 / 预后卷（U-P0-ROLL-01）
 
 本地human命令transport.roll.set：四字段全部必须提供，pre_enabled/post_enabled为布尔，pre_samples/post_samples为0至Edit最大长度的48000Hz工程样本整数。预览给出原设置与新设置；一笔Plan/Undo，陈旧版本/会话、非法时长、非human、播放中编辑整笔拒绝。local_gui不增加冻结的MCP工具；查询包含实际roll状态，回执与持久设置分开。

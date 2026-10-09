@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-ROLL-BOUNDARY-01：区间波形输出截止（2026-10-09）
+
+结论：Release构建/固定身份deep/strict验签通过；受影响10/10、0失败、86.56秒；新专项52检查，既有预后卷62检查亦通过。实际Tracktion hosted stereo输出在44.1/48/96/192kHz（128/256/512帧）下，区间末端最近设备采样起及其后0.5秒的左右PCM峰值均0；最后允许的干声帧保留。原生Click和真实发送→wet-only Reverb Aux同样截止，恢复GUI后停止尾音仍0，显式Stop退役状态，连续播放恢复非零输出。不是实体设备/听感/往返延迟资格。
+
+测试故意不泵message loop，同时推进原生音频与文件缓存；native transport仍playing且最终停止位置55353–55417工程采样，目标31459。只有声音精确截止，原生走带/光标与CPU图停止仍在消息线程；未把其延迟改写为0。设备允许帧数：48k19114、44.1k17561、96k38228、192k76456；按分别四舍五入起/终点定义最近设备采样。选择输出为硬边界，无额外去点击淡化；实体听感及相应策略待验。外部MIDI没有接入该截止，仍依赖native消息线程停止；多物理输出/硬件插入、第三方动态PDC、停止态实体监听与耐久未验。
+
+代码/命令：SelectionOutputGate.h为实际每wave输出图节点，TransportCommands.cpp在L1构建完整原生图、发布不可变起/终点与原子进展；既有transport.roll.set/范围命令、human Undo/保存/键位不变。图中先复制到预分配缓冲、扣本输入native PDC，再只清范围外帧；不复制wave无用MIDI，不访问GUI/Edit/磁盘或模型。EngineCommands.cpp的stopTransport区分自然完成保留掩码与显式Stop/Seek/Play；RecordingCommands.cpp成功前置检查后的Record退役旧节点。audio_gate_active和audio_boundary是实际瞬态事实，不保存或增加revision；失败/提前停止退役，adopt/析构走既有图回收。自然结束后的停止态监听须显式Stop退役，实体行为未验。
+
+tests/v2/SelectionOutputGateTests.cpp还用测试常量源+SDK LatencyNode验证123采样正延迟的允许窗654–2467（含），逐样本最大误差0；预分配测试图处理的instrumented C++ new/delete均0。测试替身不进入应用，也不代表第三方插件或完整SDK无锁/无分配；NodePlayer既有锁及设备/插件实时差距保留。真实源SHA256 13fcbd1c0c7bdb60d1ab5f535ad06983fc9da061386528a6aa12d8b090003c14保持。
+
+必要SDK改动：更新已记录tracktion-render-bus-only.patch，把per-device final回调从Click之前移到Click之后/设备映射之前，并覆盖hardware insert wave分支；未换pin或引入第二引擎，既有其他补丁保留。原始pin 0d4d77c8c9defa6ec2aec6454f634e77bbd13f98，patch SHA fb65997cf881d0c72b343bf1400a93b86904f938a879b7b899b54d2a060bf657；CMake exact whole SDK diff通过，空临时目录从原始pin重建两文件正/反应用、字节一致通过。实现依据[官方固定版本源码](https://github.com/Tracktion/tracktion_engine/blob/0d4d77c8c9defa6ec2aec6454f634e77bbd13f98/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp)，核验2026-10-09。
+
+修正：首次构建缺内部graph头，专项三个SDK重载歧义已修正；新target先configure；追加构建误写Scrub目标，改用CMake实际ndaw_scrub_tests后全部所需目标构建通过。首批音频专项click-only连续恢复失败：夹具只推进160ms未跨下一实际拍；固定推进650ms（覆盖下拍），未放宽PCM0或最后一帧断言。40检查通过后新增停止尾音/显式退役检查，最终52全部通过。无全量验收、DMG或模型新资格；完整U＋P0未完成，不进P1。
+
+关键输出：evidence/U/selection-output-gate-tests.json、selection-output-gate-affected-tests.txt、selection-output-gate-patch.json、selection-output-gate-preview.json；最终构建log在build-v2-tracktion/selection-output-gate-qualified-build.log，先前其余已完成目标在selection-output-gate-final-build.log。旧回归JSON原样恢复，本轮rerun副本留build。LaunchServices启动已签名独立预览，pid3676；库存列表可见不等于可交互，getApp明确Mac locked，未截图/物理点击/默认键/试听。仅结束3676并核验无残留；既有用户窗口保留。
+
 ## U-P0-ROLL-01：选区播放与预卷 / 后卷（2026-10-09）
 
 结论：Release构建及固定本地身份deep/strict验签通过；8项受影响CTest全部通过、0失败，55.07秒。新专项62检查，真实Tracktion hosted输出测得预卷区峰值0.0499999523、后卷区0.1999999284；要求96000采样结束，实际97216，超出1216（48k约25.33ms）。这不是实体CoreAudio/扬声器试听，也不是最坏停止误差或采样级截止资格。

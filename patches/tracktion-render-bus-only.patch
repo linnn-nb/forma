@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-index e37d1e4..5df9f8e 100644
+index e37d1e4..05f6061 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 @@ -1571,7 +1571,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
@@ -63,7 +63,17 @@ index e37d1e4..5df9f8e 100644
                  continue;
  
              if (auto output = getTrackOutput (*t))
-@@ -2141,7 +2149,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2122,9 +2130,6 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+             node = createMasterFadeInOutNode (edit, std::move (node), params);
+             node = EditNodeBuilder::insertOptionalLastStageNode (std::move (node));
+ 
+-            if (params.insertOptionalLastStageNodeForDevice && device != nullptr)
+-                node = params.insertOptionalLastStageNodeForDevice (*device, params, std::move (node));
+-
+             if (edit.getIsPreviewEdit() && node != nullptr)
+                 if (auto previewMeasurer = edit.getPreviewLevelMeasurer())
+                     node = makeNode<SharedLevelMeasuringNode> (std::move (previewMeasurer), std::move (node));
+@@ -2141,7 +2146,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
                                                                           ChannelMap::conversion (incomingChannels, deviceChannels));
          }
  
@@ -72,7 +82,19 @@ index e37d1e4..5df9f8e 100644
          {
              auto clickAndTracksNode = makeSummingNode ({ node.release(),
                                                           makeNode<ClickNode> (edit, getNumChannelsFromDevice (*device),
-@@ -2171,7 +2179,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2149,6 +2154,11 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+             node = std::move (clickAndTracksNode);
+         }
+ 
++        // A final per-device boundary must also include the click and hardware
++        // insert output. Configuration is message-thread only, processing native.
++        if (params.insertOptionalLastStageNodeForDevice && device != nullptr)
++            node = params.insertOptionalLastStageNodeForDevice (*device, params, std::move (node));
++
+         if (auto outputDeviceNode = createNodeForDevice (epc, *device, playHeadState, std::move (node)))
+             outputNode->addInput (std::move (outputDeviceNode));
+     }
+@@ -2171,7 +2181,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
  
      for (auto t : getAllTracks (edit))
      {
@@ -82,7 +104,7 @@ index e37d1e4..5df9f8e 100644
              continue;
  
          // Skip submix children (they're built by their parent) and tracks with no TrackOutput
-@@ -2186,7 +2195,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2186,7 +2197,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
          }
  
          if (auto node = createNodeForTrack (*t, params))

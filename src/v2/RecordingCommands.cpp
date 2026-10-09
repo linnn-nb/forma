@@ -318,6 +318,7 @@ Json Commands::record(const juce::File& directory)
     for (auto* t : te::getAllTracks(*edit))
         require(t->automationMode == te::AutomationMode::read,
                 "recording currently requires Read automation; simultaneous automation writing is pending");
+    releaseRollGraph();
     restoreInputAssignments();
     Json targets = Json::array(), existing = Json::array();
     for (auto* t : te::getAudioTracks(*edit))

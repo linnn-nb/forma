@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-ROLL-BOUNDARY-01（2026-10-09）
+
+结果：Release/固定验签，受影响10/10、0失败、86.56秒；新52与既有62检查通过。实际hosted stereo四采样率、末端块内最后帧/其后0.5秒、Click、真实wet Reverb Aux、停止尾音和后续连续播放验证；截止后PCM0。123采样native PDC测试误差0，预分配测试图C++分配/释放0（非第三方/完整SDKRT资格）。代码/边界/失败修复见VERIFICATION首节；四份selection-output-gate证据为本增量核心。
+
+SDK原per-device hook在Click前会漏掉点击声，已更新记录patch移至Click后并覆盖hardware wave分支；fresh pin apply/reverse字节一致与CMake exact diff通过，不改pin，其他历史补丁保持。没有新AI工具/分析资格，声音截止到最近设备样本；native走带停止仍依赖GUI，外部MIDI精确截止未实现，物理设备/动态第三方PDC/去点击听感/停止态监听待验。
+
+亲手试：FormaSelectionGatePreview.app打开preview JSON的test_fixture，已有1–1.5秒范围和各0.5秒roll；本工程ControlOptionR为已保存自定义设置键，CommandK开关，CommandReturn提交、空格、旗标拖动/双击、Undo/Redo、保存重开。夹具是诊断PCM、非实录。Mac locked，未实体操作/试听；仅本轮3676已结束，旧窗口保留。完整U＋P0未完成、不进P1、无DMG。
+
 ## U-P0-ROLL-01（2026-10-09）
 
 结果：Release/固定身份deep/strict通过；受影响8/8、0失败、55.07秒；专项62检查。真实Tracktion hosted PCM预卷/后卷峰值0.0499999523/0.1999999284，96000目标实际97216（超出1216采样），源SHA保持。人工编辑、Undo/Redo、原生重开/改键、冲突/损坏拒绝、输出停滞失败均通过。完整细节与代码/测试映射见VERIFICATION.md首节，关键输出roll-playback-tests.json、roll-affected-tests.txt、roll-preview.json。

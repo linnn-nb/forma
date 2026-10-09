@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+区间波形边界（U-P0-ROLL-BOUNDARY-01）：L1在prepareAuditionPlayback只配置最终wave输出节点，不换源/路由；SelectionOutputGate持有不可变范围与原子启用/进展，prepare换算设备样本并读取实际输入PDC，回调复制预分配缓冲、清区间外帧，不改Edit。更新记录SDK per-device hook到Click之后/设备映射之前，覆盖hardware wave分支；离线Render路径不带该瞬态callback。pin保持，fresh apply/reverse与CMake全diff校验。
+
+自然区间结束保留掩码以阻止SDK尾音回漏，显式Stop/Seek/Play/Record退役并恢复普通图；失败/中断退役，save不包含瞬态节点，adopt旧Edit回收后新会话不继承。最近设备样本音频截止已做四采样率stereo/Click/Aux软件验证；native 25Hz走带/光标停止与CPU处理、外部MIDI仍依赖消息线程，不声称整个Transport采样级。实体停止态监听、动态第三方PDC、多输出与听感未验；旧段落的25Hz声音截止限制已由本增量在所测wave范围替代。
+
 区间播放/预后卷（U-P0-ROLL-01）：L1在Edit/NATIVEDAW/ROLL schema1保存pre/post enabled和48000Hz工程样本长度；原生面板、快捷键和RollRuler草稿共用transport.roll.set及一个UndoManager事务。只允许human停止时编辑；旧工程没有ROLL则显式默认关闭、长度各96000样本，异常字段在adoptEdit前拒绝。无新UI schema或SDK补丁。
 
 普通选区播放与预后卷调用Tracktion playSectionAndReset：非循环模式从选区起点减启用预卷至终点加启用后卷，夹工程边界；无范围且关闭预后卷则继续普通走带，有预后卷而无范围拒绝。MIDI设备配置requested时禁止Play，避免配置完成停止共用观察定时器；循环模式优先保留原生loop，录音仍使用原生预备拍、没有录音预后卷。L1回执requested→观察到OutputProbe帧推进且nativeContext播放→playing→实际端点stopped；手动停止/seek取消，提前原生停止interrupted，连续两秒无输出进展failed并停止。状态不保存或增加Undo/revision。

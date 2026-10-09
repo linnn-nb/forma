@@ -1,5 +1,7 @@
 # Forma 界面与基础制作计划
 
+当前增量（2026-10-09，区间波形截止）：Release/固定验签、受影响10/10、86.56秒，新52与既有62专项通过。实际hosted四采样率stereo、Click和wet Reverb Aux在最近设备样本截止，之后PCM0；native走带/光标和外部MIDI仍依赖消息线程。更新已记录per-device hook到Click之后，fresh patch/CMake exact diff通过，其他补丁保留。Mac locked未实体点击/试听，仅本轮3676结束；完整U＋P0未完成、不进P1，M2/M3冻结、M4/M5暂缓；见VERIFICATION首节。
+
 当前增量（2026-10-09，选区播放/预后卷）：原生面板、主标尺旗标、可改键、human Undo/Redo与保存重开接通真实Tracktion；受影响8/8通过、专项62检查，Release/固定验签通过。实际hosted输出终点超出1216采样，SDK25Hz停止非采样精确、录音/循环预后卷未实现。Mac锁定，实体操作/试听未执行；仅本轮预览62331结束，旧窗口保留。完整U＋P0未完成、不进P1，无新依赖/SDK补丁；M2/M3冻结、M4/M5暂缓。详见VERIFICATION.md首节。
 
 当前增量（2026-10-09，Tempo/Meter）：原生标尺＋、双击、精确位置编辑/删除接通 L1 human 事务；事件稳定ID、Undo/Redo、保存重开和改键通过96项专项。真实MIDI时间重映射、样本基准音频PCM差0；本轮无新增依赖或SDK修改。Release/固定签名通过。Mac锁定，未实体操作/试听，仅本轮预览PID27305已结束并确认无残留，旧窗口保留。预后卷、完整U＋P0尚未完成，不进P1；M2/M3冻结、M4/M5暂缓。相关回归最终结果见VERIFICATION.md。

@@ -1,0 +1,112 @@
+{
+  "cases": [
+    {
+      "after_range_peak": 0.0,
+      "allowed_output_frames": 19114,
+      "buffer_frames": 256,
+      "device_rate": 48000.0,
+      "in_range_peak": 0.19999992847442627,
+      "kind": "dry",
+      "last_allowed_sample": 0.1853553056716919,
+      "native_stop_samples": 55353,
+      "observed_boundary": {
+        "end_samples": 31459,
+        "external_midi": "not gated; message-thread native stop",
+        "processed_blocks": 169,
+        "reached": true
+      }
+    },
+    {
+      "after_range_peak": 0.0,
+      "allowed_output_frames": 17561,
+      "buffer_frames": 128,
+      "device_rate": 44100.0,
+      "in_range_peak": 0.19999992847442627,
+      "kind": "dry",
+      "last_allowed_sample": 0.18011249601840973,
+      "native_stop_samples": 55395,
+      "observed_boundary": {
+        "end_samples": 31459,
+        "external_midi": "not gated; message-thread native stop",
+        "processed_blocks": 310,
+        "reached": true
+      }
+    },
+    {
+      "after_range_peak": 0.0,
+      "allowed_output_frames": 38228,
+      "buffer_frames": 512,
+      "device_rate": 96000.0,
+      "in_range_peak": 0.19999992847442627,
+      "kind": "dry",
+      "last_allowed_sample": 0.18296729028224945,
+      "native_stop_samples": 55353,
+      "observed_boundary": {
+        "end_samples": 31459,
+        "external_midi": "not gated; message-thread native stop",
+        "processed_blocks": 169,
+        "reached": true
+      }
+    },
+    {
+      "after_range_peak": 0.0,
+      "allowed_output_frames": 76456,
+      "buffer_frames": 256,
+      "device_rate": 192000.0,
+      "in_range_peak": 0.19999992847442627,
+      "kind": "dry",
+      "last_allowed_sample": 0.18171966075897217,
+      "native_stop_samples": 55417,
+      "observed_boundary": {
+        "end_samples": 31459,
+        "external_midi": "not gated; message-thread native stop",
+        "processed_blocks": 674,
+        "reached": true
+      }
+    },
+    {
+      "after_range_peak": 0.0,
+      "allowed_output_frames": 19114,
+      "buffer_frames": 256,
+      "device_rate": 48000.0,
+      "in_range_peak": 0.45447924733161926,
+      "kind": "click",
+      "last_allowed_sample": 0.0,
+      "native_stop_samples": 55353,
+      "observed_boundary": {
+        "end_samples": 31459,
+        "external_midi": "not gated; message-thread native stop",
+        "processed_blocks": 169,
+        "reached": true
+      }
+    },
+    {
+      "after_range_peak": 0.0,
+      "allowed_output_frames": 19114,
+      "buffer_frames": 256,
+      "device_rate": 48000.0,
+      "in_range_peak": 0.16837595403194427,
+      "kind": "aux-reverb",
+      "last_allowed_sample": 0.1631796658039093,
+      "native_stop_samples": 55353,
+      "observed_boundary": {
+        "end_samples": 31459,
+        "external_midi": "not gated; message-thread native stop",
+        "processed_blocks": 169,
+        "reached": true
+      }
+    }
+  ],
+  "checks": 52,
+  "failures": 0,
+  "latency_and_allocations": {
+    "cpp_allocations": 0,
+    "cpp_releases": 0,
+    "latency_samples": 123,
+    "pcm_max_error": 0.0,
+    "qualification": "test constant source plus native latency node; not third-party plugin or complete SDK realtime certification"
+  },
+  "qualification": "actual Tracktion hosted wave outputs; held message thread, native click and Aux reverb; physical device/third-party PDC/external MIDI pending",
+  "source_sha256": "13fcbd1c0c7bdb60d1ab5f535ad06983fc9da061386528a6aa12d8b090003c14",
+  "test_directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_selection_output_gate_tests/forma-selection-gate-6fedcc9cc131412cbccd593570eb30b6"
+}

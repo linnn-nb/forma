@@ -18,6 +18,7 @@ class NativePluginStates;
 class SessionRecovery;
 class MasterAnalysis;
 class ScrubPlayback;
+struct SelectionOutputGateState;
 class Commands : private juce::Timer, private te::ParameterChangeHandler::UserChangeListener
 {
 public:
@@ -231,6 +232,9 @@ private:
     Json transportSettingsQuery() const;
     void restoreTransportSettings();
     bool beginRollPlayback();
+    void releaseRollGraph();
+    void stopTransport(bool preserveRollBoundary);
+    std::shared_ptr<SelectionOutputGateState> rollGate;
     void advanceRollPlayback();
     Json rollPlayback = nullptr;
     uint64_t rollProgressFrames = 0;

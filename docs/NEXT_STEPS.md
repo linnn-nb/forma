@@ -1,11 +1,11 @@
 # 下一步
 
-结论：选区播放/预后卷的真实走带、human Undo/Redo、保存重开、原生面板/标尺旗标与改键通过62专项；Release/固定签名deep/strict及8项受影响回归通过0失败。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。
+结论：区间波形输出在最近设备采样截止；Release/固定deep/strict签名、10/10受影响回归与新52检查通过（86.56秒），既有预后卷62检查保持。真实hosted四采样率stereo、Click、wet Reverb Aux、停止尾音和连续播放恢复验证；GUI停滞时截止后PCM0。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。
 
-亲手试：build-v2-tracktion/FormaRollPreview.app；打开evidence/U/roll-playback-tests.json的test_directory/Roll.tracktionedit（本轮实际路径见下）。已有1–1.5秒选区，前后各24000工程采样/0.5秒。本测试工程已改绑ControlOptionR设置（新工程默认CommandShiftK）、CommandReturn提交、Escape取消、CommandK切换；空格播放，主标尺旗标拖动/双击，Undo/Redo及保存重开，键位可改。Loop优先，无范围启用roll会拒绝。
+亲手试：build-v2-tracktion/FormaSelectionGatePreview.app，打开 /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_roll_playback_tests/forma-roll-f68c6ab256684f79a4d7d0c530ab466c/Roll.tracktionedit。已有1–1.5秒范围和前后各0.5秒；本工程设置键已改为ControlOptionR（新工程默认CommandShiftK），CommandK开关，CommandReturn提交/空格/旗标拖动双击/Undo/Redo/保存重开。source为测试诊断PCM非实录，不是制作示范。
 
-本轮工程：/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_roll_playback_tests/forma-roll-e917d63d2301439e96ecb2826214b78f/Roll.tracktionedit。Mac锁定未实体点击/试听；本轮启动并核验预览PID62331，已结束确认无残留，原窗口保留。没有截图/DMG，测试诊断PCM不是实录。
+本轮启动并核验仅3676，Mac locked无法点击/试听，已结束并确认无残留，旧用户窗口保留；预览可在解锁后打开，无新DMG。产物/fixture/SHA与补丁可重现证据见selection-output-gate-preview.json与selection-output-gate-patch.json。
 
-下一项明确任务：在Tracktion原生播放图实现选区末端精确音频截止，验证块内边界、尾音/实际路由、手动停止/seek和GUI停滞，替代当前25Hz消息线程停止的误差。当前实测目标96000/实际97216，仅一次超出1216采样，不是最坏值。随后补编辑组联动及更多对象/时间选择、Marker/Memory工作流；用户亲手确认完整U＋P0后进入P1。
+下一项明确任务：预后卷主时间单位输入与禁用灰旗交互，仍通过同一human事务/版本校验、保存重开与自定义快捷键；随后编辑组联动、更多对象/时间选择与Marker/Memory工作流。第三方动态PDC/多输出生命周期及停止态实体监听资格仍须补，不把测试native123采样延迟当第三方验证。
 
-录音/循环预后卷、关闭旗标灰显、Memory预后卷恢复和主时间字段输入未实现；Tempo三角拖动/Option删除/Ramp等差距保留。实体录放/MIDI、第三方PDC、耐久、Windows与发行未验，原15份SDK补丁保持；旧媒体不覆盖，跨重开Undo历史不承诺。
+native走带/光标与CPU图停止仍依赖消息线程（测试故意停滞，实际走带55353–55417而目标31459）；外部MIDI没有精确边界，录音/循环预后卷未实现。波形是硬截止、听感/去点击策略未验。实体麦克风/MIDI、耐久、Windows/发行未验；用户亲手确认完整U＋P0后进入P1。旧媒体不覆盖，跨重开Undo历史不承诺。
