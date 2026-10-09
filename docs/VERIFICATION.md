@@ -1,3 +1,21 @@
+U-P0-MUSICAL-SHUFFLE-01（2026-10-10）：Shuffle增加可撤销、可保存重开的原时间基准模式；音频按采样、音乐MIDI按拍移位，曲线跟随各轨基准。跨Tempo/变速曲线/拍号的范围Cut/Delete/Paste通过，原始事件保留。最终13/13受影响CTest通过，2061检查/289.70秒（专项204，40960原生DSP位置探测）；源码4977ceb，Release与固定叶证书deep/strict验签通过。
+
+本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。
+
+实现：src/v2/MidiClipClipboard.cpp、MusicalCurveMap.cpp、AutomationClipboard/Clear、TimelineCommands/TimelineState、EngineCommands/QueryCommands及ui/WorkspaceMidiClipClipboard/Editing/Commands/Layout。tests/v2/MusicalShuffleTests.cpp使用隔离偏好与自有真实44.1k stereo媒体、48k工程、原生Tempo/Meter与FourOsc。
+
+专项覆盖两种真实速度图（阶跃及两个实际native ramp系数）×四种范围替换、公共空白/空轨、正负/零sample及beat位移；Cut含工程零点。40960位置按真实AutomationIterator与逆向音乐映射比较，预算1e-7原生参数跨度＋2float ULP，最大差1.7881393432617188e-07。真实音频WAV独立检查格式/声道/时长/非静音与原位置参考，预算2e-5及继承切缝±2048样本排除，最大差0.0；移位音乐MIDI实际驱动FourOsc并独立解码WAV，不代表实体试听。
+
+Undo/Redo精确状态、Save/Open原始NOTE/CONTROL/SYSEX和附加字段逐项相等；再保存的原始事件子树完全相等。派生query的音乐几何遵守原先1e-10拍容差，最大重算差3.197442310920451e-14拍；源事件/IDs/采样位置/曲线点/基础值不放宽。GUI生产组件验证实际默认基准键、自定义Paste键、CmdX/Delete、拒绝/接受/一笔Undo及保存重开；真实Tempo期间人工变更、混合基准共享曲线、异常设置Open保持原Edit并拒绝。
+
+早期候选编译误置分支/JSON类型比较已修复；测试曾错误拒绝不需移动的零位移samples替换，纠正预期。另将派生拍读数微小重算误判存储丢失，区分派生几何与逐字段原始存储核对；没有改动预算掩盖音频/源事件差异。日志保留在build-v2-tracktion/musical-shuffle-*；不计失败候选资格。
+
+最终完整受影响回归重新链接全部13目标，新回执复制到musical-shuffle-qualification/fresh，11份历史JSON按原SHA恢复。追踪证据evidence/U/musical-shuffle-tests.json、musical-shuffle-qualification.json、musical-shuffle-regression.txt。
+
+先保存并正常退出旧Forma，再双击build-v2-tracktion/OpenMusicalShuffleDemo.command。源四轨2–3秒已选，CmdC；Selector跨目的四轨选择9–9.5秒，Control+Option+Shift+J粘贴。原生卡片显示采样/拍位移、实际片段位置及各轨后缀曲线基准；接受、Space试听、CmdZ/ShiftCmdZ、CmdS新副本并CmdO重开。也可目的9–10秒CmdX或Delete；两者均预览、整体撤销，Delete保留剪贴板。编辑→Shuffle时间基准（OptionF1采样、ShiftOptionF1原基准）可改键；RAM剪贴板重开后需再次CmdC。
+
+生产Forma.app和org.forma.preview.musicalshuffle独立演示固定签名通过；--no-mcp，未启动，不生成新DMG或假截图。
+
 U-P0-MIXED-SHUFFLE-01（2026-10-10）：混合范围Shuffle Cut/Delete/Paste接通，后方实际音频、MIDI和曲线按公共采样位移，保留空轨空白、原始事件。一笔Undo/Redo、Save/Open和可改快捷键通过。源码2692223；Release/固定签名、最终10/10受影响CTest，1667检查/194.03秒（专项137）通过。
 
 本节替代历史“混合范围Shuffle未实现”，仅限本次受测路径。MIDI后方内容仅在单一恒定Tempo/拍号走廊移动；跨变化/变速、整对象Shuffle、同轨带曲线的混合基准、Warp及部分循环仍拒绝。Mac锁定，实体GUI/听感未执行，预览未启动；完整U＋P0未完成，不进P1。M2/M3冻结，M4/M5暂缓。

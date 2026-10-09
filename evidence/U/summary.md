@@ -1,3 +1,9 @@
+U-P0-MUSICAL-SHUFFLE-01（2026-10-10）：Shuffle增加可撤销、可保存重开的原时间基准模式；音频按采样、音乐MIDI按拍移位，曲线跟随各轨基准。跨Tempo/变速曲线/拍号的范围Cut/Delete/Paste通过，原始事件保留。最终13/13受影响CTest通过，2061检查/289.70秒（专项204，40960原生DSP位置探测）；源码4977ceb，Release与固定叶证书deep/strict验签通过。
+
+本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。
+
+证据：musical-shuffle-tests/qualification/regression；40960实际DSP位置最大差1.7881393432617188e-07，实际PCM最大差0.0，原始MIDI保存子树相等。11份历史报告原SHA恢复；早期失败日志仍保留，未计资格。演示OpenMusicalShuffleDemo.command，下一项混合基准共享曲线/对象Shuffle。
+
 U-P0-MIXED-SHUFFLE-01（2026-10-10）：混合范围Shuffle Cut/Delete/Paste接通，后方实际音频、MIDI和曲线按公共采样位移，保留空轨空白、原始事件。一笔Undo/Redo、Save/Open和可改快捷键通过。源码2692223；Release/固定签名、最终10/10受影响CTest，1667检查/194.03秒（专项137）通过。
 
 本节替代历史“混合范围Shuffle未实现”，仅限本次受测路径。MIDI后方内容仅在单一恒定Tempo/拍号走廊移动；跨变化/变速、整对象Shuffle、同轨带曲线的混合基准、Warp及部分循环仍拒绝。Mac锁定，实体GUI/听感未执行，预览未启动；完整U＋P0未完成，不进P1。M2/M3冻结，M4/M5暂缓。

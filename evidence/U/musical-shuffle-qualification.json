@@ -1,0 +1,73 @@
+{
+  "state": "passed",
+  "source_commit": "4977cebabb3eaba4712c0079964fcf20de179a56",
+  "tests": [
+    {
+      "test": "tracktion_permission_scope",
+      "checks": 38,
+      "sha256": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21"
+    },
+    {
+      "test": "forma_native_ui_navigation",
+      "checks": 48,
+      "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df"
+    },
+    {
+      "test": "forma_native_shuffle_ranges",
+      "checks": 116,
+      "sha256": "b0ff611372f394bf43718365518aae35bc28723bbc24a86000b94af367f46ad9"
+    },
+    {
+      "test": "forma_native_automation_shuffle",
+      "checks": 309,
+      "sha256": "f5508cf55686ee6b54f8c51651954baefddff03153f3fec51b9634fc87b17a70"
+    },
+    {
+      "test": "forma_native_automation_clipboard",
+      "checks": 234,
+      "sha256": "241f16e23d37ae659ace3af8042081dafc916896abce7949dece20b1a93af1c2"
+    },
+    {
+      "test": "forma_native_automation_follow",
+      "checks": 74,
+      "sha256": "2585bb6a5b80280e67accba30f566c06658d5781178802fd33d99a09b5a9922a"
+    },
+    {
+      "test": "forma_native_automation_clear",
+      "checks": 394,
+      "sha256": "b0d7569de573c7e190a887ae76432ade90d8dc677ed7779db734f27d7f7a0d9c"
+    },
+    {
+      "test": "forma_native_midi_clip_timeline",
+      "checks": 71,
+      "sha256": "7793a51bc16f07c73afd154f4239d8c8b459b39924644830ad41a937d25c90f3"
+    },
+    {
+      "test": "forma_native_midi_range_timeline",
+      "checks": 64,
+      "sha256": "fcb75f277f3ab7dfdd4504719b7f1c3ad762e9aed4e56da01778af43f5413e45"
+    },
+    {
+      "test": "forma_native_mixed_clipboard",
+      "checks": 94,
+      "sha256": "b65e4191b3d4a7272bb6dbe67da9151405fc02dc05558c6440e865b5299bf56e"
+    },
+    {
+      "test": "forma_native_mixed_shuffle",
+      "checks": 137,
+      "sha256": "c2457c41e423eca0f05c4a31ed4ddf59f48caf27adfad1069f2d9780c89b841e"
+    },
+    {
+      "test": "forma_native_musical_shuffle",
+      "checks": 204,
+      "sha256": "9410ffc6d3873c11848a6f1687b162f37abcc8648ad75559211e43e5e2e25f4b"
+    },
+    {
+      "test": "forma_native_musical_clipboard",
+      "checks": 278,
+      "sha256": "f86f5a1a018455429b76d37ff5e00c49bceeb48bf142f97ece3a89efc2c3f2cd"
+    }
+  ],
+  "wall_seconds": 289.69631123542786,
+  "historical_receipts_restored": 11
+}

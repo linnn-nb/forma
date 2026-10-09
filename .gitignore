@@ -96,3 +96,9 @@ evidence/U/*
 !evidence/U/mixed-shuffle-tests.json
 !evidence/U/mixed-shuffle-qualification.json
 !evidence/U/mixed-shuffle-regression.txt
+
+!evidence/U/musical-shuffle-tests.json
+
+!evidence/U/musical-shuffle-qualification.json
+
+!evidence/U/musical-shuffle-regression.txt

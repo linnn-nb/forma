@@ -1,3 +1,7 @@
+U-P0-MUSICAL-SHUFFLE-01：现有timeline.clips/midi.clips范围编辑增加可选ripple_mapping=samples/native，缺失为samples。native计划显式返回displacement_samples/displacement_beats、destination_tempo_hash和每个实际clip before/after，曲线同时记录粘贴内容与后缀各自基准；不能由共同样本位移推断音乐片段结果。
+
+session.shuffle.mapping.set {mapping:samples/native}为停止态human/local_gui独立低风险可逆命令，schema1设置一笔native Undo、保存重开。规划/预览/提交继续验证revision/目标/源媒体/真实曲线/Tempo状态，幂等与完整拒绝保持；扩展Agent权限或新MCP工具未发生。测试U-P0-MUSICAL-SHUFFLE-01与MusicalShuffleTests.cpp。
+
 U-P0-MIXED-SHUFFLE-01：human/local_gui timeline.clips/midi.clips.erase新增可选ripple/state_hash；paste新增可选removal_end_samples/state_hash，mode加入shuffle；旧参数调用保持。Shuffle必须是source_range快照并经makePlan封闭state_hash，缺失或失配拒绝。preview列ripple/displacement_samples/removal_end_samples/suffix_policy及实际clips/automation，Scope含完整删除范围与空轨。MCP工具保持冻结。
 
 插入点默认removalEnd=point；GUI选区替换明确传旧end，位移=共同插入end−旧end；Cut/Delete位移=−整个采样范围。MIDI后缀跨Tempo/Meter/变速整笔拒绝。Revision/媒体hash/幂等不变，一事务Undo/Redo；所有混合范围Shuffle先预览，取消不改工程/剪贴板，GUI共享可改键。源码与测试见VERIFICATION最新节，不扩充M2/M3/模型路径。

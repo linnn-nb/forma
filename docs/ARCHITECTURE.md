@@ -1,3 +1,9 @@
+U-P0-MUSICAL-SHUFFLE-01：L1 timeline.clips/midi.clips 的 ripple_mapping=samples/native；NATIVEDAW/SHUFFLE_OPTIONS schema1在message thread按一笔Undo持久化，缺失按samples解释。session.shuffle.mapping.set只对human/local_gui开放；候选Edit先严格校验再采用，GUI只生成Plan。
+
+native模式的后缀beatDelta=当前Tempo.toBeats(新插入终点)−toBeats(旧删除终点)。音频/采样基片段按公共sampleDelta，音乐MIDI的起点、终点、内容起点按同一beatDelta，保留原NOTE/CONTROL/SYSEX。AutomationClipboard与AutomationClear按后缀真实timebase选择musicalSuffix/musicalCollapse；复用有界native Tempo section分段曲线映射，前缀/速度图/未选轨保持。封闭state_hash包含真实速度图和全部影响状态，提交复核Scope/版本/hash，一个native Undo。
+
+不同基准的实际秒位移允许不同并在卡片展示，不声称并行音频/MIDI保持共同采样相位。同轨混合基准共享曲线整笔拒绝，采样同步MIDI跨变化继续拒绝；旧samples模式保持既有资格。无新引擎、SDK、实时路径、依赖或MCP工具；见VERIFICATION。
+
 U-P0-MIXED-SHUFFLE-01：L1既有timeline.clips/midi.clips命令承载范围Shuffle，te::Edit仍唯一事实。复制保持各片段原时间基准，插入共同包络取max(秒,拍)，后方统一采样位移。MIDI原始NOTE/CONTROL/SYSEX不重写，只在内容起点到移位终点的单一恒定Tempo/Meter走廊执行；未资格跨越整笔拒绝。自动化区分contentEnd/common insertionEnd/removalEnd，短包络保持末值，目的后缀原点ID按共同位移；Cut复用native collapse。
 
 makePlan冻结全部受影响片段/媒体/曲线state_hash，preview/commit重算；Scope覆盖空轨、完整删除范围及后方before/after。一Plan/native Undo/message thread；Cut成功后接纳新剪贴板，Delete保留原剪贴板。GUI仅产出Plan并订阅事实，无新引擎、依赖、SDK/RT/MCP修改。实测与边界见VERIFICATION。

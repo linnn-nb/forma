@@ -1,0 +1,32 @@
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+      Start  56: tracktion_permission_scope
+ 1/13 Test  #56: tracktion_permission_scope ..........   Passed    2.67 sec
+      Start  74: forma_native_ui_navigation
+ 2/13 Test  #74: forma_native_ui_navigation ..........   Passed    3.23 sec
+      Start 106: forma_native_shuffle_ranges
+ 3/13 Test #106: forma_native_shuffle_ranges .........   Passed   18.46 sec
+      Start 108: forma_native_automation_shuffle
+ 4/13 Test #108: forma_native_automation_shuffle .....   Passed  104.76 sec
+      Start 109: forma_native_automation_clipboard
+ 5/13 Test #109: forma_native_automation_clipboard ...   Passed   28.63 sec
+      Start 110: forma_native_automation_follow
+ 6/13 Test #110: forma_native_automation_follow ......   Passed    6.35 sec
+      Start 111: forma_native_automation_clear
+ 7/13 Test #111: forma_native_automation_clear .......   Passed   22.65 sec
+      Start 118: forma_native_midi_clip_timeline
+ 8/13 Test #118: forma_native_midi_clip_timeline .....   Passed    6.69 sec
+      Start 119: forma_native_midi_range_timeline
+ 9/13 Test #119: forma_native_midi_range_timeline ....   Passed    5.11 sec
+      Start 120: forma_native_mixed_clipboard
+10/13 Test #120: forma_native_mixed_clipboard ........   Passed   12.66 sec
+      Start 121: forma_native_mixed_shuffle
+11/13 Test #121: forma_native_mixed_shuffle ..........   Passed   23.63 sec
+      Start 122: forma_native_musical_shuffle
+12/13 Test #122: forma_native_musical_shuffle ........   Passed   36.63 sec
+      Start 123: forma_native_musical_clipboard
+13/13 Test #123: forma_native_musical_clipboard ......   Passed   18.19 sec
+
+100% tests passed, 0 tests failed out of 13
+
+Total Test time (real) = 289.67 sec

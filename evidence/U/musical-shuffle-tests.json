@@ -1,0 +1,68 @@
+{
+  "cases": [
+    {
+      "beat_delta": 2.0,
+      "midi_start_samples": 840000,
+      "profile": "Fixture.tracktionedit",
+      "removed_samples": 0,
+      "sample_delta": 96000
+    },
+    {
+      "beat_delta": 1.5,
+      "midi_start_samples": 822000,
+      "profile": "Fixture.tracktionedit",
+      "removed_samples": 24000,
+      "sample_delta": 72000
+    },
+    {
+      "beat_delta": 0.0,
+      "midi_start_samples": 768000,
+      "profile": "Fixture.tracktionedit",
+      "removed_samples": 96000,
+      "sample_delta": 0
+    },
+    {
+      "beat_delta": -4.0,
+      "midi_start_samples": 711111,
+      "profile": "Fixture.tracktionedit",
+      "removed_samples": 192000,
+      "sample_delta": -96000
+    },
+    {
+      "beat_delta": 2.7978063474440606,
+      "midi_start_samples": 868721,
+      "profile": "RampFixture.tracktionedit",
+      "removed_samples": 0,
+      "sample_delta": 48000
+    },
+    {
+      "beat_delta": 1.349386546523391,
+      "midi_start_samples": 816578,
+      "profile": "RampFixture.tracktionedit",
+      "removed_samples": 24000,
+      "sample_delta": 24000
+    },
+    {
+      "beat_delta": -3.4556590271224437,
+      "midi_start_samples": 656952,
+      "profile": "RampFixture.tracktionedit",
+      "removed_samples": 96000,
+      "sample_delta": -48000
+    },
+    {
+      "beat_delta": -10.697038072240613,
+      "midi_start_samples": 551137,
+      "profile": "RampFixture.tracktionedit",
+      "removed_samples": 192000,
+      "sample_delta": -144000
+    }
+  ],
+  "checks": 204,
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/musical-shuffle-demos/musical-shuffle-c3954a979fc64dbd852febd2861bcd62/MusicalShuffleReady.tracktionedit",
+  "limits": "native musical MIDI suffix across Tempo/ramp/Meter; sample-synced MIDI crossing Tempo and same-track shared mixed-clock curves remain refused; physical GUI/listening unexecuted",
+  "maximum_curve_error": 1.7881393432617188e-07,
+  "maximum_pcm_error": 0.0,
+  "maximum_saved_derived_beat_error": 3.197442310920451e-14,
+  "native_iterator_probes": 40960,
+  "state": "passed"
+}

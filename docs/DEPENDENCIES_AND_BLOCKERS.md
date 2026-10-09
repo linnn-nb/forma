@@ -1,3 +1,9 @@
+U-P0-MUSICAL-SHUFFLE-01：音乐MIDI后缀跨Tempo/ramp/Meter的native模式在所测范围通过；没有新依赖/SDK补丁，Tracktion/JUCE锁定保持。
+
+本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。
+
+下一项同轨混合时间基准共享曲线和混合对象Shuffle，需要先明确无歧义的段落基准/冲突规则并实际验证，不放宽旧拒绝守卫。
+
 U-P0-MIXED-SHUFFLE-01（2026-10-10）：无新增依赖/许可证/证书/付费/下载，Tracktion/JUCE pin与12份SDK补丁保持。Release/固定签名、最终10项1667检查通过。MIDI后方内容仅在单一恒定Tempo/拍号走廊移动；跨变化/变速、整对象Shuffle、同轨带曲线的混合基准、Warp及部分循环仍拒绝。Mac锁定，实体GUI/听感未执行，预览未启动；完整U＋P0未完成，不进P1。M2/M3冻结，M4/M5暂缓。硬件/第三方全面资格、耐久/Windows/发行仍未完成。无新DMG、MCP工具、模型服务或系统安全修改。
 
 U-P0-MIXED-CLIPBOARD-01（2026-10-10）：无新增依赖/证书，固定签名两bundle已核验。Tracktion锁定提交/JUCE版本及12 SDK补丁数量不变；仅serialization补丁更新，保证有曲线参数的显式基础值保存，静态参数不添冗余覆盖。干净源文件正反应用、其他补丁字节不变及CMake完整diff通过；哈希见evidence/U/mixed-serialization-patch.json。最终15受影响CTest通过。Mac锁定，实体GUI/试听未执行；混合Shuffle、同轨含曲线的混合基准、Warp、部分循环与完整U＋P0仍未完成。无新DMG/MCP/模型服务或系统安全变更。

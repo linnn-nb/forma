@@ -1,13 +1,13 @@
 # 下一步
 
-U-P0-MIXED-SHUFFLE-01（2026-10-10）：混合范围Shuffle Cut/Delete/Paste接通，后方实际音频、MIDI和曲线按公共采样位移，保留空轨空白、原始事件。一笔Undo/Redo、Save/Open和可改快捷键通过。源码2692223；Release/固定签名、最终10/10受影响CTest，1667检查/194.03秒（专项137）通过。
+U-P0-MUSICAL-SHUFFLE-01（2026-10-10）：Shuffle增加可撤销、可保存重开的原时间基准模式；音频按采样、音乐MIDI按拍移位，曲线跟随各轨基准。跨Tempo/变速曲线/拍号的范围Cut/Delete/Paste通过，原始事件保留。最终13/13受影响CTest通过，2061检查/289.70秒（专项204，40960原生DSP位置探测）；源码4977ceb，Release与固定叶证书deep/strict验签通过。
 
-本节替代历史“混合范围Shuffle未实现”，仅限本次受测路径。MIDI后方内容仅在单一恒定Tempo/拍号走廊移动；跨变化/变速、整对象Shuffle、同轨带曲线的混合基准、Warp及部分循环仍拒绝。Mac锁定，实体GUI/听感未执行，预览未启动；完整U＋P0未完成，不进P1。M2/M3冻结，M4/M5暂缓。
+本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。
 
-先保存并正常退出旧Forma，再双击build-v2-tracktion/OpenMixedShuffleDemo.command。源四轨2–3秒已选（44.1k真实PCM、FourOsc、两条空轨），Shuffle已启用，CmdC；用Selector跨目的四轨选择9–9.5秒，Control+Option+Shift+J粘贴。卡片显示两秒共同包络和后方+72000工程采样位移；接受、Space试听、CmdZ/ShiftCmdZ、CmdS新副本并CmdO重开。也可选目的四轨9–10秒用CmdX或Delete，预览后整体收缩；Delete保留既有剪贴板。RAM剪贴板不随工程保存，重开后需再次CmdC。
+先保存并正常退出旧Forma，再双击build-v2-tracktion/OpenMusicalShuffleDemo.command。源四轨2–3秒已选，CmdC；Selector跨目的四轨选择9–9.5秒，Control+Option+Shift+J粘贴。原生卡片显示采样/拍位移、实际片段位置及各轨后缀曲线基准；接受、Space试听、CmdZ/ShiftCmdZ、CmdS新副本并CmdO重开。也可目的9–10秒CmdX或Delete；两者均预览、整体撤销，Delete保留剪贴板。编辑→Shuffle时间基准（OptionF1采样、ShiftOptionF1原基准）可改键；RAM剪贴板重开后需再次CmdC。
 
-原生生产应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；MixedShufflePreview.app固定签名、MCP关闭，未启动。
+产物：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；独立MusicalShufflePreview.app与OpenMusicalShuffleDemo.command已准备，未启动。
 
-下一项：为MIDI后方内容跨Tempo/Meter的Shuffle确定明确可预览的音乐时间位移语义，在原生L1验证音符/CC/SysEx、后续自动化与并行音频关联；未经资格保持整笔拒绝。之后处理混合对象Shuffle与同轨混合基准曲线，完成U＋P0剩余项，由用户亲手验收后进入P1。
+下一项：同轨混合时间基准共享自动化的范围编辑，以及混合对象Shuffle；明确分段映射与冲突拒绝语义后实现，原始事件/媒体、单笔Undo、保存重开和快捷键继续作为验收。之后收敛U＋P0剩余项，由用户亲手确认再进入P1。
 
-Warp、部分循环、多Take/MPE、其他设备率、满载/硬件/第三方全面资格/耐久/Windows/发行仍未完成。
+Warp、部分循环、多Take/MPE、硬件/其他设备率/第三方全面资格、满载/耐久/Windows/发行仍未完成。
