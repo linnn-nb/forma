@@ -125,6 +125,7 @@ Json Commands::querySummary(const std::string& selectedTrack, const std::string&
     return {{"revision", revision},
             {"session_token", sessionToken()},
             {"time_selection", timelineRange()},
+            {"editing_options", editingOptions()},
             {"recording_readiness", recordingReadiness()},
             {"session_name", metadata.getProperty("session_name", "Untitled").toString().toStdString()},
             {"selection", std::move(selection)},

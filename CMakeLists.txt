@@ -787,3 +787,11 @@ target_sources(ndaw_automation_clipboard_tests PRIVATE tests/v2/AutomationClipbo
 target_link_libraries(ndaw_automation_clipboard_tests PRIVATE ndaw_engine)
 add_test(NAME forma_native_automation_clipboard COMMAND ndaw_automation_clipboard_tests "${CMAKE_SOURCE_DIR}/evidence/U/automation-clipboard-tests.json" "${CMAKE_BINARY_DIR}/automation-clipboard-demos")
 set_tests_properties(forma_native_automation_clipboard PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Persisted human editing policy, actual native audio/curve behaviour and production UI.
+juce_add_console_app(ndaw_automation_follow_tests PRODUCT_NAME "ndaw_automation_follow_tests")
+target_sources(ndaw_automation_follow_tests PRIVATE tests/v2/AutomationFollowTests.cpp)
+target_include_directories(ndaw_automation_follow_tests PRIVATE src/v2)
+target_link_libraries(ndaw_automation_follow_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_automation_follow COMMAND ndaw_automation_follow_tests "${CMAKE_SOURCE_DIR}/evidence/U/automation-follow-tests.json" "${CMAKE_BINARY_DIR}/automation-follow-demos")
+set_tests_properties(forma_native_automation_follow PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：L1 新增 standalone / human / local_gui `session.automation_follows_edit.set`；Edit/NATIVEDAW/EDIT_OPTIONS schema1 保存 0/1，旧工程缺失默认 on，不创建额外事务。开关是一笔原生 Undo/revision，GUI 查询同一事实。载入候选 Edit 严格检查 schema、字段、值及重复节点，再采用工程。
+
+Shuffle 范围与音频剪贴板编译器按当前开关决定是否包含曲线；Copy-off 不冻结曲线，当前 off 优先于既有 Copy-on。完整描述符重编译和 revision 校验拒绝过期策略。设置不能混合音频操作、播放中修改或在 GUI 待确认期间切换。没有新增 SDK/实时路径；仅覆盖范围 Shuffle Cut/Delete 与音频粘贴，普通 Clear/Trim/拖拽/Nudge/整片段/MIDI 待补。
+
 U-P0-SHUFFLE-PASTE-01（2026-10-09）：L1 ClipboardBuffer 私有保存真实 ClipCopy 和 native curve ValueTree，按参数 ID、插件槽/identifier/实际范围映射，默认 fader 单独识别，AuxSend 核验实际 bus。AutomationClipboard.cpp / ClipboardPasteCommands.cpp 编译有界 clip 原语与 automation.range.paste；GUI 不写 Edit。曲线切段复用 AutomationCurveEdit / AutomationShuffle，未截断段保留 ID/形状/额外字段，粘贴段生成新 ID。消息线程 snapshot/preview/commit 重核媒体、曲线、组、锁定、revision/Scope；一笔 native Undo。
 
 新增锁定 tracktion-clip-order-boundary.patch，提供消息线程 flushPendingClipOrder。L1 在 commit 结束及 Undo/Redo 边界只同步 SDK 待处理的片段排序，不运行通用消息循环；避免异步排序在原事务关闭后创建未跟踪事务。pin、原九补丁、RT 处理不变；CMake exact diff、独立 clean-pin apply/字节比较/reverse 通过。保存参数缓存补丁继续保留，未跟踪 Undo 守卫不放宽。11 项回归和实体保存→Undo/Open 通过，边界见 VERIFICATION。

@@ -1,3 +1,7 @@
+U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：新增工程级“自动化跟随编辑”，编辑菜单复选项、宽窗口蓝/橙指示按钮与默认 Control+Option+A 共用 L1；可改键、Undo/Redo、保存重开。开启时范围 Shuffle Cut/Delete 和音频粘贴联合编辑原生曲线，关闭时曲线留在工程原时间。后文历史“无全局开关”由本节替代；普通非 Shuffle 删除、Trim/拖拽/Nudge/整片段/MIDI 跟随仍未完成。
+
+亲手试 `build-v2-tracktion/OpenAutomationFollowDemo.command`，Control+Option+A 切换；选中第一轨，F1、CmdX，开启时预览/接受；CmdZ 撤销。CmdS 另存新副本、CmdO 重开。低幅诊断音频不代表音乐听感验收；完整 U＋P0 仍未完成。
+
 U-P0-SHUFFLE-PASTE-01（2026-10-09）：音频剪贴板保存实际原生自动化冻结快照；Shuffle 点插入和更短/更长选区替换同步移动分组音频与曲线，一笔 human Plan/Undo。Copy、Cut、Paste、Paste Original、Duplicate 复用全局可改键；大量曲线变更可预览、拒绝，接受后 Undo/Redo、另存重开。Release/固定签名，11/11 受影响回归、1204 检查通过；详细容差、桌面验收及边界见 VERIFICATION 首节。完整 U＋P0 未完成，不进 P1。以下保留历史增量；本节仅替代所述范围的旧限制。
 
 亲手试 `build-v2-tracktion/OpenAutomationClipboardDemo.command`：1–2 秒选区/Shuffle/Phase pair 已准备；CmdX 预览并接受，Control+Option+Shift+V 粘贴，取消或接受后 CmdZ/ShiftCmdZ，CmdS 新副本、CmdO 重开、Space 试听。测试媒体为真实诊断 PCM。普通非 Shuffle Cut 不清源轨自动化，全局跟随开关、Trim/拖拽/MIDI 仍待实现。

@@ -140,6 +140,9 @@ const Commands::ClipboardBuffer* Commands::clipboardBuffer(const std::string& id
 void Commands::captureClipboardAutomation(ClipboardBuffer& buffer, size_t& bytes) const
 {
     buffer.manifest["automation"] = Json::array();
+    buffer.manifest["automation_follows_edit"] = editingOptions()["automation_follows_edit"];
+    if (!buffer.manifest["automation_follows_edit"].get<bool>())
+        return;
     for (const auto& id : buffer.manifest["tracks"])
     {
         auto* t = domainTrack(id);

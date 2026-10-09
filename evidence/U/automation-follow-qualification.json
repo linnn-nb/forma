@@ -1,0 +1,145 @@
+{
+  "test": "U-P0-AUTOMATION-FOLLOW-01",
+  "verified_date": "2026-10-09",
+  "result": "passed_with_documented_scope",
+  "base_commit": "47250c25d4232813625ca2ef718187bfed335c85",
+  "build": {
+    "configuration": "Release",
+    "result": "passed",
+    "app": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "fixed_leaf_sha1": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",
+    "deep_strict_leaf_verification": "passed"
+  },
+  "tests": {
+    "ctest_passed": 10,
+    "ctest_failed": 0,
+    "new_checks": 74,
+    "affected_regression_checks": 1104,
+    "distinct_ctest_checks": 1178,
+    "new_ctest_seconds": 5.96,
+    "regression_seconds": 231.62,
+    "regression_reports": [
+      {
+        "report": "automation-clipboard-tests.json",
+        "checks": 234,
+        "result": "passed",
+        "sha256": "5a4d765efc06bd94ce68c8efd34ba1cb32fccb1d20dd2414518dcc4e93b340a3"
+      },
+      {
+        "report": "automation-shuffle-tests.json",
+        "checks": 309,
+        "result": "passed",
+        "sha256": "5a75a6c407029841d8423937cf6d5e34e3497e1dff847f37465160a7679439b8"
+      },
+      {
+        "report": "automation-timeline-tests.json",
+        "checks": 143,
+        "result": "passed",
+        "sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f"
+      },
+      {
+        "report": "clipboard-tests.json",
+        "checks": 49,
+        "result": "passed",
+        "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386"
+      },
+      {
+        "report": "editor-tests.json",
+        "checks": 81,
+        "result": "passed",
+        "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1"
+      },
+      {
+        "report": "group-range-tests.json",
+        "checks": 72,
+        "result": "passed",
+        "sha256": "5ae3376bb0fdac34bb340b6f39cbbe01c304341c3348a8ea77c0bb9a08e94277"
+      },
+      {
+        "report": "navigation-tests.json",
+        "checks": 48,
+        "result": "passed",
+        "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df"
+      },
+      {
+        "report": "session-recovery-tests.json",
+        "checks": 52,
+        "result": "passed",
+        "sha256": "185c7c3c59dfcc010acd28b37935cd895b2070a88fd2fc9acdf2fa725055c833"
+      },
+      {
+        "report": "shuffle-range-tests.json",
+        "checks": 116,
+        "result": "passed",
+        "sha256": "a1b277cd19505c6adb4cee05981349d09b11a0398c470bf92bf95bad99a67c15"
+      }
+    ],
+    "device_run": {
+      "checks": 76,
+      "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-follow-device-demos/automation-follow-2e45cc97e5714644953a6dbcaa62b9b7/AutomationFollowDemo.tracktionedit",
+      "device_playback_checks": "executed",
+      "max_pcm_error": 0.0,
+      "pcm_budget": 2e-05,
+      "result": "passed",
+      "scope": "actual native Edit, Undo, curves, renderer and production JUCE widgets; desktop/hardware/listening separately qualified",
+      "split_exclusion_samples": 2048,
+      "test": "U-P0-AUTOMATION-FOLLOW-01"
+    },
+    "device_extra_checks": 2,
+    "device_note": "76 includes the same 74 checks plus two actual playback guards; not added again to CTest checks"
+  },
+  "audio": {
+    "source": "actual generated 24-bit stereo PCM, 997/431 Hz periodic sine, 48 kHz, 5 seconds",
+    "native_render": "Tracktion renderer, independently decoded stereo WAV",
+    "off_cut_absolute_timeline_pcm_max_error": 0.0,
+    "off_cut_paste_roundtrip_pcm_max_error": 0.0,
+    "budget": 2e-05,
+    "split_exclusion_samples": 2048,
+    "source_hash_preserved": true,
+    "scope": "periodic source keeps corresponding audio samples equal across one-second collapse; qualifies absolute-time curves for this fixture, not arbitrary material or subjective quality"
+  },
+  "desktop": {
+    "app": "build-v2-tracktion/FormaAutomationFollowPreview.app",
+    "device": "CoreAudio external headphones",
+    "sample_rate": 48000,
+    "buffer_frames": 512,
+    "executed": [
+      "native open and Control Option A",
+      "native Undo/Redo",
+      "native Save As followed by Undo",
+      "native reopen retained on setting",
+      "off Shuffle CmdX retained four displayed volume points",
+      "on Shuffle CmdX showed preview; shortcut disabled while pending",
+      "Accept committed audio and curves together",
+      "actual playback clock and sample peak changed",
+      "Stop and one Undo restored audio and curves",
+      "self-owned preview quit; other user windows preserved"
+    ],
+    "on_preview": {
+      "affected_points": 1674,
+      "boundary_points": 1662
+    },
+    "playback_observed_seconds": 1.394,
+    "master_sample_peak_dbfs": -39.1,
+    "screenshots": "CUA pixels returned in conversation; no PNG saved",
+    "subjective_listening": "not_executed",
+    "loopback_latency": "not_executed"
+  },
+  "recovery": {
+    "corrupt_edit_options_variants_rejected": 9,
+    "candidate_failure_preserves_session": true,
+    "historical_reports_restored": "all nine SHA-256 equal to pre-run copies"
+  },
+  "environment_incident": {
+    "disk_full": "build and save encountered real ENOSPC",
+    "resolution": "removed only 61 ignored regenerable build-sanitize object/archive files, 959610336 bytes; source, app, media and user files preserved",
+    "rebuild_and_actual_save": "passed after cleanup"
+  },
+  "pending": [
+    "non-Shuffle Cut/Delete source automation cleanup",
+    "Trim/drag/Nudge/whole-clip/MIDI follow",
+    "full U+P0 user acceptance",
+    "subjective listening, multitrack hardware capture, endurance and Windows"
+  ],
+  "dependencies": "no new dependency, SDK patch or real-time path; existing ten Tracktion patches retained"
+}

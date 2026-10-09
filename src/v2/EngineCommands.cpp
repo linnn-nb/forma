@@ -432,6 +432,7 @@ Json Commands::query() const
     }
     return {{"session_token", sessionToken()},
             {"time_selection", timelineRange()},
+            {"editing_options", editingOptions()},
             {"recording_readiness", recordingReadiness()},
             {"audio_configuration", audioConfiguration},
             {"native_plugin_states", nativeStates ? nativeStates->query() : Json(nullptr)},
@@ -678,9 +679,12 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human", "Mix group definitions are local GUI only during the U phase");
             // Independent Mix definitions are validated as standalone transactions below.
         }
-        else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set")
+        else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set" ||
+                 cmd == "session.automation_follows_edit.set")
         {
-            require(cmd != "session.insertion.set" || actor == "human", "insertion editing is local human only");
+            require((cmd != "session.insertion.set" && cmd != "session.automation_follows_edit.set") ||
+                        actor == "human",
+                    "insertion and editing options are local human only");
             // Full ordered range/insertion preview below, backed by the Edit.
         }
         else if (cmd.starts_with("transport."))
@@ -764,7 +768,14 @@ Json Commands::preview(const Json& plan) const
         diff.push_back({{"command", cmd}, {"change", a}});
     }
     const auto groupDiff = validateMixGroupPlan(ops);
-    const auto rangeDiff = validateTimelinePlan(ops);
+    auto rangeDiff = validateTimelinePlan(ops);
+    Json editingDiff = Json::array();
+    for (const auto& change : rangeDiff)
+        if (change["command"] == "session.automation_follows_edit.set")
+            editingDiff.push_back(change);
+    rangeDiff.erase(std::remove_if(rangeDiff.begin(), rangeDiff.end(), [](const auto& change)
+                                   { return change["command"] == "session.automation_follows_edit.set"; }),
+                    rangeDiff.end());
     const auto trackDiff = validateHierarchyPlan(ops);
     const auto panDiff = validatePanPlan(ops);
     const auto clipDiff = validateClipPlan(ops);
@@ -779,6 +790,7 @@ Json Commands::preview(const Json& plan) const
                 {"changes", diff},
                 {"audio_verified", false},
                 {"time_selection_changes", rangeDiff},
+                {"editing_option_changes", editingDiff},
                 {"clip_changes", clipDiff},
                 {"automation_changes", automationDiff},
                 {"track_changes", trackDiff},
@@ -892,7 +904,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             {
                 executeLegacyOperation(a, objects);
             }
-            else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set")
+            else if (cmd == "session.range.set" || cmd == "session.range.clear" || cmd == "session.insertion.set" ||
+                     cmd == "session.automation_follows_edit.set")
             {
                 executeTimelineOperation(cmd, a);
             }
@@ -1455,6 +1468,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
+    readEditingOptions(candidate->state.getChildWithName("NATIVEDAW"));
     readRollState(candidate->state.getChildWithName("NATIVEDAW"));
     for (auto* location : candidate->getMarkerManager().getMarkers())
         if (location)

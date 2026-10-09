@@ -1,5 +1,7 @@
 > 本文件为交互与工作流参考清单，不是全量产品验收门槛。
 
+U-P0-AUTOMATION-FOLLOW-01（核验日 2026-10-09）：参考 [Pro Tools Reference Guide 2026.4](https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf) 印刷 1552–1553 / PDF 1654–1655 页 Automation Follows Edit（Options 复选项，工具栏蓝色 on / 橙色 off；关闭时音频/MIDI 编辑保留自动化时间）。本机 PDF SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。Forma 位于编辑菜单并使用可改键 Control+Option+A；开关可撤销、工程保存，当前仅覆盖音频范围 Shuffle Cut/Delete、剪贴板粘贴。实现 TimelineCommands/EditGroupCommands/ClipboardPasteCommands/AutomationClipboard 与原生 Workspace；测试 AutomationFollowTests、1178 个相关 CTest 检查及实体开关/预览/Save/Open/Undo，见 VERIFICATION 最新节。状态：开关及所测路径已验证，完整工作流部分实现；普通 Clear、Trim/拖拽/Nudge/整片段和 MIDI 跟随未实现。不声明 Pro Tools 等价。后文“没有开关”为历史状态。
+
 U-P0-SHUFFLE-PASTE-01：核验 Pro Tools Reference Guide 2026.4，核验日 2026-10-09；印刷 854 / PDF 956 页 Paste Command（插入点 Shuffle 右移，选区替换后按长度差左右移动），印刷 1552–1553 Automation Follows Edit。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。实现 AutomationClipboard.cpp/ClipboardPasteCommands.cpp/WorkspaceClipboard.cpp；测试 AutomationClipboardTests/ShuffleRangeTests，真实 PCM、保存重开、快捷键、实体预览/Undo 通过。状态：所测音频范围已验证，完整工作流部分实现；static 插件设置不复制、跨轨需匹配实例，全局开关/非 Shuffle Cut/Trim/拖拽/MIDI 跟随未完成。不声明完整 Pro Tools 等价。
 
 编辑组最新增量（U-P0-GROUP-TRANSFORMS-01，2026-10-09）：同组whole-clip修剪、淡化和Clip Gain已接通，来源为实际Tracktion Edit，保留成员原差异；89专项与实际PCM通过，实体淡化/撤销/另存/重开已有回执。关联方式与相对淡化/增益规则为Forma明确策略，不能当作Pro Tools任意区间编辑的完整等价。具体功能/测试/差异见UI_PARITY与VERIFICATION首节。

@@ -30,6 +30,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
     if (index == 1)
     {
         addMenuCommand(p, 108);
+        addMenuCommand(p, 283);
         addMenuCommand(p, 42);
         for (int id : {149, 150, 151})
             addMenuCommand(p, id);
@@ -468,6 +469,8 @@ void Workspace::resized()
     meter.setBounds(592, 81, 65, 28);
     applyMusic.setBounds(665, 81, 58, 28);
     device.setBounds(750, 66, std::max(150, getWidth() - 1070), 44);
+    followEditButton.setBounds(getWidth() - 314, 74, 72, 27);
+    followEditButton.setVisible(getWidth() >= 1280);
     audioSettingsButton.setVisible(false); // Available through the native View menu; keep editing controls clear.
     undoButton.setBounds(12, 128, 52, 24);
     redoButton.setBounds(70, 128, 52, 24);

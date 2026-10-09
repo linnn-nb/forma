@@ -178,11 +178,14 @@ Json Commands::shuffleRangeOperations(const Json& request) const
         if (std::find(owners.begin(), owners.end(), owner["id"]) == owners.end())
             continue;
         Json automationArgs{{"track", owner["id"]}, {"start_samples", first}, {"end_samples", last}};
-        const auto automation = automationShuffleChanges(automationArgs);
-        if (!automation["lanes"].empty())
+        if (editingOptions()["automation_follows_edit"].get<bool>())
         {
-            automationArgs["state_hash"] = automation["state_hash"];
-            append("automation.range.shuffle", automationArgs);
+            const auto automation = automationShuffleChanges(automationArgs);
+            if (!automation["lanes"].empty())
+            {
+                automationArgs["state_hash"] = automation["state_hash"];
+                append("automation.range.shuffle", automationArgs);
+            }
         }
         for (const auto& clip : owner["clips"])
         {

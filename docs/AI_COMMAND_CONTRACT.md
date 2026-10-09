@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-AUTOMATION-FOLLOW-01：`session.automation_follows_edit.set` 仅接受 `{enabled:boolean}`，standalone、human/local_gui、edit/low/reversible、live=false；不进入冻结的 MCP 工具。无变化、错误类型、混合计划和播放中请求拒绝；返回 `editing_option_changes` typed before/after，成功才递增 revision，一笔 Undo/Redo，幂等重试复用原回执。query/querySummary 的 `editing_options` 来自 Edit；策略改变后旧范围/剪贴板计划失效，篡改 revision 仍须通过完整编译核验。
+
 U-P0-SHUFFLE-PASTE-01：新增 human/local_gui automation.range.paste（track、source_track、clipboard、position_samples、removal_end_samples、mode、state_hash），仅由 L1 编译的 clipboard_paste schema1 描述符授权；preview/commit 重编译完整原语列表，外部 actor、篡改、陈旧 snapshot/version、锁定、布局/实例不匹配或资源超限整笔拒绝。不是新的 MCP 能力。冻结曲线身份来自实际枚举参数，static track 参数不复制；返回 typed before/after、影响/新增点数量和真实回执。音频、曲线、插入点/选区共用一笔 Undo/Redo；网络重复提交不能重复插入。8 MiB snapshot、每轨 65536 输入/8192 派生点、每 Plan 64 原语预算保持。范围 Scope 不可默许扩大为整轨曲线修改。MCP/分析仍冻结。
 
 U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：新增 `automation.range.shuffle`（track、start_samples、end_samples、state_hash），仅 local_gui / human 且绑定完整 `shuffle_range` 编译结果；单位为 48000 Hz 工程样本、右边界排除。查询、preview、commit 均基于 native curve，返回 typed `automation_changes`；重新编译比较完整组操作并校验曲线 XML SHA256，版本/锁定/Scope/幂等/捕获状态及 64 原语预算保持。参数只接受实际枚举实例，秒时间基曲线；陈旧 hash、篡改、外部 actor 或超点预算均原子拒绝。

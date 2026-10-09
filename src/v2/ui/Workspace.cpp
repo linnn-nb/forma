@@ -300,6 +300,9 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     trackType.addItem("VCA", 6);
     trackType.setSelectedId(1, juce::dontSendNotification);
     trackType.setComponentID("track.type");
+    addAndMakeVisible(followEditButton);
+    followEditButton.setComponentID("editing.automation_follows_edit");
+    followEditButton.setCommandToTrigger(&commandManager, 283, true);
     rollButton.setComponentID("transport.roll");
     rollButton.setCommandToTrigger(&commandManager, 279, true);
     metronomeButton.setComponentID("transport.metronome");

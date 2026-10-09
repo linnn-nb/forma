@@ -1,0 +1,11 @@
+{
+  "checks": 74,
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-follow-demos/automation-follow-8ddc902d448f4919bc9a205387a2e819/AutomationFollowDemo.tracktionedit",
+  "device_playback_checks": "not_executed",
+  "max_pcm_error": 0.0,
+  "pcm_budget": 2e-05,
+  "result": "passed",
+  "scope": "actual native Edit, Undo, curves, renderer and production JUCE widgets; desktop/hardware/listening separately qualified",
+  "split_exclusion_samples": 2048,
+  "test": "U-P0-AUTOMATION-FOLLOW-01"
+}

@@ -15,6 +15,7 @@ const std::vector<Entry>& entries()
 {
     constexpr int cmd = juce::ModifierKeys::commandModifier, shift = juce::ModifierKeys::shiftModifier;
     static const std::vector<Entry> list = {
+        {283, "自动化跟随编辑", "编辑", 'a', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {41, "新建工程…", "文件", 'n', cmd},
         {1, "导入音频…", "文件", 'i', cmd},
         {2, "打开工程…", "文件", 'o', cmd},
@@ -664,6 +665,12 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id == 283)
+            {
+                active = !facts.value("playing", false) && pending.is_null() &&
+                         commands.querySummary().value("object_pages_available", false);
+                info.setTicked(commands.editingOptions()["automation_follows_edit"]);
+            }
             if (id == 281 || id == 282)
                 active = memoryLocationsPanel && memoryLocationsPanel->isVisible() &&
                          (id == 281 ? memoryLocationsPanel->canCaptureRoll() : memoryLocationsPanel->canClearRoll());
@@ -738,6 +745,21 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 283)
+    {
+        invoke(
+            [&]
+            {
+                if (!pending.is_null())
+                    throw std::runtime_error("先接受或取消当前编辑预览");
+                const auto enabled = !commands.editingOptions()["automation_follows_edit"].get<bool>();
+                commands.commit(commands.makePlan(
+                    "human", Json::array({operation("session.automation_follows_edit.set", {{"enabled", enabled}})})));
+                message(
+                    text(enabled ? "自动化跟随编辑已开启 · 可撤销" : "自动化跟随编辑已关闭 · 曲线留在原时间 · 可撤销"));
+            });
+        return true;
+    }
     if ((id == 275 || id == 277 || id == 281 || id == 282) && memoryLocationsPanel && memoryLocationsPanel->isVisible())
     {
         if (id == 275)

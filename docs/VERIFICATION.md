@@ -1,5 +1,22 @@
 # 验证状态
 
+## U-P0-AUTOMATION-FOLLOW-01 · 2026-10-09
+
+结论：工程级 Automation Follows Edit 开关、音频范围 Shuffle Cut/Delete 和粘贴的 on/off 行为已验证。编辑菜单、宽窗口蓝/橙真实状态按钮、默认 Control+Option+A 和自定义键共用 L1；原生 Undo/Redo、另存/重开、幂等和旧计划冲突保护通过。Release 构建和固定叶证书 deep/strict 验签通过。**10/10 CTest、1178 个检查**（专项 74，受影响回归 1104）全部通过；新专项 5.96 秒、九项回归 231.62 秒。另一次实际设备专项 76 检查含重复的 74 加两个播放保护检查，不重复累加。
+
+| 需求 / 实现 | 验证证据 | 结果及边界 |
+|---|---|---|
+| 持久工程策略：TimelineCommands / EngineCommands | AutomationFollowTests；automation-follow-tests.json | 缺失子树默认 on，不造事务；typed 预览；原生 Undo/Redo；实际 XML 保存 0/1；9 种损坏候选整笔拒绝、当前工程保留 |
+| 范围跟随策略：EditGroupCommands / ClipboardPasteCommands / AutomationClipboard | 同专项；既有九项回归 | off 不改曲线 ID/时间，优先于 Copy-on；Copy-off 不伪造曲线；缺插件时 on 拒绝、off 音频粘贴可用；revision/描述符复核拒绝过期与篡改计划 |
+| 可改键与真实组件：WorkspaceCommands / WorkspaceRefresh / WorkspaceLayout | production Workspace 专项与实体窗口 | Control+Option+A、改为 Control+Option+Shift+A、Undo/Redo、跨工程及重开；窄窗隐藏按钮而菜单/键位可用；播放/待预览期间禁用 |
+| 实际音频与非破坏编辑 | native Renderer / 独立 WAV 解码 / 源 SHA256 | 48k/24-bit stereo、997/431 Hz 周期源、5 秒；off 删 1–2 秒及回贴 PCM 最大差 0，固定容差 2e-5，切点 ±2048 采样排除；周期源使压缩时间前后素材相等，以验证绝对时间曲线，不能推广为任意素材或主观音质资格 |
+
+实体操作：固定签名的自有预览加载真实诊断工程；默认键切换→Undo/Redo→原生另存→保存后 Undo→原生 Open 保留 on。off CmdX 保留四个显示的音量点；on CmdX 显示 1674 个受影响点、1662 个边界补点的联合预览，接受后音频/曲线一笔提交。待预览时切换键不改工程；CoreAudio 外置耳机 48k/512 实际播放观察 1.394 秒时钟和 Master sample peak −39.1 dBFS，Stop 后一笔 Undo 恢复音频与原曲线。实际截图由 CUA 回传本轮对话，工具未保存 PNG；没有主观听感、回环延迟或耐久验收。本轮自有预览已退出，用户旧窗口保留。
+
+构建/保存曾遭遇真实 ENOSPC；只清理 61 个忽略且可重建的旧 build-sanitize .o/.a（959610336 字节），再构建及实际保存通过。测试脚手架初次使用错误的 JUCE writer 类型、剪贴板 slice 和幂等回执断言，修正为实际 API 后执行上述结果；默认无设备测试不冒充播放验证，设备专项明确单独执行。九份原历史报告按原 SHA256 恢复；本轮输出为 `evidence/U/automation-follow-tests.json`、`automation-follow-regression.txt`、`automation-follow-qualification.json`。
+
+亲手试 `build-v2-tracktion/OpenAutomationFollowDemo.command`；Control+Option+A、选第一轨/F1/CmdX、接受、CmdZ；CmdS 新副本/CmdO 重开/Space。正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。**普通非 Shuffle Cut/Delete 清理、Trim/拖拽/Nudge/整片段/MIDI 跟随和完整 U＋P0 尚未完成**；不进 P1、不扩充 M2/M3、不打 DMG。本轮无新依赖、SDK 补丁、实时路径或第二引擎。以下保留历史状态，开关缺失仅由本节所述范围替代。
+
 ## U-P0-SHUFFLE-PASTE-01 · 2026-10-09
 
 结论：音频与真实原生自动化快照的 Copy/Cut/Paste、Shuffle 点插入/不等长选区替换已验证；同一 L1 human 事务、Reject/Accept、改键、Undo/Redo、保存重开和实体 CoreAudio 输出通过。Release 与固定叶证书 deep/strict 验签通过，11/11 受影响 CTest（94.94＋70.03 秒），共 **1204 不重复检查**；为已复现的间歇故障连续复跑 Shuffle 范围三次，均通过（53.34 秒）。完整 U＋P0 仍未完成。

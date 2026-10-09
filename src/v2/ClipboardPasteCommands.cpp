@@ -63,11 +63,14 @@ Json Commands::clipboardPasteOperations(const Json& request) const
         mapping[source] = target;
         Json args{{"clipboard", request["clipboard"]}, {"source_track", source},      {"track", target},
                   {"position_samples", first},         {"removal_end_samples", last}, {"mode", mode}};
-        const auto automation = automationClipboardChanges(args);
-        if (!automation["lanes"].empty())
+        if (editingOptions()["automation_follows_edit"].get<bool>())
         {
-            args["state_hash"] = automation["state_hash"];
-            append("automation.range.paste", args);
+            const auto automation = automationClipboardChanges(args);
+            if (!automation["lanes"].empty())
+            {
+                args["state_hash"] = automation["state_hash"];
+                append("automation.range.paste", args);
+            }
         }
         if (mode == "overlay")
             continue;

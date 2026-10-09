@@ -53,6 +53,18 @@ private:
 } // namespace
 void Commands::registerTimelineCommands(Json& registry)
 {
+    registry.push_back({{"id", "session.automation_follows_edit.set"},
+                        {"schema",
+                         {{"type", "object"},
+                          {"properties", {{"enabled", {{"type", "boolean"}}}}},
+                          {"required", {"enabled"}},
+                          {"additionalProperties", false}}},
+                        {"permission", "edit"},
+                        {"risk", "low"},
+                        {"reversible", true},
+                        {"live", false},
+                        {"tool_visibility", "local_gui"},
+                        {"test", "U-P0-AUTOMATION-FOLLOW-01"}});
     Json sample = {{"type", "integer"}, {"minimum", 0}, {"maximum", maximum()}};
     registry.push_back(
         {{"id", "session.insertion.set"},
@@ -107,6 +119,32 @@ Json readTimelineState(const juce::ValueTree& metadata)
             {"timebase", "session_samples"},
             {"sample_rate", 48000}};
 }
+Json readEditingOptions(const juce::ValueTree& metadata)
+{
+    juce::ValueTree state;
+    for (const auto& child : metadata)
+        if (child.hasType("EDIT_OPTIONS"))
+        {
+            require(!state.isValid(), "duplicate saved editing options");
+            state = child;
+        }
+    // Earlier qualified range edits always followed automation. Preserve that behaviour.
+    if (!state.isValid())
+        return {{"schema", 1}, {"automation_follows_edit", true}};
+    require(state.getNumChildren() == 0 && state.getNumProperties() == 2 && state.hasProperty("schema") &&
+                state.hasProperty("automation_follows_edit"),
+            "invalid saved editing options fields");
+    require(savedSample(state.getProperty("schema")) == 1, "unsupported saved editing options schema");
+    const auto enabled = savedSample(state.getProperty("automation_follows_edit"));
+    require(enabled == 0 || enabled == 1, "invalid saved automation follows edit flag");
+    // Canonical persisted 0/1 integers survive Tracktion XML's string representation.
+    return {{"schema", 1}, {"automation_follows_edit", enabled == 1}};
+}
+Json Commands::editingOptions() const
+{
+    checkThread();
+    return readEditingOptions(metadata);
+}
 Json Commands::timelineRange() const
 {
     checkThread();
@@ -121,7 +159,16 @@ Json Commands::validateTimelinePlan(const Json& ops) const
     for (const auto& op : ops)
     {
         const std::string cmd = op["command"];
-        if (cmd == "session.insertion.set")
+        if (cmd == "session.automation_follows_edit.set")
+        {
+            require(ops.size() == 1, "editing option must be a standalone transaction");
+            require(!edit->getTransport().isPlaying(), "stop playback before changing editing options");
+            const auto enabled = op.at("args").at("enabled").get<bool>();
+            const auto original = editingOptions().at("automation_follows_edit").get<bool>();
+            require(enabled != original, "automation follows edit is already in the requested state");
+            changes.push_back({{"operation_index", index}, {"command", cmd}, {"before", original}, {"after", enabled}});
+        }
+        else if (cmd == "session.insertion.set")
         {
             const auto next = op["args"].at("position_samples").get<int64_t>();
             require(next >= 0 && next <= maximum(), "invalid session insertion position");
@@ -152,7 +199,13 @@ Json Commands::validateTimelinePlan(const Json& ops) const
 void Commands::executeTimelineOperation(const std::string& cmd, const Json& args)
 {
     auto* undo = &edit->getUndoManager();
-    if (cmd == "session.insertion.set")
+    if (cmd == "session.automation_follows_edit.set")
+    {
+        auto state = metadata.getOrCreateChildWithName("EDIT_OPTIONS", undo);
+        state.setProperty("schema", 1, undo);
+        state.setProperty("automation_follows_edit", args.at("enabled").get<bool>() ? 1 : 0, undo);
+    }
+    else if (cmd == "session.insertion.set")
     {
         require(undo->perform(new CursorMove(edit->getTransport(), args.at("position_samples").get<int64_t>())),
                 "native insertion transaction failed");

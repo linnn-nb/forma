@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-AUTOMATION-FOLLOW-01 · 2026-10-09
+
+工程级跟随开关已接编辑菜单、蓝/橙按钮、默认 Control+Option+A 与可改键；同笔 L1 Undo/Redo、保存重开、幂等及冲突保护。on/off 范围 Shuffle Cut/Delete、音频粘贴实际原生曲线通过；普通非 Shuffle 源曲线清理、Trim/拖拽/Nudge/整片段/MIDI 待补，完整 U＋P0 未完成，不进 P1。
+
+Release/固定签名、10/10 CTest（1178 检查）通过；专项 74/5.96 秒，九项回归 1104/231.62 秒。独立设备专项 76 含同 74＋两个播放保护，不累加重复检查。实际周期源 stereo WAV 的 off Cut/Paste 最大差 0，固定 2e-5 容差、切点 ±2048 排除，源 hash 不变。实体开关/预览/接受/保存/Open/Undo 和外置耳机 CoreAudio 48k/512 播放通过，非主观听感或回环验收；本轮自有预览已退出。原九份历史报告按字节保留。
+
+关键输出：automation-follow-tests.json、automation-follow-regression.txt、automation-follow-qualification.json；代码、资格范围、ENOSPC 恢复和测试修正见 VERIFICATION 最新节。亲手试 `build-v2-tracktion/OpenAutomationFollowDemo.command`，Control+Option+A / F1 / CmdX / CmdZ / CmdS 新副本 / CmdO。下一项：非 Shuffle Cut/Delete 的曲线清理与边界保持。
+
 U-P0-SHUFFLE-PASTE-01（2026-10-09）：音频剪贴板保存实际原生自动化冻结快照；Shuffle 点插入和更短/更长选区替换同步移动分组音频与曲线，一笔 human Plan/Undo。Copy、Cut、Paste、Paste Original、Duplicate 复用全局可改键；大量曲线变更可预览、拒绝，接受后 Undo/Redo、另存重开。Release/固定签名，11/11 受影响回归、1204 检查通过；详细容差、桌面验收及边界见 VERIFICATION 首节。完整 U＋P0 未完成，不进 P1。以下保留历史增量；本节仅替代所述范围的旧限制。
 
 关键输出：automation-clipboard-tests.json（234）、shuffle-paste-ranges-tests.json（116）、automation-clipboard-regression.txt、automation-clipboard-qualification.json。九曲线归一化差 1.7881e-7/固定 4e-7；独立 native 参考 EQ stereo WAV 差 4.7684e-7、混合 48k/44.1k Cut/Paste roundtrip 差 1.1921e-7/固定 2e-5，切点 ±2048 帧排除。桌面预览 771→1028 点；保存后 Undo、原生 Open 和非零 CoreAudio 电平通过，本轮自有预览已退出。原历史报告按字节保留；下一项全局跟随设置/非 Shuffle Cut 策略。

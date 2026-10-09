@@ -1,5 +1,9 @@
 # 依赖与阻塞 v2
 
+U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：无新增授权、付费或下载阻塞；原 TE/JUCE pin 和十份 SDK 补丁保留，本轮不改 vendor/实时处理。固定身份 Release 验签、相关 10/10 CTest 和独立设备检查通过。构建/实际保存曾因磁盘满失败；仅清理 61 个忽略且可重建的旧 build-sanitize .o/.a（959610336 字节）后重建与保存通过，用户媒体与产物未删。
+
+跟随开关已实现，历史“没有全局开关”仅在本范围被替代；非 Shuffle 源曲线清理、Trim/拖拽/Nudge/整片段/MIDI 及完整 U＋P0 仍是工程缺口。主观听感、硬件多轨实录、耐久和 Windows 没有新增资格。M2/M3 冻结、M4/M5 暂缓，不打 DMG。
+
 U-P0-SHUFFLE-PASTE-01：无新授权/下载/付费阻塞。Tracktion pin、JUCE 8.0.13 和原九补丁保留，新增可复现消息线程排序收尾补丁；未新增实时节点/插件 IPC/AI 服务。11/11 相关回归及真实桌面 Cut→Paste→Undo/Redo→Save→Undo→Open→CoreAudio 输出通过。
 
 缺口：非 Shuffle Cut 未删除源轨自动化；没有全局跟随开关或 Trim/拖拽/MIDI 跟随。只接秒时间基、实际匹配插件槽/ID/范围（第三方插件跨实例未实测），static 插件设置不复制；非默认直接/HQ/loop/warp 等明确拒绝。8192 派生点与 64 原语超限原子拒绝。大规模逐点命令参考构建曾 180 秒超时，修正为相同负载原生参考 XML 后通过，不代表大点量命令吞吐已获资格。SDK RT 锁/cache、HQ SRC/听感/实体多轨实录/耐久/Windows/完整 U＋P0 未获新资格。M2/M3 冻结，M4/M5 暂缓，无 DMG。
