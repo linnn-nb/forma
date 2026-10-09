@@ -1,5 +1,15 @@
 # U 原生界面重构
 
+## U-P0-GROUP-TRANSFORMS-01（2026-10-09）
+
+编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 Release/固定deep/strict验签通过；受影响7项最终通过（52.32秒），最后专项修正键位夹具后89项通过（10.85秒）。实际48k/44.1k源PCM内部修剪差0、共同−3dB误差1.216e−7（预算2e−6），分数源偏移容差1e−12秒；源哈希未改。
+
+桌面：实体桌面已验证片段选择、淡化提交、Undo/Redo、另存和新进程重开；原生Open对话框出现确认禁用，原因未确定，随后CUA无窗口/0×0，后续未通过。初始截图对应居中卡片调整前；最终ControlOptionJ唯一绑定已自动化执行/重开，实体复测待做。新测试预览89941已结束；出现人工活动的原预览保留。 实际A/B4800/7200→5760/8160，Undo恢复、Redo/另存，新进程重开B8160。最终ControlOptionJ的89检查和原生render通过；初始重复键位不算最终实体通过。初始桌面截图为group-transforms-fades.png，居中卡片截图未取得。
+
+亲手试：build-v2-tracktion/OpenGroupFadesDemo.command；ControlOptionJ打开毫秒淡化面板，⌘Return提交；F6/⌘7修剪/淡化手柄、Undo/Redo/另存。最新preview JSON包含正式/预览SHA与真实夹具；工具源为诊断PCM。原生Open问题待修，不由启动器冒充解决。
+
+完整U＋P0未验收，不进P1；M2/M3冻结、M4/M5暂缓。任意范围切片、组MIDI/自动化/View/Height/Timebase、All/临时旁路等仍未实现。 下一项先排查Open与最终桌面回归，再做任意范围编辑；无新SDK/依赖/MCP或DMG。旧回执保持，首轮XML标签误写与重复演示键位已记录/修正，声音容差未变。
+
 ## U-P0-EDIT-GROUPS-01（2026-10-09）
 
 结果：Release/固定deep/strict通过；128专项（最终CTest10.20秒）与4项受影响回归通过0失败（31.37秒，组当时124）。Edit/Mix/Edit+Mix、真实关联选择/范围、Grabber本地整组预览与松手提交、共同delta/Nudge/去重/锁定拒绝、Undo/Redo和保存重开接通。原生不同起点0/12000→480/12480，关闭组单目标；schema1默认false、schema2迁移/Undo与损坏候选拒绝通过。代码/回执/边界见VERIFICATION首节。

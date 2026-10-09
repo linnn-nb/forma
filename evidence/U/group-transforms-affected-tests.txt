@@ -1,0 +1,30 @@
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  31: tracktion_native_workspace
+1/7 Test  #31: tracktion_native_workspace .........   Passed    3.44 sec
+    Start  45: tracktion_audio_clip_edits
+2/7 Test  #45: tracktion_audio_clip_edits .........   Passed    8.79 sec
+    Start  74: forma_native_ui_navigation
+3/7 Test  #74: forma_native_ui_navigation .........   Passed    3.33 sec
+    Start  75: forma_native_editor_interactions
+4/7 Test  #75: forma_native_editor_interactions ...   Passed    9.96 sec
+    Start  76: forma_native_audio_clipboard
+5/7 Test  #76: forma_native_audio_clipboard .......   Passed    5.91 sec
+    Start  83: forma_native_groups
+6/7 Test  #83: forma_native_groups ................   Passed   10.41 sec
+    Start 101: forma_native_group_transforms
+7/7 Test #101: forma_native_group_transforms ......   Passed   10.47 sec
+
+100% tests passed, 0 tests failed out of 7
+
+Total Test time (real) =  52.32 sec
+
+最后专项（修正演示键位唯一绑定、测试89项）：
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 101: forma_native_group_transforms
+1/1 Test #101: forma_native_group_transforms ....   Passed   10.85 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =  10.85 sec

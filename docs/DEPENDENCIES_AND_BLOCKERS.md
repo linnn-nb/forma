@@ -1,5 +1,6 @@
 # 依赖与阻塞 v2
 
+当前结论（U-P0-GROUP-TRANSFORMS-01）：无新依赖/SDK/RT/AI工具；Release/固定验签、7项受影响回归和最终89专项通过。实体淡化提交/撤销/另存/新进程重开通过；Open对话框确认禁用原因未定，随后CUA无窗口/0×0，须复现后再验最终唯一键位/卡片。只结束新测试预览89941，人工操作窗口保留。组MIDI/自动化/任意区间与完整U＋P0未完成；旧增量记录以最新VERIFICATION为准。
 当前结论（U-P0-EDIT-GROUPS-01）：无新依赖/SDK/RT修改，Release与固定deep/strict验签通过，128专项及4项受影响回归通过；具体分批证据见VERIFICATION。MIX_GROUPS schema1兼容/schema2迁移和损坏载入拒绝已测。Mac锁定，实体点击/按键/试听未验；仅本轮86294已结束。整组trim/fade/gain/MIDI移动、View/Height/Timebase/自动化、All/临时旁路与完整U＋P0仍未完成；M2/M3冻结、M4/M5暂缓。
 
 最新结论（U-P0-ROLL-TIME-01）：无新依赖或SDK补丁；Release/固定签名通过，193专项与6/6受影响回归通过（33.58秒）。主时间单位输入与关闭灰旗接通同一L1事务。Mac锁定阻止实体GUI/试听，已结束仅本轮预览PID94602；继续不受阻塞的U＋P0工程工作。Bars|Beats目前拍数输入，NDF仅24/25/30；录音/循环预后卷、外部MIDI精确截止、第三方动态PDC/多输出、实体麦克风/MIDI、听感/耐久/Windows/发行仍未验，完整U＋P0未完成。

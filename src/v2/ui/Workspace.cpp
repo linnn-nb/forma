@@ -697,7 +697,16 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     {
         try
         {
-            return commands.editGroupClipSelection(id);
+            const auto linked = commands.editGroupClipSelection(id);
+            for (const auto& object : linked)
+                for (const auto& track : facts["tracks"])
+                    for (const auto& clip : track["clips"])
+                        if (clip["id"] == object["id"] &&
+                            (clip["kind"] != "audio" || clip.value("locked", false) ||
+                             !clip.value("editable_audio", false) || clip.value("source_frames", int64_t(0)) <= 0 ||
+                             clip.value("source_sample_rate", 0.) <= 0))
+                            throw std::runtime_error("整组编辑不可用：成员已锁定、媒体缺失或编辑类型尚未支持");
+            return linked;
         }
         catch (const std::exception& e)
         {

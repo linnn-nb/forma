@@ -311,3 +311,55 @@ void Workspace::executeDeleteCommand()
         grabKeyboardFocus();
 }
 } // namespace ndaw::desktop
+
+namespace ndaw::desktop
+{
+void Workspace::showFades()
+{
+    const auto current = commands.query();
+    if (current.value("playing", false))
+        throw std::runtime_error("请先停止走带");
+    Json clip = nullptr;
+    for (const auto& track : current["tracks"])
+        for (const auto& candidate : track["clips"])
+            if (candidate["id"] == selectedClip && candidate["kind"] == "audio")
+                clip = candidate;
+    if (clip.is_null() || !clip.value("editable_audio", false) || clip.value("locked", false))
+        throw std::runtime_error("请选择可编辑的音频片段");
+    if (rollPanel)
+        rollPanel->setVisible(false);
+    if (musicEventPanel)
+        musicEventPanel->setVisible(false);
+    if (!fadesPanel)
+    {
+        fadesPanel = std::make_unique<FadesPanel>(
+            [this](Json operations, uint64_t version, std::string session)
+            {
+                try
+                {
+                    if (commands.sessionToken() != session || commands.query()["revision"] != version)
+                        throw std::runtime_error("工程已修改，请重新打开片段淡化");
+                    auto plan = commands.makePlan("human", operations);
+                    plan["base_revision"] = version;
+                    commands.commit(plan);
+                    fadesPanel->setVisible(false);
+                    refresh();
+                    message(text("片段淡化已提交 · 可撤销"));
+                    return std::string{};
+                }
+                catch (const std::exception& e)
+                {
+                    return std::string(e.what());
+                }
+            });
+        addChildComponent(*fadesPanel);
+        fadesPanel->connect(commandManager);
+    }
+    fadesPanel->show(current, clip, Commands::mediaHash(juce::File(text(clip["path"]))),
+                     commands.editGroupClipSelection(clip["id"]).size());
+    fadesPanel->setBounds(getLocalBounds());
+    fadesPanel->setVisible(true);
+    fadesPanel->toFront(true);
+    commandManager.commandStatusChanged();
+}
+} // namespace ndaw::desktop

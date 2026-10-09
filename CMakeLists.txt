@@ -732,3 +732,9 @@ target_sources(ndaw_selection_output_gate_tests PRIVATE tests/v2/SelectionOutput
 target_include_directories(ndaw_selection_output_gate_tests PRIVATE src/v2)
 target_link_libraries(ndaw_selection_output_gate_tests PRIVATE ndaw_engine)
 add_test(NAME tracktion_selection_output_gate COMMAND ndaw_selection_output_gate_tests "${CMAKE_SOURCE_DIR}/evidence/U/selection-output-gate-tests.json")
+
+juce_add_console_app(ndaw_group_transform_tests PRODUCT_NAME "ndaw_group_transform_tests")
+target_sources(ndaw_group_transform_tests PRIVATE tests/v2/GroupTransformTests.cpp)
+target_link_libraries(ndaw_group_transform_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_group_transforms COMMAND ndaw_group_transform_tests "${CMAKE_SOURCE_DIR}/evidence/U/group-transforms-tests.json")
+set_tests_properties(forma_native_group_transforms PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

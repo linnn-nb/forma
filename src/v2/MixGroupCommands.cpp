@@ -237,6 +237,6 @@ Json Commands::expandMixGroupFlags(const Json& ops) const
             require(expanded.size() <= 64, "expanded group transaction exceeds 64 operation budget");
         }
     }
-    return expandEditGroupMoves(expanded);
+    return expandEditGroupEdits(expanded);
 }
 } // namespace ndaw::v2

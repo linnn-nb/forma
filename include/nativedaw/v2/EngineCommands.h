@@ -141,7 +141,7 @@ private:
     Json mixGroupsQuery(te::Edit* candidate = nullptr) const;
     Json validateMixGroupPlan(const Json&) const;
     Json expandMixGroupFlags(const Json&) const;
-    Json expandEditGroupMoves(const Json&) const;
+    Json expandEditGroupEdits(const Json&) const;
     void executeMixGroupOperation(const std::string&, const Json&);
     static void registerPanCommands(Json&);
     Json panQuery(te::AudioTrack&) const;

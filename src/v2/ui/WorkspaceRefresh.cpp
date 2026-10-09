@@ -389,6 +389,8 @@ void Workspace::refresh()
         readOnly.mode = Permission::ReadOnly;
         resetCommandClient(readOnly);
         selected.clear();
+        if (fadesPanel)
+            fadesPanel->setVisible(false);
         if (rollPanel)
             rollPanel->setVisible(false);
         if (musicEventPanel)

@@ -166,6 +166,7 @@ const std::vector<Entry>& entries()
         {277, "取消当前编辑设置", "编辑"},
         {278, "预卷 / 后卷开关（选区播放）", "走带", 'k', cmd},
         {279, "预卷 / 后卷设置…", "走带", 'k', cmd | shift},
+        {280, "片段淡化…", "编辑", 'f', cmd},
         {267, "清除 Zoom Toggle · 保留当前视图", "缩放"},
         {262, "Overview · 256 采样/像素", "缩放", '0', cmd | shift | juce::ModifierKeys::altModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
@@ -629,6 +630,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id == 280)
+                active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
             if (id == 278 || id == 279)
                 active = !facts.value("playing", false);
             if (id == 278)
@@ -641,7 +644,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id >= 275 && id <= 277)
                 active =
                     (musicEventPanel && musicEventPanel->isVisible() && (id != 276 || musicEventPanel->canDelete())) ||
-                    (id != 276 && rollPanel && rollPanel->isVisible());
+                    (id != 276 && rollPanel && rollPanel->isVisible()) ||
+                    (id != 276 && fadesPanel && fadesPanel->isVisible());
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();
             if (id >= 250 && id <= 252)
@@ -694,6 +698,19 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 280)
+    {
+        invoke([&] { showFades(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && fadesPanel && fadesPanel->isVisible())
+    {
+        if (id == 275)
+            fadesPanel->execute();
+        else
+            fadesPanel->setVisible(false);
+        return true;
+    }
     if (id == 278 || id == 279)
     {
         if (id == 279)
@@ -1230,6 +1247,8 @@ void Workspace::focusMixInsert(const std::string& target, int index)
 }
 void Workspace::showRollSettings()
 {
+    if (fadesPanel)
+        fadesPanel->setVisible(false);
     if (musicEventPanel)
         musicEventPanel->setVisible(false);
     if (!rollPanel)
@@ -1278,6 +1297,8 @@ namespace ndaw::desktop
 {
 void Workspace::showMusicEvent(const std::string& kind, double beat, const std::string& event)
 {
+    if (fadesPanel)
+        fadesPanel->setVisible(false);
     if (rollPanel)
         rollPanel->setVisible(false);
     if (commands.query().value("playing", false))

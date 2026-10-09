@@ -83,7 +83,7 @@ public:
                 ids.push_back(target);
                 buttons.push_back(std::move(b));
             }
-        status.setText(text("至少2个成员。Edit联动选区与整体移动；推子、Pan、组修剪和MIDI移动仍待实现。"),
+        status.setText(text("至少2个成员。Edit联动选区、移动、修剪、淡化和片段增益；推子、Pan和MIDI联动待实现。"),
                        juce::dontSendNotification);
         resized();
     }

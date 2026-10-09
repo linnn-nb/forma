@@ -487,9 +487,9 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
             in = std::llround(double(in) * length / total);
             out = length - in;
         }
-        auto offset = sample(p.getOffset().inSeconds()) + start - sample(p.getStart().inSeconds());
+        auto offset = p.getOffset() + (pos(start) - p.getStart());
         auto ci = curveName(c->getFadeInType()), co = curveName(c->getFadeOutType());
-        c->setPosition({{pos(start), pos(end)}, dur(offset)});
+        c->setPosition({{pos(start), pos(end)}, offset});
         fades(*c, in, out, ci, co);
     }
     else if (cmd == "clip.gain")

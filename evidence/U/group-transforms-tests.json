@@ -1,0 +1,170 @@
+{
+  "budgets": {
+    "fractional_offset_seconds": 1e-12,
+    "pcm_error": 2e-06,
+    "render_ms": 10000
+  },
+  "checks": 89,
+  "gain_pcm_error": 1.2157217997609156e-07,
+  "preview_session": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/GroupTransforms.tracktionedit",
+  "renders": [
+    {
+      "case": "original different source rates",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -21.971959780673618,
+        "media_hash": "b1ed2bbecd7a1ce65ad1a6a3c9c8f2e88f4c4f1a3711934a80287295f04b0f27",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/56a0db85ce2f4aaa94280263d7c533b4.wav",
+        "pcm_bits": 24,
+        "peak": 0.09007143974304199,
+        "peak_dbfs": -20.908257904787085,
+        "processing_chain_hash": "b08ed38954f65fa908ca16d0d4192ca343aa96c414419ded5a7ca29de9bc87f2",
+        "render_ms": 512.2314583361149,
+        "revision": 8,
+        "rms": 0.05163835377268527,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.90087215262363
+      }
+    },
+    {
+      "case": "trim both members",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -22.027401092171157,
+        "media_hash": "b9b23b10be9bc4a3562f3f8c70bc4256ceb605d988c8ee934867439a7bb850f5",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/e774391e396546f08e7540308eeaf457.wav",
+        "pcm_bits": 24,
+        "peak": 0.09007143974304199,
+        "peak_dbfs": -20.908257904787085,
+        "processing_chain_hash": "7ae45ac24eb8c100a4fafe1e205bc679eedb97dae309e7bc475f0e955610e902",
+        "render_ms": 509.7211666703224,
+        "revision": 9,
+        "rms": 0.0496358823392453,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.90087215262363
+      }
+    },
+    {
+      "case": "trim undone",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -21.971959780673618,
+        "media_hash": "af6e1f4e02aaabdd799bb370fac6ada0e0d5c5f1b29cc625cbb2cf7dcf9aa217",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/7cc271ce85204a6a952ce9bc01135c0f.wav",
+        "pcm_bits": 24,
+        "peak": 0.09007143974304199,
+        "peak_dbfs": -20.908257904787085,
+        "processing_chain_hash": "0d8f9c0e5022c0b343c2f4955f021baacd49e0a69bd2439f45f7c3b936d352ed",
+        "render_ms": 509.4607499986887,
+        "revision": 12,
+        "rms": 0.05163835377268527,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.90087215262363
+      }
+    },
+    {
+      "case": "relative group fades",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -22.061051890932244,
+        "media_hash": "d65d2869effc8f2a20a810daabe78aede2c0fc1d727f55a6dceaa0b81b6ed993",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/a16dd2069b1448fb8d943fb43d063dbb.wav",
+        "pcm_bits": 24,
+        "peak": 0.09007143974304199,
+        "peak_dbfs": -20.908257904787085,
+        "processing_chain_hash": "4927b78752fbf4b8b7082086700141a583b176263fdd94c4a66cdc980a51ab45",
+        "render_ms": 509.592375010252,
+        "revision": 13,
+        "rms": 0.05105659388776534,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.90087215262363
+      }
+    },
+    {
+      "case": "relative group gain",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -24.97195996890899,
+        "media_hash": "9f12a39fbeb4f48d6453ef02a8c5bcd7645e0d16da23d23274e09ebec6f29a11",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/b14fc280481b41b895bc34cc88eb2702.wav",
+        "pcm_bits": 24,
+        "peak": 0.06376564502716064,
+        "peak_dbfs": -23.908264856195785,
+        "processing_chain_hash": "0d06583bbc1656627b2ce6c261adb6cfca4d2f7242ae14195bb75150764d02cb",
+        "render_ms": 509.842833340168,
+        "revision": 19,
+        "rms": 0.03655715408454806,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -23.90086643747815
+      }
+    },
+    {
+      "case": "saved",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -22.100382086081655,
+        "media_hash": "acf0132ae1d84f91ee64d676171ca91bff3296676e37d6aae0bee2e6cb68b857",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/9be2a0d8103d46d1b8363884e28f5da5.wav",
+        "pcm_bits": 24,
+        "peak": 0.09007143974304199,
+        "peak_dbfs": -20.908257904787085,
+        "processing_chain_hash": "a1037932fbef6000427cec67c0c64931e5586a032b5e60180e66391b9d7cb979",
+        "render_ms": 511.4075416624546,
+        "revision": 42,
+        "rms": 0.04916771179192881,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.90087215262363
+      }
+    },
+    {
+      "case": "reopened",
+      "receipt": {
+        "analyser": "libebur128 1.2.6",
+        "audio_verified": true,
+        "channels": 2,
+        "frames": 192000,
+        "lufs_i": -22.100382086081655,
+        "media_hash": "acf0132ae1d84f91ee64d676171ca91bff3296676e37d6aae0bee2e6cb68b857",
+        "path": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/9490e813bc954e658192e1a32a05a1b5.wav",
+        "pcm_bits": 24,
+        "peak": 0.09007143974304199,
+        "peak_dbfs": -20.908257904787085,
+        "processing_chain_hash": "0997e7da9facfdd6d211a52632e31582e04d30f620f558a2bddd32cf488c7ab3",
+        "render_ms": 509.91333332657814,
+        "revision": 43,
+        "rms": 0.04916771179192881,
+        "sample_rate": 48000.0,
+        "tap_point": "master",
+        "true_peak_dbtp": -20.90087215262363
+      }
+    }
+  ],
+  "result": "passed",
+  "scope": "real native workspace callbacks/Edit/Undo/WAV; hardware GUI and listening not performed",
+  "test_directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb",
+  "trim_pcm_error": 0.0
+}

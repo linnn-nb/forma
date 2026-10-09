@@ -1,6 +1,7 @@
 # 统一命令契约 v2
 
-U-P0-EDIT-GROUPS-01：现有local_gui/human group.create/update新增可选edit布尔，旧调用默认false（update省略时保留既有值）；类型由edit/mute/solo事实决定。group.enabled/delete沿用原事务。无新工具。clip.move在makePlan与preview两处一致展开真实启用编辑组目标，requested_operations留存意图、每个peer使用自己的媒体hash；共同delta、去重、锁定/冲突/陈旧版本与范围权限校验保持。一Plan一Undo；整组MIDI移动/trim/fade/gain明确不可用。GUI选择只保存UI事实，时间范围/插入点仍一human事务。
+U-P0-GROUP-TRANSFORMS-01：clip.move/trim/fade/gain既有命令共用expandEditGroupEdits，意图/来源hash/版本/Scope/幂等仍在L1验证。只读变更预览不修改Edit；GUI毫秒输入转48k工程采样，一笔human事务。89专项与实际PCM通过，未增加冻结的MCP注册表。
+U-P0-EDIT-GROUPS-01：现有local_gui/human group.create/update新增可选edit布尔，旧调用默认false（update省略时保留既有值）；类型由edit/mute/solo事实决定。group.enabled/delete沿用原事务。无新工具。clip.move在makePlan与preview两处一致展开真实启用编辑组目标，requested_operations留存意图、每个peer使用自己的媒体hash；共同delta、去重、锁定/冲突/陈旧版本与范围权限校验保持。一Plan一Undo；整组MIDI编辑仍不可用；trim/fade/gain已按共同边界/长度/dB变化量展开并逐成员校验，未改曲线保留各成员值。GUI选择只保存UI事实，时间范围/插入点仍一human事务。
 
 U-P0-ROLL-TIME-01：新增 formatRollDuration/parseRollDuration 只读本地API，不注册新命令或MCP工具。转换在L1消息线程使用真实TempoSequence，最终仍提交完整的transport.roll.set四字段；会话/版本冲突拒绝，未改变文本保留原始样本。RollPanel显示冻结的主单位/帧率，支持分:秒或秒数、48k样本、24/25/30 NDF、实际拍数；Bars|Beats模式目前使用拍数，不是小节|拍分字段。关闭灰旗拖动不自动启用。专项193、受影响6/6通过，实体GUI未验。
 

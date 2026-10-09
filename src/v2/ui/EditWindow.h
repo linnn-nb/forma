@@ -11,6 +11,7 @@
 #include "ZoomGesture.h"
 #include "ScrubGesture.h"
 #include "TimeSelectionGesture.h"
+#include "GroupedClipDraft.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -519,8 +520,9 @@ public:
             g.drawHorizontalLine(y + rowHeight(int(i)) - 1, 0, float(getWidth()));
             if (!viewParameter(t["id"]).empty())
                 continue;
-            for (const auto& c : t["clips"])
+            for (const auto& original : t["clips"])
             {
+                const auto c = GroupedClipDraft::clip(original, drag, dragStart, dragEnd);
                 auto rect = clipRect(c, int(i));
                 double start = c["start_samples"].get<int64_t>() / 48000.,
                        length = c["length_samples"].get<int64_t>() / 48000.;
@@ -547,12 +549,6 @@ public:
                     g.setColour(juce::Colour(0xffe6e1b2));
                     auto fadeIn = c.value("fade_in_samples", int64_t(0));
                     auto fadeOut = c.value("fade_out_samples", int64_t(0));
-                    if (!drag.is_null() && drag.value("clip_id", std::string{}) == c["id"].get<std::string>() &&
-                        (drag["mode"] == "fade_in" || drag["mode"] == "fade_out"))
-                    {
-                        fadeIn = drag.value("preview_fade_in", fadeIn);
-                        fadeOut = drag.value("preview_fade_out", fadeOut);
-                    }
                     double in = fadeIn / 48000. / length, out = fadeOut / 48000. / length;
                     drawFade(g, rect, in, c.value("fade_in_curve", std::string("linear")), true);
                     drawFade(g, rect, out, c.value("fade_out_curve", std::string("linear")), false);
@@ -584,25 +580,11 @@ public:
             else if (drag["mode"] != "fade_in" && drag["mode"] != "fade_out" && drag["mode"] != "loop_start" &&
                      drag["mode"] != "loop_end")
             {
-                auto preview = drag["clip"];
-                preview["start_samples"] = dragStart;
-                preview["length_samples"] = dragEnd - dragStart;
                 g.setColour(accent().withAlpha(.25f));
-                if (drag["mode"] == "move" && drag.contains("linked"))
-                {
-                    const auto delta = dragStart - drag["clip"]["start_samples"].get<int64_t>();
-                    for (size_t row = 0; row < facts["tracks"].size(); ++row)
-                        for (const auto& clip : facts["tracks"][row]["clips"])
-                            for (const auto& linked : drag["linked"])
-                                if (clip["id"] == linked["id"])
-                                {
-                                    auto shifted = clip;
-                                    shifted["start_samples"] = clip["start_samples"].get<int64_t>() + delta;
-                                    g.fillRect(clipRect(shifted, int(row)));
-                                }
-                }
-                else
-                    g.fillRect(clipRect(preview, drag["row"]));
+                for (size_t row = 0; row < facts["tracks"].size(); ++row)
+                    for (const auto& clip : facts["tracks"][row]["clips"])
+                        if (GroupedClipDraft::includes(drag, clip["id"]))
+                            g.fillRect(clipRect(GroupedClipDraft::clip(clip, drag, dragStart, dragEnd), int(row)));
             }
         }
         int x = int(std::round(axis.pixelAt(facts.value("position_samples", int64_t(0)))));
@@ -713,9 +695,12 @@ public:
             for (const auto& c : facts["tracks"][i]["clips"])
                 if (headers.contains(c["id"]))
                 {
-                    auto r = clipRect(c, int(i)).reduced(3).removeFromTop(20).getIntersection(
-                        juce::Rectangle<int>(timelineLeft(), rulerHeight(), getWidth() - timelineLeft() - 16,
-                                             getHeight() - rulerHeight() - 16));
+                    auto r = clipRect(GroupedClipDraft::clip(c, drag, dragStart, dragEnd), int(i))
+                                 .reduced(3)
+                                 .removeFromTop(20)
+                                 .getIntersection(juce::Rectangle<int>(timelineLeft(), rulerHeight(),
+                                                                       getWidth() - timelineLeft() - 16,
+                                                                       getHeight() - rulerHeight() - 16));
                     headers.at(c["id"])->setBounds(r);
                     headers.at(c["id"])->setVisible(!r.isEmpty() && viewParameter(facts["tracks"][i]["id"]).empty());
                 }
@@ -994,7 +979,7 @@ public:
                                 {"mode", mode},
                                 {"preview_fade_in", c.value("fade_in_samples", int64_t(0))},
                                 {"preview_fade_out", c.value("fade_out_samples", int64_t(0))}};
-                        if (std::string_view(mode) == "move" && onLinkedClips)
+                        if (onLinkedClips)
                         {
                             drag["linked"] = onLinkedClips(c["id"]);
                             if (drag["linked"].empty())
@@ -1081,6 +1066,7 @@ public:
                 drag["preview_fade_out"] =
                     std::clamp(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>() - point,
                                int64_t(0), c["length_samples"].get<int64_t>() - fadeIn);
+            GroupedClipDraft::constrain(facts, drag, dragStart, dragEnd);
             dragged = std::abs(e.x - dragX) >= 3;
             repaint();
             return;
@@ -1104,6 +1090,8 @@ public:
             dragStart = start;
             dragEnd = std::clamp(snapped(raw, e.mods), start + 1, start + source - offset);
         }
+        GroupedClipDraft::constrain(facts, drag, dragStart, dragEnd);
+        resized();
         dragged = mode != "move" || std::abs(e.x - dragX) >= 3;
         repaint();
     }

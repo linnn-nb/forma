@@ -1,0 +1,45 @@
+{
+  "result": "build_and_automated_passed_desktop_partial",
+  "test_id": "U-P0-GROUP-TRANSFORMS-01",
+  "formal_app": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+  "preview_app": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/FormaGroupFadesPreview.app",
+  "preview_session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/group-transforms-demo/GroupTransforms.tracktionedit",
+  "formal_sha256": "f5dd7e1830aed6147db41b47882d688e2ce6f04459389e0bb14ab9d2a6e4d2bf",
+  "preview_sha256": "47d22500e9e7bd07f7422d45cc9026aae59039e45a9dd199265d05fab22a1bf5",
+  "signing": "fixed leaf identity, deep/strict passed",
+  "desktop": {
+    "performed": [
+      "actual clip selection",
+      "custom shortcut in initial preview",
+      "fade 100 to 120ms / A4800->5760 B7200->8160",
+      "Command Return commit",
+      "Command Z Undo / Command Shift Z Redo",
+      "native Save Copy",
+      "new process reopened native GUI saved file / B8160"
+    ],
+    "gui_saved_file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/GroupTransformsDesktop.tracktionedit",
+    "saved_file_sha256": "0498285b11dd7aaa25891ad80d0d15f57c36624f9392c5eeb754990fec3a5b14",
+    "final_unique_shortcut": "Control+Option+J (automated dispatch/reopen passed; final physical dispatch pending)",
+    "screenshot": "group-transforms-fades.png",
+    "screenshot_phase": "initial full-screen panel; subsequently changed to centered card; final card screenshot unavailable",
+    "open_dialog": "selected valid .tracktionedit but Open remained disabled; not passed, cause unconfirmed",
+    "tool_later_errors": [
+      "noWindowsAvailable",
+      "screen capture size invalid (0.0, 0.0)"
+    ],
+    "hearing_check": "not performed"
+  },
+  "cleanup": {
+    "only_final_test_preview_pid_stopped": 89941,
+    "remaining_final_test_preview": false,
+    "manual_group_transforms_preview": "preserved after human activity"
+  },
+  "not_completed": [
+    "arbitrary time-range grouped slicing",
+    "grouped MIDI/automation/View/Height/Timebase",
+    "U+P0 complete user acceptance",
+    "native Open dialog reproduction and final physical shortcut dispatch"
+  ],
+  "test_preview_session": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_group_transform_tests/forma-group-transforms-fc43c09a66194fa085aca64e4242bcfb/GroupTransforms.tracktionedit",
+  "demo_derivation": "owned final test project; only real source paths changed to persistent copied files, both PCM hashes retained"
+}

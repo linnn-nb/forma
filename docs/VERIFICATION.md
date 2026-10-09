@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-GROUP-TRANSFORMS-01：整组修剪与淡化（2026-10-09）
+
+结论：Release/固定deep/strict验签通过；受影响7项最终通过（52.32秒），最后专项修正键位夹具后89项通过（10.85秒）。实际48k/44.1k源PCM内部修剪差0、共同−3dB误差1.216e−7（预算2e−6），分数源偏移容差1e−12秒；源哈希未改。 完整U＋P0未验收，不进P1；M2/M3冻结、M4/M5暂缓。任意范围切片、组MIDI/自动化/View/Height/Timebase、All/临时旁路等仍未实现。
+
+代码/验收：`ClipGroupTransform.h`是L1与GUI草稿共用的纯变换；`EditGroupCommands.cpp`从实际Edit展开Move/Trim/Fade/Gain，requested_operations保留锚点意图，每项绑定各自媒体hash，重复去重/冲突拒绝、64操作预算与原Scope校验保留。`ClipCommands.cpp`修剪保留实际source offset秒数，不再先取整原offset。`GroupedClipDraft.h`约束全组可用源范围与长度；`EditWindow.h`画所有真实受影响片段的草稿，松手提交。`FadesPanel.h`/WorkspaceEditing提供毫秒与四曲线设置，冻结session/revision、未改长度保留整数精度；280默认⌘F可改键，275⌘Return提交，277取消。GUI不写te::Edit，无新实时/SDK/依赖或MCP工具。
+
+`GroupTransformTests.cpp`实际原生左右Trim和Smart淡化事件、松手前不写工程、peer预览几何与提交一致；不同起点/长度/曲线/gain、逐成员hash、源映射、整笔Undo/Redo、保存新Workspace重开与真实PCM验证。共同淡化增量保持未改peer曲线；显式曲线改变只作用该端。锁定peer、负淡化/空peer/增益越界/同Plan冲突/失效版本/错误证据拒绝，参数非法与过期面板保持未提交。测试从自己保存的XML生成单独分数offset夹具（不覆盖原件），44.1k源修剪保留1/4工程采样的分数时间。
+
+首轮失败是夹具误把原生AUDIOCLIP标签写成CLIP，修正后通过；实体重开发现演示CtrlOptionF与既有卷帘Fit重复，最后夹具改ControlOptionJ并断言唯一command280，真实派发/重开89检查通过；未放宽音频或时间容差。最后整体7项时专项88，后修正夹具/增加唯一映射检查，专项89单独复跑；其他6项无需因测试夹具再跑。最后居中卡片绘制单独Release构建/验签，更新后的UI库参与最终89项测试。
+
+桌面：实体桌面已验证片段选择、淡化提交、Undo/Redo、另存和新进程重开；原生Open对话框出现确认禁用，原因未确定，随后CUA无窗口/0×0，后续未通过。初始截图对应居中卡片调整前；最终ControlOptionJ唯一绑定已自动化执行/重开，实体复测待做。新测试预览89941已结束；出现人工活动的原预览保留。 原生保存文件GroupTransformsDesktop.tracktionedit实读A/B的offset0.6/0.85秒、fadeIn0.12/0.17秒，新进程实际B8160，原源文件未覆盖。初始CtrlOptionF重开冲突不算最终实体键位通过。实际鼠标Trim/Smart手柄、最终居中卡片截图、监听/听感与完整制作流程仍待验；Open对话框须优先复现。跨重开Undo历史不承诺。
+
+证据：`evidence/U/group-transforms-tests.json`、`group-transforms-affected-tests.txt`、`group-transforms-preview.json`和`group-transforms-fades.png`。旧tracked JSON保留历史，重跑回执在忽略的build-v2-tracktion/group-transforms-rerun-*。无全量回归/DMG。下面保留前一增量历史，其中“组trim/fade/gain拒绝”由本节已测范围替代。
+
 ## U-P0-EDIT-GROUPS-01：编辑组选择与整体移动（2026-10-09）
 
 结论：Release原生应用/固定身份deep/strict通过；首轮116专项，补迁移后的4/4受影响回归通过0失败（31.37秒，组专项124）；最后增加不同起点/关闭组测试，最终组专项128通过（CTest单项10.20秒）。最终生产代码未在最后测试扩充时改变。没有全量回归/DMG、SDK补丁或新依赖，完整U＋P0未完成。

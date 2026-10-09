@@ -1,11 +1,9 @@
 # 下一步
 
-结论：编辑组属性与whole-clip关联选择/整体移动接通；Release/固定deep/strict签名通过，最终128专项（10.20秒）与4项相关回归通过（31.37秒、该批组124）。完整U＋P0未完成、不进P1；M2/M3冻结、M4/M5暂缓。
+结论：编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 Release/固定deep/strict验签通过；受影响7项最终通过（52.32秒），最后专项修正键位夹具后89项通过（10.85秒）。实际48k/44.1k源PCM内部修剪差0、共同−3dB误差1.216e−7（预算2e−6），分数源偏移容差1e−12秒；源哈希未改。 完整U＋P0未验收，不进P1；M2/M3冻结、M4/M5暂缓。任意范围切片、组MIDI/自动化/View/Height/Timebase、All/临时旁路等仍未实现。
 
-亲手试：build-v2-tracktion/FormaEditGroupsPreview.app打开 /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_groups_tests/forma-groups-edabd10816fa4a34b87011bdbe1038a2/EditGroups.tracktionedit。A/B是Edit-only组、C非组。点任一A/B片段，Grabber拖动或ControlOptionJ Nudge（本工程保存的自定义121键），Undo/Redo、另存重开；⌘G新建组、⌘⇧G开关所选组、⌘⌥G修改属性。先点左侧组名称选择组；勾选框启用联动。夹具是诊断PCM，非实录/制作示范。
+亲手试：双击 `build-v2-tracktion/OpenGroupFadesDemo.command`，打开已签名FormaGroupFadesPreview.app与最终89专项的真实工程。A/B为Edit-only、C非组；选A/B、F6修剪边缘或⌘7 Smart拖淡化手柄，⌘Z/⇧⌘Z；本工程ControlOptionJ打开毫秒淡化设置，⌘Return提交、Esc取消。新工程默认⌘F。诊断PCM不是实录或音乐示范；预览支持另存。原生Open对话框问题仍待排查，启动器不算对该问题的修复。
 
-支持Edit/Mix/Edit+Mix；关闭组不影响单轨，重叠Edit组连通；整体移动保留不同起点、拒绝锁定peer/冲突/超预算，native事务整体撤销。旧schema1默认Edit关闭，首次修改schema2迁移随Undo回退；损坏组数据在adopt前拒绝。preview来自124批次，后4项只有测试变化；正式/预览SHA与回执见edit-groups-preview.json和VERIFICATION。
+实体状态：实体桌面已验证片段选择、淡化提交、Undo/Redo、另存和新进程重开；原生Open对话框出现确认禁用，原因未确定，随后CUA无窗口/0×0，后续未通过。初始截图对应居中卡片调整前；最终ControlOptionJ唯一绑定已自动化执行/重开，实体复测待做。新测试预览89941已结束；出现人工活动的原预览保留。
 
-GUI：Mac锁定，未实体点击/键盘/截图/试听，仅本轮86294已停止，无残留，旧窗口保留。无DMG。实体输入/MIDI、第三方PDC、多输出、监听/听感/耐久和Windows仍待验。当前whole-clip关联不是任意区间切片，组trim/fade/gain明确拒绝，MIDI移动与组自动化/Track View/Height/Timebase等未实现。
-
-下一项明确任务：同组音频修剪/淡化与精确范围编辑——保留各成员源时间、位置、长度与相位关系，统一Plan预览/锁定和来源校验、单笔Undo/Redo/保存重开/可改键；GUI拖动必须显示全部真实受影响对象。随后补Marker/Memory预后卷恢复和时间字段导航。用户亲手确认完整U＋P0后才进入P1，原媒体不覆盖，跨重开Undo历史不承诺。
+下一项明确任务：优先复现/修复原生Open确认禁用，完成最终唯一键位与居中卡片的实体回归；然后补同组任意时间范围切片编辑（不能误当whole-clip），再补Marker/Memory预后卷恢复与时间字段导航。原媒体不覆盖，跨重开Undo历史不承诺。用户亲手确认完整U＋P0后进入P1。

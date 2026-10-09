@@ -19,6 +19,7 @@
 #include "PianoPitchAxis.h"
 #include "MusicEventPanel.h"
 #include "RollPanel.h"
+#include "FadesPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
 #include "../TimelineState.h"
@@ -139,6 +140,8 @@ private:
     void restoreZoom();
     void executeZoomToggle(int);
     void followZoomToggle();
+    void showFades();
+    std::unique_ptr<FadesPanel> fadesPanel;
     void showRollSettings();
     std::unique_ptr<RollPanel> rollPanel;
     void showMusicEvent(const std::string&, double, const std::string& = "");
