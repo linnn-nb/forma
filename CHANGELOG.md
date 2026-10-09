@@ -1,5 +1,9 @@
 # 更新记录
 
+## U-P0-AUTOMATION-CLIPS-MOVE-01 · 2026-10-09
+
+整音频片段移动/Grabber/Nudge/Spot/检查器接通真实曲线跟随，同笔Undo/Redo、稳定ID与保存重开；编辑组/锁定/冲突保护。共享曲段器在原精度与点数预算内减少补点。16项受影响测试最终通过，实体Nudge与另存/Undo/Open通过；Trim/MIDI和完整U＋P0未完成。
+
 ## U-P0-SRC-PHASE-01 · 2026-10-09
 
 修复默认Tracktion音频节点的分块取整相位误差，恢复真实48k/44.1k范围Shuffle；源媒体及导入设置不改，原容差下最大PCM差1.1921e-7。可改键、整笔Undo/Redo、保存重开及桌面CoreAudio播放通过；11/11相关回归。非默认直接/HQ读取器、自动化跟随、完整Shuffle及U＋P0仍未完成。

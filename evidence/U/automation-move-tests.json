@@ -1,0 +1,10 @@
+{
+  "checks": 499,
+  "curve_budget": 4e-07,
+  "curve_max_normalized_error": 1.1920928955078125e-07,
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-move-demos/move-d5ad2813dcd84b17b647f4dd41e9ca18/MoveDesktopReady.tracktionedit",
+  "pcm_budget": 2e-05,
+  "pcm_max_error": 4.76837158203125e-07,
+  "result": "passed",
+  "test": "U-P0-AUTOMATION-CLIPS-MOVE-01"
+}

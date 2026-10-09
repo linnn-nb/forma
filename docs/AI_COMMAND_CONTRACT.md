@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-AUTOMATION-CLIPS-MOVE-01：human原始clip.move（稳定Clip ID、整数48k position_samples）先展开实际编辑组，L1追加automation.clips.move。moves最多64且Clip唯一；实际归属和state_hash由事实生成。preview/commit核对requested_operations与全部重编译操作，拒绝裸内部操作/篡改；媒体hash、revision/session、锁定/Scope、幂等及同笔Undo保持。已有曲线的extent复合Plan与模糊重叠整笔拒绝；无曲线不加曲线操作。GUI手势立即提交，不新增Agent/MCP工具或资格，M2/M3冻结。测试U-P0-AUTOMATION-CLIPS-MOVE-01，499检查。
+
 U-P0-AUTOMATION-CLIPS-CLEAR-01：本地GUI专用 makeAudioClipClearPlan 编译 audio_clip_clear schema1，字段严格为schema整数1、clips实际唯一ID、action=cut/delete、ripple布尔。automation.clips.clear 参数为实际track/clips/action/ripple/state_hash；原生片段范围来自事实，不由外部提交任意区间。actor限定human/local_gui；preview/commit校验整个描述符、操作列表、媒体/处理状态、锁定、编辑组闭包、版本和会话；重试返回原回执。Curve write→Clip delete→Shuffle moves同一Undo事务；Cut仅成功回执后接纳冻结剪贴板。检查器待确认返回false并保留草稿，拒绝不改工程。新操作不对Agent/MCP开放，M2/M3冻结。测试U-P0-AUTOMATION-CLIPS-CLEAR-01，证据automation-clip-clear-tests.json（432检查）。
 
 U-P0-AUTOMATION-VIEW-RANGE-01：automation_range 严格六字段 schema=整数1、targets=[{track,parameter}]、start_samples、end_samples、action、clipboard。end exclusive，48k工程采样；每轨一个实际稳定参数、最多64轨。L1产生 automation.lane.range.clear/paste，只允许封闭 human/local_gui Plan，不进入冻结MCP；拒绝额外字段、伪造目标、裸操作、非human actor、陈旧session/revision/曲线或不匹配快照。作用域仍按整轨保守检查，不假定局部范围修改没有两侧插值影响。

@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+U-P0-AUTOMATION-CLIPS-MOVE-01：无新授权或依赖阻塞；Release/固定签名、16项受影响测试最终通过。Tracktion/JUCE pin、十份SDK补丁原样保留，无新实时路径/DMG。Trim/MIDI、完整U＋P0未完成，不进P1；秒基/稳定Clip对象、有曲线的extent复合Plan及模糊重叠映射限制见VERIFICATION。实录/听感/第三方/耐久/Windows/麦克风权限跨构建未获本增量资格。M2/M3冻结，M4/M5暂缓。
+
 U-P0-AUTOMATION-CLIPS-CLEAR-01：无新增授权或依赖阻塞；Release/固定本地证书验签、14项受影响测试最终通过。保留Tracktion/JUCE现有pin与十份SDK补丁，本轮不改vendor/实时路径。已验证整片段Cut/Delete普通/Shuffle联动；整片段移动、拖拽、Nudge、Trim、MIDI跟随与完整U＋P0未完成。复杂交错编辑组需完整显式对象闭包；非默认读取器、第三方插件、真实实录/听感、Windows、耐久、麦克风授权跨构建仍未获本增量资格。M2/M3冻结，M4/M5暂缓。
 
 U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）：参数视图的范围 Cut/Copy/Delete/Paste 已接真实原生曲线，只编辑当前显示的参数；音频与其他参数保持。共享可自定义快捷键、大变更预览/接受/拒绝、单笔 Undo/Redo、另存/Open 已验证。Release/固定验签通过；12 项受影响 CTest 最终均通过，共1923检查（新专项351），首轮窗口焦点失败及隔离复测通过均保留。完整 U＋P0 未完成，不进P1。此节替代历史“参数视图独立范围编辑未完成”，其他历史边界保留。

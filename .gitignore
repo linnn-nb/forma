@@ -67,3 +67,8 @@ evidence/U/*
 !evidence/U/automation-clip-clear-tests.json
 !evidence/U/automation-clip-clear-regression.txt
 !evidence/U/automation-clip-clear-qualification.json
+
+!evidence/U/automation-move-tests.json
+!evidence/U/automation-move-regression.txt
+!evidence/U/automation-move-qualification.json
+!evidence/U/automation-move-desktop.jpg

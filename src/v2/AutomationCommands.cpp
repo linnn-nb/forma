@@ -178,6 +178,21 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-AUTOMATION-CLIPS-CLEAR-01";
     registry.back()["units"] = {{"clips", "stable native clip IDs; extents resolved as 48000 Hz session samples"}};
+    add("automation.clips.move",
+        {{"track", string},
+         {"moves",
+          {{"type", "array"},
+           {"minItems", 1},
+           {"maxItems", 64},
+           {"items",
+            {{"type", "object"},
+             {"additionalProperties", false},
+             {"required", Json::array({"clip", "position_samples"})},
+             {"properties", {{"clip", string}, {"position_samples", {{"type", "integer"}, {"minimum", 0}}}}}}}}},
+         {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-AUTOMATION-CLIPS-MOVE-01";
+    registry.back()["units"] = {{"position_samples", "48000 Hz session samples; source from actual native clips"}};
     add("automation.lane.range.clear", {{"track", string},
                                         {"parameter", string},
                                         {"start_samples", position},
@@ -360,6 +375,15 @@ Json Commands::validateAutomationPlan(const Json& operations) const
                     "unsupported automation mode");
             continue;
         }
+        if (cmd == "automation.clips.move")
+        {
+            auto change = automationMoveChanges(args);
+            require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
+                    "clip move curve changed before preview");
+            change["command"] = cmd;
+            changes.push_back(std::move(change));
+            continue;
+        }
         if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear" || cmd == "automation.clips.clear")
         {
             auto change = automationClearChanges(args);
@@ -423,6 +447,13 @@ Json Commands::validateAutomationPlan(const Json& operations) const
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
+    if (cmd == "automation.clips.move")
+    {
+        const auto changes = automationMoveChanges(args);
+        require(args.at("state_hash") == changes["state_hash"], "clip move curve changed before commit");
+        executeAutomationCurveChanges(changes, objects);
+        return;
+    }
     if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear" || cmd == "automation.clips.clear")
     {
         executeAutomationClear(args, objects);

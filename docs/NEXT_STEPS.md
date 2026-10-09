@@ -1,9 +1,9 @@
 # 下一步
 
-结论：整音频片段Cut/Delete在普通和Shuffle模式的原生自动化跟随已接通；菜单、可改快捷键与检查器同用L1。大变更可预览、取消、接受，单笔Undo/Redo与保存重开通过。Release/固定验签、14项受影响CTest最终通过，2431检查（新432）；早期失败与修复如实保留在VERIFICATION和专项证据。实体检查器Delete/Shuffle、另存、⌘Z、原生Open通过。
+结论：整音频片段移动/Grabber/Nudge/Spot/检查器接通原生自动化跟随，编辑组/实际音量/声像/EQ曲线同笔Undo/Redo、保存重开和可改键。Release/固定验签、16项不同受影响CTest最终通过，2988检查（新499）；失败与修复如实保留在VERIFICATION及专项证据。实体Nudge→另存→Undo→保存恢复副本→原生Open通过；Clip和POINT属性精确恢复。
 
-亲手试 build-v2-tracktion/OpenWholeClipAutomationDemo.command：⌘X→接受→⌘Z，Delete→⌘Z；点单片段后用底部“删除片段”，F1切换Shuffle；⌘S另存新文件/⌘O重开。正式程序 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app。只退出本轮独立预览，用户旧窗口保留。
+亲手试 build-v2-tracktion/OpenAutomationMoveDemo.command：已选片段，Nudge＋或Control+Option+Shift+J，⌘Z；F8拖动，F3按小节置入，或检查器“应用移动”；Control+Option+A切换跟随。轨道视图选Volume可查看实际曲线；⌘S另存新文件/⌘O重开。正式程序 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；真实截图 evidence/U/automation-move-desktop.jpg。只退出本轮预览，用户旧窗口保留。
 
-下一项明确任务：整片段移动/拖拽/Nudge的原生自动化跟随，核验重叠目标和编辑组语义，接同一L1事务/开关，补真实曲线/PCM、Undo/Redo、重开与改键测试；随后Trim/MIDI和剩余U＋P0。复杂交错编辑组当前要求显式选择完整对象闭包，不能宣称完整Pro Tools等价。
+下一项明确任务：音频Trim的曲线跟随与边界语义，接共享L1/开关，补曲线/PCM、组事务、Undo/Redo、保存重开与改键测试；随后MIDI和剩余U＋P0。同步修整自动化视图长参数名与声像读数拥挤。
 
-完整U＋P0未完成，用户确认本级前不进P1；M2/M3冻结、M4/M5暂缓。非默认读取器、第三方/硬件实录/听感/耐久/Windows未获本增量资格；无授权阻塞。不改依赖pin或十份SDK补丁，不新增DMG。
+完整U＋P0未完成，用户确认本级前不进P1；M2/M3冻结、M4/M5暂缓。秒基/整音频对象；已有曲线的extent复合Plan及模糊重叠拒绝。无新授权/依赖/SDK/RT/DMG；实录/听感/性能对齐/第三方/Windows未获本增量资格。

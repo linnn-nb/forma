@@ -86,7 +86,7 @@ std::vector<Point> fragment(const Point& a, const Point& b, double low, double h
     {
         if (begin > low)
             append(begin, value(begin));
-        auto subdivide = [&](auto&& self, double ta, double tb, int depth) -> void
+        auto chordCoefficient = [&](double ta, double tb)
         {
             const double xa = x(ta), xb = x(tb), ya = y(ta), yb = y(tb);
             require(xb > xa, "Shuffle automation projection lost time resolution");
@@ -94,19 +94,44 @@ std::vector<Point> fragment(const Point& a, const Point& b, double low, double h
             // Exact quadratic minus chord: K*(t-ta)*(t-tb).
             // Its maximum magnitude is |K|*(tb-ta)^2/4, independent
             // of the non-linear x(t). Float storage adds at most one ULP.
-            const double bound =
-                std::abs((y0 - 2 * bp.second + y2) - slope * (x0 - 2 * bp.first + x2)) * (tb - ta) * (tb - ta) * .25;
-            if (bound > tolerance)
-            {
-                require(depth < 24, "Shuffle automation projection depth exceeded");
-                const double middle = (ta + tb) * .5;
-                self(self, ta, middle, depth + 1);
-                self(self, middle, tb, depth + 1);
-            }
-            else
-                append(xb, yb);
+            return (y0 - 2 * bp.second + y2) - slope * (x0 - 2 * bp.first + x2);
         };
-        subdivide(subdivide, parameter(begin), parameter(end), 0);
+        auto chordBound = [&](double ta, double tb)
+        { return std::abs(chordCoefficient(ta, tb)) * (tb - ta) * (tb - ta) * .25; };
+        // Choose maximal bounded chords instead of dyadic subdivisions. The
+        // same analytic error bound applies, but short terminal chords no
+        // longer force their neighbours to double the projected point count.
+        // For monotone quadratic x(t), the bound increases with tb at fixed ta.
+        double ta = parameter(begin);
+        const double finish = parameter(end);
+        bool firstChord = true;
+        while (ta < finish)
+        {
+            double tb = finish;
+            double bias = 0;
+            if (chordBound(ta, tb) > tolerance)
+            {
+                // Centre interior chords on the quadratic: subtracting its
+                // signed tolerance makes errors in [0, 2*tol] become [-tol, tol].
+                // Boundary chords retain a single-tolerance bound as their
+                // bias ramps from/to the exact endpoint. Float storage still
+                // adds at most one ULP; the actual error budget is unchanged.
+                const double limit = firstChord || chordBound(ta, finish) <= 2 * tolerance ? tolerance : 2 * tolerance;
+                double lower = ta, upper = finish;
+                for (int i = 0; i < 44; ++i)
+                {
+                    const double middle = (lower + upper) * .5;
+                    (chordBound(ta, middle) <= limit ? lower : upper) = middle;
+                }
+                tb = lower;
+                require(tb > ta && chordBound(ta, tb) <= limit, "Shuffle automation projection lost error resolution");
+                bias = -std::copysign(tolerance, chordCoefficient(ta, tb));
+            }
+            require(tb > ta, "Shuffle automation projection lost time resolution");
+            append(x(tb), y(tb) + bias);
+            ta = tb;
+            firstChord = false;
+        }
     }
     if (result.back().time < high)
         append(high, value(high));

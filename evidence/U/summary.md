@@ -1,5 +1,7 @@
 # U 原生界面重构
 
+U-P0-AUTOMATION-CLIPS-MOVE-01（2026-10-09）：整音频片段移动的原生自动化跟随接通 Grabber、Nudge、Spot 与检查器；同一L1 human Plan/native Undo，源媒体保留，跟随关闭曲线原样。35组曲线移动、真实PCM对照、编辑组/锁定、稳定点ID、改键、Undo/Redo与保存重开通过。Release/固定验签通过；16项不同受影响CTest最终通过，2988检查（新499）。实体Nudge、原生另存/Undo/Open及保存XML核对通过；真实截图 evidence/U/automation-move-desktop.jpg。完整U＋P0未完成，不进P1；本节仅替代历史中整片段移动的缺口，Trim/MIDI等仍待补。
+
 U-P0-AUTOMATION-CLIPS-CLEAR-01（2026-10-09）：整音频片段 Cut/Delete 的原生自动化跟随已接通普通与 Shuffle 模式，保留不连续选区间的空隙；菜单、可改快捷键和检查器删除共用 L1。大量曲线变化先预览，接受后同笔 Undo/Redo、保存重开；跟随关闭时曲线原样。Release/固定验签通过，14项受影响CTest最终均通过，2431检查（新432）。实体检查器删除、Shuffle取消/接受、另存、⌘Z和原生Open通过；早期失败及修复见 VERIFICATION 和专项证据。完整U＋P0未完成，不进P1；此节仅替代历史中本项范围的未完成状态。
 
 关键输出：automation-clip-clear-tests.json、automation-clip-clear-regression.txt、automation-clip-clear-qualification.json。新增专项34.43秒、432检查；最后3/3复测51.72秒，已有相关11项通过，共14项不同测试。原生曲线最大归一化差与独立期望原生工程渲染PCM最大差均1.1920928955078125e-7，固定预算4e-7/2e-5。13份历史报告逐字节恢复，最新hash/count记录在qualification。演示OpenWholeClipAutomationDemo.command；仅本轮预览正常退出，用户旧窗口保留。

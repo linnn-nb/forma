@@ -9,7 +9,10 @@ void require(bool ok, const char* why)
     if (!ok)
         throw std::runtime_error(why);
 }
-std::vector<Point> clear(const std::vector<Point>& source, double first, double last, double tolerance, bool cut)
+} // namespace
+namespace curve_edit
+{
+std::vector<Point> clearRange(const std::vector<Point>& source, double first, double last, double tolerance, bool cut)
 {
     if (!cut)
     {
@@ -28,7 +31,7 @@ std::vector<Point> clear(const std::vector<Point>& source, double first, double 
     prefix.insert(prefix.end(), suffix.begin(), suffix.end());
     return prefix;
 }
-} // namespace
+} // namespace curve_edit
 Json Commands::automationClearChanges(const Json& args) const
 {
     checkThread();
@@ -97,8 +100,8 @@ Json Commands::automationClearChanges(const Json& args) const
             for (auto it = intervals.rbegin(); it != intervals.rend(); ++it)
             {
                 after = ripple ? collapse(after, it->first / timelineRate, it->second / timelineRate, tolerance)
-                               : clear(after, it->first / timelineRate, it->second / timelineRate, tolerance,
-                                       action == "cut");
+                               : clearRange(after, it->first / timelineRate, it->second / timelineRate, tolerance,
+                                            action == "cut");
                 require(after.size() <= maximumPoints, "clip clear exceeds intermediate native point budget");
             }
             const auto beforeJson = serialise(source), afterJson = serialise(after);

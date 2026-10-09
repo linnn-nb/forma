@@ -1,0 +1,82 @@
+automation-move-first-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed    2.77 sec
+FAIL unsupported array schema
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =   2.77 sec
+
+automation-move-schema-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed    5.25 sec
+FAIL actual clip moved with stable ID and unchanged source time
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =   5.26 sec
+
+automation-move-id-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed   14.57 sec
+MEASURE PCM=2.38419e-07
+FAIL clip move exceeds 8192 derived-point track budget
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =  14.58 sec
+
+automation-move-greedy-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed   18.11 sec
+MEASURE PCM=2.38419e-07
+FAIL clip move exceeds 8192 derived-point track budget
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =  18.12 sec
+
+automation-move-budget-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed   17.52 sec
+MEASURE PCM=2.38419e-07
+FAIL clip move exceeds 8192 derived-point track budget: 8251 after pan
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =  17.52 sec
+
+automation-move-centred-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed   41.41 sec
+MEASURE PCM=4.76837e-07
+MEASURE PCM=4.76837e-07
+FAIL production Grabber drag commits actual automation follow
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =  41.41 sec
+
+automation-move-final-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed    7.13 sec
+FAIL group definition changes require a standalone transaction
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =   7.14 sec
+
+automation-move-delivery-test.log
+3/4 Test #104: forma_native_clip_time .............   Passed    6.11 sec
+4/4 Test #114: forma_native_automation_move .......***Failed    8.09 sec
+FAIL group move saves and reopens with native curves
+75% tests passed, 1 tests failed out of 4
+Total Test time (real) =  34.16 sec
+
+automation-move-group-diagnostic-test.log
+1/1 Test #114: forma_native_automation_move .....***Failed    8.07 sec
+FAIL group move saves and reopens with native curves
+0% tests passed, 1 tests failed out of 1
+Total Test time (real) =   8.08 sec
+
+automation-move-related-test.log
+ 7/15 Test #102: forma_native_group_ranges ............   Passed    7.01 sec
+ 8/15 Test #104: forma_native_clip_time ...............   Passed    5.91 sec
+ 9/15 Test #106: forma_native_shuffle_ranges ..........   Passed   19.62 sec
+10/15 Test #108: forma_native_automation_shuffle ......   Passed   38.39 sec
+11/15 Test #109: forma_native_automation_clipboard ....   Passed   28.09 sec
+12/15 Test #110: forma_native_automation_follow .......   Passed    6.01 sec
+13/15 Test #111: forma_native_automation_clear ........   Passed   22.51 sec
+14/15 Test #112: forma_native_automation_view_range ...   Passed   13.95 sec
+15/15 Test #113: forma_native_automation_clip_clear ...   Passed   32.31 sec
+100% tests passed, 0 tests failed out of 15
+Total Test time (real) = 229.11 sec
+
+automation-move-qualified-test.log
+1/1 Test #114: forma_native_automation_move .....   Passed   43.86 sec
+100% tests passed, 0 tests failed out of 1
+Total Test time (real) =  43.87 sec
+
+automation-move-delivery-build.log
+
+
+automation-move-persistent-build.log

@@ -543,7 +543,11 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
     const auto requested = ops;
     if (shuffleRange.is_null() && clipboardPaste.is_null() && audioClear.is_null() && automationRange.is_null() &&
         audioClipClear.is_null())
+    {
         ops = expandMixGroupFlags(ops);
+        if (actor == "human")
+            ops = followAudioClipMoves(ops);
+    }
     Json plan{{"plan_id", juce::Uuid().toString().toStdString()},
               {"actor", actor},
               {"session_token", sessionToken()},
@@ -634,7 +638,12 @@ Json Commands::preview(const Json& plan) const
                 "clipboard paste changed; rebuild the entire Plan");
     }
     else
-        require(ops == expandMixGroupFlags(requested), "group targets changed; rebuild the Plan with current members");
+    {
+        auto compiled = expandMixGroupFlags(requested);
+        if (actor == "human")
+            compiled = followAudioClipMoves(compiled);
+        require(ops == compiled, "group targets or automation changed; rebuild the Plan with current members");
+    }
     std::set<std::string> refs;
     Json diff = Json::array();
     Json legacyDiff = Json::array();
@@ -642,6 +651,9 @@ Json Commands::preview(const Json& plan) const
     {
         const auto cmd = op.at("command").get<std::string>();
         const auto& a = op.at("args");
+        if (cmd == "automation.clips.move")
+            require(actor == "human" && plan.contains("requested_operations"),
+                    "clip automation move requires compiled local human clip moves");
         if (cmd == "automation.clips.clear")
             require(actor == "human" && plan.contains("audio_clip_clear"),
                     "clip automation clear requires a compiled local human Plan");
@@ -697,9 +709,42 @@ Json Commands::preview(const Json& plan) const
                         "parameter outside enum");
             if (type == "array")
             {
-                require(property.at("items").at("type") == "string", "unsupported array schema");
+                const auto& itemSchema = property.at("items");
+                const bool objects = itemSchema.at("type") == "object";
+                require(objects || itemSchema.at("type") == "string", "unsupported array schema");
+                if (property.contains("maxItems"))
+                    require(it->size() <= property["maxItems"].get<size_t>(), "array above maximum length");
                 for (const auto& item : *it)
-                    require(item.is_string(), "array item type mismatch");
+                {
+                    if (!objects)
+                    {
+                        require(item.is_string(), "array item type mismatch");
+                        continue;
+                    }
+                    require(item.is_object(), "array object type mismatch");
+                    for (const auto& key : itemSchema.at("required"))
+                        require(item.contains(key.get<std::string>()), "array object missing field");
+                    for (auto field = item.begin(); field != item.end(); ++field)
+                    {
+                        require(itemSchema.at("properties").contains(field.key()), "unknown array object field");
+                        const auto& rule = itemSchema.at("properties").at(field.key());
+                        require((rule.at("type") == "string" && field->is_string()) ||
+                                    (rule.at("type") == "integer" && field->is_number_integer()),
+                                "array object field type mismatch");
+                        if (field->is_number())
+                        {
+                            require(!field->is_number_unsigned() ||
+                                        field->get<uint64_t>() <= uint64_t(std::numeric_limits<int64_t>::max()),
+                                    "array integer exceeds representation");
+                            if (rule.contains("minimum"))
+                                require(field->get<double>() >= rule["minimum"].get<double>(),
+                                        "array field below minimum");
+                            if (rule.contains("maximum"))
+                                require(field->get<double>() <= rule["maximum"].get<double>(),
+                                        "array field above maximum");
+                        }
+                    }
+                }
                 if (property.contains("minItems"))
                     require(it->size() >= property["minItems"].get<size_t>(), "array below minimum length");
                 if (property.value("uniqueItems", false))

@@ -134,6 +134,7 @@ private:
                       const Json& automationRange = nullptr, const Json& audioClipClear = nullptr) const;
     Json automationRangeOperations(const Json&) const;
     Json audioClipClearOperations(const Json&) const;
+    Json followAudioClipMoves(const Json&) const;
     Json audioClearRangeOperations(const Json&) const;
     Json shuffleRangeOperations(const Json&) const;
     Json clipboardPasteOperations(const Json&) const;
@@ -278,6 +279,7 @@ private:
     Json automationShuffleChanges(const Json&) const;
     void executeAutomationShuffle(const Json&, Json&);
     Json automationClearChanges(const Json&) const;
+    Json automationMoveChanges(const Json&) const;
     void executeAutomationClear(const Json&, Json&);
     void executeAutomationCurveChanges(const Json&, Json&);
     void executeAutomationOperation(const std::string&, const Json&, Json&);

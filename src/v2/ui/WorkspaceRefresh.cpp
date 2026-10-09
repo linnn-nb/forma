@@ -472,8 +472,10 @@ void Workspace::refresh()
     followEditButton.setToggleState(followEdit, juce::dontSendNotification);
     followEditButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xffad702d));
     followEditButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff327f9b));
-    followEditButton.setTooltip(text("自动化跟随编辑 · Control Option A，可改键、撤销并随工程保存。当前覆盖范围 "
-                                     "Shuffle 与普通范围/整片段剪切删除、音频粘贴；Trim、拖拽、Nudge 和 MIDI 待补。"));
+    followEditButton.setTooltip(
+        text("自动化跟随编辑 · Control Option A，可改键、撤销并随工程保存。当前覆盖范围 "
+             "Shuffle 与普通范围/整片段剪切删除、音频粘贴及整音频片段移动（拖拽、Spot、Nudge）；"
+             "Trim 和 MIDI 待补。"));
     const auto rollSettings = transportSettings["roll"];
     rollButton.setToggleState(rollSettings["pre_enabled"].get<bool>() || rollSettings["post_enabled"].get<bool>(),
                               juce::dontSendNotification);

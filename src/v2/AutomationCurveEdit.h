@@ -11,6 +11,7 @@ struct Point
     std::string id;
 };
 std::vector<Point> collapse(const std::vector<Point>&, double first, double last, double tolerance);
+std::vector<Point> clearRange(const std::vector<Point>&, double first, double last, double tolerance, bool cut);
 Json serialise(const std::vector<Point>&);
 std::vector<Point> fragment(const Point&, const Point&, double low, double high, double tolerance);
 std::vector<Point> read(const juce::ValueTree&);

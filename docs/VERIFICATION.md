@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-AUTOMATION-CLIPS-MOVE-01（2026-10-09）
+
+结论：整音频片段 Move/Grabber/Nudge/Spot/检查器的秒基原生自动化跟随、编辑组、单笔 Undo/Redo、保存重开与可改键已验证。Release 构建与固定叶证书 deep/strict 验签通过；16项不同受影响CTest最终通过，2988检查（新499，既有2489）。15项相关229.11秒；最后受影响clip/editor/clip_time三项通过，随后新专项1/1、43.86秒。完整U＋P0未完成，不进P1。
+
+- 代码：AutomationMove.cpp、EngineCommands、AutomationCommands、AutomationClear/CurveEdit/Shuffle；生产Workspace入口与跟随tooltip。测试 AutomationMoveTests.cpp / forma_native_automation_move。真实48k/24-bit stereo PCM、五片段、原生Volume/Pan/EQ参数，c=0/±.5/±1，七个目标（含左右、重叠、10ms和远距离）共35组合；冻结源映射、空隙锚定、目标覆盖、原点ID、源偏移/SHA256、同时交换、同笔Undo/Redo、Save后Undo/Open、幂等/篡改/陈旧Plan和裸内部操作拒绝通过。实际编辑组两轨与曲线一起移动、Redo/Open、锁定成员整笔拒绝；无曲线轨保留普通音频重叠移动。
+- 原生AutomationIterator每48样本与独立原时间映射比对，仅源/目标边界各1样本排除；最大归一化误差1.1920928955078125e-7，原预算4e-7。实际Tracktion 6秒48k stereo WAV独立解码，对比手工构造的独立原生期望工程（16样本密度曲线、实际Volume/Pan/EQ链），两次最大PCM差4.76837158203125e-7，原预算2e-5。只在PCM比较排除源/目标/文件边缘各2048样本，未扩大曲线排除；不能推广为主观音质或第三方/实时性能资格。
+- 生产组件调用Nudge默认/自定义ControlOptionShiftJ、真实Grabber MouseEvent、检查器分:秒位置字段、F3 Spot小节拍字段；共享Undo、键位和工程重开；跟随off曲线精确保持。鼠标测试采用整数样本/像素比例，以便JUCE整数x准确表达.5秒负载，没有放宽时间或数值断言。
+- 失败与修复：首轮编译的预览容器变量及测试string/Json比较类型错误已修正；早期数组schema不支持对象、按移动前Clip数组下标核验（native会排序）、同组定义混入其他命令均明确失败，修正schema/稳定ID/独立组事务。dyadic及单侧最大弦投影超8192点预算（一次8251 after pan）；改为居中最大弦，内部补点偏移±tol，边界精确，实际误差仍≤1e-7参数跨度＋float ULP，8192/65536/64预算与全部35负载不变。首次Grabber检查受整数像素舍入影响；修正测试坐标。组Open全tracks比较失败，独立差异仅为原生自动化在重开光标求值的gain/base_gain/pan/base_pan及EQ value/current_value/display；持久Clip/曲线无差异。结构比较只移除实际有曲线参数的这些运行时字段，完整比较两轨曲线、ID/时间/值/系数/范围/插件参数元数据、其余轨道/路由/录音事实；没有把运行时读数当作持久曲线。测试argv路径显式fromUTF8，修复中文目录生成到乱码路径；旧失败证据保留。原始失败摘要/本地日志hash见专项regression和qualification。
+- 实体桌面：本轮独立固定签名预览（仅preview Bundle ID不同，生产仍org.forma.daw），CoreAudio外置耳机48k/512配置；按钮Nudge使实际片段1.010→1.020秒，切Volume视图，原生另存、Undo、另存恢复副本、原生Open移动副本通过。读回实际XML：5Clip；移动副本EQ/Volume/Pan点数1267/1152/1460，撤销副本1273/1157/1467；Undo与演示工程Clip全部属性及三曲线POINT全部属性精确一致。真实截图 automation-move-desktop.jpg。仅本轮预览正常Quit（exec0，process无残留），用户旧窗口保留；两个本轮新文件移动到ignored build/automation-move-desktop-files。实体Grabber/Spot、录音和主观试听未执行，相关组件自动化结果单独标明。
+
+证据：evidence/U/automation-move-{tests.json,regression.txt,qualification.json,desktop.jpg}。15份既有报告在所有回归进程结束后按原hash逐字节恢复，最新运行count/hash保留于qualification。亲手试 build-v2-tracktion/OpenAutomationMoveDemo.command，选定片段Nudge＋或ControlOptionShiftJ→⌘Z；F8拖动/F3 Spot/检查器应用移动；轨道视图切Volume观察曲线，⌘S另存/⌘O重开。
+
+边界：human/local_gui、秒基、现有稳定整音频Clip，默认reader；已有曲线的extent复合Plan、不同偏移源重叠与目标交叉映射拒绝。跟随off允许独立音频操作；不声明Shuffle重排、跨轨拖动、Trim/MIDI或完整PT等价。无新SDK/依赖/RT路径/DMG；M2/M3冻结、M4/M5暂缓。完整U＋P0及发布级产品未完成；下一项Trim的曲线跟随和边界语义，随后MIDI/剩余U＋P0。真实截图所示长参数名/声像读数拥挤也需修整。
+
 ## U-P0-AUTOMATION-CLIPS-CLEAR-01（2026-10-09）
 
 结论：普通与Shuffle整音频片段Cut/Delete的自动化跟随、共享可改快捷键、检查器删除、预览、单笔Undo/Redo及保存重开已验证。Release/固定证书deep/strict通过；14项不同受影响CTest最终均通过，2431检查（新432，既有1999）。最后editor_interactions/clip_time/新专项3/3、51.72秒，新专项34.43秒。完整U＋P0尚未完成，不进P1。
