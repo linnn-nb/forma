@@ -8,28 +8,6 @@ void require(bool ok, const char* message)
     if (!ok)
         throw std::runtime_error(message);
 }
-// Ordinary Slip/Grid replacement: only the selected interval is removed.
-void removeInterval(Json& ops, const Json& c, int64_t first, int64_t last, int& ref)
-{
-    const auto begin = c["start_samples"].get<int64_t>();
-    const auto end = begin + c["length_samples"].get<int64_t>();
-    if (end <= first || begin >= last)
-        return;
-    require(c["kind"] == "audio" && c.value("editable_audio", false) && !c.value("locked", false),
-            "entire edit refused: overlapping clip is locked or its type is unsupported");
-    std::string middle = c["id"];
-    if (begin < first)
-    {
-        const auto right = "$clipboard-right-" + std::to_string(ref++);
-        ops.push_back(operation("clip.split", {{"clip", middle}, {"position_samples", first}, {"ref", right}}));
-        middle = right;
-    }
-    if (end > last)
-        ops.push_back(operation(
-            "clip.split",
-            {{"clip", middle}, {"position_samples", last}, {"ref", "$clipboard-right-" + std::to_string(ref++)}}));
-    ops.push_back(operation("clip.delete", {{"clip", middle}}));
-}
 } // namespace
 Json Workspace::clipboardSelection() const
 {
@@ -100,7 +78,6 @@ void Workspace::executeClipboardCommand(int id)
             const auto revision = facts["revision"];
             Json buffer;
             Json slices = Json::array(), ops = Json::array(), plan = nullptr;
-            int ref = 0;
             if (id == editCommand::copy || id == editCommand::cut || id == editCommand::duplicate)
             {
                 slices = clipboardSelection();
@@ -147,7 +124,13 @@ void Workspace::executeClipboardCommand(int id)
                             ops = plan["operations"];
                         }
                         else
-                            ops = deleteClipOperations(true);
+                        {
+                            Json ids = Json::array();
+                            for (const auto& c : slices)
+                                ids.push_back(c["id"]);
+                            plan = commands.makeAudioClipClearPlan(ids, true, true);
+                            ops = plan["operations"];
+                        }
                     }
                     else if (range)
                     {
@@ -155,8 +138,13 @@ void Workspace::executeClipboardCommand(int id)
                         ops = plan["operations"];
                     }
                     else
+                    {
+                        Json ids = Json::array();
                         for (const auto& c : slices)
-                            removeInterval(ops, c, c["slice_start"], c["slice_end"], ref);
+                            ids.push_back(c["id"]);
+                        plan = commands.makeAudioClipClearPlan(ids, true, false);
+                        ops = plan["operations"];
+                    }
                     pendingClipboard = buffer;
                 }
             }
@@ -232,7 +220,7 @@ void Workspace::executeClipboardCommand(int id)
                 pending = plan;
                 pendingClipboardPlan = plan["plan_id"];
                 previewText.setText((plan.contains("shuffle_range") || plan.contains("clipboard_paste") ||
-                                     plan.contains("audio_clear_range"))
+                                     plan.contains("audio_clear_range") || plan.contains("audio_clip_clear"))
                                         ? shufflePreviewText(preview)
                                         : text(preview.dump(2)));
                 message(text("大范围剪切 / 替换 · 请预览后接受或拒绝"));

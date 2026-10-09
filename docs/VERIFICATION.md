@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-AUTOMATION-CLIPS-CLEAR-01（2026-10-09）
+
+结论：普通与Shuffle整音频片段Cut/Delete的自动化跟随、共享可改快捷键、检查器删除、预览、单笔Undo/Redo及保存重开已验证。Release/固定证书deep/strict通过；14项不同受影响CTest最终均通过，2431检查（新432，既有1999）。最后editor_interactions/clip_time/新专项3/3、51.72秒，新专项34.43秒。完整U＋P0尚未完成，不进P1。
+
+- 代码：include/nativedaw/v2/EngineCommands.h、src/v2/AudioClipClearCommands.cpp、AutomationClear/Commands/CurveEdit、EngineCommands；生产WorkspaceClipboard/Editing与Workspace的ClipPanel回调。测试tests/v2/AutomationClipClearTests.cpp、CTest forma_native_automation_clip_clear。实际48k stereo媒体、五片段、两段不连续选择，native Volume/Pan/实际EQ参数，c=0/±.5/±1；普通/Shuffle×Cut/Delete共20组合。媒体SHA256不变，间隙点/存活Clip ID、源映射、后续位置、一笔Undo/Redo、Save后Undo/Open、锁定/闭包/篡改/权限/陈旧Plan/session/幂等检查通过。
+- Cut/Shuffle原生AutomationIterator每48样本对照原始源时间，归一化最大误差1.1920928955078125e-7，预算4e-7；Delete未选原点属性精确保持，允许相邻插值改变。真实Tracktion stereo WAV渲染独立解码，和手工构造的独立原生期望工程（16采样密度原生曲线，实际Volume/Pan/EQ链）对照，PCM最大差1.1920928955078125e-7，预算2e-5。PCM边缘各2048样本排除保持；曲线采样检查不扩大排除。不是用删后工程和未改工程假定声音相等。
+- 生产组件触发CmdX Reject/Accept、冻结双Clip剪贴板、共享Undo、自定义ControlOptionShiftD、键位重开；ClipPanel真实按钮在Slip/Shuffle下按实际绑定对象删、预览拒绝/接受、同笔Undo、另存/Open；跟随关闭曲线属性完全保持。完整编辑组同笔删除/恢复，缺闭包明确拒绝。
+- 早期失败保留：未改原工程PCM参考差2.276897430419922e-5，因为Cut改变空隙曲线与DSP状态；改为独立期望原生编辑工程，2e-5容差不变。按区间数额外缩小投影误差导致8192点预算拒绝；恢复既有1e-7投影界（线性片段再次切分无二次Bezier投影），固定8192/65536预算不改。首轮相关回归12/13，EditorInteractions诊断文字回归，恢复原具体诊断、原断言不改，复测通过。按钮新增检查首轮目标绑定与预览新ID比较错误，明确生产选择与ID分配后修正；再次测试发现重复预览依赖timer刷新，生产回调已改立即refresh，断言和等待未放宽。关键失败尾部、修复输出和完整本地日志hash见专项qualification/regression。
+- 实体桌面：本轮固定签名独立预览，CoreAudio外置耳机48k/512。普通检查器Delete后实际4Clip/三曲线各5点，另存后Undo恢复；Shuffle待确认仍5Clip，拒绝保持、接受后4Clip，EQ/Volume/Pan分别1450/1273/1556点。另存Shuffle后⌘Z、另存恢复副本，原生XML比对5个Clip完整属性和三曲线原6点属性完全恢复；⌘O、选择保存文件并Open，实际恢复Shuffle的4Clip与后续位置。截图在会话中显示；早期焦点/GoTo路径输入尝试未当通过。仅本轮两次预览正常Quit，exec退出0/process查询无残留，用户旧窗口保留。三个本轮新副本退出后移动到ignored build/automation-clips-desktop-results。最后UI立即刷新修复由生产组件专项验证，未重复整套桌面路径。
+
+证据：evidence/U/automation-clip-clear-{tests.json,regression.txt,qualification.json}。13份既有报告在所有进程结束后逐字节恢复，最新运行hash/count保留于qualification。试用build-v2-tracktion/OpenWholeClipAutomationDemo.command：已有两个选中片段，⌘X→预览接受→⌘Z，或Delete；选单片段用底部删除按钮，F1启用Shuffle再试；⌘S另存新文件、⌘O重开，键位菜单可改共享命令。
+
+边界：秒基原生曲线/默认reader/整音频对象；完整显式编辑组闭包是保守要求，不等长交错组可能拒绝。未补全Move/拖拽/Nudge/Trim/MIDI曲线跟随，本增量不扩大整片段Copy/Duplicate资格。未做真实实录、主观听感、第三方、麦克风权限跨构建、实时性能或Windows资格。下一项为整片段移动的自动化跟随。
+
 ## U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）
 
 结论：参数视图独立范围 Cut/Copy/Delete/Paste、共享可改键、预览、单笔 Undo/Redo、另存/Open 已验证；完整 U＋P0 未完成。Release与固定签名 deep/strict 通过。12项受影响CTest最终均通过，共1923不重复检查（新351，既有1572）。首轮11/12、284.45秒；editor_interactions实体peer焦点检查失败时，手工操作另一预览并发。退出本轮预览后隔离复测1/1、10.34秒，通过且断言未改；焦点干扰是推测，未独立证明。两份原始输出完整保留，不写成首轮全绿。

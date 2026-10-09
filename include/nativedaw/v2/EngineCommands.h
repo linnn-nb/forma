@@ -37,6 +37,7 @@ public:
     // Local human planner: resolve an entire time collapse before whole-clip group expansion.
     // Preview recompiles the descriptor, so callers cannot bypass group linkage by editing a flag.
     Json makeShuffleRangePlan(const Json& tracks, int64_t first, int64_t last) const;
+    Json makeAudioClipClearPlan(const Json& clips, bool cut, bool ripple) const;
     Json makeAudioClearRangePlan(const Json& tracks, int64_t first, int64_t last, bool cut) const;
     Json prepareAutomationClipboard(const Json& targets, int64_t first, int64_t last, const std::string& session,
                                     uint64_t expectedRevision);
@@ -130,8 +131,9 @@ public:
 private:
     Json makePlanImpl(const std::string& actor, Json operations, const Json& shuffleRange,
                       const Json& clipboardPaste = nullptr, const Json& audioClear = nullptr,
-                      const Json& automationRange = nullptr) const;
+                      const Json& automationRange = nullptr, const Json& audioClipClear = nullptr) const;
     Json automationRangeOperations(const Json&) const;
+    Json audioClipClearOperations(const Json&) const;
     Json audioClearRangeOperations(const Json&) const;
     Json shuffleRangeOperations(const Json&) const;
     Json clipboardPasteOperations(const Json&) const;

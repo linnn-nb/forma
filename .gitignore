@@ -63,3 +63,7 @@ evidence/U/*
 !evidence/U/automation-view-range-tests.json
 !evidence/U/automation-view-range-regression.txt
 !evidence/U/automation-view-range-qualification.json
+
+!evidence/U/automation-clip-clear-tests.json
+!evidence/U/automation-clip-clear-regression.txt
+!evidence/U/automation-clip-clear-qualification.json

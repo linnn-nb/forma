@@ -68,13 +68,42 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
       clipPanel(
           [this](const std::string& command, Json args, uint64_t revision, const std::string& session)
           {
-              auto plan = commands.makePlan("human", Json::array({operation(command, std::move(args))}));
+              if (!pending.is_null())
+                  throw std::runtime_error("请先接受或取消当前预览");
+              if (revision != commands.querySummary()["revision"] || session != commands.sessionToken())
+                  throw std::runtime_error("工程已改变；片段编辑未提交");
+              Json plan;
+              if (command == "clip.delete")
+              {
+                  Json ids = Json::array();
+                  for (const auto& object : commands.editGroupClipSelection(args.at("clip")))
+                      ids.push_back(object.at("id"));
+                  plan = commands.makeAudioClipClearPlan(ids, false, editing.mode == "shuffle");
+              }
+              else
+                  plan = commands.makePlan("human", Json::array({operation(command, std::move(args))}));
               plan["base_revision"] = revision;
               plan["session_token"] = session;
+              if (command == "clip.delete")
+              {
+                  const auto preview = commands.preview(plan);
+                  size_t impact = 0;
+                  for (const auto& change : preview["automation_changes"])
+                      impact += change["affected_points"].get<size_t>();
+                  if (plan["operations"].size() > 8 || impact > 128)
+                  {
+                      pending = plan;
+                      previewText.setText(shufflePreviewText(preview));
+                      refresh();
+                      message(text("片段删除影响较多自动化点 · 请预览后接受或取消"));
+                      return false;
+                  }
+              }
               const auto receipt = commands.commit(plan);
               if (receipt.value("state", std::string{}) != "committed")
                   throw std::runtime_error("片段编辑未提交；输入草稿保留");
               message(text("片段编辑已提交 · 原媒体保留 · 可撤销"));
+              return true;
           }),
       piano(
           [this](const auto& cmd, Json args, uint64_t revision)

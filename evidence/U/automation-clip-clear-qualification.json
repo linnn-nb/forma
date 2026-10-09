@@ -1,0 +1,233 @@
+{
+  "increment": "U-P0-AUTOMATION-CLIPS-CLEAR-01",
+  "date": "2026-10-09",
+  "new_test": {
+    "checks": 432,
+    "curve_budget": 4e-07,
+    "curve_max_normalized_error": 1.1920928955078125e-07,
+    "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clip-clear-demos/clip-clear-f02eade7f8894e05b84f3ed0d1386e57/WholeClipDesktopReady.tracktionedit",
+    "pcm_budget": 2e-05,
+    "pcm_max_error": 1.1920928955078125e-07,
+    "result": "passed",
+    "test": "U-P0-AUTOMATION-CLIPS-CLEAR-01"
+  },
+  "related_reports": [
+    {
+      "path": "evidence/U/clipboard-tests.json",
+      "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386",
+      "checks": 49,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/shuffle-range-tests.json",
+      "sha256": "bd125e636e54dc6b98c35df7bc3b054c4651db96cc6ec0c438062e808432a8b4",
+      "checks": 116,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/automation-shuffle-tests.json",
+      "sha256": "d49dcbb13969f5a754208ee85f249f18184417cea31ba800546980f16d9f44df",
+      "checks": 309,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/automation-clipboard-tests.json",
+      "sha256": "0fb6b2e8a6b32bbb000332e4bb6dd15739b41dcc9848cd73113d0f6a3c2f2517",
+      "checks": 234,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/group-range-tests.json",
+      "sha256": "fe7794f8bbcdd8867efeb5e431df98bc77d890dbbb2d8f83d260ec65dadbdf86",
+      "checks": 72,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/automation-timeline-tests.json",
+      "sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f",
+      "checks": 143,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/M1/session-recovery-tests.json",
+      "sha256": "3d119cae673c81cb3aaa7cfc8816c1753cc941666275121cf5a7472f5606ade2",
+      "checks": 52,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/navigation-tests.json",
+      "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df",
+      "checks": 48,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/automation-follow-tests.json",
+      "sha256": "101d6a83b8fa760705fb562983f93ffb1815004b6ea8e713464a8089c9bc59ef",
+      "checks": 74,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/automation-clear-tests.json",
+      "sha256": "7fae9f38c9986bd2a998153f19b384bb6028db34fec1467a0bc90aa7b2109b58",
+      "checks": 394,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/automation-view-range-tests.json",
+      "sha256": "ab93b1b7da0ff59a7e499fec052d41bed412ed694f77aefa638a155b51fb4728",
+      "checks": 351,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/editor-tests.json",
+      "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1",
+      "checks": 81,
+      "result": "passed"
+    },
+    {
+      "path": "evidence/U/clip-time-tests.json",
+      "sha256": "74708849fd3b7a93e8a8cfcf7bee9eb5a31d41fba30062a0f577bea55950586f",
+      "checks": 76,
+      "result": "passed"
+    }
+  ],
+  "distinct_checks": 2431,
+  "initial_run": "12/13 passed; EditorInteraction diagnostic wording regressed; 218.58 seconds",
+  "repair": "specific cannot move safely message restored; original test unchanged",
+  "repair_output": "Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion\nTest project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion\n    Start  75: forma_native_editor_interactions\n1/2 Test  #75: forma_native_editor_interactions .....   Passed   10.89 sec\n    Start 113: forma_native_automation_clip_clear\n2/2 Test #113: forma_native_automation_clip_clear ...   Passed   31.25 sec\n\n100% tests passed, 0 tests failed out of 2\n\nTotal Test time (real) =  42.15 sec\n",
+  "historical_reports": "13 existing evidence reports retained/restored bytewise after test processes completed; fresh run checks/hash in related_reports.",
+  "reference_correction": "Initial unedited-baseline PCM difference 2.276897430419922e-5 at sample194088/channel1. Cut intentionally changes gap curve; added independent manual/dense native reference including actual Volume/Pan/EQ chain. Original 2e-5 budget and cut exclusions retained.",
+  "point_budget": "Initial conservative error division exceeded 8192 derived points. Reuse original 1e-7 projection bound: once a Bezier is projected, subsequent cuts interpolate the resulting lines, without another Bezier approximation. Track8192/output65536 limits retained.",
+  "desktop": "Native fixed-signature own preview: Slip inspector Delete, native Save, Undo; Shuffle preview Reject/Accept, native Save, CmdZ, save restored state, CmdO/Open saved Shuffle file. CoreAudio external headphones 48k/512 observed. Earlier keyboard focus/path-typing attempts did not qualify as success. No listening, hardware recording, real-time performance or macOS mic-permission persistence claim.",
+  "panel_fix": "ClipPanel Delete now uses the same sealed L1 descriptor, binds actual primary/group IDs and revision/session, preserves drafts while awaiting confirmation, and immediately refreshes preview buttons.",
+  "panel_initial_run": "2/3 passed; incorrect expected target after prior Undo/Open; explicit actual clip selection fixes test target and commit-generated anchor IDs are compared separately.",
+  "panel_second_run": "Preview Reject/retry exposed delayed UI refresh: Accept button remained hidden until timer. Fixed production callback with immediate refresh; no wait or weakened assertion.",
+  "panel_final_output": "Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion\nTest project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion\n    Start  75: forma_native_editor_interactions\n1/3 Test  #75: forma_native_editor_interactions .....   Passed   11.05 sec\n    Start 104: forma_native_clip_time\n2/3 Test #104: forma_native_clip_time ...............   Passed    6.24 sec\n    Start 113: forma_native_automation_clip_clear\n3/3 Test #113: forma_native_automation_clip_clear ...   Passed   34.43 sec\n\n100% tests passed, 0 tests failed out of 3\n\nTotal Test time (real) =  51.72 sec\n",
+  "desktop_facts": {
+    "baseline": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clip-clear-demos/clip-clear-5cc592ccbb384a98b8f109f60f4f8c31/WholeClipDesktopReady.tracktionedit",
+      "sha256": "809ab4be738089cc28425fb4147646120e02ca307b030936a74a57d434e9e6c3",
+      "clip_count": 5,
+      "curves": [
+        {
+          "parameter": "Mid gain 1",
+          "points": 6
+        },
+        {
+          "parameter": "volume",
+          "points": 6
+        },
+        {
+          "parameter": "pan",
+          "points": 6
+        }
+      ]
+    },
+    "delete": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-desktop-results/FormaWholeClipPanelDelete-20261009.tracktionedit",
+      "sha256": "acc8f25ae0b2633f5b61adf21d330259288c38e1344b5a01f3dcdf874a39c716",
+      "clip_count": 4,
+      "curves": [
+        {
+          "parameter": "Mid gain 1",
+          "points": 5
+        },
+        {
+          "parameter": "volume",
+          "points": 5
+        },
+        {
+          "parameter": "pan",
+          "points": 5
+        }
+      ]
+    },
+    "shuffle": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-desktop-results/FormaWholeClipPanelShuffle-20261009.tracktionedit",
+      "sha256": "f864abf8cd8be2af90c3999efd185314a98c27e5ecfae65b284790aaed147d42",
+      "clip_count": 4,
+      "curves": [
+        {
+          "parameter": "Mid gain 1",
+          "points": 1450
+        },
+        {
+          "parameter": "volume",
+          "points": 1273
+        },
+        {
+          "parameter": "pan",
+          "points": 1556
+        }
+      ]
+    },
+    "undo": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-desktop-results/FormaWholeClipPanelUndo-20261009.tracktionedit",
+      "sha256": "b52d7ee553aedc70db1f46d404650bcc9891d60010b8bac6600fac0026007a80",
+      "clip_count": 5,
+      "curves": [
+        {
+          "parameter": "Mid gain 1",
+          "points": 6
+        },
+        {
+          "parameter": "volume",
+          "points": 6
+        },
+        {
+          "parameter": "pan",
+          "points": 6
+        }
+      ]
+    },
+    "undo_restoration": {
+      "all_clip_attributes_exact": true,
+      "all_curve_points_and_properties_exact": true
+    }
+  },
+  "desktop_cleanup": "Both own preview launches ended with normal Quit; exec sessions exited 0 and process search confirmed absence; user Group Transforms and Panel Keys windows retained. Three newly created GUI test copies moved from Documents into ignored build desktop-results after Quit.",
+  "signature": "Production org.forma.daw verified deep/strict with fixed certificate F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F after final build.",
+  "distinct_ctest_count": 14,
+  "raw_logs": [
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-first-test.log",
+      "sha256": "103647266561520257dffb6b190130c88e5345bf3c486ece708129b4d5dce001"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-measure-test.log",
+      "sha256": "782761bfd1ad8fd6e1dd614dcc49d1bc7c12260bdc3000c907c03eac77b3918d"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-reference-test.log",
+      "sha256": "8b00c4fca96714c71a34c702f4ece317969615c534bbcd2a052a69c72d9bfcc7"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-final-test.log",
+      "sha256": "821dd28745be7580e126945d28114e42997fdfa20758e141ec6e62c048adf43b"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-budget-test.log",
+      "sha256": "edd8d74bc80e61f7436dbb9d026a56b1583819f9602e3cc699c9cd66ec5d77e4"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-regression-run.log",
+      "sha256": "28bf6e67add830e8003a71ddca4cf9e6cd18ce2aba35732551eec4557ee39b16"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-repair-test.log",
+      "sha256": "d51ccdebe70f60c1ce4781fce17ce6d82870aabcdb3f0f91f8572eec7a140b99"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-panel-test.log",
+      "sha256": "0518911836b8c3daf73b9b48f596686d9cf434afd51b0d157c1b5024a0594c3d"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-panel-repair-test.log",
+      "sha256": "52a195cb683864bfe52f0782fd5c069f72e126eddef9405e5404e05afdeb8710"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clips-panel-refresh-test.log",
+      "sha256": "aed7272f5093436034e3f64f99efa9f4424a7b4b4f76ab9201e9e4e9fbb052ba"
+    }
+  ]
+}

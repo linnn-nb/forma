@@ -1,3 +1,5 @@
+U-P0-AUTOMATION-CLIPS-CLEAR-01：参考 Pro Tools Reference Guide 2026.4，核验日2026-10-09：印刷1552–1553/PDF1654–1655 Automation Follows Edit，印刷1546/PDF1648剪切/复制自动化说明，以及印刷857/859整片段Shuffle编辑；本地已读官方手册，来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。 Forma普通整片段Cut锚定两侧/Delete移除半开区间原点，Shuffle按各轨所选区间并集收缩曲线和后续片段，空隙保持；菜单/可改键/检查器共用L1、预览与单笔Undo、保存/Open。实现AudioClipClearCommands.cpp、AutomationClear.cpp、WorkspaceClipboard/Editing/ClipPanel；AutomationClipClearTests与14项相关CTest、实体检查器操作见VERIFICATION。状态：上述受测路径已验证；完整工作流部分实现。差距：闭包对象必须显式完整选择，不等长交错组可能拒绝；秒基曲线/默认读取器，移动/Trim/MIDI跟随未完成；不宣称完整Pro Tools等价，无新外部依赖。
+
 > 本文件为交互与工作流参考清单，不是全量产品验收门槛。
 
 本表继续作为交互/工作流参考，不是全量验收门槛。U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）：参数视图的范围 Cut/Copy/Delete/Paste 已接真实原生曲线，只编辑当前显示的参数；音频与其他参数保持。共享可自定义快捷键、大变更预览/接受/拒绝、单笔 Undo/Redo、另存/Open 已验证。Release/固定验签通过；12 项受影响 CTest 最终均通过，共1923检查（新专项351），首轮窗口焦点失败及隔离复测通过均保留。完整 U＋P0 未完成，不进P1。此节替代历史“参数视图独立范围编辑未完成”，其他历史边界保留。

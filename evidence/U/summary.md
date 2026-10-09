@@ -1,5 +1,9 @@
 # U 原生界面重构
 
+U-P0-AUTOMATION-CLIPS-CLEAR-01（2026-10-09）：整音频片段 Cut/Delete 的原生自动化跟随已接通普通与 Shuffle 模式，保留不连续选区间的空隙；菜单、可改快捷键和检查器删除共用 L1。大量曲线变化先预览，接受后同笔 Undo/Redo、保存重开；跟随关闭时曲线原样。Release/固定验签通过，14项受影响CTest最终均通过，2431检查（新432）。实体检查器删除、Shuffle取消/接受、另存、⌘Z和原生Open通过；早期失败及修复见 VERIFICATION 和专项证据。完整U＋P0未完成，不进P1；此节仅替代历史中本项范围的未完成状态。
+
+关键输出：automation-clip-clear-tests.json、automation-clip-clear-regression.txt、automation-clip-clear-qualification.json。新增专项34.43秒、432检查；最后3/3复测51.72秒，已有相关11项通过，共14项不同测试。原生曲线最大归一化差与独立期望原生工程渲染PCM最大差均1.1920928955078125e-7，固定预算4e-7/2e-5。13份历史报告逐字节恢复，最新hash/count记录在qualification。演示OpenWholeClipAutomationDemo.command；仅本轮预览正常退出，用户旧窗口保留。
+
 U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）：参数视图的范围 Cut/Copy/Delete/Paste 已接真实原生曲线，只编辑当前显示的参数；音频与其他参数保持。共享可自定义快捷键、大变更预览/接受/拒绝、单笔 Undo/Redo、另存/Open 已验证。Release/固定验签通过；12 项受影响 CTest 最终均通过，共1923检查（新专项351），首轮窗口焦点失败及隔离复测通过均保留。完整 U＋P0 未完成，不进P1。此节替代历史“参数视图独立范围编辑未完成”，其他历史边界保留。
 
 关键输出：automation-view-range-tests.json、automation-view-range-regression.txt、automation-view-range-qualification.json。原11份历史报告按SHA256恢复；首轮11/12、284.45秒，隔离焦点复测1/1、10.34秒。新专项14.25秒，native归一化最大差1.1920928955078125e-7/固定4e-7预算；无新PCM/听感资格。实体参数视图在Shuffle且follow off时Cut/Delete/Paste不改音频，Save后Undo及Open通过，本轮6207正常退出。演示 OpenAutomationViewDemo.command。下一项整片段自动化跟随。

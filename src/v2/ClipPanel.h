@@ -1,7 +1,8 @@
 #pragma once
 // Read-only facts and revision-bound Plans. No mutable Edit escapes L1.
 using ClipWriter = std::function<void(const std::string&, Json, uint64_t)>;
-using ClipPanelWriter = std::function<void(const std::string&, Json, uint64_t, const std::string&)>;
+// False means awaiting a preview decision, not a successful edit receipt.
+using ClipPanelWriter = std::function<bool(const std::string&, Json, uint64_t, const std::string&)>;
 class ClipPanel final : public juce::Component
 {
 public:
@@ -75,7 +76,8 @@ public:
                 {
                     if (dirty && (editRevision != revision || editSession != session))
                         throw std::runtime_error("工程已改变；Esc取消草稿后重新编辑");
-                    write(cmd, std::move(a), dirty ? editRevision : revision, dirty ? editSession : session);
+                    if (!write(cmd, std::move(a), dirty ? editRevision : revision, dirty ? editSession : session))
+                        return;
                     dirty = false;
                     if (onCommitted)
                         onCommitted();

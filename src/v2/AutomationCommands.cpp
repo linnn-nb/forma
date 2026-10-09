@@ -169,6 +169,15 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-AUTOMATION-CLEAR-01";
     registry.back()["units"] = {{"start_samples", "48000 Hz session samples"}, {"end_samples", "exclusive"}};
+    add("automation.clips.clear",
+        {{"track", string},
+         {"clips", {{"type", "array"}, {"items", string}, {"minItems", 1}, {"uniqueItems", true}}},
+         {"action", string},
+         {"ripple", {{"type", "boolean"}}},
+         {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-AUTOMATION-CLIPS-CLEAR-01";
+    registry.back()["units"] = {{"clips", "stable native clip IDs; extents resolved as 48000 Hz session samples"}};
     add("automation.lane.range.clear", {{"track", string},
                                         {"parameter", string},
                                         {"start_samples", position},
@@ -351,7 +360,7 @@ Json Commands::validateAutomationPlan(const Json& operations) const
                     "unsupported automation mode");
             continue;
         }
-        if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear")
+        if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear" || cmd == "automation.clips.clear")
         {
             auto change = automationClearChanges(args);
             require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
@@ -414,7 +423,7 @@ Json Commands::validateAutomationPlan(const Json& operations) const
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
-    if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear")
+    if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear" || cmd == "automation.clips.clear")
     {
         executeAutomationClear(args, objects);
         return;

@@ -255,91 +255,13 @@ void Workspace::executeEditCommand(int id)
         grabKeyboardFocus();
 }
 
-Json Workspace::deleteClipOperations(bool ripple) const
-{
-    if (selection.objects.empty() && !selection.range.is_null())
-    {
-        require(!ripple, "Shuffle range Delete is not yet supported; use Slip/Grid or select whole clips");
-        auto ops = commands.audioRangeOperations("delete", selection.tracks, selection.range["start_samples"],
-                                                 selection.range["end_samples"]);
-        require(!ops.empty(), "no audio overlaps the selected time range");
-        return ops;
-    }
-    const auto selectedClips = selectedEditClips();
-    require(!selectedClips.empty(), "select one or more whole audio clips first");
-    require(!ripple || !selection.objects.empty(), "Shuffle Delete requires whole-clip selection, not a time range");
-    std::map<std::string, std::set<std::string>> selectedByTrack;
-    std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> intervals;
-
-    for (const auto& clip : selectedClips)
-    {
-        require(clip["kind"] == "audio" && clip.value("editable_audio", false) && !clip.value("locked", false),
-                "entire delete refused: selected clip is locked or unsupported");
-        const auto reference = std::find_if(selection.objects.begin(), selection.objects.end(),
-                                            [&](const Json& object) { return object["id"] == clip["id"]; });
-        require(reference != selection.objects.end(), "selected clip is stale; refresh and select it again");
-        const auto track = (*reference)["track"].get<std::string>();
-        const auto first = clip["start_samples"].get<int64_t>();
-        const auto last = first + clip["length_samples"].get<int64_t>();
-        selectedByTrack[track].insert(clip["id"].get<std::string>());
-        intervals[track].push_back({first, last});
-    }
-
-    Json operations = Json::array();
-    for (const auto& [trackID, clipIDs] : selectedByTrack)
-        for (const auto& id : clipIDs)
-            operations.push_back(operation("clip.delete", {{"clip", id}}));
-    if (!ripple)
-        return operations;
-
-    for (auto& [trackID, deleted] : intervals)
-    {
-        std::sort(deleted.begin(), deleted.end());
-        std::vector<std::pair<int64_t, int64_t>> merged;
-        for (const auto& interval : deleted)
-        {
-            if (merged.empty() || interval.first > merged.back().second)
-                merged.push_back(interval);
-            else
-                merged.back().second = std::max(merged.back().second, interval.second);
-        }
-        for (const auto& track : facts["tracks"])
-        {
-            if (track["id"] != trackID)
-                continue;
-            for (const auto& clip : track["clips"])
-            {
-                const auto id = clip["id"].get<std::string>();
-                if (selectedByTrack[trackID].contains(id))
-                    continue;
-                const auto first = clip["start_samples"].get<int64_t>();
-                const auto last = first + clip["length_samples"].get<int64_t>();
-                int64_t shift = 0;
-                for (const auto& interval : merged)
-                {
-                    require(last <= interval.first || first >= interval.second,
-                            "Shuffle Delete would overlap an unselected clip; select the overlapping clip too");
-                    if (interval.second <= first)
-                        shift += interval.second - interval.first;
-                }
-                if (shift == 0)
-                    continue;
-                require(clip["kind"] == "audio" && clip.value("editable_audio", false) && !clip.value("locked", false),
-                        "Shuffle Delete refused: a later clip cannot move safely");
-                require(first >= shift, "Shuffle Delete would move a clip before session start");
-                operations.push_back(operation("clip.move", {{"clip", id}, {"position_samples", first - shift}}));
-            }
-        }
-    }
-    return operations;
-}
-
 juce::String Workspace::shufflePreviewText(const Json& preview) const
 {
     const bool independent = preview.contains("automation_range");
     const bool paste = (preview.contains("clipboard_paste") && !preview["clipboard_paste"].is_null()) ||
                        (independent && preview["automation_range"]["action"] == "paste");
-    const bool clear = preview.contains("audio_clear_range") || (independent && !paste);
+    const bool clear =
+        preview.contains("audio_clear_range") || preview.contains("audio_clip_clear") || (independent && !paste);
     juce::String out = (independent ? text("所示自动化范围 · 待确认\n\n音频保持，片段变更：")
                         : clear     ? text("范围剪切 / 删除 · 待确认\n\n音频片段变更：")
                         : paste     ? text("音频 / 自动化粘贴 · 待确认\n\n音频片段变更：")
@@ -348,9 +270,12 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
     for (const auto& change : preview["automation_changes"])
     {
         if (change.value("command", std::string{}) == "automation.range.clear" ||
-            change.value("command", std::string{}) == "automation.lane.range.clear")
-            out += change["action"] == "cut" ? text("\n剪切：增加边界锚点，保留两侧曲线，空隙线性连接。\n")
-                                             : text("\n删除：移除区间内点，原有点跨越空隙，相邻曲线会变化。\n");
+            change.value("command", std::string{}) == "automation.lane.range.clear" ||
+            change.value("command", std::string{}) == "automation.clips.clear")
+            out += change.value("ripple", false)
+                       ? text("\nShuffle：仅移除所选片段占用的时间，保留空隙并移动后方曲线。\n")
+                   : change["action"] == "cut" ? text("\n剪切：增加边界锚点，保留两侧曲线，空隙线性连接。\n")
+                                               : text("\n删除：移除区间内点，原有点跨越空隙，相邻曲线会变化。\n");
         out += text("\n自动化跟随 · ") + trackName(change["track"].get<std::string>()) + text("\n受影响点：") +
                juce::String(change["affected_points"].get<int>()) +
                (paste ? text(" · 新增曲线点：") : text(" · 新增边界点：")) +
@@ -377,12 +302,15 @@ void Workspace::executeDeleteCommand()
             require(pending.is_null(), "accept or reject the existing preview before Delete");
             const bool ripple = editing.mode == "shuffle";
             const bool shuffleRange = ripple && selection.objects.empty() && !selection.range.is_null();
+            Json objectIDs = Json::array();
+            for (const auto& c : selectedEditClips())
+                objectIDs.push_back(c["id"]);
             auto plan = shuffleRange ? commands.makeShuffleRangePlan(selection.tracks, selection.range["start_samples"],
                                                                      selection.range["end_samples"])
                         : !ripple && selection.objects.empty() && !selection.range.is_null()
                             ? commands.makeAudioClearRangePlan(selection.tracks, selection.range["start_samples"],
                                                                selection.range["end_samples"], false)
-                            : commands.makePlan("human", deleteClipOperations(ripple));
+                            : commands.makeAudioClipClearPlan(objectIDs, false, ripple);
             std::set<std::string> touched;
             for (const auto& op : plan["operations"])
                 if (op["args"].contains("clip") && !op["args"]["clip"].get<std::string>().starts_with("$"))
@@ -392,15 +320,17 @@ void Workspace::executeDeleteCommand()
             size_t automationImpact = 0;
             for (const auto& change : preview["automation_changes"])
                 automationImpact += change["affected_points"].get<size_t>();
-            if (selection.objects.empty() && !selection.range.is_null() &&
-                (touched.size() > 8 || automationImpact > 128 ||
+            if (touched.size() > 8 || automationImpact > 128 ||
+                (selection.objects.empty() && !selection.range.is_null() &&
                  selection.range["end_samples"].get<int64_t>() - selection.range["start_samples"].get<int64_t>() >
                      60 * 48000))
             {
                 require(pending.is_null(), "accept or reject the existing preview before a large range Delete");
                 pending = plan;
-                previewText.setText((shuffleRange || plan.contains("audio_clear_range")) ? shufflePreviewText(preview)
-                                                                                         : text(preview.dump(2)));
+                previewText.setText(
+                    (shuffleRange || plan.contains("audio_clear_range") || plan.contains("audio_clip_clear"))
+                        ? shufflePreviewText(preview)
+                        : text(preview.dump(2)));
                 message(text("大范围删除 · 请预览后接受或取消"));
                 return;
             }
