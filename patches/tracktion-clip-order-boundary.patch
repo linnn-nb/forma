@@ -1,0 +1,43 @@
+diff --git a/modules/tracktion_engine/model/clips/tracktion_ClipOwner.cpp b/modules/tracktion_engine/model/clips/tracktion_ClipOwner.cpp
+index cf37238..65a65c7 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_ClipOwner.cpp
++++ b/modules/tracktion_engine/model/clips/tracktion_ClipOwner.cpp
+@@ -121,6 +121,8 @@ struct ClipOwner::ClipList : public ValueTreeObjectList<Clip>,
+         }
+     }
+ 
++    void flushPendingOrder() { handleUpdateNowIfNeeded(); }
++
+     void handleAsyncUpdate() override
+     {
+         sortClips (parent, &edit.getUndoManager());
+@@ -194,6 +196,13 @@ void ClipOwner::initialiseClipOwner (Edit& edit, juce::ValueTree clipParentState
+     clipList = std::make_unique<ClipList> (*this, edit, clipParentState);
+ }
+ 
++void ClipOwner::flushPendingClipOrder()
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (clipList)
++        clipList->flushPendingOrder();
++}
++
+ const juce::Array<Clip*>& ClipOwner::getClips() const
+ {
+     assert (clipList && "You must call initialiseClipOwner before any other methods");
+diff --git a/modules/tracktion_engine/model/clips/tracktion_ClipOwner.h b/modules/tracktion_engine/model/clips/tracktion_ClipOwner.h
+index 74ec1e9..0d813e1 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_ClipOwner.h
++++ b/modules/tracktion_engine/model/clips/tracktion_ClipOwner.h
+@@ -40,6 +40,11 @@ public:
+     /** Returns the clips this owner contains. */
+     const juce::Array<Clip*>& getClips() const;
+ 
++    /** Settles pending chronological ordering on the message thread.
++        Hosts with explicit transaction boundaries must call this before Undo/Redo.
++    */
++    void flushPendingClipOrder();
++
+ protected:
+     /** Must be called once from the subclass constructor to init the clip owner. */
+     void initialiseClipOwner (Edit&, juce::ValueTree clipParentState);

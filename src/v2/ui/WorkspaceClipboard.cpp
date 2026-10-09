@@ -130,7 +130,7 @@ void Workspace::executeClipboardCommand(int id)
                 if (id == editCommand::copy)
                 {
                     commands.acceptClipboard(buffer["id"]);
-                    message(text("已复制冻结的音频选区 · 工程与 Undo 保持"));
+                    message(text("已复制音频与自动化快照 · 工程与 Undo 保持"));
                     return;
                 }
                 if (id == editCommand::cut)
@@ -184,32 +184,21 @@ void Workspace::executeClipboardCommand(int id)
                 const auto groupedTargets = commands.editGroupTracks(targets);
                 require(groupedTargets.size() == targets.size(),
                         "destination Edit group requires matching clipboard tracks; copy all members or disable group");
-                std::map<std::string, std::string> mapping;
-                for (size_t i = 0; i < targets.size(); ++i)
-                {
-                    auto target = std::find_if(facts["tracks"].begin(), facts["tracks"].end(),
-                                               [&](const Json& t) { return t["id"] == targets[i]; });
-                    require(target != facts["tracks"].end() &&
-                                ((*target)["type"] == "audio" || (*target)["type"] == "instrument"),
-                            "clipboard destination must be an existing audio/instrument track");
-                    mapping[buffer["tracks"][i]] = targets[i];
-                    if (id != editCommand::duplicate)
-                        for (const auto& c : (*target)["clips"])
-                            removeInterval(ops, c, point, point + length, ref);
-                }
-                for (const auto& entry : buffer["entries"])
-                    ops.push_back(operation(
-                        "clip.copy", {{"clip", entry["token"]},
-                                      {"track", mapping.at(entry["track"])},
-                                      {"position_samples", point + entry["start_samples"].get<int64_t>() - origin},
-                                      {"ref", "$clipboard-paste-" + std::to_string(ref++)}}));
-                ops.push_back(
-                    operation("session.range.set", {{"start_samples", point}, {"end_samples", point + length}}));
+                const auto mode = id == editCommand::duplicate                                    ? "overlay"
+                                  : id != editCommand::pasteOriginal && editing.mode == "shuffle" ? "shuffle"
+                                                                                                  : "replace";
+                const auto removalEnd =
+                    std::string(mode) == "shuffle"
+                        ? selection.range.is_null() ? point : selection.range["end_samples"].get<int64_t>()
+                        : point + length;
+                plan = commands.makeClipboardPastePlan(buffer["id"], targets, point, removalEnd, mode);
+                ops = plan["operations"];
             }
             if (plan.is_null())
                 plan = commands.makePlan("human", ops);
             plan["base_revision"] = revision;
-            const bool destructive = std::any_of(ops.begin(), ops.end(),
+            const bool destructive = plan.contains("clipboard_paste") ||
+                                     std::any_of(ops.begin(), ops.end(),
                                                  [](const Json& o)
                                                  {
                                                      return o["command"] == "clip.delete" ||
@@ -233,8 +222,9 @@ void Workspace::executeClipboardCommand(int id)
             {
                 pending = plan;
                 pendingClipboardPlan = plan["plan_id"];
-                previewText.setText(plan.contains("shuffle_range") ? shufflePreviewText(preview)
-                                                                   : text(preview.dump(2)));
+                previewText.setText((plan.contains("shuffle_range") || plan.contains("clipboard_paste"))
+                                        ? shufflePreviewText(preview)
+                                        : text(preview.dump(2)));
                 message(text("大范围剪切 / 替换 · 请预览后接受或拒绝"));
                 return;
             }

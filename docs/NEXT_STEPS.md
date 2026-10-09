@@ -1,9 +1,9 @@
 # 下一步
 
-结论：分组音频范围 Shuffle Cut/Delete 已带原生音量/声像/插件参数自动化跟随。真实曲线与音频同笔 Undo/Redo，预览/拒绝/改键/保存重开与实体 CoreAudio 播放已验；另修复 SDK 保存参数缓存产生未跟踪事务的故障。9/9 相关回归，最终 885 检查（范围 95、曲线与真实渲染 309），曲线归一化差 1.7881e-7、PCM 差 4.7684e-7；原 4e-7/2e-5 预算未改。完整 U＋P0 未验收，不进 P1。
+结论：U-P0-SHUFFLE-PASTE-01 已打通分组音频与冻结自动化 Copy/Cut/Paste、Shuffle 插入和不等长替换，同笔 Undo/Redo、可改键、预览、保存重开和实体 CoreAudio 输出。修复 SDK 异步片段排序跨 Undo/Redo 的间歇故障；11 项相关回归共 1204 检查通过。完整 U＋P0 未完成，不进 P1。
 
-亲手试：双击 `build-v2-tracktion/OpenAutomationShuffleDemo.command`。选区已为 1–2 秒、Shuffle、Phase pair 编辑组；Control+Option+Shift+D 或 CmdX，查看实际自动化变更卡，接受后 CmdZ/ShiftCmdZ；CmdS 新副本、CmdO 重开，Space 播放/停止。正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。测试源为真实低幅诊断 PCM。
+亲手试 `build-v2-tracktion/OpenAutomationClipboardDemo.command`：CmdX 接受；Control+Option+Shift+V 粘贴，预览/拒绝/接受；CmdZ / ShiftCmdZ；CmdS 保存新副本 / CmdO 重开 / Space 试听。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。这是实际低幅诊断 PCM 工程，不代表音乐听感验收。
 
-下一项：先让 Cut/Copy 剪贴板保存曲线快照，再实现 Shuffle Paste 音频与自动化插入跟随，同一 L1 原生事务；保持粘贴目标组闭包、源时间/曲线 hash、锁定、版本、预算、预览及跨样本率声音验证。随后补全局跟随开关、Trim/拖拽/MIDI 及剩余 U＋P0，再请用户确认本级。
+下一项明确任务：实现全局 Automation Follows Edit 开关，以及非 Shuffle Cut/Delete 源曲线清理/边界保持策略；同一 L1 Undo、工程内保存、可改快捷键、真实原生曲线和 PCM 测试。随后补 Trim/拖拽/Nudge/whole-clip/MIDI 与剩余 U＋P0，用户确认本级后才进 P1。
 
-非默认直接/HQ 读取器、HQ SRC/抗混叠、整个 SDK 实时锁/cache、听感/硬件实录/耐久/Windows 仍未获新资格。M2/M3 冻结，M4/M5 暂缓；没有 DMG 或全量回归。只退出本轮自有预览，旧用户窗口保留。精简输出见 evidence/U/automation-shuffle-* 与 shuffle-automation-ranges-tests.json。
+预算、数据真实性与 pin/原补丁保持；只限定已有秒基曲线和匹配插件实例，非默认直接/HQ reader 等拒绝。SDK RT/听感/硬件实录/耐久/Windows 待验。M2/M3 冻结，M4/M5 暂缓，无 DMG/全量回归。本轮自有预览已退出，用户旧窗口保留；证据见 evidence/U/automation-clipboard-*。

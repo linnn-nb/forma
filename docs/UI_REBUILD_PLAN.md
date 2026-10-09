@@ -1,5 +1,9 @@
 # Forma 界面与基础制作计划
 
+U-P0-SHUFFLE-PASTE-01（2026-10-09）：音频剪贴板保存实际原生自动化冻结快照；Shuffle 点插入和更短/更长选区替换同步移动分组音频与曲线，一笔 human Plan/Undo。Copy、Cut、Paste、Paste Original、Duplicate 复用全局可改键；大量曲线变更可预览、拒绝，接受后 Undo/Redo、另存重开。Release/固定签名，11/11 受影响回归、1204 检查通过；详细容差、桌面验收及边界见 VERIFICATION 首节。完整 U＋P0 未完成，不进 P1。以下保留历史增量；本节仅替代所述范围的旧限制。
+
+下一项为全局 Automation Follows Edit 设置和普通非 Shuffle Cut/Delete 的自动化策略，随后 Trim/拖拽/Nudge/MIDI 跟随与剩余 U＋P0；本级由用户确认后才进 P1。
+
 U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：范围 Shuffle Cut/Delete 的真实分组音频与音量/声像/插件参数曲线联动已接通；边界补点影响在原生确认卡中展示，接受/拒绝、可改键、整笔 Undo/Redo、另存/重开通过。保存参数缓存破坏 Undo 的实体故障已修复；受影响 9/9、最终 885 检查与实体窗口通过。下一项为 Shuffle Paste 的音频/自动化插入跟随；全局跟随开关、Trim/拖拽/MIDI 和完整 U＋P0 尚未完成，用户确认本级前不进入 P1。以下为历史增量。
 
 U-P0-SRC-PHASE-01：默认原生 WaveNode 按绝对源位置重采样，混合48k/44.1k范围Shuffle已恢复；原失败负载PCM最大差1.1921e-7（原2e-5预算不变）、Paste Original差0。Release/固定签名、11/11受影响回归（1872检查、94.09秒）与实机改键/Undo/Redo/另存/Open/播放通过；原始媒体不改。非默认直接/HQ读取器、自动化跟随与完整Shuffle/U＋P0仍未完成；不进入P1。下文保留历史增量，旧混合率失败已在默认路径被本节资格替代。

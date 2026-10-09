@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-SHUFFLE-PASTE-01：核验 Pro Tools Reference Guide 2026.4，核验日 2026-10-09；印刷 854 / PDF 956 页 Paste Command（插入点 Shuffle 右移，选区替换后按长度差左右移动），印刷 1552–1553 Automation Follows Edit。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。实现 AutomationClipboard.cpp/ClipboardPasteCommands.cpp/WorkspaceClipboard.cpp；测试 AutomationClipboardTests/ShuffleRangeTests，真实 PCM、保存重开、快捷键、实体预览/Undo 通过。状态：所测音频范围已验证，完整工作流部分实现；static 插件设置不复制、跨轨需匹配实例，全局开关/非 Shuffle Cut/Trim/拖拽/MIDI 跟随未完成。不声明完整 Pro Tools 等价。
+
 > 本文件仍为交互与工作流参考，不是全量产品验收门槛。
 
 U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：核验官方 Pro Tools Reference Guide 2026.4（核验日 2026-10-09）印刷 1552–1553 / PDF 1654–1655 的 Automation Follows Edit，以及印刷 857/859 的范围 Shuffle Cut/Delete。来源：https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256：884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。Forma 当前只实现音频范围 Shuffle Cut/Delete 时曲线跟随，始终跟随，没有全局开关；不声明 whole-clip/Paste/Trim/拖拽/MIDI 或完整 PT 行为等价。AutomationShuffle.cpp / EditGroupCommands.cpp / ShuffleRangeTests.cpp / AutomationShuffleTests.cpp，状态：所述范围已验证，整个工作流部分实现。9 项相关回归、真实 PCM、Undo/重开/改键与实体 GUI 的范围见 VERIFICATION 首节。

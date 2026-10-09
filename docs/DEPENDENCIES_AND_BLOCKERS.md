@@ -1,5 +1,9 @@
 # 依赖与阻塞 v2
 
+U-P0-SHUFFLE-PASTE-01：无新授权/下载/付费阻塞。Tracktion pin、JUCE 8.0.13 和原九补丁保留，新增可复现消息线程排序收尾补丁；未新增实时节点/插件 IPC/AI 服务。11/11 相关回归及真实桌面 Cut→Paste→Undo/Redo→Save→Undo→Open→CoreAudio 输出通过。
+
+缺口：非 Shuffle Cut 未删除源轨自动化；没有全局跟随开关或 Trim/拖拽/MIDI 跟随。只接秒时间基、实际匹配插件槽/ID/范围（第三方插件跨实例未实测），static 插件设置不复制；非默认直接/HQ/loop/warp 等明确拒绝。8192 派生点与 64 原语超限原子拒绝。大规模逐点命令参考构建曾 180 秒超时，修正为相同负载原生参考 XML 后通过，不代表大点量命令吞吐已获资格。SDK RT 锁/cache、HQ SRC/听感/实体多轨实录/耐久/Windows/完整 U＋P0 未获新资格。M2/M3 冻结，M4/M5 暂缓，无 DMG。
+
 U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：无新授权、收费或依赖下载阻塞。新增可复现 SDK 派生参数保存补丁，保持 Tracktion pin / JUCE / 既有补丁，CMake 精确 diff 与独立临时目录 apply / 字节对比 / reverse 通过；固定本地身份 deep/strict/叶证书条件验签通过。9 项回归及新增 native follower→Save→Undo 检查通过，实体窗口编辑/保存/Undo/Open/播放已验；仅退出本轮自有两个预览，旧用户窗口保留。
 
 全局 Automation Follows Edit 开关、Shuffle Paste/Trim/拖拽/whole-clip/MIDI、完整 U＋P0 仍待完成；非默认直接/HQ 读取路径、SDK 实时锁/cache、主观听感、实体多轨麦克风、耐久和 Windows 未获新资格。没有 DMG/全量测试或 MCP/分析扩展。以下历史“自动化范围 Shuffle 拒绝”已在本节明确范围被替代。

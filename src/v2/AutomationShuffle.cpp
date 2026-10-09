@@ -1,16 +1,9 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "AutomationCurveEdit.h"
 namespace ndaw::v2
 {
-namespace
+namespace curve_edit
 {
-constexpr size_t maximumPoints = 65536, maximumDerived = 8192;
-constexpr double relativeError = 1e-7;
-struct Point
-{
-    double time;
-    float value, curve;
-    std::string id;
-};
 void require(bool ok, const char* why)
 {
     if (!ok)
@@ -184,7 +177,8 @@ std::vector<Point> collapse(const std::vector<Point>& source, double first, doub
     }
     return result;
 }
-} // namespace
+} // namespace curve_edit
+using namespace curve_edit;
 Json Commands::automationShuffleChanges(const Json& args) const
 {
     checkThread();

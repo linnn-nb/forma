@@ -1,0 +1,17 @@
+{
+  "automation_demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-bb7066ff1e144e009015f662177fb7b2/AutomationShuffleReady.tracktionedit",
+  "automation_roundtrip_pcm_max_error": 1.1920928955078125e-07,
+  "budgets": {
+    "pcm_error": 2e-05,
+    "source_time_seconds": 1e-12,
+    "split_edge_exclusion_frames": 2048
+  },
+  "checks": 116,
+  "clipboard_demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-bb7066ff1e144e009015f662177fb7b2/AutomationClipboardReady.tracktionedit",
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-bb7066ff1e144e009015f662177fb7b2/ShuffleReady.tracktionedit",
+  "paste_pcm_max_error": 0.0,
+  "pcm_max_error": 1.1920928955078125e-07,
+  "result": "passed",
+  "scope": "real native Edit, group Shuffle partial/gap Cut/Delete, strict preview and permissions, native Undo, PCM render, GUI keys, save/reopen; physical desktop separate",
+  "source_time_reopen_error_seconds": 2.220446049250313e-16
+}

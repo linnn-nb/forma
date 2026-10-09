@@ -1,0 +1,113 @@
+{
+  "requirement": "U-P0-SHUFFLE-PASTE-01",
+  "date": "2026-10-09",
+  "result": "passed for stated scope; U+P0 incomplete",
+  "regression": {
+    "ctest_passed": 11,
+    "primary_seconds": 94.94,
+    "related_seconds": 70.03,
+    "repeat_shuffle_ranges_runs": 3,
+    "repeat_seconds": 53.34,
+    "checks_by_report": {
+      "clipboard-tests.json": 49,
+      "shuffle-range-tests.json": 116,
+      "automation-shuffle-tests.json": 309,
+      "automation-clipboard-tests.json": 234,
+      "editor-tests.json": 81,
+      "midi-editor-tests.json": 64,
+      "group-range-tests.json": 72,
+      "automation-timeline-tests.json": 143,
+      "automation-tests.json": 59,
+      "automation-workspace-tests.json": 25,
+      "session-recovery-tests.json": 52
+    },
+    "unique_checks": 1204,
+    "historical_reports": "restored byte-for-byte; current output retained in build directory",
+    "last_fix_retest": "four affected clipboard/Shuffle tests after uncopied destination step-lane correction; other seven after SDK ordering correction"
+  },
+  "audio": {
+    "curve_max_normalized_error": 1.7881393432617188e-07,
+    "curve_budget": 4e-07,
+    "native_reference_pcm_max_error": 4.76837158203125e-07,
+    "mixed_rate_cut_paste_roundtrip_pcm_error": 1.1920928955078125e-07,
+    "pcm_budget": 2e-05,
+    "split_edge_exclusion_frames": 2048,
+    "source_time_reopen_error_seconds": 2.220446049250313e-16,
+    "source_time_budget_seconds": 1e-12,
+    "oracle": "independent native Edit, manually arranged original source media and densely sampled original DSP curves; actual stereo WAV independently decoded",
+    "uncopied_destination_step_gap": "native incoming value held across inserted gap; shifted suffix and exact native Undo IDs verified"
+  },
+  "sdk_order_patch": {
+    "pin": "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98",
+    "patch_sha256": "94fb6f8865bcb8f41d472814c70bf4777c035834c62f6b0936ea644e9f4c70ad",
+    "result": "passed",
+    "checks": [
+      "clean-pin apply outside repository",
+      "applied bytes equal current SDK",
+      "reverse restores original bytes"
+    ]
+  },
+  "signing": {
+    "app": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "identifier": "org.forma.daw",
+    "leaf_sha1": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",
+    "verify": "deep strict plus explicit leaf requirement passed"
+  },
+  "desktop": {
+    "method": "actual native GUI via CUA; uniquely named production build copy",
+    "steps_passed": [
+      "CmdX grouped audio/curve preview and Accept",
+      "custom ControlOptionShiftV frozen clipboard preview 771 to 1028 native curve points",
+      "Reject keeps r28, preview restored from same snapshot",
+      "Accept / native CmdZ / CmdShiftZ",
+      "native Save As new owned file then CmdZ succeeds",
+      "native Open restores 9 audio clips and 1028 automation points",
+      "CoreAudio playback: AX clock 1.256 s, screenshot clock 1.362 s, master sample peak -21.1 dBFS, fader -19.9 dB",
+      "Quit owned preview; no own preview process remains"
+    ],
+    "device": {
+      "name": "External Headphones",
+      "sample_rate": 48000,
+      "buffer_frames": 512
+    },
+    "saved_file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-da325a984729484dac5b0d918874c51c/ClipboardDesktopSaved.tracktionedit",
+    "saved_sha256": "b40150b0dc1df4245669f24c647c398912b9c50b972fb61d66e6e1eab108ec0d",
+    "screenshots": "shown inline in conversation; no invented local PNG",
+    "not_qualified": [
+      "subjective listening",
+      "hardware loopback",
+      "deadline/XRUN performance"
+    ]
+  },
+  "failures_and_repairs": [
+    {
+      "failure": "prior GUI regression intermittently refused Save/Redo Undo with untracked transaction",
+      "cause": "SDK pending chronological clip sort escaped the original transaction across immediate Undo/Redo",
+      "repair": "L1 synchronously settles only pending native clip ordering before history boundaries; strict history guard retained",
+      "verification": "11 tests pass, three repeated Shuffle suites pass, desktop save then Undo passes"
+    },
+    {
+      "failure": "native +1 step paste endpoint error 0.5 normalized",
+      "repair": "actual AutomationIterator strict endpoint semantics retained with coincident/first-sample guards",
+      "verification": "all nine shapes and session-zero first sample; original 4e-7 budget"
+    },
+    {
+      "failure": "original dense reference built via many 60-op point Plans exceeded 180 s",
+      "repair": "same every-16-frame native reference point workload written as independent Edit XML and opened/rendered normally",
+      "qualification": "large individual-point command throughput remains unqualified; no timeout/curve/PCM budget reduced"
+    },
+    {
+      "failure": "exact JSON GUI save/reopen comparison found 2.220446049250313e-16 source offset seconds difference",
+      "repair": "apply pre-existing 1e-12 source-time serialization tolerance only to source offsets; persistent IDs/curve state stay exact"
+    }
+  ],
+  "remaining": [
+    "global Automation Follows Edit setting",
+    "non-Shuffle Cut/Delete source automation policy",
+    "Trim/drag/Nudge/whole-clip/MIDI automation follow",
+    "third-party cross-instance parameter mapping qualification",
+    "non-default direct/HQ reader and full SDK realtime qualification",
+    "complete U+P0 acceptance"
+  ],
+  "launch": "build-v2-tracktion/OpenAutomationClipboardDemo.command"
+}

@@ -1,5 +1,9 @@
 # U 原生界面重构
 
+U-P0-SHUFFLE-PASTE-01（2026-10-09）：音频剪贴板保存实际原生自动化冻结快照；Shuffle 点插入和更短/更长选区替换同步移动分组音频与曲线，一笔 human Plan/Undo。Copy、Cut、Paste、Paste Original、Duplicate 复用全局可改键；大量曲线变更可预览、拒绝，接受后 Undo/Redo、另存重开。Release/固定签名，11/11 受影响回归、1204 检查通过；详细容差、桌面验收及边界见 VERIFICATION 首节。完整 U＋P0 未完成，不进 P1。以下保留历史增量；本节仅替代所述范围的旧限制。
+
+关键输出：automation-clipboard-tests.json（234）、shuffle-paste-ranges-tests.json（116）、automation-clipboard-regression.txt、automation-clipboard-qualification.json。九曲线归一化差 1.7881e-7/固定 4e-7；独立 native 参考 EQ stereo WAV 差 4.7684e-7、混合 48k/44.1k Cut/Paste roundtrip 差 1.1921e-7/固定 2e-5，切点 ±2048 帧排除。桌面预览 771→1028 点；保存后 Undo、原生 Open 和非零 CoreAudio 电平通过，本轮自有预览已退出。原历史报告按字节保留；下一项全局跟随设置/非 Shuffle Cut 策略。
+
 ## U-P0-SHUFFLE-AUTOMATION-01 · 2026-10-09
 
 分组音频范围 Shuffle Cut/Delete 跟随真实音量/声像/插件曲线，同笔 Undo/Redo、中文影响预览/Reject/Accept、改键、保存重开与实体窗口已验；保存参数缓存破坏 Undo 的实体故障已修。Release/固定签名，9/9 回归（142.15 秒），native follower→Save→Undo 新检查 1/1（15.25 秒）；最终 885 不重复检查，专项 95＋309。九曲线归一化差 1.7881e-7 / 固定 4e-7；独立 native 编辑参考与实际 WAV PCM 差 4.7684e-7 / 原 2e-5，切点 ±2048 排除。拼接已处理 WAV 的旧 0.0010097 失败保留、参照已纠正，没改预算；不是主观听感或硬件回采通过。

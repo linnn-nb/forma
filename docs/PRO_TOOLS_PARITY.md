@@ -1,3 +1,7 @@
+> 本文件为交互与工作流参考清单，不是全量产品验收门槛。
+
+U-P0-SHUFFLE-PASTE-01：核验 Pro Tools Reference Guide 2026.4，核验日 2026-10-09；印刷 854 / PDF 956 页 Paste Command（插入点 Shuffle 右移，选区替换后按长度差左右移动），印刷 1552–1553 Automation Follows Edit。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。实现 AutomationClipboard.cpp/ClipboardPasteCommands.cpp/WorkspaceClipboard.cpp；测试 AutomationClipboardTests/ShuffleRangeTests，真实 PCM、保存重开、快捷键、实体预览/Undo 通过。状态：所测音频范围已验证，完整工作流部分实现；static 插件设置不复制、跨轨需匹配实例，全局开关/非 Shuffle Cut/Trim/拖拽/MIDI 跟随未完成。不声明完整 Pro Tools 等价。
+
 编辑组最新增量（U-P0-GROUP-TRANSFORMS-01，2026-10-09）：同组whole-clip修剪、淡化和Clip Gain已接通，来源为实际Tracktion Edit，保留成员原差异；89专项与实际PCM通过，实体淡化/撤销/另存/重开已有回执。关联方式与相对淡化/增益规则为Forma明确策略，不能当作Pro Tools任意区间编辑的完整等价。具体功能/测试/差异见UI_PARITY与VERIFICATION首节。
 
 > 本文件仍为交互与工作流参考，不是全量产品验收门槛。

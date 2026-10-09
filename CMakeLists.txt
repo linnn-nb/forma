@@ -43,7 +43,7 @@ if(NOT TE_HEAD STREQUAL "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98")
 endif()
 # Audited SDK fixes, ordered by source path for exact diff verification.
 set(TE_EXPECTED_DIFF "")
-foreach(TE_PATCH_NAME tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch)
+foreach(TE_PATCH_NAME tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch)
   set(TE_PATCH "${CMAKE_SOURCE_DIR}/patches/${TE_PATCH_NAME}")
   execute_process(COMMAND "${GIT_EXECUTABLE}" apply --check "${TE_PATCH}" WORKING_DIRECTORY "${TE_SOURCE}" RESULT_VARIABLE TE_PATCH_NEEDED ERROR_QUIET)
   if(TE_PATCH_NEEDED EQUAL 0)
@@ -62,7 +62,7 @@ add_library(ndaw_ebur128 STATIC third_party/libebur128/ebur128/ebur128.c)
 target_include_directories(ndaw_ebur128 PUBLIC third_party/libebur128/ebur128)
 add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePluginStates.cpp src/v2/PluginEditorCommands.cpp src/v2/ExternalCommands.cpp src/v2/PluginScanning.cpp src/v2/PluginScanStorage.cpp src/v2/CommandQueue.cpp src/v2/McpSession.cpp src/v2/McpGateway.cpp src/v2/Scope.cpp src/v2/ParameterCommands.cpp src/v2/LegacyImport.cpp src/v2/ClipCommands.cpp src/v2/ClipboardCommands.cpp src/v2/EngineCommands.cpp src/v2/TransportCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupCommands.cpp src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/MarkerCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClipboard.cpp src/v2/ClipboardPasteCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -781,3 +781,9 @@ target_sources(ndaw_automation_shuffle_tests PRIVATE tests/v2/AutomationShuffleT
 target_link_libraries(ndaw_automation_shuffle_tests PRIVATE ndaw_engine)
 add_test(NAME forma_native_automation_shuffle COMMAND ndaw_automation_shuffle_tests "${CMAKE_SOURCE_DIR}/evidence/U/automation-shuffle-tests.json" "${CMAKE_BINARY_DIR}/automation-shuffle-demos")
 set_tests_properties(forma_native_automation_shuffle PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_automation_clipboard_tests PRODUCT_NAME "ndaw_automation_clipboard_tests")
+target_sources(ndaw_automation_clipboard_tests PRIVATE tests/v2/AutomationClipboardTests.cpp)
+target_link_libraries(ndaw_automation_clipboard_tests PRIVATE ndaw_engine)
+add_test(NAME forma_native_automation_clipboard COMMAND ndaw_automation_clipboard_tests "${CMAKE_SOURCE_DIR}/evidence/U/automation-clipboard-tests.json" "${CMAKE_BINARY_DIR}/automation-clipboard-demos")
+set_tests_properties(forma_native_automation_clipboard PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

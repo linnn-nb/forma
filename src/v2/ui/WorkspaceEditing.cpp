@@ -336,12 +336,15 @@ Json Workspace::deleteClipOperations(bool ripple) const
 
 juce::String Workspace::shufflePreviewText(const Json& preview) const
 {
-    juce::String out = text("范围 Shuffle · 待确认\n\n音频片段变更：") +
+    const bool paste = preview.contains("clipboard_paste") && !preview["clipboard_paste"].is_null();
+    juce::String out = (paste ? text("音频 / 自动化粘贴 · 待确认\n\n音频片段变更：")
+                              : text("范围 Shuffle · 待确认\n\n音频片段变更：")) +
                        juce::String(int(preview["clip_changes"].size())) + text("\n原媒体保留；接受后可整笔撤销。\n");
     for (const auto& change : preview["automation_changes"])
     {
         out += text("\n自动化跟随 · ") + trackName(change["track"].get<std::string>()) + text("\n受影响点：") +
-               juce::String(change["affected_points"].get<int>()) + text(" · 新增边界点：") +
+               juce::String(change["affected_points"].get<int>()) +
+               (paste ? text(" · 新增曲线点：") : text(" · 新增边界点：")) +
                juce::String(change["derived_points"].get<int>()) + text("\n");
         for (const auto& lane : change["lanes"])
             out += text(lane["name"].get<std::string>()) + text("：") + juce::String(int(lane["before"].size())) +
@@ -349,7 +352,8 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                    juce::String(lane["native_error_bound"].get<double>(), 8) +
                    text(" 原生参数单位，另有 float 舍入。\n");
     }
-    return out + text("\n只重建被切口截断的弯曲段；其他点保持 ID。\n实际声音仍需试听。\n");
+    return out + (paste ? text("\n插入内容来自复制时的冻结快照；后方点保留 ID。\n实际声音仍需试听。\n")
+                        : text("\n只重建被切口截断的弯曲段；其他点保持 ID。\n实际声音仍需试听。\n"));
 }
 void Workspace::executeDeleteCommand()
 {

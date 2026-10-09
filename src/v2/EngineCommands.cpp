@@ -13,6 +13,21 @@ namespace ndaw::v2
 static_assert(OutputProbe::capacity == te::DeviceManager::maxNumChannelsPerDevice);
 namespace
 {
+// Drain only the SDK's pending chronological clip sort, never the message queue.
+// Sorting must belong to the originating Plan before JUCE Undo/Redo closes it.
+void settleClipOrder(te::Edit& edit)
+{
+    const auto settle = [](auto&& self, te::ClipOwner& owner) -> void
+    {
+        owner.flushPendingClipOrder();
+        for (auto* clip : owner.getClips())
+            if (auto* nested = dynamic_cast<te::ClipOwner*>(clip))
+                self(self, *nested);
+    };
+    for (auto* track : te::getAllTracks(edit))
+        if (auto* owner = dynamic_cast<te::ClipOwner*>(track))
+            settle(settle, *owner);
+}
 bool isTrackFlag(const std::string& command)
 {
     return command == "track.mute" || command == "track.solo" || command == "track.solo_safe";
@@ -452,7 +467,8 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
 {
     return makePlanImpl(actor, std::move(ops), nullptr);
 }
-Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuffleRange) const
+Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuffleRange,
+                            const Json& clipboardPaste) const
 {
     checkThread();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -524,7 +540,7 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
         }
     }
     const auto requested = ops;
-    if (shuffleRange.is_null())
+    if (shuffleRange.is_null() && clipboardPaste.is_null())
         ops = expandMixGroupFlags(ops);
     Json plan{{"plan_id", juce::Uuid().toString().toStdString()},
               {"actor", actor},
@@ -534,6 +550,8 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
               {"operations", ops}};
     if (!shuffleRange.is_null())
         plan["shuffle_range"] = shuffleRange;
+    else if (!clipboardPaste.is_null())
+        plan["clipboard_paste"] = clipboardPaste;
     else if (requested != ops)
         plan["requested_operations"] = requested;
     preview(plan);
@@ -571,9 +589,16 @@ Json Commands::preview(const Json& plan) const
     require(requested.is_array() && !requested.empty() && requested.size() <= 64, "requested operation limit (1..64)");
     if (plan.contains("shuffle_range"))
     {
-        require(actor == "human" && !plan.contains("requested_operations"), "Shuffle range is a local human Plan");
+        require(actor == "human" && !plan.contains("requested_operations") && !plan.contains("clipboard_paste"),
+                "Shuffle range is a local human Plan");
         require(ops == shuffleRangeOperations(plan.at("shuffle_range")),
                 "Shuffle range targets changed; rebuild the entire Plan");
+    }
+    else if (plan.contains("clipboard_paste"))
+    {
+        require(actor == "human" && !plan.contains("requested_operations"), "clipboard paste is a local human Plan");
+        require(ops == clipboardPasteOperations(plan.at("clipboard_paste")),
+                "clipboard paste changed; rebuild the entire Plan");
     }
     else
         require(ops == expandMixGroupFlags(requested), "group targets changed; rebuild the Plan with current members");
@@ -587,6 +612,9 @@ Json Commands::preview(const Json& plan) const
         if (cmd == "automation.range.shuffle")
             require(actor == "human" && plan.contains("shuffle_range"),
                     "automation range follow requires a locally compiled human Shuffle Plan");
+        if (cmd == "automation.range.paste")
+            require(actor == "human" && plan.contains("clipboard_paste"),
+                    "automation paste requires a compiled local human Plan");
         if (a.contains("clip") && a["clip"].is_string() && a["clip"].get<std::string>().starts_with("@clipboard:"))
             require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
                     "clipboard snapshot expired or unavailable to this actor");
@@ -746,20 +774,23 @@ Json Commands::preview(const Json& plan) const
     const auto midiDiff = validateMusicPlan(ops);
     const auto transportDiff = validateTransportPlan(ops);
     const auto markerDiff = validateMarkerPlan(ops);
-    return {{"plan_id", plan.at("plan_id")},
-            {"base_revision", revision},
-            {"changes", diff},
-            {"audio_verified", false},
-            {"time_selection_changes", rangeDiff},
-            {"clip_changes", clipDiff},
-            {"automation_changes", automationDiff},
-            {"track_changes", trackDiff},
-            {"pan_changes", panDiff},
-            {"midi_changes", midiDiff},
-            {"transport_changes", transportDiff},
-            {"marker_changes", markerDiff},
-            {"group_changes", groupDiff},
-            {"legacy_imports", legacyDiff}};
+    Json result{{"plan_id", plan.at("plan_id")},
+                {"base_revision", revision},
+                {"changes", diff},
+                {"audio_verified", false},
+                {"time_selection_changes", rangeDiff},
+                {"clip_changes", clipDiff},
+                {"automation_changes", automationDiff},
+                {"track_changes", trackDiff},
+                {"pan_changes", panDiff},
+                {"midi_changes", midiDiff},
+                {"transport_changes", transportDiff},
+                {"marker_changes", markerDiff},
+                {"group_changes", groupDiff},
+                {"legacy_imports", legacyDiff}};
+    if (plan.contains("clipboard_paste"))
+        result["clipboard_paste"] = plan["clipboard_paste"];
+    return result;
 }
 void Commands::bumpRevision()
 {
@@ -995,6 +1026,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                     throw std::runtime_error("unhandled command");
             }
         }
+        settleClipOrder(*edit);
         captureRoutingAssignments();
         restoreRoutingAssignments();
         juce::ValueTree transaction("TRANSACTION");
@@ -1060,6 +1092,7 @@ Json Commands::undo(const std::string& expected)
             "latest human state recovery is irreversible; use a saved snapshot or make a new edit");
     require(expected.empty() || expected == id,
             "later transaction exists; selective Undo requires conflict resolution");
+    settleClipOrder(*edit);
     require(edit->getUndoManager().getUndoDescription().endsWith(":" + juce::String(id)),
             "untracked undo transaction; command history cannot be advanced");
     edit->getTransport().freePlaybackContext();
@@ -1097,6 +1130,7 @@ Json Commands::redo()
     require(!edit->getTransport().isPlaying(), "stop playback before Redo");
     require(historyCursor < history.size(), "nothing to redo");
     const auto id = history.at(historyCursor);
+    settleClipOrder(*edit);
     require(edit->getUndoManager().getRedoDescription().endsWith(":" + juce::String(id)),
             "untracked redo transaction; command history cannot be advanced");
     edit->getTransport().freePlaybackContext();

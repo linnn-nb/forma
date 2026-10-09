@@ -46,3 +46,8 @@ evidence/U/*
 !evidence/U/automation-shuffle-regression.txt
 
 !evidence/U/automation-shuffle-qualification.json
+
+!evidence/U/automation-clipboard-tests.json
+!evidence/U/shuffle-paste-ranges-tests.json
+!evidence/U/automation-clipboard-regression.txt
+!evidence/U/automation-clipboard-qualification.json

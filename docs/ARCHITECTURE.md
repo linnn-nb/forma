@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+U-P0-SHUFFLE-PASTE-01（2026-10-09）：L1 ClipboardBuffer 私有保存真实 ClipCopy 和 native curve ValueTree，按参数 ID、插件槽/identifier/实际范围映射，默认 fader 单独识别，AuxSend 核验实际 bus。AutomationClipboard.cpp / ClipboardPasteCommands.cpp 编译有界 clip 原语与 automation.range.paste；GUI 不写 Edit。曲线切段复用 AutomationCurveEdit / AutomationShuffle，未截断段保留 ID/形状/额外字段，粘贴段生成新 ID。消息线程 snapshot/preview/commit 重核媒体、曲线、组、锁定、revision/Scope；一笔 native Undo。
+
+新增锁定 tracktion-clip-order-boundary.patch，提供消息线程 flushPendingClipOrder。L1 在 commit 结束及 Undo/Redo 边界只同步 SDK 待处理的片段排序，不运行通用消息循环；避免异步排序在原事务关闭后创建未跟踪事务。pin、原九补丁、RT 处理不变；CMake exact diff、独立 clean-pin apply/字节比较/reverse 通过。保存参数缓存补丁继续保留，未跟踪 Undo 守卫不放宽。11 项回归和实体保存→Undo/Open 通过，边界见 VERIFICATION。
+
 U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：音频范围 Shuffle Cut/Delete 现在由 L1 编译分组 clip 原语与 `automation.range.shuffle`，一个 human Plan / native UndoManager 事务同时保存曲线、片段、插入点和选区。GUI 只产出 Plan；预览包含真实原生点 ID、前后时间/数值/曲线、媒体与曲线 hash，提交重新核验。只截断边界段按实际 SDK DSP 插值核投影，未触及的完整段保留原 ID/形状/额外属性；误差界为原生参数跨度的 1e-7 加 float 存储舍入，接缝最多占最后一个 48k 工程样本。每轨 65536 输入点 / 8192 派生点预算，超限整笔拒绝。
 
 参数曲线显示查询改用原生 AutomationIterator，与实际 DSP 相同；不是更换 DSP。新增锁定 `tracktion-serialization-parameters.patch`，仅将 L1 保存触发的派生参数二进制缓存排除出 Undo，不改变显式参数/曲线编辑和未跟踪事务守卫；pin 及原补丁保留。独立临时目录 clean-pin apply / 原生字节比较 / reverse 通过，CMake 精确 diff 通过。实体 Save→Undo 的原故障和修复后通过均记录。命令/渲染实现见 AutomationShuffle.cpp、AutomationCommands.cpp、EditGroupCommands.cpp；不新增实时处理、AI/MCP 工具或第二引擎。以下历史限制由本节在所测范围替代。

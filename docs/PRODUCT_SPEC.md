@@ -1,3 +1,7 @@
+U-P0-SHUFFLE-PASTE-01（2026-10-09）：音频剪贴板保存实际原生自动化冻结快照；Shuffle 点插入和更短/更长选区替换同步移动分组音频与曲线，一笔 human Plan/Undo。Copy、Cut、Paste、Paste Original、Duplicate 复用全局可改键；大量曲线变更可预览、拒绝，接受后 Undo/Redo、另存重开。Release/固定签名，11/11 受影响回归、1204 检查通过；详细容差、桌面验收及边界见 VERIFICATION 首节。完整 U＋P0 未完成，不进 P1。以下保留历史增量；本节仅替代所述范围的旧限制。
+
+亲手试 `build-v2-tracktion/OpenAutomationClipboardDemo.command`：1–2 秒选区/Shuffle/Phase pair 已准备；CmdX 预览并接受，Control+Option+Shift+V 粘贴，取消或接受后 CmdZ/ShiftCmdZ，CmdS 新副本、CmdO 重开、Space 试听。测试媒体为真实诊断 PCM。普通非 Shuffle Cut 不清源轨自动化，全局跟随开关、Trim/拖拽/MIDI 仍待实现。
+
 U-P0-SRC-PHASE-01：默认原生 WaveNode 按绝对源位置重采样，混合48k/44.1k范围Shuffle已恢复；原失败负载PCM最大差1.1921e-7（原2e-5预算不变）、Paste Original差0。Release/固定签名、11/11受影响回归（1872检查、94.09秒）与实机改键/Undo/Redo/另存/Open/播放通过；原始媒体不改。非默认直接/HQ读取器、自动化跟随与完整Shuffle/U＋P0仍未完成；不进入P1。下文保留历史增量，旧混合率失败已在默认路径被本节资格替代。
 
 U-P0-SHUFFLE-AUTOMATION-01（2026-10-09）：分组音频范围 Shuffle Cut/Delete 会跟随音量、声像和实际插件参数自动化，可预览、拒绝、整笔撤销/重做和保存重开；复用可自定义 Delete/Cut 快捷键。771 点曲线在真实桌面完成编辑、另存、撤销与 Open；另修复保存参数缓存破坏 Undo 的原生故障。Release、9 项受影响回归/最终 885 检查通过（专项 95＋309），真实渲染 PCM 差 4.7684e-7（固定 2e-5 预算）。

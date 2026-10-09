@@ -151,6 +151,16 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-SHUFFLE-AUTOMATION-01";
     registry.back()["units"] = {{"start_samples", "48000 Hz session samples"}, {"end_samples", "exclusive"}};
+    add("automation.range.paste", {{"clipboard", string},
+                                   {"source_track", string},
+                                   {"track", string},
+                                   {"position_samples", position},
+                                   {"removal_end_samples", position},
+                                   {"mode", string},
+                                   {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-SHUFFLE-PASTE-01";
+    registry.back()["units"] = {{"position_samples", "48000 Hz session samples"}, {"removal_end_samples", "exclusive"}};
 }
 void Commands::initialiseAutomationIDs(juce::UndoManager* um)
 {
@@ -324,6 +334,15 @@ Json Commands::validateAutomationPlan(const Json& operations) const
             changes.push_back(std::move(change));
             continue;
         }
+        if (cmd == "automation.range.paste")
+        {
+            auto change = automationClipboardChanges(args);
+            require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
+                    "paste automation state changed");
+            change["command"] = cmd;
+            changes.push_back(std::move(change));
+            continue;
+        }
         const std::string parameter = resolved(track, args.at("parameter"));
         require(tracks.at(track).contains(parameter), "automation target removed or unavailable");
         auto& lane = tracks.at(track).at(parameter);
@@ -360,6 +379,11 @@ Json Commands::validateAutomationPlan(const Json& operations) const
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
+    if (cmd == "automation.range.paste")
+    {
+        executeAutomationClipboard(args, objects);
+        return;
+    }
     if (cmd == "automation.range.shuffle")
     {
         executeAutomationShuffle(args, objects);

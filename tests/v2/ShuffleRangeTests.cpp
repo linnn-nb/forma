@@ -25,6 +25,14 @@ public:
         parameter->updateToFollowCurve(tracktion::TimePosition::fromSeconds(1.5));
         return parameter->getCurrentValue() != parameter->getCurrentExplicitValue();
     }
+    static juce::String undoName(Commands& c)
+    {
+        return c.edit->getUndoManager().getUndoDescription();
+    }
+    static juce::String status(Workspace& w)
+    {
+        return w.status.getText();
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -109,6 +117,32 @@ void range(Workspace& w, Commands& c, int64_t first, int64_t last, Json tracks)
     run(c, Json::array({operation("session.range.set", {{"start_samples", first}, {"end_samples", last}})}));
     c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", tracks}}, c.sessionToken());
     pump();
+}
+Json curveState(Commands& c, const std::string& track)
+{
+    auto lanes = c.automationQuery(track)["lanes"];
+    for (auto& lane : lanes)
+        for (const char* key : {"value", "display", "recording"})
+            lane.erase(key);
+    return lanes;
+}
+Json trackState(Commands& c)
+{
+    auto rows = c.query()["tracks"];
+    for (auto& row : rows)
+    {
+        row.erase("gain_db");
+        row.erase("pan");
+        std::sort(row["clips"].begin(), row["clips"].end(),
+                  [](const Json& a, const Json& b) { return a["id"].get<std::string>() < b["id"].get<std::string>(); });
+        for (auto& plugin : row["plugins"])
+            for (auto& parameter : plugin["parameters"])
+            {
+                parameter.erase("current_value");
+                parameter.erase("display");
+            }
+    }
+    return rows;
 }
 juce::AudioBuffer<float> rendered(Commands& c, const juce::File& f, int64_t start, int64_t end)
 {
@@ -615,6 +649,8 @@ int main(int argc, char** argv)
                   juce::KeyPress('z', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 'z')),
               "CmdShiftZ restores accepted automation transaction");
         pump();
+        check(AudioDeviceTestAccess::undoName(c).startsWith("human:"),
+              "asynchronous clip ordering remains in originating human transaction after Redo");
         const auto curveSaved = folder.getChildFile("AutomationCollapsed.tracktionedit");
         check(AudioDeviceTestAccess::follow(c, b), "native follower differs from explicit base before parameter save");
         c.save(curveSaved);
@@ -623,11 +659,93 @@ int main(int argc, char** argv)
         key(w, 'z');
         auto afterSavedUndo = c.automationQuery(b);
         afterSavedUndo["revision"] = curvedBefore["revision"];
+        if (afterSavedUndo != curvedBefore || c.query()["tracks"] != curvedClips)
+            std::cerr << "Save Undo status " << AudioDeviceTestAccess::status(w) << " revision "
+                      << c.querySummary()["revision"] << " curve changes "
+                      << Json::diff(curvedBefore, afterSavedUndo).size() << " track changes "
+                      << Json::diff(curvedClips, c.query()["tracks"]).size() << std::endl;
         check(afterSavedUndo == curvedBefore && c.query()["tracks"] == curvedClips,
               "save and recovery flush after Redo do not introduce an untracked Undo transaction");
         w.openSession(curveSaved);
         pump();
         check(c.automationQuery(b)["lanes"] != curvedBefore["lanes"], "saved projected curve reopens in native GUI");
+        w.openSession(automationReady);
+        pump();
+        const auto pasteKey = juce::KeyPress(
+            'v', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
+            'v');
+        w.uiCommands().getKeyMappings()->clearAllKeyPresses(editCommand::paste);
+        w.uiCommands().getKeyMappings()->addKeyPress(editCommand::paste, pasteKey);
+        pump();
+        const auto pasteDemo = folder.getChildFile("AutomationClipboardReady.tracktionedit");
+        c.save(pasteDemo);
+        const auto uncutAudio = rendered(c, folder.getChildFile("uncut-automation.wav"), 0, 400000);
+        key(w, 'x');
+        check(!AudioDeviceTestAccess::pending(w).is_null(), "actual grouped curved Cut requires preview");
+        click(w, "plan.accept");
+        check(c.clipboard()["automation"].size() == 1, "successful GUI Cut activates frozen native volume curve");
+        const auto cutClips = trackState(c);
+        const auto cutCurves = curveState(c, b);
+        check(w.uiCommands().getKeyMappings()->keyPressed(pasteKey, &w),
+              "custom Paste key invokes actual Shuffle insertion");
+        pump();
+        check(!AudioDeviceTestAccess::pending(w).is_null(), "automation insertion impact is previewed before any edit");
+        previewText = dynamic_cast<juce::TextEditor*>(find(w, "legacy.report"));
+        check(previewText && previewText->getText().contains(juce::String::fromUTF8("冻结快照")),
+              "paste confirmation explains real frozen automation source");
+        click(w, "plan.reject");
+        if (trackState(c) != cutClips || curveState(c, b) != cutCurves)
+            std::cerr << "Reject track diff " << Json::diff(cutClips, trackState(c)).dump() << " curve diff "
+                      << Json::diff(cutCurves, curveState(c, b)).dump() << std::endl;
+        check(trackState(c) == cutClips && curveState(c, b) == cutCurves,
+              "Reject keeps current cut topology and curve unchanged");
+        check(w.uiCommands().getKeyMappings()->keyPressed(pasteKey, &w), "custom Paste can be proposed after Reject");
+        pump();
+        click(w, "plan.accept");
+        const auto pastedGroup = trackState(c);
+        const auto pastedCurves = curveState(c, b);
+        check(byID(pastedGroup, a1)["start_samples"] == 180000 && c.timelineRange()["end_samples"] == 96000,
+              "Shuffle Paste restores later grouped positions and selects inserted audio");
+        const auto restoredAudio = rendered(c, folder.getChildFile("restored-automation.wav"), 0, 400000);
+        double roundtripError = 0;
+        for (int ch = 0; ch < 2; ++ch)
+            for (int frame = 2048; frame < 398000; ++frame)
+                if (std::abs(frame - 48000) > 2048 && std::abs(frame - 96000) > 2048)
+                    roundtripError = std::max(roundtripError, std::abs(double(restoredAudio.getSample(ch, frame)) -
+                                                                       uncutAudio.getSample(ch, frame)));
+        check(roundtripError < 2e-5,
+              "mixed-rate grouped Cut/Paste restores actual automated stereo audio within original budget");
+        key(w, 'z');
+        check(trackState(c) == cutClips && curveState(c, b) == cutCurves,
+              "one GUI Undo restores pre-Paste native curves and grouped clips");
+        check(w.keyPressed(
+                  juce::KeyPress('z', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 'z')),
+              "native Redo shortcut accepted for paste");
+        pump();
+        check(trackState(c) == pastedGroup && curveState(c, b) == pastedCurves,
+              "Redo preserves pasted native identities");
+        const auto pasteSaved = folder.getChildFile("AutomationClipboardPasted.tracktionedit");
+        c.save(pasteSaved);
+        w.openSession(pasteSaved);
+        pump();
+        auto reopenedPaste = trackState(c);
+        for (const auto& difference : Json::diff(pastedGroup, reopenedPaste))
+            if (difference["op"] == "replace" &&
+                difference["path"].get<std::string>().ends_with("/source_offset_seconds"))
+            {
+                const Json::json_pointer path(difference["path"].get<std::string>());
+                sourceTimeError = std::max(sourceTimeError, std::abs(reopenedPaste.at(path).get<double>() -
+                                                                     pastedGroup.at(path).get<double>()));
+                if (sourceTimeError < 1e-12)
+                    reopenedPaste[path] = pastedGroup.at(path);
+            }
+        if (reopenedPaste != pastedGroup || curveState(c, b) != pastedCurves)
+            std::cerr << "Reopen track diff " << Json::diff(pastedGroup, reopenedPaste).dump() << " curve diff "
+                      << Json::diff(pastedCurves, curveState(c, b)).dump() << std::endl;
+        check(reopenedPaste == pastedGroup && curveState(c, b) == pastedCurves,
+              "native GUI reopens pasted group and curves");
+        check(w.uiCommands().getKeyMappings()->containsMapping(editCommand::paste, pasteKey),
+              "custom Paste shortcut survives save and Open");
         w.openSession(ready);
         pump();
         // Actual Edit workload, not a mock: 65 later clips exceed the fixed Plan limit.
@@ -661,6 +779,8 @@ int main(int argc, char** argv)
             {"source_time_reopen_error_seconds", sourceTimeError},
             {"demo", ready.getFullPathName().toStdString()},
             {"automation_demo", automationReady.getFullPathName().toStdString()},
+            {"clipboard_demo", pasteDemo.getFullPathName().toStdString()},
+            {"automation_roundtrip_pcm_max_error", roundtripError},
             {"budgets", {{"pcm_error", 2e-5}, {"split_edge_exclusion_frames", 2048}, {"source_time_seconds", 1e-12}}},
             {"scope", "real native Edit, group Shuffle partial/gap Cut/Delete, strict preview and permissions, native "
                       "Undo, PCM render, GUI keys, save/reopen; physical desktop separate"}};

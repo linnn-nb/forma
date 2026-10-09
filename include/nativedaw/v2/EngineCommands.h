@@ -59,6 +59,8 @@ public:
     Json prepareClipboard(const Json& clips, const Json& tracks, int64_t start, int64_t end,
                           const std::string& expectedSession, uint64_t expectedRevision);
     void acceptClipboard(const std::string& buffer);
+    Json makeClipboardPastePlan(const std::string& buffer, const Json& tracks, int64_t point, int64_t removalEnd,
+                                const std::string& mode) const;
     Json clipboard() const;
     Json exportRequest(bool selection) const;
     Json renderRequest(const juce::File&, const Json&);
@@ -120,8 +122,10 @@ public:
     Json legacyReports() const;
 
 private:
-    Json makePlanImpl(const std::string& actor, Json operations, const Json& shuffleRange) const;
+    Json makePlanImpl(const std::string& actor, Json operations, const Json& shuffleRange,
+                      const Json& clipboardPaste = nullptr) const;
     Json shuffleRangeOperations(const Json&) const;
+    Json clipboardPasteOperations(const Json&) const;
     std::shared_ptr<ScrubPlayback> scrubPlayback;
     std::unique_ptr<juce::ThreadPool> scrubDecoder;
     void activateScrub();
@@ -326,11 +330,24 @@ private:
     };
     struct ClipboardBuffer
     {
+        struct Lane
+        {
+            juce::ValueTree state;
+            std::string name, parameter, identifier;
+            int slot;
+            bool fader;
+            float minimum, maximum;
+        };
         Json manifest;
         std::map<std::string, ClipboardEntry> entries;
+        std::map<std::string, std::vector<Lane>> automation;
     };
     std::optional<ClipboardBuffer> activeClipboard, stagedClipboard;
     const ClipboardEntry* clipboardEntry(const std::string&) const;
+    const ClipboardBuffer* clipboardBuffer(const std::string&) const;
+    void captureClipboardAutomation(ClipboardBuffer&, size_t& bytes) const;
+    Json automationClipboardChanges(const Json&) const;
+    void executeAutomationClipboard(const Json&, Json&);
     static void registerClipCommands(Json&);
     Json audioClipQuery(te::WaveAudioClip&) const;
     Json validateClipPlan(const Json&) const;

@@ -1,5 +1,27 @@
 # 验证状态
 
+## U-P0-SHUFFLE-PASTE-01 · 2026-10-09
+
+结论：音频与真实原生自动化快照的 Copy/Cut/Paste、Shuffle 点插入/不等长选区替换已验证；同一 L1 human 事务、Reject/Accept、改键、Undo/Redo、保存重开和实体 CoreAudio 输出通过。Release 与固定叶证书 deep/strict 验签通过，11/11 受影响 CTest（94.94＋70.03 秒），共 **1204 不重复检查**；为已复现的间歇故障连续复跑 Shuffle 范围三次，均通过（53.34 秒）。完整 U＋P0 仍未完成。
+
+| 实现与需求 | 自动化证据 | 当前结果 |
+|---|---|---|
+| ClipboardCommands/AutomationClipboard：冻结真实 ClipCopy、原生曲线、稳定 ID/媒体 hash；源后续编辑不改变快照 | AutomationClipboardTests 234 检查 | 9 种 c=0/±.25/±.5/±.75/±1，真实音量/声像/EQ 参数与未复制目标阶跃泳道，通过 |
+| ClipboardPasteCommands：Shuffle 插入、短/长替换、目标组闭包、布局/参数匹配、版本/权限/幂等 | 同上；损坏 schema、被删除源 clip、插件槽不匹配/陈旧版本/有限 Scope | 原子拒绝或真实提交，一笔 Undo/Redo |
+| WorkspaceClipboard/WorkspaceEditing：真实变更卡、快捷键、音频/曲线一起撤销、保存重开 | ShuffleRangeTests 116 检查；真实桌面 CUA | 拒绝不改状态；改键保存重开；混合 48k/44.1k roundtrip 通过 |
+| EngineCommands/SDK clip-order boundary：异步片段排序归属原事务 | 立即提交→Undo/Redo→消息泵、native follower→Save/恢复→Undo，三次复跑 | 未跟踪事务守卫保留；排序收尾修复后通过 |
+
+真实声音：独立 native Edit 手工排列原始媒体，以每 16 帧原 SDK DSP 曲线形成参考，解码实际 stereo 48k WAV。最大归一化曲线差 **1.7881393432617188e-7**（固定 4e-7）；EQ native 参考 PCM 差 **4.76837158203125e-7**、混合率 Cut/Paste roundtrip **1.1920928955078125e-7**（固定 2e-5，切点 ±2048 帧排除）。源媒体 hash 不变，源秒序列化误差 2.220446049250313e-16（既有 1e-12 秒预算）。不声称切点音质或第三方任意样本自动化已获资格。
+
+修复证据：原生 +1 阶跃端点最初差 0.5，按 AutomationIterator 的严格端点行为增加真实接缝/零点首样本 guard 后九形状通过。大型逐点命令参考构建曾 180 秒超时；使用同样每 16 帧负载的独立原生参考 XML，正常 Open/Render 后通过，预算未放宽，大点量命令吞吐仍未资格。GUI 精确 JSON 比较发现原生 XML 的源秒 ULP 差，仅应用既有源时间容差，曲线/ID 保持精确。Save/Redo 后间歇 untracked Undo 原因是 SDK 异步 clip sort 越过事务；新增可复现补丁和 L1 定向 flush，不泵通用消息、不删除未知事务、不放宽 Undo 守卫。clean-pin apply/源码字节比较/reverse、CMake exact diff 通过，原九补丁保留。
+
+实体自有 Preview：CmdX→接受→ControlOptionShiftV 预览（771→1028 点）→取消（r28 不变）→再接受→CmdZ/ShiftCmdZ；原生另存 ClipboardDesktopSaved.tracktionedit 后 CmdZ 成功，原生 Open 恢复 9 个 audio clip / 1028 点。外置耳机 CoreAudio 48k/512，重开后 Play 的 AX 时钟 1.256 秒；截图 1.362 秒、Master Sample Peak -21.1 dBFS、音量 -19.9 dB。截图已在对话展示，不虚构本地 PNG；主观听感/实体回采/deadline 未验。Quit 后确认自有预览无残留，旧用户窗口保留。
+
+边界：只支持秒基 native 参数曲线，跨轨需匹配插件槽/identifier/ID/范围，static 轨道插件设置不复制；第三方实例映射未实测。剪贴板仅在当前会话存在，粘贴后的工程内容可保存重开。普通非 Shuffle Cut 尚不删除源轨曲线，全局跟随开关/Trim/拖拽/Nudge/whole-clip/MIDI 仍未完成。非默认直接/HQ/loop/warp/offline 路径明确拒绝；8 MiB、65536 输入点/8192 派生点每轨和 64 原语预算保持。MCP/分析冻结；无新 RT/耐久/Windows/完整 Pro Tools 资格、无 DMG。
+
+证据：automation-clipboard-tests.json、shuffle-paste-ranges-tests.json、automation-clipboard-regression.txt、automation-clipboard-qualification.json；历史输出按字节恢复，最新原始测试/失败夹具保留在 build-v2-tracktion。亲手试 OpenAutomationClipboardDemo.command；下一项为全局跟随设置与非 Shuffle Cut/Delete 策略。
+
+
 ## U-P0-SHUFFLE-AUTOMATION-01 · 2026-10-09
 
 结论：音频时间范围 Shuffle Cut/Delete 的编辑组与原生音量/声像/真实 EQ 参数曲线在同笔事务跟随，键位、Reject/Accept、Undo/Redo、保存重开通过；实体 Save→Undo 原故障已修复并复测。Release/固定叶证书 deep/strict 验签通过。受影响 9/9 CTest（142.15 秒），新增 native follower 保存检查再跑范围测试 1/1（15.25 秒），最新九项共 **885 个不重复检查**：音频自动化 59、原生自动化界面 25、恢复 52、自动化时间线 143、剪贴板 49、编辑 81、分组范围 72、Shuffle 范围 95、曲线 Shuffle 309。之前报告按字节保留，新记录在 automation-shuffle-regression.txt / automation-shuffle-qualification.json；完整 U＋P0 未完成。

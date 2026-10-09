@@ -94,6 +94,7 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         if (!hashes.contains(path))
             hashes[path] = mediaHash(juce::File(juce::String(path)));
         facts["media_hash"] = hashes.at(path);
+        facts["default_reader"] = c->canUseProxy();
         facts["clip"] = id;
         facts["track"] = owner;
         facts["start_samples"] = first;
@@ -125,6 +126,7 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         buffer.manifest["entries"].push_back(
             {{"token", token}, {"clip", id}, {"track", owner}, {"start_samples", first}, {"end_samples", last}});
     }
+    captureClipboardAutomation(buffer, bytes);
     require(revision == expectedRevision, "project changed while flushing clipboard state");
     stagedClipboard = std::move(buffer);
     return stagedClipboard->manifest;
