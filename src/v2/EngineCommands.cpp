@@ -468,8 +468,8 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
 {
     return makePlanImpl(actor, std::move(ops), nullptr);
 }
-Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuffleRange,
-                            const Json& clipboardPaste) const
+Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuffleRange, const Json& clipboardPaste,
+                            const Json& audioClear) const
 {
     checkThread();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -541,7 +541,7 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
         }
     }
     const auto requested = ops;
-    if (shuffleRange.is_null() && clipboardPaste.is_null())
+    if (shuffleRange.is_null() && clipboardPaste.is_null() && audioClear.is_null())
         ops = expandMixGroupFlags(ops);
     Json plan{{"plan_id", juce::Uuid().toString().toStdString()},
               {"actor", actor},
@@ -553,6 +553,8 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
         plan["shuffle_range"] = shuffleRange;
     else if (!clipboardPaste.is_null())
         plan["clipboard_paste"] = clipboardPaste;
+    else if (!audioClear.is_null())
+        plan["audio_clear_range"] = audioClear;
     else if (requested != ops)
         plan["requested_operations"] = requested;
     preview(plan);
@@ -588,7 +590,15 @@ Json Commands::preview(const Json& plan) const
     require(ops.is_array() && !ops.empty() && ops.size() <= 64, "operation limit (1..64)");
     const auto requested = plan.value("requested_operations", ops);
     require(requested.is_array() && !requested.empty() && requested.size() <= 64, "requested operation limit (1..64)");
-    if (plan.contains("shuffle_range"))
+    if (plan.contains("audio_clear_range"))
+    {
+        require(actor == "human" && !plan.contains("requested_operations") && !plan.contains("shuffle_range") &&
+                    !plan.contains("clipboard_paste"),
+                "audio range clear is a compiled local human Plan");
+        require(ops == audioClearRangeOperations(plan.at("audio_clear_range")),
+                "audio range clear changed; rebuild the entire Plan");
+    }
+    else if (plan.contains("shuffle_range"))
     {
         require(actor == "human" && !plan.contains("requested_operations") && !plan.contains("clipboard_paste"),
                 "Shuffle range is a local human Plan");
@@ -610,6 +620,9 @@ Json Commands::preview(const Json& plan) const
     {
         const auto cmd = op.at("command").get<std::string>();
         const auto& a = op.at("args");
+        if (cmd == "automation.range.clear")
+            require(actor == "human" && plan.contains("audio_clear_range"),
+                    "automation clear requires a compiled local human range Plan");
         if (cmd == "automation.range.shuffle")
             require(actor == "human" && plan.contains("shuffle_range"),
                     "automation range follow requires a locally compiled human Shuffle Plan");
@@ -802,6 +815,8 @@ Json Commands::preview(const Json& plan) const
                 {"legacy_imports", legacyDiff}};
     if (plan.contains("clipboard_paste"))
         result["clipboard_paste"] = plan["clipboard_paste"];
+    if (plan.contains("audio_clear_range"))
+        result["audio_clear_range"] = plan["audio_clear_range"];
     return result;
 }
 void Commands::bumpRevision()

@@ -130,7 +130,9 @@ void Workspace::executeClipboardCommand(int id)
                 if (id == editCommand::copy)
                 {
                     commands.acceptClipboard(buffer["id"]);
-                    message(text("已复制音频与自动化快照 · 工程与 Undo 保持"));
+                    message(text(buffer["automation_follows_edit"].get<bool>()
+                                     ? "已复制音频与自动化快照 · 工程与 Undo 保持"
+                                     : "已复制音频 · 跟随关闭，未复制曲线 · 工程与 Undo 保持"));
                     return;
                 }
                 if (id == editCommand::cut)
@@ -146,7 +148,10 @@ void Workspace::executeClipboardCommand(int id)
                             ops = deleteClipOperations(true);
                     }
                     else if (range)
-                        ops = commands.audioRangeOperations("delete", selection.tracks, first, last);
+                    {
+                        plan = commands.makeAudioClearRangePlan(selection.tracks, first, last, true);
+                        ops = plan["operations"];
+                    }
                     else
                         for (const auto& c : slices)
                             removeInterval(ops, c, c["slice_start"], c["slice_end"], ref);
@@ -222,7 +227,8 @@ void Workspace::executeClipboardCommand(int id)
             {
                 pending = plan;
                 pendingClipboardPlan = plan["plan_id"];
-                previewText.setText((plan.contains("shuffle_range") || plan.contains("clipboard_paste"))
+                previewText.setText((plan.contains("shuffle_range") || plan.contains("clipboard_paste") ||
+                                     plan.contains("audio_clear_range"))
                                         ? shufflePreviewText(preview)
                                         : text(preview.dump(2)));
                 message(text("大范围剪切 / 替换 · 请预览后接受或拒绝"));

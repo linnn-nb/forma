@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+U-P0-AUTOMATION-CLEAR-01：L1 `makeAudioClearRangePlan` 生成封闭的 `audio_clear_range` schema1（tracks/start_samples/end_samples/action），先展开实际编辑组，再绑定媒体 hash 和曲线 state_hash；preview/commit 重编译完整描述符。`automation.range.clear` 仅限 compiled human/local_gui Plan，不添加 MCP 工具。开启跟随时，原生片段切分/删除与音量、声像、实际插件参数曲线同笔 native Undo；关闭时不写曲线。
+
+AutomationClear.cpp 复用已验证的原生 DSP 曲线切段器。Cut 在两端锚定，截断的曲段有界投影、空隙线性连接；Delete 只移除半开区间的原点，保留其他 ID/时间/值/系数。共享 native 曲线写入器保存原点附加属性，新点分配 ID；每轨 65536 输入点/8192 派生点、单曲线 65536 输出点、每 Plan 64 操作，超限整笔拒绝。没有新增 SDK、实时处理或第二引擎。参数视图独立范围编辑、整片段与 Trim/拖拽/Nudge/MIDI 联动待补。
+
 U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：L1 新增 standalone / human / local_gui `session.automation_follows_edit.set`；Edit/NATIVEDAW/EDIT_OPTIONS schema1 保存 0/1，旧工程缺失默认 on，不创建额外事务。开关是一笔原生 Undo/revision，GUI 查询同一事实。载入候选 Edit 严格检查 schema、字段、值及重复节点，再采用工程。
 
 Shuffle 范围与音频剪贴板编译器按当前开关决定是否包含曲线；Copy-off 不冻结曲线，当前 off 优先于既有 Copy-on。完整描述符重编译和 revision 校验拒绝过期策略。设置不能混合音频操作、播放中修改或在 GUI 待确认期间切换。没有新增 SDK/实时路径；仅覆盖范围 Shuffle Cut/Delete 与音频粘贴，普通 Clear/Trim/拖拽/Nudge/整片段/MIDI 待补。

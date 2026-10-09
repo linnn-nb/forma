@@ -1,5 +1,9 @@
 # U 原生界面重构
 
+U-P0-AUTOMATION-CLEAR-01（2026-10-09）：普通音频范围 Cut/Delete 与实际音量/声像/EQ曲线同笔 native Undo；Cut锚定两端、Delete只移除原点，编辑组、预览拒绝/接受、跟随on/off、可改键、保存重开均已测试。Release/固定验签、11/11相关CTest、1572检查、296.01秒通过；新专项394。实际曲线最大归一化差1.1920928955078125e-7/4e-7预算，PCM最大差8.58306884765625e-6/2e-5预算，排除范围详见VERIFICATION。实体窗口保存→Undo/Redo/Open、Backspace Delete及off对照通过，截图实际出现在会话；验收接口暂时超时重新绑定后恢复。只结束本轮67449，用户旧窗口保持。
+
+新原始输出：automation-clear-tests.json、automation-clear-regression.txt、automation-clear-qualification.json；历史报告回归完成后按原SHA256恢复。可双击 build-v2-tracktion/OpenAutomationClearDemo.command 试用已有1–2秒真实音频选区。参数视图独立范围编辑、整片段、Trim/拖拽/Nudge/MIDI及完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓，无新SDK/依赖/硬件实录资格。
+
 ## U-P0-AUTOMATION-FOLLOW-01 · 2026-10-09
 
 工程级跟随开关已接编辑菜单、蓝/橙按钮、默认 Control+Option+A 与可改键；同笔 L1 Undo/Redo、保存重开、幂等及冲突保护。on/off 范围 Shuffle Cut/Delete、音频粘贴实际原生曲线通过；普通非 Shuffle 源曲线清理、Trim/拖拽/Nudge/整片段/MIDI 待补，完整 U＋P0 未完成，不进 P1。

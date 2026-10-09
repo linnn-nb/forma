@@ -55,3 +55,7 @@ evidence/U/*
 !evidence/U/automation-follow-tests.json
 !evidence/U/automation-follow-regression.txt
 !evidence/U/automation-follow-qualification.json
+
+!evidence/U/automation-clear-tests.json
+!evidence/U/automation-clear-regression.txt
+!evidence/U/automation-clear-qualification.json

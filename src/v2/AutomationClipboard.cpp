@@ -81,7 +81,7 @@ std::vector<Point> slice(const std::vector<Point>& source, double low, double hi
 }
 } // namespace curve_edit
 using namespace curve_edit;
-namespace
+namespace curve_edit
 {
 float nativeValue(const std::vector<Point>& points, double at)
 {
@@ -129,7 +129,7 @@ std::vector<Point> startSlice(const std::vector<Point>& source, double low, doub
         result.insert(result.begin(), {low, value, 0, {}});
     return result;
 }
-} // namespace
+} // namespace curve_edit
 const Commands::ClipboardBuffer* Commands::clipboardBuffer(const std::string& id) const
 {
     for (const auto* buffer : {&activeClipboard, &stagedClipboard})

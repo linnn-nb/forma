@@ -161,6 +161,14 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-SHUFFLE-PASTE-01";
     registry.back()["units"] = {{"position_samples", "48000 Hz session samples"}, {"removal_end_samples", "exclusive"}};
+    add("automation.range.clear", {{"track", string},
+                                   {"start_samples", position},
+                                   {"end_samples", position},
+                                   {"action", string},
+                                   {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-AUTOMATION-CLEAR-01";
+    registry.back()["units"] = {{"start_samples", "48000 Hz session samples"}, {"end_samples", "exclusive"}};
 }
 void Commands::initialiseAutomationIDs(juce::UndoManager* um)
 {
@@ -325,6 +333,15 @@ Json Commands::validateAutomationPlan(const Json& operations) const
                     "unsupported automation mode");
             continue;
         }
+        if (cmd == "automation.range.clear")
+        {
+            auto change = automationClearChanges(args);
+            require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
+                    "clear automation state changed");
+            change["command"] = cmd;
+            changes.push_back(std::move(change));
+            continue;
+        }
         if (cmd == "automation.range.shuffle")
         {
             auto change = automationShuffleChanges(args);
@@ -379,6 +396,11 @@ Json Commands::validateAutomationPlan(const Json& operations) const
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
+    if (cmd == "automation.range.clear")
+    {
+        executeAutomationClear(args, objects);
+        return;
+    }
     if (cmd == "automation.range.paste")
     {
         executeAutomationClipboard(args, objects);

@@ -1,3 +1,5 @@
+U-P0-AUTOMATION-CLEAR-01（2026-10-09）：普通音频时间范围 Cut/Delete 接通自动化跟随：Cut 补边界并保留选区外曲线，Delete 移除选区内原点、允许相邻插值改变。沿用 Cmd+X、Backspace与可改键，同笔Undo/Redo、预览、编辑组、保存重开；关闭跟随时只编辑音频。11项受影响测试和实体波形视图验收通过。参数视图独立范围操作、整片段、Trim/拖拽/Nudge/MIDI跟随及完整U＋P0仍未完成；本节限定替代旧普通范围清理限制。
+
 U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：新增工程级“自动化跟随编辑”，编辑菜单复选项、宽窗口蓝/橙指示按钮与默认 Control+Option+A 共用 L1；可改键、Undo/Redo、保存重开。开启时范围 Shuffle Cut/Delete 和音频粘贴联合编辑原生曲线，关闭时曲线留在工程原时间。后文历史“无全局开关”由本节替代；普通非 Shuffle 删除、Trim/拖拽/Nudge/整片段/MIDI 跟随仍未完成。
 
 亲手试 `build-v2-tracktion/OpenAutomationFollowDemo.command`，Control+Option+A 切换；选中第一轨，F1、CmdX，开启时预览/接受；CmdZ 撤销。CmdS 另存新副本、CmdO 重开。低幅诊断音频不代表音乐听感验收；完整 U＋P0 仍未完成。

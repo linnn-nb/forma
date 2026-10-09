@@ -1,5 +1,7 @@
 # Forma 界面与基础制作计划
 
+U-P0-AUTOMATION-CLEAR-01（2026-10-09）：普通音频时间范围 Cut/Delete 接通真实原生曲线联动；大范围显示 Cut锚定/Delete移点策略与点数，接受/拒绝及同笔 Undo。现有可改键、跟随开关、保存/Open、编辑组与锁定/权限检查通过；Release/固定签名、11/11 CTest（1572检查）与实体波形视图操作通过。参数视图独立范围编辑、整片段、Trim/拖拽/Nudge/MIDI待补；完整 U＋P0 未完成，不进P1。此节替代历史“普通范围清理未完成”；下一项先完成参数视图范围语义。
+
 U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：工程级跟随开关接通编辑菜单、蓝/橙状态按钮、默认 Control+Option+A 与可改键；一笔 L1 Undo、保存重开、版本冲突保护。开启/关闭范围 Shuffle Cut/Delete、音频粘贴已实测。Release/固定签名、相关 10/10 CTest（1178 检查）和实体操作通过；详见 VERIFICATION 最新节。旧“开关未完成”由本节替代，非 Shuffle 源曲线清理、Trim/拖拽/Nudge/整片段/MIDI 仍待补；完整 U＋P0 未完成，不进 P1。
 
 U-P0-SHUFFLE-PASTE-01（2026-10-09）：音频剪贴板保存实际原生自动化冻结快照；Shuffle 点插入和更短/更长选区替换同步移动分组音频与曲线，一笔 human Plan/Undo。Copy、Cut、Paste、Paste Original、Duplicate 复用全局可改键；大量曲线变更可预览、拒绝，接受后 Undo/Redo、另存重开。Release/固定签名，11/11 受影响回归、1204 检查通过；详细容差、桌面验收及边界见 VERIFICATION 首节。完整 U＋P0 未完成，不进 P1。以下保留历史增量；本节仅替代所述范围的旧限制。

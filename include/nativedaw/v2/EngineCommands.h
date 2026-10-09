@@ -37,6 +37,7 @@ public:
     // Local human planner: resolve an entire time collapse before whole-clip group expansion.
     // Preview recompiles the descriptor, so callers cannot bypass group linkage by editing a flag.
     Json makeShuffleRangePlan(const Json& tracks, int64_t first, int64_t last) const;
+    Json makeAudioClearRangePlan(const Json& tracks, int64_t first, int64_t last, bool cut) const;
     Json preview(const Json&) const;
     Json commit(const Json&, bool accepted = false, const Scope& scope = {});
     Json review(const Json&, const Scope&) const;
@@ -124,7 +125,8 @@ public:
 
 private:
     Json makePlanImpl(const std::string& actor, Json operations, const Json& shuffleRange,
-                      const Json& clipboardPaste = nullptr) const;
+                      const Json& clipboardPaste = nullptr, const Json& audioClear = nullptr) const;
+    Json audioClearRangeOperations(const Json&) const;
     Json shuffleRangeOperations(const Json&) const;
     Json clipboardPasteOperations(const Json&) const;
     std::shared_ptr<ScrubPlayback> scrubPlayback;
@@ -267,6 +269,9 @@ private:
     Json validateAutomationPlan(const Json&) const;
     Json automationShuffleChanges(const Json&) const;
     void executeAutomationShuffle(const Json&, Json&);
+    Json automationClearChanges(const Json&) const;
+    void executeAutomationClear(const Json&, Json&);
+    void executeAutomationCurveChanges(const Json&, Json&);
     void executeAutomationOperation(const std::string&, const Json&, Json&);
     void initialiseAutomationIDs(juce::UndoManager* = nullptr);
     void beginAutomationCapture();

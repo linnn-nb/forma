@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+U-P0-AUTOMATION-CLEAR-01：本地 human Plan 可携带互斥的 `audio_clear_range` 描述符，严格为 schema=整数1、tracks、start_samples、end_samples、action 五字段；action 只能 cut/delete，时间为 48k 工程采样、end exclusive。L1 重编译并比对所有操作，拒绝伪造、旧 revision/曲线、越界、锁定组成员、范围/目标 Scope 不足与资源超限。`automation.range.clear` 必须属于该封闭描述符，不能单独提交或由外部 actor 使用；MCP 保持冻结。
+
+预览列出真实 clip 变更、曲线 before/after、ID、原生单位、hash、派生点数和策略。大变更拒绝不写工程/不接纳 Cut 剪贴板；接受后音频与曲线同笔 native Undo。Cut 保留边界外曲线；Delete 的原有点跨越空隙，可能改变相邻曲线，不能标为与 Cut 等价。测试 U-P0-AUTOMATION-CLEAR-01，代码 AutomationClear/EditGroupCommands/EngineCommands/WorkspaceClipboard/WorkspaceEditing。
+
 U-P0-AUTOMATION-FOLLOW-01：`session.automation_follows_edit.set` 仅接受 `{enabled:boolean}`，standalone、human/local_gui、edit/low/reversible、live=false；不进入冻结的 MCP 工具。无变化、错误类型、混合计划和播放中请求拒绝；返回 `editing_option_changes` typed before/after，成功才递增 revision，一笔 Undo/Redo，幂等重试复用原回执。query/querySummary 的 `editing_options` 来自 Edit；策略改变后旧范围/剪贴板计划失效，篡改 revision 仍须通过完整编译核验。
 
 U-P0-SHUFFLE-PASTE-01：新增 human/local_gui automation.range.paste（track、source_track、clipboard、position_samples、removal_end_samples、mode、state_hash），仅由 L1 编译的 clipboard_paste schema1 描述符授权；preview/commit 重编译完整原语列表，外部 actor、篡改、陈旧 snapshot/version、锁定、布局/实例不匹配或资源超限整笔拒绝。不是新的 MCP 能力。冻结曲线身份来自实际枚举参数，static track 参数不复制；返回 typed before/after、影响/新增点数量和真实回执。音频、曲线、插入点/选区共用一笔 Undo/Redo；网络重复提交不能重复插入。8 MiB snapshot、每轨 65536 输入/8192 派生点、每 Plan 64 原语预算保持。范围 Scope 不可默许扩大为整轨曲线修改。MCP/分析仍冻结。

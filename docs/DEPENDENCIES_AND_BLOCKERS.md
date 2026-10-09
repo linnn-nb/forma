@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+U-P0-AUTOMATION-CLEAR-01（2026-10-09）：无需新授权，无新依赖/SDK补丁/固定插件IPC；现有 Tracktion/JUCE pin 与已批准补丁保留。Release/固定签名、11项受影响测试、实体 Cut/Delete/Undo/Open 通过。GUI接口短暂超时已通过重新绑定恢复，无持续桌面阻塞。完整 U＋P0 仍未完成；当前关键差距为参数视图独立范围操作，随后整片段、Trim/拖拽/Nudge/MIDI 自动化跟随。M2/M3冻结、M4/M5暂缓。
+
 U-P0-AUTOMATION-FOLLOW-01（2026-10-09）：无新增授权、付费或下载阻塞；原 TE/JUCE pin 和十份 SDK 补丁保留，本轮不改 vendor/实时处理。固定身份 Release 验签、相关 10/10 CTest 和独立设备检查通过。构建/实际保存曾因磁盘满失败；仅清理 61 个忽略且可重建的旧 build-sanitize .o/.a（959610336 字节）后重建与保存通过，用户媒体与产物未删。
 
 跟随开关已实现，历史“没有全局开关”仅在本范围被替代；非 Shuffle 源曲线清理、Trim/拖拽/Nudge/整片段/MIDI 及完整 U＋P0 仍是工程缺口。主观听感、硬件多轨实录、耐久和 Windows 没有新增资格。M2/M3 冻结、M4/M5 暂缓，不打 DMG。

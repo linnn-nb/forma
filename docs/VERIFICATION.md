@@ -1,5 +1,18 @@
 # 验证状态
 
+## U-P0-AUTOMATION-CLEAR-01（2026-10-09）
+
+结论：普通音频范围 Cut/Delete 接通原生自动化跟随、同笔 Undo/Redo、另存/Open 和现有可改键；此增量已验证，完整 U＋P0 未完成。Release 和固定叶证书 deep/strict 验签通过；11/11 受影响 CTest、1572 检查、296.01 秒通过（新专项394，相关1178）。原始输出见 evidence/U/automation-clear-tests.json、automation-clear-regression.txt、automation-clear-qualification.json。
+
+- 实际 te::Edit 音量/声像/EQ 参数曲线，9 种曲线形状；Cut 选区外原生 AutomationIterator 最大归一化差 1.1920928955078125e-7，小于预设 4e-7。实际 Tracktion 渲染并独立解码 48k 双声道 WAV，选区外 PCM 最大差 8.58306884765625e-6，小于原 2e-5；仅该 PCM 对照排除选区及切分边缘各2048样本，曲线对照不扩大边界排除。选区内部 PCM 为0。
+- Delete 验证半开区间内原点移除，其他点 ID、时间、值、系数完全保留；相邻插值可能改变。验证零点、单采样、终点、真实编辑组偏移、锁定成员、目标/时间 Scope、伪造及非整数 schema、陈旧 Plan、幂等、媒体哈希不变。保持现有操作/点数预算，不降低容差。
+- 生产 Workspace 组件专项真实触发 Cmd+X、Reject/Accept、Undo、可自定义 Delete 键 Control+Option+Shift+D、保存/Open；无实体设备替身当作录放资格。早期测试失败分别来自保存到同名测试文件及把瞬时参数读数当持久状态；修正测试唯一路径和比较对象，原生产覆盖保护/Undo守卫保持，最终测试通过。
+- 实体桌面：本轮独立固定签名预览，CoreAudio 外置耳机48k/512，波形视图选区1–2秒。Cut 拒绝保持r4；接受r5，另存 ClearDesktopCut；保存后 Undo r6恢复单Clip，快捷键重做r7，原生 Open 恢复双Clip。Delete Backspace提交，另存后Cmd+Z恢复；Control+Option+A关闭跟随后Cmd+X只改音频；两笔Undo恢复编辑前工程并另存 ClearDesktopWaveformReady。读回原生文件：Cut 三条曲线662/1285/1297点，Delete各4点，off与最终恢复各5点；原Clip ID/媒体引用恢复。验收接口保存后短暂超时，重新绑定实际窗口恢复；未将超时当通过。本轮截图实际显示在会话中，未新增PNG归档；仅本轮预览进程67449正常Quit，其他窗口未动。没有新增硬件实录、听感或AI端到端资格。
+
+演示：双击 build-v2-tracktion/OpenAutomationClearDemo.command，在波形视图已有1–2秒选区上 Cmd+X→接受→Cmd+Z，或 Backspace→Cmd+Z；Control+Option+A切换跟随。Save另存新文件再Open；键位菜单可修改共享命令。独立预览使用 --no-mcp，未改变生产Bundle ID或签名身份。
+
+边界：当前音频范围操作作用于音频与所有曲线；参数视图的自动化独立 Cut/Copy/Delete 尚未实现，请用片段/波形视图演示。整片段、Trim/拖拽/Nudge/MIDI跟随及非默认读取器未获本专项资格；未测性能对齐，未完成全套 U＋P0。相关旧报告已在最终回归结束后逐字节恢复，最新运行hash/count列在本增量 qualification，未覆盖历史证据。
+
 ## U-P0-AUTOMATION-FOLLOW-01 · 2026-10-09
 
 结论：工程级 Automation Follows Edit 开关、音频范围 Shuffle Cut/Delete 和粘贴的 on/off 行为已验证。编辑菜单、宽窗口蓝/橙真实状态按钮、默认 Control+Option+A 和自定义键共用 L1；原生 Undo/Redo、另存/重开、幂等和旧计划冲突保护通过。Release 构建和固定叶证书 deep/strict 验签通过。**10/10 CTest、1178 个检查**（专项 74，受影响回归 1104）全部通过；新专项 5.96 秒、九项回归 231.62 秒。另一次实际设备专项 76 检查含重复的 74 加两个播放保护检查，不重复累加。

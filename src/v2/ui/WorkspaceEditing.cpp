@@ -337,11 +337,16 @@ Json Workspace::deleteClipOperations(bool ripple) const
 juce::String Workspace::shufflePreviewText(const Json& preview) const
 {
     const bool paste = preview.contains("clipboard_paste") && !preview["clipboard_paste"].is_null();
-    juce::String out = (paste ? text("音频 / 自动化粘贴 · 待确认\n\n音频片段变更：")
-                              : text("范围 Shuffle · 待确认\n\n音频片段变更：")) +
+    const bool clear = preview.contains("audio_clear_range");
+    juce::String out = (clear   ? text("范围剪切 / 删除 · 待确认\n\n音频片段变更：")
+                        : paste ? text("音频 / 自动化粘贴 · 待确认\n\n音频片段变更：")
+                                : text("范围 Shuffle · 待确认\n\n音频片段变更：")) +
                        juce::String(int(preview["clip_changes"].size())) + text("\n原媒体保留；接受后可整笔撤销。\n");
     for (const auto& change : preview["automation_changes"])
     {
+        if (change.value("command", std::string{}) == "automation.range.clear")
+            out += change["action"] == "cut" ? text("\n剪切：增加边界锚点，保留两侧曲线，空隙线性连接。\n")
+                                             : text("\n删除：移除区间内点，原有点跨越空隙，相邻曲线会变化。\n");
         out += text("\n自动化跟随 · ") + trackName(change["track"].get<std::string>()) + text("\n受影响点：") +
                juce::String(change["affected_points"].get<int>()) +
                (paste ? text(" · 新增曲线点：") : text(" · 新增边界点：")) +
@@ -368,7 +373,10 @@ void Workspace::executeDeleteCommand()
             const bool shuffleRange = ripple && selection.objects.empty() && !selection.range.is_null();
             auto plan = shuffleRange ? commands.makeShuffleRangePlan(selection.tracks, selection.range["start_samples"],
                                                                      selection.range["end_samples"])
-                                     : commands.makePlan("human", deleteClipOperations(ripple));
+                        : !ripple && selection.objects.empty() && !selection.range.is_null()
+                            ? commands.makeAudioClearRangePlan(selection.tracks, selection.range["start_samples"],
+                                                               selection.range["end_samples"], false)
+                            : commands.makePlan("human", deleteClipOperations(ripple));
             std::set<std::string> touched;
             for (const auto& op : plan["operations"])
                 if (op["args"].contains("clip") && !op["args"]["clip"].get<std::string>().starts_with("$"))
@@ -385,7 +393,8 @@ void Workspace::executeDeleteCommand()
             {
                 require(pending.is_null(), "accept or reject the existing preview before a large range Delete");
                 pending = plan;
-                previewText.setText(shuffleRange ? shufflePreviewText(preview) : text(preview.dump(2)));
+                previewText.setText((shuffleRange || plan.contains("audio_clear_range")) ? shufflePreviewText(preview)
+                                                                                         : text(preview.dump(2)));
                 message(text("大范围删除 · 请预览后接受或取消"));
                 return;
             }

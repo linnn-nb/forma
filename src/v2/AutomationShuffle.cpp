@@ -254,10 +254,14 @@ void Commands::executeAutomationShuffle(const Json& args, Json& objects)
 {
     const auto changes = automationShuffleChanges(args);
     require(args.at("state_hash") == changes["state_hash"], "Shuffle automation state changed before commit");
+    executeAutomationCurveChanges(changes, objects);
+}
+void Commands::executeAutomationCurveChanges(const Json& changes, Json& objects)
+{
     auto* um = &edit->getUndoManager();
     for (const auto& lane : changes["lanes"])
     {
-        auto* a = automationParameter(args.at("track"), lane["lane"]);
+        auto* a = automationParameter(changes.at("track"), lane["lane"]);
         require(a != nullptr, "Shuffle automation parameter disappeared");
         auto& curve = a->getCurve();
         std::map<std::string, juce::ValueTree> originals;
@@ -268,7 +272,7 @@ void Commands::executeAutomationShuffle(const Json& args, Json& objects)
         }
         // Reuse the existing base restoration path, then write the final native
         // curve inside the SAME Undo transaction as every clip and cursor edit.
-        executeAutomationOperation("automation.clear", {{"track", args.at("track")}, {"parameter", lane["lane"]}},
+        executeAutomationOperation("automation.clear", {{"track", changes.at("track")}, {"parameter", lane["lane"]}},
                                    objects);
         for (const auto& pt : lane["after"])
         {

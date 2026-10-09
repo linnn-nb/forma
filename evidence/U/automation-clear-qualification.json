@@ -1,0 +1,274 @@
+{
+  "test": "U-P0-AUTOMATION-CLEAR-01",
+  "date": "2026-10-09",
+  "build": "Release macOS arm64 passed",
+  "signing": "org.forma.daw fixed certificate deep strict passed",
+  "ctest": {
+    "passed": 11,
+    "failed": 0,
+    "seconds": 296.01,
+    "checks": 1572,
+    "new_checks": 394,
+    "reports": [
+      {
+        "path": "evidence/U/clipboard-tests.json",
+        "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386",
+        "checks": 49,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/shuffle-range-tests.json",
+        "sha256": "622608c2c3ab192d86b1e346a4185c463b25694ed9a419303919392457c1c271",
+        "checks": 116,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/automation-shuffle-tests.json",
+        "sha256": "54d2d63947d9529442ef0851b8a44b2966357f330f1166018c18af223e2f6e9a",
+        "checks": 309,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/automation-clipboard-tests.json",
+        "sha256": "0bf9dcad1143a527f73f8f5bf5dfe3b54560dd112e753d234f9e75658a4659da",
+        "checks": 234,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/editor-tests.json",
+        "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1",
+        "checks": 81,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/group-range-tests.json",
+        "sha256": "b521899420dc9180de18b508a82a29a7fdfca232fddc21d08bd2ca70d5ab62e9",
+        "checks": 72,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/automation-timeline-tests.json",
+        "sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f",
+        "checks": 143,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/M1/session-recovery-tests.json",
+        "sha256": "c45eb6e8d7458a217784e72fa33e7b60f3e958b51e4811135b256f3a667df921",
+        "checks": 52,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/navigation-tests.json",
+        "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df",
+        "checks": 48,
+        "result": "passed"
+      },
+      {
+        "path": "evidence/U/automation-follow-tests.json",
+        "sha256": "2ce85fe493568a8dd97253cbe83b3ab2980723987980a2f594cee7a3574a4e06",
+        "checks": 74,
+        "result": "passed"
+      }
+    ]
+  },
+  "audio": {
+    "budgets": {
+      "curve_normalized": 4e-07,
+      "pcm": 2e-05,
+      "split_exclusion_samples": 2048
+    },
+    "curve_max_normalized_error": 1.1920928955078125e-07,
+    "pcm_max_error": 8.58306884765625e-06,
+    "shapes": 9
+  },
+  "desktop": {
+    "app": "FormaAutomationClearPreview",
+    "device": "CoreAudio external headphones, 48000 Hz, 512 frames",
+    "verified": [
+      "native waveform view range 1-2 seconds",
+      "Cut preview rejection unchanged revision 4",
+      "Cut accepted revision 5",
+      "Save then Undo revision 6",
+      "shortcut Redo revision 7",
+      "native Open saved Cut with two clips",
+      "Backspace Delete and Save then Command Z",
+      "Control Option A off then Command X",
+      "two Undo restore source clip IDs and 5-point native curves",
+      "save separate waveform-ready demo"
+    ],
+    "interface_timeout": "temporary after first Save; rebound by exact bundle ID; subsequent actions verified",
+    "files": [
+      {
+        "file": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ClearDesktopReady.tracktionedit",
+        "sha256": "5b4cd461686fa46713dcee00ff7346105a5f27ec3915453b09c1b57e87ecaaab",
+        "clips": [
+          {
+            "id": "1016",
+            "start": "0.0",
+            "length": "5.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          }
+        ],
+        "lanes": [
+          {
+            "parameter": "Mid gain 1",
+            "points": 5
+          },
+          {
+            "parameter": "volume",
+            "points": 5
+          },
+          {
+            "parameter": "pan",
+            "points": 5
+          }
+        ],
+        "edit_options": []
+      },
+      {
+        "file": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ClearDesktopCut.tracktionedit",
+        "sha256": "9577125e4f5ff300ea5555741e7e3fe367e682c59119045642061474351da3a9",
+        "clips": [
+          {
+            "id": "1016",
+            "start": "0.0",
+            "length": "1.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          },
+          {
+            "id": "1020",
+            "start": "2.0",
+            "length": "3.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          }
+        ],
+        "lanes": [
+          {
+            "parameter": "Mid gain 1",
+            "points": 662
+          },
+          {
+            "parameter": "volume",
+            "points": 1285
+          },
+          {
+            "parameter": "pan",
+            "points": 1297
+          }
+        ],
+        "edit_options": []
+      },
+      {
+        "file": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ClearDesktopDelete.tracktionedit",
+        "sha256": "f16a9cf2dd1067d3fe6a2162a689650c015f0953cf66c33a9797860137a946a6",
+        "clips": [
+          {
+            "id": "1016",
+            "start": "0.0",
+            "length": "1.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          },
+          {
+            "id": "1020",
+            "start": "2.0",
+            "length": "3.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          }
+        ],
+        "lanes": [
+          {
+            "parameter": "Mid gain 1",
+            "points": 4
+          },
+          {
+            "parameter": "volume",
+            "points": 4
+          },
+          {
+            "parameter": "pan",
+            "points": 4
+          }
+        ],
+        "edit_options": []
+      },
+      {
+        "file": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ClearDesktopFollowOff.tracktionedit",
+        "sha256": "b4a5d17bd09daebd7fc32fdf36418da5dfc232262dc1a4eb358abd8f181775bd",
+        "clips": [
+          {
+            "id": "1016",
+            "start": "0.0",
+            "length": "1.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          },
+          {
+            "id": "1022",
+            "start": "2.0",
+            "length": "3.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          }
+        ],
+        "lanes": [
+          {
+            "parameter": "Mid gain 1",
+            "points": 5
+          },
+          {
+            "parameter": "volume",
+            "points": 5
+          },
+          {
+            "parameter": "pan",
+            "points": 5
+          }
+        ],
+        "edit_options": [
+          {
+            "schema": "1",
+            "automation_follows_edit": "0"
+          }
+        ]
+      },
+      {
+        "file": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ClearDesktopWaveformReady.tracktionedit",
+        "sha256": "dc677e90a5e6540da82a2545e772418caf2c5c8ad743808fb2a3ddfbbf19314f",
+        "clips": [
+          {
+            "id": "1016",
+            "start": "0.0",
+            "length": "5.0",
+            "source": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-clear-demos/automation-clear-794031d02012431cbcc7405738096b71/ActualStereo.wav"
+          }
+        ],
+        "lanes": [
+          {
+            "parameter": "Mid gain 1",
+            "points": 5
+          },
+          {
+            "parameter": "volume",
+            "points": 5
+          },
+          {
+            "parameter": "pan",
+            "points": 5
+          }
+        ],
+        "edit_options": []
+      }
+    ],
+    "source_sha256": "eb1a3283047eec87889a7740f243b5f48979e0dbc207b93490207546da6897d2",
+    "screenshot": "actual inline CUA capture; no new PNG archive",
+    "own_preview_pid": 67449,
+    "own_preview_terminated": true,
+    "hardware_recording_or_listening": "not executed in this increment"
+  },
+  "boundaries": [
+    "audio range commands still affect audio/all lanes regardless of parameter view; independent parameter-view Cut/Copy/Delete pending",
+    "whole-clip, Trim, drag, Nudge and MIDI follow pending",
+    "no new AI/MCP or analysis qualification",
+    "full U+P0 incomplete, no P1 entry"
+  ],
+  "history": "related historical reports restored byte-for-byte after final CTest termination"
+}

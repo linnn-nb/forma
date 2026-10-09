@@ -138,6 +138,60 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
     }
     return operations;
 }
+Json Commands::makeAudioClearRangePlan(const Json& tracks, int64_t first, int64_t last, bool cut) const
+{
+    const Json request{{"schema", 1},
+                       {"tracks", tracks},
+                       {"start_samples", first},
+                       {"end_samples", last},
+                       {"action", cut ? "cut" : "delete"}};
+    return makePlanImpl("human", audioClearRangeOperations(request), nullptr, nullptr, request);
+}
+Json Commands::audioClearRangeOperations(const Json& request) const
+{
+    checkThread();
+    if (!request.is_object() || request.size() != 5 || !request.at("schema").is_number_integer() ||
+        request.at("schema").get<int64_t>() != 1 || !request.at("start_samples").is_number_integer() ||
+        !request.at("end_samples").is_number_integer() ||
+        (request.at("action") != "cut" && request.at("action") != "delete"))
+        throw std::runtime_error("invalid audio clear range descriptor");
+    const int64_t first = request.at("start_samples"), last = request.at("end_samples");
+    auto ops = audioRangeOperations("delete", request.at("tracks"), first, last);
+    if (ops.empty())
+        throw std::runtime_error("no audio overlaps the selected range");
+    // Freeze actual media fingerprints before sealing the complete group/range descriptor.
+    std::map<std::string, std::string> hashes;
+    for (auto& op : ops)
+    {
+        auto& args = op["args"];
+        const std::string id = args.at("clip");
+        if (!hashes.contains(id))
+        {
+            auto* clip = audioClip(id);
+            if (!clip || !clip->canUseProxy())
+                throw std::runtime_error("range clear requires a qualified native audio reader");
+            hashes[id] = mediaHash(clip->getOriginalFile());
+        }
+        args["media_hash"] = hashes.at(id);
+        if (args.contains("ref"))
+            hashes[args.at("ref").get<std::string>()] = hashes.at(id);
+    }
+    if (editingOptions()["automation_follows_edit"].get<bool>())
+        for (const auto& owner : editGroupTracks(request.at("tracks")))
+        {
+            Json args{
+                {"track", owner}, {"start_samples", first}, {"end_samples", last}, {"action", request.at("action")}};
+            const auto changes = automationClearChanges(args);
+            if (!changes["lanes"].empty())
+            {
+                args["state_hash"] = changes["state_hash"];
+                ops.push_back({{"command", "automation.range.clear"}, {"args", std::move(args)}});
+                if (ops.size() > 64)
+                    throw std::runtime_error("range clear exceeds 64 operation budget");
+            }
+        }
+    return ops;
+}
 Json Commands::makeShuffleRangePlan(const Json& tracks, int64_t first, int64_t last) const
 {
     const Json request{{"schema", 1}, {"tracks", tracks}, {"start_samples", first}, {"end_samples", last}};
