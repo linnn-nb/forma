@@ -876,6 +876,13 @@ target_link_libraries(ndaw_midi_range_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_midi_range_timeline COMMAND ndaw_midi_range_tests "${CMAKE_SOURCE_DIR}/evidence/U/midi-range-tests.json" "${CMAKE_BINARY_DIR}/midi-range-demos")
 set_tests_properties(forma_native_midi_range_timeline PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_mixed_clipboard_tests PRODUCT_NAME "ndaw_mixed_clipboard_tests")
+target_sources(ndaw_mixed_clipboard_tests PRIVATE tests/v2/MixedClipboardTests.cpp)
+target_include_directories(ndaw_mixed_clipboard_tests PRIVATE src/v2)
+target_link_libraries(ndaw_mixed_clipboard_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_mixed_clipboard COMMAND ndaw_mixed_clipboard_tests "${CMAKE_SOURCE_DIR}/evidence/U/mixed-clipboard-tests.json" "${CMAKE_BINARY_DIR}/mixed-clipboard-demos")
+set_tests_properties(forma_native_mixed_clipboard PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_musical_clipboard_tests PRODUCT_NAME "ndaw_musical_clipboard_tests")
 target_sources(ndaw_musical_clipboard_tests PRIVATE tests/v2/MusicalClipboardTests.cpp)
 target_include_directories(ndaw_musical_clipboard_tests PRIVATE src/v2)

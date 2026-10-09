@@ -16,7 +16,8 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                                 });
     if (capturing ? (!midiRange && (slices.empty() || std::none_of(slices.begin(), slices.end(),
                                                                    [](const Json& c) { return c["kind"] == "midi"; })))
-                  : (existing.is_null() || existing.value("kind", std::string{}) != "midi_clips"))
+                  : (existing.is_null() || (existing.value("kind", std::string{}) != "midi_clips" &&
+                                            existing.value("kind", std::string{}) != "timeline_clips")))
         return false;
     invoke(
         [&]
@@ -28,30 +29,57 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             };
             require(workspaceSession == commands.sessionToken() &&
                         facts["revision"] == commands.querySummary()["revision"] && pending.is_null(),
-                    "refresh project or resolve pending preview before MIDI clip editing");
-            require(editing.mode != "shuffle" || id == editCommand::copy, "MIDI clip Shuffle is not implemented yet");
+                    "refresh project or resolve pending preview before timeline editing");
+            require(editing.mode != "shuffle" || id == editCommand::copy, "mixed/MIDI Shuffle is not implemented yet");
             pendingClipboard = nullptr;
             pendingClipboardPlan.clear();
+            const auto owners = range ? commands.editGroupTracks(selection.tracks) : selection.tracks;
+            std::set<std::string> timebases;
+            for (const auto& c : slices)
+                timebases.insert(c.value("timebase", std::string{"samples"}));
+            const bool mixed =
+                capturing ? (midiRange &&
+                             std::any_of(owners.begin(), owners.end(),
+                                         [&](const Json& id)
+                                         {
+                                             return std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
+                                                                [&](const Json& t)
+                                                                { return t["id"] == id && t["type"] == "audio"; });
+                                         })) ||
+                                std::any_of(slices.begin(), slices.end(),
+                                            [](const Json& c) { return c["kind"] == "audio"; }) ||
+                                timebases.size() > 1
+                          : existing["kind"] == "timeline_clips";
             Json buffer = existing;
             if (capturing)
             {
                 Json clips = Json::array();
                 for (const auto& c : slices)
                 {
-                    require(c["kind"] == "midi", "mixed audio/MIDI clipboard not implemented yet");
+                    require(c["kind"] == "midi" || (mixed && c["kind"] == "audio"), "unsupported timeline clip type");
                     require(range || (c["slice_start"] == c["start_samples"] &&
                                       c["slice_end"].get<int64_t>() ==
                                           c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>()),
                             "object clipboard slice must be the complete source clip");
                     clips.push_back(c["id"]);
                 }
-                buffer = range ? commands.prepareMidiRangeClipboard(selection.tracks, selection.range["start_samples"],
-                                                                    selection.range["end_samples"], workspaceSession,
-                                                                    facts["revision"])
-                               : commands.prepareMidiClipClipboard(clips, workspaceSession, facts["revision"]);
+                buffer =
+                    mixed   ? (range ? commands.prepareTimelineRangeClipboard(
+                                         selection.tracks, selection.range["start_samples"],
+                                         selection.range["end_samples"], workspaceSession, facts["revision"])
+                                     : commands.prepareTimelineClipClipboard(clips, workspaceSession, facts["revision"]))
+                    : range ? commands.prepareMidiRangeClipboard(selection.tracks, selection.range["start_samples"],
+                                                                 selection.range["end_samples"], workspaceSession,
+                                                                 facts["revision"])
+                            : commands.prepareMidiClipClipboard(clips, workspaceSession, facts["revision"]);
                 if (id == editCommand::copy)
                 {
                     commands.acceptClipboard(buffer["id"]);
+                    if (mixed)
+                    {
+                        message(text("已复制音频与 MIDI · 保留原生片段、空白及空轨"));
+                        return;
+                    }
                     message(text(range ? "已复制 MIDI 选区 · 保留空白、音符与控制器"
                                        : "已复制 MIDI 片段 · 保留音符与控制器"));
                     return;
@@ -59,7 +87,8 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             }
             Json ops = Json::array();
             if (id == editCommand::cut)
-                ops.push_back(operation("midi.clips.erase", {{"clipboard", buffer["id"]}}));
+                ops.push_back(
+                    operation(mixed ? "timeline.clips.erase" : "midi.clips.erase", {{"clipboard", buffer["id"]}}));
             else
             {
                 const int64_t point = id == editCommand::duplicate       ? buffer["end_samples"].get<int64_t>()
@@ -75,24 +104,24 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                               [&](const Json& t) { return t["id"] == selected; });
                     require(first != facts["tracks"].end() &&
                                 size_t(std::distance(first, facts["tracks"].end())) >= buffer["tracks"].size(),
-                            "select the first existing MIDI destination track; destination layout too short");
+                            "select the first existing destination track; destination layout too short");
                     for (size_t i = 0; i < buffer["tracks"].size(); ++i)
                         targets.push_back((first + i)->at("id"));
                 }
-                ops.push_back(
-                    operation("midi.clips.paste", {{"clipboard", buffer["id"]},
-                                                   {"tracks", targets},
-                                                   {"position_samples", point},
-                                                   {"mode", id == editCommand::duplicate ? "overlay" : "replace"}}));
-                const int64_t end = commands.midiClipPasteRange(buffer["id"], point)["end_samples"];
+                ops.push_back(operation(mixed ? "timeline.clips.paste" : "midi.clips.paste",
+                                        {{"clipboard", buffer["id"]},
+                                         {"tracks", targets},
+                                         {"position_samples", point},
+                                         {"mode", id == editCommand::duplicate ? "overlay" : "replace"}}));
+                const int64_t end = commands.timelineClipPasteRange(buffer["id"], point)["end_samples"];
                 ops.push_back(operation("session.range.set", {{"start_samples", point}, {"end_samples", end}}));
                 ops.push_back(operation("session.insertion.set", {{"position_samples", point}}));
             }
             const auto plan = commands.makePlan("human", ops);
             const auto preview = commands.preview(plan);
-            if (capturing)
+            if (capturing && id != editCommand::duplicate)
                 pendingClipboard = buffer;
-            const auto& impact = preview["midi_changes"][0];
+            const auto& impact = preview[mixed ? "timeline_changes" : "midi_changes"][0];
             size_t points = 0;
             for (const auto& a : impact["automation"])
                 points += a["affected_points"].get<size_t>();
@@ -102,11 +131,16 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                 pending = plan;
                 pendingClipboardPlan = plan["plan_id"];
                 previewText.setText(shufflePreviewText(preview));
-                message(text("MIDI 片段大范围编辑 · 请预览后接受或拒绝"));
+                message(text("时间线大范围编辑 · 请预览后接受或拒绝"));
                 return;
             }
             finishClipboardEdit(commands.commit(plan));
             midiCommandContext = false;
+            if (mixed)
+            {
+                message(text("混合片段编辑已提交 · 一次 Undo · 音频采样 / MIDI 原时间基准"));
+                return;
+            }
             message(text(id == editCommand::cut ? "MIDI 片段已剪切 · 一次 Undo · 原生状态可恢复"
                                                 : "MIDI 片段粘贴已提交 · 一次 Undo · 音符 / CC / SysEx 保留"));
         });

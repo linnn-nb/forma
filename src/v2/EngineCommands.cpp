@@ -677,8 +677,8 @@ Json Commands::preview(const Json& plan) const
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
-        if (cmd.starts_with("midi.clips.") || cmd == "midi.notes.time" || cmd == "midi.notes.erase" ||
-            cmd == "midi.notes.paste")
+        if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips.") || cmd == "midi.notes.time" ||
+            cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
             require(actor == "human", "MIDI timing edits are local GUI only during U phase");
         if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set" ||
             cmd == "location.recall" || cmd.starts_with("location.roll."))
@@ -814,7 +814,8 @@ Json Commands::preview(const Json& plan) const
                 require(actor == "human", "track Comments are local GUI only during the U phase");
             // Complete hierarchy and capabilities are validated below.
         }
-        else if (cmd.starts_with("midi.") || cmd.starts_with("tempo.") || cmd.starts_with("meter."))
+        else if (cmd.starts_with("midi.") || cmd.starts_with("timeline.clips.") || cmd.starts_with("tempo.") ||
+                 cmd.starts_with("meter."))
         {
             // Whole-Plan music preflight models musical time after Tempo changes.
         }
@@ -872,6 +873,10 @@ Json Commands::preview(const Json& plan) const
     const auto automationDiff = validateAutomationPlan(ops);
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
+    Json timelineDiff = Json::array(), musicDiff = Json::array();
+    for (const auto& change : midiDiff)
+        (change["command"].get<std::string>().starts_with("timeline.clips.") ? timelineDiff : musicDiff)
+            .push_back(change);
     const auto transportDiff = validateTransportPlan(ops);
     const auto markerDiff = validateMarkerPlan(ops);
     Json result{{"plan_id", plan.at("plan_id")},
@@ -884,7 +889,8 @@ Json Commands::preview(const Json& plan) const
                 {"automation_changes", automationDiff},
                 {"track_changes", trackDiff},
                 {"pan_changes", panDiff},
-                {"midi_changes", midiDiff},
+                {"midi_changes", musicDiff},
+                {"timeline_changes", timelineDiff},
                 {"transport_changes", transportDiff},
                 {"marker_changes", markerDiff},
                 {"group_changes", groupDiff},
@@ -961,6 +967,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.order" || op.at("command") == "track.delete" ||
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
             op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("midi.") ||
+            op.at("command").get<std::string>().starts_with("timeline.clips.") ||
             op.at("command").get<std::string>().starts_with("marker.") ||
             op.at("command").get<std::string>().starts_with("location.") ||
             op.at("command").get<std::string>().starts_with("tempo.") ||
@@ -1076,7 +1083,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                     }
                 executeHierarchyOperation(cmd, resolved);
             }
-            else if (cmd.starts_with("midi.") || cmd.starts_with("tempo.") || cmd.starts_with("meter."))
+            else if (cmd.starts_with("midi.") || cmd.starts_with("timeline.clips.") || cmd.starts_with("tempo.") ||
+                     cmd.starts_with("meter."))
             {
                 auto resolved = a;
                 if (a.contains("track"))

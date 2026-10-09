@@ -454,7 +454,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                             const auto slices = clipboardSelection();
                             const bool midiRange =
                                 selection.objects.empty() && !selection.range.is_null() && !selection.tracks.empty() &&
-                                std::all_of(selection.tracks.begin(), selection.tracks.end(),
+                                std::any_of(selection.tracks.begin(), selection.tracks.end(),
                                             [&](const Json& id)
                                             {
                                                 return std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
@@ -466,9 +466,6 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                                                    });
                                             });
                             active = active && (!slices.empty() || midiRange);
-                            if (!slices.empty())
-                                active = active && std::all_of(slices.begin(), slices.end(), [&](const Json& c)
-                                                               { return c["kind"] == slices.front()["kind"]; });
                             for (const auto& item : slices)
                                 active = active &&
                                          ((item["kind"] == "audio" && item.value("editable_audio", false) &&

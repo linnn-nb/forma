@@ -1,8 +1,22 @@
 diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp b/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
-index 3d96b8c..c2dc1a5 100644
+index 3d96b8c..3a614b7 100644
 --- a/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
 +++ b/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
-@@ -318,12 +318,14 @@ void AutomatableEditItem::saveChangedParametersToState()
+@@ -310,20 +310,23 @@ void AutomatableEditItem::saveChangedParametersToState()
+ 
+     for (auto ap : automatableParams)
+     {
+-        if (ap->getCurrentValue() != ap->getCurrentExplicitValue())
+-        {
+-            stream.writeString (ap->paramID);
+-            stream.writeFloat (ap->getCurrentExplicitValue());
+-        }
++        // Attached display properties are asynchronous and can still contain an
++        // earlier automation value even when both current caches equal the base.
++        // Persist every authoritative explicit value; cache equality cannot prove
++        // that the attached ValueTree already contains it.
++        stream.writeString (ap->paramID);
++        stream.writeFloat (ap->getCurrentExplicitValue());
      }
  
      stream.flush();

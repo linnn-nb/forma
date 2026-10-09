@@ -328,15 +328,20 @@ void Workspace::executeEditCommand(int id)
 
 juce::String Workspace::shufflePreviewText(const Json& preview) const
 {
-    if (preview.contains("midi_changes") && !preview["midi_changes"].empty())
+    const bool mixed = preview.contains("timeline_changes") && !preview["timeline_changes"].empty();
+    if (mixed || (preview.contains("midi_changes") && !preview["midi_changes"].empty()))
     {
         const auto view = commands.uiState();
         auto position = [&](int64_t at)
         { return text(commands.formatTimelinePosition(at, view["main_time_scale"], view["timecode_fps"])); };
-        juce::String out = text("MIDI 编辑 · 待确认\n\n原始音符、控制器与媒体保留。接受后可整笔撤销。\n");
-        for (const auto& change : preview["midi_changes"])
+        juce::String out = mixed ? text("音频 / MIDI 编辑 · 待确认\n\n音频按采样，MIDI "
+                                        "按原时间基准；共同范围覆盖两种时长。\n较短轨道范围后的自动化保持末值，之后恢复"
+                                        "目的曲线。\n接受后可整笔撤销。\n")
+                                 : text("MIDI 编辑 · 待确认\n\n原始音符、控制器与媒体保留。接受后可整笔撤销。\n");
+        for (const auto& change : preview[mixed ? "timeline_changes" : "midi_changes"])
         {
-            out += change["command"] == "midi.clips.erase" ? text("\n剪切所选内容\n") : text("\n粘贴复制的内容\n");
+            out += change["command"].get<std::string>().ends_with(".erase") ? text("\n剪切所选内容\n")
+                                                                            : text("\n粘贴复制的内容\n");
             if (!change["range"].is_null())
                 out += text("范围：") + position(change["range"]["start_samples"]) + text(" → ") +
                        position(change["range"]["end_samples"]) + text("（包含选区空白）\n");

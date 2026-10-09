@@ -294,6 +294,15 @@ void Commands::registerMusicCommands(Json& registry)
     add("midi.clips.erase", {{"clipboard", str}});
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIDI-CLIPS-01";
+    add("timeline.clips.erase", {{"clipboard", str}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
+    add("timeline.clips.paste", {{"clipboard", str},
+                                 {"tracks", {{"type", "array"}, {"items", str}, {"maxItems", 64}}},
+                                 {"position_samples", position},
+                                 {"mode", {{"type", "string"}, {"enum", {"replace", "overlay"}}}}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
     add("midi.clips.paste", {{"clipboard", str},
                              {"tracks", {{"type", "array"}, {"items", str}, {"maxItems", 64}}},
                              {"position_samples", position},
@@ -748,10 +757,14 @@ Json Commands::validateMusicPlan(const Json& operations) const
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
         }
-        else if (cmd.starts_with("midi.clips."))
+        else if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips."))
         {
-            require(std::count_if(operations.begin(), operations.end(), [](const Json& o)
-                                  { return o["command"].template get<std::string>().starts_with("midi.clips."); }) == 1,
+            require(std::count_if(operations.begin(), operations.end(),
+                                  [](const Json& o)
+                                  {
+                                      const auto id = o["command"].template get<std::string>();
+                                      return id.starts_with("midi.clips.") || id.starts_with("timeline.clips.");
+                                  }) == 1,
                     "one atomic MIDI clip operation per Plan");
             require(std::all_of(operations.begin(), operations.end(),
                                 [&](const Json& o)
@@ -840,7 +853,7 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
     auto& seq = edit->tempoSequence;
     auto& um = edit->getUndoManager();
-    if (cmd.starts_with("midi.clips."))
+    if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips."))
     {
         executeMidiClipClipboard(cmd, a, objects);
         return;

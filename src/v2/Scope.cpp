@@ -158,9 +158,9 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 }
             require(found || !bounded, "unable to resolve clip permission footprint");
         }
-        else if (cmd.starts_with("midi.clips."))
+        else if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips."))
         {
-            for (const auto& change : preview["midi_changes"])
+            for (const auto& change : preview[cmd.starts_with("timeline.clips.") ? "timeline_changes" : "midi_changes"])
                 if (change["operation_index"] == index)
                 {
                     if (!change.value("range", Json(nullptr)).is_null())
@@ -172,7 +172,7 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                             span(first, last - first);
                             impacts.push_back({{"command", cmd},
                                                {"object", id},
-                                               {"extent", "MIDI range including gaps"},
+                                               {"extent", "timeline range including gaps"},
                                                {"start_samples", first},
                                                {"length_samples", last - first}});
                         }

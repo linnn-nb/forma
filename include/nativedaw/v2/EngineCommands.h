@@ -76,6 +76,11 @@ public:
                                    uint64_t expectedRevision);
     Json midiClipPasteRange(const std::string& clipboard, int64_t position) const;
     Json midiClipPasteExtent(const std::string& clipboard, int64_t position) const;
+    Json prepareTimelineClipClipboard(const Json& clips, const std::string& expectedSession, uint64_t expectedRevision);
+    Json prepareTimelineRangeClipboard(const Json& tracks, int64_t first, int64_t last,
+                                       const std::string& expectedSession, uint64_t expectedRevision);
+    Json timelineClipPasteRange(const std::string& clipboard, int64_t position) const;
+    Json timelineClipPasteExtent(const std::string& clipboard, int64_t position) const;
     Json exportRequest(bool selection) const;
     Json renderRequest(const juce::File&, const Json&);
     Json save(const juce::File&);
@@ -265,6 +270,11 @@ private:
     void initialiseMusicIDs(juce::UndoManager* = nullptr);
     Json validateMusicPlan(const Json&) const;
     Json captureMidiClipClipboard(const Json& clips, const Json& range, const std::string&, uint64_t);
+    Json captureTimelineClipClipboard(const Json& clips, const Json& range, const std::string&, uint64_t,
+                                      bool midiOnly);
+    te::Clip* timelineClip(const std::string&) const;
+    Json timelineClipFacts(te::Clip&) const;
+    Json timelineClipFragment(te::Clip&, int64_t low, int64_t high) const;
     Json midiClipClipboardChange(const std::string&, const Json&, size_t) const;
     void executeMidiClipClipboard(const std::string&, const Json&, Json&);
     Json midiClipboardChange(const std::string&, const Json&, size_t operationIndex) const;
