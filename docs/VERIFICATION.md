@@ -1,3 +1,17 @@
+U-P0-MIXED-SHUFFLE-01（2026-10-10）：混合范围Shuffle Cut/Delete/Paste接通，后方实际音频、MIDI和曲线按公共采样位移，保留空轨空白、原始事件。一笔Undo/Redo、Save/Open和可改快捷键通过。源码2692223；Release/固定签名、最终10/10受影响CTest，1667检查/194.03秒（专项137）通过。
+
+本节替代历史“混合范围Shuffle未实现”，仅限本次受测路径。MIDI后方内容仅在单一恒定Tempo/拍号走廊移动；跨变化/变速、整对象Shuffle、同轨带曲线的混合基准、Warp及部分循环仍拒绝。Mac锁定，实体GUI/听感未执行，预览未启动；完整U＋P0未完成，不进P1。M2/M3冻结，M4/M5暂缓。
+
+实现/测试：MidiClipClipboard.cpp原生片段和封闭哈希预览、AutomationClipboard.cpp独立copied contentEnd/common insertionEnd/removalEnd，Scope.cpp含空轨/完整替换/后方before/after；WorkspaceMidiClipClipboard/Editing/Commands共享GUI命令。tests/v2/MixedShuffleTests.cpp隔离PropertyStorage及自有真实媒体/原生Edit，无设备实录替身资格。最终10项全由2692223源重建并串行运行。
+
+137检查覆盖48k工程/44.1k双声道源、120→60BPM复制、点插入/短/等长/长范围替换（+96000/+72000/0/−96000）、空轨曲线、原生CC/SysEx/附加字段、锁定/Scope/版本/独立后方媒体哈希拒绝、幂等、Undo/Redo/Save/Open、CtrlOptionShiftJ、CmdX/Delete/实际预览接受拒绝、原媒体不变。8192原生DSP值探测预算1e-7跨度＋每参考值2float ULP，实测最大差0；PCM预算2e-5且继承切缝±2048样本排除，最大差1.192092896e-7。真实移位MIDI驱动内置FourOsc并独立解码WAV；没有推断听感或外部设备兼容。
+
+原失败：点插入错误使用零长度range（生产Cut改为clear+insertion）；测试选单轨使混合选择清空（修正测试步骤并核对实际timeline.clips.erase ID）。原日志和最后完整回归分别保留，失败候选不计资格。无SDK/依赖/实时路径/MCP变更。
+
+先保存并正常退出旧Forma，再双击build-v2-tracktion/OpenMixedShuffleDemo.command。源四轨2–3秒已选（44.1k真实PCM、FourOsc、两条空轨），Shuffle已启用，CmdC；用Selector跨目的四轨选择9–9.5秒，Control+Option+Shift+J粘贴。卡片显示两秒共同包络和后方+72000工程采样位移；接受、Space试听、CmdZ/ShiftCmdZ、CmdS新副本并CmdO重开。也可选目的四轨9–10秒用CmdX或Delete，预览后整体收缩；Delete保留既有剪贴板。RAM剪贴板不随工程保存，重开后需再次CmdC。
+
+生产Forma.app与独立org.forma.preview.mixedshuffle均固定叶证书deep/strict验签通过。无新截图、窗口或DMG；本轮CUA确认Mac锁定。
+
 U-P0-MIXED-CLIPBOARD-01（2026-10-10）：混合音频/MIDI对象与范围的Copy/Cut/Paste/Duplicate/Paste Original接通L1原生快照，保留空轨、空白、两侧片段、Clip EQ、CC/SysEx、曲线与基础值；共用可改键、一笔Undo/Redo和保存重开。Release/固定签名通过；最终15/15受影响CTest、2555检查、255.21秒（专项94，8192原生值探测），真实PCM最大差2.384185791e-7。Mac锁定，实体操作/试听未执行，预览未启动；完整U＋P0未完成，不进P1。
 
 此节替代历史混合媒体范围“未实现”，仅限本次受测路径。同轨混合基准且有曲线、Shuffle、Warp和部分循环仍拒绝；下一项混合范围Shuffle。M2/M3冻结，M4/M5暂缓。

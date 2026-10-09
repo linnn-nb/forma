@@ -92,3 +92,7 @@ evidence/U/*
 !evidence/U/musical-curves-tests.json
 !evidence/U/musical-curves-qualification.json
 !evidence/U/musical-curves-regression.txt
+
+!evidence/U/mixed-shuffle-tests.json
+!evidence/U/mixed-shuffle-qualification.json
+!evidence/U/mixed-shuffle-regression.txt

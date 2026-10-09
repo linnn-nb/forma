@@ -1,3 +1,7 @@
+U-P0-MIXED-SHUFFLE-01：human/local_gui timeline.clips/midi.clips.erase新增可选ripple/state_hash；paste新增可选removal_end_samples/state_hash，mode加入shuffle；旧参数调用保持。Shuffle必须是source_range快照并经makePlan封闭state_hash，缺失或失配拒绝。preview列ripple/displacement_samples/removal_end_samples/suffix_policy及实际clips/automation，Scope含完整删除范围与空轨。MCP工具保持冻结。
+
+插入点默认removalEnd=point；GUI选区替换明确传旧end，位移=共同插入end−旧end；Cut/Delete位移=−整个采样范围。MIDI后缀跨Tempo/Meter/变速整笔拒绝。Revision/媒体hash/幂等不变，一事务Undo/Redo；所有混合范围Shuffle先预览，取消不改工程/剪贴板，GUI共享可改键。源码与测试见VERIFICATION最新节，不扩充M2/M3/模型路径。
+
 U-P0-MIXED-CLIPBOARD-01（2026-10-10）：`timeline.clips.erase {clipboard}`与`timeline.clips.paste {clipboard,tracks,position_samples,mode}`为human/local_gui命令，不增加MCP工具。mode仅replace/overlay；一次Plan一个剪贴板操作，可附session.range.set/insertion.set。剪贴板是L1在指定session/revision捕获的不透明token，外部不能注入XML/原生状态；预算64源对象/64轨/8MiB，预览最多128对象变化，不是工程总轨数限制。
 
 manifest.kind=timeline_clips，包含完整源范围、track_timebases、冻结Tempo及媒体哈希。采样音频保持秒偏移；MIDI保留原时间基准和完整NOTE/CONTROL/SYSEX、Take及附加属性。混合范围涵盖两种完整时长，较短轨道的自动化末值保持到共同结束；该规则是Forma明确策略，不声明PT等价。preview.timeline_changes包含clips/automation/range/range_tracks/mapping_policy；曲线记录content_end_seconds与common_end_seconds。Scope覆盖空轨和保留边界，曲线为保守全轨范围。提交重新编译并核对媒体/对象/版本，真实回执给出新native ID，幂等重试不重复创建。Copy不进入Undo，Cut/Paste及曲线同笔Undo/Redo；Duplicate不替换已接受剪贴板。RAM剪贴板不假装随工程保存；工程内容与可改键保存重开。Shuffle、Warp、部分循环及同轨含自动化的混合基准仍明确拒绝。

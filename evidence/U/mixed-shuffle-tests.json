@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "displacement_samples": 96000,
+      "pcm_error": 0.0,
+      "removed_samples": 0
+    },
+    {
+      "displacement_samples": 72000,
+      "pcm_error": 0.0,
+      "removed_samples": 24000
+    },
+    {
+      "displacement_samples": 0,
+      "pcm_error": 0.0,
+      "removed_samples": 96000
+    },
+    {
+      "displacement_samples": -96000,
+      "pcm_error": 1.1920928955078125e-07,
+      "removed_samples": 192000
+    }
+  ],
+  "checks": 137,
+  "demo": "/Users/lin/Projects/06-\u6587\u6863/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/mixed-shuffle-demos/shuffle-2069dd2f13e34607a4152f9e292c79a6/MixedShuffleReady.tracktionedit",
+  "limits": "native range Shuffle only; MIDI suffix must retain one constant Tempo/Meter corridor; object Shuffle, partial loops, Warp and physical listening unexecuted",
+  "maximum_curve_error": 0.0,
+  "maximum_pcm_error": 1.1920928955078125e-07,
+  "native_iterator_probes": 8192,
+  "state": "passed",
+  "source_commit": "269222315d4cd565334ed72a35404a82762d4025"
+}

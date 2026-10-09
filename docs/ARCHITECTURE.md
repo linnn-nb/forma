@@ -1,3 +1,7 @@
+U-P0-MIXED-SHUFFLE-01：L1既有timeline.clips/midi.clips命令承载范围Shuffle，te::Edit仍唯一事实。复制保持各片段原时间基准，插入共同包络取max(秒,拍)，后方统一采样位移。MIDI原始NOTE/CONTROL/SYSEX不重写，只在内容起点到移位终点的单一恒定Tempo/Meter走廊执行；未资格跨越整笔拒绝。自动化区分contentEnd/common insertionEnd/removalEnd，短包络保持末值，目的后缀原点ID按共同位移；Cut复用native collapse。
+
+makePlan冻结全部受影响片段/媒体/曲线state_hash，preview/commit重算；Scope覆盖空轨、完整删除范围及后方before/after。一Plan/native Undo/message thread；Cut成功后接纳新剪贴板，Delete保留原剪贴板。GUI仅产出Plan并订阅事实，无新引擎、依赖、SDK/RT/MCP修改。实测与边界见VERIFICATION。
+
 U-P0-MIXED-CLIPBOARD-01（2026-10-10）：主时间线混合音频/MIDI共用L1原生ClipCopy快照与事务，GUI不写Edit。`MidiClipClipboard.cpp`保留纯MIDI兼容入口，新增`prepareTimelineClipClipboard/prepareTimelineRangeClipboard`和`timeline.clips.erase/paste`；纯音频旧路径保留。范围含空轨与空白，音频保留采样基准、MIDI保留原基准；混合范围取秒/拍两种完整包络的较大者，不裁短任一媒体。自动化按源轨冻结的基准映射，短包络之后保持末值到共同结束，再恢复真实目的曲线。同轨混合基准且有曲线时整笔拒绝，尚不支持Shuffle。
 
 SDK序列化补丁保留所有有曲线参数的显式基础值，避免异步显示属性覆盖基础值；静态参数维持原有条件序列化与Undo，不保存冗余覆盖。12个Tracktion补丁数量、引擎提交和JUCE版本不变，仅修改既有serialization补丁；完整资格见VERIFICATION。M2/M3冻结，M4/M5暂缓。
