@@ -98,7 +98,9 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         facts["track"] = owner;
         facts["start_samples"] = first;
         facts["length_samples"] = last - first;
-        facts["source_offset_samples"] = facts["source_offset_samples"].get<int64_t>() + first - originalStart;
+        const auto offset = position.getOffset().inSeconds() + (first - originalStart) / rate;
+        facts["source_offset_seconds"] = offset;
+        facts["source_offset_samples"] = sample(offset);
         facts["source_length_samples"] = sample(c->getSourceLength().inSeconds());
         // New cut edges have no fade; preserve fades on retained original edges.
         facts["fade_in_samples"] =
@@ -111,7 +113,7 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         auto state = te::ClipCopy::fromClip(*c).getState().createCopy();
         state.setProperty(te::IDs::start, first / rate, nullptr);
         state.setProperty(te::IDs::length, (last - first) / rate, nullptr);
-        state.setProperty(te::IDs::offset, facts["source_offset_samples"].get<int64_t>() / rate, nullptr);
+        state.setProperty(te::IDs::offset, offset, nullptr);
         state.setProperty(te::IDs::fadeIn, facts["fade_in_samples"].get<int64_t>() / rate, nullptr);
         state.setProperty(te::IDs::fadeOut, facts["fade_out_samples"].get<int64_t>() / rate, nullptr);
         juce::MemoryOutputStream serialized;

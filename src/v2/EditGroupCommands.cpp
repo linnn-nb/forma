@@ -69,6 +69,75 @@ Json Commands::editGroupClipSelection(const std::string& id) const
     }
     return result;
 }
+Json Commands::audioRangeOperations(const std::string& action, const Json& seeds, int64_t first, int64_t last,
+                                    int64_t delta) const
+{
+    checkThread();
+    const int64_t maximum = std::llround(te::Edit::maximumLength * 48000.);
+    if ((action != "separate" && action != "delete" && action != "move") || first < 0 || last <= first ||
+        last > maximum || seeds.empty())
+        throw std::runtime_error("invalid audio range edit");
+    if (action == "move" && (delta < -first || delta > maximum - last))
+        throw std::runtime_error("entire range nudge exceeds session bounds");
+    const auto owners = editGroupTracks(seeds);
+    Json operations = Json::array();
+    int reference = 0;
+    auto ref = [&] { return "$range-piece-" + std::to_string(reference++); };
+    auto append = [&](const std::string& command, Json args)
+    {
+        if (operations.size() >= 64)
+            throw std::runtime_error("entire range edit exceeds 64-operation budget; select a smaller range");
+        operations.push_back({{"command", command}, {"args", std::move(args)}});
+    };
+    const auto facts = query();
+    for (const auto& t : facts["tracks"])
+    {
+        if (std::find(owners.begin(), owners.end(), t["id"]) == owners.end())
+            continue;
+        for (const auto& c : t["clips"])
+        {
+            const int64_t begin = c["start_samples"], end = begin + c["length_samples"].get<int64_t>();
+            if (end <= first || begin >= last)
+                continue;
+            // Reference Guide 2026.4 p920: only completely selected clips are nudged. Separate first to move
+            // part of a clip. Never turn a default Nudge into an implicit cut of the user's source arrangement.
+            if (action == "move" && (begin < first || end > last))
+                continue;
+            if (c["kind"] != "audio" || !c.value("editable_audio", false) || c.value("locked", false) ||
+                c.value("offline_clip_effects", false))
+                throw std::runtime_error("entire range edit refused: overlapping clip is locked or unsupported");
+            if (action == "move")
+            {
+                // Move existing identities, not disposable copies. Whole-clip group expansion must not reach
+                // any partially selected peer: separate the range explicitly first in that ambiguous case.
+                for (const auto& peer : editGroupClipSelection(c["id"]))
+                    for (const auto& owner : facts["tracks"])
+                        for (const auto& other : owner["clips"])
+                            if (other["id"] == peer["id"] &&
+                                (other["start_samples"].get<int64_t>() < first ||
+                                 other["start_samples"].get<int64_t>() + other["length_samples"].get<int64_t>() > last))
+                                throw std::runtime_error(
+                                    "group Nudge would move a partial peer; Separate (Cmd+E) first");
+                if (delta != 0)
+                    append("clip.move", {{"clip", c["id"]}, {"position_samples", begin + delta}});
+                continue;
+            }
+            const auto left = std::max(begin, first), right = std::min(end, last);
+            std::string middle = c["id"];
+            if (begin < left)
+            {
+                const auto next = ref();
+                append("clip.split", {{"clip", middle}, {"position_samples", left}, {"ref", next}});
+                middle = next;
+            }
+            if (right < end)
+                append("clip.split", {{"clip", middle}, {"position_samples", right}, {"ref", ref()}});
+            if (action == "delete")
+                append("clip.delete", {{"clip", middle}});
+        }
+    }
+    return operations;
+}
 Json Commands::expandEditGroupEdits(const Json& ops) const
 {
     Json result = Json::array();

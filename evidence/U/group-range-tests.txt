@@ -1,0 +1,137 @@
+U-P0-GROUP-RANGES-01
+New suite was run directly with owned persistent demo argument; related three suites via CTest.
+
+PASS fixture never overwrites existing media
+PASS real stereo PCM writer created
+PASS actual diagnostic audio written
+PASS fixture never overwrites existing media
+PASS real stereo PCM writer created
+PASS actual diagnostic audio written
+Settings file: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/group-range-demo-12/prefs/Settings.xml
+Creating Default Controllers...
+PASS saved native session independently parsed
+PASS owned 44.1k source receives fractional project-sample offset
+PASS fractional fixture written to a separate file
+PASS real render receipt agrees with independently decoded WAV
+PASS actual rendered PCM decoded
+PASS native global clipboard shortcut accepted
+PASS CmdE separates both group tracks at both range edges only
+PASS separation retains distinct outside starts and common exact slice bounds
+PASS separation retains distinct outside starts and common exact slice bounds
+PASS one Undo restores both original IDs and topology
+PASS Redo restores precise separated IDs
+PASS native global clipboard shortcut accepted
+PASS range Copy resolves full group layout without editing history
+PASS native global clipboard shortcut accepted
+PASS range Cut removes only common interval and retains both outside tails
+PASS real render receipt agrees with independently decoded WAV
+PASS actual rendered PCM decoded
+PASS real Tracktion render proves Cut gap silent
+PASS native global clipboard shortcut accepted
+PASS frozen clipboard preserves fractional source seconds at 44.1k
+PASS real render receipt agrees with independently decoded WAV
+PASS actual rendered PCM decoded
+PCM error=0 peak=0.119998
+PASS actual non-silent restored PCM matches original in declared slice interior
+PASS Cut and Paste each Undo as a single native transaction
+PASS default range Nudge skips partial clips instead of silently separating them
+PASS native global clipboard shortcut accepted
+PASS global range Nudge shortcut accepted
+PASS range Nudge preserves both stable middle clip identities
+PASS Nudge moves only isolated group slices and selection by 480 samples
+PASS Nudge leaves all outside tails in place rather than moving whole group clips
+PASS range Nudge Undo restores separated clip IDs and range together
+PASS prior Separate remains an independent Undo transaction
+PASS global range Delete command accepted
+PASS Delete performs precise range removal on current enabled group
+PASS range Delete restores original state with one Undo
+PASS start-covering partial Nudge leaves unsplit clips unchanged
+PASS mixed whole/partial group range Nudge requires explicit Separate instead of moving outside audio
+PASS ambiguous group Nudge leaves every clip identity and position intact
+PASS fully-contained grouped clips are nudged once without replacing IDs
+PASS real split primitive keeps one-project-sample slices on both source rates
+PASS one-sample Separate restores exact originals with Undo
+PASS stale range Plan cannot override interleaved human lock
+PASS locked overlapping peer rejects entire range edit
+PASS rejected range edits leave project and revision unchanged
+PASS negative range Nudge rejects before any native slicing
+PASS Separate shortcut is disabled without interior boundaries
+PASS range Separate already at outside edges is disabled/no-op
+PASS large range Delete enters preview
+PASS large destructive range shows actual preview without mutating Edit
+PASS rejecting range preview preserves project
+PASS large range Delete can be proposed again
+PASS accepted range preview deletes actual grouped clips
+PASS accepted preview is one native Undo transaction
+PASS over-budget range rejects the entire edit before any native mutation
+PASS 64-operation budget refusal preserves all dense clips
+PASS owned dense fixture Undo restores original group
+PASS native global clipboard shortcut accepted
+PASS mismatched clipboard destination group rejects without erasing a peer
+PASS native global clipboard shortcut accepted
+Settings file: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/group-range-demo-12/reopen-prefs/Settings.xml
+Creating Default Controllers...
+PASS native reopen retains exact IDs topology groups sample bounds and source time within declared tolerance
+PASS custom Separate mapping is unique in the actual registry
+PASS range Separate uses persisted custom global command mapping
+PASS custom range Separate shortcut dispatches
+PASS custom shortcut actually separates current group range
+PASS every edit and Undo preserves original diagnostic media bytes
+PASS every edit and Undo preserves original diagnostic media bytes
+{
+  "budgets": {
+    "fractional_offset_seconds": 1e-12,
+    "pcm_error": 2e-05,
+    "timeout_seconds": 120
+  },
+  "checks": 72,
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/group-range-demo-12/RangeDemoReady.tracktionedit",
+  "pcm_max_error": 0.0,
+  "reopen_source_offset_max_error_seconds": 4.440892098500626e-16,
+  "result": "passed",
+  "scope": "actual native commands, Edit group range slicing, frozen clipboard, Undo/Redo, save/reopen, decoded Tracktion WAV; physical GUI/listening not verified"
+}
+Cleaning up temp files..
+Cleaning up temp files..
+
+RELATED FINAL CTEST
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  75: forma_native_editor_interactions
+1/3 Test  #75: forma_native_editor_interactions ...   Passed   10.82 sec
+    Start  76: forma_native_audio_clipboard
+2/3 Test  #76: forma_native_audio_clipboard .......   Passed    6.23 sec
+    Start 101: forma_native_group_transforms
+3/3 Test #101: forma_native_group_transforms ......   Passed   11.20 sec
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =  28.26 sec
+
+FINAL RELEASE BUILD AND SIGNATURE (tail)
+[ 87%] Built target ndaw_plugin_scan_worker
+[100%] Built target ndaw_ui
+[100%] Linking CXX executable NativeDAW_artefacts/Release/Forma.app/Contents/MacOS/Forma
+ld: warning: ignoring duplicate libraries: 'libndaw_engine.a'
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp: replacing existing signature
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp: valid on disk
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp: satisfies its Designated Requirement
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app: replacing existing signature
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app: valid on disk
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app: satisfies its Designated Requirement
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: replacing existing signature
+--prepared:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp
+--validated:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp
+--prepared:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app
+--validated:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: valid on disk
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: satisfies its Designated Requirement
+--prepared:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp
+--validated:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp
+--prepared:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app
+--validated:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: valid on disk
+/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: satisfies its Designated Requirement
+Executable=/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/MacOS/Forma
+designated => identifier "org.forma.daw" and certificate leaf = H"f28b79fbf4f06dd95da1a6c2b859ede2ae84ba8f"
+[100%] Built target NativeDAW

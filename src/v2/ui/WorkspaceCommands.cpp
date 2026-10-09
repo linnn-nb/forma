@@ -65,7 +65,7 @@ const std::vector<Entry>& entries()
         {editCommand::previousBoundary, "上一个片段边界", "编辑", juce::KeyPress::tabKey,
          juce::ModifierKeys::altModifier},
         {editCommand::nextBoundary, "下一个片段边界", "编辑", juce::KeyPress::tabKey},
-        {editCommand::split, "在光标拆分片段", "编辑", 'e', cmd},
+        {editCommand::split, "拆分选区 / 光标", "编辑", 'e', cmd},
         {editCommand::copy, "复制音频选区", "编辑", 'c', cmd},
         {editCommand::cut, "剪切音频选区", "编辑", 'x', cmd},
         {editCommand::paste, "粘贴音频选区", "编辑", 'v', cmd},
@@ -424,67 +424,84 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.addDefaultKeypress(
                     id == editCommand::nudgeBack ? juce::KeyPress::numberPadSubtract : juce::KeyPress::numberPadAdd, 0);
             bool active = true;
-            if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
+            try
             {
-                active = !mix && !midiKeyboardFocus() && !facts.value("playing", false) &&
-                         facts.value("parameter_capture", Json(nullptr)).is_null() && pendingClipboardPlan.empty();
-                if (id == editCommand::paste || id == editCommand::pasteOriginal)
-                    active = active && !commands.clipboard().is_null();
-                else
+                if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
                 {
-                    const auto slices = clipboardSelection();
-                    active = active && !slices.empty();
-                    for (const auto& item : slices)
-                        active = active && item["kind"] == "audio" && item.value("editable_audio", false) &&
-                                 !item.value("offline_clip_effects", false) &&
-                                 (id != editCommand::cut || !item.value("locked", false));
-                }
-            }
-            if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip ||
-                id == editCommand::spot || (id >= editCommand::grid && id <= editCommand::split))
-            {
-                active = !mix;
-                info.setTicked(id == editCommand::shuffle    ? editing.mode == "shuffle"
-                               : id == editCommand::slip     ? editing.mode == "slip"
-                               : id == editCommand::spot     ? editing.mode == "spot"
-                               : id == editCommand::grid     ? editing.mode == "grid"
-                               : id == editCommand::selector ? editing.tool == "selector"
-                               : id == editCommand::grabber  ? editing.tool == "grabber"
-                               : id == editCommand::trim     ? editing.tool == "trim"
-                               : id == editCommand::smart    ? editing.tool == "smart"
-                                                             : false);
-                if (id == editCommand::nudgeBack || id == editCommand::nudgeForward || id == editCommand::split)
-                {
-                    const auto clips = selectedEditClips();
-                    active = active && !facts.value("playing", false) &&
-                             facts.value("parameter_capture", Json(nullptr)).is_null() &&
-                             (!clips.empty() || (id != editCommand::split && !selection.range.is_null()));
-                    bool splitTarget = false;
-                    for (const auto& c : clips)
+                    active = !mix && !midiKeyboardFocus() && !facts.value("playing", false) &&
+                             facts.value("parameter_capture", Json(nullptr)).is_null() && pendingClipboardPlan.empty();
+                    if (id == editCommand::paste || id == editCommand::pasteOriginal)
+                        active = active && !commands.clipboard().is_null();
+                    else
                     {
-                        active = active && c["kind"] == "audio" && c.value("editable_audio", false) &&
-                                 !c.value("locked", false);
-                        const auto point = facts.value("position_samples", int64_t(0));
-                        splitTarget |= point > c["start_samples"].get<int64_t>() &&
-                                       point < c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>();
+                        const auto slices = clipboardSelection();
+                        active = active && !slices.empty();
+                        for (const auto& item : slices)
+                            active = active && item["kind"] == "audio" && item.value("editable_audio", false) &&
+                                     !item.value("offline_clip_effects", false) &&
+                                     (id != editCommand::cut || !item.value("locked", false));
                     }
-                    if (id == editCommand::split)
-                        active = active && splitTarget;
+                }
+                if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip ||
+                    id == editCommand::spot || (id >= editCommand::grid && id <= editCommand::split))
+                {
+                    active = !mix;
+                    info.setTicked(id == editCommand::shuffle    ? editing.mode == "shuffle"
+                                   : id == editCommand::slip     ? editing.mode == "slip"
+                                   : id == editCommand::spot     ? editing.mode == "spot"
+                                   : id == editCommand::grid     ? editing.mode == "grid"
+                                   : id == editCommand::selector ? editing.tool == "selector"
+                                   : id == editCommand::grabber  ? editing.tool == "grabber"
+                                   : id == editCommand::trim     ? editing.tool == "trim"
+                                   : id == editCommand::smart    ? editing.tool == "smart"
+                                                                 : false);
+                    if (id == editCommand::nudgeBack || id == editCommand::nudgeForward || id == editCommand::split)
+                    {
+                        const auto clips = selectedEditClips();
+                        active = active && !facts.value("playing", false) &&
+                                 facts.value("parameter_capture", Json(nullptr)).is_null() &&
+                                 (!clips.empty() || !selection.range.is_null());
+                        bool splitTarget = false;
+                        for (const auto& c : clips)
+                        {
+                            active = active && c["kind"] == "audio" && c.value("editable_audio", false) &&
+                                     !c.value("locked", false);
+                            const auto point = facts.value("position_samples", int64_t(0));
+                            splitTarget |=
+                                point > c["start_samples"].get<int64_t>() &&
+                                point < c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>();
+                        }
+                        if (id == editCommand::split)
+                        {
+                            if (selection.objects.empty() && !selection.range.is_null())
+                                splitTarget = !commands
+                                                   .audioRangeOperations("separate", selection.tracks,
+                                                                         selection.range["start_samples"],
+                                                                         selection.range["end_samples"])
+                                                   .empty();
+                            active = active && splitTarget;
+                        }
+                    }
+                }
+                if (id == editCommand::extendPrevious || id == editCommand::extendNext)
+                    active = !mix && !facts.value("playing", false) &&
+                             facts.value("parameter_capture", Json(nullptr)).is_null();
+                if (id == editCommand::remove)
+                {
+                    const auto clips = selection.objects.empty() && !selection.range.is_null() ? clipboardSelection()
+                                                                                               : selectedEditClips();
+                    active = midiKeyboardFocus() ? piano.canQuantize()
+                                                 : !mix && !facts.value("playing", false) && !clips.empty() &&
+                                                       pendingClipboardPlan.empty();
+                    if (!midiKeyboardFocus())
+                        for (const auto& clip : clips)
+                            active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                                     !clip.value("locked", false);
                 }
             }
-            if (id == editCommand::extendPrevious || id == editCommand::extendNext)
-                active =
-                    !mix && !facts.value("playing", false) && facts.value("parameter_capture", Json(nullptr)).is_null();
-            if (id == editCommand::remove)
+            catch (const std::exception&)
             {
-                const auto clips = selectedEditClips();
-                active = midiKeyboardFocus()
-                             ? piano.canQuantize()
-                             : !mix && !facts.value("playing", false) && !clips.empty() && pendingClipboardPlan.empty();
-                if (!midiKeyboardFocus())
-                    for (const auto& clip : clips)
-                        active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
-                                 !clip.value("locked", false);
+                active = false;
             }
             if (id == editCommand::remove && !mix && !facts.value("playing", false) &&
                 std::any_of(selection.objects.begin(), selection.objects.end(),

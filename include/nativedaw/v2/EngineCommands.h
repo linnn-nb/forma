@@ -96,6 +96,9 @@ public:
 
     Json editGroupTracks(const Json& seeds) const;
     Json editGroupClipSelection(const std::string& clip) const;
+    // Read-only planner: precise range edits resolve current Edit groups before producing ordinary Plan operations.
+    Json audioRangeOperations(const std::string& action, const Json& tracks, int64_t first, int64_t last,
+                              int64_t delta = 0) const;
     int64_t sampleAtBeat(double) const;
     int64_t sampleAtBarBeat(int bar, double beat) const;
     int64_t snapToGrid(int64_t sample, double division) const;

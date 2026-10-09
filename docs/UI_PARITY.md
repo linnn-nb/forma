@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-GROUP-RANGES-01：官方2026.4印刷912–913（SeparateAtSelection）和919–922（Nudge）于2026-10-09从已有PDF核验。⌘E对时间范围切两端；p920只Nudge完全选中的clip，默认不隐式切片。Forma启用组精确音频Separate/Cut/Delete/原位粘贴及单笔Undo/重开已验，部分组成员移动冲突要求先Separate；PT Layered Editing重叠规则与Tracktion混音差异未验证，不宣称等价。菜单Cut/Copy参照1077–1078页，局部音频实际行为由本轮测试资格证明。72＋226检查及桌面操作通过；完整范围Shuffle/MIDI/自动化与U＋P0仍未完成。
+
 U-P0-PANEL-FOCUS-01（自有可用性修复）：沿用既有淡化/音乐事件/预后卷命令与下表参考行为，不新增Pro Tools对齐声明。输入框有限转发实际注册表的提交/取消，文字编辑保持本地，关闭恢复时间线焦点；UTF-8省略号修正。4项433检查及淡化实体快捷键/保存/Open/重开通过。前轮Open禁用未复现；Finder事件与完整U＋P0仍未完成。
 
 当前增量（2026-10-09）：独立钢琴卷帘音高缩放和选中/全部适配已接通，不改Edit轨道的Notes范围。原生+/−/N位于卷帘右上方，滚轮、可改键、保存重开和真实MIDI手势通过专项；实体界面/试听待解锁后验证。参考官方2026.4手册第1068页（MIDI Editor Zoom Controls）及第871页（连续MIDI缩放）；核验日期2026-10-09，来源https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，本地PDF SHA884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。键位268–272是Forma独立卷帘入口，不宣称完整Pro Tools映射；资格见VERIFICATION.md首节。
@@ -46,7 +48,7 @@ U-P0-PANEL-FOCUS-01（自有可用性修复）：沿用既有淡化/音乐事件
 | 直接 MIDI 量化 | [官方2022.6 MIDI workflow](https://www.avid.com/resource-center/whats-new-in-pro-tools-20226)，Quantization improvements，资料日期2022-06-30/核验2026-10-08 | ⌘⌥0 和量化所选按钮直接提交L1真实音符，使用当前卷帘网格和强度；单笔Undo、稳定ID、保存重开。无Swing/Offsets/Elastic Audio；原详细变换预览另保留 | 增量专项、实际PCM与桌面快捷键通过；完整量化部分 |
 | 时间 / 对象选区 | Reference 892、897页 | 音频/MIDI Clip 共用稳定 ID/所属轨道的选择模型，Shift 加选；Selector 跨轨道范围一笔 L1 事务，范围和 UI 引用可保存。独立卷帘音符成组手势已接通；Clip/Note共用稳定对象引用和父片段高亮，保存重开恢复；音符时间范围联动及自动化点选择未接通 | 部分；专项已验证 |
 | Nudge | Reference 894、919–921页 | 支持 1 sample、10/100 ms、1/¼ 拍；独立于 Grid，完全选中的合格音频片段共用同一采样偏移，一笔 Undo；锁定/不支持成员拒绝整笔。键盘数字区 ±；另提供逗号/句号便于无数字区键盘。自动化跟随、内容滑移、MIDI 整片 Nudge 未接通 | 部分；专项渲染对照及桌面按钮/Undo 已验证 |
-| Tab 片段边界 / 光标拆分 | Reference 900–901、912页 | Tab/Option+Tab 定位所选轨道真实 Clip 边界；Cmd+E 在光标拆分合格音频，一笔 Undo。边界导航不进编辑历史；瞬态导航、Shift 扩选、范围两端拆分未接通 | 部分；专项已验证 |
+| Tab 片段边界 / 范围拆分 | Reference 900–901、912页 | Tab/Option+Tab 定位所选轨道真实 Clip 边界；Cmd+E 在光标或范围两端拆分合格音频，一笔 Undo；启用编辑组使用精确范围，不动范围外音频。边界导航不进编辑历史；Shift扩选已接通，瞬态导航未实现。范围资格见U-P0-GROUP-RANGES-01 | 部分；专项已验证 |
 | Cut / Copy / Paste / Duplicate | Reference Guide Edit menu，印刷页1077–1078（PDF页1179–1180）；仅作菜单工作流参考 | `ui/WorkspaceClipboard.cpp` 接通可改键位的音频 Clip/时间范围剪贴板，经L1事务编辑真实Tracktion对象。支持跨轨映射、保留选区相对位置、剪切/粘贴的重叠区切分与保留、Paste Original、Duplicate 不覆盖目的轨重叠内容、一笔 Undo/Redo；快照只在当前会话有效。macOS桌面已验收Clip快捷键/Undo/Redo/保存重开；MIDI/自动化对象未接通 | 部分；自动化与桌面专项通过 |
 | Marker / Memory Locations | Reference Transport 264页；Shortcuts 35、51–52页 | `src/v2/MarkerCommands.cpp`、`ui/MemoryLocationsPanel.h`、`ui/EditWindow.h`；原生 Marker 标尺、位置列表、记忆选区、定位/恢复、重命名/移动/删除；通过 L1/Edit UndoManager，支持 M、Shift+M 与工程保存重开。自动化 32 项检查，桌面另存并重开后两个 Marker 均保留 | 已实现；U-P0-MARKER-01 已验收 |
 | 循环播放与预备拍 | Reference Transport 264页；Shortcuts 35、51–52页 | 循环范围和状态通过 Tracktion TransportControl 保存及 Undo；节拍器/预备拍接入原生命令与走带；各自证据见 `docs/VERIFICATION.md` | 部分；真实设备回环与录音前硬件 CountIn 流程仍待测 |

@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-GROUP-RANGES-01：L1 `audioRangeOperations` 在 message thread 只读解析当前启用 Edit 组闭包，产出既有 split/delete/move；GUI不写Edit。精确Separate/Cut/Delete使用两边切片，Nudge只移动全选的原ID，遇到会牵连部分选中组成员则要求先Separate，范围与插入点一起Undo。剪贴板保留原生分数源秒数；目标组布局不完整整笔拒绝。64操作预算/锁定/版本/hash/Scope沿用原Plan，不加schema、SDK、实时路径或MCP工具。资格以VERIFICATION最新节为准。
+
 U-P0-PANEL-FOCUS-01：PanelTextEditor只转发共享面板命令275–277/Escape，其他文字键留TextEditor；实际注册表负责自定义键，成功/取消回到Workspace焦点，失败不关面板。裸启动路径由Workspace::openLocalFile区分工程/音频，实际写入仍在既有L1，无新schema/SDK/实时修改。Release/4项433检查及桌面保存重开通过；Open禁用未复现，Finder document事件尚未实现，见VERIFICATION首节。
 
 最新（U-P0-GROUP-TRANSFORMS-01）：编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 毫秒淡化面板/共享草稿仅产出Plan，source offset使用原生时间差；无新持久schema、依赖、SDK或RT修改。实体Open流程待排查，详见VERIFICATION首节。

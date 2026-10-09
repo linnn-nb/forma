@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-GROUP-RANGES-01：只读本地范围规划器解析当前组，所有写入仍由既有Plan原语提交；一操作一human Undo事务。目标媒体哈希、版本、Scope、锁定、64操作上限保持；未知/缺失对象不提交。Nudge保留原ID，不把默认Nudge变成隐式切片；部分组成员冲突显式要求Separate。破坏性范围超过8个原clip或60秒先预览，取消不改工程，不以新增split原语数量冒充风险大小。MCP注册表保持冻结；桌面首次快捷键焦点待修复。
+
 U-P0-PANEL-FOCUS-01：未增加领域命令、权限或MCP工具；GUI输入框只按当前注册表调用275–277，工程修改仍使用原human Plan及native Undo，陈旧版本/非法输入不提交。文字Undo留在输入框，提交/取消后恢复Workspace键盘焦点。启动裸工程文件使用既有L1 open，保存/重开不承诺保留Undo历史。
 
 U-P0-GROUP-TRANSFORMS-01：clip.move/trim/fade/gain既有命令共用expandEditGroupEdits，意图/来源hash/版本/Scope/幂等仍在L1验证。只读变更预览不修改Edit；GUI毫秒输入转48k工程采样，一笔human事务。89专项与实际PCM通过，未增加冻结的MCP注册表。

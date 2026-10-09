@@ -17,31 +17,33 @@ void removeInterval(Json& ops, const Json& c, int64_t first, int64_t last, int& 
         return;
     require(c["kind"] == "audio" && c.value("editable_audio", false) && !c.value("locked", false),
             "entire edit refused: overlapping clip is locked or its type is unsupported");
-    if (begin >= first && end <= last)
-        ops.push_back(operation("clip.delete", {{"clip", c["id"]}}));
-    else if (begin < first && end > last)
+    std::string middle = c["id"];
+    if (begin < first)
     {
         const auto right = "$clipboard-right-" + std::to_string(ref++);
-        ops.push_back(operation("clip.split", {{"clip", c["id"]}, {"position_samples", first}, {"ref", right}}));
-        ops.push_back(operation("clip.trim", {{"clip", right}, {"start_samples", last}, {"end_samples", end}}));
+        ops.push_back(operation("clip.split", {{"clip", middle}, {"position_samples", first}, {"ref", right}}));
+        middle = right;
     }
-    else
-        ops.push_back(operation("clip.trim", {{"clip", c["id"]},
-                                              {"start_samples", begin < first ? begin : last},
-                                              {"end_samples", begin < first ? first : end}}));
+    if (end > last)
+        ops.push_back(operation(
+            "clip.split",
+            {{"clip", middle}, {"position_samples", last}, {"ref", "$clipboard-right-" + std::to_string(ref++)}}));
+    ops.push_back(operation("clip.delete", {{"clip", middle}}));
 }
 } // namespace
 Json Workspace::clipboardSelection() const
 {
     Json result = Json::array();
+    const auto owners = selection.objects.empty() && !selection.range.is_null()
+                            ? commands.editGroupTracks(selection.tracks)
+                            : selection.tracks;
     for (const auto& t : facts.value("tracks", Json::array()))
         for (const auto& c : t["clips"])
         {
             const auto begin = c["start_samples"].get<int64_t>(), end = begin + c["length_samples"].get<int64_t>();
             const bool object = selection.contains(c["id"]);
-            const bool range =
-                selection.objects.empty() && !selection.range.is_null() &&
-                std::find(selection.tracks.begin(), selection.tracks.end(), t["id"]) != selection.tracks.end();
+            const bool range = selection.objects.empty() && !selection.range.is_null() &&
+                               std::find(owners.begin(), owners.end(), t["id"]) != owners.end();
             if (!object && !range)
                 continue;
             const auto first = range ? std::max(begin, selection.range["start_samples"].get<int64_t>()) : begin;
@@ -119,9 +121,9 @@ void Workspace::executeClipboardCommand(int id)
                     first = selection.range["start_samples"];
                     last = selection.range["end_samples"];
                 }
+                const auto rangeTracks = range ? commands.editGroupTracks(selection.tracks) : Json::array();
                 for (const auto& t : facts["tracks"])
-                    if ((range && std::find(selection.tracks.begin(), selection.tracks.end(), t["id"]) !=
-                                      selection.tracks.end()) ||
+                    if ((range && std::find(rangeTracks.begin(), rangeTracks.end(), t["id"]) != rangeTracks.end()) ||
                         std::any_of(slices.begin(), slices.end(), [&](const Json& c) { return c["track"] == t["id"]; }))
                         owners.push_back(t["id"]);
                 buffer = commands.prepareClipboard(captured, owners, first, last, workspaceSession, revision);
@@ -138,6 +140,8 @@ void Workspace::executeClipboardCommand(int id)
                         require(!range, "Shuffle Cut currently requires whole-clip selection");
                         ops = deleteClipOperations(true);
                     }
+                    else if (range)
+                        ops = commands.audioRangeOperations("delete", selection.tracks, first, last);
                     else
                         for (const auto& c : slices)
                             removeInterval(ops, c, c["slice_start"], c["slice_end"], ref);
@@ -172,6 +176,9 @@ void Workspace::executeClipboardCommand(int id)
                     for (size_t i = 0; i < buffer["tracks"].size(); ++i)
                         targets.push_back((start + i)->at("id"));
                 }
+                const auto groupedTargets = commands.editGroupTracks(targets);
+                require(groupedTargets.size() == targets.size(),
+                        "destination Edit group requires matching clipboard tracks; copy all members or disable group");
                 std::map<std::string, std::string> mapping;
                 for (size_t i = 0; i < targets.size(); ++i)
                 {
@@ -202,8 +209,16 @@ void Workspace::executeClipboardCommand(int id)
                                                      return o["command"] == "clip.delete" ||
                                                             o["command"] == "clip.trim" || o["command"] == "clip.split";
                                                  });
+            std::set<std::string> touchedClips;
+            for (const auto& op : ops)
+                if (op["args"].contains("clip"))
+                {
+                    const auto clip = op["args"]["clip"].get<std::string>();
+                    if (!clip.starts_with("$") && !clip.starts_with("@clipboard:"))
+                        touchedClips.insert(clip);
+                }
             if (destructive &&
-                (ops.size() > 8 ||
+                (touchedClips.size() > 8 ||
                  buffer["end_samples"].get<int64_t>() - buffer["start_samples"].get<int64_t>() > 60 * 48000))
             {
                 pending = plan;

@@ -1,5 +1,15 @@
 # 验证状态
 
+## U-P0-GROUP-RANGES-01（2026-10-09）
+
+结论：同组任意音频时间范围的Separate/Cut/Delete及精确原位粘贴已接通；Nudge仅移动全选片段并保留ID，选区/插入点共同撤销。Release和已授权固定签名deep/strict通过。`ndaw_range_group_tests` 直接运行72检查通过；相关CTest `forma_native_editor_interactions`（81）、`forma_native_audio_clipboard`（49）、`forma_native_group_transforms`（96）3/3通过，28.26秒；总计298检查，非全量回归。
+
+实测：48k/44.1k真实24-bit诊断PCM、实际Tracktion渲染与独立WAV解码，Cut空白内部静音、非静音粘贴范围内部最大差0（排除各编辑边界2048采样）；预定容差2e-5未放宽。精确整数工程边界/ID/组/拓扑重开一致，源秒数误差4.44e-16，原定1e-12容差。包含一采样切片、锁定/陈旧版本/负位置整笔拒绝、64操作超限、预览取消/接受/单笔Undo、布局不完整粘贴拒绝、真实唯一改键保存并实际执行；原诊断媒体哈希不变。源码在RangeGroupTests.cpp、EditGroupCommands.cpp、ClipboardCommands.cpp、ClipCommands.cpp及WorkspaceEditing/Clipboard/Commands.cpp。
+
+实体桌面：独立 `FormaRangeEditingPreview.app`，真实`RangeDemoReady.tracktionedit`；原生拆分按钮、⌘Z、ControlOptionShiftE、`.`移动1.250→1.260秒、Undo/Redo、⌘X、⌘⌥V均实际执行。⌘S是另存为新文件 `build-v2-tracktion/group-range-demo-12/DesktopRange.tracktionedit`，⌘O原生对话框重开；XML核验A/B各三片段、C一片段未变，选区1.25–2.5秒，B中段offset0.7500052083333333秒。截图 `evidence/U/group-range-desktop.png`；诊断正弦不是音乐或麦克风示范，未作听感资格。初次物理键未执行，点击原生拆分后才可靠，不能声称启动焦点已修复。退出仅本轮预览，进程核验无残留；用户旧窗口保留。
+
+测试夹具修正：不同频率避免近反相素材导致恢复电平断言误判；真实分数源秒数按预定容差比较，整数边界/ID仍严格；改键避开既有Zoom Toggle的ControlOptionE，验证实际命令124分派而非仅键被消费。最终输出 `evidence/U/group-range-tests.json`、`group-range-tests.txt`、`group-range-preview.json`；历史回执恢复原件，重跑文件留ignored build。无新schema/SDK/实时/冻结MCP变更，无DMG。Shuffle范围、MIDI/自动化剪贴板、PT重叠层规则、完整U＋P0尚未完成，不进入P1。
+
 ## U-P0-PANEL-FOCUS-01：原生编辑面板与文件入口（2026-10-09）
 
 结论：Release及固定身份deep/strict验签通过；4项受影响回归最终通过，共433检查。首轮navigation夹具漏填track.create的ref而失败，补齐夹具后仅重跑该项（5.01秒）；其余music/roll/group分别7.92/13.29/14.18秒通过。没有降低原音频预算：group内部修剪PCM差0、共同增益误差1.216e−7≤2e−6，music PCM差0。没有全量回归或DMG，U＋P0未完整验收。

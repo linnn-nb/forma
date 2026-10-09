@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## U-P0-GROUP-RANGES-01（2026-10-09）
+
+分组音频范围精确Separate/Cut/Delete、原位粘贴和全选片段Nudge：Release/固定验签通过；新增直接运行72＋相关3CTest226＝298检查通过。实际Tracktion WAV内部PCM差0，分数源重开误差4.44e-16秒；原媒体哈希不变。Desktop实际拆分/移动/Undo/Redo/Cut/PasteOriginal/另存/Open重开已执行，XML A/B各3片段、C1。输出group-range-tests.json/txt、group-range-preview.json与group-range-desktop.png；正式app和OpenRangeEditingDemo.command位于build-v2-tracktion。
+
+首次先点原生拆分获取焦点，再⌘Z，演示自定义ControlOptionShiftE（默认⌘E）、`.`、⌘X、⌘⌥V。初始焦点问题未修复；未作听感/全量回归/DMG，完整U＋P0、Shuffle范围、MIDI/自动化剪贴板未完成。仅本轮预览已退出，其他窗口保留。细节见docs/VERIFICATION.md首节；下列旧资格是历史记录。
+
 ## U-P0-PANEL-FOCUS-01
 
 原生Fades/Roll/MusicEvent文本输入接通有限注册表快捷键，提交/取消恢复编辑焦点；裸启动工程路径正确打开Edit。Release/固定deep/strict通过，4项433检查最终通过；首轮导航夹具缺ref已修正后单独通过，未放宽PCM预算。实际桌面快捷键提交/Undo/Redo、系统另存/Open、重开自定义键与Escape通过，A/B淡入0.12/0.17秒与源偏移独立核验。前轮Open禁用未复现，不声称根因修复。关键证据panel-focus-tests.json/.txt、panel-focus-desktop.png；完整重跑JSON留build；U＋P0/任意范围组编辑、Finder运行中文档事件、实体听感仍未完成，无DMG。

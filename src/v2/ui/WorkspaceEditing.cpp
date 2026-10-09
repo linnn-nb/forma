@@ -11,17 +11,25 @@ void require(bool condition, const char* message)
 } // namespace
 Json Workspace::selectedEditClips() const
 {
+    if (selection.objects.empty() && !selection.range.is_null())
+    {
+        auto clips = clipboardSelection();
+        clips.erase(std::remove_if(clips.begin(), clips.end(),
+                                   [](const Json& clip)
+                                   {
+                                       return clip["slice_start"] != clip["start_samples"] ||
+                                              clip["slice_end"].get<int64_t>() !=
+                                                  clip["start_samples"].get<int64_t>() +
+                                                      clip["length_samples"].get<int64_t>();
+                                   }),
+                    clips.end());
+        return clips;
+    }
     Json result = Json::array();
     for (const auto& t : facts.value("tracks", Json::array()))
         for (const auto& c : t["clips"])
         {
-            bool chosen = selection.contains(c["id"]);
-            if (selection.objects.empty() && !selection.range.is_null() &&
-                std::find(selection.tracks.begin(), selection.tracks.end(), t["id"]) != selection.tracks.end())
-                chosen = c["start_samples"].get<int64_t>() >= selection.range["start_samples"].get<int64_t>() &&
-                         c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>() <=
-                             selection.range["end_samples"].get<int64_t>();
-            if (chosen)
+            if (selection.contains(c["id"]))
                 result.push_back(c);
         }
     return result;
@@ -162,6 +170,33 @@ void Workspace::executeEditCommand(int id)
                 message(text("按当前所选轨道定位片段边界 · 不进行瞬态检测"));
                 return;
             }
+            if (selection.objects.empty() && !selection.range.is_null())
+            {
+                const int64_t first = selection.range["start_samples"], last = selection.range["end_samples"];
+                const bool separate = id == editCommand::split;
+                const int direction = id == editCommand::nudgeBack ? -1 : 1;
+                const int64_t delta =
+                    separate ? 0
+                    : editing.nudge == "beat" || editing.nudge == "quarter-beat"
+                        ? commands.offsetByBeats(first, direction * (editing.nudge == "beat" ? 1. : .25)) - first
+                        : direction * int64_t(editing.nudge == "sample" ? 1
+                                              : editing.nudge == "10ms" ? 480
+                                                                        : 4800);
+                auto ops =
+                    commands.audioRangeOperations(separate ? "separate" : "move", selection.tracks, first, last, delta);
+                if (separate && ops.empty())
+                    throw std::runtime_error("no audio boundary inside this range to separate");
+                if (!separate)
+                {
+                    ops.push_back(operation("session.range.set",
+                                            {{"start_samples", first + delta}, {"end_samples", last + delta}}));
+                    ops.push_back(operation("session.insertion.set", {{"position_samples", first + delta}}));
+                }
+                commands.commit(commands.makePlan("human", ops));
+                message(text(separate ? "选区两端已拆分 · 同组范围外音频保留 · 一次 Undo"
+                                      : "Nudge 已提交 · 仅移动全选音频 · 部分片段先用 ⌘E 拆分 · 一次 Undo"));
+                return;
+            }
             auto clips = selectedEditClips();
             Json ops = Json::array();
             if (id == editCommand::split)
@@ -222,6 +257,14 @@ void Workspace::executeEditCommand(int id)
 
 Json Workspace::deleteClipOperations(bool ripple) const
 {
+    if (selection.objects.empty() && !selection.range.is_null())
+    {
+        require(!ripple, "Shuffle range Delete is not yet supported; use Slip/Grid or select whole clips");
+        auto ops = commands.audioRangeOperations("delete", selection.tracks, selection.range["start_samples"],
+                                                 selection.range["end_samples"]);
+        require(!ops.empty(), "no audio overlaps the selected time range");
+        return ops;
+    }
     const auto selectedClips = selectedEditClips();
     require(!selectedClips.empty(), "select one or more whole audio clips first");
     require(!ripple || !selection.objects.empty(), "Shuffle Delete requires whole-clip selection, not a time range");
@@ -302,6 +345,17 @@ void Workspace::executeDeleteCommand()
             const bool ripple = editing.mode == "shuffle";
             auto plan = commands.makePlan("human", deleteClipOperations(ripple));
             plan["base_revision"] = facts["revision"];
+            if (selection.objects.empty() && !selection.range.is_null() &&
+                (clipboardSelection().size() > 8 ||
+                 selection.range["end_samples"].get<int64_t>() - selection.range["start_samples"].get<int64_t>() >
+                     60 * 48000))
+            {
+                require(pending.is_null(), "accept or reject the existing preview before a large range Delete");
+                pending = plan;
+                previewText.setText(text(commands.preview(plan).dump(2)));
+                message(text("大范围删除 · 请预览后接受或取消"));
+                return;
+            }
             const auto receipt = commands.commit(plan);
             require(receipt.value("state", std::string{}) == "committed", "clip deletion did not commit");
             refresh();

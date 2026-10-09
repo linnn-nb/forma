@@ -447,8 +447,8 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
             require(c != nullptr, "native clipboard insertion failed");
             const auto start = pos(a["position_samples"]);
             c->setSyncType(te::Clip::syncAbsolute);
-            c->setPosition(
-                {{start, start + dur(entry->facts["length_samples"])}, dur(entry->facts["source_offset_samples"])});
+            c->setPosition({{start, start + dur(entry->facts["length_samples"])},
+                            tracktion::TimeDuration::fromSeconds(entry->facts["source_offset_seconds"].get<double>())});
             c->state.setProperty("ndaw_parent_clip", juce::String(entry->facts["clip"].get<std::string>()), &um);
             c->state.setProperty("ndaw_origin", "clipboard", &um);
             const auto actual = c->itemID.toString().toStdString();

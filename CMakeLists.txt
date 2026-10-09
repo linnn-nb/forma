@@ -738,3 +738,10 @@ target_sources(ndaw_group_transform_tests PRIVATE tests/v2/GroupTransformTests.c
 target_link_libraries(ndaw_group_transform_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_group_transforms COMMAND ndaw_group_transform_tests "${CMAKE_SOURCE_DIR}/evidence/U/group-transforms-tests.json")
 set_tests_properties(forma_native_group_transforms PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Precise grouped time-range edits: real Edit/Undo, clipboard and decoded audio (no mock engine).
+juce_add_console_app(ndaw_range_group_tests PRODUCT_NAME "ndaw_range_group_tests")
+target_sources(ndaw_range_group_tests PRIVATE tests/v2/RangeGroupTests.cpp)
+target_link_libraries(ndaw_range_group_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_group_ranges COMMAND ndaw_range_group_tests "${CMAKE_SOURCE_DIR}/evidence/U/group-range-tests.json")
+set_tests_properties(forma_native_group_ranges PROPERTIES TIMEOUT 120)
