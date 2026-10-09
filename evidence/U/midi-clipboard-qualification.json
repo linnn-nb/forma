@@ -1,0 +1,215 @@
+{
+  "test": "U-P0-MIDI-CLIPBOARD-01",
+  "verified_at": "2026-10-10",
+  "state": "automated_verified_desktop_not_executed",
+  "release_build": "passed",
+  "signature": {
+    "identifier": "org.forma.daw",
+    "leaf_sha1": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",
+    "deep_strict": "passed"
+  },
+  "distinct_tests": 11,
+  "checks": 1114,
+  "new_checks": 131,
+  "new_receipt": {
+    "beat_budget": 1e-11,
+    "checks": 131,
+    "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clipboard-demos/clipboard-0fe9897e445847a69377bfe961030678/MidiClipboardDesktopReady.tracktionedit",
+    "max_beat_error": 8.881784197001252e-16,
+    "onset_after_samples": 96000,
+    "onset_before_samples": 48000,
+    "onset_delta_budget": 64,
+    "save_max_beat_error": 1.7763568394002505e-15,
+    "state": "passed"
+  },
+  "related_receipts": {
+    "evidence/M1/music-tests.json": {
+      "ctest": "Passed",
+      "checks": 44,
+      "sha256": "5e35eca17bf9e59ccd15c6ee7753113ed03d83379c19d9f000718a054898df9f"
+    },
+    "evidence/M1/midi-transform-tests.json": {
+      "ctest": "Passed",
+      "checks": 81,
+      "sha256": "e99c3d7795f38d6c660aee0e8c132b35fce3f8d15345da00519d1233ff022b18"
+    },
+    "evidence/M1/scope-tests.json": {
+      "ctest": "Passed",
+      "checks": 38,
+      "sha256": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21"
+    },
+    "evidence/M2/protocol-tests.json": {
+      "ctest": "Passed",
+      "checks": 96,
+      "sha256": "7c9dad09aed4c2475b7afa5f9879b65df942a84a14c72eab4d8c2fee4512442c"
+    },
+    "evidence/U/midi-timing-tests.json": {
+      "ctest": "Passed",
+      "checks": 248,
+      "sha256": "a98f42962d9a78989377d4dcc94e298d1c7bf039dcafe36cdc72792600dee87b"
+    },
+    "evidence/U/midi-editor-tests.json": {
+      "ctest": "Passed",
+      "checks": 64,
+      "sha256": "11d8aedff0c6dcb6e2a5cc7664c82cf8286639a1c8b9bddff6771a2d1fcfe611"
+    },
+    "evidence/U/clipboard-tests.json": {
+      "ctest": "Passed",
+      "checks": 49,
+      "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386"
+    },
+    "evidence/U/automation-clipboard-tests.json": {
+      "ctest": "Passed",
+      "checks": 234,
+      "sha256": "b7dffb3a1a75283ce58eb231ee78ff8c1e05d2ec63e42417d19b8370dacaa5db"
+    },
+    "evidence/U/navigation-tests.json": {
+      "ctest": "Passed",
+      "checks": 48,
+      "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df"
+    },
+    "evidence/U/editor-tests.json": {
+      "ctest": "Passed",
+      "checks": 81,
+      "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1"
+    }
+  },
+  "historical_reports_restored": {
+    "evidence/M1/music-tests.json": "9478fc415a4ea3b13035f4019e5b9dc9790987e58d4ed93e3dc3ec91bd98fd53",
+    "evidence/M1/midi-transform-tests.json": "2690e70cfa9eb8273cc7bb5168466c6c1d1e184c423f93696d8356895bef3c35",
+    "evidence/M1/scope-tests.json": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21",
+    "evidence/M2/protocol-tests.json": "97ef865f304d295d40808deee0e5ed1c7a79065ec52766c5435d01ea5380ddfd",
+    "evidence/U/midi-timing-tests.json": "b873f3fc7f430c1e5d7d2281b11275c04cbb18dd8c05f5d294109afd813f865f",
+    "evidence/U/midi-editor-tests.json": "8c92ce04e7b81f17224fb53c5a626f11938ff7981b243ad275c74393aa367be9",
+    "evidence/U/clipboard-tests.json": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386",
+    "evidence/U/automation-clipboard-tests.json": "758edd7904620ace9148df73c7153124c9e169a505dd18a63f35842693e2293e",
+    "evidence/U/navigation-tests.json": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df",
+    "evidence/U/editor-tests.json": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1"
+  },
+  "logs": {
+    "midi-clipboard-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-build.log",
+      "sha256": "43699e7f59877693793c95d3bb93d67ca4111ebcc0035863a6914115c24cc9d1"
+    },
+    "midi-clipboard-current-ui-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-current-ui-test.log",
+      "sha256": "e27c1c57f7e42535b809f9472e17208fd99be1a0c5a3ddbf20f76bd661de13cb"
+    },
+    "midi-clipboard-final-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-final-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-final-signature.log": {
+      "path": "build-v2-tracktion/midi-clipboard-final-signature.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "midi-clipboard-final-ui-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-final-ui-build.log",
+      "sha256": "5572b2b1277821fa4f632b7aab18a280e532197fa07d818197c21cff1cdc6849"
+    },
+    "midi-clipboard-final-ui-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-final-ui-test.log",
+      "sha256": "9ef53e816970868d8c46df9b679c9502cd8981f3c1c4314f148392c8016c6f8e"
+    },
+    "midi-clipboard-first-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-first-test.log",
+      "sha256": "a609599815d8c88316c5489a93c51605de9ad20e7097e78715fb0f2504891409"
+    },
+    "midi-clipboard-fourth-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-fourth-test.log",
+      "sha256": "a49759f1773cf716618873bce27b1588d27573ed881e1494d7b603699c01152c"
+    },
+    "midi-clipboard-lift-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-lift-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-mode-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-mode-build.log",
+      "sha256": "9f84cf9f9d46d199bb76ccdb431ce7aaf5b79053d950feea9ddf25559e51d333"
+    },
+    "midi-clipboard-original-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-original-build.log",
+      "sha256": "34a58b4e378efab14d1735ca9ec3c7a3b5f582b8e9cd31ff69d2b593056f2d71"
+    },
+    "midi-clipboard-original-diagnostic-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-original-diagnostic-build.log",
+      "sha256": "29d99f530d56e875bd75613c9a17ed247a9b18f4637d145629f88251929667ca"
+    },
+    "midi-clipboard-original-diagnostic-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-original-diagnostic-test.log",
+      "sha256": "9a362dc9e9322cb98161d6901efe8664db38b5930acf9009a4c8b7b2a14d02df"
+    },
+    "midi-clipboard-query-lifetime-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-query-lifetime-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-regression-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-regression-build.log",
+      "sha256": "c03cb46236586776e1e6fabc1bb63f6aa2b21a627928de3e8827c1da318dc4ed"
+    },
+    "midi-clipboard-related-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-related-test.log",
+      "sha256": "bd0dd02c99968386c7f2f480d9d7a87fc42e0cbe46e6e646f316c861eae3464e"
+    },
+    "midi-clipboard-replay-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-replay-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-save-diagnostic-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-save-diagnostic-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-save-diagnostic-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-save-diagnostic-test.log",
+      "sha256": "2ebd82fddf129d68bececd5e201effd819b58fd4d446cb6a7df7fffc76b44b88"
+    },
+    "midi-clipboard-second-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-second-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-second-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-second-test.log",
+      "sha256": "ed6bde534ce0687336ce21fd3303765650195b801112598cebe27976db0ed29f"
+    },
+    "midi-clipboard-signature.log": {
+      "path": "build-v2-tracktion/midi-clipboard-signature.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "midi-clipboard-source-selection-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-source-selection-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-test-build.log": {
+      "path": "build-v2-tracktion/midi-clipboard-test-build.log",
+      "sha256": "f9405ea26814b1097ce34b9f355c37dfb1c4d78eaf1069c4b0259733c2426efc"
+    },
+    "midi-clipboard-third-test.log": {
+      "path": "build-v2-tracktion/midi-clipboard-third-test.log",
+      "sha256": "50bab1fab8f2df60173d2e7ea6ee1d9ec3625aee58cb9f685522b297fafcd0d6"
+    }
+  },
+  "desktop": {
+    "state": "not_executed",
+    "reason": "CUA Mac locked",
+    "owned_preview_pid": 85399,
+    "termination": "SIGTERM",
+    "exec_exit": 143,
+    "process_absent": true,
+    "screenshot": null,
+    "scope": "one earlier preview attempt; final rebuilt GUI remains unexecuted"
+  },
+  "failures_and_repairs": [
+    "Initial string versus JSON comparisons in new implementation corrected to explicit std::string",
+    "Test Scope.start corrected to actual Scope.begin; source track chosen through production button",
+    "Retry test checks replayed=true and all original receipt fields, not exact equality of replay flag",
+    "Reopen test bound query snapshot lifetime before iterating; no beat/sample budget changes",
+    "GUI Paste Original resolves source clip/track; MIDI selection no longer enters audio Clip inspector"
+  ],
+  "limits": [
+    "Stopped, selected full playable notes in an existing nonlooped editable MIDI clip; no playback quantisation/groove",
+    "Copy captures notes only; existing CC untouched; whole clip/range/controller clipboard remains pending",
+    "Paste replaces target onsets in the copied musical extent; Duplicate merges, no Shuffle qualification",
+    "MPE/expression child semantics, mixed meter, very large replacement preview, hardware and physical GUI not qualified",
+    "No new MCP tools, dependencies, SDK or realtime changes, DMG, Windows or listening qualification"
+  ]
+}

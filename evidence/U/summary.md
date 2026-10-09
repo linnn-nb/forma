@@ -1,3 +1,7 @@
+U-P0-MIDI-CLIPBOARD-01（2026-10-10）：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 接通既有菜单和可改键；原生音符属性保留、副本新ID、一笔human L1/native Undo、保存重开。默认Paste替换目标音符起点，Duplicate合并；Paste Original回源轨/源片段。Release/固定验签通过，11项不同受影响CTest、1114检查（新131）通过。Mac锁定，实体操作/试听未执行。整MIDI片段、范围/CC剪贴板和完整U＋P0仍未完成，不进入P1。
+
+证据：midi-clipboard-tests.json / midi-clipboard-regression.txt / midi-clipboard-qualification.json；无本轮实体截图。
+
 U-P0-MIDI-TIME-01（2026-10-09）：钢琴卷帘所选音符接通 Nudge、起点/终点修剪，共用既有菜单与可改键；一笔 human L1/native Undo，保存重开及重开后的首个快捷键已验证。Release/固定证书验签通过；10项不同受影响CTest、1032检查（新248）通过。真实FourOsc渲染首个发声点48000→48480，实移480样本；Mac锁定，实体操作/试听未执行，无新截图。完整U＋P0未完成，不进P1；下一项MIDI复制剪切粘贴。
 
 证据：midi-timing-tests.json / midi-timing-regression.txt / midi-timing-qualification.json。无本轮实体截图。

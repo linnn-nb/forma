@@ -1,5 +1,17 @@
 # 验证状态
 
+## U-P0-MIDI-CLIPBOARD-01（2026-10-10）
+
+结论：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 自动验证通过，Release/固定叶证书deep/strict验签通过。11项不同受影响CTest、1114检查（新131）；10项相关91.18秒，最终5项UI＋新专项6/6、58.67秒，新专项10.62秒。完整U＋P0未完成，不进P1。
+
+- 实现 MidiClipboard.cpp / WorkspaceMidiClipboard.cpp、MusicCommands/EngineCommands/Scope及既有GUI注册表；测试 tests/v2/MidiClipboardTests.cpp / forma_native_midi_clipboard。两个真实乐器轨、带偏移目的Clip、分数源beat/静音、native CC、颜色和release velocity及opaque附加属性。四种同轨/跨轨粘贴、冻结后修改源音符、替换与合并区别、副本唯一ID、单笔Undo/Redo、Save后Undo/Open、键位重开及首个Copy通过；跨轨GUI Paste Original回源轨，目标Clip原样。
+- 真实音乐位置最大差8.881784197001252e-16，XML重开三项beat字段最大差1.7763568394002505e-15，固定预算1e-11；其余音符事实精确一致，原duration严格保留。独立解码Tracktion FourOsc stereo48k/576000帧WAV；最新实际onset48000→96000，移动48000样本，固定64样本包络预算不变。早期工具读回为48004→96000（差4样本），最终回执以最新实测为准；随机合成器不作逐位/主观听感声明。
+- 撤销/重试、完整原回执（仅replayed标记变化）、版本冲突、实际目标Scope、锁定、越界、未知/重复ID、4097条捕获拒绝、伪XML/伪快照/Agent身份及跨会话token拒绝通过；失败保持旧剪贴板和工程。4096实际满载、8MiB边界、巨量替换预览和MPE子状态未获得压力资格。10份历史JSON按原SHA恢复，最终运行hash/count保存在qualification。
+- 早期失败已修复：新代码string/Json比较显式转string；测试使用真实Scope.begin，点击生产源轨按钮；重试保留replayed断言；保存测试先绑定query的生命周期再遍历，不降低数值/时间容差。补充Original跨轨测试发现MIDI选择误送音频Clip检查器，改为保留MIDI引用并清空仅音频检查器字段。原失败日志与最终日志hash保留，临时诊断输出已去除。
+- 桌面：本轮一次较早预览启动后CUA报告Mac锁定，实体剪切/粘贴/Undo/保存/Open/试听均未执行，无截图。仅本轮PID85399 SIGTERM清理、exec143、确认无残留；旧用户窗口保留。后续正式构建和演示已更新，不能将组件测试称为实体通过。
+
+亲手试 build-v2-tracktion/OpenMidiClipboardDemo.command：已选两个音符，CmdC/X/D，OptionCmdV回原位置；ControlOptionShiftV为自定义Paste，CmdZ/ShiftCmdZ，CmdS另存新副本、CmdO重开。当前只支持停止状态、现有可编辑非循环Clip内完整可播放音符；CC保持，不随音符剪贴板搬移，播放量化/Groove拒绝。整MIDI片段/范围/主时间线、CC跟随、Shuffle、独立Merge菜单及完整U＋P0仍待补。证据 midi-clipboard-tests.json / midi-clipboard-regression.txt / midi-clipboard-qualification.json；无新依赖/SDK/实时路径/MCP工具/DMG。
+
 ## U-P0-MIDI-TIME-01（2026-10-09）
 
 结论：所选 MIDI 音符 Nudge 与起点/终点修剪通过自动验证；Release及 org.forma.daw 固定叶证书 deep/strict 验签通过。10项不同受影响CTest、1032检查：新专项248（19.75秒），相关9项784；最后UI上下文修改后5项再验46.79秒。未扩大完整U＋P0验收，不进P1。

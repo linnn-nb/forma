@@ -791,6 +791,10 @@ public:
     {
         return canvas.editable() && !canvas.selectedNotes().empty();
     }
+    bool canPasteNotes() const
+    {
+        return canvas.editable();
+    }
     Json timingSelection() const
     {
         if (!canQuantize())

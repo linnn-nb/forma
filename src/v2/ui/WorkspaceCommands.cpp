@@ -459,6 +459,16 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                          (id != editCommand::cut || !item.value("locked", false));
                         }
                     }
+                    if (midiKeyboardFocus())
+                    {
+                        const bool pasting = id == editCommand::paste || id == editCommand::pasteOriginal;
+                        const auto buffer = commands.clipboard();
+                        active = !mix && !facts.value("playing", false) && pending.is_null() &&
+                                 facts.value("parameter_capture", Json(nullptr)).is_null() &&
+                                 (pasting ? (id == editCommand::pasteOriginal || piano.canPasteNotes()) &&
+                                                !buffer.is_null() && buffer.value("kind", std::string{}) == "midi_notes"
+                                          : piano.canQuantize());
+                    }
                 }
                 if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip ||
                     id == editCommand::spot || (id >= editCommand::grid && id <= editCommand::split))

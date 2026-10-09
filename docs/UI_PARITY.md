@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-MIDI-CLIPBOARD-01：2026-10-10核验官方 Pro Tools Reference Guide 2026.4，印刷854/PDF956 Paste Command、印刷1115–1116/PDF1217–1218 Copying and Pasting Events in the MIDI Event List：普通Paste替换，Merge MIDI保留目标事件。本产品当前只实现钢琴卷帘的明确所选音符：CmdC/X/V/D及OptionCmdV可改键；默认Paste替换音乐范围内的目标音符起点，Duplicate为合并，Paste Original回到实际源轨/Clip。一笔L1 Undo、保存重开，MidiClipboard.cpp / WorkspaceMidiClipboard.cpp / MidiClipboardTests；所测路径自动已验证，实体Mac锁定未执行。不是完整PT MIDI工作流等价；跨边界长音符、范围/整片段、CC随剪贴板、Shuffle、MPE与独立Merge菜单仍待补/实测。官方来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本地SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。
+
 U-P0-MIDI-TIME-01：核验官方 Pro Tools Reference Guide 2026.4（2026-10-09），印刷919/PDF1021 Nudge、印刷1019–1020/PDF1121–1122 Trimming MIDI Notes with Nudge。所选音符小键盘±移动，Option＋小键盘±改起点，Command＋小键盘±改终点；Forma复用菜单和可改键，一笔L1/native Undo、保存重开。实现 MusicCommands/WorkspaceEditing/WorkspaceCommands/MidiEditor，测试 MidiTimingTests；所测停止状态单Clip、多选音符路径已验证，实体桌面锁定未执行。播放中、整MIDI片段/CC随片段编辑、混合拍号与完整PT行为待补/实测。
 
 同一官方手册印刷1546/PDF1648 Multiple Edit Playlists and Audio Track Automation 明确：Edit→Trim 不改变底层自动化；MIDI CC（Mute例外）存于Clip并随Clip编辑。音频普通非破坏性 Trim 保留工程时间曲线的策略因此有参考依据，BoundaryNudgeTests仍为实际证据；此结论只替代相应旧“缺少参考”记录，不能推广到全部鼠标/Shuffle/TCE模式或Pro Tools运行对照。源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本地PDF SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。

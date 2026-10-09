@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-MIDI-CLIPBOARD-01：MidiClipboard.cpp 在 L1 复用已有 staged/active ClipboardBuffer；Copy 冻结真实 NOTE ValueTree、源工程beat与范围，不写Edit/Undo。新 human/local_gui midi.notes.erase/paste 每Plan一个操作；当前Note快照1–4096、≤8MiB，失败保持旧剪贴板。preview/commit验证会话、版本、原生Clip、锁定与可播放边界；Scope覆盖真实删除/新增音符位置。执行复用 SDK MidiList::addNote(const MidiNote&)/removeNote，副本/native子ID重新分配、音乐间距和原duration保留。WorkspaceMidiClipboard 只生成Plan及更新L1 UI状态，Paste Original解析实际源轨/Clip，MIDI选择不传入音频检查器。Open清除会话绑定的剪贴板；无新SDK/依赖/实时路径/MCP工具。
+
 U-P0-MIDI-TIME-01：MusicCommands.cpp 注册本地 human 专用 midi.notes.time；WorkspaceEditing/Commands 与 MidiEditor 将既有六个 Nudge/Trim GUI 命令编译为一笔 Plan。原生序列的未舍入源 beat 与 Tempo 映射是事实，samples 为48k工程样本，音乐移动精确保留原 duration；首尾修剪保留另一端。Scope覆盖每个音符 before/after，锁定/版本/范围/处理限制先校验；原生 setStartAndLength 只在 L1/message thread 执行。WorkspaceRefresh 在重开时恢复已保存音符选区的命令上下文，不写工程或抢文字焦点。无新依赖、SDK或实时路径，MCP工具保持冻结。普通音频 Edit→Trim 保留曲线的策略现有官方参考依据，见 UI_PARITY；不扩大为全部模式等价。
 
 U-P0-TRIM-NUDGE-01（2026-10-09）：GUI命令630–633只生成clip.trim；同笔human Plan，使用L1现有组展开、媒体hash、版本、边界和native Undo校验。音乐Nudge按最早选中边界计算公共样本偏移，保留组相位/边界差；停止且完整可编辑音频目标才启用。只增GUI命令，不扩充冻结MCP、schema、依赖、SDK或实时路径。当前曲线留在工程时间；PT Trim自动化边界资格仍待核验。TrackHeader声像数值改右侧，避免覆盖轨道视图；完整参数身份不截断。

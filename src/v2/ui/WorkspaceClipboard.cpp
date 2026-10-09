@@ -65,6 +65,11 @@ void Workspace::finishClipboardEdit(const Json& receipt)
 }
 void Workspace::executeClipboardCommand(int id)
 {
+    if (midiKeyboardFocus())
+    {
+        executeMidiClipboardCommand(id);
+        return;
+    }
     if (executeAutomationClipboardCommand(id))
         return;
     invoke(

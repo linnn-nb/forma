@@ -80,3 +80,7 @@ evidence/U/*
 !evidence/U/midi-timing-tests.json
 !evidence/U/midi-timing-regression.txt
 !evidence/U/midi-timing-qualification.json
+
+!evidence/U/midi-clipboard-tests.json
+!evidence/U/midi-clipboard-qualification.json
+!evidence/U/midi-clipboard-regression.txt

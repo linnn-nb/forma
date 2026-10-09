@@ -172,7 +172,8 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 span(std::llround(pos.getStart().inSeconds() * timelineRate),
                      std::llround(pos.getLength().inSeconds() * timelineRate));
             }
-            if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time")
+            if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time" ||
+                cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
             {
                 for (const auto& change : preview["midi_changes"])
                     if (change["operation_index"] == index)
@@ -180,6 +181,8 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                             for (const char* side : {"before", "after"})
                             {
                                 const auto& v = n[side];
+                                if (v.is_null())
+                                    continue;
                                 span(v["position_samples"], v["length_samples"]);
                                 impacts.push_back({{"command", cmd},
                                                    {"object", n["note"]},

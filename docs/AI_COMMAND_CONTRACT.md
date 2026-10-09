@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-MIDI-CLIPBOARD-01：midi.notes.erase={clip,note_ids}；midi.notes.paste={clip,clipboard,placement:cursor/original/after,position_samples,mode:replace/merge}。仅human/local_gui，不发布MCP工具，每Plan一项原子批量操作。clipboard是L1生成的活跃/暂存快照ID，禁止外部XML或音符状态注入；original/after要求position_samples=0并使用冻结的原始音乐边界，cursor用当前Tempo换算48k工程样本。replace清理目标半开音乐区间的音符起点，再克隆；merge保留原音符；两者保留既有CC。before/after预览与Scope一致，native Undo/Redo及revision/幂等保持，重试标记replayed并返回原对象ID，不重复执行。Copy不编辑工程；Cut只在真实提交回执后接受快照。测试MidiClipboardTests，新131检查。
+
 U-P0-MIDI-TIME-01：midi.notes.time 仅 actor=human、tool_visibility=local_gui，不发布 MCP 工具。参数为 clip 稳定ID、selection=notes、note_ids 唯一ID数组（1–4096）、edge=move/start/end、unit=samples/beats、非零 amount（绝对值≤2880000，samples须整数）。单位为48k工程样本或原生音乐单位；目前 GUI 提供1样本/10ms/100ms/1拍/四分之一拍。预览返回每个音符 before/after，Scope核对源与目标；锁定、过期版本、未知ID、Clip越界、音符倒置或小于一个工程样本整笔拒绝。调用完成以真实 committed 回执为准，一笔 native Undo/Redo，未选音符/CC/音高/力度/静音保持；MusicCommands/MidiTimingTests，248专项。
 
 U-P0-AUTOMATION-CLIPS-MOVE-01：human原始clip.move（稳定Clip ID、整数48k position_samples）先展开实际编辑组，L1追加automation.clips.move。moves最多64且Clip唯一；实际归属和state_hash由事实生成。preview/commit核对requested_operations与全部重编译操作，拒绝裸内部操作/篡改；媒体hash、revision/session、锁定/Scope、幂等及同笔Undo保持。已有曲线的extent复合Plan与模糊重叠整笔拒绝；无曲线不加曲线操作。GUI手势立即提交，不新增Agent/MCP工具或资格，M2/M3冻结。测试U-P0-AUTOMATION-CLIPS-MOVE-01，499检查。

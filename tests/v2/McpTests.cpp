@@ -43,8 +43,10 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try {
     bool controls=false,typed=false;for(const auto& t:listed){controls|=t["name"]=="plan.audio.device.apply"||t["name"]=="plan.plugin.editor.open";typed|=t["name"]=="plan.track.gain";}
     check(!controls&&typed,"human-only controls are excluded while real domain commands are published");
     check(std::none_of(listed.begin(), listed.end(),
-                       [](const Json& tool) { return tool["name"] == "plan.midi.notes.time"; }),
-          "local MIDI timing command does not expand frozen external tools");
+                       [](const Json& tool) { return tool["name"] == "plan.midi.notes.time" ||
+                                                   tool["name"] == "plan.midi.notes.erase" ||
+                                                   tool["name"] == "plan.midi.notes.paste"; }),
+          "local MIDI timing and clipboard commands do not expand frozen external tools");
     check(call(s,rpc(40,"tools/list",{{"cursor","-1"}}))["error"]["code"]==-32602,"invalid pagination cursor rejected");
     check(tool(s,"invented_tool")["error"]["code"]==-32602,"unknown tool is a protocol error");
     auto bad=tool(s,"query_session",{{"accepted",true}});check(bad["result"]["isError"]&&data(bad)["status"]=="failed","invalid registered-tool arguments are a structured tool failure");

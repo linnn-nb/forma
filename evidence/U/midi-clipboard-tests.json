@@ -1,0 +1,11 @@
+{
+  "beat_budget": 1e-11,
+  "checks": 131,
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clipboard-demos/clipboard-0fe9897e445847a69377bfe961030678/MidiClipboardDesktopReady.tracktionedit",
+  "max_beat_error": 8.881784197001252e-16,
+  "onset_after_samples": 96000,
+  "onset_before_samples": 48000,
+  "onset_delta_budget": 64,
+  "save_max_beat_error": 1.7763568394002505e-15,
+  "state": "passed"
+}

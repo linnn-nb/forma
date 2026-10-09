@@ -1,0 +1,50 @@
+U-P0-MIDI-CLIPBOARD-01: 11 distinct tests, 1114 checks; 131 new.
+Core/automation engine tests ran before GUI-only Original placement/selection fix; all 5 affected UI tests plus new test rerun on current library.
+
+midi-clipboard-related-test.log
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+      Start  34: tracktion_music_notes
+ 1/10 Test  #34: tracktion_music_notes ...............   Passed    6.70 sec
+      Start  36: tracktion_midi_transform
+ 2/10 Test  #36: tracktion_midi_transform ............   Passed    4.49 sec
+      Start  56: tracktion_permission_scope
+ 3/10 Test  #56: tracktion_permission_scope ..........   Passed    2.86 sec
+      Start  68: tracktion_mcp_protocol
+ 4/10 Test  #68: tracktion_mcp_protocol ..............   Passed    1.45 sec
+      Start  74: forma_native_ui_navigation
+ 5/10 Test  #74: forma_native_ui_navigation ..........   Passed    3.54 sec
+      Start  75: forma_native_editor_interactions
+ 6/10 Test  #75: forma_native_editor_interactions ....   Passed   10.48 sec
+      Start  76: forma_native_audio_clipboard
+ 7/10 Test  #76: forma_native_audio_clipboard ........   Passed    6.62 sec
+      Start  80: forma_native_midi_editor
+ 8/10 Test  #80: forma_native_midi_editor ............   Passed    6.83 sec
+      Start 109: forma_native_automation_clipboard
+ 9/10 Test #109: forma_native_automation_clipboard ...   Passed   28.07 sec
+      Start 116: forma_native_midi_timing
+10/10 Test #116: forma_native_midi_timing ............   Passed   20.13 sec
+
+100% tests passed, 0 tests failed out of 10
+
+Total Test time (real) =  91.18 sec
+
+midi-clipboard-current-ui-test.log
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  74: forma_native_ui_navigation
+1/6 Test  #74: forma_native_ui_navigation .........   Passed    3.86 sec
+    Start  75: forma_native_editor_interactions
+2/6 Test  #75: forma_native_editor_interactions ...   Passed   10.58 sec
+    Start  76: forma_native_audio_clipboard
+3/6 Test  #76: forma_native_audio_clipboard .......   Passed    6.67 sec
+    Start  80: forma_native_midi_editor
+4/6 Test  #80: forma_native_midi_editor ...........   Passed    7.04 sec
+    Start 116: forma_native_midi_timing
+5/6 Test #116: forma_native_midi_timing ...........   Passed   19.88 sec
+    Start 117: forma_native_midi_clipboard
+6/6 Test #117: forma_native_midi_clipboard ........   Passed   10.62 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  58.67 sec

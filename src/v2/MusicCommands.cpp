@@ -283,6 +283,16 @@ void Commands::registerMusicCommands(Json& registry)
     timing["units"] = {
         {"unit", "48000 Hz session samples, or native Tracktion meter divisions"},
         {"amount", "signed edge displacement; samples integral; beats preserve source duration on move"}};
+    add("midi.notes.erase", {{"clip", str}, {"note_ids", {{"type", "array"}, {"items", str}, {"maxItems", 4096}}}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIDI-CLIPBOARD-01";
+    add("midi.notes.paste", {{"clip", str},
+                             {"clipboard", str},
+                             {"position_samples", position},
+                             {"placement", {{"type", "string"}, {"enum", {"cursor", "original", "after"}}}},
+                             {"mode", {{"type", "string"}, {"enum", {"replace", "merge"}}}}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIDI-CLIPBOARD-01";
 }
 std::string Commands::trackType(te::AudioTrack& t) const
 {
@@ -721,6 +731,11 @@ Json Commands::validateMusicPlan(const Json& operations) const
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
         }
+        else if (cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
+        {
+            require(operations.size() == 1, "MIDI clipboard requires one atomic operation per Plan");
+            diff.push_back(midiClipboardChange(cmd, a, index));
+        }
         else if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time")
         {
             const std::string target = a.at("clip");
@@ -794,6 +809,11 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
     auto& seq = edit->tempoSequence;
     auto& um = edit->getUndoManager();
+    if (cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
+    {
+        executeMidiClipboard(cmd, a, objects);
+        return;
+    }
     if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event."))
     {
         const bool isTempo = cmd.starts_with("tempo."), creating = cmd.ends_with("create"),
