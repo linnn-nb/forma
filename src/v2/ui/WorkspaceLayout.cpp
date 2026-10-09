@@ -89,6 +89,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id = 268; id <= 272; ++id)
             addMenuCommand(midiZoom, id);
         p.addSubMenu(text("MIDI Notes / Zoom"), midiZoom);
+        addMenuCommand(p, 278);
+        addMenuCommand(p, 279);
         addMenuCommand(p, 273);
         addMenuCommand(p, 274);
         p.addSeparator();
@@ -262,6 +264,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (rollPanel && rollPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (musicEventPanel && musicEventPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
     if (zoomTogglePanel && zoomTogglePanel->isVisible())
@@ -349,6 +353,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
     if (auto* focused = juce::Component::getCurrentlyFocusedComponent();
         dynamic_cast<juce::TextEditor*>(focused) && !key.getModifiers().isCommandDown())
         return false;
+    if (key == juce::KeyPress::escapeKey && editArea.rollRuler.cancel())
+        return true;
     if (key == juce::KeyPress::escapeKey && editArea.cancelScrubGesture())
         return true;
     if (key == juce::KeyPress::escapeKey && editArea.cancelZoomGesture())
@@ -409,6 +415,8 @@ void Workspace::resized()
         exportPanel->setBounds(getLocalBounds());
     if (zoomTogglePanel)
         zoomTogglePanel->setBounds(getLocalBounds());
+    if (rollPanel)
+        rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)
         musicEventPanel->setBounds(getLocalBounds());
     if (analysisPanel)
@@ -432,15 +440,17 @@ void Workspace::resized()
     importButton.setBounds(280, 4, 76, 27);
     saveButton.setBounds(364, 4, 94, 27);
     exportButton.setBounds(466, 4, 76, 27);
+    rollButton.setBounds(844, 4, 74, 27);
+    rollButton.setVisible(getWidth() >= 1240);
     metronomeButton.setBounds(550, 4, 80, 27);
     countInMode.setBounds(634, 4, 132, 27);
     loopButton.setBounds(774, 4, 64, 27);
-    const bool showLocationButtons = getWidth() >= 1340;
+    const bool showLocationButtons = getWidth() >= 1420;
     loopButton.setVisible(getWidth() >= 1160);
     markerButton.setVisible(showLocationButtons);
     locationsButton.setVisible(showLocationButtons);
-    markerButton.setBounds(844, 4, 76, 27);
-    locationsButton.setBounds(924, 4, 84, 27);
+    markerButton.setBounds(924, 4, 76, 27);
+    locationsButton.setBounds(1004, 4, 84, 27);
     editButton.setBounds(getWidth() - 314, 4, 64, 27);
     mixButton.setBounds(getWidth() - 244, 4, 64, 27);
     pianoButton.setBounds(getWidth() - 174, 4, 86, 27);

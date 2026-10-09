@@ -1,5 +1,8 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <cmath>
+#include <charconv>
+#include "TimelineState.h"
+#include "OutputProbe.h"
 
 namespace ndaw::v2
 {
@@ -37,9 +40,53 @@ std::string encodeCountIn(int value)
 }
 } // namespace
 
+Json readRollState(const juce::ValueTree& metadata)
+{
+    Json result{{"pre_enabled", false}, {"post_enabled", false}, {"pre_samples", 96000}, {"post_samples", 96000}};
+    auto state = metadata.getChildWithName("ROLL");
+    if (!state.isValid())
+        return result;
+    if (state.getNumProperties() != 5 || state.getNumChildren() != 0 || state.getProperty("schema").toString() != "1")
+        throw std::runtime_error("invalid roll state schema");
+    for (auto key : {"pre_enabled", "post_enabled", "pre_samples", "post_samples"})
+    {
+        if (!state.hasProperty(key))
+            throw std::runtime_error("incomplete roll state");
+        const auto value = state.getProperty(key).toString().toStdString();
+        int64_t n = 0;
+        auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), n);
+        if (error != std::errc{} || end != value.data() + value.size() || n < 0 ||
+            n > (std::string(key).ends_with("enabled") ? 1 : std::llround(te::Edit::maximumLength * 48000.)))
+            throw std::runtime_error("invalid saved roll setting");
+        if (std::string(key).ends_with("enabled"))
+            result[key] = bool(n);
+        else
+            result[key] = n;
+    }
+    return result;
+}
+
 void Commands::registerTransportCommands(Json& registry)
 {
     const Json enabled{{"type", "boolean"}};
+    registry.push_back(Json{{"id", "transport.roll.set"},
+                            {"schema",
+                             {{"type", "object"},
+                              {"properties",
+                               {{"pre_enabled", enabled},
+                                {"post_enabled", enabled},
+                                {"pre_samples", {{"type", "integer"}, {"minimum", 0}}},
+                                {"post_samples", {{"type", "integer"}, {"minimum", 0}}}}},
+                              {"required", {"pre_enabled", "post_enabled", "pre_samples", "post_samples"}},
+                              {"additionalProperties", false}}},
+                            {"permission", "edit"},
+                            {"risk", "low"},
+                            {"reversible", true},
+                            {"live", false},
+                            {"tool_visibility", "local_gui"},
+                            {"test", "U-P0-ROLL-01"},
+                            {"units", {{"time", "48000 Hz session samples"}}}});
+
     Json clickSchema{{"type", "object"},
                      {"properties", {{"enabled", enabled}}},
                      {"required", {"enabled"}},
@@ -101,7 +148,9 @@ Json Commands::transportSettingsQuery() const
             {"count_in_beats", encodeCountIn(mode) == "unsupported" ? 0 : edit->getNumCountInBeats()},
             {"count_in_source", "session_metadata"},
             {"loop_enabled", edit->getTransport().looping.get()},
-            {"loop_range", loopRange}};
+            {"loop_range", loopRange},
+            {"roll", readRollState(metadata)},
+            {"roll_playback", rollPlayback}};
 }
 
 Json Commands::validateTransportPlan(const Json& operations) const
@@ -111,12 +160,22 @@ Json Commands::validateTransportPlan(const Json& operations) const
     auto mode = int(metadata.getProperty("count_in_mode", int(te::Edit::CountIn::none)));
     auto selection = timelineRange();
     auto loopRange = transportSettingsQuery().value("loop_range", Json(nullptr));
+    auto roll = readRollState(metadata);
     Json diff = Json::array();
     for (const auto& operation : operations)
     {
         const auto command = operation.at("command").get<std::string>();
         const auto& args = operation.at("args");
-        if (command == "session.range.set")
+        if (command == "transport.roll.set")
+        {
+            for (auto key : {"pre_samples", "post_samples"})
+                if (args.at(key).get<int64_t>() < 0 ||
+                    args.at(key).get<int64_t>() > std::llround(te::Edit::maximumLength * 48000.))
+                    throw std::runtime_error("roll duration outside Edit range");
+            diff.push_back({{"command", command}, {"before", roll}, {"after", args}});
+            roll = args;
+        }
+        else if (command == "session.range.set")
         {
             const auto start = args.at("start_samples").get<int64_t>();
             const auto end = args.at("end_samples").get<int64_t>();
@@ -169,6 +228,16 @@ Json Commands::validateTransportPlan(const Json& operations) const
 void Commands::executeTransportOperation(const std::string& command, const Json& args)
 {
     auto& undo = edit->getUndoManager();
+    if (command == "transport.roll.set")
+    {
+        auto state = metadata.getOrCreateChildWithName("ROLL", &undo);
+        state.setProperty("schema", 1, &undo);
+        for (auto key : {"pre_enabled", "post_enabled"})
+            state.setProperty(key, args.at(key).get<bool>(), &undo);
+        for (auto key : {"pre_samples", "post_samples"})
+            state.setProperty(key, juce::int64(args.at(key).get<int64_t>()), &undo);
+        return;
+    }
     if (command == "transport.metronome.set")
     {
         auto click = edit->state.getOrCreateChildWithName(te::IDs::CLICKTRACK, &undo);
@@ -207,6 +276,72 @@ void Commands::executeTransportOperation(const std::string& command, const Json&
         return;
     }
     throw std::runtime_error("unknown transport operation");
+}
+
+bool Commands::beginRollPlayback()
+{
+    const auto roll = readRollState(metadata);
+    rollPlayback = nullptr;
+    if (edit->getTransport().looping.get())
+        return false; // Existing loop mode has explicit precedence.
+    const auto range = timelineRange();
+    if (range.is_null())
+    {
+        if (roll["pre_enabled"].get<bool>() || roll["post_enabled"].get<bool>())
+            throw std::runtime_error("select a time range for pre/post-roll playback");
+        return false;
+    }
+    const auto first = range["start_samples"].get<int64_t>(), last = range["end_samples"].get<int64_t>();
+    const auto start =
+        std::max(int64_t(0), first - (roll["pre_enabled"].get<bool>() ? roll["pre_samples"].get<int64_t>() : 0));
+    const auto end = std::min(std::llround(te::Edit::maximumLength * 48000.),
+                              last + (roll["post_enabled"].get<bool>() ? roll["post_samples"].get<int64_t>() : 0));
+    const auto firstFrame = outputProbe ? outputProbe->frames.load(std::memory_order_relaxed) : 0;
+    edit->getTransport().playSectionAndReset(
+        {tracktion::TimePosition::fromSeconds(start / 48000.), tracktion::TimePosition::fromSeconds(end / 48000.)});
+    rollPlayback = {
+        {"state", "requested"},   {"frames_at_start", firstFrame},
+        {"start_samples", start}, {"end_samples", end},
+        {"selection", range},     {"stop_accuracy", "Tracktion message-thread 25Hz section stop; not sample-accurate"}};
+    rollProgressFrames = firstFrame;
+    rollProgressTime = juce::Time::getMillisecondCounterHiRes();
+    startTimerHz(20);
+    return true;
+}
+void Commands::advanceRollPlayback()
+{
+    if (rollPlayback.is_null() || (rollPlayback["state"] != "playing" && rollPlayback["state"] != "requested"))
+        return;
+    const auto frames = outputProbe ? outputProbe->frames.load(std::memory_order_relaxed) : 0;
+    const auto now = juce::Time::getMillisecondCounterHiRes();
+    const auto* context = edit->getTransport().getCurrentPlaybackContext();
+    if (frames > rollPlayback["frames_at_start"].get<uint64_t>() && context && context->isPlaying())
+        rollPlayback["state"] = "playing";
+    if (frames != rollProgressFrames)
+    {
+        rollProgressFrames = frames;
+        rollProgressTime = now;
+    }
+    if (edit->getTransport().isPlaying())
+    {
+        if (now - rollProgressTime <= 2000.)
+            return;
+        rollPlayback["state"] = "failed";
+        rollPlayback["error"] = "output callback made no progress for two seconds";
+    }
+    else
+    {
+        const auto position = std::llround(edit->getTransport().getPosition().inSeconds() * 48000.);
+        rollPlayback["actual_stop_samples"] = position;
+        rollPlayback["overshoot_samples"] = std::max(int64_t(0), position - rollPlayback["end_samples"].get<int64_t>());
+        rollPlayback["state"] = frames > rollPlayback["frames_at_start"].get<uint64_t>() &&
+                                        position >= rollPlayback["end_samples"].get<int64_t>()
+                                    ? "stopped"
+                                    : "interrupted";
+    }
+    if (rollPlayback["state"] == "interrupted")
+        rollPlayback["error"] = "native transport stopped before the selected end";
+    stop();
 }
 
 void Commands::restoreTransportSettings()

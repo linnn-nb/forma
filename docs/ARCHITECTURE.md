@@ -1,6 +1,12 @@
 # Forma 架构 v2
 
-音乐标尺事件（U-P0-MUSIC-EVENTS-01）：Rulers/EditWindow 读取实际 TempoSequence 稳定 ID，原生 MusicEventPanel 保持 session/revision 草稿，Workspace 仅生成 human Plan。L1 MusicCommands 验证事件、重合与小节边界，native ValueTree 经同一 UndoManager 修改并排序，EditTimecodeRemapperSnapshot 重映射音乐时间；样本时间基准音频保持位置。新增拍号不得继承前项 ID/triplets，修改既有事件保留未公开的曲线与 triplets。载入旧重复音乐 ID 由 L1 分配新 ID 并保存 music_id_repairs 映射；原文件不自动覆盖。UI schema13不变。新六命令仅 local_gui，不扩充冻结 MCP 工具；预后卷走带本轮未实现。
+区间播放/预后卷（U-P0-ROLL-01）：L1在Edit/NATIVEDAW/ROLL schema1保存pre/post enabled和48000Hz工程样本长度；原生面板、快捷键和RollRuler草稿共用transport.roll.set及一个UndoManager事务。只允许human停止时编辑；旧工程没有ROLL则显式默认关闭、长度各96000样本，异常字段在adoptEdit前拒绝。无新UI schema或SDK补丁。
+
+普通选区播放与预后卷调用Tracktion playSectionAndReset：非循环模式从选区起点减启用预卷至终点加启用后卷，夹工程边界；无范围且关闭预后卷则继续普通走带，有预后卷而无范围拒绝。MIDI设备配置requested时禁止Play，避免配置完成停止共用观察定时器；循环模式优先保留原生loop，录音仍使用原生预备拍、没有录音预后卷。L1回执requested→观察到OutputProbe帧推进且nativeContext播放→playing→实际端点stopped；手动停止/seek取消，提前原生停止interrupted，连续两秒无输出进展failed并停止。状态不保存或增加Undo/revision。
+
+结束由Tracktion 25Hz message-thread SectionPlayer决定，GUI阻塞可延迟声音截止，不能称采样级或硬实时停止；后续须在原生图内完成精确边界处理。新增L1定时观察不进入音频回调，不替换引擎或引入插件IPC。标尺只在主标尺画启用的真实预后卷边界，拖动局部预览、松手human版本提交，版本/坐标/会话变化取消草稿。
+
+音乐标尺事件（U-P0-MUSIC-EVENTS-01）：Rulers/EditWindow 读取实际 TempoSequence 稳定 ID，原生 MusicEventPanel 保持 session/revision 草稿，Workspace 仅生成 human Plan。L1 MusicCommands 验证事件、重合与小节边界，native ValueTree 经同一 UndoManager 修改并排序，EditTimecodeRemapperSnapshot 重映射音乐时间；样本时间基准音频保持位置。新增拍号不得继承前项 ID/triplets，修改既有事件保留未公开的曲线与 triplets。载入旧重复音乐 ID 由 L1 分配新 ID 并保存 music_id_repairs 映射；原文件不自动覆盖。UI schema13不变。新六命令仅 local_gui，不扩充冻结 MCP 工具；预后卷走带的后续增量及限制见本文顶部。
 
 当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
 

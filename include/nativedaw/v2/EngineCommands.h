@@ -230,6 +230,11 @@ private:
     void executeTransportOperation(const std::string&, const Json&);
     Json transportSettingsQuery() const;
     void restoreTransportSettings();
+    bool beginRollPlayback();
+    void advanceRollPlayback();
+    Json rollPlayback = nullptr;
+    uint64_t rollProgressFrames = 0;
+    double rollProgressTime = 0;
     static void registerAutomationCommands(Json&);
     Json automationLaneQuery(te::AutomatableParameter&) const;
     Json automationPointQuery(te::AutomatableParameter&, int) const;

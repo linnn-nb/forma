@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-ROLL-01：选区播放与预卷 / 后卷（2026-10-09）
+
+结论：Release构建及固定本地身份deep/strict验签通过；8项受影响CTest全部通过、0失败，55.07秒。新专项62检查，真实Tracktion hosted输出测得预卷区峰值0.0499999523、后卷区0.1999999284；要求96000采样结束，实际97216，超出1216（48k约25.33ms）。这不是实体CoreAudio/扬声器试听，也不是最坏停止误差或采样级截止资格。
+
+入口：原生走带“预后卷”、视图菜单、CommandShiftK设置、CommandK联合开关；CommandReturn提交、Escape取消，可在键位设置改绑。主标尺启用旗标可拖动长度、双击设置；一笔human Plan一个UndoManager事务，保存新Workspace重开保留状态与改键。独立pre/post开关和非负48k工程样本输入，零点夹限。普通选区即使关闭预后卷仍按范围播放；循环模式保留原生Loop优先，无范围但启用预后卷拒绝播放。窄窗口用菜单/快捷键，修复新工具栏入口与Marker重叠。
+
+实现/测试：TransportCommands.cpp的transport.roll.set、readRollState、begin/advanceRollPlayback；EngineCommands.cpp校验载入/seek/stop；RecordingCommands.cpp仅观察走带进展，不添加录音预后卷；RollPanel.h、RollRuler.h、EditWindow.h及WorkspaceCommands 275/277/278/279；tests/v2/RollPlaybackTests.cpp。严格ROLL schema1，旧工程显式默认关闭，异常数据载入拒绝保留当前工程；UI schema13与15份继承SDK补丁保持，无新增依赖/冻结MCP工具。
+
+专项验证：预览/Undo/Redo、native面板非法输入、陈旧版本拒绝、前后旗标独立拖动/取消/缩放及人工穿插冲突、真实默认/改绑命令、保存/重开、最低1120窗口、原生实际PCM、手动停止/seek、Loop优先、普通选区、零点夹限、无范围拒绝、两秒无输出进展failed并停止、损坏工程拒绝与源SHA保持。回执先requested，观察输出帧推进及native context playing后才标playing；自然结束记录实际停止/超出，提前停止interrupted，失败可见。MIDI原生配置requested时播放前置拒绝，真实hosted MIDI异步配置/捕获测试通过，防止共用定时器提前停止；证据roll-midi-configuration-tests.json。两秒看门狗同属message thread，不承诺GUI阻塞时限。源为测试原创24bit/48k立体声诊断PCM，SHA 9cd7158460ebefa243de80a8801851e479fef26b578682547cb4b8330138fcf3；测试替身时钟不进入生产程序。
+
+边界：SDK playSectionAndReset的25Hz消息线程停止会超出，GUI卡顿可继续播放；需后续原生图精确边界，当前部分实现。录音/循环预后卷、关闭状态灰旗、主时间单位输入、Memory Recall、Playlist Option入口与独立插入点试听未实现。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。初期构建重复方法/OutputStream类型、constructor空facts修复，未降低断言或音频容差；预览首次签名参数缺少“=”导致失败，修正后验签通过。
+
+关键证据：evidence/U/roll-playback-tests.json、roll-affected-tests.txt、roll-preview.json；构建日志build-v2-tracktion/roll-midi-verified-build.log。旧回归JSON原样保留，本次重跑副本留build。LaunchServices启动独立FormaRollPreview，实际进程62331；CUA先cgWindowNotFound、再明确Mac锁定，无实体点击/截图/键位/试听。仅结束本轮62331并确认退出，用户旧窗口保留；预览与测试工程保留，无DMG。
+
+初批7/7、51.14秒，超出448采样；增加MIDI待配置播放校验后的最终8/8、55.07秒，超出1216采样。实測误差变化，不把任一次当最坏值。预览62331为补充校验前构建；最终固定签名产物已刷新、未再次启动，最新SHA见roll-preview.json。
+
 ## U-P0-MUSIC-EVENTS-01：Tempo/Meter 事件编辑（2026-10-09）
 
 结论：原生标尺＋、双击、事件列表、精确位置与数值修改/移动/删除接通真实 Edit。Release、固定身份 deep/strict 验签通过；专项96检查和8项相关回归最终通过0失败（分批修复复测，并非全量）。UI schema13保持；一个human Plan一个Undo，保存/新Workspace重开保持ID、顺序与音频/MIDI事实，自定义键重开可执行。

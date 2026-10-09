@@ -1,0 +1,14 @@
+{
+  "preview": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/FormaRollPreview.app",
+  "launch": "LaunchServices open -n accepted; exact own executable verified in ps",
+  "pid": 62331,
+  "gui": "not executed: CUA cgWindowNotFound then inventory Mac locked",
+  "cleanup": "SIGTERM exact own PID; no remaining process",
+  "signing": "fixed local leaf identity; both bundles verify deep strict",
+  "initial_launch_formal_binary_sha256": "c6239591343dcc73a6171a6ff37700b344d48b010cac747a85ebc81871f5f83c",
+  "initial_launch_preview_binary_sha256": "25ac12309ba0201882a1a96c9ec644ecad79a8bd6e6eec9d19b14db112df42b7",
+  "final_formal_binary_sha256": "96663dbdbc3374e014fdc308303c7edd1ce76926f918b7e494090a0a33613133",
+  "final_preview_binary_sha256": "d25571af4c04a66860f10e1631bd9b1a4eca0eb63915444f37943cbf5eed4f7e",
+  "final_preview": "refreshed and signed after MIDI pending preflight correction; not launched again because desktop locked",
+  "test_fixture": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_roll_playback_tests/forma-roll-e917d63d2301439e96ecb2826214b78f/Roll.tracktionedit"
+}

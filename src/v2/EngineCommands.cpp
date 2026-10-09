@@ -578,8 +578,8 @@ Json Commands::preview(const Json& plan) const
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
-        if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event."))
-            require(actor == "human", "musical ruler editing is local GUI only during U phase");
+        if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set")
+            require(actor == "human", "ruler editing is local GUI only during U phase");
         const auto& schema = entry->at("schema");
         for (const auto& key : schema.at("required"))
             require(a.contains(key.get<std::string>()), "missing parameter");
@@ -1107,6 +1107,8 @@ void Commands::play()
     checkThread();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
+    require(midiConfiguration.is_null() || midiConfiguration.value("state", std::string{}) != "requested",
+            "wait for MIDI device preparation");
     captureNativeStates();
     require(parameterCapture.is_null(), "finish native parameter gesture before Play");
     ParameterWriteGuard parameterGuard(*this);
@@ -1119,7 +1121,8 @@ void Commands::play()
     beginAutomationCapture();
     try
     {
-        edit->getTransport().play(false);
+        if (!beginRollPlayback())
+            edit->getTransport().play(false);
     }
     catch (...)
     {
@@ -1131,6 +1134,8 @@ void Commands::stop()
 {
     checkThread();
     stopScrub();
+    if (!rollPlayback.is_null() && (rollPlayback["state"] == "playing" || rollPlayback["state"] == "requested"))
+        rollPlayback["state"] = "cancelled";
     endParameterGestures();
     {
         ParameterWriteGuard parameterGuard(*this);
@@ -1159,6 +1164,9 @@ void Commands::stop()
         }
     }
     captureNativeStates();
+    if (!rollPlayback.is_null() && !audioConfigurationPending() && recordingCapture.is_null() && !scrubPlayback &&
+        (midiConfiguration.is_null() || midiConfiguration.value("state", std::string{}) != "requested"))
+        stopTimer();
 }
 void Commands::seek(int64_t sample)
 {
@@ -1168,6 +1176,8 @@ void Commands::seek(int64_t sample)
     require(parameterCapture.is_null(), "finish native parameter gesture before seeking");
     ParameterWriteGuard parameterGuard(*this);
     require(recordingCapture.is_null(), "stop recording before seeking");
+    if (!rollPlayback.is_null() && (rollPlayback["state"] == "playing" || rollPlayback["state"] == "requested"))
+        stop();
     require(capture.is_null(), "stop automation writing before seeking");
     require(sample >= 0 && sample <= std::llround(te::Edit::maximumLength * timelineRate),
             "position outside session range");
@@ -1382,6 +1392,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
+    readRollState(candidate->state.getChildWithName("NATIVEDAW"));
     readUiState(candidate->state.getChildWithName("NATIVEDAW"));
     if (masterAnalysis)
         masterAnalysis->reset();
@@ -1394,6 +1405,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     externalParameterLayouts.clear();
     undoBoundaryInhibitor.reset();
     edit = std::move(candidate);
+    rollPlayback = nullptr;
     undoBoundaryInhibitor = std::move(newInhibitor);
     metadata = edit->state.getOrCreateChildWithName("NATIVEDAW", nullptr);
     restoreTransportSettings();

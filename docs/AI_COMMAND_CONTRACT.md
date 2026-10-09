@@ -1,5 +1,11 @@
 # 统一命令契约 v2
 
+## 选区播放 / 预后卷（U-P0-ROLL-01）
+
+本地human命令transport.roll.set：四字段全部必须提供，pre_enabled/post_enabled为布尔，pre_samples/post_samples为0至Edit最大长度的48000Hz工程样本整数。预览给出原设置与新设置；一笔Plan/Undo，陈旧版本/会话、非法时长、非human、播放中编辑整笔拒绝。local_gui不增加冻结的MCP工具；查询包含实际roll状态，回执与持久设置分开。
+
+278 CommandK成对开关，279 CommandShiftK设置，275 CommandReturn是音乐/走带面板共用的提交，277取消/Escape；当前面板接收，不注册相互冲突的第二个默认提交键。可改键、保存重开。RollPanel保留版本草稿，RollRuler拖动只预览；成功回执后关闭，不把requested当作已听到音频。录音/循环预后卷、插入点独立试听、主时间单位输入与精确截止尚未完成。
+
 ## 音乐标尺事件（U-P0-MUSIC-EVENTS-01）
 
 本地 human Plan 命令：tempo.event.create/set/delete、meter.event.create/set/delete。create 必须声明 beat_position 和 bpm（20–300）或 numerator（1–32）/denominator（1/2/4/8/16/32）；set 另外声明稳定 event ID，delete 仅 event。单位为从零开始的 Tracktion 绝对分拍位置，分母变化会改变单位时长。初始事件不可删除/移出零点，其余事件不得到零点；不能与已有同类事件重合。Meter 必须在有效小节边界，移动前计算排除原事件后的拍号图。失效 ID、重复删除、旧 revision/session 或不合法参数整笔拒绝，不静默合并。

@@ -360,6 +360,8 @@ void Workspace::refresh()
         readOnly.mode = Permission::ReadOnly;
         resetCommandClient(readOnly);
         selected.clear();
+        if (rollPanel)
+            rollPanel->setVisible(false);
         if (musicEventPanel)
             musicEventPanel->setVisible(false);
         midiDivider.cancel();
@@ -435,6 +437,10 @@ void Workspace::refresh()
         {{"none", 1}, {"one_beat", 2}, {"two_beats", 3}, {"one_bar", 4}, {"two_bars", 5}}};
     const auto transportSettings = facts.value("transport_settings", Json::object());
     updatingTransportControls = true;
+    const auto rollSettings = transportSettings["roll"];
+    rollButton.setToggleState(rollSettings["pre_enabled"].get<bool>() || rollSettings["post_enabled"].get<bool>(),
+                              juce::dontSendNotification);
+    rollButton.setTooltip(text("选区播放预后卷 · Command K 开关 · Command Shift K 设置 · 循环模式优先"));
     metronomeButton.setToggleState(transportSettings.value("metronome_enabled", false), juce::dontSendNotification);
     metronomeButton.setTooltip(text("Tracktion 原生节拍器 · 输出：") +
                                text(transportSettings.value("click_output", std::string("未知"))) +
@@ -641,6 +647,9 @@ void Workspace::timerCallback()
 {
     syncCommandCards();
     refresh();
+    const auto roll = facts["transport_settings"]["roll_playback"];
+    if (!roll.is_null() && (roll["state"] == "failed" || roll["state"] == "interrupted"))
+        message(text("选区播放失败 / 中断：") + text(roll.value("error", std::string("native transport interrupted"))));
     if (!facts["last_recording"].is_null() && facts["last_recording"]["state"] == "failed")
         message(text("录音失败：") + text(facts["last_recording"]["error"].get<std::string>()));
 }

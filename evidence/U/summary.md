@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-ROLL-01（2026-10-09）
+
+结果：Release/固定身份deep/strict通过；受影响8/8、0失败、55.07秒；专项62检查。真实Tracktion hosted PCM预卷/后卷峰值0.0499999523/0.1999999284，96000目标实际97216（超出1216采样），源SHA保持。人工编辑、Undo/Redo、原生重开/改键、冲突/损坏拒绝、输出停滞失败均通过。完整细节与代码/测试映射见VERIFICATION.md首节，关键输出roll-playback-tests.json、roll-affected-tests.txt、roll-preview.json。
+
+亲手试：FormaRollPreview.app打开JSON的test_directory/Roll.tracktionedit，已有1–1.5秒选区与各0.5秒预后卷；本测试工程已改绑ControlOptionR设置（新工程默认CommandShiftK）、CommandReturn提交、CommandK开关、空格播放/停止、旗标拖动/双击、CommandZ/ShiftCommandZ。参数48k工程样本；普通选区播放，Loop优先。诊断源是测试信号，非用户录音。
+
+原生25Hz消息线程结束不采样精确，录音/循环roll等仍未接通；GUI锁定未实体操作/试听。已核验并结束仅本轮预览PID62331，既有窗口保留。没有DMG，无新增依赖/SDK补丁/MCP分析资格，完整U＋P0未完成、不进P1。
+
 ## U-P0-MUSIC-EVENTS-01（2026-10-09）
 
 结果：Release/固定身份deep/strict通过；专项96检查＋8项相关回归最终通过（分批复测），真实PCM最大差0、源哈希保持。见 music-events-tests.json 和 music-events-affected-tests.txt；新夹具路径在JSON，采用真实生成的48k/24bit音频和实际MIDI，非物理验收。

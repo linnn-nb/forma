@@ -5,6 +5,7 @@
 #include "EditWindowViews.h"
 #include "Waveforms.h"
 #include "Rulers.h"
+#include "RollRuler.h"
 #include "EditingModel.h"
 #include "AutomationLane.h"
 #include "ZoomGesture.h"
@@ -78,6 +79,7 @@ public:
                     onScrubBuffering(waiting);
             }
         }
+        rollRuler.update(value, view, coordinates());
         facts = value;
         facts["tracks"] = Json::array();
         for (const auto& t : value["tracks"])
@@ -317,6 +319,9 @@ public:
     std::function<void(std::string)> onAutomationError;
     std::function<void(juce::Component&)> onRulersMenu;
     std::function<void(int)> onRulerCommand;
+    RollRuler rollRuler;
+    std::function<void(Json, uint64_t, std::string)> onRollChange;
+    std::function<void()> onRollSettings;
     std::function<void(Json, uint64_t)> onLoopRange;
     std::function<void(std::string, int64_t, std::string)> onMusicEvent;
     int rulerHeight() const
@@ -429,6 +434,7 @@ public:
         g.fillAll(base());
         const auto axis = coordinates();
         Rulers::draw(g, axis, grid, getWidth() - 16, view, facts, rulerContext);
+        rollRuler.paint(g, facts, view, axis);
         if (markerLaneY() >= 0)
         {
             juce::Graphics::ScopedSaveState markerState(g);
@@ -746,6 +752,8 @@ public:
     {
         drag = nullptr;
         dragged = false;
+        if (rollRuler.begin(e, facts, view, coordinates()))
+            return;
         for (const auto* kind : {"tempo", "meter"})
             if (Rulers::addEventRect(view, kind).contains(e.getPosition()) && !facts.value("playing", false))
             {
@@ -994,6 +1002,11 @@ public:
     }
     void mouseDrag(const juce::MouseEvent& e) override
     {
+        if (rollRuler.move(e, coordinates()))
+        {
+            repaint();
+            return;
+        }
         if (scrubGesture)
         {
             const auto request = scrubMotion.move(e, juce::Time::getMillisecondCounterHiRes());
@@ -1072,6 +1085,11 @@ public:
     }
     void mouseUp(const juce::MouseEvent&) override
     {
+        if (rollRuler.finish(onRollChange))
+        {
+            repaint();
+            return;
+        }
         if (scrubGesture)
         {
             scrubGesture = false;
@@ -1171,6 +1189,13 @@ public:
     }
     void mouseDoubleClick(const juce::MouseEvent& e) override
     {
+        for (bool pre : {true, false})
+            if (RollRuler::flag(facts, view, coordinates(), pre).contains(e.getPosition()) && onRollSettings)
+            {
+                rollRuler.cancel();
+                onRollSettings();
+                return;
+            }
         const auto axis = coordinates();
         if (e.x >= timelineLeft())
             if (const auto* ruler = Rulers::at(view, e.y))

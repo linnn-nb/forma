@@ -412,6 +412,7 @@ Json Commands::record(const juce::File& directory)
 }
 void Commands::timerCallback()
 {
+    advanceRollPlayback();
     finishAudioConfiguration();
     captureNativeStates();
     finishMidiConfiguration();

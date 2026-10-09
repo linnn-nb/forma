@@ -161,9 +161,11 @@ const std::vector<Entry>& entries()
          shift | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {273, "Tempo 标尺事件…", "音乐", 't', cmd | shift | juce::ModifierKeys::altModifier},
         {274, "Meter 标尺事件…", "音乐", 'm', cmd | shift | juce::ModifierKeys::altModifier},
-        {275, "提交音乐事件", "音乐", juce::KeyPress::returnKey, cmd},
+        {275, "提交当前编辑设置", "编辑", juce::KeyPress::returnKey, cmd},
         {276, "删除所选音乐事件", "音乐", juce::KeyPress::backspaceKey, cmd | shift},
-        {277, "关闭音乐事件编辑", "音乐"},
+        {277, "取消当前编辑设置", "编辑"},
+        {278, "预卷 / 后卷开关（选区播放）", "走带", 'k', cmd},
+        {279, "预卷 / 后卷设置…", "走带", 'k', cmd | shift},
         {267, "清除 Zoom Toggle · 保留当前视图", "缩放"},
         {262, "Overview · 256 采样/像素", "缩放", '0', cmd | shift | juce::ModifierKeys::altModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
@@ -627,10 +629,19 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id == 278 || id == 279)
+                active = !facts.value("playing", false);
+            if (id == 278)
+            {
+                const auto r = facts.value("transport_settings", Json::object()).value("roll", Json::object());
+                info.setTicked(r.value("pre_enabled", false) || r.value("post_enabled", false));
+            }
             if (id == 273 || id == 274)
                 active = !mix && !facts.value("playing", false);
             if (id >= 275 && id <= 277)
-                active = musicEventPanel && musicEventPanel->isVisible() && (id != 276 || musicEventPanel->canDelete());
+                active =
+                    (musicEventPanel && musicEventPanel->isVisible() && (id != 276 || musicEventPanel->canDelete())) ||
+                    (id != 276 && rollPanel && rollPanel->isVisible());
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();
             if (id >= 250 && id <= 252)
@@ -683,6 +694,29 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 278 || id == 279)
+    {
+        if (id == 279)
+            showRollSettings();
+        else if (id == 278)
+            invoke(
+                [&]
+                {
+                    auto r = commands.query()["transport_settings"]["roll"];
+                    const bool next = !r["pre_enabled"].get<bool>() && !r["post_enabled"].get<bool>();
+                    r["pre_enabled"] = r["post_enabled"] = next;
+                    commands.commit(commands.makePlan("human", Json::array({operation("transport.roll.set", r)})));
+                });
+        return true;
+    }
+    if ((id == 275 || id == 277) && rollPanel && rollPanel->isVisible())
+    {
+        if (id == 275)
+            rollPanel->execute();
+        else
+            rollPanel->setVisible(false);
+        return true;
+    }
     if (id >= 273 && id <= 277)
     {
         if (id == 273 || id == 274)
@@ -1194,12 +1228,48 @@ void Workspace::focusMixInsert(const std::string& target, int index)
         });
     refresh();
 }
+void Workspace::showRollSettings()
+{
+    if (musicEventPanel)
+        musicEventPanel->setVisible(false);
+    if (!rollPanel)
+    {
+        rollPanel = std::make_unique<RollPanel>(
+            [this](Json args, uint64_t version, const std::string& session)
+            {
+                try
+                {
+                    if (session != commands.sessionToken())
+                        throw std::runtime_error("工程会话已切换");
+                    auto plan = commands.makePlan("human", Json::array({operation("transport.roll.set", args)}));
+                    plan["base_revision"] = version;
+                    commands.commit(plan);
+                    rollPanel->setVisible(false);
+                    refresh();
+                    message(text("预后卷设置已提交 · 可撤销"));
+                    return std::string{};
+                }
+                catch (const std::exception& e)
+                {
+                    return std::string(e.what());
+                }
+            });
+        addChildComponent(*rollPanel);
+        rollPanel->connect(commandManager);
+    }
+    rollPanel->show(commands.query());
+    rollPanel->setBounds(getLocalBounds());
+    rollPanel->setVisible(true);
+    rollPanel->toFront(true);
+}
 } // namespace ndaw::desktop
 
 namespace ndaw::desktop
 {
 void Workspace::showMusicEvent(const std::string& kind, double beat, const std::string& event)
 {
+    if (rollPanel)
+        rollPanel->setVisible(false);
     if (commands.query().value("playing", false))
         return;
     if (!musicEventPanel)

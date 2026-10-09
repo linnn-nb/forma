@@ -290,6 +290,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     trackType.addItem("VCA", 6);
     trackType.setSelectedId(1, juce::dontSendNotification);
     trackType.setComponentID("track.type");
+    rollButton.setComponentID("transport.roll");
+    rollButton.setCommandToTrigger(&commandManager, 279, true);
     metronomeButton.setComponentID("transport.metronome");
     loopButton.setComponentID("transport.loop");
     loopButton.setTooltip(text("循环播放当前时间选区；启用后循环区独立保存。L 切换，可自定义键位"));
@@ -704,6 +706,20 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         menu.addCommandItem(&commandManager, editCommand::remove);
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&editArea).withParentComponent(this));
     };
+    editArea.onRollSettings = [this] { commandManager.invokeDirectly(279, false); };
+    editArea.onRollChange = [this](Json args, uint64_t version, std::string session)
+    {
+        invoke(
+            [&]
+            {
+                if (session != commands.sessionToken())
+                    throw std::runtime_error("工程会话已切换");
+                auto plan = commands.makePlan("human", Json::array({operation("transport.roll.set", args)}));
+                plan["base_revision"] = version;
+                commands.commit(plan);
+                message(text("预后卷标记已提交 · 可撤销"));
+            });
+    };
     editArea.onRange = [this](Json range, Json tracks, uint64_t revision, std::string session, int64_t insertion)
     { commitTimeSelection(std::move(range), std::move(tracks), revision, std::move(session), insertion); };
     editArea.onMarkerClick = [this](const std::string& id) { showMemoryLocations(id); };
@@ -713,6 +729,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                                            &exportButton, &editButton, &mixButton, &pianoButton,
                                                            &shortcutsButton, &markerButton, &locationsButton})
         toolbar.attach(*c);
+    toolbar.attach(rollButton);
     toolbar.attach(metronomeButton);
     toolbar.attach(loopButton);
     toolbar.attach(countInMode);
