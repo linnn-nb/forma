@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+当前UI增量（2026-10-09，Zoom Toggle）：schema12新增zoom_toggle，7项偏好、active、9字段out/saved、稳定targets及冻结的恢复策略。WorkspaceZoomToggle／ZoomToggle负责只读规划、GUI入口和L1写入；UiState::prepareUiStatePatch提供同一套纯预检，L1捕获所有活跃视图旁路更新到saved。普通缩放不进工程Undo；Remove Range由一笔human Plan提交range.clear＋insertion.set，完整UI预检在前。旧1–11严格迁移，Zoomer16条历史仍为原4字段；Toggle使用独立9字段基线。Waveforms只拟合真实已载入的源缩略峰值，不增加分析／MCP资格或RT路径；实际验证见VERIFICATION.md首节。
+
 当前UI增量（2026-10-09，Overview）：原生命令262、视图菜单与Command点Zoomer共用WorkspaceZoom→L1 updateUiState，span=实际时间线可绘制像素×256。保持中心并只夹水平位置，不改工具／纵向／轨高／选区／revision／工程Undo。沿用schema11及16条联合缩放历史，重复相同比例不入栈；窗口后来调整时仍保留采样跨度，再调用重新计算。无新SDK／实时／MCP／分析修改；Zoom Toggle未完成，完整资格见VERIFICATION.md首节。
 
 当前UI增量（2026-10-09，MIDI Zoom）：schema11的midi_zoom.tracks按稳定ID保存low/high/mode；4–128半音、Fit真实极值加边距，16条联合历史存时间／波形／MIDI显示，旧1–10严格迁移。MidiZoom.h统一实际音符绘制轴；TrackHeader／WorkspaceAutomation区分Notes、Clips和真实自动化参数；ZoomGesture仅本地草稿，WorkspaceZoom及ApplicationCommandManager257–261经L1更新UI。不修改Note／采样事件、gain、revision或Undo；随机FourOsc不能逐位比较。独立钢琴卷帘纵向、组联动／高级按钮等仍待补；MCP／分析／SDK及实时路径不变，实际资格见VERIFICATION.md首节。

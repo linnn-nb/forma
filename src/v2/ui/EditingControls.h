@@ -1,5 +1,6 @@
 #pragma once
 #include "EditingModel.h"
+#include "ZoomTogglePanel.h"
 namespace ndaw::desktop
 {
 class ZoomToolButton final : public juce::TextButton
@@ -43,6 +44,9 @@ public:
     {
         setComponentID("edit.controls");
         addAndMakeVisible(zoomer);
+        addAndMakeVisible(toggle);
+        toggle.setToggleable(true);
+        toggle.setTooltip(text("Zoom Toggle · E；Option点亮按钮清除；OptionShiftE取消并保留当前视图"));
         zoomer.setToggleable(true);
         zoomer.onFit = [this]
         {
@@ -103,6 +107,9 @@ public:
                                                                          {&scrubber, 253},
                                                                          {&pencil, 218},
                                                                          {&split, editCommand::split}};
+        toggle.setComponentID("ui.command:263");
+        toggle.setCommandToTrigger(&manager, 263, true);
+        toggle.onClear = [&manager] { manager.invokeDirectly(267, false); };
         zoomer.setComponentID("ui.command:240");
         zoomer.setCommandToTrigger(&manager, 240, true);
         for (auto [button, id] : bindings)
@@ -114,6 +121,7 @@ public:
     void update(const Json& view)
     {
         updating = true;
+        toggle.setToggleState(view["zoom_toggle"]["active"], juce::dontSendNotification);
         zoomer.setToggleState(view["edit_tool"] == "zoomer" || view["edit_tool"] == "zoom_single",
                               juce::dontSendNotification);
         single = view["edit_tool"] == "zoom_single";
@@ -148,10 +156,10 @@ public:
         pencil.setButtonText(text(compact ? "画" : "画笔"));
         scrubber.setButtonText(text(compact ? "听" : "Scrub"));
         const int toolWidth = compact ? 29 : 43;
-        for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{{&shuffle, compact ? 44 : 50},
-                                                                                   {&slip, compact ? 40 : 44},
-                                                                                   {&spot, compact ? 40 : 44},
-                                                                                   {&grid, compact ? 40 : 44},
+        for (auto [button, width] : std::vector<std::pair<juce::TextButton*, int>>{{&shuffle, compact ? 40 : 50},
+                                                                                   {&slip, compact ? 34 : 44},
+                                                                                   {&spot, compact ? 34 : 44},
+                                                                                   {&grid, compact ? 34 : 44},
                                                                                    {&trim, toolWidth},
                                                                                    {&selector, toolWidth},
                                                                                    {&grabber, toolWidth},
@@ -163,11 +171,13 @@ public:
                 zoomer.setBounds(r.removeFromLeft(compact ? 28 : 43).reduced(1, 0));
             button->setBounds(r.removeFromLeft(width).reduced(1, 0));
         }
-        division.setBounds(r.removeFromLeft(compact ? 90 : 100).reduced(2, 0));
-        nudge.setBounds(r.removeFromLeft(compact ? 90 : 118).reduced(2, 0));
-        back.setBounds(r.removeFromLeft(25).reduced(1, 0));
-        forward.setBounds(r.removeFromLeft(25).reduced(1, 0));
-        split.setBounds(r.removeFromLeft(44).reduced(1, 0));
+        toggle.setButtonText(compact ? "ZT" : "Toggle");
+        toggle.setBounds(r.removeFromLeft(compact ? 30 : 48).reduced(1, 0));
+        division.setBounds(r.removeFromLeft(compact ? 74 : 100).reduced(2, 0));
+        nudge.setBounds(r.removeFromLeft(compact ? 74 : 118).reduced(2, 0));
+        back.setBounds(r.removeFromLeft(compact ? 22 : 25).reduced(1, 0));
+        forward.setBounds(r.removeFromLeft(compact ? 22 : 25).reduced(1, 0));
+        split.setBounds(r.removeFromLeft(compact ? 32 : 44).reduced(1, 0));
     }
     std::function<void(Json)> onSettings;
     std::function<void()> onZoomFit;
@@ -175,6 +185,7 @@ public:
 
 private:
     ZoomToolButton zoomer;
+    ZoomToggleButton toggle;
     bool single = false;
     juce::TextButton shuffle{"Shuffle"}, slip{"Slip"}, spot{"Spot"}, grid{"Grid"}, selector{text("选择")},
         grabber{text("移动")}, trim{text("修剪")}, smart{text("Smart")}, scrubber{text("Scrub")}, pencil{text("画笔")},

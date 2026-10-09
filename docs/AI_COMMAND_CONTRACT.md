@@ -1,5 +1,11 @@
 # 统一命令契约 v2
 
+## 本地Zoom Toggle（U-P0-ZOOM-TOGGLE-01）
+
+原生命令263进入／返回（E）、264取消保留视图（OptionShiftE）、265保持轨道视图（ControlOptionE）、266偏好（CommandOptionShiftE）、267清除保留视图（Option点亮按钮／菜单），可重绑，文本输入拒绝键盘派发。UI通过L1保存schema12；active时任何L1视图补丁捕获9字段saved，out记录进入前状态，目标为可见实际selection_tracks；No Change／保持视图不恢复自动化或Notes/Clips模式，shared Grid不回滚人工改值。普通Toggle不生成工程事务或revision。
+
+Selection／Last Used水平与MIDI显示、六档高度、三种已实现视图、独立Grid、换轨跟随、取消／清除接通；没有Warp或新的AI工具。换轨只改变轨高／视图，多轨Fit不自动跟随；旧目标删除取消陈旧状态。Remove Range先调用纯prepareUiStatePatch检验完整UI，再提交一个human版本绑定Plan：session.range.clear＋session.insertion.set原起点；成功才显示折叠并更新UI。工程Undo不回滚视图；旧快捷键增加新默认键前检查占用，保留用户解绑。详细边界见UI_PARITY.md与验证证据。
+
 ## 本地Overview（U-P0-OVERVIEW-01）
 
 ApplicationCommandManager 262只在Edit可用，Command点工具、视图菜单和可改CommandOptionShift0进入同一路径；与MIDI量化CommandOption0分离。取消未提交的缩放草稿后读取真实布局，按固定48k工程采样轴每像素256设置span；宽度不足2像素／超工程预算拒绝，起止端只夹位置。中心锚定是明确Forma策略。工程UI通过L1/session校验保存，不创建Plan／revision／Undo；已有16条历史和Single返回规则保持，相同视口不增加历史。GUI按钮只在Command仍按下且在按钮内释放时执行，双击尾部不另触发Fit。没有新的AI工具或伪装的Zoom Toggle。

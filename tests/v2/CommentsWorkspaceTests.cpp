@@ -284,7 +284,7 @@ int main(int argc, char** argv)
         pump();
         check(reopened.query()["tracks"] == saved["tracks"],
               "real new Workspace reopen preserves all track text and stable IDs");
-        check(reopened.queryView()["edit_views"] == savedView["edit_views"] && reopened.queryView()["ui_schema"] == 11,
+        check(reopened.queryView()["edit_views"] == savedView["edit_views"] && reopened.queryView()["ui_schema"] == 12,
               "column visibility survives native save and reopen");
         check(reopened.uiCommands().getKeyMappings()->containsMapping(153, custom),
               "custom Comments shortcut survives reopen");
@@ -295,14 +295,14 @@ int main(int argc, char** argv)
         juce::ValueTree meta("NATIVEDAW"), ui("UI");
         auto old = savedView;
         for (const auto* key : {"rulers", "main_time_scale", "timecode_fps", "track_heights", "zoom_presets",
-                                "track_views", "zoom_state", "waveform_zoom", "midi_zoom"})
+                                "track_views", "zoom_state", "waveform_zoom", "midi_zoom", "zoom_toggle"})
             old.erase(key);
         old["ui_schema"] = 4;
         old["edit_views"].erase("comments");
         ui.setProperty("json", juce::String(old.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 11 && migrated["edit_views"]["comments"] == false &&
+        check(migrated["ui_schema"] == 12 && migrated["edit_views"]["comments"] == false &&
                   migrated["keymap_xml"] == old["keymap_xml"] &&
                   migrated["selection_tracks"] == old["selection_tracks"],
               "complete schema4 migrates preserving selection layout and user keys");
@@ -317,7 +317,7 @@ int main(int argc, char** argv)
               "Comments edits and reopen preserve actual media hash clips and routing");
         Json report{{"result", "passed"},
                     {"checks", checks},
-                    {"ui_schema", 11},
+                    {"ui_schema", 12},
                     {"scope", "native controls with actual Edit and Undo/save/reopen; closed audio device; desktop "
                               "acceptance unexecuted"}};
         if (argc > 1)

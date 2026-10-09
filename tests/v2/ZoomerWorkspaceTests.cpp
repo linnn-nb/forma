@@ -314,6 +314,7 @@ int main(int argc, char** argv)
         auto* keys = w.uiCommands().getKeyMappings();
         check(keys->containsMapping(240, juce::KeyPress(juce::KeyPress::F5Key)), "F5 zoom tool default registered");
         keys->clearAllKeyPresses(243);
+        keys->clearAllKeyPresses(265); // The user explicitly reassigns its default Control+Option+E chord.
         keys->addKeyPress(243,
                           juce::KeyPress('e', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0));
         pump();
@@ -329,7 +330,7 @@ int main(int argc, char** argv)
             AudioDeviceTestAccess::refresh(reopened);
             pump();
             check(other.uiState() == savedView,
-                  "new Workspace restores schema11 viewport/tool/zoom history/keys exactly");
+                  "new Workspace restores schema12 viewport/tool/zoom history/keys exactly");
             click(edit(reopened), point(edit(reopened), .5));
             check(other.uiState()["edit_tool"] == "pencil", "saved Single Zoom returns to saved original Pencil tool");
             const auto previous = other.uiState()["zoom_state"]["history"].back();
@@ -347,12 +348,13 @@ int main(int argc, char** argv)
         legacy.erase("zoom_state");
         legacy.erase("waveform_zoom");
         legacy.erase("midi_zoom");
+        legacy.erase("zoom_toggle");
         legacy["edit_tool"] = "smart";
         juce::ValueTree meta("NATIVEDAW"), state("UI");
         state.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(state, -1, nullptr);
         const auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 11 && migrated["track_views"] == legacy["track_views"] &&
+        check(migrated["ui_schema"] == 12 && migrated["track_views"] == legacy["track_views"] &&
                   migrated["zoom_state"]["history"].empty() && migrated["keymap_xml"] == legacy["keymap_xml"],
               "complete schema8 migration preserves all old view facts without invented zoom history");
         legacy.erase("rulers");
@@ -553,7 +555,7 @@ int main(int argc, char** argv)
         check(error <= 1e-7, "actual rendered PCM unchanged by view navigation");
         Json result = {{"result", "passed"},
                        {"checks", checks},
-                       {"ui_schema", 11},
+                       {"ui_schema", 12},
                        {"overview_checks", overviewChecks},
                        {"overview_geometry", overviewWidths},
                        {"source_sha256", hash},

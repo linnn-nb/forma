@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+当前增量（2026-10-09，Zoom Toggle）：Release／固定验签、受影响12项最终通过0失败，135专项及真实PCM差0；无新依赖／SDK／实时图／MCP／分析资格修改。已备FormaZoomTogglePreview.app；桌面inventory后getApp再次返回Mac锁定，未实体操作／截图／试听。仅本轮PID98642已结束并确认无残留；旧窗口和既有15文件SDK补丁保留。Warp未实现且不显示；独立卷帘纵向及完整U＋P0待补。以下保留历史资格。
+
 当前增量（2026-10-09，Overview）：Release／固定验签、受影响6/6及74新增检查通过，无新依赖／SDK修改。Command点工具与菜单／改键／保存重开使用L1，真实PCM差0。Mac锁定，未实体操作／截图／试听，无额外预览进程；已备独立FormaOverviewPreview.app。Zoom Toggle、独立卷帘纵向与其他U＋P0尚未完成；详见VERIFICATION.md首节。以下保留历史增量。
 
 当前增量（2026-10-09，MIDI Zoom）：Release／固定验签、相关14/14及97专项通过，无新依赖／SDK修改。随机FourOsc以实际基频／RMS及工程事件验证，不逐位一致；源拍位XML浮点重开容差明确1e-12拍，其余字段完全相等。Mac锁定，未实体鼠标／按键／截图／试听，无额外预览进程。独立钢琴卷帘纵向／Overview／Zoom Toggle、其他U＋P0与实体输出／第三方PDC／耐久／Windows仍待做／待验；详见VERIFICATION.md首节。以下保留历史增量。

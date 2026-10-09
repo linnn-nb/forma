@@ -17,6 +17,8 @@
 #include "SpotPlacementPanel.h"
 #include "MidiDock.h"
 #include "ZoomPresets.h"
+#include "ZoomToggle.h"
+#include "../TimelineState.h"
 namespace ndaw::v2
 {
 class McpTestAccess;
@@ -132,6 +134,10 @@ private:
     void executeZoomCommand(int);
     void commitZoomGesture(Json, const std::string&, uint64_t);
     void restoreZoom();
+    void executeZoomToggle(int);
+    void followZoomToggle();
+    void showZoomTogglePreferences();
+    std::unique_ptr<ZoomTogglePanel> zoomTogglePanel;
     Json cachedAutomation(const std::string&);
     void setTrackView(const std::string&, const std::string&);
     void executeAutomationViewCommand(int);

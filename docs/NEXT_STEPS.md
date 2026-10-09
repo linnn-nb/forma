@@ -1,9 +1,11 @@
 # 下一步
 
-结论：Overview已接通Command点Zoomer、视图菜单及可改CommandOptionShift0；按实际时间线宽度×256，上一缩放／保存重开／Undo隔离通过。Release／固定验签、受影响6通过0失败（50.08秒）、74新检查、真实PCM差0。完整U＋P0未完成，不进P1；M2/M3冻结，M4/M5暂缓。
+结论：Zoom Toggle的原生入口／偏好、选区与Last Used、原视图返回／取消、独立Grid、换轨跟随、持久化／改键及范围折叠真实Undo接通。Release／固定验签、受影响12项最终通过0失败、135专项、实际PCM差0。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。
 
-亲手试：build-v2-tracktion/FormaOverviewPreview.app，打开现有工程并进入Edit；Command点顶部缩放工具，或视图→Overview、CommandOptionShift0；CommandOptionE返回。改变窗口宽度或I/O列后再次调用，另存重开测试；在快捷键设置重新绑定Overview。Mac锁定，实体GUI／默认键／截图／试听未执行，未启动额外预览进程，无DMG。
+亲手试：build-v2-tracktion/FormaZoomTogglePreview.app，打开现有工程，在Edit选轨并用Selector拉时间范围；E或ZT按钮放大，再E返回；OptionShiftE保留当前视图退出。视图菜单→Zoom Toggle偏好，设置Last Used／高度／Grid；CommandOptionShiftE打开，Option点亮按钮清除。设置“放大后折叠选区”后Undo恢复选区而不回滚显示；保存重开可从活跃Toggle返回原视图。键位设置可重绑所有入口。
 
-下一项明确任务：Zoom Toggle。官方Reference Guide 2026.4印刷867–872页已经核验：保存水平／纵向／Track Height／Track View／Grid；Selection与Last Used、No Change、独立Grid、取消不还原、Option清除、跟随选择及多轨Fit Window例外必须有明确处理。E／OptionShiftE／OptionControlE需保护文本输入焦点，所有入口共用原生命令层。新UI schema需严格迁移历史；Remove Range Selection是工程编辑，必须human Plan／Undo，不能当视图修改。Warp尚未实现，不放占位选项。
+桌面inventory短暂可用，但预览启动后getApp明确Mac锁定；本轮未截图／实体鼠标／默认键／试听／桌面重开。仅本轮PID98642已结束且无残留，保留原窗口。组件／真实原生文件测试不替代物理验收；无DMG。
 
-随后独立钢琴卷帘纵向缩放、Tempo／Meter／预后卷标尺、编辑组联动；独立Timeline/Edit链接、Shift Marker／Memory与完整选区工作流继续保留。用户确认完整U＋P0后才进P1。Overview保持当前视口中心，后续resize保留采样跨度，再次调用恢复256采样/像素，是明确Forma策略。已有Scrub预算、第三方PDC／192k慢盘耐久／实体录放／Windows／发行待验。
+下一项明确任务：独立钢琴卷帘纵向缩放（当前固定14像素键高），接通Notes音高轴／适配选中音符／连续缩放／滚动、L1持久视图与自定义键，验证不改真实音符或音频。随后Tempo／Meter／预后卷标尺及编辑组联动；独立Timeline/Edit链接、更多选区／Shift Marker／Memory等保留。用户确认完整U＋P0后才进P1。
+
+边界：Toggle高度Last Used按ID，未存时保持当前；Fit限32–640；Waveform Selection按已载入512采样源缩略峰值近似及Clip Gain，不代表处理后声音分析。文件元数据变化／路径变化重载，不宣称加密内容校验。Warp／独立Commands Keyboard Focus／OptionE简键未做；清除退出并保留当前视图，偏好下次进入生效。实体录放／第三方PDC／192k慢盘耐久／Windows与发行待验。

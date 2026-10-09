@@ -258,7 +258,7 @@ int main(int argc, char** argv)
         const std::string id = base["tracks"][0]["id"], other = base["tracks"][1]["id"];
         const auto clip = base["tracks"][0]["clips"][0];
         auto& e = edit(w);
-        check(initial["ui_schema"] == 11 && e.midiDisplayRange(id).count() == 128,
+        check(initial["ui_schema"] == 12 && e.midiDisplayRange(id).count() == 128,
               "schema11 defaults preserve full-range note display");
         command(w, 259);
         check(e.midiDisplayRange(id).low == 34 && e.midiDisplayRange(id).high == 98 &&
@@ -418,13 +418,14 @@ int main(int argc, char** argv)
         auto legacy = savedView;
         legacy["ui_schema"] = 10;
         legacy.erase("midi_zoom");
+        legacy.erase("zoom_toggle");
         for (auto& h : legacy["zoom_state"]["history"])
             h.erase("midi_zoom");
         juce::ValueTree meta("NATIVEDAW"), state("UI");
         state.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(state, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 11 && migrated["midi_zoom"]["tracks"].empty() &&
+        check(migrated["ui_schema"] == 12 && migrated["midi_zoom"]["tracks"].empty() &&
                   migrated["waveform_zoom"] == legacy["waveform_zoom"] &&
                   migrated["zoom_state"]["history"].size() == legacy["zoom_state"]["history"].size(),
               "schema10 preserves all prior horizontal and waveform history with default MIDI view");
@@ -480,7 +481,7 @@ int main(int argc, char** argv)
               "all actual MIDI pitches velocities IDs and event sample positions remain exactly unchanged");
         Json report{{"result", "passed"},
                     {"checks", checks},
-                    {"ui_schema", 11},
+                    {"ui_schema", 12},
                     {"render_bit_exact", false},
                     {"random_phase_pcm_max_difference", error},
                     {"before_low_hz", beforeLow},

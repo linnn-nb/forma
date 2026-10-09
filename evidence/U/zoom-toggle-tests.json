@@ -1,0 +1,15 @@
+{
+  "audio_display_scale": 8.861538461538462,
+  "checks": 135,
+  "midi_selection_range": {
+    "high": 42,
+    "low": 31,
+    "mode": "notes"
+  },
+  "render_max_error": 0.0,
+  "result": "passed",
+  "scope": "actual native components, L1 transactions and Tracktion file render; physical desktop acceptance separate",
+  "source_sha256": "8f127e88d508dafa9e9e21d11da1cb95470d7c322c3685de4d129f3e5f4ff93f",
+  "test_directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_zoom_toggle_tests/forma-toggle-2f8c14359cfa47da8b465c7e2b835fc6",
+  "ui_schema": 12
+}

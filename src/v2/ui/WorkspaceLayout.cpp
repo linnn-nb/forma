@@ -81,6 +81,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSubMenu(text("Track Colour"), trackColourMenu());
         p.addSubMenu(text("Zoom Presets"), zoomPresetMenu());
         addMenuCommand(p, 262);
+        for (int id = 263; id <= 267; ++id)
+            addMenuCommand(p, id);
         juce::PopupMenu midiZoom;
         for (int id = 257; id <= 261; ++id)
             addMenuCommand(midiZoom, id);
@@ -256,6 +258,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (zoomTogglePanel && zoomTogglePanel->isVisible())
+        return zoomTogglePanel->handleKey(key);
     if (trackCommentsPanel && trackCommentsPanel->isVisible())
         return trackCommentsPanel->handleKey(key);
     if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
@@ -397,6 +401,8 @@ void Workspace::resized()
         mixGroupEditor->setBounds(getLocalBounds());
     if (exportPanel)
         exportPanel->setBounds(getLocalBounds());
+    if (zoomTogglePanel)
+        zoomTogglePanel->setBounds(getLocalBounds());
     if (analysisPanel)
         analysisPanel->setBounds(getLocalBounds());
     if (timelinePanel)

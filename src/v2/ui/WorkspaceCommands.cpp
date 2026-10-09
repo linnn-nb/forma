@@ -144,6 +144,12 @@ const std::vector<Entry>& entries()
         {259, "MIDI Fit Notes · 适配全部音符", "视图", '[', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {260, "MIDI Notes 轨道视图", "视图", 'n', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {261, "MIDI Clips 轨道视图", "视图", 'c', cmd | shift | juce::ModifierKeys::ctrlModifier},
+        {263, "Zoom Toggle · 进入 / 返回", "缩放", 'e'},
+        {264, "取消 Zoom Toggle · 保留当前视图", "缩放", 'e', shift | juce::ModifierKeys::altModifier},
+        {265, "Zoom Toggle · 保持轨道视图", "缩放", 'e',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {266, "Zoom Toggle 偏好…", "设置", 'e', cmd | shift | juce::ModifierKeys::altModifier},
+        {267, "清除 Zoom Toggle · 保留当前视图", "缩放"},
         {262, "Overview · 256 采样/像素", "缩放", '0', cmd | shift | juce::ModifierKeys::altModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
         {251, "波形显示缩小", "缩放", '[', cmd | juce::ModifierKeys::altModifier},
@@ -608,6 +614,18 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             }
             if (id >= 250 && id <= 252)
                 active = !mix;
+            if (id >= 263 && id <= 267)
+            {
+                const auto view = commands.uiState();
+                active = !mix && !(zoomTogglePanel && zoomTogglePanel->isVisible());
+                if (id == 263 || id == 265)
+                    active =
+                        active && (view["zoom_toggle"]["active"] == true || !ZoomToggle::targets(facts, view).empty());
+                if (id == 264 || id == 267)
+                    active = active && view["zoom_toggle"]["active"] == true;
+                if (id == 263)
+                    info.setTicked(view["zoom_toggle"]["active"]);
+            }
             if (id == 262)
                 active = !mix && editArea.coordinates().width >= 2;
             if (id >= 240 && id <= 244)
@@ -644,6 +662,19 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= 263 && id <= 267)
+    {
+        if (invocation.invocationMethod == InvocationInfo::fromKeyPress)
+        {
+            for (auto* c = invocation.originatingComponent; c; c = c->getParentComponent())
+                if (dynamic_cast<juce::TextEditor*>(c))
+                    return false;
+            if (dynamic_cast<juce::TextEditor*>(juce::Component::getCurrentlyFocusedComponent()))
+                return false;
+        }
+        executeZoomToggle(id);
+        return true;
+    }
     if (id == 254)
     {
         invoke(

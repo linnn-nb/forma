@@ -454,6 +454,7 @@ void Workspace::refresh()
                                        [&](const auto& candidate) { return mode == candidate.first; });
     countInMode.setSelectedId(modeItem == countInModes.end() ? 1 : modeItem->second, juce::dontSendNotification);
     updatingTransportControls = false;
+    followZoomToggle();
     const auto view = commands.uiState();
     Json selectedAutomation = Json::object();
     for (const auto& ref : view["object_selection"])

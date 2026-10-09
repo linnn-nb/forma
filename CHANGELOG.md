@@ -1,5 +1,11 @@
 # 更新记录
 
+## 2026-10-09：Zoom Toggle
+
+- 原生亮灯入口与偏好：E进入／返回，OptionShiftE取消，ControlOptionE保持轨道视图，Option点亮按钮清除，键位可改。
+- Selection／Last Used、轨高／Notes／自动化视图、独立Grid与换轨跟随；活跃状态及返回基线保存重开。折叠选区是一笔真正可撤销事务，视图保持独立。
+- schema12严格迁移旧1–11；受影响12项最终通过0失败、135专项、实际PCM差0。预览启动后桌面再次锁定，未物理验收；完整U＋P0未完成，无DMG。
+
 ## 2026-10-09：Overview 时间线缩放
 
 - Command点Zoomer、视图菜单及可改CommandOptionShift0：每像素256个工程采样，实际布局计算，上一缩放／保存重开可用。

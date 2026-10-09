@@ -1,5 +1,19 @@
 # U 原生界面重构
 
+## U-P0-ZOOM-TOGGLE-01：原生选区／存储视图切换（2026-10-09）
+
+结论：263–267接通E进入／返回、OptionShiftE取消保留当前、ControlOptionE保持轨道视图、CommandOptionShiftE偏好、Option点亮按钮清除。原生ZT/Toggle按钮亮灯、7项偏好、Selection/Last Used、六档高度、三种当前可用视图、独立Grid、换轨跟随与多轨Fit例外实际执行。UI schema12保存9字段out/saved、稳定targets及进入时恢复策略；L1捕获所有活跃旁路视图补丁，不改工程事实／revision／Undo。Remove Range预检完整视图后提交一个human版本绑定Plan(range.clear＋insertion.set)，真实Undo/Redo通过。没有新RT、依赖、SDK、MCP或分析资格。
+
+验证：Release／正式和预览固定身份deep/strict验签通过。初批11项10通过1失败（68.96秒）；修正旧Zoomer测试显式键位重绑后，Zoomer与Toggle最终2/2（19.28秒），受影响12个目标最终均通过。新tests/v2/ZoomToggleTests.cpp 135检查（包含命令派发检查，不是135个制作流程），回执zoom-toggle-tests.json。实际布局、源峰值fit 8.861538、MIDI选区真实音高36拟合31–42（范围外96排除）、活跃保存／新Workspace重开返回、定制键位原生文件重开后执行和解绑保留、旧CtrlOptionE快照不被新增默认键抢占、No Change及共享Grid保留人改值、真实目标删除取消／Undo恢复、文本输入与最低1120窗口所有控件正宽度通过。
+
+声音与数据：实际两次48k/24bit/stereo各96000帧渲染非零，PCM最大差0，source SHA256 8f127e88d508dafa9e9e21d11da1cb95470d7c322c3685de4d129f3e5f4ff93f保持；MIDI是实际可编辑事件，本专项不宣称外部MIDI端口／虚拟乐器声音验收。旧1–11严格迁移、畸形Warp／active缺基线／存储跨度拒绝；旧9/10历史保留原4字段，Toggle使用独立9字段恢复。新源码ZoomToggleState.h／UiState.cpp（L1存储和预检）、ui/ZoomToggle.h（恢复／范围）、WorkspaceZoomToggle.cpp（提交／跟随）、ZoomTogglePanel.h／EditingControls.h（原生入口）、Waveforms.h（真实源显示适配）；范围操作复用TimelineCommands。
+
+修正：初次编译使用不存在的bg主题名称，换成现有自有调色值后构建成功。首次旧Zoomer回归失败，因为测试直接给243添加新的265已占用CtrlOptionE，不是正确的用户重绑；明确解绑265后复测通过，并新增旧快照默认键占用保护，未放宽生产规则。原始中间／最终日志在build/zoom-toggle-*.log；历史证据原件已恢复，当前其他重跑回执留build/zoom-toggle-rerun-*.json。
+
+参考与边界：[官方Reference Guide 2026.4](https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf)印刷867–871页，本地PDF SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8，2026-10-09核验。高度Last Used按稳定ID、缺项保持当前，Fit范围32–640，非连续多个目标之间仍可滚动；源峰值为已载入512采样缩略量化近似，含Clip Gain／源时间映射，不包含Clip FX／淡化／混音链，并非M3测量。路径／文件元数据变化会拒绝并重新载入，不宣称加密内容一致性校验。清除采用退出并保留当前视图；偏好下次进入生效。Warp与独立Commands Keyboard Focus、OptionE简键仍未实现；E保护文本输入，正常Edit按现有全局字母命令模型。完整U＋P0继续未完成。
+
+产物：build-v2-tracktion/FormaZoomTogglePreview.app，org.forma.daw.zoom-toggle-preview，正式可执行SHA256 9eb3207c7cb06dff3a183e2e9faf3b31e43e37c7f30ae12455547468fc1cc9b9，预览39a95e8d5da51e9685a4d7483cb703a481a01b8166a4ae0b30582da5599e836b，固定身份F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F。桌面inventory一度可用，启动仅本轮独立预览（--no-mcp及实际保存Edit）后getApp明确返回Mac锁定；没有物理截图／点击／键位／试听／桌面重开证据。已SIGTERM仅本轮PID98642，核验无残留，不关闭旧应用或覆盖用户文件。最终实际保存Toggle.tracktionedit SHA256 66eda84ed1e0fb8feb908abb66042173b1c6e2d0a504281fa2fd4a78d418c027，改键文件51d859224b1689f9cab0b094916decbe0657dde095916cbc8586e9899f3be4e5；路径见新回执test_directory。无DMG、无全量回归；以下保留历史资格。
+
 ## U-P0-OVERVIEW-01：256工程采样／像素（2026-10-09）
 
 结论：Command点Zoomer、View菜单及可改CommandOptionShift0共用原生命令262→WorkspaceZoom→L1 updateUiState，真实布局宽度×256。保留工具、波形／MIDI显示、轨高、选区和工程事实；上一缩放、保存重开、改键执行及工程Undo／Redo跳过视图通过。schema11与16条历史不变，无新依赖、SDK、RT、MCP或分析能力；Zoom Toggle未做，完整U＋P0未完成。

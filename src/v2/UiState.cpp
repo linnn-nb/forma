@@ -1,4 +1,5 @@
 #include "TimelineState.h"
+#include "ZoomToggleState.h"
 
 namespace ndaw::v2
 {
@@ -6,7 +7,7 @@ namespace
 {
 Json defaults()
 {
-    return {{"ui_schema", 11},
+    return {{"ui_schema", 12},
             {"start_samples", 0},
             {"span_samples", 480000},
             {"first_row", 0},
@@ -43,6 +44,7 @@ Json defaults()
             {"track_views", Json::object()},
             {"waveform_zoom", {{"scale", 1.0}, {"track_scales", Json::object()}}},
             {"midi_zoom", {{"tracks", Json::object()}}},
+            {"zoom_toggle", defaultZoomToggle()},
             {"zoom_state", {{"return_tool", "grabber"}, {"history", Json::array()}}},
             {"zoom_presets", Json::array({48000, 240000, 480000, 1440000, 5760000})}};
 }
@@ -86,7 +88,7 @@ void validate(const Json& value)
                 throw std::runtime_error("invalid UI field type");
         }
     }
-    if (value["ui_schema"] != 11)
+    if (value["ui_schema"] != 12)
         throw std::runtime_error("unsupported UI schema");
     const auto& columns = value["edit_views"];
     if (!columns.is_object() || columns.size() != 4)
@@ -141,6 +143,56 @@ void validate(const Json& value)
         validateWaveformZoom(viewport["waveform_zoom"]);
         validateMidiZoom(viewport["midi_zoom"]);
     }
+    const auto& toggle = value["zoom_toggle"];
+    const auto templateToggle = defaultZoomToggle();
+    if (!toggle.is_object() || toggle.size() != templateToggle.size())
+        throw std::runtime_error("invalid Zoom Toggle state");
+    for (auto it = templateToggle.begin(); it != templateToggle.end(); ++it)
+        if (!toggle.contains(it.key()))
+            throw std::runtime_error("missing Zoom Toggle field");
+    for (const auto* key : {"active", "restore_views", "restore_grid"})
+        if (!toggle[key].is_boolean())
+            throw std::runtime_error("invalid Zoom Toggle switch");
+    const auto& prefs = toggle["prefs"];
+    if (!prefs.is_object() || prefs.size() != 7)
+        throw std::runtime_error("invalid Zoom Toggle preferences");
+    for (const auto* key : {"horizontal", "vertical"})
+        if (!prefs.contains(key) || (prefs[key] != "selection" && prefs[key] != "last_used"))
+            throw std::runtime_error("invalid Zoom Toggle zoom preference");
+    if (!prefs.contains("height") ||
+        !std::set<Json>{"fit", "last_used", "medium", "large", "jumbo", "extreme"}.contains(prefs["height"]) ||
+        !prefs.contains("view") || !std::set<Json>{"no_change", "last_used", "waveform_notes"}.contains(prefs["view"]))
+        throw std::runtime_error("unsupported Zoom Toggle height or view");
+    for (const auto* key : {"separate_grid", "remove_range", "follows_selection"})
+        if (!prefs.contains(key) || !prefs[key].is_boolean())
+            throw std::runtime_error("invalid Zoom Toggle preference switch");
+    for (const auto* key : {"out", "saved"})
+        if (!toggle[key].is_null())
+        {
+            const auto& snapshot = toggle[key];
+            if (!snapshot.is_object() || snapshot.size() != zoomToggleFields().size())
+                throw std::runtime_error("invalid Zoom Toggle snapshot");
+            auto check = defaults();
+            for (const auto* field : zoomToggleFields())
+            {
+                if (!snapshot.contains(field))
+                    throw std::runtime_error("incomplete Zoom Toggle snapshot");
+                check[field] = snapshot[field];
+            }
+            // Snapshots cannot contain another toggle/history, so recursion is bounded at one level.
+            validate(check);
+        }
+    if (!toggle["targets"].is_array() || toggle["targets"].size() > 4096)
+        throw std::runtime_error("invalid Zoom Toggle targets");
+    std::set<std::string> toggleTargets;
+    for (const auto& id : toggle["targets"])
+        if (!id.is_string() || id.get<std::string>().empty() || id.get<std::string>().size() > 64 ||
+            !toggleTargets.insert(id.get<std::string>()).second)
+            throw std::runtime_error("invalid Zoom Toggle target ID");
+    if (toggle["active"].get<bool>() ? (toggle["out"].is_null() || toggle["saved"].is_null() || toggleTargets.empty())
+                                     : (!toggle["out"].is_null() || !toggleTargets.empty() ||
+                                        toggle["restore_views"].get<bool>() || toggle["restore_grid"].get<bool>()))
+        throw std::runtime_error("inconsistent Zoom Toggle active state");
     const auto& presets = value["zoom_presets"];
     if (!presets.is_array() || presets.size() != 5)
         throw std::runtime_error("five horizontal zoom presets required");
@@ -231,7 +283,7 @@ Json readUiState(const juce::ValueTree& metadata)
         const bool v5 = saved.value("ui_schema", Json(0)) == 5;
         if (v4 || v5)
         {
-            if (saved.size() != result.size() - 9 || !saved.contains("edit_views") ||
+            if (saved.size() != result.size() - 10 || !saved.contains("edit_views") ||
                 !saved["edit_views"].is_object() || saved["edit_views"].size() != (v4 ? 3 : 4))
                 throw std::runtime_error("incomplete legacy Edit views");
             for (const auto* key : {"io", "inserts", "sends"})
@@ -247,7 +299,7 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 6)
         {
-            if (saved.size() != result.size() - 6)
+            if (saved.size() != result.size() - 7)
                 throw std::runtime_error("incomplete schema6 UI state");
             saved["track_heights"] = result["track_heights"];
             saved["zoom_presets"] = result["zoom_presets"];
@@ -255,21 +307,21 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 7)
         {
-            if (saved.size() != result.size() - 4)
+            if (saved.size() != result.size() - 5)
                 throw std::runtime_error("incomplete schema7 UI state");
             saved["track_views"] = result["track_views"];
             saved["ui_schema"] = 8;
         }
         if (saved.value("ui_schema", Json(0)) == 8)
         {
-            if (saved.size() != result.size() - 3)
+            if (saved.size() != result.size() - 4)
                 throw std::runtime_error("incomplete schema8 UI state");
             saved["zoom_state"] = result["zoom_state"];
             saved["ui_schema"] = 9;
         }
         if (saved.value("ui_schema", Json(0)) == 9)
         {
-            if (saved.size() != result.size() - 2 || !saved.contains("zoom_state") ||
+            if (saved.size() != result.size() - 3 || !saved.contains("zoom_state") ||
                 !saved["zoom_state"].is_object() || !saved["zoom_state"].contains("history") ||
                 !saved["zoom_state"]["history"].is_array())
                 throw std::runtime_error("incomplete schema9 zoom state");
@@ -285,7 +337,7 @@ Json readUiState(const juce::ValueTree& metadata)
         }
         if (saved.value("ui_schema", Json(0)) == 10)
         {
-            if (saved.size() != result.size() - 1 || !saved.contains("zoom_state") ||
+            if (saved.size() != result.size() - 2 || !saved.contains("zoom_state") ||
                 !saved["zoom_state"].is_object() || !saved["zoom_state"].contains("history") ||
                 !saved["zoom_state"]["history"].is_array())
                 throw std::runtime_error("incomplete schema10 zoom state");
@@ -298,6 +350,13 @@ Json readUiState(const juce::ValueTree& metadata)
             }
             saved["midi_zoom"] = result["midi_zoom"];
             saved["ui_schema"] = 11;
+        }
+        if (saved.value("ui_schema", Json(0)) == 11)
+        {
+            if (saved.size() != result.size() - 1)
+                throw std::runtime_error("incomplete schema11 UI state");
+            saved["zoom_toggle"] = defaultZoomToggle();
+            saved["ui_schema"] = 12;
         }
         if (legacy || v2 || v3)
         {
@@ -322,7 +381,7 @@ Json readUiState(const juce::ValueTree& metadata)
                     if (!o.is_object() || o.value("kind", std::string{}) != "clip")
                         throw std::runtime_error("invalid legacy object selection");
         }
-        else if (saved["ui_schema"] != 11 || saved.size() != result.size())
+        else if (saved["ui_schema"] != 12 || saved.size() != result.size())
             throw std::runtime_error("unsupported or incomplete UI schema");
         if (legacy)
             result["ui_schema"] = 1;
@@ -338,7 +397,7 @@ Json readUiState(const juce::ValueTree& metadata)
         result["workspace"] = "edit";
         result["midi_dock"] = true;
     }
-    result["ui_schema"] = 11;
+    result["ui_schema"] = 12;
     validate(result);
     return result;
 }
@@ -347,14 +406,11 @@ Json Commands::uiState() const
     checkThread();
     return readUiState(metadata);
 }
-Json Commands::updateUiState(const Json& patch, const std::string& expectedSession)
+Json prepareUiStatePatch(Json current, const Json& patch)
 {
-    checkThread();
-    if (expectedSession != sessionToken())
-        throw std::runtime_error("UI session changed");
     if (!patch.is_object())
         throw std::runtime_error("UI patch must be an object");
-    auto next = uiState();
+    auto next = current;
     for (auto it = patch.begin(); it != patch.end(); ++it)
     {
         if (!next.contains(it.key()))
@@ -366,7 +422,20 @@ Json Commands::updateUiState(const Json& patch, const std::string& expectedSessi
         next["workspace"] = "edit";
         next["midi_dock"] = true;
     }
+    if (current["zoom_toggle"]["active"] == true && next["zoom_toggle"]["active"] == true &&
+        !patch.contains("zoom_toggle"))
+        next["zoom_toggle"]["saved"] = zoomToggleSnapshot(next);
     validate(next);
+    return next;
+}
+Json Commands::updateUiState(const Json& patch, const std::string& expectedSession)
+{
+    checkThread();
+    if (expectedSession != sessionToken())
+        throw std::runtime_error("UI session changed");
+    if (!patch.is_object())
+        throw std::runtime_error("UI patch must be an object");
+    auto next = prepareUiStatePatch(uiState(), patch);
     if (next != uiState())
     {
         auto state = metadata.getOrCreateChildWithName("UI", nullptr);
