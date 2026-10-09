@@ -1,11 +1,11 @@
 # 下一步
 
-结论：预后卷主标尺时间单位和关闭灰旗已接通；Release/固定deep/strict签名、193专项与6/6受影响回归通过，0失败，33.58秒。完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓。
+结论：编辑组属性与whole-clip关联选择/整体移动接通；Release/固定deep/strict签名通过，最终128专项（10.20秒）与4项相关回归通过（31.37秒、该批组124）。完整U＋P0未完成、不进P1；M2/M3冻结、M4/M5暂缓。
 
-亲手试：build-v2-tracktion/FormaRollTimePreview.app打开 /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_roll_playback_tests/forma-roll-1057187860d74ae5af682fbfc410479f/RollUnits.tracktionedit。已有1–1.5秒范围、25fps NDF主标尺；pre关闭且精确12001样本、post7帧。CommandShiftK设置、CommandReturn提交、CommandK成对开关；灰旗拖动/双击、Undo/Redo、另存重开。更换主标尺后重新打开设置，输入单位才改变。夹具为测试诊断PCM，非实录或制作示范。
+亲手试：build-v2-tracktion/FormaEditGroupsPreview.app打开 /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_groups_tests/forma-groups-edabd10816fa4a34b87011bdbe1038a2/EditGroups.tracktionedit。A/B是Edit-only组、C非组。点任一A/B片段，Grabber拖动或ControlOptionJ Nudge（本工程保存的自定义121键），Undo/Redo、另存重开；⌘G新建组、⌘⇧G开关所选组、⌘⌥G修改属性。先点左侧组名称选择组；勾选框启用联动。夹具是诊断PCM，非实录/制作示范。
 
-支持：秒数/分:秒、48k工程样本、24/25/30 NDF、实际Tempo/Meter拍数；Bars|Beats当前是拍数，不是小节|拍分字段。未改文本保留精确样本，灰旗拖动不自动启用。证据/产物SHA见roll-time-tests.json、roll-time-affected-tests.txt、roll-time-preview.json。
+支持Edit/Mix/Edit+Mix；关闭组不影响单轨，重叠Edit组连通；整体移动保留不同起点、拒绝锁定peer/冲突/超预算，native事务整体撤销。旧schema1默认Edit关闭，首次修改schema2迁移随Undo回退；损坏组数据在adopt前拒绝。preview来自124批次，后4项只有测试变化；正式/预览SHA与回执见edit-groups-preview.json和VERIFICATION。
 
-GUI：Mac锁定，实体点击/键盘/试听未执行；仅本轮94602已停止，无残留，旧窗口保留。无DMG。实体设备/动态第三方PDC、多输出、停止态监听、去点击听感与耐久仍待验；native走带/光标停止依赖消息线程、外部MIDI没有精确边界，录音/循环预后卷未实现。
+GUI：Mac锁定，未实体点击/键盘/截图/试听，仅本轮86294已停止，无残留，旧窗口保留。无DMG。实体输入/MIDI、第三方PDC、多输出、监听/听感/耐久和Windows仍待验。当前whole-clip关联不是任意区间切片，组trim/fade/gain明确拒绝，MIDI移动与组自动化/Track View/Height/Timebase等未实现。
 
-下一项明确任务：编辑组联动——停止态同组片段与时间选择联动，在现有稳定对象/选择模型上由同一human Plan提交，单笔Undo/Redo、保存重开和自定义快捷键；同步保持非组目标和原始媒体。之后完善Marker/Memory预后卷恢复与字段导航。用户亲手确认完整U＋P0后才进入P1。旧媒体不覆盖，跨重开Undo历史不承诺。
+下一项明确任务：同组音频修剪/淡化与精确范围编辑——保留各成员源时间、位置、长度与相位关系，统一Plan预览/锁定和来源校验、单笔Undo/Redo/保存重开/可改键；GUI拖动必须显示全部真实受影响对象。随后补Marker/Memory预后卷恢复和时间字段导航。用户亲手确认完整U＋P0后才进入P1，原媒体不覆盖，跨重开Undo历史不承诺。

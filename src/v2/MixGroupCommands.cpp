@@ -22,7 +22,8 @@ void Commands::registerMixGroupCommands(Json& registry)
     {
         Json required = Json::array();
         for (auto it = properties.begin(); it != properties.end(); ++it)
-            required.push_back(it.key());
+            if (it.key() != "edit")
+                required.push_back(it.key());
         registry.push_back({{"id", id},
                             {"schema",
                              {{"type", "object"},
@@ -41,32 +42,44 @@ void Commands::registerMixGroupCommands(Json& registry)
                     {"enabled", boolean},
                     {"mute", boolean},
                     {"solo", boolean},
+                    {"edit", boolean},
                     {"members", {{"type", "array"}, {"items", string}, {"minItems", 2}, {"uniqueItems", true}}}};
     add("group.create", properties);
     add("group.update", properties);
     add("group.enabled", {{"id", string}, {"enabled", boolean}});
     add("group.delete", {{"id", string}});
 }
-Json Commands::mixGroupsQuery() const
+Json Commands::mixGroupsQuery(te::Edit* candidate) const
 {
     Json result = Json::array();
-    const auto root = metadata.getChildWithName("MIX_GROUPS");
-    require(!root.isValid() || (root.getNumProperties() == 1 && int(root.getProperty("schema", 0)) == 1),
+    auto& queried = candidate ? *candidate : *edit;
+    std::set<std::string> existingTracks;
+    for (auto* t : te::getAudioTracks(queried))
+        existingTracks.insert(te::EditItemID::fromID(t->state).toString().toStdString());
+    const auto root = queried.state.getChildWithName("NATIVEDAW").getChildWithName("MIX_GROUPS");
+    const int schema = int(root.getProperty("schema", 1));
+    require(!root.isValid() || (root.getNumProperties() == 1 && (schema == 1 || schema == 2)),
             "unsupported Mix group schema");
     require(root.getNumChildren() <= 1024, "group metadata exceeds resource budget");
     std::set<std::string> ids;
     for (auto node : root)
     {
-        require(node.hasType("GROUP") && node.getNumChildren() == 0 && node.getNumProperties() == 6,
+        require(node.hasType("GROUP") && node.getNumChildren() == 0 && node.getNumProperties() == (schema == 1 ? 6 : 7),
                 "malformed Mix group metadata");
         Json group = Json::parse(node.getProperty("json").toString().toStdString());
-        require(group.is_object() && group.size() == 6 && group.contains("members") && group["members"].is_array(),
+        require(group.is_object() && group.size() == (schema == 1 ? 6 : 7) && group.contains("members") &&
+                    group["members"].is_array(),
                 "invalid Mix group record");
+        if (schema == 1)
+            group["edit"] = false;
+        require(group["edit"].is_boolean() &&
+                    (schema == 1 || bool(node.getProperty("edit")) == group["edit"].get<bool>()),
+                "invalid Edit group attribute");
         const auto id = group.at("id").get<std::string>();
         require(!id.empty() && id.size() <= 64 && ids.insert(id).second, "invalid or duplicate Mix group ID");
         validText(group.at("name").get<std::string>());
         require(group["enabled"].is_boolean() && group["mute"].is_boolean() && group["solo"].is_boolean() &&
-                    (group["mute"] == true || group["solo"] == true),
+                    (group["mute"] == true || group["solo"] == true || group["edit"] == true),
                 "invalid Mix group attributes");
         require(group["members"].size() >= 2 && group["members"].size() <= 64, "group member resource budget (2..64)");
         std::set<std::string> members;
@@ -77,7 +90,7 @@ Json Commands::mixGroupsQuery() const
             const auto target = member.get<std::string>();
             require(!target.empty() && target.size() <= 64 && !target.starts_with("$") && members.insert(target).second,
                     "invalid or duplicate group member");
-            if (!track(target))
+            if (!existingTracks.contains(target))
                 missing.push_back(target);
         }
         // Redundant typed fields make object identity readable in native Edit XML.
@@ -87,7 +100,9 @@ Json Commands::mixGroupsQuery() const
                     bool(node.getProperty("mute")) == group["mute"].get<bool>() &&
                     bool(node.getProperty("solo")) == group["solo"].get<bool>(),
                 "inconsistent Mix group metadata");
-        group["type"] = "mix";
+        group["type"] = group["edit"].get<bool>()
+                            ? (group["mute"].get<bool>() || group["solo"].get<bool>() ? "edit_mix" : "edit")
+                            : "mix";
         group["missing_members"] = missing;
         result.push_back(group);
     }
@@ -117,10 +132,12 @@ Json Commands::validateMixGroupPlan(const Json& ops) const
             require(cmd != "group.create" || groups.size() < 1024, "group metadata resource budget");
             validText(a.at("name").get<std::string>());
             require(a.at("members").size() <= 64, "group member resource budget (2..64)");
-            require(a.at("mute") == true || a.at("solo") == true, "select a supported Mix attribute");
+            const bool editing = a.value("edit", before.is_null() ? false : before.value("edit", false));
+            require(a.at("mute") == true || a.at("solo") == true || editing, "select at least one group attribute");
             for (const auto& member : a.at("members"))
                 require(track(member.get<std::string>()), "Mix group member must be an existing audio/MIDI track");
             after = a;
+            after["edit"] = editing;
         }
         else if (cmd == "group.enabled")
         {
@@ -137,7 +154,15 @@ void Commands::executeMixGroupOperation(const std::string& cmd, const Json& args
 {
     auto& undo = edit->getUndoManager();
     auto root = metadata.getOrCreateChildWithName("MIX_GROUPS", &undo);
-    root.setProperty("schema", 1, &undo);
+    if (int(root.getProperty("schema", 1)) == 1)
+        for (auto old : root)
+        {
+            auto value = Json::parse(old.getProperty("json").toString().toStdString());
+            value["edit"] = false;
+            old.setProperty("edit", false, &undo);
+            old.setProperty("json", juce::String(value.dump()), &undo);
+        }
+    root.setProperty("schema", 2, &undo);
     auto node = root.getChildWithProperty("id", juce::String(args.at("id").get<std::string>()));
     if (cmd == "group.delete")
     {
@@ -146,6 +171,7 @@ void Commands::executeMixGroupOperation(const std::string& cmd, const Json& args
         return;
     }
     Json group = args;
+    group["edit"] = args.value("edit", node.isValid() ? bool(node.getProperty("edit")) : false);
     if (cmd == "group.enabled")
     {
         require(node.isValid(), "group disappeared");
@@ -159,7 +185,7 @@ void Commands::executeMixGroupOperation(const std::string& cmd, const Json& args
     }
     for (const auto* key : {"id", "name"})
         node.setProperty(key, juce::String(group.at(key).get<std::string>()), &undo);
-    for (const auto* key : {"enabled", "mute", "solo"})
+    for (const auto* key : {"enabled", "mute", "solo", "edit"})
         node.setProperty(key, group.at(key).get<bool>(), &undo);
     node.setProperty("json", juce::String(group.dump()), &undo);
 }
@@ -211,6 +237,6 @@ Json Commands::expandMixGroupFlags(const Json& ops) const
             require(expanded.size() <= 64, "expanded group transaction exceeds 64 operation budget");
         }
     }
-    return expanded;
+    return expandEditGroupMoves(expanded);
 }
 } // namespace ndaw::v2

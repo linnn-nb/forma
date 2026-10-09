@@ -39,6 +39,7 @@ void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision, 
                 if (std::none_of(facts["tracks"].begin(), facts["tracks"].end(),
                                  [&](const Json& t) { return t["id"] == id; }))
                     throw std::runtime_error("selected track no longer exists");
+            tracks = commands.editGroupTracks(tracks);
             const auto old = commands.timelineRange();
             const bool changed =
                 old.is_null() != range.is_null() ||

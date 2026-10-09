@@ -94,6 +94,8 @@ public:
     Json pluginEditorQuery() const;
     Json nativeStateControl(const std::string&, const Json&);
 
+    Json editGroupTracks(const Json& seeds) const;
+    Json editGroupClipSelection(const std::string& clip) const;
     int64_t sampleAtBeat(double) const;
     int64_t sampleAtBarBeat(int bar, double beat) const;
     int64_t snapToGrid(int64_t sample, double division) const;
@@ -136,9 +138,10 @@ private:
     te::Track* domainTrack(const std::string&) const;
     static void registerHierarchyCommands(Json&);
     static void registerMixGroupCommands(Json&);
-    Json mixGroupsQuery() const;
+    Json mixGroupsQuery(te::Edit* candidate = nullptr) const;
     Json validateMixGroupPlan(const Json&) const;
     Json expandMixGroupFlags(const Json&) const;
+    Json expandEditGroupMoves(const Json&) const;
     void executeMixGroupOperation(const std::string&, const Json&);
     static void registerPanCommands(Json&);
     Json panQuery(te::AudioTrack&) const;

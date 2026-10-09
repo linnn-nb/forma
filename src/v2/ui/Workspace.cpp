@@ -693,6 +693,18 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     editingControls.onSettings = [this](Json patch) { setView(std::move(patch)); };
     editArea.onSnap = [this](int64_t sample, double division) { return commands.snapToGrid(sample, division); };
     editArea.onClipSelection = [this](std::string id, bool additive) { selectAudioClip(id, additive); };
+    editArea.onLinkedClips = [this](const std::string& id)
+    {
+        try
+        {
+            return commands.editGroupClipSelection(id);
+        }
+        catch (const std::exception& e)
+        {
+            message(text(e.what()));
+            return Json::array();
+        }
+    };
     editArea.onContext = [this](std::string id)
     {
         if (!id.empty() && !selection.contains(id) && selection.range.is_null())

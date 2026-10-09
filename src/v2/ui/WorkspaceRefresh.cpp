@@ -44,7 +44,36 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
         for (const auto& c : t["clips"])
             if (c["id"] == id)
             {
-                selection.choose(c, t["id"], additive);
+                Json linked;
+                try
+                {
+                    linked = commands.editGroupClipSelection(id);
+                }
+                catch (const std::exception& e)
+                {
+                    message(text(e.what()));
+                    return;
+                }
+                const bool remove = additive && selection.contains(id);
+                if (!additive)
+                    selection.objects.clear();
+                for (const auto& object : linked)
+                {
+                    selection.objects.erase(std::remove_if(selection.objects.begin(), selection.objects.end(),
+                                                           [&](const Json& old) { return old["id"] == object["id"]; }),
+                                            selection.objects.end());
+                    if (!remove)
+                        selection.objects.push_back(object);
+                }
+                selection.tracks.clear();
+                selection.objectIDs.clear();
+                for (const auto& object : selection.objects)
+                {
+                    selection.objectIDs.insert(object["id"].get<std::string>());
+                    if (std::find(selection.tracks.begin(), selection.tracks.end(), object["track"]) ==
+                        selection.tracks.end())
+                        selection.tracks.push_back(object["track"]);
+                }
                 selected = t["id"];
                 selectedClip = c["kind"] == "audio" && selection.contains(id) ? id : "";
                 Json patch{{"workspace", "edit"},

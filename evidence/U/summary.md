@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-EDIT-GROUPS-01（2026-10-09）
+
+结果：Release/固定deep/strict通过；128专项（最终CTest10.20秒）与4项受影响回归通过0失败（31.37秒，组当时124）。Edit/Mix/Edit+Mix、真实关联选择/范围、Grabber本地整组预览与松手提交、共同delta/Nudge/去重/锁定拒绝、Undo/Redo和保存重开接通。原生不同起点0/12000→480/12480，关闭组单目标；schema1默认false、schema2迁移/Undo与损坏候选拒绝通过。代码/回执/边界见VERIFICATION首节。
+
+亲手试：FormaEditGroupsPreview.app打开preview JSON的EditGroups.tracktionedit。A/B为Edit-only，C为非组；点任一A/B片段、Grabber拖动或ControlOptionJ Nudge，Undo/Redo，⌘G新建、⌘⇧G切换所选组、⌘⌥G修改，另存重开。诊断PCM非实录或制作示范。
+
+Mac locked未实体点击/键盘/截图/试听，仅本轮86294已结束，旧窗口保留。无新依赖/SDK/MCP/RT或DMG。whole-clip关联，不宣称任意区间切片编辑；组trim/fade/gain/MIDI、View/Height/Timebase、自动化等未完成。下一项组修剪/淡化与精确区间联动，完整U＋P0未验收、不进P1。
+
 ## U-P0-ROLL-TIME-01（2026-10-09）
 
 结果：Release/固定deep/strict验签；193专项＋受影响6/6、0失败，33.58秒。主标尺时长输入（秒/分:秒、样本、24/25/30 NDF、实际拍数）通过L1真实TempoSequence转换；关闭灰旗绘制/命中/拖动保持关闭，单笔Undo/Redo、精确子帧保留、原生保存/新Workspace重开和可改键接通。代码/例值/边界见VERIFICATION首节，三份roll-time证据为本增量核心。

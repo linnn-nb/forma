@@ -812,7 +812,7 @@ void Workspace::showMixGroup(const std::string& id)
                             commands.updateUiState(
                                 {{"object_selection", Json::array()}, {"selection_tracks", args["members"]}},
                                 commands.sessionToken());
-                        message(text("Mix 组已提交 · 可撤销"));
+                        message(text("轨道组已提交 · 可撤销"));
                         refresh();
                     },
                     [this]

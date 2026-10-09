@@ -1403,6 +1403,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     readRollState(candidate->state.getChildWithName("NATIVEDAW"));
+    (void)mixGroupsQuery(candidate.get());
     readUiState(candidate->state.getChildWithName("NATIVEDAW"));
     if (masterAnalysis)
         masterAnalysis->reset();

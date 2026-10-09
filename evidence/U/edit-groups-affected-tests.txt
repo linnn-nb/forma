@@ -1,0 +1,14 @@
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 75: forma_native_editor_interactions
+1/4 Test #75: forma_native_editor_interactions ...   Passed    9.98 sec
+    Start 76: forma_native_audio_clipboard
+2/4 Test #76: forma_native_audio_clipboard .......   Passed    5.91 sec
+    Start 81: forma_native_rulers
+3/4 Test #81: forma_native_rulers ................   Passed    5.65 sec
+    Start 83: forma_native_groups
+4/4 Test #83: forma_native_groups ................   Passed    9.83 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =  31.37 sec

@@ -347,6 +347,7 @@ public:
     std::function<void(Json)> onViewChange;
     std::function<int64_t(int64_t, double)> onSnap;
     std::function<void(std::string, bool)> onClipSelection;
+    std::function<Json(const std::string&)> onLinkedClips;
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t, std::string, int64_t)> onRange;
@@ -587,7 +588,21 @@ public:
                 preview["start_samples"] = dragStart;
                 preview["length_samples"] = dragEnd - dragStart;
                 g.setColour(accent().withAlpha(.25f));
-                g.fillRect(clipRect(preview, drag["row"]));
+                if (drag["mode"] == "move" && drag.contains("linked"))
+                {
+                    const auto delta = dragStart - drag["clip"]["start_samples"].get<int64_t>();
+                    for (size_t row = 0; row < facts["tracks"].size(); ++row)
+                        for (const auto& clip : facts["tracks"][row]["clips"])
+                            for (const auto& linked : drag["linked"])
+                                if (clip["id"] == linked["id"])
+                                {
+                                    auto shifted = clip;
+                                    shifted["start_samples"] = clip["start_samples"].get<int64_t>() + delta;
+                                    g.fillRect(clipRect(shifted, int(row)));
+                                }
+                }
+                else
+                    g.fillRect(clipRect(preview, drag["row"]));
             }
         }
         int x = int(std::round(axis.pixelAt(facts.value("position_samples", int64_t(0)))));
@@ -979,6 +994,15 @@ public:
                                 {"mode", mode},
                                 {"preview_fade_in", c.value("fade_in_samples", int64_t(0))},
                                 {"preview_fade_out", c.value("fade_out_samples", int64_t(0))}};
+                        if (std::string_view(mode) == "move" && onLinkedClips)
+                        {
+                            drag["linked"] = onLinkedClips(c["id"]);
+                            if (drag["linked"].empty())
+                            {
+                                drag = nullptr;
+                                return;
+                            }
+                        }
                         dragStart = clipStart;
                         dragEnd = clipEnd;
                         if (gesture != EditingModel::Gesture::move)

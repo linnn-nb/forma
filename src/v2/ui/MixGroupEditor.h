@@ -9,10 +9,10 @@ public:
     MixGroupEditor(Write write, std::function<void()> close) : write(std::move(write)), close(std::move(close))
     {
         setComponentID("mix.group.editor");
-        for (auto* c : std::initializer_list<juce::Component*>{&title, &name, &enabled, &mute, &solo, &view, &apply,
-                                                               &remove, &cancel, &status})
+        for (auto* c : std::initializer_list<juce::Component*>{&title, &name, &enabled, &mute, &solo, &editing, &view,
+                                                               &apply, &remove, &cancel, &status})
             addAndMakeVisible(c);
-        title.setText(text("Mix Group · 独立混音组"), juce::dontSendNotification);
+        title.setText(text("Track Group · 编辑 / 混音"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
         name.setComponentID("mix.group.name");
         name.setInputRestrictions(64);
@@ -22,6 +22,8 @@ public:
         enabled.setComponentID("mix.group.enabled");
         mute.setComponentID("mix.group.mute");
         solo.setComponentID("mix.group.solo");
+        editing.setButtonText(text("Edit · 联动编辑"));
+        editing.setComponentID("mix.group.edit");
         apply.setButtonText(text("应用 · 一次 Undo"));
         remove.setButtonText(text("删除组"));
         cancel.setButtonText(text("取消"));
@@ -44,7 +46,8 @@ public:
                                                                  {"members", members},
                                                                  {"enabled", enabled.getToggleState()},
                                                                  {"mute", mute.getToggleState()},
-                                                                 {"solo", solo.getToggleState()}});
+                                                                 {"solo", solo.getToggleState()},
+                                                                 {"edit", editing.getToggleState()}});
         };
         remove.onClick = [this] { execute("group.delete", {{"id", id}}); };
         cancel.onClick = [this] { this->close(); };
@@ -63,6 +66,7 @@ public:
         enabled.setToggleState(group["enabled"], juce::dontSendNotification);
         mute.setToggleState(group["mute"], juce::dontSendNotification);
         solo.setToggleState(group["solo"], juce::dontSendNotification);
+        editing.setToggleState(group.value("edit", false), juce::dontSendNotification);
         remove.setVisible(!creating);
         buttons.clear();
         ids.clear();
@@ -79,7 +83,7 @@ public:
                 ids.push_back(target);
                 buttons.push_back(std::move(b));
             }
-        status.setText(text("至少选择2个成员。只有 Mute/Solo 已接通；推子、Pan、编辑属性仍待实现。"),
+        status.setText(text("至少2个成员。Edit联动选区与整体移动；推子、Pan、组修剪和MIDI移动仍待实现。"),
                        juce::dontSendNotification);
         resized();
     }
@@ -95,6 +99,7 @@ public:
         enabled.setBounds(x, 110, 110, 28);
         mute.setBounds(x + 120, 110, 180, 28);
         solo.setBounds(x + 310, 110, 160, 28);
+        editing.setBounds(x + 480, 110, 200, 28);
         view.setBounds(x, 153, width, std::max(40, getHeight() - 277));
         body.setSize(width - 16, std::max(1, int(buttons.size()) * 30));
         for (size_t i = 0; i < buttons.size(); ++i)
@@ -125,7 +130,7 @@ private:
     bool creating = true;
     juce::Label title, status;
     juce::TextEditor name;
-    juce::ToggleButton enabled, mute, solo;
+    juce::ToggleButton enabled, mute, solo, editing;
     juce::Viewport view;
     juce::Component body;
     std::vector<std::string> ids;

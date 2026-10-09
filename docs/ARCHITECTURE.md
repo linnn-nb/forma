@@ -1,5 +1,11 @@
 # Forma 架构 v2
 
+编辑组（U-P0-EDIT-GROUPS-01）：MIX_GROUPS schema2增加edit布尔；schema1只读解释为edit=false，首次组修改以同一native Undo事务迁移全组typed字段/JSON，Undo可恢复旧schema。载入candidate先校验组数据，再替换Edit；缺失成员保留引用。Mix沿用首匹配规则；EditGroupCommands只读闭包解析启用编辑组，重叠组连通、关闭不参与，不由GUI直接修改Edit。
+
+统一makePlan/preview经既有expandMixGroupFlags调用expandEditGroupMoves；保存requested_operations，真实重叠音频片段按共同delta展开、每项绑定实际媒体hash，重复请求去重、冲突/锁定/64操作超限整笔拒绝。Scope继续检查展开后的operations，不扩充MCP/分析工具。新增引用$保持显式目标；MIDI组移动与组trim/fade/gain未提供，后者明确拒绝而不偷偷只改锚点。
+
+Workspace联动同组对象/时间选区，L1保存UI选择；Grabber保留本地linked草稿并画真实成员偏移预览，松手才提交；Nudge同一原生命令/可改键。Groups列表与编辑器显示Edit/Mix/Edit+Mix属性。128专项及4项受影响回归通过，Release/固定签名；实体GUI未验。完整分组的TrackHeight/View/Timebase、自动化/MIDI/精确区间编辑等仍未完成，见VERIFICATION。
+
 预后卷时间输入（U-P0-ROLL-TIME-01）：L1 RollTime.cpp 提供消息线程只读格式化／解析，输入来自打开面板时的主标尺与帧率。秒数／分:秒、工程样本、24/25/30 NDF 和实际 TempoSequence 拍数均转换回同一 48k 工程样本；拍数以前卷选区起点／后卷终点为锚，跨 Tempo/Meter，并在零点之前按原生初始速度外推。GUI 不直接读写 Edit。未改字段保留原始样本，时间码显示帧下余量不被开关截短；解析前和提交时检查 session/revision。仍是一笔 transport.roll.set/native Undo，无新持久 schema、依赖、SDK补丁或 MCP 工具。
 
 RollRuler 关闭时保留灰色旗标和真实存储位置，拖动仅改时长、不自动启用；循环优先时也灰显。旗标上半区与下半区循环手柄各自命中；原生标尺回归通过。面板冻结可见单位，UI单位随后变化不改变该输入解释。Release/固定验签、193专项和6/6受影响回归通过（33.58秒）；实体GUI/试听仍未验，边界见VERIFICATION。

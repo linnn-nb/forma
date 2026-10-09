@@ -16,7 +16,7 @@ public:
         addAndMakeVisible(create);
         create.setButtonText("+");
         create.setComponentID("groups.create");
-        create.setTooltip(text("新建独立 Mix 组 · ⌘G"));
+        create.setTooltip(text("新建编辑 / 混音组 · ⌘G"));
         create.onClick = [this] { this->edit(""); };
     }
     void update(const Json& groups, const Json& tracks, const Json& selection, bool playing)
@@ -73,8 +73,8 @@ public:
         if (rows.empty())
         {
             g.setFont(juce::FontOptions(10));
-            g.drawText(text("独立 Mix 组"), 8, 38, getWidth() - 16, 22, juce::Justification::centredLeft);
-            g.drawText(text("Mute / Solo 联动"), 8, 61, getWidth() - 16, 22, juce::Justification::centredLeft);
+            g.drawText(text("编辑 / 混音组"), 8, 38, getWidth() - 16, 22, juce::Justification::centredLeft);
+            g.drawText(text("Edit / Mute / Solo"), 8, 61, getWidth() - 16, 22, juce::Justification::centredLeft);
         }
     }
     void resized() override
@@ -111,8 +111,8 @@ private:
             settings.setEnabled(!playing);
             name.setButtonText(text(group["name"].get<std::string>()));
             name.setToggleState(selected, juce::dontSendNotification);
-            auto tooltip =
-                text("Mix · ") + (group["mute"].get<bool>() ? "M " : "") + (group["solo"].get<bool>() ? "S" : "");
+            auto tooltip = text(group["type"].get<std::string>()) + " · " + (group["mute"].get<bool>() ? "M " : "") +
+                           (group["solo"].get<bool>() ? "S" : "");
             for (const auto& member : group["members"])
             {
                 juce::String label = text("缺失 ") + text(member.get<std::string>());
@@ -122,7 +122,7 @@ private:
                 tooltip += "\n" + label;
             }
             name.setTooltip(tooltip + text("\n点名称选择成员；勾选启用联动，…修改组"));
-            active.setTooltip(text("启用 / 禁用该 Mix 组 · 不改变输出路由"));
+            active.setTooltip(text("启用 / 禁用该组 · 不改变输出路由"));
             settings.setTooltip(text("修改组名、成员与联动属性"));
         }
         void resized() override

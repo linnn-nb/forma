@@ -1,5 +1,21 @@
 # 验证状态
 
+## U-P0-EDIT-GROUPS-01：编辑组选择与整体移动（2026-10-09）
+
+结论：Release原生应用/固定身份deep/strict通过；首轮116专项，补迁移后的4/4受影响回归通过0失败（31.37秒，组专项124）；最后增加不同起点/关闭组测试，最终组专项128通过（CTest单项10.20秒）。最终生产代码未在最后测试扩充时改变。没有全量回归/DMG、SDK补丁或新依赖，完整U＋P0未完成。
+
+代码：MixGroupCommands.cpp schema2/edit字段与原生事务、EngineCommands.cpp载入前组校验；EditGroupCommands.cpp同组闭包/真实重叠片段/L1 move展开与去重；WorkspaceRefresh/Editing的对象与范围联动，EditWindow的多成员本地移动预览，MixGroupEditor/GroupsList与既有149/150/151键位入口。自动化/MIDI/组修剪等不宣称完成。
+
+GroupsWorkspaceTests实际GUI组件创建Edit-only组，未改原输出/层级/片段；真实片段选择、范围入口与Grabber事件（含松手前无工程修改）进入L1。原生Move/Nudge共同480样本且第三轨不变；不同起点0/12000变480/12480，保留相对位置；关闭组只生成一项操作。重叠Edit组闭包3成员、重复GUI所选move去重、冲突delta/小数输入/锁定peer整笔拒绝。native Undo/Redo、保存、新Workspace重开保留组/媒体编辑/UI选择；已保存ControlOptionJ真正执行Nudge，重开后peer由480变960。
+
+旧schema1夹具从本轮拥有的真实保存文件生成（不覆盖原件），打开后edit=false且type=mix；首次修改迁移schema2，Undo恢复旧记录、Redo后保存实测schema2。损坏edit字符串在candidate采用前拒绝，当前query保持。既有Mix首匹配、缺失成员、Mute/Solo与真实48k/24bit双声道PCM渲染回归继续通过，预定RMS容差3e-6未变、原媒体哈希不变。UI选择不进入工程Undo，跨重开Undo历史不承诺。
+
+边界：现在是whole-clip关联，按原锚片段时间与其他组轨道的真实重叠选择/共同移动；不是任意时间选区切片后移动。Clip trim/fade/gain组联动明确拒绝；MIDI clip组移动、Track View/Height/Timebase与组自动化、临时旁路/All组等待做。Split/Delete/Clipboard仍依赖显式UI所选目标，不声称第三方或Agent自动执行全部组编辑。Scope在展开operations上校验，M2/M3保持冻结。SDK与RT路径未改。
+
+证据：edit-groups-tests.json（最终128）、edit-groups-affected-tests.txt（4项）、edit-groups-final-test.txt（最后专项）及edit-groups-preview.json。既有tracked回执保持原历史；重跑JSON在忽略的build-v2-tracktion/edit-groups-rerun-*。构建日志edit-groups-regression-build.log；早期修正错误目标名与const char*比较，不放宽行为/声音容差，最终仅链接重复静态库提示。
+
+GUI：LaunchServices用--no-mcp/--open-session启动已签名FormaEditGroupsPreview.app，CUA确认Mac locked；未实体鼠标/键盘/截图或试听。仅本轮PID86294已结束并核验，旧用户窗口保留。preview JSON的fixture来自124检查批次，与最终生产二进制一致；后加4项只有测试变化。夹具为真实生成的诊断PCM，非实录/制作示范。
+
 ## U-P0-ROLL-TIME-01：预后卷时间单位与关闭旗标（2026-10-09）
 
 结论：Release原生应用构建、固定身份deep/strict验签通过；193专项＋6/6受影响回归，0失败，33.58秒。代码为RollTime.cpp、EngineCommands.h、RollPanel.h、RollRuler.h和WorkspaceCommands.cpp；测试为RollPlaybackTests.cpp。没有新SDK补丁/依赖/AI工具。完整U＋P0未完成，不进入P1。

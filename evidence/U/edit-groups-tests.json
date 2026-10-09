@@ -1,0 +1,6 @@
+{
+  "checks": 128,
+  "result": "passed",
+  "scope": "native Groups controls with real Tracktion Edit and decoded PCM; no hardware GUI qualification",
+  "test_directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_groups_tests/forma-groups-dc3d2756e02b4ef5a03a5be43b89078d"
+}
