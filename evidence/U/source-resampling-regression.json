@@ -1,0 +1,98 @@
+{
+  "result": "passed",
+  "tests": [
+    {
+      "name": "forma_native_editor_interactions",
+      "result": "passed",
+      "checks": 81,
+      "report": "evidence/U/editor-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_audio_clipboard",
+      "result": "passed",
+      "checks": 49,
+      "report": "evidence/U/clipboard-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_loop_playback",
+      "result": "passed",
+      "checks": 23,
+      "report": "evidence/U/loop-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_scrub",
+      "result": "passed",
+      "checks": 527,
+      "report": "evidence/U/scrub-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_multi_scrub",
+      "result": "passed",
+      "checks": 126,
+      "report": "evidence/U/multi-scrub-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_scrub_selection",
+      "result": "passed",
+      "checks": 80,
+      "report": "evidence/U/scrub-selection-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_roll_playback",
+      "result": "passed",
+      "checks": 193,
+      "report": "evidence/U/roll-playback-tests.json",
+      "report_result": null,
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "tracktion_selection_output_gate",
+      "result": "passed",
+      "checks": 52,
+      "report": "evidence/U/selection-output-gate-tests.json",
+      "report_result": null,
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_group_ranges",
+      "result": "passed",
+      "checks": 72,
+      "report": "evidence/U/group-range-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_shuffle_ranges",
+      "result": "passed",
+      "checks": 81,
+      "report": "evidence/U/shuffle-range-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    },
+    {
+      "name": "forma_native_source_resampling",
+      "result": "passed",
+      "checks": 588,
+      "report": "evidence/U/source-resampling-tests.json",
+      "report_result": "passed",
+      "result_source": "CTest successful process exit and assertion filter"
+    }
+  ],
+  "total_checks": 1872,
+  "ctest_passed": 11,
+  "ctest_failed": 0,
+  "elapsed_seconds": 94.09,
+  "scope": "affected native edit/clipboard/group/loop/roll/gate/Scrub/SRC regressions only; no full-stage or M3 expansion"
+}

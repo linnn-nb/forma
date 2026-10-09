@@ -1,6 +1,6 @@
 # Forma 界面与基础制作计划
 
-当前增量 U-P0-SHUFFLE-RANGE-01：48k音频时间范围Shuffle Cut/Delete、编辑组按真实边界、空隙删除和原生单笔Undo接通；Cmd-X/可改Delete及保存重开、77专项、相关4/4及实机验证。混合采样率音频移位误差超预算，当前拒绝执行，下一项先隔离和修复SRC定位再恢复资格；自动化跟随、Shuffle Paste/Trim/拖拽与完整U＋P0未完成，不进入P1。
+U-P0-SRC-PHASE-01：默认原生 WaveNode 按绝对源位置重采样，混合48k/44.1k范围Shuffle已恢复；原失败负载PCM最大差1.1921e-7（原2e-5预算不变）、Paste Original差0。Release/固定签名、11/11受影响回归（1872检查、94.09秒）与实机改键/Undo/Redo/另存/Open/播放通过；原始媒体不改。非默认直接/HQ读取器、自动化跟随与完整Shuffle/U＋P0仍未完成；不进入P1。下文保留历史增量，旧混合率失败已在默认路径被本节资格替代。
 
 当前增量U-P0-MEMORY-ROLL-01：位置记忆可保存/移除预后卷时长，并以一笔真实L1事务召回光标、选区和时长，保留当前启用开关。76专项/受影响5项405检查最终通过，桌面改键、Undo、另存/Open重开已验。其余general properties与完整U＋P0尚未完成；Next为时间范围Shuffle，不进入P1，M2/M3冻结、M4/M5暂缓。
 

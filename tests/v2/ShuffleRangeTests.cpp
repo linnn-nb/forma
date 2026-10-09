@@ -175,11 +175,11 @@ int main(int argc, char** argv)
                     operation("clip.trim", {{"clip", "$a1"}, {"start_samples", 180000}, {"end_samples", 220000}}),
                     operation(
                         "clip.import",
-                        {{"track", "$b"}, {"path", sources[0]["path"]}, {"position_samples", 36000}, {"ref", "$b0"}}),
+                        {{"track", "$b"}, {"path", sources[1]["path"]}, {"position_samples", 36000}, {"ref", "$b0"}}),
                     operation("clip.trim", {{"clip", "$b0"}, {"start_samples", 36000}, {"end_samples", 240000}}),
                     operation(
                         "clip.import",
-                        {{"track", "$b"}, {"path", sources[0]["path"]}, {"position_samples", 300000}, {"ref", "$b1"}}),
+                        {{"track", "$b"}, {"path", sources[1]["path"]}, {"position_samples", 300000}, {"ref", "$b1"}}),
                     operation("clip.trim", {{"clip", "$b1"}, {"start_samples", 300000}, {"end_samples", 340000}}),
                     operation("clip.import", {{"track", "$c"}, {"path", sources[0]["path"]}, {"position_samples", 0}}),
                     operation("track.mute", {{"track", "$c"}, {"enabled", true}})}));
@@ -215,6 +215,10 @@ int main(int argc, char** argv)
         w.openSession(fractionFile);
         pump();
         const auto original = c.query()["tracks"];
+        check(original[0]["clips"][0]["source_sample_rate"] == 48000 &&
+                  original[1]["clips"][0]["source_sample_rate"] == 44100 &&
+                  original[1]["clips"][1]["source_sample_rate"] == 44100,
+              "original failed workload keeps native 48k/44.1k sources including later mixed-rate clip");
         const double bOffset = original[1]["clips"][0]["source_offset_seconds"];
         const auto beforeAudio = rendered(c, folder.getChildFile("before.wav"), 0, 400000);
         range(w, c, 48000, 96000, Json::array({a}));
@@ -275,6 +279,9 @@ int main(int argc, char** argv)
         check(after["tracks"][2] == original[2] && after["time_selection"].is_null() &&
                   after["position_samples"] == 48000,
               "unlinked track untouched and range/cursor collapse in same transaction");
+        check(orderedClips(after["tracks"][1])[1]["source_sample_rate"] == 44100 &&
+                  orderedClips(after["tracks"][1])[2]["source_sample_rate"] == 44100,
+              "Shuffle preserves mixed source rates without derived media or changing import policy");
         const auto afterAudio = rendered(c, folder.getChildFile("after.wav"), 0, 352000);
         double energy = 0;
         int errorIndex = 0, errorChannel = 0;
@@ -493,13 +500,28 @@ int main(int argc, char** argv)
         check(c.query()["tracks"] == midiBefore["tracks"], "unsupported later group target leaves all audio intact");
         w.openSession(ready);
         pump();
-        run(c, Json::array({operation("clip.import",
-                                      {{"track", b}, {"path", sources[1]["path"]}, {"position_samples", 500000}})}));
-        const auto mixedBefore = c.query();
+        auto directXml = juce::XmlDocument::parse(ready);
+        check(bool(directXml), "owned session parsed for non-default reader fixture");
+        std::function<void(juce::XmlElement&)> directReader = [&](juce::XmlElement& n)
+        {
+            if (n.hasTagName("AUDIOCLIP") && n.getStringAttribute("id") == text(b0))
+            {
+                n.setAttribute("proxyAllowed", 0);
+                n.setAttribute("resamplingQuality", "sincBest");
+            }
+            for (auto* child : n.getChildIterator())
+                directReader(*child);
+        };
+        directReader(*directXml);
+        const auto directFile = folder.getChildFile("DirectReaderBlocked.tracktionedit");
+        check(directXml->writeTo(directFile), "non-default direct reader settings retained in separate session");
+        w.openSession(directFile);
+        pump();
+        const auto directBefore = c.query();
         fails([&] { c.makeShuffleRangePlan(Json::array({a}), 48000, 96000); },
-              "real 44.1k later audio explicitly refuses Shuffle until native resampler is qualified");
-        check(c.query()["tracks"] == mixedBefore["tracks"] && c.query()["revision"] == mixedBefore["revision"],
-              "mixed-rate refusal preserves complete 48k/44.1k arrangement and does not resample original media");
+              "unqualified direct stretching/HQ reader refuses whole Shuffle rather than silently changing settings");
+        check(c.query()["tracks"] == directBefore["tracks"] && c.query()["revision"] == directBefore["revision"],
+              "direct reader refusal preserves media settings Edit and revision");
         w.openSession(ready);
         pump();
         run(c, Json::array({operation("automation.point.add", {{"track", b},

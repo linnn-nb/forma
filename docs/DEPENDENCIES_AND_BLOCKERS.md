@@ -1,6 +1,6 @@
 # 依赖与阻塞 v2
 
-U-P0-SHUFFLE-RANGE-01：无新依赖/SDK补丁/授权阻塞。Release与固定签名通过，4项279检查通过，48k实际PCM误差0。**工程内待修复：混合48k/44.1k移位PCM超原2e-5预算**，旧proxy/Lagrange0.00570416、direct sinc实验0.00221145；后一尝试没有入生产，导入状态保持。不是外部许可证阻塞，需隔离原生SRC定位并修复；当前范围Shuffle明确拒绝非48k受影响源。自动化跟随未实现，含曲线同样拒绝。完整U＋P0、实录/主观听感/耐久/Windows未验；只关闭本轮测试App，用户窗口保留。不用48k回归替代混合率失败。
+U-P0-SRC-PHASE-01：无新增依赖或授权阻塞。新增可复现Tracktion默认WaveNode源相位补丁，pin不变、原补丁保留、CMake逐字验证；clean pin正反应用及字节比对通过。原混合48k/44.1k Shuffle声音失败在默认路径修复：最大PCM差1.1921e-7，原2e-5预算未改。直接sinc/HQ/伸缩读取器仍未资格并拒绝该路径；本次不是HQ SRC/抗混叠或完整SDK实时资格。11/11/1872检查、签名与桌面Save/Open/播放通过。自动化跟随、完整U＋P0、听感/实录/耐久/Windows仍未完成。
 
 U-P0-MEMORY-ROLL-01：无新授权或依赖阻塞；无新增SDK/实时修改，原第三方变更保留。Release固定签名、76专项、5项受影响最终通过；桌面改键/Undo/另存/Open重开通过。完整U＋P0及硬件录音/耐久、None与其余记忆属性、范围Shuffle/组MIDI与自动化/完整组视图行为仍未完成；不进入P1，不打DMG。
 
@@ -87,7 +87,7 @@ M0 通过；M2 指定 Codex 外部 Agent 桌面流程已实测，桌面锁定阻
 - M2-QUERY-01 增加实际对象分页。512 轨道测试发现 Tracktion 默认 400 Track 限制，已通过 EngineBehaviour::getEditLimits 正式配置取消；保留 signed int 索引和 Clipboard 算术余量，不宣称该数值是可播放容量。128/256/512 只读枚举已验证。SDK 默认每轨 1500 Clip、16 插件、每 Clip 5 插件、Master 4 插件仍保留，后续继续审查资源策略，不能宣称完全没有数量限制。
 - 前轮输出电平无新增依赖/SDK补丁。生产 OutputProbe 固定128声道、锁自由发布、C++分配/释放专项为0；只是该模块资格，SDK与插件实时锁/分配差距不变。样本峰值不等于True Peak；输出限幅前tap不等于离线Master分析，M3继续待实现。
 - Tracktion GPLv3+：0d4d77c8c9defa6ec2aec6454f634e77bbd13f98；JUCE 8.0.13/AGPLv3：37c894f83d379179b2070d437ccd0f1cd9af9576。JUCE 8.0.12不兼容原因见M0_REPORT.md。无新增依赖；新增 juce-au-parameter-cache.patch，修复真实 AU 参数列表刷新默认值覆写。CMake 拒绝非锁定源文件或非记录修改；CRLF补丁字节保持不变。原文件 SHA-256 6fe239ff03e64773d1c82b1f0612b052ff1c74ee7eabefb228e1544bd3c8ae3d；结果 6e1ca5bccb7f133980ae8b4dc4183453b1770f700ae88ed95dca8e6a53f6fe12。正反应用实际核验见 juce-au-patch-reproducibility.json。
-- CMake逐字核对六份已提交补丁：user-parameter-boundary、recording-status、render-bus-only、initial-midi-scan、four-osc-flush、reverb-wet-tail。子模块modified仅为这些已记录差异，不提交新的指针。保存空事务、录音失败、混响尾音与None输出原生图问题的证据见VERIFICATION.md。
+- CMake逐字核对八份已提交补丁：user-parameter-boundary、recording-status、render-bus-only、absolute-source-phase、initial-midi-scan、scrub-context、four-osc-flush、reverb-wet-tail。子模块modified仅为这些已记录差异，不提交新的指针。保存空事务、录音失败、混响尾音与None输出原生图问题的证据见VERIFICATION.md。
 - libebur128 1.2.6/MIT：67b33abe1558160ed76ada1322329b0e9e058b02；nlohmann/json 3.11.3/MIT的下载和SHA-256锁定。Lua/sol2、ACE-Step适配在后续里程碑接入，不提前报告已实现。
 - 外部宿主实测：AUNBandEQ 1.6.0（AU）、Serum 1.3.6.8（VST3）。扫描隔离复用有效v1代码，helper不使用旧Session或旧实时IPC，播放直接用Tracktion ExternalPlugin，无固定IPC帧延迟。插件授权由用户持有，不打包插件资产。Windows未实测。
 - 清单保存在~/Library/NativeDAW-v2/plugins，带校验/独占写者/原子保存。VST3指纹覆盖可执行模块、Info.plist/moduleinfo，不覆盖所有外部素材；registered AU只绑定身份和OS版本，需实际重扫，不宣称二进制完整指纹。扫描RSS为轮询预算，不能声称瞬时内存硬上限。

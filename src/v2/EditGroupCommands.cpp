@@ -189,12 +189,11 @@ Json Commands::shuffleRangeOperations(const Json& request) const
             if (clip["kind"] != "audio" || !clip.value("editable_audio", false) || clip.value("locked", false) ||
                 clip.value("offline_clip_effects", false))
                 throw std::runtime_error("entire Shuffle range refused: affected clip is locked or unsupported");
-            // Native mixed-rate readers currently change phase on relocation (real PCM evidence).
-            // Do not silently ship that as sample-preserving Shuffle. Source mapping is retained,
-            // but this path stays unavailable until the separate resampler regression is fixed.
-            if (clip["source_sample_rate"].get<double>() != 48000.)
-                throw std::runtime_error(
-                    "范围 Shuffle 的混合采样率音频尚未通过声音验证；本次未修改工程，请使用 Slip 或 48 kHz 素材");
+            // The phase fix qualifies the default WaveNode, not the separate stretching/HQ reader.
+            // Preserve externally saved non-default settings instead of silently changing that path.
+            const auto* native = audioClip(clip["id"]);
+            if (!native || !native->canUseProxy())
+                throw std::runtime_error("范围 Shuffle 尚不支持该片段的非默认直接读取模式；本次未修改工程");
             const auto path = clip["path"].get<std::string>();
             if (!hashes.contains(path))
                 hashes[path] = mediaHash(juce::File(juce::String::fromUTF8(path.c_str())));

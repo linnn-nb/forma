@@ -1,0 +1,170 @@
+{
+  "result": "passed",
+  "app": "build-v2-tracktion/FormaMixedRateShufflePreview.app",
+  "formal_text_section_matches": true,
+  "signed_identity": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",
+  "device": "CoreAudio 外置耳机",
+  "device_sample_rate": 48000,
+  "device_buffer_frames": 512,
+  "session": "build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/MixedRateShuffleDesktop.tracktionedit",
+  "sequence": [
+    "r23 open real 48k/44.1k grouped range",
+    "ControlOptionShiftD r24 collapse",
+    "CmdZ r25 one native Undo",
+    "CmdShiftZ r26 one native Redo",
+    "CmdS native Save As new file",
+    "CmdO native Open r27 restored seven clips",
+    "Play actual clock 1.245/1.458 to 10.301 seconds; actual Master Peak -15.9 dBFS screenshot",
+    "Space stop; CmdQ exit own app; independently no remaining process"
+  ],
+  "source_hashes_equal_original_failed_workload": {
+    "source-48000.wav": "9b70918b73eaf82c2143ed96992daf63afc0b227aa01bd5e8f1272cae98db644",
+    "source-44100.wav": "9138ad81a23e6386d5bcb8408813d5f7c3e5589c25bb0cece4aa7b1e129d1b59"
+  },
+  "saved_tracks": [
+    {
+      "name": "Shuffle A",
+      "clips": [
+        {
+          "name": "source-48000",
+          "start": "0.0",
+          "length": "1.0",
+          "offset": "0.0",
+          "id": "1022",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-48000.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff55ff00",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "import",
+          "fadeInBehaviour": "0",
+          "fadeOutBehaviour": "0"
+        },
+        {
+          "name": "source-48000",
+          "start": "1.0",
+          "length": "1.125",
+          "offset": "2.0",
+          "id": "1033",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-48000.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff55ff00",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "split",
+          "fadeInBehaviour": "0",
+          "fadeOutBehaviour": "0",
+          "ndaw_parent_clip": "1032"
+        },
+        {
+          "name": "source-48000",
+          "start": "2.75",
+          "length": "0.8333333333333335",
+          "offset": "0.0",
+          "id": "1024",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-48000.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff55ff00",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "import",
+          "fadeInBehaviour": "0",
+          "fadeOutBehaviour": "0"
+        }
+      ]
+    },
+    {
+      "name": "Shuffle B",
+      "clips": [
+        {
+          "name": "source-44100",
+          "start": "0.75",
+          "length": "0.25",
+          "offset": "5.208333333333333e-6",
+          "id": "1026",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-44100.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff00ff00",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "import",
+          "fadeInBehaviour": "0",
+          "fadeOutBehaviour": "0"
+        },
+        {
+          "name": "source-44100",
+          "start": "1.0",
+          "length": "3.0",
+          "offset": "1.250005208333333",
+          "id": "1035",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-44100.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff00ff00",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "split",
+          "fadeInBehaviour": "0",
+          "fadeOutBehaviour": "0",
+          "ndaw_parent_clip": "1034"
+        },
+        {
+          "name": "source-44100",
+          "start": "5.25",
+          "length": "0.833333333333333",
+          "offset": "0.0",
+          "id": "1028",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-44100.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff00ff00",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "import",
+          "fadeInBehaviour": "0",
+          "fadeOutBehaviour": "0"
+        }
+      ]
+    },
+    {
+      "name": "Unlinked",
+      "clips": [
+        {
+          "name": "source-48000",
+          "start": "0.0",
+          "length": "6.0",
+          "offset": "0.0",
+          "id": "1030",
+          "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-fb4648a9893443e58052011cce214386/source-48000.wav",
+          "sync": "1",
+          "elastiqueMode": "0",
+          "pan": "0.0",
+          "colour": "ff00ff55",
+          "proxyAllowed": "1",
+          "resamplingQuality": "lagrange",
+          "autoCrossfade": "0",
+          "ndaw_origin": "import"
+        }
+      ]
+    }
+  ],
+  "screenshot": "real CUA screenshot returned inline; no invented local PNG",
+  "no_subjective_listening_claim": true,
+  "other_user_apps_preserved": true
+}

@@ -1,6 +1,6 @@
 # 统一命令契约 v2
 
-U-P0-SHUFFLE-RANGE-01：`shuffle_range` 是本地human Plan的严格描述（schema1、tracks、start_samples、end_samples），不是Agent工具。L1从当前版本重新解析启用编辑组，并比对整份带媒体哈希的既有原语；篡改描述/列表、夹带requested_operations或Agent actor均拒绝。保留范围/插入点与媒体编辑同笔Undo、真实Scope与幂等回执。大范围按所有实际后续目标计数，预览接受后才更新工程及剪贴板；拒绝保持事实。非48k/带自动化曲线/不支持对象目前报不可用，不能显示完成；没有新增MCP能力。
+U-P0-SRC-PHASE-01：默认混合采样率源可使用既有human shuffle_range Plan；未新增命令、MCP工具或协议。L1不修改媒体/导入/读取设置，默认读取器修复在锁定SDK补丁。非默认直接读取器、自动化曲线、MIDI/锁定/超预算继续明确拒绝，失败不改版本/工程。仍是原版本校验、完整组原语比对、Scope、幂等与一笔Undo；81专项及GUI快捷键/撤销/重开通过。
 
 U-P0-MEMORY-ROLL-01：`location.roll.capture`、`location.roll.clear`、`location.recall` 只接受稳定 marker ID，human-only/local_gui、低风险可逆、停止时 standalone Plan。预览实际时长或插入点/选区/完整 roll before/after；召回只替换保存的时长。复用 actor/session/revision/幂等/Scope/真实回执与单笔 Undo。混合操作 Plan 明确拒绝；未扩展冻结的 MCP tools，query.markers 增加可为空的 roll_times 事实。
 

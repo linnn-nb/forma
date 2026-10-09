@@ -1,6 +1,6 @@
 # Forma 架构 v2
 
-当前增量 U-P0-SHUFFLE-RANGE-01：本地 L1 `makeShuffleRangePlan` 将选区与编辑组闭包编译为已注册split/delete/move和range/cursor原语；严格schema1 `shuffle_range` 描述只允许human，预览重新从当前Edit事实编译并完整比对。不会用原始clip重叠关系二次展开已经切开的范围；不开放任意skip-group开关，不扩展冻结MCP。一个原生Undo事务、既有Scope/版本/哈希/幂等回执；GUI仅请求Plan。当前守卫拒绝混合采样率、自动化曲线、MIDI/不支持/锁定与超预算，保留全部事实；真实SRC实验未过预算，未改导入或SDK。77专项、4项279检查、48k PCM误差0和实体改键/Undo/保存/Open通过；混合率功能部分实现。见VERIFICATION首节。
+U-P0-SRC-PHASE-01：L0新增锁定的tracktion-absolute-source-phase.patch，默认WaveNode以double绝对源位置和原五点四阶Lagrange核读取相邻源样本，不再用每块取整端点估算比例或跨块历史。源窗在prepareToPlay预分配，处理不借ScratchBuffer或增PDC；Tracktion文件cache原3ms/离线5000ms读取策略保留，未获整个SDK硬实时资格。CMake精确diff包含原补丁及新补丁，fresh apply/reverse验证。L1解除非48k限制，仅拒绝已知未资格的canUseProxy=false非默认读取路径；原导入设置/媒体、Plan/Actor/Revision/Scope/事务/schema均保持。GUI继续只产出Plan；11/11回归与实体原生保存/Open/播放通过。
 
 U-P0-MEMORY-ROLL-01：MarkerClip 可选 `NDAW_LOCATION_ROLL` schema1 仅存 pre_samples/post_samples；旧工程缺失表示不参与召回。candidate Edit 在替换前严格验证字段、范围和重复子节点。L1 的 human/local_gui `location.roll.capture/clear`、`location.recall` 为 standalone Plan；召回预览包含插入点、选区与 roll before/after，执行复用 native CursorMove、range、transport.roll.set，同一 Undo；当前启用状态保留。GUI 不写 Edit，标尺不先 seek，成功回执才报提交。新键位281/282及共享275/277均由现有命令表保存；MCP/分析保持冻结。
 

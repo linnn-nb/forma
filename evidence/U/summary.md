@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## U-P0-SRC-PHASE-01 · 2026-10-09
+
+默认混合率Shuffle恢复：原48k/44.1k负载PCM差1.1921e-7（原2e-5/±2048边界预算未改），源哈希等于旧失败夹具，Paste Original差0。锁定WaveNode源相位补丁与预分配窗口、fresh apply/reverse、签名通过。11/11受影响回归、1872检查、94.09秒（Shuffle81，源映射588）；源四输入/输出率、两偏移、三block共96条件无边界排除，解析误差1.84038e-7、移位/分块差7.45058e-9、所测C++分配/释放0。实体改键/Delete、Undo/Redo、另存/Open和CoreAudio播放通过，本轮窗口已退。
+
+亲手试OpenMixedRateShuffleDemo.command，ControlOptionShiftD/CmdX，CmdZ/ShiftCmdZ，CmdS/CmdO。非默认直接/HQ读取器、自动化跟随及完整Shuffle/U＋P0仍未完成；不扩AI或进P1。下一项自动化跟随。关键输出source-resampling-*.json、source-resampling-regression.txt与shuffle-mixed-rate-tests.json，详细范围见VERIFICATION首节；旧失败记录保留，不做DMG/全量/主观听感/整个SDK实时声明。
+
 ## U-P0-SHUFFLE-RANGE-01 · 2026-10-09
 
 48k音频范围Cut/Delete、编辑组错开边界、后续稳定ID/空隙、range/cursor单笔Undo已验；混合采样率是实测失败的保留差距，当前拒绝，完整功能仍部分实现。最终4/4（43.20秒/279检查），专项77，真实400000→352000帧PCM误差0（固定2e-5，切点±2048帧），Paste Original误差0，源哈希不变。strict/deep与固定签名通过；实机改键Delete r24/Undo r25/CmdX r26/另存及Open r27，源ID与样本位置由独立XML复核，实际CoreAudio播放/停止。

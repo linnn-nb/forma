@@ -1,9 +1,9 @@
 # 下一步
 
-结论：48k音频范围Shuffle Cut/Delete已接通，77专项＋相关4/4（279检查、43.20秒），原生桌面改键/Undo/剪切/保存/Open通过。**混合采样率声音验证失败，当前明确拒绝该路径；完整U＋P0仍未验收，不进入P1。**
+结论：默认混合采样率范围Shuffle声音修复完成，原48k/44.1k负载最大PCM差1.1921e-7（原2e-5预算未改）。81专项、588源映射检查与11/11相关回归通过（总1872检查、94.09秒），固定签名与实体改键/Undo/Redo/保存/Open/播放通过。完整U＋P0未验收，不进入P1。
 
-亲手试：双击 `build-v2-tracktion/OpenShuffleRangeDemo.command`；工程已选1–2秒、开启Shuffle及Phase pair编辑组。演示改键ControlOptionShiftD删除，或Cmd-X剪切；CmdZ/ShiftCmdZ一笔撤销/重做。CmdS保存新副本，CmdO重开；新工程默认Backspace删除，F1启用Shuffle。素材是低幅真实诊断PCM，不是音乐/实录验收。
+亲手试：双击 `build-v2-tracktion/OpenMixedRateShuffleDemo.command`，工程已选1–2秒、Shuffle及Phase pair编辑组。ControlOptionShiftD删除或CmdX剪切，CmdZ/ShiftCmdZ整笔撤销/重做；CmdS新副本、CmdO重开。低幅真实48k/44.1k诊断PCM；正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
 
-下一项明确工程任务：从 `evidence/U/shuffle-mixed-rate-failure.json` 的44.1k实际负载隔离Native WaveNode/直接sinc的定位相位误差，维持原2e-5容差；确认修复方式（SDK最小补丁或可追溯派生媒体），通过原混合率负载与受影响SRC/Scrub/渲染回归后解除非48k守卫。随后补自动化跟随、Shuffle Paste/Trim/拖拽以及U＋P0分组/文档关联/真实鼠标与听感缺口。
+下一项明确任务：为范围Shuffle增加自动化跟随编辑。按现有L1/native Undo编译选区内删除、右方点移位及边界保持；测试音量/声像/插件曲线的范围外保留、组联动、真实渲染、Undo与保存重开；通过后解除含曲线守卫。随后补Shuffle Paste/Trim/拖拽及剩余U＋P0，再请用户确认本级。
 
-M2/M3冻结，M4/M5暂缓。本轮没有新增SDK、依赖、DMG或全量回归；签名沿用已授权固定身份。只关闭本轮预览，原用户窗口保留。正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，证据见VERIFICATION首节与evidence/U/shuffle-*。
+保留工程缺口：非默认直接/HQ读取器的相位修复、HQ SRC/抗混叠及整个SDK实时锁/磁盘资格；不以默认路径通过冒充这些完成。M2/M3冻结，M4/M5暂缓。无DMG/全量回归，只退出本轮自有预览；旧用户窗口保留。证据见VERIFICATION首节与evidence/U/source-resampling-*。

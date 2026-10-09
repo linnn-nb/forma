@@ -1,0 +1,222 @@
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
+index 1993f02..14b1f2f 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
+@@ -1598,11 +1598,7 @@ private:
+ //==============================================================================
+ struct WaveNode::PerChannelState
+ {
+-    PerChannelState()    { resampler.reset(); }
+-
+-    juce::LagrangeInterpolator resampler;
+     float lastSample = 0;
+-    bool resamplerNeedsPriming = true;
+ };
+ 
+ 
+@@ -1653,6 +1649,13 @@ void WaveNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo
+     editPositionInSamples = tracktion::toSamples ({ editPosition.getStart(), editPosition.getEnd() }, outputSampleRate);
+     updateFileSampleRate();
+ 
++    // This window includes the two neighbours on either side of each source sample.
++    // Allocate at graph preparation, never borrow/resize a scratch buffer in process.
++    const auto fileRate = audioFileSampleRate > 0 ? audioFileSampleRate : audioFile.getInfo().sampleRate;
++    const auto ratio = originalSpeedRatio * fileRate / outputSampleRate;
++    sourceBuffer.setSize (destChannels.getNumChannels(),
++                          std::max (6, static_cast<int> (std::ceil (info.blockSize * ratio)) + 6));
++
+     const int numChannelsToUse = std::max (sourceChannels.getNumChannels(), reader != nullptr ? reader->getNumChannels() : 0);
+     replaceChannelStateIfPossible (info.nodeGraphToReplace, numChannelsToUse);
+ 
+@@ -1769,13 +1772,17 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+     if (audioFileSampleRate == 0.0 && ! updateFileSampleRate())
+         return;
+ 
+-    const auto fileStart       = editTimeToFileSample (sectionEditTime.getStart());
+-    const auto fileEnd         = editTimeToFileSample (sectionEditTime.getEnd());
+-    const auto numFileSamples  = (int) (fileEnd - fileStart);
++    // Keep the source phase absolute. Rounding both ends of every block and then
++    // estimating their ratio makes playback depend on the clip's block alignment.
++    // Splitting or relocating that clip must not change its source sample mapping.
++    const auto ratio = originalSpeedRatio * audioFileSampleRate / outputSampleRate;
++    const auto sourceStart = ((sectionEditTime.getStart() - editPosition.getStart()) + offset).inSeconds()
++                               * originalSpeedRatio * audioFileSampleRate;
++    const auto fileStart = static_cast<int64_t> (std::floor (sourceStart)) - 2;
+ 
+     if (playhead != nullptr)
+     {
+-        auto fileTime = TimePosition::fromSamples (fileStart, audioFileSampleRate);
++        auto fileTime = TimePosition::fromSeconds (sourceStart / audioFileSampleRate);
+ 
+         if (! loopSection.isEmpty() && fileTime >= loopSection.getStart())
+         {
+@@ -1794,71 +1801,32 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+     auto numChannels = (choc::buffer::ChannelCount) destChannels.size();
+     assert (pc.buffers.audio.getNumChannels() == numChannels);
+ 
+-    // The resampler's output lags its input by its base latency, so read that many extra
+-    // frames and feed the resampler from that far in. After a reset, the skipped frames
+-    // prime its history so the first output frame lines up with fileStart
+-    constexpr int resamplerLatency = static_cast<int> (juce::LagrangeInterpolator::getBaseLatency());
+-    const auto numFileSamplesToRead = numFileSamples + resamplerLatency + 2;
++    if (numFrames == 0 || ! std::isfinite (ratio) || ratio <= 0)
++        return;
+ 
+-    AudioScratchBuffer fileData ((int) numChannels, numFileSamplesToRead);
++    const auto fileEnd = static_cast<int64_t> (std::floor (sourceStart + (numFrames - 1) * ratio)) + 3;
++    const auto numFileSamplesToRead = fileEnd - fileStart;
++    // A graph must be re-prepared when its maximum block size/format changes.
++    // An oversized request is silent rather than allocating on the audio thread.
++    if (numFileSamplesToRead > sourceBuffer.getNumSamples())
++    {
++        destBuffer.clear();
++        return;
++    }
+ 
+     uint32_t lastSampleFadeLength = 0;
+-
+-    if (numFileSamples > 0)
++    if (reader->readSamples (static_cast<int> (numFileSamplesToRead), sourceBuffer, destChannels, 0,
++                             sourceChannels, isOfflineRender ? 5000 : 3))
+     {
+-        SCOPED_REALTIME_CHECK
+-
+-        if (reader->readSamples (numFileSamplesToRead, fileData.buffer, destChannels, 0,
+-                                 sourceChannels,
+-                                 isOfflineRender ? 5000 : 3))
+-        {
+-            if (! getPlayHeadState().isContiguousWithPreviousBlock() && ! getPlayHeadState().isFirstBlockOfLoop())
+-                lastSampleFadeLength = std::min (numFrames, 40u);
+-        }
+-        else
+-        {
++        if (! getPlayHeadState().isContiguousWithPreviousBlock() && ! getPlayHeadState().isFirstBlockOfLoop())
+             lastSampleFadeLength = std::min (numFrames, 40u);
+-            fileData.buffer.clear();
+-        }
+     }
+     else
+     {
+         lastSampleFadeLength = std::min (numFrames, 40u);
+-
+-        for (choc::buffer::ChannelCount channel = 0; channel < numChannels; ++channel)
+-        {
+-            if (channel >= (choc::buffer::ChannelCount) channelState->size())
+-                continue;
+-
+-            auto& state = *channelState->getUnchecked ((int) channel);
+-
+-            if (state.lastSample == 0.0)
+-                continue;
+-
+-            const auto dest = destBuffer.getIterator (channel).sample;
+-
+-            for (uint32_t i = 0; i < lastSampleFadeLength; ++i)
+-            {
+-                auto alpha = static_cast<float> (i) / static_cast<float> (lastSampleFadeLength);
+-                dest[i] = state.lastSample * (1.0f - alpha);
+-            }
+-        }
+-
+-        for (auto state : *channelState)
+-        {
+-            state->resampler.reset();
+-            state->resamplerNeedsPriming = true;
+-            state->lastSample = 0.0;
+-        }
+-
+-        return;
++        sourceBuffer.clear();
+     }
+ 
+-    auto ratio = numFileSamples / (double) numFrames;
+-
+-    if (ratio <= 0.0)
+-        return;
+-
+     float gains[2];
+ 
+     // For stereo, use the pan, otherwise ignore it
+@@ -1873,37 +1841,48 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+         gains[1] *= 0.4f;
+     }
+ 
++    // The same five-point, fourth-order Lagrange kernel as the default reader,
++    // evaluated at the exact source coordinate. Its neighbours come from the
++    // file cache instead of block-dependent interpolator history. No new PDC.
++    for (uint32_t frame = 0; frame < numFrames; ++frame)
++    {
++        const auto position = (sourceStart - static_cast<double> (fileStart)) + frame * ratio;
++        const auto index = static_cast<int> (std::floor (position));
++        const auto x = position - index;
++        const double weights[5] = {
++             x * (x + 1) * (x - 1) * (x - 2) / 24,
++            -(x + 2) * x * (x - 1) * (x - 2) / 6,
++             (x + 2) * (x + 1) * (x - 1) * (x - 2) / 4,
++            -(x + 2) * (x + 1) * x * (x - 2) / 6,
++             (x + 2) * (x + 1) * x * (x - 1) / 24
++        };
++        for (choc::buffer::ChannelCount channel = 0; channel < numChannels; ++channel)
++        {
++            if (channel >= static_cast<choc::buffer::ChannelCount> (channelState->size()))
++                continue;
++            const auto src = sourceBuffer.getReadPointer (static_cast<int> (channel)) + index - 2;
++            double sample = 0;
++            for (int neighbour = 0; neighbour < 5; ++neighbour)
++                sample += weights[neighbour] * src[neighbour];
++            destBuffer.getIterator (channel).sample[frame] += static_cast<float> (sample * gains[channel & 1]);
++        }
++    }
++
+     for (choc::buffer::ChannelCount channel = 0; channel < numChannels; ++channel)
+     {
+-        if (channel < (choc::buffer::ChannelCount) channelState->size())
++        if (channel < static_cast<choc::buffer::ChannelCount> (channelState->size()))
+         {
+-            const auto src = fileData.buffer.getReadPointer ((int) channel);
+             const auto dest = destBuffer.getIterator (channel).sample;
+-
+-            auto& state = *channelState->getUnchecked ((int) channel);
+-
+-            if (std::exchange (state.resamplerNeedsPriming, false))
+-            {
+-                float discarded[resamplerLatency];
+-                state.resampler.process (1.0, src, discarded, resamplerLatency);
+-            }
+-
+-            state.resampler.processAdding (ratio, src + resamplerLatency, dest, (int) numFrames, gains[channel & 1]);
+-
+-            if (lastSampleFadeLength > 0)
++            auto& state = *channelState->getUnchecked (static_cast<int> (channel));
++            for (uint32_t i = 0; i < lastSampleFadeLength; ++i)
+             {
+-                for (uint32_t i = 0; i < lastSampleFadeLength; ++i)
+-                {
+-                    auto alpha = static_cast<float> (i) / static_cast<float> (lastSampleFadeLength);
+-                    dest[i] = alpha * dest[i] + state.lastSample * (1.0f - alpha);
+-                }
++                const auto alpha = static_cast<float> (i) / static_cast<float> (lastSampleFadeLength);
++                dest[i] = alpha * dest[i] + state.lastSample * (1.0f - alpha);
+             }
+-
+             state.lastSample = dest[numFrames - 1];
+         }
+         else
+         {
+-            // This path gets taken if more dest channels are requested than source channels provided
+             destBuffer.getChannel (channel).clear();
+         }
+     }
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.h b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.h
+index e857871..41e5e2d 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.h
++++ b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.h
+@@ -78,6 +78,8 @@ private:
+     const ChannelConfiguration sourceChannels, destChannels;
+     AudioFileCache::Reader::Ptr reader;
+ 
++    juce::AudioBuffer<float> sourceBuffer;
++
+     struct PerChannelState;
+     std::shared_ptr<juce::OwnedArray<PerChannelState>> channelState;
+ 

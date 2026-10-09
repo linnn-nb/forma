@@ -1,5 +1,17 @@
 # 验证状态
 
+## U-P0-SRC-PHASE-01 · 2026-10-09
+
+结论：原失败的默认48k/44.1k范围Shuffle负载通过，最大PCM差1.1920928955078125e-7；原2e-5容差、切点±2048帧及400000→352000帧负载均保持。Paste Original差0、源时间保存重开误差2.22e-16秒。不是用48k替换失败源；新旧夹具两份源文件SHA256独立比对相同，旧失败证据继续保留。81专项，11/11受影响CTest、1872检查、94.09秒，Release/固定叶证书deep/strict验签通过。完整U＋P0未完成。
+
+实现：`patches/tracktion-absolute-source-phase.patch`仅修默认WaveNode及头文件；源位置保留double，用既有五点四阶Lagrange核评价真实相邻PCM，替代每块取整长度/比例与状态历史。源窗在图准备阶段分配，不在process借/释放ScratchBuffer，不加固定延迟。CMake锁定原提交及八份精确补丁；clean pin apply、实际源码字节比对和reverse还原通过。原导入默认参数、源媒体、原补丁和子模块指针保持。L1解除非48k守卫，继续拒绝canUseProxy=false直接/HQ读取器（已知独立实验失败），不强制更改用户保存的配置；自动化/MIDI/锁定/预算拒绝保持。
+
+`tests/v2/SourceResamplingTests.cpp`：真实默认native WaveNode/cache，44.1/48/96/192k四输入×四输出×两分数偏移×63/128/512帧共96条件；每项8192双声道样本独立解析997/659Hz正弦＋线性斜坡。连续映射/240样本移位/分块比较无边界排除，最大解析误差1.84038e-7，移位/分块误差7.45058e-9；预备节点及cache的instrumented C++分配/释放均0，reported PDC0。另四源率正反seek沿用native40帧平滑，其后2e-5通过。此为低频Lagrange相位、不是高频抗混叠/HQ品质或整个SDK实时证书；cache原实时3ms/离线5000ms等待策略未修，离线节点耗时含cache不能当设备deadline结果。
+
+实体：自有固定签名FormaMixedRateShufflePreview，MachO __TEXT/__text与正式产物一致；CoreAudio外置耳机48k/512。ControlOptionShiftD r24删除、CmdZ r25、CmdShiftZ r26，CmdS原生另存MixedRateShuffleDesktop.tracktionedit，CmdO原生Open r27恢复七clip、混合源及键位。独立XML复核后续稳定ID在132000/252000，未关联轨不变。实际Play clock1.245/1.458→10.301秒，真实Master Peak -15.9dBFS截图已通过CUA回传；Space停止、CmdQ退出，只结束本轮预览。未做主观听感/麦克风/长时硬件回环测量；不编造本地PNG。
+
+证据：`evidence/U/source-resampling-tests.json`、`shuffle-mixed-rate-tests.json`、`source-resampling-regression.json/txt`、`source-resampling-patch.json`、`source-resampling-desktop.json`。旧回归报告恢复历史原件，本轮完整输出留ignored build/source-resampling-regression。正式app `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；亲手试OpenMixedRateShuffleDemo.command。初次新target未configure、测试缺graph include/stream基类/FrameCount转换已修；这些失败不计通过。无新AI工具、依赖、DMG或全量回归。下一项自动化跟随范围Shuffle；直接读取器与完整Shuffle差距仍保留。
+
 ## U-P0-SHUFFLE-RANGE-01（2026-10-09）
 
 结论：**48 kHz 音频时间范围的 Shuffle Cut/Delete 已接通并实测；混合采样率声音验证失败，完整功能仍为部分实现。** 启用编辑组按各片段真实边界切出范围，后续片段统一减去选区时长；保留前缀、后续片段 ID 与剩余空隙。范围清除与光标返回起点同一 human Plan/native Undo。空白范围可删除并推进后方音频；Cmd-X 冻结精确剪贴板切片，取消预览不更换剪贴板。
