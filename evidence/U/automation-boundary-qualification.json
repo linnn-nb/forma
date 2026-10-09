@@ -1,0 +1,131 @@
+{
+  "state": "passed",
+  "distinct_ctests": 14,
+  "checks": 3951,
+  "final_seconds": 303.2,
+  "boundary_cases": 576,
+  "boundary_probes": 3192948,
+  "maximum_boundary_error": 1.7881393432617188e-07,
+  "move_cases": 49,
+  "move_checks": 717,
+  "maximum_move_error": 1.7881393432617188e-07,
+  "maximum_pcm_error": 4.76837158203125e-07,
+  "budgets": {
+    "boundary": "1e-7 parameter span plus two float ULP",
+    "move": 4e-07,
+    "pcm": 2e-05,
+    "derived_points": 8192
+  },
+  "tests": [
+    {
+      "name": "forma_native_automation_boundaries",
+      "checks": 576,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_boundaries.json",
+      "fresh_sha256": "18a4d39ed3c39959e8993b273f44bf7ba3421361caa2cf6a27b9a205400f0b22"
+    },
+    {
+      "name": "forma_native_automation_move",
+      "checks": 717,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_move.json",
+      "fresh_sha256": "6ae69ace2bb6273e567e2954c7f823a536882a0869002062ad21844b08aaa3c2"
+    },
+    {
+      "name": "forma_native_automation_shuffle",
+      "checks": 309,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_shuffle.json",
+      "fresh_sha256": "1b3cd0c0cee2396281e4d495cf68df174c592f2d37759d7cbae3a689c3ba6c4f"
+    },
+    {
+      "name": "forma_native_automation_clipboard",
+      "checks": 234,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_clipboard.json",
+      "fresh_sha256": "e73441a4ca1b5f9cb9a53e5fe7e7abe90d161667f508f27cf03b1fa48689598b"
+    },
+    {
+      "name": "forma_native_automation_clear",
+      "checks": 394,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_clear.json",
+      "fresh_sha256": "ef6c7889b0379f06699b256df94b86b28003213a8139b9f9663fbd933debf441"
+    },
+    {
+      "name": "forma_native_automation_follow",
+      "checks": 74,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_follow.json",
+      "fresh_sha256": "b31a1a0942819c04f89341f1dbc2706be73276a50542ab994242fda09d21b754"
+    },
+    {
+      "name": "forma_native_automation_view_range",
+      "checks": 351,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_view_range.json",
+      "fresh_sha256": "979a0ba5c5239865c3c60f2361f7ce52474ea86d852de9a7b03bad61dc525761"
+    },
+    {
+      "name": "forma_native_automation_clip_clear",
+      "checks": 432,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_clip_clear.json",
+      "fresh_sha256": "806d3194cbb75cff0803156dd707ea493f24e340d25537775a39cf0d4c2faa8b"
+    },
+    {
+      "name": "forma_native_automation_timeline",
+      "checks": 143,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_timeline.json",
+      "fresh_sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f"
+    },
+    {
+      "name": "forma_native_musical_clipboard",
+      "checks": 278,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_musical_clipboard.json",
+      "fresh_sha256": "bb8ea1772165dad0b8b434dd1e8548139a85f95f50aa169dfe5d32aece99dd01"
+    },
+    {
+      "name": "forma_native_midi_clip_timeline",
+      "checks": 71,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_midi_clip_timeline.json",
+      "fresh_sha256": "5d896b196af1a29d3b2473b990f2172c42bf516759a05954a6605725dbc9f41d"
+    },
+    {
+      "name": "forma_native_midi_range_timeline",
+      "checks": 64,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_midi_range_timeline.json",
+      "fresh_sha256": "348122b975e080d8718112535112a08c50127cca4e3d96b7d65080f9e5ec2235"
+    },
+    {
+      "name": "forma_native_boundary_nudge",
+      "checks": 189,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_boundary_nudge.json",
+      "fresh_sha256": "bb68df69a10ce551da530ede53453b48119aa6555c749b15ef7e7fbb6927208e"
+    },
+    {
+      "name": "forma_native_automation_readback",
+      "checks": 119,
+      "fresh_report": "build-v2-tracktion/automation-boundary-fresh/forma_native_automation_readback.json",
+      "fresh_sha256": "9dfb852a453edc6e4854e9f460b2f82c11ff136b720c92fcf37c57b91ee09402"
+    }
+  ],
+  "historical_reports_restored": 13,
+  "sdk_patches_unchanged": 12,
+  "signature": "production org.forma.daw fixed leaf deep/strict passed",
+  "demo": {
+    "app": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/StrongCurvesPreview.app",
+    "launcher": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/OpenStrongCurvesDemo.command",
+    "session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-move-demos/move-7f944278fa4b47048e243b1dae470303/MoveDesktopReady.tracktionedit",
+    "signature": "passed",
+    "launched": false
+  },
+  "desktop": "CUA reports Mac locked; physical GUI/listening not executed, no new native preview launched",
+  "logs": {
+    "automation-boundary-before-forma_native_automation_boundaries.txt": "d7065e955b27d84c1283111444d7f2931d4a205eb9e301520c84c0e82dc3e0fc",
+    "automation-boundary-before-forma_native_automation_move.txt": "91fa6ef17222043ec1b0aec0ad6fc14f0cd85df4ec987cd2b8caab09d82dd2e1",
+    "automation-boundary-regression.txt": "f008f359f786f4131ca37428fcdd4e5671abbedc25baab990bbfa8f2ffa44a08",
+    "automation-boundary-musical-before.txt": "684102e4f2d1d2129fcbc50448768212e0a279a73ac469c918f0a064fcf1195b",
+    "automation-boundary-move-final.txt": "d150e58806b3d1c3d4d61b0b342ab1a648183403749ba2b5f1ddf78d4c6beb9b",
+    "automation-boundary-musical-final.txt": "44811a6d636ebf8e5d6c1010870cbf7adce6414ad6481a30f1128c5351eef0a6",
+    "automation-boundary-release-build.log": "41b755824f94de5133b4b00369a6d7d5f9f43fb984fc0b96b28ffc06a7a7a9ad",
+    "automation-boundary-final-regression.txt": "971c6bb39a221a206c02a920118020ecf37e8f8ab79a17159cf77e20e3e5d0a1"
+  },
+  "limits": [
+    "48 kHz timeline sample qualification; other device rates not qualified",
+    "real native render and component command routes, not microphone/physical GUI qualification",
+    "mixed media/timebase, Shuffle completeness, full U+P0, endurance, Windows and release still incomplete"
+  ]
+}

@@ -18,6 +18,7 @@ std::vector<Point> fragment(const Point&, const Point&, double low, double high,
 std::vector<Point> read(const juce::ValueTree&);
 std::vector<Point> slice(const std::vector<Point>&, double low, double high, double tolerance);
 float nativeValue(const std::vector<Point>&, double at);
+double adjacentTimelineSample(double at, bool before);
 std::vector<Point> startSlice(const std::vector<Point>&, double low, double high, double tolerance,
                               bool destinationZero);
 std::vector<Point> musicalSlice(const std::vector<Point>&, const tracktion::tempo::Sequence& source,

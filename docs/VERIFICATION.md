@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）
+
+结论：最后一版Release/固定叶证书deep/strict验签通过；受影响14/14 CTest通过，303.20秒，共3951个不重复命名检查。Mac由CUA确认锁定，实体键盘/鼠标/试听未执行，没有启动新预览窗口。完整U＋P0未完成，不进P1。
+
+- 新 `AutomationBoundaryTests.cpp`：秒基与native音乐映射×9 shapes×4点相位（整数、.37个样本、整数±1e-12秒）×4截段范围×0/8秒目的地，共576组合、3192948探测。每13个48k工程样本、每个原生POINT前后两样本及原事件位置对实际AutomationIterator比较；最大差1.7881393433e-7，预算1e-7参数跨度＋两份float ULP保持。测试ValueTree隔离，生产Edit不由测试旁路写入；native Tempo/ramp映射由既有MusicalClipboard专项另验。
+- `AutomationMoveTests`最终717检查，7 shapes×7目的位置共49组合；Volume/Pan/实际EQ曲线在原/移动POINT附近加密，对冻结native迭代器比较，最大归一化差1.7881393433e-7，原4e-7预算保持。6个强/普通曲线的真实48k/stereo/288000帧WAV与独立原生参考相比最大4.7683715820e-7，原2e-5预算、剪辑接缝±2048帧排除不变；曲线自身跳变点不排除。参考只在原/移动POINT旁额外加入逐样本原生测量点，避免16样本参考网格抹平跳变。
+- 原生组件强.75工程的Nudge、Grabber、Spot、检查器、ControlOptionShiftJ改键、保存后Undo/Redo/Open、幂等/陈旧Plan/组/锁定/源媒体SHA不变通过；测试与参考使用自有偏好目录和真实离线渲染，不新增实体设备资格。Copy/Clear/Shuffle/Follow/ViewRange/ClipClear/Timeline、MIDI整片段/范围/音乐映射、BoundaryNudge和SDK读取相关回归全部通过。
+- 真实失败：秒基源1.999875处expected=.499888、actual=.557118（误差.057230）；旧每48样本的move测试即使加±.75仍通过，说明旧采样粒度不足。音乐映射中原POINT晚于整数位置1e-12秒，source=2/dest=1.5处expected=.5、actual=.8；移除epsilon吸附、共用严格邻采样后通过。失败原输出保留。
+- 第一轮14项13通过，新增negative强曲线测试复用positive输出路径而被生产覆盖保护拒绝；按shape隔离参考/实际输出，未放宽覆盖保护或数值预算。追加测试time(0)与libc歧义改为0.0，旧binary输出不计576资格；重新构建后音乐边界确实复现失败并修复。最后完整14项以统一最终源码/二进制重跑通过。
+
+13份历史JSON按原SHA恢复，新报告留ignored `automation-boundary-fresh`，计数/hash见 `evidence/U/automation-boundary-qualification.json`；新专项 `automation-boundary-tests.json`，失败与最终日志 `automation-boundary-{before,regression}.txt`。原12份SDK补丁字节保持，无新依赖、schema、RT路径、MCP工具或DMG。
+
+亲手试 `build-v2-tracktion/OpenStrongCurvesDemo.command`：真实5秒stereo PCM/.75曲线工程，已选第二片段，ControlOptionShiftJ再Nudge 10ms，CmdZ/ShiftCmdZ，Grabber拖拽或F3 Spot，CmdS新副本再CmdO重开。独立固定签名 `StrongCurvesPreview.app`，禁用MCP，尚未启动。48k工程样本以外设备率、连续时间内插等价、混合媒体/timebase、Shuffle完整度、部分循环、满载/硬件/耐久/Windows/发布级仍未获资格。下一项见NEXT_STEPS。
+
 ## U-P0-AUTOMATION-READBACK-01（2026-10-10）
 
 结论：Release构建及 `org.forma.daw` 固定叶证书deep/strict验签通过。受影响15/15 CTest通过，286.63秒；最终公共控制点追加检查单项通过1.51秒，合计3120个不重复命名检查，新专项119。CUA确认Mac锁定，实体GUI/试听未执行；没有启动新的预览窗口。不是完整U＋P0验收，不进P1。

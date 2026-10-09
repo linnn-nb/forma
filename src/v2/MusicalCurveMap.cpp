@@ -63,11 +63,7 @@ std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion
         const double at = forward(from);
         if (at < start || at > high)
             return;
-        const double sample = at * 48000.;
-        const double nearby = std::round(sample);
-        const bool exact = std::abs(sample - nearby) < 1e-7;
-        const double adjacent = incoming ? (exact ? nearby - 1 : std::floor(sample)) / 48000.
-                                         : (exact ? nearby + 1 : std::ceil(sample)) / 48000.;
+        const double adjacent = adjacentTimelineSample(at, incoming);
         const double l = std::max(start, std::min(at, adjacent));
         const double r = std::min(high, std::max(at, adjacent));
         if (r <= l)

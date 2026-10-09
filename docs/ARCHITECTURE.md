@@ -1,3 +1,7 @@
+U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）：L1曲段器 `AutomationShuffle.cpp::fragment` 对±.5至±1之间的原生强曲线保留跳变两侧，前后只用严格相邻48k工程样本连接；递归最多增加一层，8192派生点预算不变。`adjacentTimelineSample` 以规范样本时间的严格比较确定邻点，不用epsilon把原POINT吸附到整数采样。`MusicalCurveMap.cpp` 共用该计算；秒基与音乐位置的原点/ID仍由既有写入器保存，同笔native Undo。
+
+只有非实时L1规划改变，不改SDK、插件处理或音频回调。测试 `AutomationBoundaryTests.cpp` 比较实际AutomationIterator的576组合；`AutomationMoveTests.cpp` 增补原生点前后相邻样本、49移动组合、强曲线GUI与真实WAV。测试偏好/渲染产物隔离在自有目录；无新命令、存储schema、MCP工具或依赖。混合媒体/时间基准与完整Shuffle仍待实现。
+
 U-P0-AUTOMATION-READBACK-01（2026-10-10）：新增第十二份记录补丁 `patches/tracktion-automation-readback.patch`，只改消息线程 AutomationCurve 的只读 getter/Bezier control；按曲线自身 timeBase 换算输入，以双精度控制点与真实 AutomationIterator 相同端点顺序求值。既有实际播放迭代器和原十一补丁字节不变，不改变保存格式、POINT或实时处理路径。
 
 CMake按diff文件头排序，再截取原始块逐字节审计，避免新文件插在旧多文件补丁中迫使重写旧补丁；未知SDK改动仍被拒绝。干净pin应用12补丁、22文件字节相等、逆序恢复通过。L1/Undo/actor/revision/权限不变，测试 `AutomationReadbackTests.cpp` 和 `MusicalClipboardTests.cpp`；通用秒基截段跳变边界仍需专项，不能据getter通过扩大为全部曲线API已验证。

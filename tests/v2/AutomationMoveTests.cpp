@@ -28,6 +28,19 @@ public:
 } // namespace ndaw::v2
 namespace
 {
+class Storage final : public te::PropertyStorage
+{
+public:
+    explicit Storage(juce::File path) : PropertyStorage("Forma native move tests"), folder(path) {}
+    juce::File getAppPrefsFolder() override
+    {
+        folder.createDirectory();
+        return folder;
+    }
+
+private:
+    juce::File folder;
+};
 int checks = 0;
 void check(bool ok, const char* why)
 {
@@ -161,7 +174,24 @@ juce::AudioBuffer<float> reference(Commands& c, const std::string& track, const 
                     check(std::find(params.begin(), params.end(), id) != params.end(),
                           "reference uses actual native parameter");
                     curve->deleteAllChildElements();
+                    std::set<int64_t> referenceSamples;
                     for (int64_t sample = 0; sample <= 288000; sample += 16)
+                        referenceSamples.insert(sample);
+                    for (const auto& lane : persistent(c, track))
+                        if (lane["id"] == id)
+                            for (const auto& point : lane["points"])
+                            {
+                                const int64_t original = point["position_samples"];
+                                int64_t mapped = original;
+                                for (const auto& span : spans)
+                                    if (original >= span.first && original < span.last)
+                                        mapped = original - span.first + span.destination;
+                                for (int n = -2; n <= 2; ++n)
+                                    for (auto sample : {original + n, mapped + n})
+                                        if (sample >= 0 && sample <= 288000)
+                                            referenceSamples.insert(sample);
+                            }
+                    for (int64_t sample : referenceSamples)
                     {
                         double expected = value(c, track, id, sample);
                         bool pasted = false;
@@ -190,7 +220,7 @@ juce::AudioBuffer<float> reference(Commands& c, const std::string& track, const 
                 }
     const auto edit = file.withFileExtension("tracktionedit");
     check(xml->writeTo(edit), "independent manual edited fixture saved");
-    Commands expected;
+    Commands expected(false, std::make_unique<Storage>(file.getParentDirectory().getChildFile("ReferencePrefs")));
     expected.open(edit);
     return render(expected, file, 288000);
 }
@@ -217,19 +247,6 @@ auto event(EditWindow& area, float x, int y, bool drag = false)
                             juce::ModifierKeys::leftButtonModifier, 1, 0, 0, 0, 0, &area, &area, now, {x, float(y)},
                             now, 1, drag);
 }
-class Storage final : public te::PropertyStorage
-{
-public:
-    explicit Storage(juce::File path) : PropertyStorage("Forma native move tests"), folder(path) {}
-    juce::File getAppPrefsFolder() override
-    {
-        folder.createDirectory();
-        return folder;
-    }
-
-private:
-    juce::File folder;
-};
 } // namespace
 int main(int argc, char** argv)
 {
@@ -257,7 +274,7 @@ int main(int argc, char** argv)
         writer.reset();
         const auto hash = Commands::mediaHash(media);
         {
-            Commands ordinary;
+            Commands ordinary(false, std::make_unique<Storage>(dir.getChildFile("OrdinaryPrefs")));
             run(ordinary, Json::array({op("track.create", {{"name", "No automation"}, {"ref", "$t"}}),
                                        op("clip.import", {{"track", "$t"},
                                                           {"path", media.getFullPathName().toStdString()},
@@ -274,9 +291,9 @@ int main(int argc, char** argv)
             pump();
             check(ordinary.query()["tracks"][0]["clips"] == clips, "ordinary overlap is one native Undo");
         }
-        for (double shape : {0., .5, -.5, 1., -1.})
+        for (double shape : {.75, -.75, 0., .5, -.5, 1., -1.})
         {
-            Commands c;
+            Commands c(false, std::make_unique<Storage>(dir.getChildFile("ShapePrefs")));
             run(c, Json::array({op("track.create", {{"name", "Vocal move"}, {"ref", "$t"}}),
                                 op("clip.import", {{"track", "$t"},
                                                    {"path", media.getFullPathName().toStdString()},
@@ -316,7 +333,7 @@ int main(int argc, char** argv)
             const auto clips = c.query()["tracks"][0]["clips"], before = persistent(c, t);
             const auto baseline = dir.getChildFile("Baseline-" + juce::String(shape) + ".tracktionedit");
             c.save(baseline);
-            if (shape == .5)
+            if (shape == .75)
                 demo = baseline;
             std::map<std::string, std::vector<double>> values;
             for (const auto& p : params)
@@ -326,9 +343,13 @@ int main(int argc, char** argv)
             {
                 const Json moves = Json::array({{{"clip", clips[1]["id"]}, {"position_samples", destination}}});
                 juce::AudioBuffer<float> expectedPCM;
-                if (shape == .5 && (destination == 48480 || destination == 144000))
+                if ((shape == .5 || std::abs(shape) == .75) && (destination == 48480 || destination == 144000))
                     expectedPCM = reference(c, t, params, clips, moves, baseline,
-                                            dir.getChildFile("Reference-" + juce::String(destination) + ".wav"));
+                                            dir.getChildFile("Reference-" + juce::String(shape) + "-" +
+                                                             juce::String(destination) + ".wav"));
+                std::map<std::string, std::unique_ptr<te::AutomationIterator>> frozen;
+                for (const auto& p : params)
+                    frozen[p] = std::make_unique<te::AutomationIterator>(*AudioDeviceTestAccess::parameter(c, t, p));
                 const auto plan = c.makePlan("human", Json::array({op("clip.move", moves[0])}));
                 check(plan.contains("requested_operations") && c.preview(plan)["automation_changes"].size() == 1,
                       "move automatically compiles frozen native curve changes");
@@ -374,14 +395,46 @@ int main(int argc, char** argv)
                                 values[p][1000] + (values[p][2000] - values[p][1000]) * double(sample - 48000) / 48000.;
                         worst = std::max(worst, std::abs(value(c, t, p, sample) - expected) / span);
                     }
+                    auto originalValue = [&](int64_t sample)
+                    {
+                        frozen[p]->setPosition(tracktion::TimePosition::fromSeconds(sample / 48000.));
+                        return double(frozen[p]->getCurrentValue());
+                    };
+                    for (const auto& lane : before)
+                        if (lane["id"] == p)
+                            for (const auto& point : lane["points"])
+                            {
+                                const int64_t original = point["position_samples"];
+                                const auto mapped =
+                                    original >= 48000 && original < 96000 ? original - 48000 + destination : original;
+                                for (int n = -2; n <= 2; ++n)
+                                    for (const int64_t sample : {original + n, mapped + n})
+                                    {
+                                        if (sample < 0 || sample >= 288000 || std::abs(sample - destination) <= 1 ||
+                                            std::abs(sample - destination - 48000) <= 1 ||
+                                            std::abs(sample - 48000) <= 1 || std::abs(sample - 96000) <= 1)
+                                            continue;
+                                        double expected = originalValue(sample);
+                                        if (sample >= destination && sample < destination + 48000)
+                                            expected = originalValue(sample - destination + 48000);
+                                        else if (sample >= 48000 && sample < 96000)
+                                            expected =
+                                                originalValue(48000) + (originalValue(96000) - originalValue(48000)) *
+                                                                           double(sample - 48000) / 48000.;
+                                        worst = std::max(worst, std::abs(value(c, t, p, sample) - expected) / span);
+                                    }
+                            }
                 }
+                frozen.clear();
                 maxCurve = std::max(maxCurve, worst);
                 std::cout << "MEASURE shape=" << shape << " destination=" << destination << " curve=" << worst
                           << std::endl;
                 check(worst < 4e-7, "native source and vacancy mappings meet fixed numerical budget");
                 if (expectedPCM.getNumSamples())
                 {
-                    auto actual = render(c, dir.getChildFile("Moved-" + juce::String(destination) + ".wav"), 288000);
+                    auto actual = render(
+                        c, dir.getChildFile("Moved-" + juce::String(shape) + "-" + juce::String(destination) + ".wav"),
+                        288000);
                     double worstPCM = 0;
                     for (int i = 0; i < 288000; ++i)
                     {

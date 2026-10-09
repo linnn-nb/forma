@@ -1,0 +1,37 @@
+Seconds slice before fix:
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 122: forma_native_automation_boundaries
+1/1 Test #122: forma_native_automation_boundaries ...***Failed    1.03 sec
+Settings file: /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_automation_boundary_tests/3cea4002680c4b4297b1c3b9c8ffb5c4/Settings.xml
+Creating Default Controllers...
+Cleaning up temp files..
+FAIL native slice mismatch shape=0.750000 phase=0.000000 source=1.999875 destination=1.499875 expected=0.499888 actual=0.557118 error=0.057230
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   1.04 sec
+
+The following tests FAILED:
+	122 - forma_native_automation_boundaries (Failed)
+Errors while running CTest
+
+Musical fractional boundary before fix:
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 122: forma_native_automation_boundaries
+1/1 Test #122: forma_native_automation_boundaries ...***Failed    1.46 sec
+Settings file: /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_automation_boundary_tests/b8893d05461c434a9b9b7625ac7a9035/Settings.xml
+Creating Default Controllers...
+Cleaning up temp files..
+FAIL native slice mismatch {"actual":0.800000011920929,"destination":1.5,"error":0.30000001192092896,"expected":0.5,"musical":true,"phase":1e-12,"shape":0.75,"source":2.0}
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   1.46 sec
+
+The following tests FAILED:
+	122 - forma_native_automation_boundaries (Failed)
+Errors while running CTest

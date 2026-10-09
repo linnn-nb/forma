@@ -28,8 +28,17 @@ Json serialise(const std::vector<Point>& points)
         result.push_back({{"id", p.id}, {"time_seconds", p.time}, {"native_value", p.value}, {"curve", p.curve}});
     return result;
 }
-// The DSP iterator uses the raw curve coefficient. AutomationCurve's legacy
-// readback doubles it: use the actual playback kernel for both preview and edits.
+double adjacentTimelineSample(double at, bool before)
+{
+    double sample = before ? std::floor(at * 48000.) : std::ceil(at * 48000.);
+    const double candidate = sample / 48000.;
+    if (before ? candidate >= at : candidate <= at)
+        sample += before ? -1. : 1.;
+    const double result = sample / 48000.;
+    require(before ? result < at : result > at, "automation boundary lost session-sample resolution");
+    return result;
+}
+// Use the actual playback kernel, including the native discontinuities.
 std::vector<Point> fragment(const Point& a, const Point& b, double low, double high, double tolerance)
 {
     std::vector<Point> result;
@@ -59,6 +68,35 @@ std::vector<Point> fragment(const Point& a, const Point& b, double low, double h
         const bool step = (a.curve == 1.f && high == b.time) || (a.curve == -1.f && low == a.time);
         append(low, low == a.time ? a.value : value(low), step ? a.curve : 0.f);
         append(high, high == b.time ? b.value : value(high));
+        return result;
+    }
+    // Strong native curves jump at the end (> .5) or immediately after the
+    // beginning (< -.5). Retain both sides; a terminal chord may not replace
+    // the jump with a long slope. Only bridge adjacent 48 kHz session samples.
+    // Compare canonical sample TIMES strictly, without epsilon snapping: a
+    // native POINT can legitimately lie just before/after an integer sample.
+    if (a.value != b.value && a.curve > .5f && high == b.time && low < high)
+    {
+        const double adjacent = adjacentTimelineSample(b.time, true);
+        if (adjacent > low)
+            result = fragment(a, b, low, adjacent, tolerance);
+        else
+            append(low, value(low));
+        append(high, value(high));
+        return result;
+    }
+    if (a.value != b.value && a.curve < -.5f && low == a.time && high > low)
+    {
+        const double adjacent = adjacentTimelineSample(a.time, false);
+        append(low, value(low));
+        if (adjacent < high)
+        {
+            const auto rest = fragment(a, b, adjacent, high, tolerance);
+            require(result.size() + rest.size() <= maximumDerived, "automation boundary exceeds derived-point budget");
+            result.insert(result.end(), rest.begin(), rest.end());
+        }
+        else
+            append(high, value(high));
         return result;
     }
     append(low, value(low));

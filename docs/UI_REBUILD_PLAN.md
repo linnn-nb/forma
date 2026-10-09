@@ -1,3 +1,7 @@
+U-P0-AUTOMATION-BOUNDARY-01（2026-10-10）：修复强曲线截段丢失跳变两侧、音乐映射把极近采样边界误吸附的问题；GUI继续共用原有L1事务与可改键。Release/固定签名、最后一版14/14受影响CTest通过，3951检查；576边界组合/3192948位置探测与49个真实片段移动组合通过。Mac锁定，实体操作/试听未执行，未启动新预览；完整U＋P0未完成，不进P1。
+
+本节替代历史“通用秒基强曲线边界尚无专项”的差距，仅覆盖48k工程样本，不扩大到其他设备率/连续时间精确等价。演示 `build-v2-tracktion/OpenStrongCurvesDemo.command` 已准备；下一项混合音频/MIDI选区与Shuffle。M2/M3冻结、M4/M5暂缓，详情见VERIFICATION。
+
 U-P0-AUTOMATION-READBACK-01（2026-10-10）：自动化模型读取与真实播放迭代器已统一，包括秒/拍输入转换、Bezier 原权重、阶跃和重合点。Release/固定签名通过；15 项不同受影响 CTest 最终通过，3120 检查（新专项119），另有1525032个位置探测要求原生float精确相等。Mac仍锁定，实体操作/试听未执行，未启动新窗口；完整U＋P0未完成，不进P1。
 
 本节替代历史“SDK getter 差异尚未修复”；原始失败与旧报告保留。通用秒基强曲线截段边界、混合媒体/timebase及Shuffle仍需补齐。M2/M3冻结、M4/M5暂缓；证据见VERIFICATION最新节，亲手试更新后的 `build-v2-tracktion/OpenMusicalCurvesDemo.command`。
