@@ -89,6 +89,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id = 268; id <= 272; ++id)
             addMenuCommand(midiZoom, id);
         p.addSubMenu(text("MIDI Notes / Zoom"), midiZoom);
+        addMenuCommand(p, 273);
+        addMenuCommand(p, 274);
         p.addSeparator();
         addMenuCommand(p, 13);
         addMenuCommand(p, 14);
@@ -260,6 +262,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (musicEventPanel && musicEventPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (zoomTogglePanel && zoomTogglePanel->isVisible())
         return zoomTogglePanel->handleKey(key);
     if (trackCommentsPanel && trackCommentsPanel->isVisible())
@@ -405,6 +409,8 @@ void Workspace::resized()
         exportPanel->setBounds(getLocalBounds());
     if (zoomTogglePanel)
         zoomTogglePanel->setBounds(getLocalBounds());
+    if (musicEventPanel)
+        musicEventPanel->setBounds(getLocalBounds());
     if (analysisPanel)
         analysisPanel->setBounds(getLocalBounds());
     if (timelinePanel)

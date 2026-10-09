@@ -17,6 +17,7 @@
 #include "SpotPlacementPanel.h"
 #include "MidiDock.h"
 #include "PianoPitchAxis.h"
+#include "MusicEventPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
 #include "../TimelineState.h"
@@ -137,6 +138,8 @@ private:
     void restoreZoom();
     void executeZoomToggle(int);
     void followZoomToggle();
+    void showMusicEvent(const std::string&, double, const std::string& = "");
+    std::unique_ptr<MusicEventPanel> musicEventPanel;
     void showZoomTogglePreferences();
     std::unique_ptr<ZoomTogglePanel> zoomTogglePanel;
     Json cachedAutomation(const std::string&);

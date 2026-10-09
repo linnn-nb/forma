@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-MUSIC-EVENTS-01：Tempo/Meter 事件编辑（2026-10-09）
+
+结论：原生标尺＋、双击、事件列表、精确位置与数值修改/移动/删除接通真实 Edit。Release、固定身份 deep/strict 验签通过；专项96检查和8项相关回归最终通过0失败（分批修复复测，并非全量）。UI schema13保持；一个human Plan一个Undo，保存/新Workspace重开保持ID、顺序与音频/MIDI事实，自定义键重开可执行。
+
+实际速度事件把MIDI样本位置144000变为160000，同时保持源拍位置；Undo恢复144000。新增拍号3/4后的第7拍为第3小节；跨事件移动对native列表排序，小节位置校验排除原拍号。禁止删除/移动初始事件、重合、非小节位置、重复删除、非human及陈旧版本；人工穿插操作不会被旧面板覆盖。Tracktion插入拍号复制旧state，L1强制fresh ID/普通点击默认；既有速度曲线/triplets保留，并在实际保存XML验证。旧重复音乐ID载入修复同时保存原/新映射，不自动覆盖输入工程。
+
+真实48k/24bit双声道源、两次各48000帧离线渲染均验证格式/帧数，逐样本最大差0（容差1e-7）；源SHA256 `4f5d5ec0dbb66946ef0b6d4052bf09a7fdf2ae39897ebad2b36a67ad9a7fe4a1`保持。非零试听信号测试不代表实体扬声器/乐器试听；测试MIDI无合成器。
+
+首批相关回归失败两项：旧MusicWorkspace夹具未展开“更多”删除、按旧独立钢琴窗期待Edit切换关闭；现测试展开真实入口并验证独立dock切换。新增导入属性测试误用覆盖已存在目标，L1正确拒绝，改为新路径保留原件。最终专项96（6.55秒）、旧GUI回归（2.76秒）复测通过，其余7项此前通过；音乐内核、MIDI变换、标尺、Editor交互、走带、音高缩放均覆盖。控件同步在稳定选区恢复后刷新，全局状态通知移到实际视图更新后。没有为通过测试降低音频容差或删除断言。关键输出：evidence/U/music-events-tests.json、music-events-affected-tests.txt。
+
+原生MusicEventPanel.h、Rulers.h、EditWindow.h 与 WorkspaceCommands.cpp 273–277 是GUI入口；MusicCommands.cpp与EngineCommands.cpp负责L1验证/事务。新六命令local_gui并限制human，不扩充冻结MCP/分析。参考官方2026.4手册1127–1128、1152–1153页，差异见UI_PARITY：仅绝对分拍输入，三角拖动/Option删除/Ramp/完整点击细分与预后卷未实现。完整U＋P0未完成，不进入P1。
+
+LaunchServices真实启动已签名FormaMusicEventsPreview.app，CUA返回Mac锁定，未实体验收/截图/默认键/试听；仅结束本轮PID27305并确认无残留，旧用户窗口保留。预览实际工程仍保留，路径见NEXT_STEPS；无DMG。
+
 ## U-P0-PIANO-PITCH-01：钢琴卷帘音高缩放（2026-10-09）
 
 结论：原生+/−/N、选中与全部音符适配、ControlOption滚轮连续缩放、默认键高复位、滚动及L1保存重开接通。Release和固定签名deep/strict通过；专项57检查通过，另12项受影响回归通过、0失败（85.77秒），不是全量验收。实际48k/24bit双声道源、两次各48000帧渲染，PCM最大差0；原媒体SHA保持。

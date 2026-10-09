@@ -360,6 +360,8 @@ void Workspace::refresh()
         readOnly.mode = Permission::ReadOnly;
         resetCommandClient(readOnly);
         selected.clear();
+        if (musicEventPanel)
+            musicEventPanel->setVisible(false);
         midiDivider.cancel();
         midiHeightPreview = -1;
         midiCommandContext = false;
@@ -611,7 +613,6 @@ void Workspace::refresh()
     clipsList.update(facts["tracks"], selection.objectIDs);
     tracksList.setVisible(view["tracks_list"].get<bool>());
     clipsList.setVisible(view["clips_list"].get<bool>());
-    commandManager.commandStatusChanged();
     mixArea.update(facts, selected, d);
     auto midiView = commands.uiState();
     for (const auto& o : selection.objects)
@@ -632,6 +633,7 @@ void Workspace::refresh()
     if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
         memoryLocationsPanel->update(facts);
     resized();
+    commandManager.commandStatusChanged();
     repaint();
 }
 

@@ -318,6 +318,7 @@ public:
     std::function<void(juce::Component&)> onRulersMenu;
     std::function<void(int)> onRulerCommand;
     std::function<void(Json, uint64_t)> onLoopRange;
+    std::function<void(std::string, int64_t, std::string)> onMusicEvent;
     int rulerHeight() const
     {
         return Rulers::height(view);
@@ -745,6 +746,13 @@ public:
     {
         drag = nullptr;
         dragged = false;
+        for (const auto* kind : {"tempo", "meter"})
+            if (Rulers::addEventRect(view, kind).contains(e.getPosition()) && !facts.value("playing", false))
+            {
+                if (onMusicEvent)
+                    onMusicEvent(kind, facts.value("position_samples", int64_t(0)), "");
+                return;
+            }
         if (e.x >= 44 && e.x < timelineLeft() && e.y < rulerHeight())
         {
             if (const auto* ruler = Rulers::at(view, e.y); ruler && onRulerCommand)
@@ -1163,6 +1171,29 @@ public:
     }
     void mouseDoubleClick(const juce::MouseEvent& e) override
     {
+        const auto axis = coordinates();
+        if (e.x >= timelineLeft())
+            if (const auto* ruler = Rulers::at(view, e.y))
+                if (std::string(ruler->key) == "tempo" || std::string(ruler->key) == "meter")
+                {
+                    const std::string kind = ruler->key;
+                    Json nearest = nullptr;
+                    double distance = 12.;
+                    for (const auto& v : facts["music"][kind == "tempo" ? "tempos" : "meters"])
+                    {
+                        const double d = std::abs(axis.pixelAt(v["position_samples"].get<int64_t>()) - e.x);
+                        if (d <= distance)
+                        {
+                            nearest = v;
+                            distance = d;
+                        }
+                    }
+                    const auto sample = snapped(axis.sampleAt(e.x), e.mods);
+                    if (onMusicEvent)
+                        onMusicEvent(kind, nearest.is_null() ? sample : nearest["position_samples"].get<int64_t>(),
+                                     nearest.is_null() ? "" : nearest["id"].get<std::string>());
+                    return;
+                }
         if (e.x < timelineLeft() || e.y < rulerHeight())
             return;
         const int row = rowAt(e.y);

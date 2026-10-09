@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+音乐标尺事件（U-P0-MUSIC-EVENTS-01）：Rulers/EditWindow 读取实际 TempoSequence 稳定 ID，原生 MusicEventPanel 保持 session/revision 草稿，Workspace 仅生成 human Plan。L1 MusicCommands 验证事件、重合与小节边界，native ValueTree 经同一 UndoManager 修改并排序，EditTimecodeRemapperSnapshot 重映射音乐时间；样本时间基准音频保持位置。新增拍号不得继承前项 ID/triplets，修改既有事件保留未公开的曲线与 triplets。载入旧重复音乐 ID 由 L1 分配新 ID 并保存 music_id_repairs 映射；原文件不自动覆盖。UI schema13不变。新六命令仅 local_gui，不扩充冻结 MCP 工具；预后卷走带本轮未实现。
+
 当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
 
 当前UI增量（2026-10-09，Zoom Toggle）：schema12新增zoom_toggle，7项偏好、active、9字段out/saved、稳定targets及冻结的恢复策略。WorkspaceZoomToggle／ZoomToggle负责只读规划、GUI入口和L1写入；UiState::prepareUiStatePatch提供同一套纯预检，L1捕获所有活跃视图旁路更新到saved。普通缩放不进工程Undo；Remove Range由一笔human Plan提交range.clear＋insertion.set，完整UI预检在前。旧1–11严格迁移，Zoomer16条历史仍为原4字段；Toggle使用独立9字段基线。Waveforms只拟合真实已载入的源缩略峰值，不增加分析／MCP资格或RT路径；实际验证见VERIFICATION.md首节。

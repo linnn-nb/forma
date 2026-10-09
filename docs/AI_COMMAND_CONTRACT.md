@@ -1,5 +1,11 @@
 # 统一命令契约 v2
 
+## 音乐标尺事件（U-P0-MUSIC-EVENTS-01）
+
+本地 human Plan 命令：tempo.event.create/set/delete、meter.event.create/set/delete。create 必须声明 beat_position 和 bpm（20–300）或 numerator（1–32）/denominator（1/2/4/8/16/32）；set 另外声明稳定 event ID，delete 仅 event。单位为从零开始的 Tracktion 绝对分拍位置，分母变化会改变单位时长。初始事件不可删除/移出零点，其余事件不得到零点；不能与已有同类事件重合。Meter 必须在有效小节边界，移动前计算排除原事件后的拍号图。失效 ID、重复删除、旧 revision/session 或不合法参数整笔拒绝，不静默合并。
+
+GUI 新增/双击/菜单/键位共用同一原生面板和事务；一个提交一个 native Undo，成功回执后关闭。273/274 打开 Tempo/Meter（CommandOptionShiftT/M），275 提交（CommandReturn），276 删除（CommandShiftBackspace），277 取消（Escape/可重新绑定）。保存重开恢复事件和自定义键；跨重开 Undo 历史仍不承诺。三连音点击属性与速度曲线不在本增量编辑界面中，既有值保留、新 Meter 使用显式普通点击默认。tool_visibility=local_gui，且 L1 拒绝非 human actor；不增 M2 工具或 M3 分析资格。
+
 当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
 
 ## 本地Zoom Toggle（U-P0-ZOOM-TOGGLE-01）

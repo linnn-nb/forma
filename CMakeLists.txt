@@ -715,3 +715,8 @@ juce_add_console_app(ndaw_piano_pitch_tests PRODUCT_NAME "ndaw_piano_pitch_tests
 target_sources(ndaw_piano_pitch_tests PRIVATE tests/v2/PianoPitchTests.cpp)
 target_link_libraries(ndaw_piano_pitch_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_piano_pitch COMMAND ndaw_piano_pitch_tests "${CMAKE_SOURCE_DIR}/evidence/U/piano-pitch-tests.json")
+
+juce_add_console_app(ndaw_music_events_tests PRODUCT_NAME "ndaw_music_events_tests")
+target_sources(ndaw_music_events_tests PRIVATE tests/v2/MusicEventsTests.cpp)
+target_link_libraries(ndaw_music_events_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_music_events COMMAND ndaw_music_events_tests "${CMAKE_SOURCE_DIR}/evidence/U/music-events-tests.json")

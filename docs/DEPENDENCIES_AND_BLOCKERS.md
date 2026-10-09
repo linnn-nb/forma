@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+当前增量（2026-10-09，Tempo/Meter）：原生标尺＋、双击、精确位置编辑/删除接通 L1 human 事务；事件稳定ID、Undo/Redo、保存重开和改键通过96项专项。真实MIDI时间重映射、样本基准音频PCM差0；本轮无新增依赖或SDK修改。Release/固定签名通过。Mac锁定，未实体操作/试听，仅本轮预览PID27305已结束并确认无残留，旧窗口保留。预后卷、完整U＋P0尚未完成，不进P1；M2/M3冻结、M4/M5暂缓。相关回归最终结果见VERIFICATION.md。
+
 当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
 
 当前增量（2026-10-09，Zoom Toggle）：Release／固定验签、受影响12项最终通过0失败，135专项及真实PCM差0；无新依赖／SDK／实时图／MCP／分析资格修改。已备FormaZoomTogglePreview.app；桌面inventory后getApp再次返回Mac锁定，未实体操作／截图／试听。仅本轮PID98642已结束并确认无残留；旧窗口和既有15文件SDK补丁保留。Warp未实现且不显示；独立卷帘纵向及完整U＋P0待补。以下保留历史资格。

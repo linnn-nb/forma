@@ -146,6 +146,23 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                workspaceSession);
         commandManager.commandStatusChanged();
     };
+    editArea.onMusicEvent = [this](const std::string& kind, int64_t position, const std::string& id)
+    {
+        const auto snapshot = commands.query();
+        double beat = commands.timelinePosition(position)["position_beats"];
+        if (!id.empty())
+        {
+            const auto& events = snapshot["music"][kind == "tempo" ? "tempos" : "meters"];
+            const auto found = std::find_if(events.begin(), events.end(), [&](const auto& e) { return e["id"] == id; });
+            if (found == events.end())
+            {
+                message(text("音乐事件已失效，请重新选择"));
+                return;
+            }
+            beat = (*found)["start_beat"];
+        }
+        showMusicEvent(kind, beat, id);
+    };
     piano.onError = [this](const auto& error) { message(text("未执行：") + text(error)); };
     piano.onView = [this](Json patch)
     {

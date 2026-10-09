@@ -170,6 +170,30 @@ void Commands::registerMusicCommands(Json& registry)
          {"bpm", {{"type", "number"}, {"minimum", te::TempoSetting::minBPM}, {"maximum", te::TempoSetting::maxBPM}}}});
     add("meter.set", {{"position_samples", position}, {"numerator", integer}, {"denominator", integer}});
     registry.back()["units"]["position_samples"] = "bar boundary in the current Tempo/meter map";
+    for (const auto* kind : {"tempo", "meter"})
+        for (const auto* action : {"create", "set", "delete"})
+        {
+            Json args = Json::object();
+            if (std::string(action) != "create")
+                args["event"] = str;
+            if (std::string(action) != "delete")
+            {
+                args["beat_position"] = {{"type", "number"}, {"minimum", 0}};
+                if (std::string(kind) == "tempo")
+                    args["bpm"] = {{"type", "number"}, {"minimum", 20}, {"maximum", 300}};
+                else
+                {
+                    args["numerator"] = integer;
+                    args["denominator"] = integer;
+                }
+            }
+            add((std::string(kind) + ".event." + action).c_str(), args);
+            registry.back()["tool_visibility"] = "local_gui";
+            registry.back()["test"] = "U-P0-MUSIC-EVENTS-01";
+            registry.back()["units"] = {
+                {"beat_position",
+                 "absolute Tracktion meter divisions, zero based; denominator changes division duration"}};
+        }
     add("midi.clip.create",
         {{"track", str}, {"ref", str}, {"name", str}, {"position_samples", position}, {"length_samples", length}});
     Json note = {{"clip", str},
@@ -236,12 +260,28 @@ te::MidiClip* Commands::midiClip(const std::string& target) const
 }
 void Commands::initialiseMusicIDs(juce::UndoManager* undo)
 {
+    std::set<std::string> seen;
+    auto repairs = Json::parse(metadata.getProperty("music_id_repairs", "[]").toString().toStdString());
+    auto ensure = [&](const juce::ValueTree& value, const char* kind, double beat)
+    {
+        auto state = value;
+        const auto previous = id(state);
+        const bool duplicate = !te::EditItemID::fromID(state).isInvalid() && seen.contains(previous);
+        if (te::EditItemID::fromID(state).isInvalid() || duplicate)
+        {
+            edit->createNewItemID().writeID(state, undo);
+            if (duplicate)
+                repairs.push_back(
+                    {{"kind", kind}, {"previous_id", previous}, {"replacement_id", id(state)}, {"start_beat", beat}});
+        }
+        seen.insert(id(state));
+    };
     for (auto* t : edit->tempoSequence.getTempos())
-        if (te::EditItemID::fromID(t->state).isInvalid())
-            edit->createNewItemID().writeID(t->state, nullptr);
-    for (auto* s : edit->tempoSequence.getTimeSigs())
-        if (te::EditItemID::fromID(s->state).isInvalid())
-            edit->createNewItemID().writeID(s->state, nullptr);
+        ensure(t->state, "tempo", t->getStartBeat().inBeats());
+    for (auto* t : edit->tempoSequence.getTimeSigs())
+        ensure(t->state, "meter", t->getStartBeat().inBeats());
+    if (!repairs.empty())
+        metadata.setProperty("music_id_repairs", juce::String(repairs.dump()), undo);
     for (auto* t : te::getAudioTracks(*edit))
         for (auto* c : t->getClips())
             if (auto* m = dynamic_cast<te::MidiClip*>(c))
@@ -302,7 +342,8 @@ Json Commands::musicQuery() const
     const auto now = edit->getTransport().getPosition();
     auto bb = seq.toBarsAndBeats(now);
     auto& sig = seq.getTimeSigAt(now);
-    return {{"tempos", tempos},
+    return {{"id_repairs", Json::parse(metadata.getProperty("music_id_repairs", "[]").toString().toStdString())},
+            {"tempos", tempos},
             {"meters", meters},
             {"bpm", seq.getBpmAt(now)},
             {"numerator", sig.numerator.get()},
@@ -401,6 +442,11 @@ Json Commands::validateMusicPlan(const Json& operations) const
     using BP = tracktion::BeatPosition;
     std::vector<tracktion::tempo::TempoChange> tempos;
     std::vector<tracktion::tempo::TimeSigChange> meters;
+    std::map<std::string, BP> tempoIDs, meterIDs;
+    for (auto* t : edit->tempoSequence.getTempos())
+        tempoIDs[id(t->state)] = t->getStartBeat();
+    for (auto* t : edit->tempoSequence.getTimeSigs())
+        meterIDs[id(t->state)] = t->getStartBeat();
     for (auto* t : edit->tempoSequence.getTempos())
         tempos.push_back({t->getStartBeat(), t->getBpm(), t->getCurve()});
     for (auto* s : edit->tempoSequence.getTimeSigs())
@@ -450,6 +496,111 @@ Json Commands::validateMusicPlan(const Json& operations) const
             tracks[a.at("track")] = "instrument";
         else if (cmd == "plugin.external.insert" && externalDescriptor(a.at("descriptor"))["instrument"])
             tracks[a.at("track")] = "instrument";
+        else if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event."))
+        {
+            const bool isTempo = cmd.starts_with("tempo."), removing = cmd.ends_with("delete"),
+                       creating = cmd.ends_with("create");
+            auto& ids = isTempo ? tempoIDs : meterIDs;
+            const std::string key = creating ? "" : a.at("event").get<std::string>();
+            require(creating || ids.contains(key), "musical event not found or already deleted");
+            const auto previous = creating ? BP::fromBeats(-1) : ids.at(key);
+            require(!removing || previous.inBeats() != 0, "initial musical event cannot be deleted");
+            const auto beat = removing ? previous : BP::fromBeats(a.at("beat_position").get<double>());
+            require(beat.inBeats() >= 0 && beat.inBeats() <= 1e8 &&
+                        seq.toTime(beat).inSeconds() <= te::Edit::maximumLength,
+                    "musical event position outside Edit range");
+            require(creating || (previous.inBeats() == 0 ? beat.inBeats() == 0 : beat.inBeats() > 0),
+                    "initial musical event must stay at zero; other events must stay after it");
+            if (!isTempo && !removing)
+            {
+                auto boundary = seq;
+                if (!creating && beat != previous && previous.inBeats() > 0)
+                {
+                    auto remaining = meters;
+                    remaining.erase(std::remove_if(remaining.begin(), remaining.end(),
+                                                   [&](const auto& t) { return t.startBeat == previous; }),
+                                    remaining.end());
+                    boundary = Sequence(tempos, remaining, tracktion::tempo::LengthOfOneBeat::dependsOnTimeSignature);
+                }
+                require(std::abs(boundary.toBarsAndBeats(boundary.toTime(beat)).beats.inBeats()) < 1e-5,
+                        "meter event must start on a bar boundary without its previous setting");
+            }
+            if (isTempo)
+            {
+                auto found =
+                    std::find_if(tempos.begin(), tempos.end(), [&](auto& t) { return t.startBeat == previous; });
+                require(creating || found != tempos.end(), "ambiguous tempo event reference");
+                require(removing || std::none_of(tempos.begin(), tempos.end(),
+                                                 [&](auto& t)
+                                                 {
+                                                     return std::abs((t.startBeat - beat).inBeats()) < 1e-8 &&
+                                                            (creating || t.startBeat != previous);
+                                                 }),
+                        "tempo event would overlap another event");
+                if (removing)
+                    tempos.erase(found);
+                else
+                {
+                    const double bpm = a.at("bpm");
+                    require(std::isfinite(bpm) && bpm >= 20 && bpm <= 300, "Tempo outside SDK 20..300 BPM");
+                    if (creating)
+                        tempos.push_back({beat, bpm, 1});
+                    else
+                    {
+                        found->startBeat = beat;
+                        found->bpm = bpm;
+                    }
+                }
+                std::sort(tempos.begin(), tempos.end(), [](auto& x, auto& y) { return x.startBeat < y.startBeat; });
+            }
+            else
+            {
+                auto found =
+                    std::find_if(meters.begin(), meters.end(), [&](auto& t) { return t.startBeat == previous; });
+                require(creating || found != meters.end(), "ambiguous meter event reference");
+                require(removing || std::none_of(meters.begin(), meters.end(),
+                                                 [&](auto& t)
+                                                 {
+                                                     return std::abs((t.startBeat - beat).inBeats()) < 1e-8 &&
+                                                            (creating || t.startBeat != previous);
+                                                 }),
+                        "meter event would overlap another event");
+                if (removing)
+                    meters.erase(found);
+                else
+                {
+                    const int num = a.at("numerator"), den = a.at("denominator");
+                    require(num >= 1 && num <= 32 &&
+                                (den == 1 || den == 2 || den == 4 || den == 8 || den == 16 || den == 32),
+                            "invalid meter");
+                    if (creating)
+                        meters.push_back({beat, num, den, false});
+                    else
+                    {
+                        found->startBeat = beat;
+                        found->numerator = num;
+                        found->denominator = den;
+                    }
+                }
+                std::sort(meters.begin(), meters.end(), [](auto& x, auto& y) { return x.startBeat < y.startBeat; });
+            }
+            if (!creating)
+            {
+                if (removing)
+                    ids.erase(key);
+                else
+                    ids[key] = beat;
+            }
+            diff.push_back({{"command", cmd}, {"event", key}, {"before_beat", previous.inBeats()}, {"after", a}});
+            seq = sequence();
+            for (auto& [_, c] : clips)
+                if (!c.beats)
+                {
+                    c.start = seq.toBeats(time(c.absoluteStart)).inBeats();
+                    c.end = seq.toBeats(time(c.absoluteEnd)).inBeats();
+                    c.content = seq.toBeats(time(c.absoluteContent)).inBeats();
+                }
+        }
         else if (cmd == "tempo.set" || cmd == "meter.set")
         {
             auto pos = a.at("position_samples").get<int64_t>();
@@ -584,6 +735,68 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
     auto& seq = edit->tempoSequence;
     auto& um = edit->getUndoManager();
+    if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event."))
+    {
+        const bool isTempo = cmd.starts_with("tempo."), creating = cmd.ends_with("create"),
+                   removing = cmd.ends_with("delete");
+        te::EditTimecodeRemapperSnapshot snap;
+        snap.savePreChangeState(*edit);
+        juce::ValueTree state;
+        const auto beat = tracktion::BeatPosition::fromBeats(a.value("beat_position", 0.));
+        if (creating)
+            state = isTempo ? seq.insertTempo(beat, a.at("bpm"), 1)->state : seq.insertTimeSig(beat)->state;
+        else
+        {
+            const std::string key = a.at("event");
+            if (isTempo)
+                for (auto* t : seq.getTempos())
+                    if (id(t->state) == key)
+                    {
+                        state = t->state;
+                        break;
+                    }
+            if (!isTempo)
+                for (auto* t : seq.getTimeSigs())
+                    if (id(t->state) == key)
+                    {
+                        state = t->state;
+                        break;
+                    }
+            require(state.isValid(), "musical event target disappeared");
+        }
+        auto parent = state.getParent();
+        if (removing)
+            parent.removeChild(state, &um);
+        else
+        {
+            state.setProperty(te::IDs::startBeat, beat.inBeats(), &um);
+            if (isTempo)
+                state.setProperty(te::IDs::bpm, a.at("bpm").get<double>(), &um);
+            else
+            {
+                state.setProperty(te::IDs::numerator, a.at("numerator").get<int>(), &um);
+                state.setProperty(te::IDs::denominator, a.at("denominator").get<int>(), &um);
+                if (creating)
+                    state.setProperty(te::IDs::triplets, false, &um);
+            }
+            // Native meter insertion copies the prior state, including its ID. Allocate a fresh ID for every creation.
+            if (creating)
+                edit->createNewItemID().writeID(state, &um);
+            struct Order
+            {
+                int compareElements(const juce::ValueTree& x, const juce::ValueTree& y) const
+                {
+                    const double a = x.getProperty(te::IDs::startBeat, 0.), b = y.getProperty(te::IDs::startBeat, 0.);
+                    return a < b ? -1 : a > b ? 1 : 0;
+                }
+            } order;
+            parent.sort(order, &um, true);
+        }
+        seq.updateTempoData();
+        snap.remapEdit(*edit);
+        objects.push_back({{"id", id(state)}, {"kind", isTempo ? "tempo" : "meter"}, {"deleted", removing}});
+        return;
+    }
     if (cmd == "tempo.set" || cmd == "meter.set")
     {
         te::EditTimecodeRemapperSnapshot snap;
@@ -606,7 +819,13 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
         else
         {
+            const int previousCount = seq.getNumTimeSigs();
             auto setting = seq.insertTimeSig(beat);
+            if (seq.getNumTimeSigs() != previousCount)
+            {
+                edit->createNewItemID().writeID(setting->state, &um);
+                setting->state.setProperty(te::IDs::triplets, false, &um);
+            }
             setting->numerator = a.at("numerator").get<int>();
             setting->denominator = a.at("denominator").get<int>();
             state = setting->state;

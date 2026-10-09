@@ -578,6 +578,8 @@ Json Commands::preview(const Json& plan) const
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
+        if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event."))
+            require(actor == "human", "musical ruler editing is local GUI only during U phase");
         const auto& schema = entry->at("schema");
         for (const auto& key : schema.at("required"))
             require(a.contains(key.get<std::string>()), "missing parameter");
@@ -673,7 +675,7 @@ Json Commands::preview(const Json& plan) const
                 require(actor == "human", "track Comments are local GUI only during the U phase");
             // Complete hierarchy and capabilities are validated below.
         }
-        else if (cmd.starts_with("midi.") || cmd == "tempo.set" || cmd == "meter.set")
+        else if (cmd.starts_with("midi.") || cmd.starts_with("tempo.") || cmd.starts_with("meter."))
         {
             // Whole-Plan music preflight models musical time after Tempo changes.
         }
@@ -803,8 +805,9 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
             op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("midi.") ||
             op.at("command").get<std::string>().starts_with("marker.") ||
-            op.at("command") == "location.store_selection" || op.at("command") == "tempo.set" ||
-            op.at("command") == "meter.set")
+            op.at("command") == "location.store_selection" ||
+            op.at("command").get<std::string>().starts_with("tempo.") ||
+            op.at("command").get<std::string>().starts_with("meter."))
         {
             edit->getTransport().freePlaybackContext();
             break;
@@ -915,7 +918,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                     }
                 executeHierarchyOperation(cmd, resolved);
             }
-            else if (cmd.starts_with("midi.") || cmd == "tempo.set" || cmd == "meter.set")
+            else if (cmd.starts_with("midi.") || cmd.starts_with("tempo.") || cmd.starts_with("meter."))
             {
                 auto resolved = a;
                 if (a.contains("track"))

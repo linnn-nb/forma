@@ -780,6 +780,8 @@ public:
         if (!ui.empty())
         {
             canvas.restoreSelection(noteIDs);
+            // Undo may recreate note objects before stable-ID selection is restored. Refresh controls afterward.
+            refreshSelection();
             view.setViewPosition(ui["midi_scroll_x"].get<int>(), ui["midi_scroll_y"].get<int>());
         }
         velocityLane.setScroll(view.getViewPositionX());

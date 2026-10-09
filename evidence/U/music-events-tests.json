@@ -1,0 +1,9 @@
+{
+  "audio_pcm_max_error": 0.0,
+  "checks": 96,
+  "failures": 0,
+  "physical_gui": "not executed",
+  "pre_post_roll": "not implemented in this increment",
+  "source_sha256": "4f5d5ec0dbb66946ef0b6d4052bf09a7fdf2ae39897ebad2b36a67ad9a7fe4a1",
+  "test_directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_music_events_tests/forma-music-events-0338cec8cd9d4ce9af07f9123cac773e"
+}

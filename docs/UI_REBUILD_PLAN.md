@@ -1,5 +1,7 @@
 # Forma 界面与基础制作计划
 
+当前增量（2026-10-09，Tempo/Meter）：原生标尺＋、双击、精确位置编辑/删除接通 L1 human 事务；事件稳定ID、Undo/Redo、保存重开和改键通过96项专项。真实MIDI时间重映射、样本基准音频PCM差0；本轮无新增依赖或SDK修改。Release/固定签名通过。Mac锁定，未实体操作/试听，仅本轮预览PID27305已结束并确认无残留，旧窗口保留。预后卷、完整U＋P0尚未完成，不进P1；M2/M3冻结、M4/M5暂缓。相关回归最终结果见VERIFICATION.md。
+
 当前增量（2026-10-09，钢琴卷帘音高轴）：原生音高缩放、适配、ControlOption滚轮、滚动、保存重开与可改键接通；schema13的midi_note_height由L1保存，不占工程Undo/revision。MIDI绘制/组拖拽/裁剪/力度共用实际坐标与原human事务；异步键位通知先恢复新会话，防止旧默认键覆盖。Release/固定验签、57专项＋12相关回归通过0失败，真实双声道PCM差0。Mac锁定未实体验收；U＋P0未完成，M2/M3冻结、M4/M5暂缓。代码、容差及低键高概览边界见VERIFICATION.md首节。
 
 2026-10-08 用户指定的新阶段要求；来源 CODEX_PROMPT_UI.md，SHA256 205a5087036e817ae12c6e94203c706df9a9cfa4f8a976cf7da8bd55b42cc184。本文优先于旧 M0–M6 阶段安排。

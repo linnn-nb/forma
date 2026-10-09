@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-MUSIC-EVENTS-01（2026-10-09）
+
+结果：Release/固定身份deep/strict通过；专项96检查＋8项相关回归最终通过（分批复测），真实PCM最大差0、源哈希保持。见 music-events-tests.json 和 music-events-affected-tests.txt；新夹具路径在JSON，采用真实生成的48k/24bit音频和实际MIDI，非物理验收。
+
+代码：MusicCommands.cpp/EngineCommands.cpp 的六个事件命令和native Undo/remapper；Rulers/EditWindow的实际marker命中与＋；MusicEventPanel/WorkspaceCommands 273–277 的版本绑定草稿、冲突拒绝和原生命令；MusicEventsTests 实际保存重开/改键/ID修复/曲线及triplets/采样回归。旧MusicWorkspaceTests明确展开“更多”和独立dock，保留GUI删除/撤销/速度/MIDI断言；同步控件与全局状态通知置于真实事实恢复之后。
+
+边界：只本地human编辑，不增MCP/分析；绝对分拍精确输入，拍号小节边界，初始事件锚定；Tempo三角拖动/Option删除/Ramp、预后卷待做；跨重开Undo不承诺。Mac锁定，实体界面/默认键/试听未执行，仅本轮PID27305已结束，无残留，旧窗口保留；无截图/DMG。完整U＋P0未完成。
+
 ## U-P0-PIANO-PITCH-01（2026-10-09）
 
 结果：Release/固定身份deep/strict通过；新专项57检查通过，另外12项相关回归通过0失败，85.77秒。专项直接执行成功（非本轮CTest批次中的一项）；见piano-pitch-tests.json和piano-pitch-affected-tests.txt。构建/诊断输出位于build-v2-tracktion/piano-pitch-*.log，旧回执保持原历史。

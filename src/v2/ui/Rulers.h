@@ -62,6 +62,12 @@ public:
         }
         return nullptr;
     }
+    static juce::Rectangle<int> addEventRect(const Json& view, const std::string& kind)
+    {
+        const int y = top(view, kind);
+        return y < 0 || (kind != "tempo" && kind != "meter") ? juce::Rectangle<int>{}
+                                                             : juce::Rectangle<int>{12, y + 2, 18, 16};
+    }
     static int64_t niceInteger(double raw)
     {
         const double magnitude = std::pow(10., std::floor(std::log10(std::max(1., raw))));
@@ -121,6 +127,13 @@ public:
             if (type == "timecode")
                 title += " " + juce::String(fps) + " NDF";
             g.drawText(title, 46, y + 1, std::max(1, int(axis.left) - 58), e.height - 2, juce::Justification::right);
+            if (type == "tempo" || type == "meter")
+            {
+                const auto button = addEventRect(view, type);
+                g.setColour(accent());
+                g.drawRect(button, 1);
+                g.drawText("+", button, juce::Justification::centred);
+            }
             juce::Graphics::ScopedSaveState content(g);
             g.reduceClipRegion(int(axis.left), y, std::max(1, width - int(axis.left)), e.height);
             if (type == "bars_beats")
@@ -176,6 +189,9 @@ public:
                     if (x < axis.left || x > width)
                         continue;
                     g.setColour(accent());
+                    juce::Path flag;
+                    flag.addTriangle(float(x), float(y + 2), float(x + 7), float(y + 2), float(x), float(y + 9));
+                    g.fillPath(flag);
                     g.drawVerticalLine(x, float(y + 2), float(y + e.height - 2));
                     if (x - last >= 86)
                     {
