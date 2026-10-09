@@ -1,5 +1,9 @@
 # U 原生界面重构
 
+U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）：参数视图的范围 Cut/Copy/Delete/Paste 已接真实原生曲线，只编辑当前显示的参数；音频与其他参数保持。共享可自定义快捷键、大变更预览/接受/拒绝、单笔 Undo/Redo、另存/Open 已验证。Release/固定验签通过；12 项受影响 CTest 最终均通过，共1923检查（新专项351），首轮窗口焦点失败及隔离复测通过均保留。完整 U＋P0 未完成，不进P1。此节替代历史“参数视图独立范围编辑未完成”，其他历史边界保留。
+
+关键输出：automation-view-range-tests.json、automation-view-range-regression.txt、automation-view-range-qualification.json。原11份历史报告按SHA256恢复；首轮11/12、284.45秒，隔离焦点复测1/1、10.34秒。新专项14.25秒，native归一化最大差1.1920928955078125e-7/固定4e-7预算；无新PCM/听感资格。实体参数视图在Shuffle且follow off时Cut/Delete/Paste不改音频，Save后Undo及Open通过，本轮6207正常退出。演示 OpenAutomationViewDemo.command。下一项整片段自动化跟随。
+
 U-P0-AUTOMATION-CLEAR-01（2026-10-09）：普通音频范围 Cut/Delete 与实际音量/声像/EQ曲线同笔 native Undo；Cut锚定两端、Delete只移除原点，编辑组、预览拒绝/接受、跟随on/off、可改键、保存重开均已测试。Release/固定验签、11/11相关CTest、1572检查、296.01秒通过；新专项394。实际曲线最大归一化差1.1920928955078125e-7/4e-7预算，PCM最大差8.58306884765625e-6/2e-5预算，排除范围详见VERIFICATION。实体窗口保存→Undo/Redo/Open、Backspace Delete及off对照通过，截图实际出现在会话；验收接口暂时超时重新绑定后恢复。只结束本轮67449，用户旧窗口保持。
 
 新原始输出：automation-clear-tests.json、automation-clear-regression.txt、automation-clear-qualification.json；历史报告回归完成后按原SHA256恢复。可双击 build-v2-tracktion/OpenAutomationClearDemo.command 试用已有1–2秒真实音频选区。参数视图独立范围编辑、整片段、Trim/拖拽/Nudge/MIDI及完整U＋P0未完成，不进P1；M2/M3冻结、M4/M5暂缓，无新SDK/依赖/硬件实录资格。

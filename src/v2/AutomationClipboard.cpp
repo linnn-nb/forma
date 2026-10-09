@@ -1,4 +1,5 @@
 #include "AutomationCurveEdit.h"
+#include "NativePluginStates.h"
 namespace ndaw::v2
 {
 namespace
@@ -137,6 +138,68 @@ const Commands::ClipboardBuffer* Commands::clipboardBuffer(const std::string& id
             return &buffer->value();
     return nullptr;
 }
+Json Commands::prepareAutomationClipboard(const Json& targets, int64_t first, int64_t last, const std::string& session,
+                                          uint64_t expectedRevision)
+{
+    checkThread();
+    captureNativeStates();
+    require(session == sessionToken() && expectedRevision == revision, "project changed before automation copy");
+    require(!edit->getTransport().isPlaying() && parameterCapture.is_null() && capture.is_null() &&
+                recordingCapture.is_null() && !audioConfigurationPending(),
+            "stop before automation copy");
+    require(!nativeStates ||
+                (!nativeStates->query()["pending"].get<bool>() && nativeStates->query()["failure"].is_null()),
+            "resolve native plugin state before copy");
+    require(targets.is_array() && !targets.empty() && targets.size() <= 64 && first >= 0 && last > first &&
+                last <= std::llround(te::Edit::maximumLength * timelineRate),
+            "invalid automation copy extent");
+    ParameterWriteGuard guard(*this);
+    edit->flushState();
+    ClipboardBuffer buffer;
+    buffer.manifest = {{"id", juce::Uuid().toString().toStdString()},
+                       {"kind", "automation"},
+                       {"session_token", sessionToken()},
+                       {"start_samples", first},
+                       {"end_samples", last},
+                       {"targets", targets},
+                       {"tracks", Json::array()},
+                       {"entries", Json::array()},
+                       {"automation", Json::array()}};
+    size_t bytes = 0;
+    std::set<std::string> owners;
+    for (const auto& target : targets)
+    {
+        require(target.is_object() && target.size() == 2, "invalid automation copy target");
+        const std::string trackID = target.at("track"), laneID = target.at("parameter");
+        require(owners.insert(trackID).second, "one displayed parameter per copied track required");
+        auto* p = automationParameter(trackID, laneID);
+        require(p && laneID == p->getOwnerID().toString().toStdString() + "::" + p->paramID.toStdString(),
+                "copy requires actual stable parameter ID");
+        auto* plugin = p->getPlugin();
+        auto* t = domainTrack(trackID);
+        require(plugin && t && p->getCurve().timeBase == te::AutomationCurve::TimeBase::time &&
+                    p->getCurve().getNumPoints(),
+                "copy requires a real seconds-based curve");
+        auto state = p->getCurve().state.createCopy();
+        const auto points = read(state);
+        juce::MemoryOutputStream stream;
+        state.writeToStream(stream);
+        bytes += stream.getDataSize();
+        require(bytes <= 8 * 1024 * 1024, "automation clipboard exceeds 8 MiB; previous copy retained");
+        buffer.automation[trackID].push_back({state, p->getPluginAndParamName().toStdString(), p->paramID.toStdString(),
+                                              pluginIdentity(*plugin), t->pluginList.indexOf(plugin), false,
+                                              p->valueRange.start, p->valueRange.end});
+        buffer.manifest["tracks"].push_back(trackID);
+        buffer.manifest["automation"].push_back({{"track", trackID},
+                                                 {"parameter", laneID},
+                                                 {"name", p->getPluginAndParamName().toStdString()},
+                                                 {"points", points.size()},
+                                                 {"state_hash", hash(state)}});
+    }
+    require(expectedRevision == revision, "project changed while freezing automation");
+    stagedClipboard = std::move(buffer);
+    return stagedClipboard->manifest;
+}
 void Commands::captureClipboardAutomation(ClipboardBuffer& buffer, size_t& bytes) const
 {
     buffer.manifest["automation"] = Json::array();
@@ -186,6 +249,8 @@ Json Commands::automationClipboardChanges(const Json& args) const
     const std::string sourceTrack = args.at("source_track"), target = args.at("track"), mode = args.at("mode");
     auto* t = domainTrack(target);
     require(t != nullptr && (mode == "shuffle" || mode == "replace" || mode == "overlay"), "invalid paste target/mode");
+    auto* selected = args.contains("parameter") ? automationParameter(target, args.at("parameter")) : nullptr;
+    require(!args.contains("parameter") || selected, "paste destination parameter disappeared");
     const int64_t first = args.at("position_samples"), end = args.at("removal_end_samples");
     const int64_t duration =
         buffer->manifest["end_samples"].get<int64_t>() - buffer->manifest["start_samples"].get<int64_t>();
@@ -200,7 +265,14 @@ Json Commands::automationClipboardChanges(const Json& args) const
         {
             const auto& lane = captured->second[i];
             te::AutomatableParameter* parameter = nullptr;
-            if (lane.fader)
+            if (selected)
+            {
+                require(captured->second.size() == 1 && selected->paramID.toStdString() == lane.parameter &&
+                            pluginIdentity(*selected->getPlugin()) == lane.identifier,
+                        "automation paste requires matching actual parameter and plugin identity");
+                parameter = selected;
+            }
+            else if (lane.fader)
                 parameter = automationParameter(target, lane.parameter);
             else
             {
@@ -225,6 +297,8 @@ Json Commands::automationClipboardChanges(const Json& args) const
     for (auto* plugin : t->pluginList)
         for (auto* parameter : plugin->getAutomatableParameters())
         {
+            if (selected && parameter != selected)
+                continue;
             auto& curve = parameter->getCurve();
             const auto id = parameter->getOwnerID().toString().toStdString() + "::" + parameter->paramID.toStdString();
             const auto match = mapping.find(id);

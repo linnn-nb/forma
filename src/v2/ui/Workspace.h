@@ -188,6 +188,8 @@ private:
     void executeDeleteCommand();
     juce::String shufflePreviewText(const Json& preview) const;
     void executeClipboardCommand(int id);
+    Json automationRangeTargets() const;
+    bool executeAutomationClipboardCommand(int id);
     Json deleteClipOperations(bool ripple) const;
     Json clipboardSelection() const;
     void finishClipboardEdit(const Json& receipt);

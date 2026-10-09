@@ -87,6 +87,8 @@ void Workspace::finishClipboardEdit(const Json& receipt)
 }
 void Workspace::executeClipboardCommand(int id)
 {
+    if (executeAutomationClipboardCommand(id))
+        return;
     invoke(
         [&]
         {
@@ -162,6 +164,8 @@ void Workspace::executeClipboardCommand(int id)
             {
                 buffer = commands.clipboard();
                 require(!buffer.is_null(), "audio clipboard is empty");
+                require(buffer.value("kind", std::string("audio")) == "audio",
+                        "select an automation parameter view before pasting automation");
             }
             if (id != editCommand::cut)
             {

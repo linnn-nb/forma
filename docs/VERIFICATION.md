@@ -1,5 +1,17 @@
 # 验证状态
 
+## U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）
+
+结论：参数视图独立范围 Cut/Copy/Delete/Paste、共享可改键、预览、单笔 Undo/Redo、另存/Open 已验证；完整 U＋P0 未完成。Release与固定签名 deep/strict 通过。12项受影响CTest最终均通过，共1923不重复检查（新351，既有1572）。首轮11/12、284.45秒；editor_interactions实体peer焦点检查失败时，手工操作另一预览并发。退出本轮预览后隔离复测1/1、10.34秒，通过且断言未改；焦点干扰是推测，未独立证明。两份原始输出完整保留，不写成首轮全绿。
+
+- `AutomationViewRangeTests`（14.25秒）：实际te::Edit Volume/Pan/EQ、c=0/±.5/±1曲线、Aux无媒体；Copy不改revision/Undo，Cut参数独立/冻结快照、Delete半开区间、Redo稳定ID、Save后Undo/Open、篡改/裸操作/actor/session/schema/参数不匹配拒绝。生产Workspace实际CmdX/预览Reject/Accept/Undo、CmdC/V、自定义ControlOptionShiftD和键位重开；混合编辑组任一主视图走全部音频数据路径。
+- Cut选区外每48样本比原生AutomationIterator，Paste冻结源对照每48样本，Paste仅排除两侧48样本接缝；最大归一化差1.1920928955078125e-7，既定预算4e-7未放宽。音频Clip/源映射、其他参数点属性精确不变，源SHA256不变。本增量不新增PCM/听感/实时性能资格；已有相关真实渲染测试继续通过。
+- 实体桌面本轮固定签名独立预览：CoreAudio外置耳机48k/512配置；Volume视图1–2秒，Shuffle且follow off。CmdX实际预览/接受，另存Cut后Undo；Backspace另存Delete后Undo；CmdC、原生选区面板定位3–4秒、CmdV预览/接受、另存Paste后Undo；最后Ready原曲线恢复，再原生Open Paste成功。XML读回音频单Clip所有属性原样、Pan/EQ各5点及属性不变；Volume Cut1285/Delete4/Paste2822/Ready5点，Ready原点精确恢复。实际截图回传会话，无新增PNG；AX超时和一次ScreenCaptureKit -3811未当作通过，后续实际AX/保存/Open确认。自有6207正常CmdQ并确认无残留，用户旧窗口保持。没有本轮实体录音/主观试听/AI端到端资格。
+
+亲手试：双击 `build-v2-tracktion/OpenAutomationViewDemo.command`，已有真实媒体/Volume曲线/1–2秒选区；⌘X→接受→⌘Z，Backspace→⌘Z；⌘C，改选区后⌘V→接受→⌘Z。⌘S另存新路径、⌘O重开；菜单键位可自定义。Copy不进Undo；原位粘贴与Duplicate复用同一编译器，本专项未单独逐项桌面验收。launcher用--no-mcp；正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+
+边界：秒基曲线、实际匹配参数/插件身份/范围，不做跨参数Paste Special；混合选区任何主视图走已有全部音频数据路径，混合Aux主视图完整数据路径仍待补。Control覆盖Aux/Master全部自动化、beat基曲线、整片段/Trim/拖拽/Nudge/MIDI跟随未完成，下一项整片段跟随；本节仅替代历史参数视图范围缺口。M2/M3冻结、M4/M5暂缓；无新SDK/依赖/RT路径/DMG。原11份历史报告在进程全部结束后逐字节恢复，最新hash/count列于qualification；原始输出 `evidence/U/automation-view-range-*`。
+
 ## U-P0-AUTOMATION-CLEAR-01（2026-10-09）
 
 结论：普通音频范围 Cut/Delete 接通原生自动化跟随、同笔 Undo/Redo、另存/Open 和现有可改键；此增量已验证，完整 U＋P0 未完成。Release 和固定叶证书 deep/strict 验签通过；11/11 受影响 CTest、1572 检查、296.01 秒通过（新专项394，相关1178）。原始输出见 evidence/U/automation-clear-tests.json、automation-clear-regression.txt、automation-clear-qualification.json。

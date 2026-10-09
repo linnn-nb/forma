@@ -1,5 +1,7 @@
 > 本文件为交互与工作流参考清单，不是全量产品验收门槛。
 
+本表继续作为交互/工作流参考，不是全量验收门槛。U-P0-AUTOMATION-VIEW-RANGE-01（2026-10-09）：参数视图的范围 Cut/Copy/Delete/Paste 已接真实原生曲线，只编辑当前显示的参数；音频与其他参数保持。共享可自定义快捷键、大变更预览/接受/拒绝、单笔 Undo/Redo、另存/Open 已验证。Release/固定验签通过；12 项受影响 CTest 最终均通过，共1923检查（新专项351），首轮窗口焦点失败及隔离复测通过均保留。完整 U＋P0 未完成，不进P1。此节替代历史“参数视图独立范围编辑未完成”，其他历史边界保留。
+
 U-P0-AUTOMATION-CLEAR-01（核验2026-10-09）：官方 Pro Tools Reference Guide 2026.4 的 Cutting Automation / Deleting Automation（印刷页1582–1584，PDF页1684–1686）区分 Cut 两端锚定与 Delete 原点跨越空隙；Waveform/Blocks主视图编辑音频及所有自动化，参数视图只编辑对应曲线。来源：[官方手册](https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf)，本地PDF SHA256 `884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8`。
 
 Forma 普通音频时间范围已实现这两种曲线清理策略、工程跟随开关、编辑组、预览、撤销、保存重开及可改键；代码 AutomationClear.cpp / EditGroupCommands.cpp / WorkspaceClipboard.cpp / WorkspaceEditing.cpp，验收与数值证据见 VERIFICATION / U-P0-AUTOMATION-CLEAR-01。状态：音频范围部分已验证，整体部分实现；参数视图独立范围操作、整片段及 Trim/拖拽/Nudge/MIDI 仍有差距，无新增外部依赖。下文对应旧“普通范围清理未完成”由本段限定替代。

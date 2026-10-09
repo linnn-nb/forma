@@ -1,5 +1,9 @@
 # Forma 架构 v2
 
+U-P0-AUTOMATION-VIEW-RANGE-01：L1 AutomationRangeCommands 编译互斥 automation_range schema1；targets 为实际 track/稳定 ownerID::parameterID，start/end 为48k工程样本，action=cut/delete/paste，clipboard 为私有不透明 token。preview/commit 重编译完整描述符，只允许 human/local_gui；曲线清理/粘贴复用原生切段器与写入器，不编辑媒体。
+
+ClipboardBuffer 分 kind=audio/automation；参数 Copy 冻结原生 ValueTree/属性/实例身份/范围及hash，不进Undo/revision，Cut提交成功才接纳新剪贴板。Paste使用冻结源，目标实际参数/插件身份/范围必须匹配；Cut核验源未变化。秒基曲线，64目标/操作、8MiB快照及既有点数预算保持。GUI按编辑组闭包/current view分流：全部参数视图只改各自所示参数；任一主视图回到原音频全部数据路径。显式曲线编辑不受 Automation Follows Edit 或 Shuffle 时间收缩影响。te::Edit仍唯一事实，GUI无直接写入；无新依赖/SDK/实时路径/MCP工具。
+
 U-P0-AUTOMATION-CLEAR-01：L1 `makeAudioClearRangePlan` 生成封闭的 `audio_clear_range` schema1（tracks/start_samples/end_samples/action），先展开实际编辑组，再绑定媒体 hash 和曲线 state_hash；preview/commit 重编译完整描述符。`automation.range.clear` 仅限 compiled human/local_gui Plan，不添加 MCP 工具。开启跟随时，原生片段切分/删除与音量、声像、实际插件参数曲线同笔 native Undo；关闭时不写曲线。
 
 AutomationClear.cpp 复用已验证的原生 DSP 曲线切段器。Cut 在两端锚定，截断的曲段有界投影、空隙线性连接；Delete 只移除半开区间的原点，保留其他 ID/时间/值/系数。共享 native 曲线写入器保存原点附加属性，新点分配 ID；每轨 65536 输入点/8192 派生点、单曲线 65536 输出点、每 Plan 64 操作，超限整笔拒绝。没有新增 SDK、实时处理或第二引擎。参数视图独立范围编辑、整片段与 Trim/拖拽/Nudge/MIDI 联动待补。

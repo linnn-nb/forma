@@ -67,12 +67,12 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::altModifier},
         {editCommand::nextBoundary, "下一个片段边界", "编辑", juce::KeyPress::tabKey},
         {editCommand::split, "拆分选区 / 光标", "编辑", 'e', cmd},
-        {editCommand::copy, "复制音频选区", "编辑", 'c', cmd},
-        {editCommand::cut, "剪切音频选区", "编辑", 'x', cmd},
-        {editCommand::paste, "粘贴音频选区", "编辑", 'v', cmd},
-        {editCommand::duplicate, "复制音频片段到后方", "编辑", 'd', cmd},
+        {editCommand::copy, "复制选区", "编辑", 'c', cmd},
+        {editCommand::cut, "剪切选区", "编辑", 'x', cmd},
+        {editCommand::paste, "粘贴选区", "编辑", 'v', cmd},
+        {editCommand::duplicate, "复制选区到后方", "编辑", 'd', cmd},
         {editCommand::pasteOriginal, "粘贴到原位置 / 原轨道", "编辑", 'v', cmd | juce::ModifierKeys::altModifier},
-        {editCommand::remove, "删除所选片段", "编辑", juce::KeyPress::backspaceKey},
+        {editCommand::remove, "删除选区 / 所选对象", "编辑", juce::KeyPress::backspaceKey},
         {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
         {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
         {113, "切换循环播放", "走带", 'l'},
@@ -438,12 +438,18 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         active = active && !commands.clipboard().is_null();
                     else
                     {
-                        const auto slices = clipboardSelection();
-                        active = active && !slices.empty();
-                        for (const auto& item : slices)
-                            active = active && item["kind"] == "audio" && item.value("editable_audio", false) &&
-                                     !item.value("offline_clip_effects", false) &&
-                                     (id != editCommand::cut || !item.value("locked", false));
+                        const auto automation = automationRangeTargets();
+                        if (!automation.empty())
+                            active = active && !selection.range.is_null() && selection.objects.empty();
+                        else
+                        {
+                            const auto slices = clipboardSelection();
+                            active = active && !slices.empty();
+                            for (const auto& item : slices)
+                                active = active && item["kind"] == "audio" && item.value("editable_audio", false) &&
+                                         !item.value("offline_clip_effects", false) &&
+                                         (id != editCommand::cut || !item.value("locked", false));
+                        }
                     }
                 }
                 if (id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip ||
@@ -515,6 +521,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         for (const auto& clip : clips)
                             active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                      !clip.value("locked", false);
+                    if (!mix && !midiKeyboardFocus() && !automationRangeTargets().empty())
+                        active = !facts.value("playing", false) && !selection.range.is_null() &&
+                                 selection.objects.empty() && pending.is_null();
                 }
             }
             catch (const std::exception&)

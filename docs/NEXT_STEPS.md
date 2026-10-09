@@ -1,13 +1,9 @@
 # 下一步
 
-U-P0-AUTOMATION-CLEAR-01（2026-10-09）已完成普通音频时间范围 Cut/Delete 的原生自动化联动：同笔 Undo/Redo、保存重开、既有可改快捷键、编辑组及跟随开关。Release/固定验签、11/11 受影响 CTest、1572 检查通过；实体窗口拒绝/接受、保存→Undo、重做、重开和关闭跟随对照通过。范围和容差见 VERIFICATION 首节；旧“普通范围清理未完成”由本节替代。
+结论：U-P0-AUTOMATION-VIEW-RANGE-01 已完成所示参数的独立范围剪切、复制、删除、粘贴；共享可改快捷键、预览/接受/拒绝、一笔Undo/Redo与保存重开已验证。Release/固定验签、12项受影响CTest最终通过，1923检查（新351）；首轮焦点失败/隔离复测均保留。实体参数编辑不改音频/其他参数，保存后Undo与Open通过，详细范围见VERIFICATION首节。
 
-下一项：按轨道当前视图区分音频编辑与自动化独立范围编辑，接通参数视图的 Cut/Copy/Delete，防止把只编辑曲线的意图用于音频。然后补整片段、Trim/拖拽/Nudge、MIDI 跟随及剩余 U＋P0。完整 U＋P0 尚未完成，用户确认本级前不进 P1；M2/M3 冻结、M4/M5 暂缓。
+亲手试 `build-v2-tracktion/OpenAutomationViewDemo.command`：⌘X→接受→⌘Z，Backspace→⌘Z，⌘C/V，⌘S另存新路径/⌘O重开；菜单可改键。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。本轮独立预览已退出，用户旧窗口保留。
 
-结论：U-P0-AUTOMATION-FOLLOW-01 已完成工程级自动化跟随开关、可改快捷键、Undo/Redo、保存重开，以及 on/off 的音频范围 Shuffle Cut/Delete 和粘贴行为。Release/固定签名、相关 10/10 CTest（1178 检查）和实体 CoreAudio 操作通过。完整 U＋P0 未完成，不进入 P1。
+下一项明确任务：整片段Cut/Delete/移动/复制的原生自动化跟随，先核验官方行为与现有whole-clip语义，再接同一L1事务和跟随开关，补真实原生曲线/PCM、Undo/Redo、重开/改键测试；之后Trim/拖拽/Nudge/MIDI及剩余U＋P0。
 
-亲手试 `build-v2-tracktion/OpenAutomationFollowDemo.command`：Control+Option+A 切换，选第一轨、F1、CmdX；开启时预览/接受，CmdZ / ShiftCmdZ；CmdS 另存新副本 / CmdO 重开 / Space 试听。正式程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。低幅诊断 PCM 不代表音乐听感验收。
-
-下一项明确任务：实现非 Shuffle Cut/Delete 的源曲线清理与边界保持策略，受当前跟随开关控制；同一 L1 Undo、保存重开、可改键、原生曲线/真实 PCM 测试。随后 Trim/拖拽/Nudge/整片段/MIDI 跟随与剩余 U＋P0；用户确认本级后才进 P1。
-
-既有预算、pin、十份 SDK 补丁保持；秒基曲线与匹配插件实例范围不扩大。SDK RT/听感/硬件多轨实录/耐久/Windows 待验。M2/M3 冻结、M4/M5 暂缓，无 DMG/全量回归；本轮自有预览已退出，用户旧窗口保留。证据 `evidence/U/automation-follow-*`。
+完整U＋P0未完成，用户确认本级前不进P1；M2/M3冻结、M4/M5暂缓。跨参数Paste Special、Control覆盖Aux/Master、beat基曲线、混合Aux主视图全部数据、第三方/硬件/听感/耐久/Windows未资格；没有授权阻塞。依赖pin及十份SDK补丁保持，不新增实时处理或DMG。

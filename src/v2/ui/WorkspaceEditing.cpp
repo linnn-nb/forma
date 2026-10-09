@@ -336,15 +336,19 @@ Json Workspace::deleteClipOperations(bool ripple) const
 
 juce::String Workspace::shufflePreviewText(const Json& preview) const
 {
-    const bool paste = preview.contains("clipboard_paste") && !preview["clipboard_paste"].is_null();
-    const bool clear = preview.contains("audio_clear_range");
-    juce::String out = (clear   ? text("范围剪切 / 删除 · 待确认\n\n音频片段变更：")
-                        : paste ? text("音频 / 自动化粘贴 · 待确认\n\n音频片段变更：")
-                                : text("范围 Shuffle · 待确认\n\n音频片段变更：")) +
+    const bool independent = preview.contains("automation_range");
+    const bool paste = (preview.contains("clipboard_paste") && !preview["clipboard_paste"].is_null()) ||
+                       (independent && preview["automation_range"]["action"] == "paste");
+    const bool clear = preview.contains("audio_clear_range") || (independent && !paste);
+    juce::String out = (independent ? text("所示自动化范围 · 待确认\n\n音频保持，片段变更：")
+                        : clear     ? text("范围剪切 / 删除 · 待确认\n\n音频片段变更：")
+                        : paste     ? text("音频 / 自动化粘贴 · 待确认\n\n音频片段变更：")
+                                    : text("范围 Shuffle · 待确认\n\n音频片段变更：")) +
                        juce::String(int(preview["clip_changes"].size())) + text("\n原媒体保留；接受后可整笔撤销。\n");
     for (const auto& change : preview["automation_changes"])
     {
-        if (change.value("command", std::string{}) == "automation.range.clear")
+        if (change.value("command", std::string{}) == "automation.range.clear" ||
+            change.value("command", std::string{}) == "automation.lane.range.clear")
             out += change["action"] == "cut" ? text("\n剪切：增加边界锚点，保留两侧曲线，空隙线性连接。\n")
                                              : text("\n删除：移除区间内点，原有点跨越空隙，相邻曲线会变化。\n");
         out += text("\n自动化跟随 · ") + trackName(change["track"].get<std::string>()) + text("\n受影响点：") +
@@ -362,6 +366,8 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
 }
 void Workspace::executeDeleteCommand()
 {
+    if (executeAutomationClipboardCommand(editCommand::remove))
+        return;
     invoke(
         [&]
         {

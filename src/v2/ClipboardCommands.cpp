@@ -65,6 +65,7 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
     edit->flushState();
     ClipboardBuffer buffer;
     buffer.manifest = {{"id", juce::Uuid().toString().toStdString()},
+                       {"kind", "audio"},
                        {"session_token", sessionToken()},
                        {"start_samples", start},
                        {"end_samples", end},

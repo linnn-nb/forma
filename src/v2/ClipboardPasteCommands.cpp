@@ -31,6 +31,8 @@ Json Commands::clipboardPasteOperations(const Json& request) const
             "invalid compiled clipboard descriptor");
     const auto* buffer = clipboardBuffer(request.at("clipboard"));
     require(buffer && buffer->manifest["session_token"] == sessionToken(), "clipboard snapshot expired");
+    require(buffer->manifest.value("kind", std::string("audio")) == "audio",
+            "automation clipboard requires an automation destination view");
     const auto& targets = request.at("tracks");
     require(!targets.empty() && targets.size() == buffer->manifest["tracks"].size(), "clipboard track layout mismatch");
     const auto grouped = editGroupTracks(targets);

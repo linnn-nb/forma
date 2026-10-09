@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-AUTOMATION-VIEW-RANGE-01：2026-10-09核验官方 Pro Tools Reference Guide 2026.4，印刷1582–1584/PDF1684–1686，Editing Automation：参数视图仅编辑所示曲线；多轨只要一轨主视图则编辑全部数据；Cut边界锚定、Delete原点跨越空隙。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，本机SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。实现 AutomationRangeCommands/AutomationClear/AutomationClipboard/WorkspaceAutomation；测试 AutomationViewRangeTests及实体桌面。所测秒基匹配参数范围已验证，整个工作流部分实现；Paste Special跨参数、Control覆盖Aux/Master、混合Aux主视图全部数据和beat基曲线待补，不宣称完整PT等价。
+
 U-P0-SHUFFLE-PASTE-01：核验 Pro Tools Reference Guide 2026.4，核验日 2026-10-09；印刷 854 / PDF 956 页 Paste Command（插入点 Shuffle 右移，选区替换后按长度差左右移动），印刷 1552–1553 Automation Follows Edit。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf；本机 SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。实现 AutomationClipboard.cpp/ClipboardPasteCommands.cpp/WorkspaceClipboard.cpp；测试 AutomationClipboardTests/ShuffleRangeTests，真实 PCM、保存重开、快捷键、实体预览/Undo 通过。状态：所测音频范围已验证，完整工作流部分实现；static 插件设置不复制、跨轨需匹配实例，全局开关/非 Shuffle Cut/Trim/拖拽/MIDI 跟随未完成。不声明完整 Pro Tools 等价。
 
 > 本文件仍为交互与工作流参考，不是全量产品验收门槛。

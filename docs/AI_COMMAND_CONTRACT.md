@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+U-P0-AUTOMATION-VIEW-RANGE-01：automation_range 严格六字段 schema=整数1、targets=[{track,parameter}]、start_samples、end_samples、action、clipboard。end exclusive，48k工程采样；每轨一个实际稳定参数、最多64轨。L1产生 automation.lane.range.clear/paste，只允许封闭 human/local_gui Plan，不进入冻结MCP；拒绝额外字段、伪造目标、裸操作、非human actor、陈旧session/revision/曲线或不匹配快照。作用域仍按整轨保守检查，不假定局部范围修改没有两侧插值影响。
+
+Copy不产生工程事务；Cut/Delete/Paste各一笔native Undo/revision及真实回执，大变更先预览。Cut锚定两端，Delete只移除原点，Paste取冻结源并检查实际参数/插件身份/范围；都不改音频和未选参数。复制快照类型不可混用；全局跟随开关off仍允许显式参数编辑。测试 AutomationViewRangeTests 351检查，12项受影响回归最终通过；具体数值/桌面边界见VERIFICATION。
+
 U-P0-AUTOMATION-CLEAR-01：本地 human Plan 可携带互斥的 `audio_clear_range` 描述符，严格为 schema=整数1、tracks、start_samples、end_samples、action 五字段；action 只能 cut/delete，时间为 48k 工程采样、end exclusive。L1 重编译并比对所有操作，拒绝伪造、旧 revision/曲线、越界、锁定组成员、范围/目标 Scope 不足与资源超限。`automation.range.clear` 必须属于该封闭描述符，不能单独提交或由外部 actor 使用；MCP 保持冻结。
 
 预览列出真实 clip 变更、曲线 before/after、ID、原生单位、hash、派生点数和策略。大变更拒绝不写工程/不接纳 Cut 剪贴板；接受后音频与曲线同笔 native Undo。Cut 保留边界外曲线；Delete 的原有点跨越空隙，可能改变相邻曲线，不能标为与 Cut 等价。测试 U-P0-AUTOMATION-CLEAR-01，代码 AutomationClear/EditGroupCommands/EngineCommands/WorkspaceClipboard/WorkspaceEditing。

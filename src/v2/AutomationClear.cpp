@@ -35,6 +35,8 @@ Json Commands::automationClearChanges(const Json& args) const
     const std::string target = args.at("track"), action = args.at("action");
     auto* t = domainTrack(target);
     require(t && (action == "cut" || action == "delete"), "invalid automation clear target/action");
+    auto* selected = args.contains("parameter") ? automationParameter(target, args.at("parameter")) : nullptr;
+    require(!args.contains("parameter") || selected, "automation range parameter disappeared");
     const int64_t first = args.at("start_samples"), last = args.at("end_samples");
     require(first >= 0 && last > first && last <= std::llround(te::Edit::maximumLength * timelineRate),
             "invalid automation clear interval");
@@ -43,6 +45,8 @@ Json Commands::automationClearChanges(const Json& args) const
     for (auto* plugin : t->pluginList)
         for (auto* parameter : plugin->getAutomatableParameters())
         {
+            if (selected && parameter != selected)
+                continue;
             auto& curve = parameter->getCurve();
             if (!curve.getNumPoints())
                 continue;

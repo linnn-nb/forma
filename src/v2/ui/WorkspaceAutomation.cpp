@@ -1,6 +1,102 @@
 #include "Workspace.h"
 namespace ndaw::desktop
 {
+Json Workspace::automationRangeTargets() const
+{
+    const auto views = commands.uiState()["track_views"];
+    Json owners =
+        selection.tracks.empty() ? (selected.empty() ? Json::array() : Json::array({selected})) : selection.tracks;
+    if (owners.empty())
+        return Json::array();
+    owners = commands.editGroupTracks(owners);
+    Json result = Json::array();
+    for (const auto& track : facts["tracks"])
+        if (std::find(owners.begin(), owners.end(), track["id"]) != owners.end())
+        {
+            const auto parameter = views.value(track["id"].get<std::string>(), std::string{});
+            if (parameter.empty())
+                return Json::array(); // Any master view makes the selection an all-data/audio edit.
+            result.push_back({{"track", track["id"]}, {"parameter", parameter}});
+        }
+    return result;
+}
+bool Workspace::executeAutomationClipboardCommand(int id)
+{
+    const bool isPaste = id == editCommand::paste || id == editCommand::pasteOriginal;
+    const auto buffer = commands.clipboard();
+    const bool parameterContext = !mix && !automationRangeTargets().empty();
+    if (!parameterContext && !(isPaste && !buffer.is_null() && buffer.value("kind", std::string{}) == "automation"))
+        return false;
+    invoke(
+        [&]
+        {
+            if (!parameterContext && id != editCommand::pasteOriginal)
+                throw std::runtime_error("select the actual destination automation parameter view");
+            if (!pending.is_null() || workspaceSession != commands.sessionToken() ||
+                facts["revision"] != commands.querySummary()["revision"])
+                throw std::runtime_error("finish preview or refresh changed project before automation editing");
+            auto targets = automationRangeTargets();
+            auto captured = buffer;
+            const bool remove = id == editCommand::remove, cut = id == editCommand::cut;
+            int64_t first = 0, last = 0;
+            pendingClipboard = nullptr;
+            if (!isPaste)
+            {
+                if (selection.range.is_null() || !selection.objects.empty())
+                    throw std::runtime_error("select an automation time range first");
+                first = selection.range["start_samples"];
+                last = selection.range["end_samples"];
+                if (!remove)
+                {
+                    captured =
+                        commands.prepareAutomationClipboard(targets, first, last, workspaceSession, facts["revision"]);
+                    if (id == editCommand::copy)
+                    {
+                        commands.acceptClipboard(captured["id"]);
+                        message(text("已复制所示自动化曲线 · 音频与其他参数保持 · 不产生 Undo"));
+                        return;
+                    }
+                    pendingClipboard = captured;
+                }
+                if (id == editCommand::duplicate)
+                {
+                    first = last;
+                    last = first + captured["end_samples"].get<int64_t>() - captured["start_samples"].get<int64_t>();
+                }
+            }
+            else
+            {
+                if (captured.is_null() || captured.value("kind", std::string{}) != "automation")
+                    throw std::runtime_error("clipboard contains audio; use a waveform destination view");
+                if (id == editCommand::pasteOriginal)
+                    targets = captured["targets"];
+                first = id == editCommand::pasteOriginal ? captured["start_samples"].get<int64_t>()
+                        : selection.range.is_null()      ? facts["position_samples"].get<int64_t>()
+                                                         : selection.range["start_samples"].get<int64_t>();
+                last = first + captured["end_samples"].get<int64_t>() - captured["start_samples"].get<int64_t>();
+            }
+            const auto action = cut ? "cut" : remove ? "delete" : "paste";
+            const auto plan = commands.makeAutomationRangePlan(targets, first, last, action,
+                                                               remove ? "" : captured["id"].get<std::string>());
+            const auto preview = commands.preview(plan);
+            size_t impact = 0;
+            for (const auto& change : preview["automation_changes"])
+                impact += change["affected_points"].get<size_t>();
+            if (impact > 128 || targets.size() > 8 || last - first > 60 * 48000)
+            {
+                pending = plan;
+                pendingClipboardPlan = plan["plan_id"];
+                previewText.setText(shufflePreviewText(preview));
+                message(text("自动化范围编辑 · 请接受或拒绝 · 音频保持"));
+                return;
+            }
+            finishClipboardEdit(commands.commit(plan));
+            message(text("所示自动化范围已提交 · 一次 Undo · 音频与其他参数保持"));
+        });
+    if (isShowing())
+        grabKeyboardFocus();
+    return true;
+}
 Json Workspace::cachedAutomation(const std::string& track)
 {
     const auto key = commands.sessionToken() + ":" + commands.querySummary()["revision"].dump();

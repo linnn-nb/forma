@@ -1,0 +1,284 @@
+{
+  "increment": "U-P0-AUTOMATION-VIEW-RANGE-01",
+  "date": "2026-10-09",
+  "result": "passed within stated scope",
+  "build": {
+    "configuration": "Release",
+    "targets": 13,
+    "result": "passed",
+    "log": "build-v2-tracktion/automation-view-regression-build.log",
+    "signing": "deep/strict fixed leaf certificate verified; org.forma.daw"
+  },
+  "tests": {
+    "distinct_ctests": 12,
+    "distinct_checks": 1923,
+    "new_checks": 351,
+    "initial_regression": {
+      "passed": 11,
+      "failed": 1,
+      "seconds": 284.45,
+      "failure": "forma_native_editor_interactions: actual desktop peer clip selection returns focus to global command target",
+      "context": "Manual desktop interaction with separate preview was concurrent; focus interference suspected, not independently proved."
+    },
+    "isolated_rerun": {
+      "test": "forma_native_editor_interactions",
+      "result": "passed",
+      "seconds": 10.34,
+      "assertions_changed": false,
+      "context": "Own preview quit before rerun; no manual desktop interaction during rerun"
+    },
+    "new_test_seconds": 14.25,
+    "related_reports": [
+      {
+        "path": "evidence/U/clipboard-tests.json",
+        "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386",
+        "checks": 49,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/clipboard-tests.json"
+      },
+      {
+        "path": "evidence/U/shuffle-range-tests.json",
+        "sha256": "6df4cf3897f526d17446e90da63d3219f12f49d31018a32d0744c9657bdc971d",
+        "checks": 116,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/shuffle-range-tests.json"
+      },
+      {
+        "path": "evidence/U/automation-shuffle-tests.json",
+        "sha256": "ca94c7d0c5df1a157b61ff0ae04a9e4f12bf50c1224b0889a63f1305aa62c4e6",
+        "checks": 309,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/automation-shuffle-tests.json"
+      },
+      {
+        "path": "evidence/U/automation-clipboard-tests.json",
+        "sha256": "ae9e76e461f49608ffc669f337d43a6f4f97cb32d156a1d5b24afd0d1c0b3549",
+        "checks": 234,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/automation-clipboard-tests.json"
+      },
+      {
+        "path": "evidence/U/editor-tests.json",
+        "sha256": "0dc11414b2f322d53e8ba93b35e033077c4ad64f6f7012fba26accdcd162e9a1",
+        "checks": 81,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/editor-tests.json"
+      },
+      {
+        "path": "evidence/U/group-range-tests.json",
+        "sha256": "7c0d248b44d428087f009b10ba7309c75307e6807b44cb454d6c3621788e054f",
+        "checks": 72,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/group-range-tests.json"
+      },
+      {
+        "path": "evidence/U/automation-timeline-tests.json",
+        "sha256": "f46c0c5cedb82f869f3a6e0d668825f8b457e7d2fed43a13e2c274f6e1f7c24f",
+        "checks": 143,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/automation-timeline-tests.json"
+      },
+      {
+        "path": "evidence/M1/session-recovery-tests.json",
+        "sha256": "25aecd16bca3c0d34423b826b4e068d05a83fd80da4ae48a56b2abc87384b828",
+        "checks": 52,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/session-recovery-tests.json"
+      },
+      {
+        "path": "evidence/U/navigation-tests.json",
+        "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df",
+        "checks": 48,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/navigation-tests.json"
+      },
+      {
+        "path": "evidence/U/automation-follow-tests.json",
+        "sha256": "b016fff19c284e5565d5df0cc8b833a8509b269c79a262d7e04a024d725b11ce",
+        "checks": 74,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/automation-follow-tests.json"
+      },
+      {
+        "path": "evidence/U/automation-clear-tests.json",
+        "sha256": "a349ee736d32a32ac146fc883bec4ec749730a1a0c2567042c9d0d30d6729f4f",
+        "checks": 394,
+        "result": "passed",
+        "fresh_output": "build-v2-tracktion/automation-view-regression-results/automation-clear-tests.json"
+      }
+    ],
+    "historical_reports": "11 reports restored bytewise to original SHA256 after all processes finished"
+  },
+  "measurement": {
+    "native_normalized_curve_error": 1.1920928955078125e-07,
+    "budget": 4e-07,
+    "shapes": [
+      0,
+      0.5,
+      -0.5,
+      1,
+      -1
+    ],
+    "cut_comparison": "every 48 samples outside 1–2 second selection; no extra exclusion",
+    "paste_comparison": "every 48 samples inside 3–4 seconds; first/last 48 samples excluded at joins",
+    "new_pcm_or_listening_qualification": false
+  },
+  "desktop": {
+    "result": "passed for Cut/Delete/Copy/Paste, preview accept, Save/Undo/native Open",
+    "device": "CoreAudio 外置耳机 / 48000 Hz / 512 frames (configuration observed; no new playback qualification)",
+    "preview_bundle": "org.forma.daw.automation-view-preview",
+    "preview_pid": 6207,
+    "cleanup": "normal CmdQ; process absence confirmed; user old windows retained",
+    "records": [
+      {
+        "file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ViewDemo-0.5.tracktionedit",
+        "sha256": "ab494fee89b4c077e1561cb486ed70bc070a8b298114a7f32b9b876d41f45e49",
+        "curve_counts": {
+          "Mid gain 1": 5,
+          "volume": 5,
+          "pan": 5
+        },
+        "clips": [
+          {
+            "name": "ActualStereo",
+            "start": "0.0",
+            "length": "5.0",
+            "offset": "0.0",
+            "id": "1016",
+            "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ActualStereo.wav",
+            "sync": "1",
+            "elastiqueMode": "0",
+            "pan": "0.0",
+            "colour": "ff55ff00",
+            "proxyAllowed": "1",
+            "resamplingQuality": "lagrange",
+            "autoCrossfade": "0",
+            "ndaw_origin": "import"
+          }
+        ]
+      },
+      {
+        "file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ViewDesktopCut.tracktionedit",
+        "sha256": "b56f530172113d8e62ba4cdf83df6e1f366e1ab99524615e0ed25941295a93ad",
+        "curve_counts": {
+          "Mid gain 1": 5,
+          "volume": 1285,
+          "pan": 5
+        },
+        "clips": [
+          {
+            "name": "ActualStereo",
+            "start": "0.0",
+            "length": "5.0",
+            "offset": "0.0",
+            "id": "1016",
+            "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ActualStereo.wav",
+            "sync": "1",
+            "elastiqueMode": "0",
+            "pan": "0.0",
+            "colour": "ff55ff00",
+            "proxyAllowed": "1",
+            "resamplingQuality": "lagrange",
+            "autoCrossfade": "0",
+            "ndaw_origin": "import"
+          }
+        ]
+      },
+      {
+        "file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ViewDesktopDelete.tracktionedit",
+        "sha256": "9bd49df057508306f0a6d0baa5766ea65e73eeed35260f5ef393a8fb353312e4",
+        "curve_counts": {
+          "Mid gain 1": 5,
+          "volume": 4,
+          "pan": 5
+        },
+        "clips": [
+          {
+            "name": "ActualStereo",
+            "start": "0.0",
+            "length": "5.0",
+            "offset": "0.0",
+            "id": "1016",
+            "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ActualStereo.wav",
+            "sync": "1",
+            "elastiqueMode": "0",
+            "pan": "0.0",
+            "colour": "ff55ff00",
+            "proxyAllowed": "1",
+            "resamplingQuality": "lagrange",
+            "autoCrossfade": "0",
+            "ndaw_origin": "import"
+          }
+        ]
+      },
+      {
+        "file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ViewDesktopPaste.tracktionedit",
+        "sha256": "87a0dfcee2e52c12f241a4f7491f3a2390956911db3ea6f421462d84566bc7c1",
+        "curve_counts": {
+          "Mid gain 1": 5,
+          "volume": 2822,
+          "pan": 5
+        },
+        "clips": [
+          {
+            "name": "ActualStereo",
+            "start": "0.0",
+            "length": "5.0",
+            "offset": "0.0",
+            "id": "1016",
+            "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ActualStereo.wav",
+            "sync": "1",
+            "elastiqueMode": "0",
+            "pan": "0.0",
+            "colour": "ff55ff00",
+            "proxyAllowed": "1",
+            "resamplingQuality": "lagrange",
+            "autoCrossfade": "0",
+            "ndaw_origin": "import"
+          }
+        ]
+      },
+      {
+        "file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ViewDesktopReady.tracktionedit",
+        "sha256": "670cc03631b80e4ec58d1fc98fc27647ad382c66b9ddeb8c68db69e72d6808e4",
+        "curve_counts": {
+          "Mid gain 1": 5,
+          "volume": 5,
+          "pan": 5
+        },
+        "clips": [
+          {
+            "name": "ActualStereo",
+            "start": "0.0",
+            "length": "5.0",
+            "offset": "0.0",
+            "id": "1016",
+            "source": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-f4b68d3c50ac4616a4868543e5202d36/ActualStereo.wav",
+            "sync": "1",
+            "elastiqueMode": "0",
+            "pan": "0.0",
+            "colour": "ff55ff00",
+            "proxyAllowed": "1",
+            "resamplingQuality": "lagrange",
+            "autoCrossfade": "0",
+            "ndaw_origin": "import"
+          }
+        ]
+      }
+    ],
+    "checks": "Audio clip attributes unchanged; pan and EQ native point attributes unchanged; Ready volume points restored exactly. Cut1285/Delete4/Paste2822/Ready5 volume points.",
+    "screenshots": "Actual screenshots returned inline in session; no new PNG archive. One ScreenCaptureKit -3811 and AX timeouts retained as tool failures, subsequent AX/save/Open verified."
+  },
+  "artifact": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+  "demo_launcher": "build-v2-tracktion/OpenAutomationViewDemo.command",
+  "remaining": [
+    "whole-clip and Trim/drag/Nudge/MIDI automation follow",
+    "Paste Special cross-parameter transfer",
+    "Control override all automation on Aux/Master",
+    "beat-based automation",
+    "mixed master-view Aux/audio all-data clipboard",
+    "full U+P0 acceptance"
+  ],
+  "no_new_sdk_or_dependencies": true,
+  "mcp_and_analysis": "frozen; no new AI end-to-end claim"
+}

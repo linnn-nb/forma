@@ -169,6 +169,24 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-AUTOMATION-CLEAR-01";
     registry.back()["units"] = {{"start_samples", "48000 Hz session samples"}, {"end_samples", "exclusive"}};
+    add("automation.lane.range.clear", {{"track", string},
+                                        {"parameter", string},
+                                        {"start_samples", position},
+                                        {"end_samples", position},
+                                        {"action", string},
+                                        {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-AUTOMATION-VIEW-RANGE-01";
+    add("automation.lane.range.paste", {{"clipboard", string},
+                                        {"source_track", string},
+                                        {"track", string},
+                                        {"parameter", string},
+                                        {"position_samples", position},
+                                        {"removal_end_samples", position},
+                                        {"mode", string},
+                                        {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-AUTOMATION-VIEW-RANGE-01";
 }
 void Commands::initialiseAutomationIDs(juce::UndoManager* um)
 {
@@ -333,7 +351,7 @@ Json Commands::validateAutomationPlan(const Json& operations) const
                     "unsupported automation mode");
             continue;
         }
-        if (cmd == "automation.range.clear")
+        if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear")
         {
             auto change = automationClearChanges(args);
             require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
@@ -351,7 +369,7 @@ Json Commands::validateAutomationPlan(const Json& operations) const
             changes.push_back(std::move(change));
             continue;
         }
-        if (cmd == "automation.range.paste")
+        if (cmd == "automation.range.paste" || cmd == "automation.lane.range.paste")
         {
             auto change = automationClipboardChanges(args);
             require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
@@ -396,12 +414,12 @@ Json Commands::validateAutomationPlan(const Json& operations) const
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
-    if (cmd == "automation.range.clear")
+    if (cmd == "automation.range.clear" || cmd == "automation.lane.range.clear")
     {
         executeAutomationClear(args, objects);
         return;
     }
-    if (cmd == "automation.range.paste")
+    if (cmd == "automation.range.paste" || cmd == "automation.lane.range.paste")
     {
         executeAutomationClipboard(args, objects);
         return;

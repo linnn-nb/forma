@@ -1,0 +1,9 @@
+{
+  "checks": 351,
+  "curve_budget": 4e-07,
+  "curve_max_normalized_error": 1.1920928955078125e-07,
+  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/automation-view-demos/automation-view-1cd07bac7cb94d5b852c527c7eeafb6a/ViewDemo--1.tracktionedit",
+  "result": "passed",
+  "scope": "actual Edit/native interpolation/Undo/Open/production Workspace; desktop separately qualified",
+  "test": "U-P0-AUTOMATION-VIEW-RANGE-01"
+}
