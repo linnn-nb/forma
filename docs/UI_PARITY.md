@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-WINDOW-FOCUS-01是自有可用性修复，不增加Pro Tools映射声明：native父窗口将编辑焦点交给Workspace，成功Open结束旧输入上下文；文本字段Raise与局部Undo保留。沿用下表Separate/Nudge行为与已核验页码，200相关检查及实体冷启动/重开首键通过。旧段落的初始键盘缺口仅在本增量所测范围替代，完整U＋P0仍未完成。
+
 U-P0-GROUP-RANGES-01：官方2026.4印刷912–913（SeparateAtSelection）和919–922（Nudge）于2026-10-09从已有PDF核验。⌘E对时间范围切两端；p920只Nudge完全选中的clip，默认不隐式切片。Forma启用组精确音频Separate/Cut/Delete/原位粘贴及单笔Undo/重开已验，部分组成员移动冲突要求先Separate；PT Layered Editing重叠规则与Tracktion混音差异未验证，不宣称等价。菜单Cut/Copy参照1077–1078页，局部音频实际行为由本轮测试资格证明。72＋226检查及桌面操作通过；完整范围Shuffle/MIDI/自动化与U＋P0仍未完成。
 
 U-P0-PANEL-FOCUS-01（自有可用性修复）：沿用既有淡化/音乐事件/预后卷命令与下表参考行为，不新增Pro Tools对齐声明。输入框有限转发实际注册表的提交/取消，文字编辑保持本地，关闭恢复时间线焦点；UTF-8省略号修正。4项433检查及淡化实体快捷键/保存/Open/重开通过。前轮Open禁用未复现；Finder事件与完整U＋P0仍未完成。

@@ -1,5 +1,9 @@
 # U 原生界面重构
 
+## U-P0-WINDOW-FOCUS-01（2026-10-09）
+
+Release/固定deep/strict及相关CTest3/3通过，200检查（新增窗口23、editor81、group transforms96），24.49秒。冷启动无点击ControlOptionShiftE拆分、Undo/Redo、文本Raise/Backspace/局部Undo、从Tempo原生Open后首键Nudge和另存已实体验证；文件XML A/B3+C1、源哈希保持。输出window-focus-tests.json/txt、window-focus-preview.json、window-focus-desktop.png。亲手试build-v2-tracktion/OpenStartupKeysDemo.command，无需旧“先点拆分”步骤。自己的Range/两份Startup测试进程均已退出，保留其他窗口；无新SDK/实时/MCP/schema，无全量/DMG/听感资格，完整U＋P0待完成。
+
 ## U-P0-GROUP-RANGES-01（2026-10-09）
 
 分组音频范围精确Separate/Cut/Delete、原位粘贴和全选片段Nudge：Release/固定验签通过；新增直接运行72＋相关3CTest226＝298检查通过。实际Tracktion WAV内部PCM差0，分数源重开误差4.44e-16秒；原媒体哈希不变。Desktop实际拆分/移动/Undo/Redo/Cut/PasteOriginal/另存/Open重开已执行，XML A/B各3片段、C1。输出group-range-tests.json/txt、group-range-preview.json与group-range-desktop.png；正式app和OpenRangeEditingDemo.command位于build-v2-tracktion。

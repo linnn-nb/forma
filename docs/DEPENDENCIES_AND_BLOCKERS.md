@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+当前 U-P0-WINDOW-FOCUS-01：无新增授权/依赖阻塞；Release/固定签名和3项200检查通过。冷启动与原生Open后首键实体验收通过，旧“先点击拆分”绕行对新StartupKeysFinal预览不再必要。仅本轮旧Range/StartupKeys/Final预览结束，其他用户窗口及原SDK补丁保留。Clip检查器时间单位/导航、Memory预后卷、范围Shuffle/组MIDI/自动化、完整U＋P0仍待做；第三方插件实际焦点、听感/麦克风/Windows/耐久未新验，无DMG。
+
 当前 U-P0-GROUP-RANGES-01：无新依赖、授权或SDK/实时修改；Release与固定deep/strict通过，原SDK补丁保留。298检查及实体剪切/粘贴/撤销/另存/Open重开通过；自己的Range预览进程已退出，其他用户窗口保留。首次打开工程的快捷键焦点仍需修复；Clip检查器仍有工程样本字段，需统一时间单位。范围Shuffle、MIDI/自动化剪贴板未实现；部分组成员Nudge要求先Separate，粘贴目标组布局不完整拒绝。Tracktion重叠混音不宣称等同PT Layered Editing。实体听感/麦克风、Windows、完整U＋P0未验收；无全量回归或DMG。以下旧记录按日期/资格保留。
 
 本轮无新增依赖或授权阻塞。固定本地签名沿用已授权身份，Release及deep/strict通过；SDK既有补丁保留。前轮Open禁用在本轮原生另存/重开未复现，不把其标为已定位修复；CUA前台激活须单独确认。Finder文件关联/运行中文档事件仍未实现；实体听感和完整U＋P0验收未完成。

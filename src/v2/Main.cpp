@@ -1,4 +1,4 @@
-#include "Workspace.h"
+#include "ui/WorkspaceWindow.h"
 class Application final : public juce::JUCEApplication
 {
 public:
@@ -14,7 +14,8 @@ public:
     {
         try
         {
-            window = std::make_unique<Window>();
+            window = std::make_unique<ndaw::desktop::WorkspaceWindow>(std::make_unique<ndaw::desktop::Workspace>());
+            window->onClose = [this] { systemRequestedQuit(); };
             auto args = getCommandLineParameterArray();
             const bool gatewayEnabled = !args.contains("--no-mcp");
             args.removeString("--no-mcp");
@@ -25,7 +26,7 @@ public:
                 workspace->openLocalFile(juce::File(args[0]));
             if (gatewayEnabled)
                 workspace->startMcp(ndaw::v2::Permission::ReadOnly);
-            workspace->grabKeyboardFocus();
+            window->showReady();
         }
         catch (const std::exception& e)
         {
@@ -40,23 +41,6 @@ public:
     }
 
 private:
-    struct Window final : juce::DocumentWindow
-    {
-        Window() : DocumentWindow(ndaw::desktop::text("Forma · Edit / Mix · 开发版"), ndaw::desktop::base(), allButtons)
-        {
-            setUsingNativeTitleBar(true);
-            setContentOwned(new ndaw::desktop::Workspace(), true);
-            setResizable(true, true);
-            setResizeLimits(1120, 700, 7680, 4320);
-            centreWithSize(1440, 880);
-            setVisible(true);
-            getContentComponent()->grabKeyboardFocus();
-        }
-        void closeButtonPressed() override
-        {
-            juce::JUCEApplication::getInstance()->systemRequestedQuit();
-        }
-    };
-    std::unique_ptr<Window> window;
+    std::unique_ptr<ndaw::desktop::WorkspaceWindow> window;
 };
 START_JUCE_APPLICATION(Application)

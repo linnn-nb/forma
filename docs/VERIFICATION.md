@@ -1,5 +1,15 @@
 # 验证状态
 
+## U-P0-WINDOW-FOCUS-01（2026-10-09）
+
+结论：修复首次启动和从文本框重开工程后的编辑焦点；最终Release/固定deep/strict通过。相关CTest `forma_native_window_focus`（23）、`forma_native_editor_interactions`（81）、`forma_native_group_transforms`（96）3/3通过，200检查，24.49秒。不是全量回归；没有新SDK、依赖、schema、L1命令或实时修改。
+
+复现与实现：旧Range预览冷启动后Raise＋实际改键没有执行，点击内容后才正常。`src/v2/ui/WorkspaceWindow.h` 作为生产原生父窗口：先载入Edit/键位再show；父窗口获得焦点时单个SafePointer消息转交Workspace，首键兜底仅在父窗口自身拥有焦点时调用实际命令，不重复转发子组件文字键。`Main.cpp`使用该窗口；`WorkspaceActions.cpp`成功open后按session与active peer守卫，延后结束旧文本上下文，失败Open不抢焦点。`tests/v2/WindowFocusTests.cpp`使用同一生产窗口、真实原生peer/文本面板/Edit/Undo，覆盖首键切片、子输入、其他peer、失效open、改键/保存重开与销毁前回调。
+
+最终实体桌面：`FormaStartupKeysFinalPreview.app`冷启动加载RangeDemoReady，不点内容直接ControlOptionShiftE得到7片段；⌘Z回3、⇧⌘Z回7。Tempo字段121.25→Backspace121.2→局部⌘Z121.25，Raise仍保留输入，工程revision不变。从Tempo经⌘O实际打开 `StartupKeysDesktop.tracktionedit` 后焦点回编辑区，首键句号Nudge1.250→1.260秒，⌘Z恢复；⌘S原生另存新文件 `StartupKeysVerified.tracktionedit`，真实回执及XML核验A/B各3、C1，源哈希与前轮一致。此前第一构建发现Open仍留旧Tempo焦点，已补成功Open交接并在最终构建复测，非仅冷启动通过。自己的三个测试预览均已退出，其他用户窗口保留。
+
+证据：`evidence/U/window-focus-tests.json/txt`、`window-focus-preview.json`和`window-focus-desktop.png`；正式产物仍 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，亲手试 `OpenStartupKeysDemo.command`。首次构建Make重生成后尚未识别新target，单独构建目标后成功；最终全部目标一次构建通过。预览使用真实低幅诊断正弦，未作音乐/听感/麦克风/第三方插件物理焦点/耐久/Windows资格，没有DMG。Clip检查器单位与字段导航、Memory roll和完整U＋P0待补，不进入P1。
+
 ## U-P0-GROUP-RANGES-01（2026-10-09）
 
 结论：同组任意音频时间范围的Separate/Cut/Delete及精确原位粘贴已接通；Nudge仅移动全选片段并保留ID，选区/插入点共同撤销。Release和已授权固定签名deep/strict通过。`ndaw_range_group_tests` 直接运行72检查通过；相关CTest `forma_native_editor_interactions`（81）、`forma_native_audio_clipboard`（49）、`forma_native_group_transforms`（96）3/3通过，28.26秒；总计298检查，非全量回归。

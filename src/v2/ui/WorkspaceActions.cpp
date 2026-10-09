@@ -521,6 +521,7 @@ void Workspace::openSession(const juce::File& f)
         return;
     }
     reportShowing = false;
+    const auto previousSession = commands.sessionToken();
     invoke(
         [&]
         {
@@ -540,6 +541,20 @@ void Workspace::openSession(const juce::File& f)
             sessionName = f.getFileName();
             message(text("工程已重开 · 本轮撤销历史从此开始"));
         });
+    const auto openedSession = commands.sessionToken();
+    if (previousSession != openedSession && isShowing())
+    {
+        // Native choosers restore their previous text field when dismissed. Opening a new project
+        // ends that old input context; defer until dismissal, without activating another peer.
+        juce::MessageManager::callAsync(
+            [safe = juce::Component::SafePointer<Workspace>(this), openedSession]
+            {
+                if (safe && safe->commands.sessionToken() == openedSession && safe->isShowing())
+                    if (auto* peer = safe->getPeer();
+                        peer && peer->isFocused() && !safe->isCurrentlyBlockedByAnotherModalComponent())
+                        safe->grabKeyboardFocus();
+            });
+    }
 }
 
 void Workspace::importAudio(const juce::File& f)

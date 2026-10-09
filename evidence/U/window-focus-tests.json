@@ -1,0 +1,5 @@
+{
+  "checks": 23,
+  "result": "passed",
+  "scope": "production WorkspaceWindow and actual Edit/Undo/key map on native peers; physical startup requires desktop verification"
+}

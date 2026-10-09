@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-WINDOW-FOCUS-01：生产WorkspaceWindow先载入工程与键位再显示；native父窗口焦点用有界合并的单个消息交给Workspace，SafePointer守生命周期，只在父级/无组件焦点且active peer时转交。子文本/插件/其他peer保持原焦点，首键兜底不重复处理子组件键。成功Open按session/active peer延后结束旧输入上下文，失败不转交；没有timer抢焦点、L1/Edit/SDK/实时/schema变更。最终200相关检查与实体冷启动/重开首键已验，见VERIFICATION。
+
 U-P0-GROUP-RANGES-01：L1 `audioRangeOperations` 在 message thread 只读解析当前启用 Edit 组闭包，产出既有 split/delete/move；GUI不写Edit。精确Separate/Cut/Delete使用两边切片，Nudge只移动全选的原ID，遇到会牵连部分选中组成员则要求先Separate，范围与插入点一起Undo。剪贴板保留原生分数源秒数；目标组布局不完整整笔拒绝。64操作预算/锁定/版本/hash/Scope沿用原Plan，不加schema、SDK、实时路径或MCP工具。资格以VERIFICATION最新节为准。
 
 U-P0-PANEL-FOCUS-01：PanelTextEditor只转发共享面板命令275–277/Escape，其他文字键留TextEditor；实际注册表负责自定义键，成功/取消回到Workspace焦点，失败不关面板。裸启动路径由Workspace::openLocalFile区分工程/音频，实际写入仍在既有L1，无新schema/SDK/实时修改。Release/4项433检查及桌面保存重开通过；Open禁用未复现，Finder document事件尚未实现，见VERIFICATION首节。
