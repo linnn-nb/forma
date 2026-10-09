@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-09",
+  "qualification": "guarded 48k audio Shuffle time range, not full U+P0",
+  "final_tests_passed": 4,
+  "final_tests_failed": 0,
+  "wall_seconds": 43.2,
+  "unique_checks": 279,
+  "checks": {
+    "shuffle-range": 77,
+    "group-range": 72,
+    "clipboard": 49,
+    "editor": 81
+  },
+  "mixed_rate_audio_qualification": "failed; recorded separately and guarded, not counted as passed",
+  "build": "Release native app and affected test targets successful",
+  "signing": "fixed local identity, deep/strict and identifier/certificate requirements passed",
+  "pcm_max_error": 0.0,
+  "desktop": "shuffle-range-desktop.json"
+}

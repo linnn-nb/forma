@@ -342,11 +342,19 @@ void Workspace::executeDeleteCommand()
             require(workspaceSession == commands.sessionToken() &&
                         facts["revision"] == commands.querySummary()["revision"],
                     "project changed before Delete; refresh and retry");
+            require(pending.is_null(), "accept or reject the existing preview before Delete");
             const bool ripple = editing.mode == "shuffle";
-            auto plan = commands.makePlan("human", deleteClipOperations(ripple));
+            const bool shuffleRange = ripple && selection.objects.empty() && !selection.range.is_null();
+            auto plan = shuffleRange ? commands.makeShuffleRangePlan(selection.tracks, selection.range["start_samples"],
+                                                                     selection.range["end_samples"])
+                                     : commands.makePlan("human", deleteClipOperations(ripple));
+            std::set<std::string> touched;
+            for (const auto& op : plan["operations"])
+                if (op["args"].contains("clip") && !op["args"]["clip"].get<std::string>().starts_with("$"))
+                    touched.insert(op["args"]["clip"].get<std::string>());
             plan["base_revision"] = facts["revision"];
             if (selection.objects.empty() && !selection.range.is_null() &&
-                (clipboardSelection().size() > 8 ||
+                (touched.size() > 8 ||
                  selection.range["end_samples"].get<int64_t>() - selection.range["start_samples"].get<int64_t>() >
                      60 * 48000))
             {

@@ -1,5 +1,7 @@
 # Forma 界面与基础制作计划
 
+当前增量 U-P0-SHUFFLE-RANGE-01：48k音频时间范围Shuffle Cut/Delete、编辑组按真实边界、空隙删除和原生单笔Undo接通；Cmd-X/可改Delete及保存重开、77专项、相关4/4及实机验证。混合采样率音频移位误差超预算，当前拒绝执行，下一项先隔离和修复SRC定位再恢复资格；自动化跟随、Shuffle Paste/Trim/拖拽与完整U＋P0未完成，不进入P1。
+
 当前增量U-P0-MEMORY-ROLL-01：位置记忆可保存/移除预后卷时长，并以一笔真实L1事务召回光标、选区和时长，保留当前启用开关。76专项/受影响5项405检查最终通过，桌面改键、Undo、另存/Open重开已验。其余general properties与完整U＋P0尚未完成；Next为时间范围Shuffle，不进入P1，M2/M3冻结、M4/M5暂缓。
 
 当前增量U-P0-CLIP-TIME-01：Clip检查器时间字段与主标尺一致，淡化使用毫秒；源秒/PCM帧/工程样本分开。Tab/ShiftTab、局部文字Undo、可改提交键和Esc已接真实L1，76专项、受影响7项375检查、桌面提交/撤销/另存/Open重开通过。修复Cocoa吞ControlOption数值快捷键，未改值不产生源时间浮点漂移或空Undo。下一项为Memory Locations预后卷保存/恢复；完整U＋P0仍未完成，不进P1。M2/M3冻结、M4/M5暂缓。

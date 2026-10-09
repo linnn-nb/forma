@@ -1,6 +1,8 @@
 编辑组最新增量（U-P0-GROUP-TRANSFORMS-01，2026-10-09）：同组whole-clip修剪、淡化和Clip Gain已接通，来源为实际Tracktion Edit，保留成员原差异；89专项与实际PCM通过，实体淡化/撤销/另存/重开已有回执。关联方式与相对淡化/增益规则为Forma明确策略，不能当作Pro Tools任意区间编辑的完整等价。具体功能/测试/差异见UI_PARITY与VERIFICATION首节。
 > 2026-10-05 方向调整：本文件仅为 Pro Tools 交互与工作流参考清单，不是产品完成度或发布验收门槛。历史状态不能作为 v2 已验证能力。
 
+参考更新 U-P0-SHUFFLE-RANGE-01：2026.4官方手册印刷857、859 / PDF959、961页已从既有PDF核验（2026-10-09）；范围Cut/Delete前移后方片段并保留剩余空隙。Forma48k音频范围＋编辑组＋Undo/重开/键位已验证；44.1k声音实验超预算、自动化跟随未实现并明确拒绝。Shuffle完整行为状态仍部分实现；对应代码EditGroupCommands/WorkspaceEditing/WorkspaceClipboard、测试ShuffleRangeTests及evidence/U/shuffle-*。该清单仍是交互参考，不作为全量产品完成门槛。
+
 Scrubber跨片段增量（2026-10-09）：已扩展到同轨切点/空隙/重叠、四曲线淡化、分数源偏移和混合采样率；生产图PCM/Undo/保存重开与194专项、相关8/8通过，边界见VERIFICATION.md。仍为部分实现：同步准备约1–204 ms、±2工程秒/32源/总8 MiB、无Clip FX/自动化；临时Ctrl、细拖、双轨/8声道及实体验收未完成。下述单片段记录为前一增量历史。
 
 Scrubber增量核验（2026-10-09）：依据官方2026.4参考手册印刷883–884，已接原图单片段真实正反向源/原FX及输出，±1/Option±4、停止恢复有数值与GUI自动化证据。仍为部分实现：有界±2秒、无Clip FX/淡化/自动化，双轨/8声道/临时Ctrl/细拖/选区行为与实体试听待补。代码ScrubPlayback.cpp、EditWindow.h；测试U-P0-SCRUB-01、evidence/U/scrub-tests.json。参考清单不变为完成度门槛，具体资格见VERIFICATION.md。

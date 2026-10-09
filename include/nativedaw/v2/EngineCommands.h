@@ -34,6 +34,9 @@ public:
     Json refreshPluginInventory(const juce::File& directory = juce::File{});
     Json pluginInventory() const;
     Json makePlan(const std::string& actor, Json operations) const;
+    // Local human planner: resolve an entire time collapse before whole-clip group expansion.
+    // Preview recompiles the descriptor, so callers cannot bypass group linkage by editing a flag.
+    Json makeShuffleRangePlan(const Json& tracks, int64_t first, int64_t last) const;
     Json preview(const Json&) const;
     Json commit(const Json&, bool accepted = false, const Scope& scope = {});
     Json review(const Json&, const Scope&) const;
@@ -117,6 +120,8 @@ public:
     Json legacyReports() const;
 
 private:
+    Json makePlanImpl(const std::string& actor, Json operations, const Json& shuffleRange) const;
+    Json shuffleRangeOperations(const Json&) const;
     std::shared_ptr<ScrubPlayback> scrubPlayback;
     std::unique_ptr<juce::ThreadPool> scrubDecoder;
     void activateScrub();

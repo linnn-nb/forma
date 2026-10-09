@@ -1,9 +1,9 @@
 # 下一步
 
-结论：Memory Locations 预后卷时长保存、移除、原子召回已接通；76专项＋受影响5项405检查最终通过，桌面改键/Undo/原生另存/Open重开通过。完整U＋P0尚未验收，不进入P1。
+结论：48k音频范围Shuffle Cut/Delete已接通，77专项＋相关4/4（279检查、43.20秒），原生桌面改键/Undo/剪切/保存/Open通过。**混合采样率声音验证失败，当前明确拒绝该路径；完整U＋P0仍未验收，不进入P1。**
 
-亲手试：双击 `build-v2-tracktion/OpenMemoryRollDemo.command`；Shift M 打开，选 Chorus with roll。⌘F6 保存当前时长、⌘F7 召回（演示自定义；新工程共享提交默认⌘Return）。Esc 后⌘Z/⇧⌘Z撤销/重做；⇧⌘K设置当前时长，召回保留当前启用开关。⌘S保存新副本、⌘O重开。诊断PCM不是音乐/实录验收。
+亲手试：双击 `build-v2-tracktion/OpenShuffleRangeDemo.command`；工程已选1–2秒、开启Shuffle及Phase pair编辑组。演示改键ControlOptionShiftD删除，或Cmd-X剪切；CmdZ/ShiftCmdZ一笔撤销/重做。CmdS保存新副本，CmdO重开；新工程默认Backspace删除，F1启用Shuffle。素材是低幅真实诊断PCM，不是音乐/实录验收。
 
-下一项明确工程任务：时间范围 Shuffle 删除/剪切，按实际片段边界处理部分重叠，并以一笔L1事务联动编辑组、选区和插入点；验证范围外音频、Undo/Redo、保存重开与键位。随后核对完整U＋P0清单，补组MIDI/自动化/View/Height/Timebase、All/临时旁路、Finder关联/运行中文档事件及实际鼠标Trim/Smart听感等缺口。
+下一项明确工程任务：从 `evidence/U/shuffle-mixed-rate-failure.json` 的44.1k实际负载隔离Native WaveNode/直接sinc的定位相位误差，维持原2e-5容差；确认修复方式（SDK最小补丁或可追溯派生媒体），通过原混合率负载与受影响SRC/Scrub/渲染回归后解除非48k守卫。随后补自动化跟随、Shuffle Paste/Trim/拖拽以及U＋P0分组/文档关联/真实鼠标与听感缺口。
 
-M2/M3冻结，M4/M5暂缓。仅本轮测试窗口已退出；原用户窗口与SDK补丁保留。未新增依赖/DMG，未执行全量回归。资格及边界见VERIFICATION首节与evidence/U/memory-roll-*。正式可运行产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+M2/M3冻结，M4/M5暂缓。本轮没有新增SDK、依赖、DMG或全量回归；签名沿用已授权固定身份。只关闭本轮预览，原用户窗口保留。正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，证据见VERIFICATION首节与evidence/U/shuffle-*。

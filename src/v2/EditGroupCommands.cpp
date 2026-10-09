@@ -138,6 +138,99 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
     }
     return operations;
 }
+Json Commands::makeShuffleRangePlan(const Json& tracks, int64_t first, int64_t last) const
+{
+    const Json request{{"schema", 1}, {"tracks", tracks}, {"start_samples", first}, {"end_samples", last}};
+    return makePlanImpl("human", shuffleRangeOperations(request), request);
+}
+Json Commands::shuffleRangeOperations(const Json& request) const
+{
+    checkThread();
+    if (!request.is_object() || request.size() != 4 || !request.contains("schema") ||
+        !request["schema"].is_number_integer() || request["schema"] != 1 || !request.contains("tracks") ||
+        !request["tracks"].is_array() || request["tracks"].empty() || !request.contains("start_samples") ||
+        !request["start_samples"].is_number_integer() || !request.contains("end_samples") ||
+        !request["end_samples"].is_number_integer())
+        throw std::runtime_error("invalid Shuffle range descriptor");
+    for (const auto* key : {"start_samples", "end_samples"})
+        if (request[key].is_number_unsigned() && request[key].get<uint64_t>() > uint64_t(INT64_MAX))
+            throw std::runtime_error("Shuffle range exceeds sample representation");
+    const int64_t first = request["start_samples"], last = request["end_samples"];
+    if (first < 0 || last <= first || last > std::llround(te::Edit::maximumLength * 48000.))
+        throw std::runtime_error("invalid Shuffle range bounds");
+    const auto owners = editGroupTracks(request["tracks"]);
+    const auto facts = query();
+    Json operations = Json::array();
+    int reference = 0;
+    std::map<std::string, std::string> hashes;
+    auto append = [&](const std::string& command, Json args)
+    {
+        // Reserve the final range/cursor edits in the same native Undo transaction.
+        if (operations.size() >= 62)
+            throw std::runtime_error("entire Shuffle range exceeds 64-operation budget; select fewer tracks/clips");
+        operations.push_back({{"command", command}, {"args", std::move(args)}});
+    };
+    // Reference Guide 2026.4 pp857,859: remove the selected time, shift later clips equally,
+    // retain the remaining gaps. Compile all linked tracks from their own boundaries. Expanding
+    // a later move using ORIGINAL group overlaps could incorrectly move a retained prefix.
+    for (const auto& owner : facts["tracks"])
+    {
+        if (std::find(owners.begin(), owners.end(), owner["id"]) == owners.end())
+            continue;
+        const auto automation = automationQuery(owner["id"]);
+        for (const auto& lane : automation["lanes"])
+            if (!lane["points"].empty())
+                throw std::runtime_error("范围 Shuffle 的自动化跟随编辑尚未接通；本次未修改工程");
+        for (const auto& clip : owner["clips"])
+        {
+            const int64_t begin = clip["start_samples"], end = begin + clip["length_samples"].get<int64_t>();
+            if (end <= first)
+                continue;
+            if (clip["kind"] != "audio" || !clip.value("editable_audio", false) || clip.value("locked", false) ||
+                clip.value("offline_clip_effects", false))
+                throw std::runtime_error("entire Shuffle range refused: affected clip is locked or unsupported");
+            // Native mixed-rate readers currently change phase on relocation (real PCM evidence).
+            // Do not silently ship that as sample-preserving Shuffle. Source mapping is retained,
+            // but this path stays unavailable until the separate resampler regression is fixed.
+            if (clip["source_sample_rate"].get<double>() != 48000.)
+                throw std::runtime_error(
+                    "范围 Shuffle 的混合采样率音频尚未通过声音验证；本次未修改工程，请使用 Slip 或 48 kHz 素材");
+            const auto path = clip["path"].get<std::string>();
+            if (!hashes.contains(path))
+                hashes[path] = mediaHash(juce::File(juce::String::fromUTF8(path.c_str())));
+            const auto hash = hashes.at(path);
+            if (begin >= last)
+            {
+                append("clip.move",
+                       {{"clip", clip["id"]}, {"position_samples", begin - (last - first)}, {"media_hash", hash}});
+                continue;
+            }
+            std::string middle = clip["id"];
+            if (begin < first)
+            {
+                const auto next = "$shuffle-piece-" + std::to_string(reference++);
+                append("clip.split",
+                       {{"clip", middle}, {"position_samples", first}, {"ref", next}, {"media_hash", hash}});
+                middle = next;
+            }
+            if (end > last)
+            {
+                const auto tail = "$shuffle-piece-" + std::to_string(reference++);
+                append("clip.split",
+                       {{"clip", middle}, {"position_samples", last}, {"ref", tail}, {"media_hash", hash}});
+                append("clip.delete", {{"clip", middle}, {"media_hash", hash}});
+                append("clip.move", {{"clip", tail}, {"position_samples", first}, {"media_hash", hash}});
+            }
+            else
+                append("clip.delete", {{"clip", middle}, {"media_hash", hash}});
+        }
+    }
+    if (operations.empty())
+        throw std::runtime_error("no audio at or after the selected Shuffle range");
+    operations.push_back({{"command", "session.range.clear"}, {"args", Json::object()}});
+    operations.push_back({{"command", "session.insertion.set"}, {"args", {{"position_samples", first}}}});
+    return operations;
+}
 Json Commands::expandEditGroupEdits(const Json& ops) const
 {
     Json result = Json::array();

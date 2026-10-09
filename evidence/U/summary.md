@@ -1,5 +1,13 @@
 # U 原生界面重构
 
+## U-P0-SHUFFLE-RANGE-01 · 2026-10-09
+
+48k音频范围Cut/Delete、编辑组错开边界、后续稳定ID/空隙、range/cursor单笔Undo已验；混合采样率是实测失败的保留差距，当前拒绝，完整功能仍部分实现。最终4/4（43.20秒/279检查），专项77，真实400000→352000帧PCM误差0（固定2e-5，切点±2048帧），Paste Original误差0，源哈希不变。strict/deep与固定签名通过；实机改键Delete r24/Undo r25/CmdX r26/另存及Open r27，源ID与样本位置由独立XML复核，实际CoreAudio播放/停止。
+
+混合率最初0.00570416、direct sinc0.00221145均失败，不改标准；导入/SDK修改尝试已撤回，生产拒绝所有非48k受影响源、含自动化曲线、MIDI/不支持/锁定及超64原语。前期测试组件visible漏设已修复，产品预览按钮无此缺陷。回归/专项/失败/实机事实分别见shuffle-range-regression.json、shuffle-range-tests.json、shuffle-mixed-rate-failure.json、shuffle-range-desktop.json及关键输出。实际截图在本轮对话显示，未编造PNG；本轮窗口已退出。
+
+亲手试：`build-v2-tracktion/OpenShuffleRangeDemo.command`，ControlOptionShiftD或CmdX，CmdZ/ShiftCmdZ，CmdS新副本/CmdO重开。混合率SRC定位、自动化跟随、Shuffle Paste/Trim/拖拽及完整U＋P0仍未完成；没有DMG/新AI工具/RT或SDK修改。下一项先修复并复测原混合率负载。
+
 ## U-P0-MEMORY-ROLL-01（2026-10-09）
 
 结论：Memory Locations 可保存、移除并召回预后卷时长；定位、选区和时长在一个 human Plan / native UndoManager 事务内。只召回时长，保留当前启用状态；旧位置没有时长记忆时保持当前值。76 专项与受影响 5 项最终通过（405 个不重复检查），真实 stereo 48k / 180000 帧渲染 PCM 前后误差 0（容差 2e-5），源 SHA256 不变。正式 Release / 固定身份 strict/deep 验签通过。完整 U＋P0 未完成，不进入 P1。

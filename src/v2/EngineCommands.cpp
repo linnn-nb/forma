@@ -450,6 +450,10 @@ Json Commands::query() const
 }
 Json Commands::makePlan(const std::string& actor, Json ops) const
 {
+    return makePlanImpl(actor, std::move(ops), nullptr);
+}
+Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuffleRange) const
+{
     checkThread();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
@@ -520,14 +524,17 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
         }
     }
     const auto requested = ops;
-    ops = expandMixGroupFlags(ops);
+    if (shuffleRange.is_null())
+        ops = expandMixGroupFlags(ops);
     Json plan{{"plan_id", juce::Uuid().toString().toStdString()},
               {"actor", actor},
               {"session_token", sessionToken()},
               {"base_revision", revision},
               {"idempotency_key", juce::Uuid().toString().toStdString()},
               {"operations", ops}};
-    if (requested != ops)
+    if (!shuffleRange.is_null())
+        plan["shuffle_range"] = shuffleRange;
+    else if (requested != ops)
         plan["requested_operations"] = requested;
     preview(plan);
     return plan;
@@ -562,7 +569,14 @@ Json Commands::preview(const Json& plan) const
     require(ops.is_array() && !ops.empty() && ops.size() <= 64, "operation limit (1..64)");
     const auto requested = plan.value("requested_operations", ops);
     require(requested.is_array() && !requested.empty() && requested.size() <= 64, "requested operation limit (1..64)");
-    require(ops == expandMixGroupFlags(requested), "group targets changed; rebuild the Plan with current members");
+    if (plan.contains("shuffle_range"))
+    {
+        require(actor == "human" && !plan.contains("requested_operations"), "Shuffle range is a local human Plan");
+        require(ops == shuffleRangeOperations(plan.at("shuffle_range")),
+                "Shuffle range targets changed; rebuild the entire Plan");
+    }
+    else
+        require(ops == expandMixGroupFlags(requested), "group targets changed; rebuild the Plan with current members");
     std::set<std::string> refs;
     Json diff = Json::array();
     Json legacyDiff = Json::array();

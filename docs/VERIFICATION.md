@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-SHUFFLE-RANGE-01（2026-10-09）
+
+结论：**48 kHz 音频时间范围的 Shuffle Cut/Delete 已接通并实测；混合采样率声音验证失败，完整功能仍为部分实现。** 启用编辑组按各片段真实边界切出范围，后续片段统一减去选区时长；保留前缀、后续片段 ID 与剩余空隙。范围清除与光标返回起点同一 human Plan/native Undo。空白范围可删除并推进后方音频；Cmd-X 冻结精确剪贴板切片，取消预览不更换剪贴板。
+
+代码：`EditGroupCommands.cpp::makeShuffleRangePlan/shuffleRangeOperations`，`EngineCommands.cpp::makePlanImpl/preview`，`ui/WorkspaceEditing.cpp`、`WorkspaceClipboard.cpp`、`WorkspaceCommands.cpp`。本地 Plan 的 `shuffle_range` schema1 描述选轨与样本边界，预览/提交从当前 Edit 重新编译并逐项匹配，防止原始组重叠展开误移保留前缀，也拒绝删去组目标/篡改原语、媒体哈希或描述。现有权限、版本、幂等、原语校验、回执与 Undo 继续生效；没有新增 MCP 工具。
+
+测试：Release及原生应用构建成功、固定身份 deep/strict/identifier/certificate 验签通过。最终受影响4/4（43.20秒，279个不重复检查），专项77：错开片段边界、空隙、实际编辑组闭包、锁定/陈旧/未知目标、只读与范围权限、篡改、幂等、65真实后续片段超64原语预算、>8实际受影响对象的大范围确认/拒绝、Cmd-X/Paste Original、自定义Delete保存重开及一笔Undo/Redo。48k stereo原生渲染400000→352000帧，按删去48000..96000的时间拼接参考比较，预定容差2e-5/切点±2048帧；最大误差0，原位粘贴误差0，源SHA不变。源秒重开最大差2.22e-16（容差1e-12），其余对象/样本/组精确一致。
+
+实机：本轮独立固定签名 `FormaShuffleRangePreview.app`，外置耳机 CoreAudio48k/512；r23打开，ControlOptionShiftD删除r24，CmdZ一次Undo r25，CmdX剪切r26；原生另存ShuffleDesktop.tracktionedit并CmdO重开r27，七片段、后续ID与位置132000/252000及未分组轨保留。实际播放时钟推进并停止；不声称听感评审。实际CUA截图随对话显示，没有编造本地PNG。只退出本轮窗口，进程不存在已确认。
+
+失败与边界：初始48k＋44.1k、分数源偏移混合负载实测最大误差0.00570416，直接sinc尝试仍0.00221145，均超过原2e-5预算；没有把换成48k的独立资格冒充该负载通过。导入路径、SDK和重采样选择均回退原行为；生产范围Shuffle明确拒绝所有受影响非48k源以及带自动化曲线的成员，整笔不修改。MIDI、Warp、离线ClipFX、锁定或过预算同样拒绝。现有其他移动/重采样路径未据此获得新声音资格。Shuffle Paste/Trim/拖拽规则、自动化跟随、混合采样率修复及完整U＋P0仍未完成，不进入P1；音乐/实录、耐久和Windows未验。跨重开保存工程事实，不恢复Undo栈。
+
+复测：构建 `NativeDAW ndaw_shuffle_range_tests ndaw_range_group_tests ndaw_clipboard_tests ndaw_editor_interaction_tests`，CTest `^forma_native_(shuffle_ranges|group_ranges|audio_clipboard|editor_interactions)$`。原始混合率失败、最终回归与实机独立XML核验见 `evidence/U/shuffle-*`。前期测试容器未设visible导致按钮查找失败已修复，非产品预览入口缺陷。未做全量回归或DMG。
+
 ## U-P0-MEMORY-ROLL-01（2026-10-09）
 
 结论：Memory Locations 可保存、移除并召回预后卷时长；定位、选区和时长在一个 human Plan / native UndoManager 事务内。只召回时长，保留当前启用状态；旧位置没有时长记忆时保持当前值。76 专项与受影响 5 项最终通过（405 个不重复检查），真实 stereo 48k / 180000 帧渲染 PCM 前后误差 0（容差 2e-5），源 SHA256 不变。正式 Release / 固定身份 strict/deep 验签通过。完整 U＋P0 未完成，不进入 P1。

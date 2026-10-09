@@ -1,0 +1,85 @@
+{
+  "status": "passed",
+  "app": "build-v2-tracktion/FormaShuffleRangePreview.app",
+  "release_binary_sha256": "771fc9a73b9eed9b330351ca9f65e71ca391589ad1b4dcf2708788db52712ef7",
+  "text_section_sha256": "c0819023c617a7e6763fb5edaee9f8f7cf0d2600d3f36a4f3641524699aef177",
+  "fixed_signature_verified": true,
+  "processing_path": "CoreAudio external headphones, 48000 Hz, 512 frames",
+  "observed_revisions": {
+    "open": 23,
+    "custom_delete": 24,
+    "undo": 25,
+    "cmd_x": 26,
+    "save": 26,
+    "reopen": 27
+  },
+  "native_cursor_after_delete_samples": 48000,
+  "native_cursor_after_undo_samples": 17000,
+  "physical_checks": [
+    "Control Option Shift D invokes grouped range Shuffle Delete",
+    "Command Z restores original five clips and selection",
+    "Command X cuts the same group range",
+    "Command S creates new ShuffleDesktop.tracktionedit without overwriting",
+    "Command O restores saved seven-clip topology",
+    "Play advances actual native clock; Stop ends playback"
+  ],
+  "saved_clip_facts": {
+    "Shuffle A": [
+      {
+        "id": "1022",
+        "start_samples": 0,
+        "length_samples": 48000,
+        "source_offset_seconds": 0.0
+      },
+      {
+        "id": "1037",
+        "start_samples": 48000,
+        "length_samples": 54000,
+        "source_offset_seconds": 2.0
+      },
+      {
+        "id": "1024",
+        "start_samples": 132000,
+        "length_samples": 40000,
+        "source_offset_seconds": 0.0
+      }
+    ],
+    "Shuffle B": [
+      {
+        "id": "1026",
+        "start_samples": 36000,
+        "length_samples": 12000,
+        "source_offset_seconds": 5.208333333333333e-06
+      },
+      {
+        "id": "1039",
+        "start_samples": 48000,
+        "length_samples": 144000,
+        "source_offset_seconds": 1.250005208333333
+      },
+      {
+        "id": "1028",
+        "start_samples": 252000,
+        "length_samples": 40000,
+        "source_offset_seconds": 0.0
+      }
+    ],
+    "Unlinked": [
+      {
+        "id": "1030",
+        "start_samples": 0,
+        "length_samples": 288000,
+        "source_offset_seconds": 0.0
+      }
+    ]
+  },
+  "saved_path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-1cf7a6dc8f2b48429f99f87dab1767e5/ShuffleDesktop.tracktionedit",
+  "source_sha256": "9b70918b73eaf82c2143ed96992daf63afc0b227aa01bd5e8f1272cae98db644",
+  "screenshot": "actual CUA image shown in this turn; no local PNG path claimed",
+  "own_test_process_exited": true,
+  "limitations": [
+    "No subjective listening claim",
+    "No GUI demo for mixed-rate Shuffle; refused by production preflight",
+    "Cross-session Undo history not restored"
+  ]
+}

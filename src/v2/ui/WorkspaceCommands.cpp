@@ -493,9 +493,23 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 {
                     const auto clips = selection.objects.empty() && !selection.range.is_null() ? clipboardSelection()
                                                                                                : selectedEditClips();
+                    const bool shuffleRange =
+                        editing.mode == "shuffle" && selection.objects.empty() && !selection.range.is_null();
+                    bool laterAudio = false;
+                    if (shuffleRange)
+                    {
+                        const auto owners = commands.editGroupTracks(selection.tracks);
+                        for (const auto& track : facts["tracks"])
+                            if (std::find(owners.begin(), owners.end(), track["id"]) != owners.end())
+                                for (const auto& clip : track["clips"])
+                                    laterAudio |=
+                                        clip["kind"] == "audio" &&
+                                        clip["start_samples"].get<int64_t>() + clip["length_samples"].get<int64_t>() >
+                                            selection.range["start_samples"].get<int64_t>();
+                    }
                     active = midiKeyboardFocus() ? piano.canQuantize()
-                                                 : !mix && !facts.value("playing", false) && !clips.empty() &&
-                                                       pendingClipboardPlan.empty();
+                                                 : !mix && !facts.value("playing", false) &&
+                                                       (!clips.empty() || laterAudio) && pending.is_null();
                     if (!midiKeyboardFocus())
                         for (const auto& clip : clips)
                             active = active && clip["kind"] == "audio" && clip.value("editable_audio", false) &&

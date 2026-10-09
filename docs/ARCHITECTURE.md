@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+当前增量 U-P0-SHUFFLE-RANGE-01：本地 L1 `makeShuffleRangePlan` 将选区与编辑组闭包编译为已注册split/delete/move和range/cursor原语；严格schema1 `shuffle_range` 描述只允许human，预览重新从当前Edit事实编译并完整比对。不会用原始clip重叠关系二次展开已经切开的范围；不开放任意skip-group开关，不扩展冻结MCP。一个原生Undo事务、既有Scope/版本/哈希/幂等回执；GUI仅请求Plan。当前守卫拒绝混合采样率、自动化曲线、MIDI/不支持/锁定与超预算，保留全部事实；真实SRC实验未过预算，未改导入或SDK。77专项、4项279检查、48k PCM误差0和实体改键/Undo/保存/Open通过；混合率功能部分实现。见VERIFICATION首节。
+
 U-P0-MEMORY-ROLL-01：MarkerClip 可选 `NDAW_LOCATION_ROLL` schema1 仅存 pre_samples/post_samples；旧工程缺失表示不参与召回。candidate Edit 在替换前严格验证字段、范围和重复子节点。L1 的 human/local_gui `location.roll.capture/clear`、`location.recall` 为 standalone Plan；召回预览包含插入点、选区与 roll before/after，执行复用 native CursorMove、range、transport.roll.set，同一 Undo；当前启用状态保留。GUI 不写 Edit，标尺不先 seek，成功回执才报提交。新键位281/282及共享275/277均由现有命令表保存；MCP/分析保持冻结。
 
 U-P0-CLIP-TIME-01：ClipPanel的起点、终点、移至读取主时间单位；L1只读formatTimelinePosition/parseTimelinePosition复用实际TempoSequence和预后卷转换器。界面草稿冻结单位、fps、revision与session，既有clip.trim/move/gain/fade仍为唯一写入口。一笔提交一笔human Undo；无变化的修剪/淡化直接结束输入，不重写源偏移、不新增事务。只有真实committed回执才清草稿；非法/陈旧请求保留。数值Field关闭Cocoa文本组合，用JUCE原生按键执行当前注册表275/277；普通数字输入、粘贴与局部Undo保留。没有新增MCP工具、schema、SDK或实时路径；原SDK修改保留。

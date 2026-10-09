@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-09",
+  "status": "failed_audio_qualification",
+  "required_pcm_max_error": 2e-05,
+  "legacy_proxy_lagrange": {
+    "measured_pcm_max_error": 0.00570416,
+    "frame": 252001,
+    "expected": 0.00408781,
+    "actual": 0.00979197,
+    "fixture": "build-v2-tracktion/shuffle-range-demos/shuffle-879c2fc56bf743269adac4c33fe0792f"
+  },
+  "direct_sinc_experiment": {
+    "measured_pcm_max_error": 0.00221145,
+    "frame": 252001,
+    "expected": 0.008371,
+    "actual": 0.0105824,
+    "fixture": "build-v2-tracktion/shuffle-range-demos/shuffle-2d3628d052c345b8aa3d5272a0c56010"
+  },
+  "load": "stereo 48k and 44.1k sources, fractional source offset 0.25/48000 seconds, grouped time collapse 48000..96000; before render 400000 frames, after 352000; tolerance fixed, 2048-frame cut-edge exclusion",
+  "production": "Import quality and SDK remain unchanged. Range Shuffle rejects all affected mixed-rate sources; guarded 48k validation is a separate qualification, not a pass for this workload.",
+  "remaining": "Native resampler relocation phase/seek needs isolation and repair. Do not claim mixed-rate audio equivalence."
+}

@@ -93,11 +93,11 @@ void Workspace::executeClipboardCommand(int id)
             require(workspaceSession == commands.sessionToken() &&
                         facts["revision"] == commands.querySummary()["revision"],
                     "project changed before clipboard command; refresh and retry");
-            require(pendingClipboardPlan.empty(), "accept or reject pending clipboard preview first");
+            require(pending.is_null(), "accept or reject pending preview first");
             pendingClipboard = nullptr;
             const auto revision = facts["revision"];
             Json buffer;
-            Json slices = Json::array(), ops = Json::array();
+            Json slices = Json::array(), ops = Json::array(), plan = nullptr;
             int ref = 0;
             if (id == editCommand::copy || id == editCommand::cut || id == editCommand::duplicate)
             {
@@ -137,8 +137,13 @@ void Workspace::executeClipboardCommand(int id)
                 {
                     if (editing.mode == "shuffle")
                     {
-                        require(!range, "Shuffle Cut currently requires whole-clip selection");
-                        ops = deleteClipOperations(true);
+                        if (range)
+                        {
+                            plan = commands.makeShuffleRangePlan(selection.tracks, first, last);
+                            ops = plan["operations"];
+                        }
+                        else
+                            ops = deleteClipOperations(true);
                     }
                     else if (range)
                         ops = commands.audioRangeOperations("delete", selection.tracks, first, last);
@@ -201,7 +206,8 @@ void Workspace::executeClipboardCommand(int id)
                 ops.push_back(
                     operation("session.range.set", {{"start_samples", point}, {"end_samples", point + length}}));
             }
-            auto plan = commands.makePlan("human", ops);
+            if (plan.is_null())
+                plan = commands.makePlan("human", ops);
             plan["base_revision"] = revision;
             const bool destructive = std::any_of(ops.begin(), ops.end(),
                                                  [](const Json& o)

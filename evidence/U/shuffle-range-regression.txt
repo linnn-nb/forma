@@ -1,0 +1,48 @@
+[OUTPUT]
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+
+[HANDLER_OUTPUT]
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+
+    Start  75: forma_native_editor_interactions
+1/4 Test  #75: forma_native_editor_interactions ...   Passed   10.31 sec
+    Start  76: forma_native_audio_clipboard
+2/4 Test  #76: forma_native_audio_clipboard .......   Passed    5.88 sec
+    Start 102: forma_native_group_ranges
+3/4 Test #102: forma_native_group_ranges ..........   Passed    6.33 sec
+    Start 106: forma_native_shuffle_ranges
+4/4 Test #106: forma_native_shuffle_ranges ........***Failed    2.51 sec
+PASS unique owned fixture preserves existing files
+PASS real stereo PCM writer created
+PASS actual diagnostic PCM written
+PASS unique owned fixture preserves existing files
+PASS real stereo PCM writer created
+PASS actual diagnostic PCM written
+Settings file: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shuffle-range-demos/shuffle-2cb92f1d6d344ab48420d5650aab5441/prefs/Settings.xml
+Creating Default Controllers...
+PASS real session XML parsed
+PASS fractional source time fixture uses separate owned session
+PASS real render receipt agrees with independently decoded WAV
+PASS actual rendered PCM decoded
+PASS preview includes exact splits deletes and later moves without mutating Edit
+PASS tampered range descriptor/primitive list cannot bypass group validation
+PASS tampered range descriptor/primitive list cannot bypass group validation
+PASS tampered range descriptor/primitive list cannot bypass group validation
+PASS tampered range descriptor/primitive list cannot bypass group validation
+PASS range compiler is local human only; no frozen MCP tool expansion
+PASS read-only scope denies actual expanded range transaction
+PASS scope includes every linked track and refuses ungranted peer
+PASS whole range and group commit once with authoritative receipt
+PASS retained group prefixes keep identity and original position
+Cleaning up temp files..
+FAIL group right tails collapse to exact selection start from distinct boundaries
+
+
+75% tests passed, 1 tests failed out of 4
+
+Total Test time (real) =  25.03 sec
+
+The following tests FAILED:
+	106 - forma_native_shuffle_ranges (Failed)
+[ERROR_MESSAGE]
+Errors while running CTest

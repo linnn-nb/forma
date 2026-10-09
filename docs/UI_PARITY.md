@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-SHUFFLE-RANGE-01：已读本地官方Reference Guide2026.4印刷857/859（PDF959/961）于2026-10-09核验：Cut当前时间并前移右方片段，剩余空隙保持。Forma48k原生音频范围Cut/Delete、错开边界编辑组、range/cursor单笔Undo、改键重开及实机已验；77专项，相关4/4。混合采样率实测PCM超预算，生产拒绝；自动化跟随、Shuffle Paste/Trim/拖拽及MIDI未完成。状态部分实现，不能把这个增量当完整Shuffle等价。
+
 U-P0-CLIP-TIME-01：2026-10-09核验官方Reference Guide 2026.4印刷1118–1122页（PDF1220–1224）：Main Time Scale影响Start/End/Length等时间值，Bars|Beats由Tempo/Meter决定，Samples用于精确编辑。Forma将同一单位规则接入自有Clip检查器；分数源时间单独显示、淡化ms、Tab导航和⌘Return提交为本产品策略，不宣称复制完整PT Spot/分字段计数器。只支持24/25/30 NDF，不支持Feet+Frames/DF/专有同步；未改时间码字段保持帧下实际样本值。76专项/375相关检查及实体桌面通过；完整U＋P0未验收。来源沿用下方官方链接及本机PDF SHA。
 
 U-P0-WINDOW-FOCUS-01是自有可用性修复，不增加Pro Tools映射声明：native父窗口将编辑焦点交给Workspace，成功Open结束旧输入上下文；文本字段Raise与局部Undo保留。沿用下表Separate/Nudge行为与已核验页码，200相关检查及实体冷启动/重开首键通过。旧段落的初始键盘缺口仅在本增量所测范围替代，完整U＋P0仍未完成。
