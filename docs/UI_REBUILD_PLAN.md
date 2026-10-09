@@ -1,3 +1,7 @@
+U-P0-MIDI-RANGE-01（2026-10-10）：主时间线 MIDI 选区 Copy/Cut/Paste/Duplicate/Paste Original 已接 L1 与原生 ClipCopy，保留整个选区的空白和空轨；剪切与替换保留两侧非破坏性片段。单笔 Undo/Redo、保存重开、既有可改快捷键与真实 FourOsc 渲染验证通过。Release/固定叶证书验签通过，11 项不同受影响 CTest、1508 检查（专项64）；Mac锁定，实体操作和试听未执行。完整 U＋P0 未完成，不进 P1。此节替代历史“纯 MIDI 源范围禁用/未实现”；混合媒体、Shuffle、不同时间基准及音乐自动化重映射仍保留差距。
+
+下一项：实现音乐剪贴板的自动化时间映射，覆盖 Tempo/Meter 与变速曲线；之后统一混合媒体与 Shuffle。M2/M3冻结、M4/M5暂缓。
+
 U-P0-TRIM-NUDGE-01（2026-10-09）：四个音频边界 Nudge 命令已接编辑/右键菜单、默认小键盘与可改键；共用 human L1 clip.trim/native Undo。五种 Nudge、变速边界、编辑组、锁定/源越界拒绝、Undo/Redo/保存重开和原媒体不变通过；声像读数与轨道视图控件重叠已修复，完整参数名保留在菜单/tooltip。Release/固定验签、6项受影响CTest最终通过，633检查（新189）。Mac在原生菜单验收中锁定，实体修剪/保存未完成；仅本轮PID95816以SIGTERM退出143，旧窗口保留。当前 Trim 保留工程时间上的曲线，PT边界自动化等价未验证；完整U＋P0未完成，不进P1。
 
 U-P0-MIDI-CLIPS-01：主时间线完整MIDI对象使用既有Copy/Cut/Paste/Duplicate/Paste Original命令和键位；钢琴卷帘音符剪贴板独立分流。原位置粘贴回源轨道布局；默认替换保留目的边界片段，Duplicate叠加。未实现的MIDI源范围复制禁用，防止丢掉选区前后空白；部分源范围、混合媒体、Shuffle和音乐自动化时间映射是下一项。完整U＋P0未完成，需用户实体验收后才进入P1。

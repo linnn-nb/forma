@@ -452,20 +452,29 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         else
                         {
                             const auto slices = clipboardSelection();
-                            active = active && !slices.empty();
+                            const bool midiRange =
+                                selection.objects.empty() && !selection.range.is_null() && !selection.tracks.empty() &&
+                                std::all_of(selection.tracks.begin(), selection.tracks.end(),
+                                            [&](const Json& id)
+                                            {
+                                                return std::any_of(facts["tracks"].begin(), facts["tracks"].end(),
+                                                                   [&](const Json& t)
+                                                                   {
+                                                                       return t["id"] == id &&
+                                                                              (t["type"] == "midi" ||
+                                                                               t["type"] == "instrument");
+                                                                   });
+                                            });
+                            active = active && (!slices.empty() || midiRange);
                             if (!slices.empty())
                                 active = active && std::all_of(slices.begin(), slices.end(), [&](const Json& c)
                                                                { return c["kind"] == slices.front()["kind"]; });
                             for (const auto& item : slices)
-                                active =
-                                    active &&
-                                    ((item["kind"] == "audio" && item.value("editable_audio", false) &&
-                                      !item.value("offline_clip_effects", false)) ||
-                                     (item["kind"] == "midi" && !selection.objects.empty() &&
-                                      item["slice_start"] == item["start_samples"] &&
-                                      item["slice_end"].get<int64_t>() == item["start_samples"].get<int64_t>() +
-                                                                              item["length_samples"].get<int64_t>())) &&
-                                    (id != editCommand::cut || !item.value("locked", false));
+                                active = active &&
+                                         ((item["kind"] == "audio" && item.value("editable_audio", false) &&
+                                           !item.value("offline_clip_effects", false)) ||
+                                          (item["kind"] == "midi" && (midiRange || !selection.objects.empty()))) &&
+                                         (id != editCommand::cut || !item.value("locked", false));
                         }
                     }
                     if (midiKeyboardFocus())

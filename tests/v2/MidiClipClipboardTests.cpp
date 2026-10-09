@@ -329,8 +329,11 @@ int main(int argc, char** argv)
         pump();
         juce::ApplicationCommandInfo rangeCopy(editCommand::copy);
         w.getCommandInfo(editCommand::copy, rangeCopy);
-        check((rangeCopy.flags & juce::ApplicationCommandInfo::isDisabled) != 0 && c.clipboard() == copiedBeforeRange,
-              "unimplemented MIDI source range cannot silently discard leading or trailing selection gaps");
+        check((rangeCopy.flags & juce::ApplicationCommandInfo::isDisabled) == 0 && c.clipboard() == copiedBeforeRange,
+              "MIDI source range command availability is read-only and enabled");
+        key(w, 'c');
+        check(c.clipboard()["start_samples"] == 0 && c.clipboard()["end_samples"] == 216000,
+              "GUI MIDI range copy preserves leading and trailing selection gaps");
         c.undo();
         pump();
         objects(c, source, owner);
@@ -485,14 +488,13 @@ int main(int argc, char** argv)
             },
             "Cut rechecks current Edit group membership after the Copy snapshot");
         check(c.query() == groupedBefore, "changed-group Cut refusal leaves current human group and project intact");
-        Json report{
-            {"state", "passed"},
-            {"checks", checks},
-            {"beat_budget", 1e-11},
-            {"onset_budget_samples", 64},
-            {"onset_samples", firstOnset},
-            {"demo", demo.getFullPathName().toStdString()},
-            {"limits", "partial source range, mixed audio/MIDI, Shuffle, tempo-remapped automation not implemented"}};
+        Json report{{"state", "passed"},
+                    {"checks", checks},
+                    {"beat_budget", 1e-11},
+                    {"onset_budget_samples", 64},
+                    {"onset_samples", firstOnset},
+                    {"demo", demo.getFullPathName().toStdString()},
+                    {"limits", "mixed audio/MIDI, Shuffle, tempo-remapped automation not implemented"}};
         if (argc > 1)
         {
             std::ofstream out(argv[1]);

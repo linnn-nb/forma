@@ -1,0 +1,68 @@
+diff --git a/modules/tracktion_engine/midi/tracktion_MidiList.cpp b/modules/tracktion_engine/midi/tracktion_MidiList.cpp
+index bee04fb..ec16a36 100644
+--- a/modules/tracktion_engine/midi/tracktion_MidiList.cpp
++++ b/modules/tracktion_engine/midi/tracktion_MidiList.cpp
+@@ -1897,6 +1897,13 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+     auto lastNoteBeat  = timeBase == TimeBase::beatsRaw ? list.getLastBeatNumber() + overlapAllowance
+                                                         : toPosition (ts.toBeats (clip.getPosition().getEnd())   - midiStartBeat + overlapAllowance);
+ 
++    // Note padding permits later groove/quantise movement. Controllers and
++    // SysEx are not quantised and must use the exact visible clip boundaries.
++    const auto firstEventBeat = timeBase == TimeBase::beatsRaw ? firstNoteBeat
++        : toPosition (ts.toBeats (clip.getPosition().getStart()) - midiStartBeat);
++    const auto lastEventBeat = timeBase == TimeBase::beatsRaw ? lastNoteBeat
++        : toPosition (ts.toBeats (clip.getPosition().getEnd()) - midiStartBeat);
++
+     auto& notes = list.getNotes();
+     const auto numNotes = notes.size();
+ 
+@@ -1912,19 +1919,23 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+         // Add cumulative controller events that are off the start
+         juce::Array<int> doneControllers;
+ 
+-        for (auto e : controllerEvents)
++        juce::Array<MidiControllerEvent*> chasedControllers;
++
++        // Events are sorted ascending: chase the latest value, not the first.
++        // Emit chosen events in chronological order to retain bank/program order.
++        for (int i = controllerEvents.size(); --i >= 0;)
+         {
+-            auto beat = e->getBeatPosition();
++            auto e = controllerEvents.getUnchecked (i);
+ 
+-            if (beat < firstNoteBeat)
++            if (e->getBeatPosition() < firstEventBeat && ! doneControllers.contains (e->getType()))
+             {
+-                if (! doneControllers.contains (e->getType()))
+-                {
+-                    addToSequence (destSequence, clip, timeBase, *e, channelNumber);
+-                    doneControllers.add (e->getType());
+-                }
++                chasedControllers.add (e);
++                doneControllers.add (e->getType());
+             }
+         }
++
++        for (int i = chasedControllers.size(); --i >= 0;)
++            addToSequence (destSequence, clip, timeBase, *chasedControllers.getUnchecked (i), channelNumber);
+     }
+ 
+     // Add the real controller events:
+@@ -1932,7 +1943,7 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+     {
+         auto beat = e->getBeatPosition();
+ 
+-        if (beat >= firstNoteBeat && beat < lastNoteBeat)
++        if (beat >= firstEventBeat && beat < lastEventBeat)
+             addToSequence (destSequence, clip, timeBase, *e, channelNumber);
+     }
+ 
+@@ -1985,7 +1996,7 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+     {
+         auto beat = e->getBeatPosition();
+ 
+-        if (beat >= firstNoteBeat && beat < lastNoteBeat)
++        if (beat >= firstEventBeat && beat < lastEventBeat)
+             addToSequence (destSequence, clip, timeBase, *e);
+     }
+ 

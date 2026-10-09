@@ -45,8 +45,62 @@ Json facts(te::MidiClip& c)
             {"sysex_count", c.getSequence().getNumSysExEvents()},
             {"state_hash", hash(c.state)}};
 }
+Json fragment(te::MidiClip& c, int64_t low, int64_t high)
+{
+    auto part = facts(c);
+    const auto p = c.getPosition();
+    const int64_t begin = part["start_samples"], last = begin + part["length_samples"].get<int64_t>();
+    require(low >= begin && high <= last && high > low, "MIDI fragment outside source clip");
+    require(!c.isLooping() || (low == begin && high == last),
+            "partial looped MIDI slicing requires loop-aware mapping");
+    const auto start = low == begin ? p.getStart() : time(low);
+    const auto finish = high == last ? p.getEnd() : time(high);
+    const auto offset = p.getOffset() + (start - p.getStart());
+    const auto& seq = c.edit.tempoSequence;
+    part["start_samples"] = low;
+    part["length_samples"] = high - low;
+    part["start_seconds"] = start.inSeconds();
+    part["end_seconds"] = finish.inSeconds();
+    part["start_beat"] = seq.toBeats(start).inBeats();
+    part["length_beats"] = seq.toBeats(finish).inBeats() - seq.toBeats(start).inBeats();
+    part["content_start_beat"] = seq.toBeats(start - offset).inBeats();
+    part["source_offset_seconds"] = offset.inSeconds();
+    part["offset_beats"] = offset.inSeconds() * seq.getBeatsPerSecondAt(start);
+    return part;
+}
 } // namespace
 Json Commands::prepareMidiClipClipboard(const Json& clips, const std::string& session, uint64_t expectedRevision)
+{
+    return captureMidiClipClipboard(clips, nullptr, session, expectedRevision);
+}
+Json Commands::prepareMidiRangeClipboard(const Json& tracks, int64_t first, int64_t last, const std::string& session,
+                                         uint64_t expectedRevision)
+{
+    checkThread();
+    require(tracks.is_array() && !tracks.empty() && tracks.size() <= 64 && first >= 0 && last > first &&
+                last <= std::llround(te::Edit::maximumLength * rate),
+            "invalid MIDI range clipboard bounds");
+    const auto owners = editGroupTracks(tracks);
+    require(owners.size() <= 64, "MIDI range exceeds 64-track snapshot layout");
+    Json clips = Json::array(), layout = Json::array();
+    for (auto* t : te::getAudioTracks(*edit))
+        if (std::find(owners.begin(), owners.end(), t->itemID.toString().toStdString()) != owners.end())
+        {
+            require(trackType(*t) == "midi" || trackType(*t) == "instrument",
+                    "MIDI range requires MIDI/instrument tracks");
+            layout.push_back(t->itemID.toString().toStdString());
+            for (auto* c : t->getClips())
+                if (sample(c->getPosition().getEnd()) > first && sample(c->getPosition().getStart()) < last)
+                {
+                    require(dynamic_cast<te::MidiClip*>(c) != nullptr, "mixed audio/MIDI range not implemented yet");
+                    clips.push_back(c->itemID.toString().toStdString());
+                }
+        }
+    return captureMidiClipClipboard(clips, {{"tracks", layout}, {"start_samples", first}, {"end_samples", last}},
+                                    session, expectedRevision);
+}
+Json Commands::captureMidiClipClipboard(const Json& clips, const Json& range, const std::string& session,
+                                        uint64_t expectedRevision)
 {
     checkThread();
     captureNativeStates();
@@ -57,7 +111,8 @@ Json Commands::prepareMidiClipClipboard(const Json& clips, const std::string& se
     require(!nativeStates ||
                 (!nativeStates->query()["pending"].get<bool>() && nativeStates->query()["failure"].is_null()),
             "resolve pending plugin state first");
-    require(clips.is_array() && !clips.empty() && clips.size() <= 64, "select 1..64 actual MIDI clips");
+    require(clips.is_array() && (!clips.empty() || !range.is_null()) && clips.size() <= 64,
+            "select 1..64 MIDI objects or a valid MIDI range");
     ParameterWriteGuard guard(*this);
     edit->flushState();
     ClipboardBuffer buffer;
@@ -70,12 +125,23 @@ Json Commands::prepareMidiClipClipboard(const Json& clips, const std::string& se
     int64_t first = std::numeric_limits<int64_t>::max(), last = 0;
     double firstBeat = std::numeric_limits<double>::max(), lastBeat = 0;
     size_t bytes = 0;
+    std::set<std::string> timebases;
+    if (!range.is_null())
+        for (const auto& owner : range["tracks"])
+            owners.insert(owner.get<std::string>());
     for (const auto& id : clips)
     {
         require(id.is_string() && chosen.insert(id.get<std::string>()).second, "duplicate MIDI clip ID");
         auto* c = midiClip(id);
         require(c && !c->isGrouped(), "MIDI clip missing or grouped inside another clip");
         auto f = facts(*c);
+        if (!range.is_null())
+        {
+            const int64_t begin = f["start_samples"], end = begin + f["length_samples"].get<int64_t>();
+            f = fragment(*c, std::max(begin, range["start_samples"].get<int64_t>()),
+                         std::min(end, range["end_samples"].get<int64_t>()));
+        }
+        timebases.insert(f["timebase"].get<std::string>());
         const auto owner = f["track"].get<std::string>();
         require(trackType(*track(owner)) == "midi" || trackType(*track(owner)) == "instrument",
                 "MIDI/instrument source track required");
@@ -98,9 +164,19 @@ Json Commands::prepareMidiClipClipboard(const Json& clips, const std::string& se
             buffer.manifest["tracks"].push_back(t->itemID.toString().toStdString());
     const auto linked = editGroupTracks(buffer.manifest["tracks"]);
     require(linked.size() == owners.size(), "copy the complete source Edit group layout");
-    for (const auto& id : chosen)
+    for (const auto& id : range.is_null() ? chosen : std::set<std::string>{})
         for (const auto& linkedClip : editGroupClipSelection(id))
             require(chosen.contains(linkedClip["id"].get<std::string>()), "copy all linked Edit group clips");
+    if (!range.is_null())
+    {
+        require(timebases.size() <= 1, "mixed MIDI timebases need an explicit range mapping");
+        first = range["start_samples"];
+        last = range["end_samples"];
+        firstBeat = edit->tempoSequence.toBeats(time(first)).inBeats();
+        lastBeat = edit->tempoSequence.toBeats(time(last)).inBeats();
+        buffer.manifest["source_range"] = true;
+        buffer.manifest["range_timebase"] = timebases.empty() ? "beats" : *timebases.begin();
+    }
     buffer.manifest["start_samples"] = first;
     buffer.manifest["end_samples"] = last;
     buffer.manifest["start_beat"] = firstBeat;
@@ -158,6 +234,31 @@ Json Commands::midiClipPasteExtent(const std::string& id, int64_t point) const
     }
     return result;
 }
+Json Commands::midiClipPasteRange(const std::string& id, int64_t point) const
+{
+    const auto entries = midiClipPasteExtent(id, point);
+    const auto* b = clipboardBuffer(id);
+    int64_t end = point;
+    if (b->manifest.value("source_range", false))
+    {
+        if (b->manifest["range_timebase"] == "beats")
+        {
+            const auto beat = edit->tempoSequence.toBeats(time(point)).inBeats();
+            end = sample(edit->tempoSequence.toTime(tracktion::BeatPosition::fromBeats(
+                beat + b->manifest["end_beat"].get<double>() - b->manifest["start_beat"].get<double>())));
+        }
+        else
+            end = point + b->manifest["end_samples"].get<int64_t>() - b->manifest["start_samples"].get<int64_t>();
+        for (const auto& c : entries)
+            require(c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>() <= end,
+                    "MIDI range mapping puts a source piece outside the destination range");
+    }
+    else
+        for (const auto& c : entries)
+            end = std::max(end, c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>());
+    require(end > point && end <= std::llround(te::Edit::maximumLength * rate), "MIDI range paste exceeds session");
+    return {{"start_samples", point}, {"end_samples", end}};
+}
 Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, size_t index) const
 {
     checkThread();
@@ -181,7 +282,18 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         std::set<std::string> selected;
         for (const auto& e : b->manifest["entries"])
             selected.insert(e["clip"].get<std::string>());
-        for (const auto& id : selected)
+        const bool range = b->manifest.value("source_range", false);
+        if (range)
+        {
+            std::set<std::string> actual;
+            const int64_t low = b->manifest["start_samples"], high = b->manifest["end_samples"];
+            for (const auto& owner : b->manifest["tracks"])
+                for (auto* c : track(owner)->getClips())
+                    if (sample(c->getPosition().getEnd()) > low && sample(c->getPosition().getStart()) < high)
+                        actual.insert(c->itemID.toString().toStdString());
+            require(actual == selected, "source range clip membership changed after Copy");
+        }
+        for (const auto& id : range ? std::set<std::string>{} : selected)
             for (const auto& linked : editGroupClipSelection(id))
                 require(selected.contains(linked["id"].get<std::string>()),
                         "current Edit group needs all linked clips for Cut");
@@ -190,7 +302,25 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
             auto* c = midiClip(entry["clip"]);
             require(c && hash(c->state) == b->entries.at(entry["token"]).facts["state_hash"].get<std::string>(),
                     "MIDI cut source changed after copy");
-            append(*c, nullptr);
+            if (!range)
+                append(*c, nullptr);
+            else
+            {
+                const auto original = facts(*c);
+                const int64_t begin = original["start_samples"],
+                              last = begin + original["length_samples"].get<int64_t>();
+                const int64_t first = b->manifest["start_samples"], end = b->manifest["end_samples"];
+                if (begin < first)
+                {
+                    append(*c, fragment(*c, begin, first));
+                    if (last > end)
+                        append(*c, fragment(*c, end, last), true);
+                }
+                else if (last > end)
+                    append(*c, fragment(*c, end, last));
+                else
+                    append(*c, nullptr);
+            }
         }
         if (editingOptions()["automation_follows_edit"].get<bool>())
             for (const auto& owner : b->manifest["tracks"])
@@ -199,8 +329,15 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                 for (const auto& e : b->manifest["entries"])
                     if (e["track"] == owner)
                         clips.push_back(e["clip"]);
-                automation.push_back(
-                    automationClearChanges({{"track", owner}, {"clips", clips}, {"action", "cut"}, {"ripple", false}}));
+                Json args{{"track", owner}, {"action", "cut"}, {"ripple", false}};
+                if (range)
+                {
+                    args["start_samples"] = b->manifest["start_samples"];
+                    args["end_samples"] = b->manifest["end_samples"];
+                }
+                else
+                    args["clips"] = clips;
+                automation.push_back(automationClearChanges(args));
             }
     }
     else
@@ -212,9 +349,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         require(mode == "replace" || mode == "overlay", "unsupported MIDI clip paste mode");
         const int64_t point = a.at("position_samples");
         auto placements = midiClipPasteExtent(a.at("clipboard"), point);
-        int64_t end = point;
-        for (const auto& p : placements)
-            end = std::max(end, p["start_samples"].get<int64_t>() + p["length_samples"].get<int64_t>());
+        const int64_t end = midiClipPasteRange(a.at("clipboard"), point)["end_samples"];
         std::set<std::string> unique;
         for (size_t i = 0; i < targets.size(); ++i)
         {
@@ -265,31 +400,14 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                     const int64_t begin = f["start_samples"], last = begin + f["length_samples"].get<int64_t>();
                     require(!c->isLooping() || (begin >= point && last <= end),
                             "looped MIDI boundary fragment requires loop-aware slicing");
-                    auto fragment = [&](int64_t low, int64_t high)
-                    {
-                        auto part = f;
-                        part["start_samples"] = low;
-                        part["length_samples"] = high - low;
-                        const auto start = low == begin ? p.getStart() : time(low);
-                        const auto finish = high == last ? p.getEnd() : time(high);
-                        const auto offset = p.getOffset() + (start - p.getStart());
-                        part["start_seconds"] = start.inSeconds();
-                        part["end_seconds"] = finish.inSeconds();
-                        part["start_beat"] = edit->tempoSequence.toBeats(start).inBeats();
-                        part["length_beats"] = edit->tempoSequence.toBeats(finish).inBeats() -
-                                               edit->tempoSequence.toBeats(start).inBeats();
-                        part["content_start_beat"] = edit->tempoSequence.toBeats(start - offset).inBeats();
-                        part["source_offset_seconds"] = offset.inSeconds();
-                        return part;
-                    };
                     if (begin < point)
                     {
-                        append(*c, fragment(begin, point));
+                        append(*c, fragment(*c, begin, point));
                         if (last > end)
-                            append(*c, fragment(end, last), true);
+                            append(*c, fragment(*c, end, last), true);
                     }
                     else if (last > end)
-                        append(*c, fragment(end, last));
+                        append(*c, fragment(*c, end, last));
                     else
                         append(*c, nullptr);
                 }
@@ -305,11 +423,18 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         }
     }
     require(changes.size() <= 128, "MIDI clip edit exceeds 128 object changes");
-    return {{"command", cmd},
-            {"operation_index", index},
-            {"clips", changes},
-            {"automation", automation},
-            {"controller_policy", "native clip subtree retained, including CC, SysEx, takes and opaque fields"}};
+    return {
+        {"command", cmd},
+        {"operation_index", index},
+        {"clips", changes},
+        {"automation", automation},
+        {"range", b->manifest.value("source_range", false)
+                      ? (cmd == "midi.clips.erase" ? Json{{"start_samples", b->manifest["start_samples"]},
+                                                          {"end_samples", b->manifest["end_samples"]}}
+                                                   : midiClipPasteRange(a.at("clipboard"), a.at("position_samples")))
+                      : Json(nullptr)},
+        {"range_tracks", cmd == "midi.clips.erase" ? b->manifest["tracks"] : a.at("tracks")},
+        {"controller_policy", "native clip subtree retained, including CC, SysEx, takes and opaque fields"}};
 }
 void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, Json& objects)
 {

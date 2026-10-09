@@ -163,6 +163,19 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
             for (const auto& change : preview["midi_changes"])
                 if (change["operation_index"] == index)
                 {
+                    if (!change.value("range", Json(nullptr)).is_null())
+                        for (const auto& id : change["range_tracks"])
+                        {
+                            object(id, domainTrack(id));
+                            const int64_t first = change["range"]["start_samples"],
+                                          last = change["range"]["end_samples"];
+                            span(first, last - first);
+                            impacts.push_back({{"command", cmd},
+                                               {"object", id},
+                                               {"extent", "MIDI range including gaps"},
+                                               {"start_samples", first},
+                                               {"length_samples", last - first}});
+                        }
                     for (const auto& c : change["clips"])
                         for (const char* side : {"before", "after"})
                             if (!c[side].is_null())

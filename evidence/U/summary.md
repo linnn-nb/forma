@@ -1,3 +1,7 @@
+U-P0-MIDI-RANGE-01（2026-10-10）：主时间线 MIDI 选区 Copy/Cut/Paste/Duplicate/Paste Original 已接 L1 与原生 ClipCopy，保留整个选区的空白和空轨；剪切与替换保留两侧非破坏性片段。单笔 Undo/Redo、保存重开、既有可改快捷键与真实 FourOsc 渲染验证通过。Release/固定叶证书验签通过，11 项不同受影响 CTest、1508 检查（专项64）；Mac锁定，实体操作和试听未执行。完整 U＋P0 未完成，不进 P1。此节替代历史“纯 MIDI 源范围禁用/未实现”；混合媒体、Shuffle、不同时间基准及音乐自动化重映射仍保留差距。
+
+证据：midi-range-tests.json / midi-range-qualification.json / midi-range-before-patch.txt / midi-range-regression.txt / midi-range-build.txt / midi-range-shortcut-failure.txt；10份历史JSON已按原SHA恢复。原生CC起点32→96，区间外SysEx不再重放，原始raw导出保留；真实FourOsc发声点288000/预算64样本，尾部RMS检查通过。SDK新补丁干净pin应用/逆向还原逐字节通过，完整CMake白名单校验通过。无本轮实体截图或新GUI进程。演示OpenMidiRangeDemo.command，下一项音乐自动化时间映射。
+
 U-P0-MIDI-CLIPBOARD-01（2026-10-10）：钢琴卷帘所选音符 Copy/Cut/Paste/Duplicate/Paste Original 接通既有菜单和可改键；原生音符属性保留、副本新ID、一笔human L1/native Undo、保存重开。默认Paste替换目标音符起点，Duplicate合并；Paste Original回源轨/源片段。Release/固定验签通过，11项不同受影响CTest、1114检查（新131）通过。Mac锁定，实体操作/试听未执行。整MIDI片段、范围/CC剪贴板和完整U＋P0仍未完成，不进入P1。
 
 U-P0-MIDI-CLIPS-01（2026-10-10）：主时间线完整MIDI对象的Copy/Cut/Paste/Duplicate/Paste Original接通真实ClipCopy；原生NOTE/CONTROL/SYSEX、channel、偏移和附加属性保留，一笔Undo/Redo/保存重开/改键。Release/固定验签、9项不同测试1194检查（新69）通过，真实FourOsc发声位置312000样本在固定64预算内。源范围/混合媒体/Shuffle/音乐曲线时间映射待补；源范围禁用，未支持映射明确拒绝。Mac锁定，实体操作/试听未执行，本轮未启动GUI进程。演示OpenMidiClipsDemo.command，证据midi-clips-tests/qualification/regression；完整U＋P0未完成，不进P1。

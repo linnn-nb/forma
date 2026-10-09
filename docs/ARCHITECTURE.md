@@ -1,5 +1,13 @@
 # Forma 架构 v2
 
+U-P0-MIDI-RANGE-01（2026-10-10）：L1 `prepareMidiRangeClipboard` 从实际 Edit 组与 MIDI/instrument 轨读取半开选区，复用会话绑定的私有快照；源片段树不破坏，片段事实裁到实际边界。manifest 的 source_range、range_timebase、完整样本/音乐边界和轨序保留首尾空白及空轨，空选区不生成假片段。`midiClipPasteRange` 计算整个目的范围，含空白；当前纯 MIDI 范围要求单一片段时间基准，空轨默认音乐时间。
+
+GUI只生成已有human/local_gui midi.clips.erase/paste Plan；同笔写曲线、保留边界片段、修改/插入Clip及选区。Cut重新核验当前源成员和全原生状态hash，Scope包含所有选区轨与静音区间，再检查真实前后片段范围；有曲线时继续保守要求全轨时间权限。依旧64源片段/64轨、8MiB、128影响对象预算，满载未获本轮资格。
+
+Tracktion pin保持0d4d77c8c9defa6ec2aec6454f634e77bbd13f98；新增第十一份记录补丁 patches/tracktion-midi-event-boundaries.patch：原生播放生成器从最近的前置控制器值开始追踪，并使CC/SysEx使用精确片段边界；音符的量化/groove余量保留。先在真实原生事件输出复现32代替96和区间外SysEx，再同标准修复；不裁掉源事件，raw导出仍保留原事件。CMake完整diff白名单、干净pin应用逐字节比对和逆向还原通过，原十份补丁保留。没有第二引擎、插件IPC或新MCP工具。
+
+64专项与10相关回归通过；代码 MidiClipClipboard.cpp/Scope/WorkspaceMidiClipClipboard/WorkspaceCommands，测试 MidiRangeClipboardTests.cpp/forma_native_midi_range_timeline。混合媒体/时间基准、部分循环、多Take/MPE、Shuffle和非线性自动化映射继续补齐；实体GUI/听感、硬件MIDI、第三方、Windows和耐久未获资格。
+
 U-P0-MIDI-CLIPS-01：L1 MidiClipClipboard.cpp 新增会话绑定的 midi_clips 私有快照，复用 te::ClipCopy::fromClip / withNewItemID / insertClipCopy；保留完整原生子树和分数 beat，而非只重建音符。human/local_gui midi.clips.erase/paste 每Plan仅一个原子片段操作，可附原生选区/插入点操作；Scope解析真实片段before/after，带曲线时保守使用全轨时间权限。Copy不占Undo/revision；编辑一个native Undo，revision/幂等/锁定/组闭包保持；Cut在提交前再次检查当前Edit组，不能沿用Copy时的旧组成员。副本全部原生ID重映射，边界左右片段保持源内容映射。64源片段/8MiB快照/128影响对象预算；只在消息线程修改Edit。WorkspaceMidiClipClipboard分流既有主时间线快捷键；MCP、SDK和实时路径不新增。
 
 自动化复用既有冻结与曲线写入器；AutomationClear仅扩展实际原生MidiClip的区间读取。整片段Cut/原位置或恒速等时长Paste同笔跟随；跨Tempo/Meter或改变时长的曲线重映射尚未实现，拒绝而不静默错位。部分源范围、混合audio/MIDI、Shuffle及循环边界切片继续补齐。

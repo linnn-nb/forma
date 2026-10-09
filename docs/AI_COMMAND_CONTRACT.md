@@ -1,5 +1,9 @@
 # 统一命令契约 v2
 
+U-P0-MIDI-RANGE-01（2026-10-10）：不新增外部工具。human/local_gui midi.clips.erase/paste 延续既有参数 Schema；clipboard 是L1在指定session/revision读取Edit后生成的不透明token，外部JSON不得提供原生状态。范围快照含 source_range=true、range_timebase、start/end_samples、start/end_beat、原生轨序（包含空轨），条目保持完整源树但其可见片段事实裁到选区；Copy不占Undo/revision。范围只接受纯MIDI/instrument、单一timebase，预算64源片段/64轨/8MiB。
+
+preview 的 midi_changes 新增 range 与 range_tracks，公开完整目的静音范围和轨布局；Scope同时覆盖这些范围和实际片段before/after，曲线仍保守要求全轨时间。Cut重新检查选区内成员、源hash、当前Edit组，拒绝Copy后新增的人工作品；失败保留先前剪贴板。replace覆盖完整目的选区，包括空白；overlay用于Duplicate，original沿冻结源边界和轨序。边界片段及曲线写入仍共用一个native Undo，提交前重算、版本冲突和幂等回执沿用。Read-only原生查询和实际FourOsc/CC/SysEx回执见MidiRangeClipboardTests；未完成的Shuffle/混合媒体/非线性音乐曲线映射明确拒绝。
+
 U-P0-MIDI-CLIPS-01：midi.clips.erase/paste 注册为 human/local_gui，未增加MCP工具。clipboard 是L1不透明会话token，仅冻结真实原生ClipCopy；外部XML/虚构参数不成为权威。preview返回midi_changes[].clips与automation，含源状态hash、目的片段范围、保留边界片段；提交重编译，实际回执给出native midi_clip ID及clipboard_token。Undo/Redo、版本冲突、幂等沿用现有事务。未资格的范围/Shuffle/Tempo曲线重映射明确拒绝，不报告完成。
 
 U-P0-MIDI-CLIPBOARD-01：midi.notes.erase={clip,note_ids}；midi.notes.paste={clip,clipboard,placement:cursor/original/after,position_samples,mode:replace/merge}。仅human/local_gui，不发布MCP工具，每Plan一项原子批量操作。clipboard是L1生成的活跃/暂存快照ID，禁止外部XML或音符状态注入；original/after要求position_samples=0并使用冻结的原始音乐边界，cursor用当前Tempo换算48k工程样本。replace清理目标半开音乐区间的音符起点，再克隆；merge保留原音符；两者保留既有CC。before/after预览与Scope一致，native Undo/Redo及revision/幂等保持，重试标记replayed并返回原对象ID，不重复执行。Copy不编辑工程；Cut只在真实提交回执后接受快照。测试MidiClipboardTests，新131检查。

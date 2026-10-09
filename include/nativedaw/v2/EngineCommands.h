@@ -72,6 +72,9 @@ public:
     Json prepareMidiNoteClipboard(const std::string& clip, const Json& notes, const std::string& expectedSession,
                                   uint64_t expectedRevision);
     Json prepareMidiClipClipboard(const Json& clips, const std::string& expectedSession, uint64_t expectedRevision);
+    Json prepareMidiRangeClipboard(const Json& tracks, int64_t first, int64_t last, const std::string& expectedSession,
+                                   uint64_t expectedRevision);
+    Json midiClipPasteRange(const std::string& clipboard, int64_t position) const;
     Json midiClipPasteExtent(const std::string& clipboard, int64_t position) const;
     Json exportRequest(bool selection) const;
     Json renderRequest(const juce::File&, const Json&);
@@ -261,6 +264,7 @@ private:
     Json midiQuery(te::MidiClip&) const;
     void initialiseMusicIDs(juce::UndoManager* = nullptr);
     Json validateMusicPlan(const Json&) const;
+    Json captureMidiClipClipboard(const Json& clips, const Json& range, const std::string&, uint64_t);
     Json midiClipClipboardChange(const std::string&, const Json&, size_t) const;
     void executeMidiClipClipboard(const std::string&, const Json&, Json&);
     Json midiClipboardChange(const std::string&, const Json&, size_t operationIndex) const;

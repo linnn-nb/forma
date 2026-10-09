@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-MIDI-RANGE-01（2026-10-10）
+
+结论：纯MIDI/instrument主时间线范围剪贴板自动验证通过；Release构建和固定叶证书deep/strict验签通过。专项64检查、4.83秒；相关10/10、127.65秒；合计11项不同CTest、1508检查，未降低预算。Mac锁定，实体鼠标/键盘、设备试听未执行；组件快捷键测试不替代实体验收。完整U＋P0未完成，不进P1。
+
+- 代码：src/v2/MidiClipClipboard.cpp、Scope.cpp、ui/WorkspaceMidiClipClipboard.cpp、WorkspaceCommands.cpp、EngineCommands.h；自动化复用已有原生曲线写入器。测试 tests/v2/MidiRangeClipboardTests.cpp / forma_native_midi_range_timeline，旧MidiClipClipboardTests增加范围启用和首尾空白检查，最终71检查。既有CmdC/X/V/D与OptionCmdV可改键共用命令层；新专项实际调用Copy/Cut/Duplicate/Original快捷键，普通目的Paste由同一L1命令测试，改键由既有剪贴板回归验证。
+- 原生fixture：120→60 BPM；源clip start=1s/offset=1s，长音符source beat3、length6、channel3；4个真实CONTROL、3个SDK创建SYSEX，空源轨/空目的轨。选2–3秒后粘到6秒，完整目标6–8秒；原事件树保留，边界左右片段/首尾静音/空轨/纯空白替换/没有假Clip、Scope静音覆盖、幂等、成员冲突和失败保持旧Clipboard通过。单笔Undo/Redo、保存后Undo/Open和原fixtureSHA不变通过。
+- 真实原生播放factory修复前输出CC=[[32,0],[64,1]]、SysEx=[[1,0],[2,1.5],[3,2.25]]；正确起点应96，外侧SysEx不应重放。固定pin上最小SDK补丁修复后CC=[[96,0],[64,1]]、SysEx=[[2,1.5]]，跨边界音符note-on=[69,0]；原始raw导出4 CC/3 SysEx保留。补丁clean-pin应用/逐字节比较/逆向还原与CMake完整diff校验通过，既有10补丁不改。
+- 实际Tracktion FourOsc离线WAV：独立读取stereo48k/768000帧；起点288000，预设288000，固定64样本预算；9–10秒release后左声道RMS<1e-6，无挂音。未宣称逐位一致、听感或硬件MIDI通过。
+- 真实fader曲线：有片段和空MIDI轨均包含曲线；范围Cut修改原生片段及两条曲线，同笔Undo在保存后完整恢复；Open恢复Cut结果。原位置范围Paste同笔Undo恢复。改变音乐/秒时长的曲线重映射整笔拒绝，工程不变；内部Tempo/Meter/ramp限制沿用既有回归。
+- 首轮fixture缺少track.create的ref已修正；真实SDK失败输出保留。快捷键初次失败的上下文保留，命令源码与旧对象同秒，快捷键仍被禁用；强制重编后52项通过，追加真实自动化资格后最终64通过。后续构建/测试串行，无编译中继续修改源码。10份历史JSON按原SHA逐字节恢复，本轮新结果/计数/hash另收qualification，不改旧证据。
+- 尚未完成：混合audio/MIDI、混合MIDI timebase、Shuffle、音乐自动化时间映射；部分loop切片明确拒绝。多Take/MPE、64片段/8MiB/128对象满载、硬件/第三方/耐久/Windows/实体预览卡片未获本次资格。纯空范围默认音乐时间，普通Delete/Shuffle不由本增量宣称完成。
+
+产物 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；独立固定签名预览 build-v2-tracktion/MidiRangePreview.app，启动器OpenMidiRangeDemo.command。亲手试：双击启动器，F7选择主时间线范围，CmdC/X/D，OptionCmdV回原位置；选目标MIDI轨和插入点CmdV，CmdZ/ShiftCmdZ；CmdS另存新副本/重开。预览未在锁定桌面启动。证据 evidence/U/midi-range-tests.json、midi-range-qualification.json、midi-range-before-patch.txt、midi-range-regression.txt、midi-range-build.txt。下一项为音乐剪贴板的自动化时间映射。
+
 ## U-P0-MIDI-CLIPS-01（2026-10-10）
 
 结论：主时间线完整MIDI对象Copy/Cut/Paste/Duplicate/Paste Original自动验证通过，Release和固定叶证书deep/strict验签通过。9项不同CTest、1194检查（新69）；相关8/8为100.31秒，最后GUI保护后5/5为39.61秒，最终channel专项5.87秒，最终组变更专项6.21秒。完整U＋P0未完成，不进P1。
