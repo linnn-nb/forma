@@ -1,0 +1,106 @@
+{
+  "state": "passed",
+  "source_commit": "4078bbdd0c841af1fea836d26041c5a39a6f9652",
+  "tests": [
+    {
+      "test": "tracktion_pan_audio",
+      "checks": 95,
+      "sha256": "c44aa4bdf7008e4ff6b45c7f661e72e0f7784a7e55f441d10d1ec9bc0c686c8f"
+    },
+    {
+      "test": "tracktion_folder_vca",
+      "checks": 51,
+      "sha256": "725ab8373971dc167db7ab9ad9d5805ca58656d09f6474105681b07c92630b9a"
+    },
+    {
+      "test": "tracktion_permission_scope",
+      "checks": 38,
+      "sha256": "f01eea900a69586749a5cba092be794f10607ad400a5956143691a7d35b7dd21"
+    },
+    {
+      "test": "forma_native_ui_navigation",
+      "checks": 48,
+      "sha256": "19f285bdcc7051650777645661574523b67cdcd3192b9f1a2915cdf6a774c8df"
+    },
+    {
+      "test": "forma_native_audio_clipboard",
+      "checks": 49,
+      "sha256": "92550da59721926e46540962ca5ced28c604d8bb9a5587a68812be447ba66386"
+    },
+    {
+      "test": "forma_native_shuffle_ranges",
+      "checks": 116,
+      "sha256": "6a9b0370694a118fd058cddfe525f3ee4d1ea73db8da51ff0d6abab9aa58a505"
+    },
+    {
+      "test": "forma_native_automation_shuffle",
+      "checks": 309,
+      "sha256": "8977f9dfab55e41fdd7117ec0780b168d127355d13b8ec312bb9b27baeb00fda"
+    },
+    {
+      "test": "forma_native_automation_clipboard",
+      "checks": 234,
+      "sha256": "272d4a0d88cac8579ada1d02451b9b9c6e4640d4660ec23a54e15a5a0fed99d7"
+    },
+    {
+      "test": "forma_native_automation_follow",
+      "checks": 74,
+      "sha256": "25bc3a89b11f846d1cb9a4051f78382c968573db54ef6884237090a515e0792c"
+    },
+    {
+      "test": "forma_native_automation_clear",
+      "checks": 394,
+      "sha256": "4feecd9da1ebc92883f8321b080e3041589e2ebc6f4458f9930952db07d58a34"
+    },
+    {
+      "test": "forma_native_midi_clip_timeline",
+      "checks": 71,
+      "sha256": "73e4eea6ef6a349f59071312cf00cfcdb5cbb7733cc0626d6e839891b5ef764e"
+    },
+    {
+      "test": "forma_native_midi_range_timeline",
+      "checks": 64,
+      "sha256": "ff21b192d2c1b58e6aa3354b20f9fc7e601cddf6a2ef0571c5d4a897697a6044"
+    },
+    {
+      "test": "forma_native_mixed_clipboard",
+      "checks": 94,
+      "sha256": "f24a1fd690c58e18a15b2334db4e35441e6b122136359a9a11aa398ff975118d"
+    },
+    {
+      "test": "forma_native_mixed_shuffle",
+      "checks": 137,
+      "sha256": "6b62606697d639c33df9e9d1cb0c4c1b16efbb3799204c94b1f8a1c24101ced6"
+    },
+    {
+      "test": "forma_native_musical_shuffle",
+      "checks": 204,
+      "sha256": "b5c17d7bb7a0113f30e03ff282c5c6e2796fdb83da88c22cf7739d0facee7483"
+    },
+    {
+      "test": "forma_native_shared_clock",
+      "checks": 682,
+      "sha256": "f6d5812007268fb7b4b04bf31e5c57cd853f2249973b6aafd3d653b5e86d982c"
+    },
+    {
+      "test": "forma_native_musical_clipboard",
+      "checks": 278,
+      "sha256": "a0959d63d5856470ba29e5eb8f03f6fbdbb0dd72b5db1a34c6bea26a89ad4e0a"
+    }
+  ],
+  "wall_seconds": 333.7030699253082,
+  "historical_receipts_restored": 14,
+  "checks": 2938,
+  "historical_receipt_restore_policy": "original bytes restored in finally and SHA256 verified",
+  "physical_gui": "unexecuted: Mac locked",
+  "ctest_seconds": 333.66,
+  "render_validation": "Four real WAVs independently decoded: sample rate/channels/frame count and nonzero PCM; audio and FourOsc MIDI auditioned in separate native paths",
+  "budget": "1e-7 actual parameter span + 2 reference float ULP, unchanged; derived saved beat positions 1e-10, raw events/points/explicit bases exact",
+  "signing": {
+    "production": "deep/strict fixed leaf requirement verified",
+    "preview": "deep/strict fixed leaf requirement verified",
+    "leaf_sha1": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",
+    "preview_bundle": "org.forma.preview.sharedclock",
+    "preview_launched": false
+  }
+}

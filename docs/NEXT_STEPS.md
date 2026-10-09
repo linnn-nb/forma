@@ -1,13 +1,9 @@
-# 下一步
+U-P0-SHARED-CLOCK-01（2026-10-10）：同轨混合音频/MIDI的共享自动化可明确按采样或小节拍跟随复制/范围Shuffle；基准设置、编辑均一笔native Undo，可保存重开、有可改快捷键。旧音频Copy后修改目的基准接通原生时间线流程，保持复制时冻结数据。最终17/17受影响CTest通过，2938检查/333.66秒；专项682检查、102656原生DSP取值，源码4078bbd（基础b7d5d1e），Release与固定叶证书deep/strict验签通过。
 
-U-P0-MUSICAL-SHUFFLE-01（2026-10-10）：Shuffle增加可撤销、可保存重开的原时间基准模式；音频按采样、音乐MIDI按拍移位，曲线跟随各轨基准。跨Tempo/变速曲线/拍号的范围Cut/Delete/Paste通过，原始事件保留。最终13/13受影响CTest通过，2061检查/289.70秒（专项204，40960原生DSP位置探测）；源码4977ceb，Release与固定叶证书deep/strict验签通过。
+本节替代历史“同轨混合基准有共享曲线一律拒绝”的范围：显式选择可执行，auto仍拒绝歧义。不是全局Tempo编辑跟随模式；片段仍按自己的timebase移动。采样同步MIDI跨变化、一般混合对象Shuffle、Warp及部分循环仍未资格；完整U＋P0未完成，不进入P1，M2/M3冻结、M4/M5暂缓。Mac锁定，实体GUI/听感未执行，独立演示未启动。
 
-本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。
+亲手试：保存退出旧Forma，双击build-v2-tracktion/OpenSharedClockDemo.command；源混合轨2–3秒已选，CmdC；在目的混合轨用Selector选9–9.5秒，ControlOptionShiftJ粘贴。预览接受/拒绝、Space试听、CmdZ/ShiftCmdZ；另存并CmdO重开。OptionF5/F6/F7切换所选轨自动/采样/小节拍跟随（只作用于复制和native范围Shuffle），可改键；改变设置自身可撤销。源FourOsc旁通，保留真实MIDI，可单独启用验证乐器；不承诺该乐器同时透传输入音频。
 
-先保存并正常退出旧Forma，再双击build-v2-tracktion/OpenMusicalShuffleDemo.command。源四轨2–3秒已选，CmdC；Selector跨目的四轨选择9–9.5秒，Control+Option+Shift+J粘贴。原生卡片显示采样/拍位移、实际片段位置及各轨后缀曲线基准；接受、Space试听、CmdZ/ShiftCmdZ、CmdS新副本并CmdO重开。也可目的9–10秒CmdX或Delete；两者均预览、整体撤销，Delete保留剪贴板。编辑→Shuffle时间基准（OptionF1采样、ShiftOptionF1原基准）可改键；RAM剪贴板重开后需再次CmdC。
+产物：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app、SharedClockPreview.app、OpenSharedClockDemo.command。演示工程是最终fresh测试自有媒体/原生工程，路径见evidence/U/shared-clock-tests.json的demo字段；未启动、未打包新DMG。
 
-产物：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；独立MusicalShufflePreview.app与OpenMusicalShuffleDemo.command已准备，未启动。
-
-下一项：同轨混合时间基准共享自动化的范围编辑，以及混合对象Shuffle；明确分段映射与冲突拒绝语义后实现，原始事件/媒体、单笔Undo、保存重开和快捷键继续作为验收。之后收敛U＋P0剩余项，由用户亲手确认再进入P1。
-
-Warp、部分循环、多Take/MPE、硬件/其他设备率/第三方全面资格、满载/耐久/Windows/发行仍未完成。
+下一项：一般混合对象Shuffle。先明确多对象间空隙、删除并集、片段自身时间基准及单轨共享曲线的位移规则，未经资格整笔拒绝；继续实际原生事件/媒体、单笔Undo、保存重开、快捷键与预览测试。之后核对U＋P0剩余项，用户亲手确认后才进入P1。Warp/部分循环及硬件/其他设备率/第三方全面资格/满载/耐久/Windows/发行继续保留未完成。

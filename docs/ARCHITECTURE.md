@@ -1,3 +1,9 @@
+U-P0-SHARED-CLOCK-01（2026-10-10）：L1 track.automation_edit_basis.set 为实际 AudioTrack 设置 auto/samples/beats；NDAW_AUTOMATION_EDIT_BASIS schema1 存在所属原生轨，auto 用缺失节点表达。human/local_gui、停止状态、完整轨道 Scope、独立 Plan/native Undo；查询 automation_edit_basis 是实际保存事实，候选 Edit 严格检验 schema/字段/重复节点/支持轨型后采用。
+
+原生时间线剪贴板冻结每条轨的 track_timebases，显式值优先，否则维持既有片段推断。范围 Shuffle 的曲线后缀在 native 模式按目的轨明确基准映射，片段仍分别按原采样/音乐时间移动；samples 模式保持共同采样位移。共同包络取片段和实际源曲线映射的最晚结束，不让拍基曲线被较短音频裁掉。封闭 state_hash 包含受影响轨的声明，人工改基准使旧计划失效；没有把曲线处理 timeBase 改为 beats，也不承诺后来编辑 Tempo 自动移动全部曲线。
+
+prepareTimelineFromAudioClipboard 在 L1 将实际私有 audio 快照暂存为 timeline_clips：源 ClipCopy/曲线/媒体hash保留，不重读已修改源轨；源按冻结采样映射，当前 Tempo 仅产生预览拍位置投影。新 UUID/token、65536原生速度段/8MiB预算、会话/版本/停止守卫；实际成功回执才接纳新剪贴板，取消保持原快照。GUI按真正的连续目的布局识别共享曲线需求，只发 Plan；没有新依赖、SDK补丁、实时处理或MCP工具。实现与资格入口见 VERIFICATION.md 最新节。
+
 U-P0-MUSICAL-SHUFFLE-01：L1 timeline.clips/midi.clips 的 ripple_mapping=samples/native；NATIVEDAW/SHUFFLE_OPTIONS schema1在message thread按一笔Undo持久化，缺失按samples解释。session.shuffle.mapping.set只对human/local_gui开放；候选Edit先严格校验再采用，GUI只生成Plan。
 
 native模式的后缀beatDelta=当前Tempo.toBeats(新插入终点)−toBeats(旧删除终点)。音频/采样基片段按公共sampleDelta，音乐MIDI的起点、终点、内容起点按同一beatDelta，保留原NOTE/CONTROL/SYSEX。AutomationClipboard与AutomationClear按后缀真实timebase选择musicalSuffix/musicalCollapse；复用有界native Tempo section分段曲线映射，前缀/速度图/未选轨保持。封闭state_hash包含真实速度图和全部影响状态，提交复核Scope/版本/hash，一个native Undo。

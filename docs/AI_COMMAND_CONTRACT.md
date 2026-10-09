@@ -1,3 +1,9 @@
+U-P0-SHARED-CLOCK-01（2026-10-10）：track.automation_edit_basis.set 参数 {track:实际稳定ID,basis:auto|samples|beats}，单位是复制/范围Shuffle的曲线跟随策略；仅 human/local_gui、低风险、可逆、独立事务，Scope必须覆盖所属全轨。folder/不存在对象/非法枚举/旧版本/非human/复合设置 Plan 拒绝；相同值不生成假成功。不是参数处理精度或全局Tempo跟随模式；不扩充冻结MCP注册表。
+
+查询轨道 automation_edit_basis；timeline/midi原生片段预览中 automation_edit_bases 声明当前目的设置，每条lane的 time_mapping 和 suffix_timebase 分别声明冻结源复制与目的后缀实际映射。基准参与封闭state_hash和revision校验，用户改设置后不能提交旧Plan覆盖人工操作。一个共享轨只有一条同参数曲线：auto不能解释混合基准时整笔拒绝，必须由用户明确选samples/beats；片段自身timebase保持。
+
+旧audio剪贴板只通过L1私有token适配，冻结样本、曲线及原媒体hash保持，当前Tempo读数不冒充复制时的音乐快照。取消保留旧accepted clipboard；成功回执后才promote staged。Copy/适配不占工程Undo，设置和实际粘贴分别是native事务。测试SharedClockTests.cpp/forma_native_shared_clock；实体试听未获资格。
+
 U-P0-MUSICAL-SHUFFLE-01：现有timeline.clips/midi.clips范围编辑增加可选ripple_mapping=samples/native，缺失为samples。native计划显式返回displacement_samples/displacement_beats、destination_tempo_hash和每个实际clip before/after，曲线同时记录粘贴内容与后缀各自基准；不能由共同样本位移推断音乐片段结果。
 
 session.shuffle.mapping.set {mapping:samples/native}为停止态human/local_gui独立低风险可逆命令，schema1设置一笔native Undo、保存重开。规划/预览/提交继续验证revision/目标/源媒体/真实曲线/Tempo状态，幂等与完整拒绝保持；扩展Agent权限或新MCP工具未发生。测试U-P0-MUSICAL-SHUFFLE-01与MusicalShuffleTests.cpp。

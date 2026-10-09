@@ -1,3 +1,19 @@
+U-P0-SHARED-CLOCK-01（2026-10-10）：同轨混合音频/MIDI的共享自动化可明确按采样或小节拍跟随复制/范围Shuffle；基准设置、编辑均一笔native Undo，可保存重开、有可改快捷键。旧音频Copy后修改目的基准接通原生时间线流程，保持复制时冻结数据。最终17/17受影响CTest通过，2938检查/333.66秒；专项682检查、102656原生DSP取值，源码4078bbd（基础b7d5d1e），Release与固定叶证书deep/strict验签通过。
+
+本节替代历史“同轨混合基准有共享曲线一律拒绝”的范围：显式选择可执行，auto仍拒绝歧义。不是全局Tempo编辑跟随模式；片段仍按自己的timebase移动。采样同步MIDI跨变化、一般混合对象Shuffle、Warp及部分循环仍未资格；完整U＋P0未完成，不进入P1，M2/M3冻结、M4/M5暂缓。Mac锁定，实体GUI/听感未执行，独立演示未启动。
+
+实现：src/v2/TimelineCommands.cpp/TimelineState.h、EngineCommands.cpp、HierarchyCommands.cpp、MidiClipClipboard.cpp、AutomationClipboard.cpp/AutomationClear.cpp、ui/WorkspaceMidiClipClipboard/Editing/Commands/Layout；测试tests/v2/SharedClockTests.cpp、CMake的forma_native_shared_clock。
+
+专项32组合＝阶跃/真实native ramp两种Tempo × 复制samples/beats × 后缀samples/beats × 四种选区替换长度；实际音量、声像、枚举EQ参数分别用native AutomationIterator读取，前缀/复制段/共同尾端/后缀均检查。另有两种曲线基准Cut、纯音频拍基曲线共同包络（片段1秒、曲线2秒）、纯MIDI采样基曲线、旧audio剪贴板复制后改源曲线/目的基准/拒绝/接受、幂等、版本/Scope/权限/非法对象/损坏工程、快捷键/Undo/Redo/Save/Open。102656次探测不充作102656独立测试；最大归一化曲线差1.1920928955078125e-7，预算仍为1e-7实际参数跨度＋2参考float ULP。衍生保存拍位置最大差3.197442310920451e-14≤既定1e-10，原始NOTE/CONTROL/SYSEX/附加字段、样本、显式基础值和曲线点精确检查。
+
+四个真实WAV独立解码，格式/48k/双声道/实际帧数/非静音通过；FourOsc会替换输入音频，因此音频和MIDI分别验证，演示中FourOsc旁通以听到源音频，不宣称两种信号同时混合或主观听感通过。测试媒体、原生输入夹具SHA保持；偏好与产物隔离。
+
+早期失败日志保留在build-v2-tracktion/shared-clock-*-test.log：夹具命令缺字段、轨型限制、replayed回执比较及Undo断言错误包含实时声像/EQ读数。事实比较改用显式基础值和真实曲线，仅剔除已有曲线参数的派生显示读数，静态参数仍精确检查；源码DSP与误差预算未放宽。最终资格使用fresh回执，14份历史报告恢复原字节并验SHA，未把旧通过数据当成新结果。
+
+演示：先保存并正常退出旧Forma，再双击build-v2-tracktion/OpenSharedClockDemo.command；源轨2–3秒已选，CmdC；Selector跨目的轨选9–9.5秒，ControlOptionShiftJ。预览列出实际共享曲线/复制与后缀基准，接受、Space、CmdZ/ShiftCmdZ、另存并CmdO重开。编辑→轨道自动化跟随（复制 / Shuffle），OptionF5自动/F6采样/F7小节拍，可改键；基准变更单独占一笔Undo，未处理预览时不可更改。RAM剪贴板不随工程保存，重开后再Copy。独立SharedClockPreview.app（org.forma.preview.sharedclock，--no-mcp）签名已验证，未启动；没有新DMG/截图/实体麦克风资格。
+
+证据：evidence/U/shared-clock-tests.json、shared-clock-qualification.json、shared-clock-regression.txt；本地完整构建/CTest日志在build-v2-tracktion/shared-clock-qualification。下一项一般混合对象Shuffle，随后收敛其余U＋P0，用户实体验收后再进入P1。
+
 U-P0-MUSICAL-SHUFFLE-01（2026-10-10）：Shuffle增加可撤销、可保存重开的原时间基准模式；音频按采样、音乐MIDI按拍移位，曲线跟随各轨基准。跨Tempo/变速曲线/拍号的范围Cut/Delete/Paste通过，原始事件保留。最终13/13受影响CTest通过，2061检查/289.70秒（专项204，40960原生DSP位置探测）；源码4977ceb，Release与固定叶证书deep/strict验签通过。
 
 本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。

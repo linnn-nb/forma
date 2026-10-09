@@ -1,3 +1,11 @@
+U-P0-SHARED-CLOCK-01（2026-10-10）：同轨混合音频/MIDI的共享自动化可明确按采样或小节拍跟随复制/范围Shuffle；基准设置、编辑均一笔native Undo，可保存重开、有可改快捷键。旧音频Copy后修改目的基准接通原生时间线流程，保持复制时冻结数据。最终17/17受影响CTest通过，2938检查/333.66秒；专项682检查、102656原生DSP取值，源码4078bbd（基础b7d5d1e），Release与固定叶证书deep/strict验签通过。
+
+本节替代历史“同轨混合基准有共享曲线一律拒绝”的范围：显式选择可执行，auto仍拒绝歧义。不是全局Tempo编辑跟随模式；片段仍按自己的timebase移动。采样同步MIDI跨变化、一般混合对象Shuffle、Warp及部分循环仍未资格；完整U＋P0未完成，不进入P1，M2/M3冻结、M4/M5暂缓。Mac锁定，实体GUI/听感未执行，独立演示未启动。
+
+证据shared-clock-tests.json（专项）、shared-clock-qualification.json（17项fresh回执hash/源提交/签名/预算）、shared-clock-regression.txt（CTest实输出）。32组合含实际音量/声像/EQ和Tempo/ramp/Meter；加Cut、纯音频拍曲线/纯MIDI采样曲线、旧audio快照保留、快捷键、Undo/Redo/Open。最大归一化DSP差1.1920928955078125e-7；原始数据精确，衍生拍最大差3.197442310920451e-14。真实四WAV独立格式/声道/帧数/非静音验证；FourOsc与音频分开。14历史回执恢复原字节，早期断言/夹具失败保留未计资格。
+
+双击build-v2-tracktion/OpenSharedClockDemo.command；CmdC复制已选源2–3秒，Selector目的9–9.5秒，ControlOptionShiftJ预览/接受/拒绝，Space、Undo/Redo、另存/Open。OptionF5/6/7可改曲线基准，可改键。独立签名SharedClockPreview.app未启动，Mac锁定实体操作/听感未执行，无新DMG或截图。下一项一般混合对象Shuffle；完整U＋P0未完成。
+
 U-P0-MUSICAL-SHUFFLE-01（2026-10-10）：Shuffle增加可撤销、可保存重开的原时间基准模式；音频按采样、音乐MIDI按拍移位，曲线跟随各轨基准。跨Tempo/变速曲线/拍号的范围Cut/Delete/Paste通过，原始事件保留。最终13/13受影响CTest通过，2061检查/289.70秒（专项204，40960原生DSP位置探测）；源码4977ceb，Release与固定叶证书deep/strict验签通过。
 
 本节替代历史音乐MIDI后缀跨Tempo/Meter一律拒绝的限制，仅覆盖明确native模式的本次受测范围。旧工程仍默认统一采样位移；采样同步MIDI跨变化、同轨混合基准共享曲线、整对象Shuffle、Warp及部分循环仍未资格/拒绝。Mac锁定，实体GUI和听感未执行，预览未启动；完整U＋P0未完成，不进入P1。M2/M3冻结，M4/M5暂缓。

@@ -102,3 +102,9 @@ evidence/U/*
 !evidence/U/musical-shuffle-qualification.json
 
 !evidence/U/musical-shuffle-regression.txt
+
+!evidence/U/shared-clock-tests.json
+
+!evidence/U/shared-clock-qualification.json
+
+!evidence/U/shared-clock-regression.txt
