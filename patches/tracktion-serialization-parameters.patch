@@ -1,22 +1,20 @@
 diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp b/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
-index 3d96b8c..3a614b7 100644
+index 3d96b8c..e083f8d 100644
 --- a/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
 +++ b/modules/tracktion_engine/model/automation/tracktion_AutomatableEditItem.cpp
-@@ -310,20 +310,23 @@ void AutomatableEditItem::saveChangedParametersToState()
+@@ -310,7 +310,10 @@ void AutomatableEditItem::saveChangedParametersToState()
  
      for (auto ap : automatableParams)
      {
 -        if (ap->getCurrentValue() != ap->getCurrentExplicitValue())
--        {
--            stream.writeString (ap->paramID);
--            stream.writeFloat (ap->getCurrentExplicitValue());
--        }
-+        // Attached display properties are asynchronous and can still contain an
-+        // earlier automation value even when both current caches equal the base.
-+        // Persist every authoritative explicit value; cache equality cannot prove
-+        // that the attached ValueTree already contains it.
-+        stream.writeString (ap->paramID);
-+        stream.writeFloat (ap->getCurrentExplicitValue());
++        // An automated attached property can lag behind both current caches.
++        // Always retain its explicit base. Static parameters keep their normal
++        // property Undo path; a redundant override would replay an older value.
++        if (ap->hasAutomationPoints() || ap->getCurrentValue() != ap->getCurrentExplicitValue())
+         {
+             stream.writeString (ap->paramID);
+             stream.writeFloat (ap->getCurrentExplicitValue());
+@@ -318,12 +321,14 @@ void AutomatableEditItem::saveChangedParametersToState()
      }
  
      stream.flush();

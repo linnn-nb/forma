@@ -240,6 +240,8 @@ int main(int argc, char** argv)
         auto audio = rendered(c, folder.getChildFile("pasted.wav"), 300000, 516000);
         sameAudio(reference, audio);
         w.uiCommands().invokeDirectly(6, false);
+        if (c.query()["tracks"] != beforePaste["tracks"])
+            std::cout << "UNDO_DIFF " << Json::diff(beforePaste["tracks"], c.query()["tracks"]).dump() << std::endl;
         check(c.query()["tracks"] == beforePaste["tracks"],
               "one Undo removes all pasted clips and restores replaced state");
         w.uiCommands().invokeDirectly(7, false);
