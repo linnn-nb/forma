@@ -383,8 +383,17 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                     out += text("自动化 · ") + trackName(automation["track"].get<std::string>()) + " · " +
                            text(lane["name"].get<std::string>()) + "：" + juce::String(int(lane["before"].size())) +
                            " → " + juce::String(int(lane["after"].size())) + text(" 点 · ") +
-                           (lane.value("time_mapping", std::string{}) == "native_musical" ? text("跟随小节与拍\n")
-                                                                                          : text("按时间编辑\n"));
+                           (change["command"].get<std::string>().ends_with(".erase")
+                                ? text("清理选区曲线")
+                                : (lane.value("time_mapping", std::string{}) == "native_musical"
+                                       ? text("粘贴内容跟随小节与拍")
+                                       : text("粘贴内容按时间编辑"))) +
+                           (change.value("ripple_mapping", std::string{}) == "native"
+                                ? (lane.value("suffix_timebase", automation.value("suffix_timebase", std::string{})) ==
+                                           "beats"
+                                       ? text("；后方曲线按拍位移\n")
+                                       : text("；后方曲线按采样位移\n"))
+                                : text("\n"));
         }
         return out + text("\n这里只显示计划影响；接受后请试听，再决定保留或撤销。\n");
     }
