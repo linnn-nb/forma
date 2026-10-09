@@ -1,9 +1,9 @@
 # 下一步
 
-结论：编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 Release/固定deep/strict验签通过；受影响7项最终通过（52.32秒），最后专项修正键位夹具后89项通过（10.85秒）。实际48k/44.1k源PCM内部修剪差0、共同−3dB误差1.216e−7（预算2e−6），分数源偏移容差1e−12秒；源哈希未改。 完整U＋P0未验收，不进P1；M2/M3冻结、M4/M5暂缓。任意范围切片、组MIDI/自动化/View/Height/Timebase、All/临时旁路等仍未实现。
+结论：本轮原生面板提交/取消焦点与裸启动工程文件入口已接通；Release/固定deep/strict通过，受影响4项433检查最终通过。桌面完成ControlOptionJ淡化、输入框⌘Return、⌘Z/⇧⌘Z、⌘S另存、⌘O原生重开及重开后的改键/Escape；A/B淡入0.12/0.17秒，源偏移保留。前轮Open确认禁用未复现，未修改chooser或宣称根因修复。
 
-亲手试：双击 `build-v2-tracktion/OpenGroupFadesDemo.command`，打开已签名FormaGroupFadesPreview.app与最终89专项的真实工程。A/B为Edit-only、C非组；选A/B、F6修剪边缘或⌘7 Smart拖淡化手柄，⌘Z/⇧⌘Z；本工程ControlOptionJ打开毫秒淡化设置，⌘Return提交、Esc取消。新工程默认⌘F。诊断PCM不是实录或音乐示范；预览支持另存。原生Open对话框问题仍待排查，启动器不算对该问题的修复。
+亲手试：双击build-v2-tracktion/OpenPanelKeysDemo.command，选A片段，ControlOptionJ打开淡化设置，改毫秒值、⌘Return提交，⌘Z/⇧⌘Z；⌘S保存到新文件、⌘O重开。新工程面板默认⌘F。真实诊断PCM用于验证，不是麦克风/音乐示范；原件不覆盖，跨重开Undo历史不承诺。原生应用为NativeDAW_artefacts/Release/Forma.app；测试预览是独立Bundle，不代替正式发布包。
 
-实体状态：实体桌面已验证片段选择、淡化提交、Undo/Redo、另存和新进程重开；原生Open对话框出现确认禁用，原因未确定，随后CUA无窗口/0×0，后续未通过。初始截图对应居中卡片调整前；最终ControlOptionJ唯一绑定已自动化执行/重开，实体复测待做。新测试预览89941已结束；出现人工活动的原预览保留。
+下一项：补同组任意时间范围切片编辑，再补Marker/Memory预后卷恢复和时间字段导航；whole-clip关联不能当作精确范围切片。组MIDI/自动化/View/Height/Timebase、All/临时旁路、Finder关联及运行中文档事件仍未完成。实体鼠标Trim/Smart与听感尚未验证。
 
-下一项明确任务：优先复现/修复原生Open确认禁用，完成最终唯一键位与居中卡片的实体回归；然后补同组任意时间范围切片编辑（不能误当whole-clip），再补Marker/Memory预后卷恢复与时间字段导航。原媒体不覆盖，跨重开Undo历史不承诺。用户亲手确认完整U＋P0后进入P1。
+完整U＋P0未验收，不进入P1；M2/M3冻结、M4/M5暂缓。证据见VERIFICATION首节与evidence/U/panel-focus-*；原有SDK补丁保留。本轮Open流程测试预览已结束；用户正在操作的新PanelKeys预览与旧窗口保留，不再发送输入。没有全量回归/DMG。

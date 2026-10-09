@@ -22,7 +22,7 @@ public:
             if (args.size() == 2 && args[0] == "--open-session")
                 workspace->openSession(juce::File(args[1]));
             else if (args.size() == 1)
-                workspace->importAudio(juce::File(args[0]));
+                workspace->openLocalFile(juce::File(args[0]));
             if (gatewayEnabled)
                 workspace->startMcp(ndaw::v2::Permission::ReadOnly);
             workspace->grabKeyboardFocus();

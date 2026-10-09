@@ -379,6 +379,7 @@ int main(int argc, char** argv)
             check(c.query()["tracks"] == preDrag, "one native Undo restores both Smart fade handles");
             pump();
         }
+        w.addToDesktop(juce::ComponentPeer::windowIsTemporary);
         click(w, "clip.select:" + text(aID));
         check(w.uiCommands().getKeyMappings()->containsMapping(
                   280, juce::KeyPress('f', juce::ModifierKeys::commandModifier, 0)),
@@ -387,12 +388,28 @@ int main(int argc, char** argv)
         pump();
         auto* input = dynamic_cast<juce::TextEditor*>(find(w, "clip.fades.in_ms"));
         check(input, "fade input uses milliseconds");
+        input->grabKeyboardFocus();
+        check(juce::Component::getCurrentlyFocusedComponent() == input, "real native fade field owns keyboard focus");
+        const auto textState = c.query();
+        input->setText("123", false);
+        input->selectAll();
+        check(input->keyPressed(juce::KeyPress('a', juce::ModifierKeys::commandModifier, 0)) &&
+                  input->getHighlightedText() == "123" && c.query() == textState,
+              "text Select All stays in the field instead of selecting project clips");
+        input->keyPressed(juce::KeyPress('4', 0, '4'));
+        check(input->getText() == "4" &&
+                  input->keyPressed(juce::KeyPress('z', juce::ModifierKeys::commandModifier, 0)) &&
+                  input->getText() == "123" && c.query() == textState,
+              "text Undo reverses typing without undoing the audio project");
         input->setText("100", false);
-        check(w.uiCommands().invokeDirectly(275, false), "same global submit command applies fade dialog");
+        check(input->keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0)),
+              "focused fade field routes Command Return through registered submit command");
         pump();
         check(!find(w, "clip.fades.panel") && clip(c, 0)["fade_in_samples"] == 4800 &&
                   clip(c, 1)["fade_in_samples"] == 7200,
               "actual native dialog commits one relative group fade");
+        check(juce::Component::getCurrentlyFocusedComponent() == &w,
+              "successful panel submission restores timeline command focus");
         auto dialogState = c.query()["tracks"];
         c.undo();
         check(c.query()["tracks"] == before, "fade dialog Undo restores all fields");
@@ -408,8 +425,28 @@ int main(int argc, char** argv)
         w.uiCommands().invokeDirectly(275, false);
         check(c.query() == unchanged && find(w, "clip.fades.panel"),
               "invalid duration retains dialog and changes nothing");
-        w.uiCommands().invokeDirectly(277, false);
+        check(input->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)),
+              "Escape from focused invalid field routes the registered cancel command");
         check(!find(w, "clip.fades.panel"), "Escape command cancels fade draft");
+        check(juce::Component::getCurrentlyFocusedComponent() == &w,
+              "panel cancellation restores timeline keyboard focus");
+        const auto submitKey =
+            juce::KeyPress('m', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
+        w.uiCommands().getKeyMappings()->removeKeyPress(submitKey);
+        w.uiCommands().getKeyMappings()->clearAllKeyPresses(275);
+        w.uiCommands().getKeyMappings()->addKeyPress(275, submitKey);
+        pump();
+        w.uiCommands().invokeDirectly(280, false);
+        pump();
+        input = dynamic_cast<juce::TextEditor*>(find(w, "clip.fades.in_ms"));
+        input->setText("100", false);
+        check(input->keyPressed(submitKey) && !find(w, "clip.fades.panel"),
+              "focused panel uses remapped submit key rather than hardcoding Command Return");
+        c.undo();
+        w.uiCommands().getKeyMappings()->clearAllKeyPresses(275);
+        w.uiCommands().getKeyMappings()->addKeyPress(
+            275, juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0));
+        pump();
         w.uiCommands().invokeDirectly(280, false);
         pump();
         receipt = run(c, "track.mute", {{"track", aTrack}, {"enabled", true}});

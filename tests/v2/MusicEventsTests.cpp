@@ -170,7 +170,10 @@ int main(int argc, char** argv)
         doubleClick("tempo", 0);
         check(!panel()->canDelete(), "initial event deletion is disabled in actual native panel");
         input("music.event.bpm", "100");
-        invoke(w, 275);
+        auto* bpmField = dynamic_cast<juce::TextEditor*>(find(w, "music.event.bpm"));
+        check(bpmField->keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0)),
+              "music value field routes submit key through the actual command manager");
+        pump();
         check(c.query()["music"]["tempos"][0]["bpm"] == 100 &&
                   c.query()["music"]["tempos"][0]["id"] == original["music"]["tempos"][0]["id"],
               "initial tempo value edits preserve anchored identity");

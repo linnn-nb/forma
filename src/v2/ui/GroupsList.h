@@ -102,7 +102,7 @@ private:
             active.onClick = [this, id, enable] { enable(id, !active.getToggleState()); };
             name.onClick = [id, select] { select(id); };
             settings.onClick = [id, edit] { edit(id); };
-            settings.setButtonText("…");
+            settings.setButtonText(text("…"));
         }
         void update(const Json& group, const Json& tracks, bool selected, bool playing)
         {

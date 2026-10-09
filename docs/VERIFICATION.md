@@ -1,5 +1,15 @@
 # 验证状态
 
+## U-P0-PANEL-FOCUS-01：原生编辑面板与文件入口（2026-10-09）
+
+结论：Release及固定身份deep/strict验签通过；4项受影响回归最终通过，共433检查。首轮navigation夹具漏填track.create的ref而失败，补齐夹具后仅重跑该项（5.01秒）；其余music/roll/group分别7.92/13.29/14.18秒通过。没有降低原音频预算：group内部修剪PCM差0、共同增益误差1.216e−7≤2e−6，music PCM差0。没有全量回归或DMG，U＋P0未完整验收。
+
+实现：PanelTextEditor仅将实际注册表中的275/276/277和Escape转发给ApplicationCommandManager；其他按键留给TextEditor，文字Select All/Undo不操作工程。Fades/Roll/MusicEvent面板共用；成功提交或取消恢复Workspace焦点，失败/版本冲突保留面板。GroupTransformTests实测原生输入焦点、文字撤销、默认/改键提交、Escape和提交后焦点；MusicEvents/RollPlayback由实际字段虚拟键盘入口提交。Main的裸文件参数改走Workspace::openLocalFile，.tracktionedit/.ndaw走既有L1工程入口，其他文件保持音频导入；导航测试使用中文、空格、大写扩展名的真实Edit，校验媒体/工程哈希，缺失或损坏文件不替换当前状态。Groups列表省略号使用显式UTF-8，实体AX已显示正确。
+
+桌面：签名FormaPanelKeysPreview直接传入裸工程文件，真实A/B/C恢复；ControlOptionJ打开居中淡化面板，输入框⌘Return提交100→120ms，⌘Z/⇧⌘Z撤销/重做，真实B由7200→8160；⌘S系统另存PanelKeysDesktop.tracktionedit，⌘O原生Open按钮启用并重开，A/B保持0.12/0.17秒及源偏移0.6/0.85秒，保存文件独立XML核验。重开ControlOptionJ和输入框Escape通过。前轮Open禁用本轮未复现，未改chooser筛选器、不宣称找到根因；CUA的AX焦点与前台激活需分别确认。启动裸参数不等于Finder文件关联/运行中document事件支持，后者仍未完成。实体听感、最终鼠标Trim/Smart、完整制作未验。
+
+证据：evidence/U/panel-focus-tests.json、panel-focus-tests.txt、panel-focus-desktop.png。既有tracked回执保持历史；各完整重跑JSON在忽略的build-v2-tracktion/panel-focus-rerun-*。本节更新前轮Open/居中卡片/唯一键位的实体待验状态；跨重开Undo历史不承诺。本轮Open流程测试预览已结束；检测到用户活动的新PanelKeys预览及旧窗口保留，不再发送输入。无SDK、实时路径、依赖、MCP工具变更。
+
 ## U-P0-GROUP-TRANSFORMS-01：整组修剪与淡化（2026-10-09）
 
 结论：Release/固定deep/strict验签通过；受影响7项最终通过（52.32秒），最后专项修正键位夹具后89项通过（10.85秒）。实际48k/44.1k源PCM内部修剪差0、共同−3dB误差1.216e−7（预算2e−6），分数源偏移容差1e−12秒；源哈希未改。 完整U＋P0未验收，不进P1；M2/M3冻结、M4/M5暂缓。任意范围切片、组MIDI/自动化/View/Height/Timebase、All/临时旁路等仍未实现。

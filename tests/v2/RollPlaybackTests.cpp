@@ -193,7 +193,10 @@ int main(int argc, char** argv)
             t->setText(value, false);
         };
         input("transport.roll.pre_samples", "0.25");
-        invoke(w, 275);
+        auto* preField = dynamic_cast<juce::TextEditor*>(find(w, "transport.roll.pre_samples"));
+        check(preField->keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0)),
+              "roll input routes submit key through the registered command");
+        pump();
         check(c.query()["transport_settings"]["roll"]["pre_samples"] == 12000,
               "native panel commits actual pre-roll duration");
         c.undo();
@@ -204,7 +207,9 @@ int main(int argc, char** argv)
         invoke(w, 275);
         check(c.query() == before && find(w, "transport.roll.panel"),
               "invalid numeric text preserves panel and actual facts");
-        invoke(w, 277);
+        check(preField->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)),
+              "Escape cancels invalid roll text through the registered command");
+        pump();
         invoke(w, 279);
         input("transport.roll.pre_samples", "0.270833333");
         const auto track = c.query()["tracks"][0]["id"];

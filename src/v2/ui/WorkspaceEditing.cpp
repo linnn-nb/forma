@@ -345,6 +345,8 @@ void Workspace::showFades()
                     fadesPanel->setVisible(false);
                     refresh();
                     message(text("片段淡化已提交 · 可撤销"));
+                    if (isShowing())
+                        grabKeyboardFocus();
                     return std::string{};
                 }
                 catch (const std::exception& e)

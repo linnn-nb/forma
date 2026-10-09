@@ -1,5 +1,5 @@
 #pragma once
-#include "Theme.h"
+#include "PanelTextEditor.h"
 namespace ndaw::desktop
 {
 class MusicEventPanel final : public juce::Component
@@ -28,6 +28,8 @@ public:
     }
     void connect(juce::ApplicationCommandManager& manager)
     {
+        for (auto* field : {&position, &bpm, &num})
+            field->connect(manager);
         for (auto [button, id] :
              std::vector<std::pair<juce::TextButton*, int>>{{&apply, 275}, {&remove, 276}, {&close, 277}})
         {
@@ -161,7 +163,7 @@ private:
     Submit submit;
     juce::Label title, positionLabel, valueLabel, status;
     juce::ComboBox events, den;
-    juce::TextEditor position, bpm, num;
+    PanelTextEditor position, bpm, num;
     juce::TextButton apply{text("提交")}, remove{text("删除事件")}, close{text("取消")};
     Json snapshot, list;
     bool tempo = true;

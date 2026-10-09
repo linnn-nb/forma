@@ -505,6 +505,14 @@ Json Workspace::queryAutomation(const std::string& target) const
     return commands.automationQuery(target);
 }
 
+void Workspace::openLocalFile(const juce::File& f)
+{
+    if (f.hasFileExtension("tracktionedit;ndaw"))
+        openSession(f);
+    else
+        importAudio(f);
+}
+
 void Workspace::openSession(const juce::File& f)
 {
     if (f.hasFileExtension("ndaw"))

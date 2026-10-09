@@ -708,7 +708,11 @@ bool Workspace::perform(const InvocationInfo& invocation)
         if (id == 275)
             fadesPanel->execute();
         else
+        {
             fadesPanel->setVisible(false);
+            if (isShowing())
+                grabKeyboardFocus();
+        }
         return true;
     }
     if (id == 278 || id == 279)
@@ -731,7 +735,11 @@ bool Workspace::perform(const InvocationInfo& invocation)
         if (id == 275)
             rollPanel->execute();
         else
+        {
             rollPanel->setVisible(false);
+            if (isShowing())
+                grabKeyboardFocus();
+        }
         return true;
     }
     if (id >= 273 && id <= 277)
@@ -742,7 +750,11 @@ bool Workspace::perform(const InvocationInfo& invocation)
         else if (musicEventPanel && musicEventPanel->isVisible())
         {
             if (id == 277)
+            {
                 musicEventPanel->setVisible(false);
+                if (isShowing())
+                    grabKeyboardFocus();
+            }
             else
                 musicEventPanel->execute(id == 276);
         }
@@ -1266,6 +1278,8 @@ void Workspace::showRollSettings()
                     rollPanel->setVisible(false);
                     refresh();
                     message(text("预后卷设置已提交 · 可撤销"));
+                    if (isShowing())
+                        grabKeyboardFocus();
                     return std::string{};
                 }
                 catch (const std::exception& e)
@@ -1318,6 +1332,8 @@ void Workspace::showMusicEvent(const std::string& kind, double beat, const std::
                     musicEventPanel->setVisible(false);
                     refresh();
                     message(text("音乐事件已提交 · 可撤销"));
+                    if (isShowing())
+                        grabKeyboardFocus();
                     return std::string{};
                 }
                 catch (const std::exception& e)

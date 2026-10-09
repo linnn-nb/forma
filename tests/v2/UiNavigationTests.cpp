@@ -233,7 +233,7 @@ int main(int argc, char** argv)
         auto mediaHash = Commands::mediaHash(media);
         owner.seek(12345);
         pump();
-        w.importAudio(media);
+        w.openLocalFile(media);
         pump();
         auto imported = w.query()["tracks"];
         check(imported.size() == 1 && imported[0]["clips"].size() == 1 &&
@@ -246,6 +246,25 @@ int main(int argc, char** argv)
         w.uiCommands().invokeDirectly(7, false);
         pump();
         check(w.query()["tracks"] == imported, "global Redo restores original imported stable IDs");
+        const auto localProject = folder.getChildFile(ndaw::desktop::text("本地工程 with spaces.TRACKTIONEDIT"));
+        owner.save(localProject);
+        const auto projectHash = Commands::mediaHash(localProject);
+        owner.commit(
+            owner.makePlan("human", Json::array({{{"command", "track.create"},
+                                                  {"args", {{"name", "Do not import XML"}, {"ref", "$extra"}}}}})));
+        w.openLocalFile(localProject);
+        pump();
+        check(w.query()["tracks"] == imported && w.queryView()["workspace"] == "edit",
+              "startup file ingress opens real project XML with Unicode spaces and uppercase extension");
+        check(Commands::mediaHash(localProject) == projectHash && Commands::mediaHash(media) == mediaHash,
+              "local project ingress preserves both saved document and source PCM bytes");
+        const auto beforeBadFile = w.query();
+        w.openLocalFile(folder.getChildFile("missing.tracktionedit"));
+        check(w.query() == beforeBadFile, "missing startup project preserves current session and history");
+        const auto corruptProject = folder.getChildFile("corrupt.tracktionedit");
+        check(corruptProject.replaceWithText("not an Edit"), "corrupt startup document fixture written");
+        w.openLocalFile(corruptProject);
+        check(w.query() == beforeBadFile, "invalid startup project is not imported or reported as completed");
         w.uiCommands().invokeDirectly(100, false);
         auto track = imported[0]["id"].get<std::string>();
         check(find(w, "mix.insert:" + juce::String(track) + ":0") && find(w, "mix.output:" + juce::String(track)) &&

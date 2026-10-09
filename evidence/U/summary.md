@@ -1,5 +1,9 @@
 # U 原生界面重构
 
+## U-P0-PANEL-FOCUS-01
+
+原生Fades/Roll/MusicEvent文本输入接通有限注册表快捷键，提交/取消恢复编辑焦点；裸启动工程路径正确打开Edit。Release/固定deep/strict通过，4项433检查最终通过；首轮导航夹具缺ref已修正后单独通过，未放宽PCM预算。实际桌面快捷键提交/Undo/Redo、系统另存/Open、重开自定义键与Escape通过，A/B淡入0.12/0.17秒与源偏移独立核验。前轮Open禁用未复现，不声称根因修复。关键证据panel-focus-tests.json/.txt、panel-focus-desktop.png；完整重跑JSON留build；U＋P0/任意范围组编辑、Finder运行中文档事件、实体听感仍未完成，无DMG。
+
 ## U-P0-GROUP-TRANSFORMS-01（2026-10-09）
 
 编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 Release/固定deep/strict验签通过；受影响7项最终通过（52.32秒），最后专项修正键位夹具后89项通过（10.85秒）。实际48k/44.1k源PCM内部修剪差0、共同−3dB误差1.216e−7（预算2e−6），分数源偏移容差1e−12秒；源哈希未改。

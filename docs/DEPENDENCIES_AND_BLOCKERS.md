@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+本轮无新增依赖或授权阻塞。固定本地签名沿用已授权身份，Release及deep/strict通过；SDK既有补丁保留。前轮Open禁用在本轮原生另存/重开未复现，不把其标为已定位修复；CUA前台激活须单独确认。Finder文件关联/运行中文档事件仍未实现；实体听感和完整U＋P0验收未完成。
+
 当前结论（U-P0-GROUP-TRANSFORMS-01）：无新依赖/SDK/RT/AI工具；Release/固定验签、7项受影响回归和最终89专项通过。实体淡化提交/撤销/另存/新进程重开通过；Open对话框确认禁用原因未定，随后CUA无窗口/0×0，须复现后再验最终唯一键位/卡片。只结束新测试预览89941，人工操作窗口保留。组MIDI/自动化/任意区间与完整U＋P0未完成；旧增量记录以最新VERIFICATION为准。
 当前结论（U-P0-EDIT-GROUPS-01）：无新依赖/SDK/RT修改，Release与固定deep/strict验签通过，128专项及4项受影响回归通过；具体分批证据见VERIFICATION。MIX_GROUPS schema1兼容/schema2迁移和损坏载入拒绝已测。Mac锁定，实体点击/按键/试听未验；仅本轮86294已结束。整组trim/fade/gain/MIDI移动、View/Height/Timebase/自动化、All/临时旁路与完整U＋P0仍未完成；M2/M3冻结、M4/M5暂缓。
 

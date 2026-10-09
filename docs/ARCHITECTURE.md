@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-PANEL-FOCUS-01：PanelTextEditor只转发共享面板命令275–277/Escape，其他文字键留TextEditor；实际注册表负责自定义键，成功/取消回到Workspace焦点，失败不关面板。裸启动路径由Workspace::openLocalFile区分工程/音频，实际写入仍在既有L1，无新schema/SDK/实时修改。Release/4项433检查及桌面保存重开通过；Open禁用未复现，Finder document事件尚未实现，见VERIFICATION首节。
+
 最新（U-P0-GROUP-TRANSFORMS-01）：编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 毫秒淡化面板/共享草稿仅产出Plan，source offset使用原生时间差；无新持久schema、依赖、SDK或RT修改。实体Open流程待排查，详见VERIFICATION首节。
 编辑组（U-P0-EDIT-GROUPS-01）：MIX_GROUPS schema2增加edit布尔；schema1只读解释为edit=false，首次组修改以同一native Undo事务迁移全组typed字段/JSON，Undo可恢复旧schema。载入candidate先校验组数据，再替换Edit；缺失成员保留引用。Mix沿用首匹配规则；EditGroupCommands只读闭包解析启用编辑组，重叠组连通、关闭不参与，不由GUI直接修改Edit。
 

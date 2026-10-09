@@ -78,6 +78,8 @@ public:
     void prepareExternalPlugin(const std::string& descriptor);
     Json queryAutomation(const std::string& target) const;
     void openSession(const juce::File& f);
+    // Startup receives a fresh Workspace; project files must not enter audio import.
+    void openLocalFile(const juce::File& f);
     void prepareImport(const juce::File& f);
     void importAudio(const juce::File& f);
     Json queryLegacyReports() const;

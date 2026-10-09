@@ -1,5 +1,7 @@
 # Forma 交互参考
 
+U-P0-PANEL-FOCUS-01（自有可用性修复）：沿用既有淡化/音乐事件/预后卷命令与下表参考行为，不新增Pro Tools对齐声明。输入框有限转发实际注册表的提交/取消，文字编辑保持本地，关闭恢复时间线焦点；UTF-8省略号修正。4项433检查及淡化实体快捷键/保存/Open/重开通过。前轮Open禁用未复现；Finder事件与完整U＋P0仍未完成。
+
 当前增量（2026-10-09）：独立钢琴卷帘音高缩放和选中/全部适配已接通，不改Edit轨道的Notes范围。原生+/−/N位于卷帘右上方，滚轮、可改键、保存重开和真实MIDI手势通过专项；实体界面/试听待解锁后验证。参考官方2026.4手册第1068页（MIDI Editor Zoom Controls）及第871页（连续MIDI缩放）；核验日期2026-10-09，来源https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，本地PDF SHA884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。键位268–272是Forma独立卷帘入口，不宣称完整Pro Tools映射；资格见VERIFICATION.md首节。
 
 结论：U＋P0 正在实现；下表是行为依据与差异，不是已完成声明。参照窗口结构和操作，不复制商标、图标、配色或专有资产。

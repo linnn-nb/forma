@@ -1,5 +1,5 @@
 #pragma once
-#include "Theme.h"
+#include "PanelTextEditor.h"
 namespace ndaw::desktop
 {
 class RollPanel final : public juce::Component
@@ -28,6 +28,8 @@ public:
     }
     void connect(juce::ApplicationCommandManager& manager)
     {
+        preTime.connect(manager);
+        postTime.connect(manager);
         apply.setComponentID("ui.command:275");
         cancel.setComponentID("ui.command:277");
         apply.setCommandToTrigger(&manager, 275, true);
@@ -115,7 +117,7 @@ private:
     int64_t preAnchor = 0, postAnchor = 0;
     Json snapshot;
     juce::ToggleButton pre, post;
-    juce::TextEditor preTime, postTime;
+    PanelTextEditor preTime, postTime;
     juce::Label title, hint;
     juce::TextButton apply{text("提交")}, cancel{text("取消")};
 };

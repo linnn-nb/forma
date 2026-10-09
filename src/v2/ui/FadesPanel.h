@@ -1,5 +1,5 @@
 #pragma once
-#include "Theme.h"
+#include "PanelTextEditor.h"
 namespace ndaw::desktop
 {
 class FadesPanel final : public juce::Component
@@ -31,6 +31,8 @@ public:
     }
     void connect(juce::ApplicationCommandManager& manager)
     {
+        in.connect(manager);
+        out.connect(manager);
         for (auto [button, id] : std::vector<std::pair<juce::TextButton*, int>>{{&apply, 275}, {&cancel, 277}})
         {
             button->setComponentID("ui.command:" + juce::String(id));
@@ -128,7 +130,7 @@ private:
     std::string mediaHash;
     juce::String inText, outText;
     juce::Label title, inLabel, outLabel, status;
-    juce::TextEditor in, out;
+    PanelTextEditor in, out;
     juce::ComboBox inCurve, outCurve;
     juce::TextButton apply{text("提交")}, cancel{text("取消")};
 };
