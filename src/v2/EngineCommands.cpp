@@ -578,7 +578,8 @@ Json Commands::preview(const Json& plan) const
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
-        if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set")
+        if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set" ||
+            cmd == "location.recall" || cmd.starts_with("location.roll."))
             require(actor == "human", "ruler editing is local GUI only during U phase");
         const auto& schema = entry->at("schema");
         for (const auto& key : schema.at("required"))
@@ -641,7 +642,7 @@ Json Commands::preview(const Json& plan) const
         {
             // Session transport settings are simulated and previewed by the L1 transport validator.
         }
-        else if (cmd.starts_with("marker.") || cmd == "location.store_selection")
+        else if (cmd.starts_with("marker.") || cmd.starts_with("location."))
         {
             // Marker state and selection memories are checked against the native MarkerTrack below.
         }
@@ -805,7 +806,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
             op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("midi.") ||
             op.at("command").get<std::string>().starts_with("marker.") ||
-            op.at("command") == "location.store_selection" ||
+            op.at("command").get<std::string>().starts_with("location.") ||
             op.at("command").get<std::string>().starts_with("tempo.") ||
             op.at("command").get<std::string>().starts_with("meter."))
         {
@@ -830,7 +831,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             {
                 executeMixGroupOperation(cmd, a);
             }
-            else if (cmd.starts_with("marker.") || cmd == "location.store_selection")
+            else if (cmd.starts_with("marker.") || cmd.starts_with("location."))
             {
                 executeMarkerOperation(cmd, a, objects);
             }
@@ -1403,6 +1404,9 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     (void)candidate->createNewItemID();
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     readRollState(candidate->state.getChildWithName("NATIVEDAW"));
+    for (auto* location : candidate->getMarkerManager().getMarkers())
+        if (location)
+            readLocationRollTimes(location->state);
     (void)mixGroupsQuery(candidate.get());
     readUiState(candidate->state.getChildWithName("NATIVEDAW"));
     if (masterAnalysis)

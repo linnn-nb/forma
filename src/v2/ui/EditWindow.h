@@ -913,9 +913,10 @@ public:
             {
                 const auto id = nearest.at("id").get<std::string>();
                 const auto position = nearest.at("position_samples").get<int64_t>();
-                seek(position);
                 if (onMarkerClick)
                     onMarkerClick(id);
+                else
+                    seek(position);
             }
             else
                 seek(point);

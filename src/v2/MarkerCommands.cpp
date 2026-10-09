@@ -1,4 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "TimelineState.h"
+#include <charconv>
 
 namespace ndaw::v2
 {
@@ -39,6 +41,35 @@ bool isRangeLocation(const te::MarkerClip& marker)
 
 } // namespace
 
+// Marker-local optional data; old locations have no roll times and retain that meaning.
+Json readLocationRollTimes(const juce::ValueTree& markerState)
+{
+    juce::ValueTree state;
+    for (auto child : markerState)
+        if (child.hasType("NDAW_LOCATION_ROLL"))
+        {
+            require(!state.isValid(), "duplicate Memory Location roll data");
+            state = child;
+        }
+    if (!state.isValid())
+        return nullptr;
+    require(state.getNumProperties() == 3 && state.getNumChildren() == 0 &&
+                state.getProperty("schema").toString() == "1",
+            "invalid Memory Location roll schema");
+    Json result = Json::object();
+    for (auto key : {"pre_samples", "post_samples"})
+    {
+        require(state.hasProperty(key), "incomplete Memory Location roll data");
+        const auto value = state.getProperty(key).toString().toStdString();
+        int64_t n = 0;
+        const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), n);
+        require(error == std::errc{} && end == value.data() + value.size() && n >= 0 && n <= maximumPosition(),
+                "invalid Memory Location roll duration");
+        result[key] = n;
+    }
+    return result;
+}
+
 void Commands::registerMarkerCommands(Json& registry)
 {
     const Json name{{"type", "string"}, {"minLength", 1}, {"maxLength", 96}};
@@ -63,6 +94,12 @@ void Commands::registerMarkerCommands(Json& registry)
     add("marker.rename", {{"marker", markerIDSchema}, {"name", name}}, {"marker", "name"});
     add("marker.move", {{"marker", markerIDSchema}, {"position_samples", position}}, {"marker", "position_samples"});
     add("marker.delete", {{"marker", markerIDSchema}}, {"marker"});
+    for (auto id : {"location.roll.capture", "location.roll.clear", "location.recall"})
+    {
+        add(id, {{"marker", markerIDSchema}}, {"marker"});
+        registry.back()["tool_visibility"] = "local_gui";
+        registry.back()["test"] = "U-P0-MEMORY-ROLL-01";
+    }
 }
 
 te::MarkerClip* Commands::marker(const std::string& id) const
@@ -93,6 +130,7 @@ Json Commands::markerQuery() const
                           {"length_samples", range ? markerLength(*item) : 0},
                           {"bar", bars.bars + 1},
                           {"beat", bars.beats.inBeats() + 1.0},
+                          {"roll_times", readLocationRollTimes(item->state)},
                           {"timebase", item->isSyncBarsBeats() ? "bars_beats" : "samples"}});
     }
     return result;
@@ -106,19 +144,21 @@ Json Commands::validateMarkerPlan(const Json& operations) const
         int64_t position = 0;
         int64_t length = 0;
         bool range = false;
+        Json roll = nullptr;
     };
     std::map<std::string, State> current;
     for (auto* item : edit->getMarkerManager().getMarkers())
         if (item)
             current[markerID(*item)] = {item->getName().toStdString(), markerPosition(*item),
-                                        isRangeLocation(*item) ? markerLength(*item) : 0, isRangeLocation(*item)};
+                                        isRangeLocation(*item) ? markerLength(*item) : 0, isRangeLocation(*item),
+                                        readLocationRollTimes(item->state)};
 
     Json changes = Json::array();
     for (size_t index = 0; index < operations.size(); ++index)
     {
         const auto& op = operations[index];
         const auto command = op.at("command").get<std::string>();
-        if (!command.starts_with("marker.") && command != "location.store_selection")
+        if (!command.starts_with("marker.") && !command.starts_with("location."))
             continue;
         const auto& args = op.at("args");
         if (command == "marker.create")
@@ -161,6 +201,56 @@ Json Commands::validateMarkerPlan(const Json& operations) const
         auto found = current.find(id);
         require(found != current.end(), "marker or Memory Location not found");
         const auto before = found->second;
+        if (command == "location.roll.capture" || command == "location.roll.clear" || command == "location.recall")
+        {
+            // A single recall must preview and commit the same native facts. Compound
+            // timeline/transport plans are deliberately rejected, not partially simulated.
+            require(operations.size() == 1, "Memory Location recall/roll edit must be a standalone transaction");
+            Json after = before.roll;
+            if (command == "location.roll.capture")
+            {
+                const auto roll = readRollState(metadata);
+                after = {{"pre_samples", roll["pre_samples"]}, {"post_samples", roll["post_samples"]}};
+            }
+            else if (command == "location.roll.clear")
+                after = nullptr;
+            if (command == "location.recall")
+            {
+                require(before.position >= 0 && before.position <= maximumPosition() && before.length >= 0 &&
+                            before.length <= maximumPosition() - before.position &&
+                            (!before.range || before.length > 0),
+                        "invalid saved Memory Location range");
+                const auto rollBefore = readRollState(metadata);
+                auto rollAfter = rollBefore;
+                if (!before.roll.is_null())
+                    for (auto key : {"pre_samples", "post_samples"})
+                        rollAfter[key] = before.roll[key];
+                auto rangeAfter = timelineRange();
+                if (before.range)
+                    rangeAfter = {{"start_samples", before.position},
+                                  {"end_samples", before.position + before.length},
+                                  {"length_samples", before.length},
+                                  {"timebase", "session_samples"},
+                                  {"sample_rate", sampleRate}};
+                changes.push_back(
+                    {{"operation_index", index},
+                     {"command", command},
+                     {"marker", id},
+                     {"before",
+                      {{"position_samples", markerPositionForCurrentTransport()},
+                       {"time_selection", timelineRange()},
+                       {"roll", rollBefore}}},
+                     {"after",
+                      {{"position_samples", before.position}, {"time_selection", rangeAfter}, {"roll", rollAfter}}}});
+            }
+            else
+                changes.push_back({{"operation_index", index},
+                                   {"command", command},
+                                   {"marker", id},
+                                   {"before", before.roll},
+                                   {"after", after}});
+            continue;
+        }
         if (command == "marker.rename")
         {
             const auto name = args.at("name").get<std::string>();
@@ -186,7 +276,8 @@ Json Commands::validateMarkerPlan(const Json& operations) const
             after = {{"name", found->second.name},
                      {"kind", found->second.range ? "selection" : "marker"},
                      {"position_samples", found->second.position},
-                     {"length_samples", found->second.length}};
+                     {"length_samples", found->second.length},
+                     {"roll_times", found->second.roll}};
         changes.push_back({{"operation_index", index},
                            {"command", command},
                            {"marker", id},
@@ -194,7 +285,8 @@ Json Commands::validateMarkerPlan(const Json& operations) const
                             {{"name", before.name},
                              {"kind", before.range ? "selection" : "marker"},
                              {"position_samples", before.position},
-                             {"length_samples", before.length}}},
+                             {"length_samples", before.length},
+                             {"roll_times", before.roll}}},
                            {"after", after}});
     }
     return changes;
@@ -250,7 +342,41 @@ void Commands::executeMarkerOperation(const std::string& command, const Json& ar
 
     auto* target = marker(args.at("marker").get<std::string>());
     require(target != nullptr, "marker or Memory Location disappeared");
-    if (command == "marker.rename")
+    if (command == "location.roll.capture")
+    {
+        auto old = target->state.getChildWithName("NDAW_LOCATION_ROLL");
+        if (old.isValid())
+            target->state.removeChild(old, &undo);
+        juce::ValueTree stored("NDAW_LOCATION_ROLL");
+        stored.setProperty("schema", 1, nullptr);
+        const auto roll = readRollState(metadata);
+        for (auto key : {"pre_samples", "post_samples"})
+            stored.setProperty(key, juce::int64(roll[key].get<int64_t>()), nullptr);
+        target->state.addChild(stored, -1, &undo);
+    }
+    else if (command == "location.roll.clear")
+    {
+        auto stored = target->state.getChildWithName("NDAW_LOCATION_ROLL");
+        if (stored.isValid())
+            target->state.removeChild(stored, &undo);
+    }
+    else if (command == "location.recall")
+    {
+        const auto start = markerPosition(*target);
+        if (isRangeLocation(*target))
+            executeTimelineOperation("session.range.set",
+                                     {{"start_samples", start}, {"end_samples", start + markerLength(*target)}});
+        executeTimelineOperation("session.insertion.set", {{"position_samples", start}});
+        const auto stored = readLocationRollTimes(target->state);
+        if (!stored.is_null())
+        {
+            auto roll = readRollState(metadata);
+            for (auto key : {"pre_samples", "post_samples"})
+                roll[key] = stored[key];
+            executeTransportOperation("transport.roll.set", roll);
+        }
+    }
+    else if (command == "marker.rename")
         target->setName(juce::String(args.at("name").get<std::string>()));
     else if (command == "marker.move")
     {

@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+U-P0-MEMORY-ROLL-01：无新授权或依赖阻塞；无新增SDK/实时修改，原第三方变更保留。Release固定签名、76专项、5项受影响最终通过；桌面改键/Undo/另存/Open重开通过。完整U＋P0及硬件录音/耐久、None与其余记忆属性、范围Shuffle/组MIDI与自动化/完整组视图行为仍未完成；不进入P1，不打DMG。
+
 当前U-P0-CLIP-TIME-01：无新依赖或授权阻塞；Release、固定本地身份deep/strict及指定叶证书条件通过。76专项/7项375检查和桌面单位/改键/撤销/另存重开通过；原SDK补丁、用户其他窗口保留，本轮两份预览已退出。数值字段使用ASCII按键路径，其他文字输入不改；时间码仅24/25/30 NDF，工程坐标仍48k。Memory roll、范围Shuffle/组MIDI/自动化、Finder关联/运行中文档事件及完整U＋P0尚未完成；听感、麦克风、Windows、耐久未新验，无DMG。
 
 当前 U-P0-WINDOW-FOCUS-01：无新增授权/依赖阻塞；Release/固定签名和3项200检查通过。冷启动与原生Open后首键实体验收通过，旧“先点击拆分”绕行对新StartupKeysFinal预览不再必要。仅本轮旧Range/StartupKeys/Final预览结束，其他用户窗口及原SDK补丁保留。Clip检查器时间单位/导航、Memory预后卷、范围Shuffle/组MIDI/自动化、完整U＋P0仍待做；第三方插件实际焦点、听感/麦克风/Windows/耐久未新验，无DMG。

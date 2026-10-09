@@ -1,9 +1,9 @@
 # 下一步
 
-结论：Clip检查器按主标尺输入、ms淡化、源时间区分、Tab导航、改键提交与Esc已接通；76专项、7项375检查及实体另存/Open重开通过。完整U＋P0未验收，不进P1。
+结论：Memory Locations 预后卷时长保存、移除、原子召回已接通；76专项＋受影响5项405检查最终通过，桌面改键/Undo/原生另存/Open重开通过。完整U＋P0尚未验收，不进入P1。
 
-亲手试：双击 `build-v2-tracktion/OpenClipTimeDemo.command`。选“移至”输入 `1 | 4`，ControlOptionK提交（此工程自定义；新工程默认⌘Return），⌘Z/⇧⌘Z撤销/重做。Tab/ShiftTab换字段，淡入输入100表示100ms；非法拍号保留输入，Esc取消。标尺菜单切主单位，⌘S另存新文件、⌘O重开。素材为真实低幅诊断PCM，不是音乐/麦克风验收。正式产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。
+亲手试：双击 `build-v2-tracktion/OpenMemoryRollDemo.command`；Shift M 打开，选 Chorus with roll。⌘F6 保存当前时长、⌘F7 召回（演示自定义；新工程共享提交默认⌘Return）。Esc 后⌘Z/⇧⌘Z撤销/重做；⇧⌘K设置当前时长，召回保留当前启用开关。⌘S保存新副本、⌘O重开。诊断PCM不是音乐/实录验收。
 
-下一项：补Marker/Memory Locations的预后卷保存与召回，同一L1事务、可改键、撤销和重开验收。范围Shuffle、组MIDI/自动化/View/Height/Timebase、All/临时旁路、Finder关联/运行中文档事件仍待补；实体鼠标Trim/Smart与听感待验。
+下一项明确工程任务：时间范围 Shuffle 删除/剪切，按实际片段边界处理部分重叠，并以一笔L1事务联动编辑组、选区和插入点；验证范围外音频、Undo/Redo、保存重开与键位。随后核对完整U＋P0清单，补组MIDI/自动化/View/Height/Timebase、All/临时旁路、Finder关联/运行中文档事件及实际鼠标Trim/Smart听感等缺口。
 
-M2/M3冻结，M4/M5暂缓。自己的两份ClipTime预览已退出，其他用户窗口及原SDK补丁保留；无新依赖/授权阻塞，无全量回归或DMG。证据见VERIFICATION首节及evidence/U/clip-time-*。
+M2/M3冻结，M4/M5暂缓。仅本轮测试窗口已退出；原用户窗口与SDK补丁保留。未新增依赖/DMG，未执行全量回归。资格及边界见VERIFICATION首节与evidence/U/memory-roll-*。正式可运行产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。

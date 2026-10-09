@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-MEMORY-ROLL-01：`location.roll.capture`、`location.roll.clear`、`location.recall` 只接受稳定 marker ID，human-only/local_gui、低风险可逆、停止时 standalone Plan。预览实际时长或插入点/选区/完整 roll before/after；召回只替换保存的时长。复用 actor/session/revision/幂等/Scope/真实回执与单笔 Undo。混合操作 Plan 明确拒绝；未扩展冻结的 MCP tools，query.markers 增加可为空的 roll_times 事实。
+
 U-P0-CLIP-TIME-01：新增两个本地只读时间转换API，不注册AI/MCP工具。GUI提交绑定输入开始时的revision与session_token，使用既有human Plan原语；冲突或非法值保留草稿并显示失败，只有实际committed回执显示成功。未改修剪/淡化不提交、不冒充新事务；Esc取消无工程写入。275默认⌘Return、可改键，277取消；键位保存重开和实体ControlOptionK执行已验。源时间只读显示秒及按真实媒体率换算的PCM帧，与48k工程样本分开。冻结M2/M3不扩资格，Undo栈不跨重开。
 
 U-P0-WINDOW-FOCUS-01：只改原生窗口和成功Open的键盘焦点生命周期，GUI仍调用同一ApplicationCommandManager与既有human Plan/Undo；没有领域/MCP工具扩展。文本框局部Undo不会产生或撤销工程事务，重开成功结束旧输入；失败Open和不同peer不抢焦点。冻结M2/M3不扩资格。

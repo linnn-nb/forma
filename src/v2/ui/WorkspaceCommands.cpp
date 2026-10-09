@@ -167,6 +167,9 @@ const std::vector<Entry>& entries()
         {278, "预卷 / 后卷开关（选区播放）", "走带", 'k', cmd},
         {279, "预卷 / 后卷设置…", "走带", 'k', cmd | shift},
         {280, "片段淡化…", "编辑", 'f', cmd},
+        {281, "Memory Location · 保存当前预后卷", "走带", 'r', cmd | shift | juce::ModifierKeys::altModifier},
+        {282, "Memory Location · 移除预后卷记忆", "走带", juce::KeyPress::backspaceKey,
+         cmd | shift | juce::ModifierKeys::altModifier},
         {267, "清除 Zoom Toggle · 保留当前视图", "缩放"},
         {262, "Overview · 256 采样/像素", "缩放", '0', cmd | shift | juce::ModifierKeys::altModifier},
         {250, "波形显示放大", "缩放", ']', cmd | juce::ModifierKeys::altModifier},
@@ -647,6 +650,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                    MidiZoom::entry(view["midi_zoom"], selected)["mode"] ==
                                        (id == 260 ? "notes" : "clips"));
             }
+            if (id == 281 || id == 282)
+                active = memoryLocationsPanel && memoryLocationsPanel->isVisible() &&
+                         (id == 281 ? memoryLocationsPanel->canCaptureRoll() : memoryLocationsPanel->canClearRoll());
             if (id == 280)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
             if (id == 278 || id == 279)
@@ -661,6 +667,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id >= 275 && id <= 277)
                 active =
                     (musicEventPanel && musicEventPanel->isVisible() && (id != 276 || musicEventPanel->canDelete())) ||
+                    (id != 276 && memoryLocationsPanel && memoryLocationsPanel->isVisible() &&
+                     (id == 277 || memoryLocationsPanel->canRecall())) ||
                     (id != 276 && rollPanel && rollPanel->isVisible()) ||
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
@@ -716,6 +724,22 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if ((id == 275 || id == 277 || id == 281 || id == 282) && memoryLocationsPanel && memoryLocationsPanel->isVisible())
+    {
+        if (id == 275)
+            memoryLocationsPanel->recallSelected();
+        else if (id == 281)
+            memoryLocationsPanel->captureRollTimes();
+        else if (id == 282)
+            memoryLocationsPanel->clearRollTimes();
+        else
+        {
+            memoryLocationsPanel->setVisible(false);
+            if (isShowing())
+                grabKeyboardFocus();
+        }
+        return true;
+    }
     if (id == 280)
     {
         invoke([&] { showFades(); });

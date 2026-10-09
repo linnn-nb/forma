@@ -190,7 +190,7 @@ int main(int argc, char** argv)
 
         {
             ndaw::desktop::Workspace workspace(false, std::make_unique<Storage>(folder.getChildFile("gui-prefs")));
-            workspace.setSize(1400, 820);
+            workspace.setSize(1440, 820);
             workspace.setVisible(true);
             settle(100);
             auto& commands = McpTestAccess::commands(workspace);

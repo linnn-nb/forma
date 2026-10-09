@@ -1,5 +1,21 @@
 # U 原生界面重构
 
+## U-P0-MEMORY-ROLL-01（2026-10-09）
+
+结论：Memory Locations 可保存、移除并召回预后卷时长；定位、选区和时长在一个 human Plan / native UndoManager 事务内。只召回时长，保留当前启用状态；旧位置没有时长记忆时保持当前值。76 专项与受影响 5 项最终通过（405 个不重复检查），真实 stereo 48k / 180000 帧渲染 PCM 前后误差 0（容差 2e-5），源 SHA256 不变。正式 Release / 固定身份 strict/deep 验签通过。完整 U＋P0 未完成，不进入 P1。
+
+实现：`src/v2/MarkerCommands.cpp` 的 local_gui/human-only `location.roll.capture/clear`、`location.recall`；MarkerClip 可选 `NDAW_LOCATION_ROLL` schema1 仅存两项工程采样时长。载入 candidate Edit 时先校验版本、范围、字段和重复子节点；失败保持当前工程。新命令只允许单独操作，混合 Plan 整笔拒绝；recall 预览列明光标、选区和完整当前/召回 roll。原生面板显示是否存时长，双击或召回按钮/共享提交键调用 L1；标尺点击不再提前绕过 Undo seek。
+
+键位：Shift M 打开；275 共享提交默认 ⌘Return；281 保存当前预后卷默认 ⇧⌘⌥R；282 移除记忆默认 ⇧⌘⌥Backspace；全部可改。此演示工程已存 ⌘F6 保存、⌘F7 召回。文字输入的 Undo 留在名称框，Esc 返回编辑面后 ⌘Z/⇧⌘Z 操作工程历史。
+
+桌面：自有固定签名 `FormaMemoryRollPreview.app`，外置耳机 CoreAudio 48k /512。清除 r44/键盘 Undo r45；设当前 1s/.75s、pre off/post on r46；名称框 ⌘F7 召回 .500021s/.250063s r47，开关仍 off/on；一次 Undo r48 回 1s/.75s；⌘F6 保存 r49，Undo r50 恢复旧记忆；再次召回 r51。原生另存 `MemoryRollDesktop.tracktionedit`，Open 重开 r52，已存 ⌘F7 在新会话 r53 仍有效。文件独立解析验证存时长 24001/12003、当前开关 0/1、选区 48000–96001、稳定 ID1018；source SHA256 `30ba5d7268078d0a8e6a3312a44290354af17fb4af913eb99dd9872b94fbdc96`。本轮预览已退出且进程无残留，原用户窗口保留。截图由 CUA 实时回传，工具未保存新 PNG；未做实体听感/回环测量。
+
+测试修复记录：初次自定义测试选择了占用的 F6/F7，改用 ⌘F6/⌘F7；测试重复另存同名被真实覆盖保护拒绝，改独立新副本。首轮受影响 CTest 4/5，旧 Marker fixture 的1400宽度折叠了工具栏按钮，调整1440后32检查通过。新增测试绝对路径用显式UTF-8；错误路径下唯一自有诊断目录移入忽略的 build 归档。修复后仅重跑这两项，2/2、7.11秒；其余三项保留本轮首跑通过结果（首跑总31.62秒）。不以失败或重复检查充数。证据：`memory-roll-tests.json`、`memory-roll-regression.json`、`memory-roll-tests.txt`、`memory-roll-desktop.json`。
+
+亲手试：双击 `build-v2-tracktion/OpenMemoryRollDemo.command`，Shift M，选择 Chorus with roll；Esc、⇧⌘K 修改当前时长，以 ⌘F7 提交走带设置；Shift M 后 ⌘F7 召回，Esc 后 ⌘Z 撤销。列表的“保存当前预后卷”或 ⌘F6 更新所选位置；清除按钮只移除该记忆。⌘S 保存新副本、⌘O 重开。素材为低幅真实诊断 PCM，非音乐/麦克风验收。
+
+边界：仅 Marker/Selection 的时间与预后卷时长；None、Zoom/Track Height/Hide/Groups/Window Configuration/general property全集尚未实现。循环及录音预后卷仍不属本增量；上/下 Marker 导航沿用仅跳位置。新增命令不进入冻结的 MCP 工具，不新增依赖、SDK补丁、实时路径或第二引擎；原 Tracktion 修改保留。正式可运行产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，本地开发签名不等于公证发布。
+
 ## U-P0-CLIP-TIME-01（2026-10-09）
 
 Release/固定deep/strict和指定叶证书条件通过；受影响CTest7/7、375检查、58.69秒，新增76专项。全部真实Tracktion PCM（含边界）差0≤2e-5，44.1k源哈希不变；帧下位置/淡化、实际Tempo/Meter、单位冻结、非法/冲突、文字Undo、改键与保存重开通过。默认24fps断言复核后仅重跑ClipTime通过（5.92秒）；输出clip-time-tests.json/txt。

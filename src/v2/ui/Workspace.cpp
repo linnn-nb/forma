@@ -764,7 +764,16 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     };
     editArea.onRange = [this](Json range, Json tracks, uint64_t revision, std::string session, int64_t insertion)
     { commitTimeSelection(std::move(range), std::move(tracks), revision, std::move(session), insertion); };
-    editArea.onMarkerClick = [this](const std::string& id) { showMemoryLocations(id); };
+    editArea.onMarkerClick = [this](const std::string& id)
+    {
+        invoke(
+            [&]
+            {
+                commands.commit(
+                    commands.makePlan("human", Json::array({operation("location.recall", {{"marker", id}})})));
+            });
+        showMemoryLocations(id);
+    };
     for (auto* c : std::initializer_list<juce::Component*>{&toolbar, &transport, &counters})
         addAndMakeVisible(c);
     for (auto* c : std::initializer_list<juce::Component*>{&trackType, &newTrack, &importButton, &saveButton,

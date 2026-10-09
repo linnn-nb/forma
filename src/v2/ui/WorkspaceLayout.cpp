@@ -277,13 +277,7 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return trackCommentsPanel->handleKey(key);
     if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
     {
-        if (key == juce::KeyPress::escapeKey)
-        {
-            memoryLocationsPanel->setVisible(false);
-            grabKeyboardFocus();
-            return true;
-        }
-        return false;
+        return memoryLocationsPanel->handleKey(key);
     }
     if (exportPanel && exportPanel->isVisible())
     {

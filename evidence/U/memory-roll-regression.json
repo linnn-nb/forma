@@ -1,0 +1,36 @@
+{
+  "unique_tests": 5,
+  "final_passed": 5,
+  "final_failed": 0,
+  "unique_checks": 405,
+  "tests": [
+    {
+      "file": "marker-tests.json",
+      "checks": 32,
+      "result": "passed"
+    },
+    {
+      "file": "roll-playback-tests.json",
+      "checks": 193,
+      "result": "passed"
+    },
+    {
+      "file": "editor-tests.json",
+      "checks": 81,
+      "result": "passed"
+    },
+    {
+      "file": "window-focus-tests.json",
+      "checks": 23,
+      "result": "passed"
+    },
+    {
+      "file": "memory-roll-tests.json",
+      "checks": 76,
+      "result": "passed"
+    }
+  ],
+  "initial_suite_seconds": 31.62,
+  "repair_suite_seconds": 7.11,
+  "note": "Three prior passes retained; only Marker and new Memory tests rerun after fixture repairs. No all-suite regression."
+}

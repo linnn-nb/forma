@@ -1,5 +1,7 @@
 # Forma 架构 v2
 
+U-P0-MEMORY-ROLL-01：MarkerClip 可选 `NDAW_LOCATION_ROLL` schema1 仅存 pre_samples/post_samples；旧工程缺失表示不参与召回。candidate Edit 在替换前严格验证字段、范围和重复子节点。L1 的 human/local_gui `location.roll.capture/clear`、`location.recall` 为 standalone Plan；召回预览包含插入点、选区与 roll before/after，执行复用 native CursorMove、range、transport.roll.set，同一 Undo；当前启用状态保留。GUI 不写 Edit，标尺不先 seek，成功回执才报提交。新键位281/282及共享275/277均由现有命令表保存；MCP/分析保持冻结。
+
 U-P0-CLIP-TIME-01：ClipPanel的起点、终点、移至读取主时间单位；L1只读formatTimelinePosition/parseTimelinePosition复用实际TempoSequence和预后卷转换器。界面草稿冻结单位、fps、revision与session，既有clip.trim/move/gain/fade仍为唯一写入口。一笔提交一笔human Undo；无变化的修剪/淡化直接结束输入，不重写源偏移、不新增事务。只有真实committed回执才清草稿；非法/陈旧请求保留。数值Field关闭Cocoa文本组合，用JUCE原生按键执行当前注册表275/277；普通数字输入、粘贴与局部Undo保留。没有新增MCP工具、schema、SDK或实时路径；原SDK修改保留。
 
 U-P0-WINDOW-FOCUS-01：生产WorkspaceWindow先载入工程与键位再显示；native父窗口焦点用有界合并的单个消息交给Workspace，SafePointer守生命周期，只在父级/无组件焦点且active peer时转交。子文本/插件/其他peer保持原焦点，首键兜底不重复处理子组件键。成功Open按session/active peer延后结束旧输入上下文，失败不转交；没有timer抢焦点、L1/Edit/SDK/实时/schema变更。最终200相关检查与实体冷启动/重开首键已验，见VERIFICATION。

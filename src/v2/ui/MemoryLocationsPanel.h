@@ -7,15 +7,14 @@ class MemoryLocationsPanel final : public juce::Component, private juce::ListBox
 {
 public:
     using Write = std::function<void(const std::string&, const Json&, const Json&)>;
-    using Seek = std::function<void(int64_t, const Json&)>;
 
-    MemoryLocationsPanel(Write write, Seek seek, std::function<void()> close)
-        : write(std::move(write)), seek(std::move(seek)), close(std::move(close)), list("memory-locations", this)
+    MemoryLocationsPanel(Write write, std::function<void()> close)
+        : write(std::move(write)), close(std::move(close)), list("memory-locations", this)
     {
         setComponentID("memory.locations.panel");
-        for (auto* component :
-             std::initializer_list<juce::Component*>{&title, &list, &name, &addMarker, &storeSelection, &goTo, &rename,
-                                                     &moveToPlayhead, &remove, &closeButton, &detail, &status})
+        for (auto* component : std::initializer_list<juce::Component*>{
+                 &title, &list, &name, &addMarker, &storeSelection, &goTo, &rename, &moveToPlayhead, &remove,
+                 &closeButton, &detail, &status, &captureRoll, &clearRoll})
             addAndMakeVisible(component);
         title.setText(text("Memory Locations"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(23, juce::Font::bold));
@@ -42,6 +41,12 @@ public:
         moveToPlayhead.setComponentID("memory.locations.move");
         remove.setComponentID("memory.locations.delete");
         closeButton.setComponentID("memory.locations.close");
+        captureRoll.setComponentID("memory.locations.roll.capture");
+        clearRoll.setComponentID("memory.locations.roll.clear");
+        captureRoll.setTooltip(text("把当前预卷与后卷时长存到所选位置；不保存启用状态。"));
+        clearRoll.setTooltip(text("只移除所选位置的预后卷记忆，不修改当前走带设置。"));
+        captureRoll.onClick = [this] { captureRollTimes(); };
+        clearRoll.onClick = [this] { clearRollTimes(); };
         detail.setMultiLine(true);
         detail.setReadOnly(true);
         addMarker.onClick = [this]
@@ -58,30 +63,7 @@ public:
                 args["name"] = entered.toStdString();
             execute("location.store_selection", args);
         };
-        goTo.onClick = [this]
-        {
-            try
-            {
-                const auto* marker = selected();
-                if (!marker)
-                    throw std::runtime_error("先选择一个位置");
-                const auto location = *marker;
-                const auto position = location.at("position_samples").get<int64_t>();
-                if (location.value("kind", std::string{}) == "selection")
-                    execute("session.range.set",
-                            {{"start_samples", position},
-                             {"end_samples", position + location.at("length_samples").get<int64_t>()}});
-                this->seek(position, binding);
-                status.setText(text(location.value("kind", std::string{}) == "selection"
-                                        ? "已恢复选区并定位。"
-                                        : "已定位到 Memory Location。"),
-                               juce::dontSendNotification);
-            }
-            catch (const std::exception& e)
-            {
-                status.setText(text("未执行：") + text(e.what()), juce::dontSendNotification);
-            }
-        };
+        goTo.onClick = [this] { recallSelected(); };
         rename.onClick = [this]
         {
             const auto* marker = selected();
@@ -102,6 +84,53 @@ public:
                 execute("marker.delete", {{"marker", marker->at("id")}});
         };
         closeButton.onClick = [this] { this->close(); };
+    }
+
+    void connect(juce::ApplicationCommandManager& owner)
+    {
+        manager = &owner;
+    }
+    bool canRecall() const
+    {
+        return goTo.isEnabled();
+    }
+    bool canCaptureRoll() const
+    {
+        return captureRoll.isEnabled();
+    }
+    bool canClearRoll() const
+    {
+        return clearRoll.isEnabled();
+    }
+    void recallSelected()
+    {
+        selectedOperation("location.recall");
+    }
+    void captureRollTimes()
+    {
+        selectedOperation("location.roll.capture");
+    }
+    void clearRollTimes()
+    {
+        selectedOperation("location.roll.clear");
+    }
+    bool handleKey(const juce::KeyPress& key)
+    {
+        if (key == juce::KeyPress::escapeKey)
+        {
+            close();
+            return true;
+        }
+        if (manager)
+        {
+            const auto command = manager->getKeyMappings()->findCommandForKeyPress(key);
+            if (command == 275 || command == 277 || command == 281 || command == 282)
+            {
+                manager->invokeDirectly(command, false);
+                return true;
+            }
+        }
+        return false;
     }
 
     void bind(const Json& value)
@@ -161,14 +190,17 @@ public:
 
     void resized() override
     {
-        const auto preferredHeight = std::clamp(260 + int(markers.size()) * 46, 380, 560);
+        const auto preferredHeight = std::clamp(326 + int(markers.size()) * 46, 446, 640);
         card = juce::Rectangle<int>(std::min(930, getWidth() - 24), std::min(preferredHeight, getHeight() - 24))
                    .withCentre(getLocalBounds().getCentre());
         const int x = card.getX() + 22, y = card.getY() + 18, w = card.getWidth() - 44;
         title.setBounds(x, y, w - 210, 34);
         name.setBounds(x + w - 202, y + 2, 202, 30);
-        list.setBounds(x, y + 46, w, std::max(150, card.getHeight() - 220));
-        detail.setBounds(x, list.getBottom() + 8, w, 38);
+        list.setBounds(x, y + 46, w, std::max(110, card.getHeight() - 286));
+        detail.setBounds(x, list.getBottom() + 8, w, 50);
+        const int rollY = card.getBottom() - 136;
+        captureRoll.setBounds(x, rollY, (w - 12) / 2, 30);
+        clearRoll.setBounds(x + (w + 12) / 2, rollY, (w - 12) / 2, 30);
         const int buttonY = card.getBottom() - 96;
         const int buttonW = (w - 36) / 4;
         addMarker.setBounds(x, buttonY, buttonW, 30);
@@ -185,12 +217,7 @@ public:
 private:
     bool keyPressed(const juce::KeyPress& key, juce::Component*) override
     {
-        if (key == juce::KeyPress::escapeKey)
-        {
-            close();
-            return true;
-        }
-        return false;
+        return handleKey(key);
     }
 
     int getNumRows() override
@@ -213,7 +240,9 @@ private:
                               juce::String(item.value("beat", 1.0), 2) + " 拍 · " +
                               text(std::to_string(item.value("position_samples", int64_t(0)))) + text(" 样本");
         g.setFont(juce::FontOptions(11));
-        g.drawText(kind + text("  ·  ") + location, 12, 25, width - 24, height - 26, juce::Justification::left);
+        g.drawText(kind + (item.value("roll_times", Json(nullptr)).is_null() ? text("  ·  ") : text(" · 预后卷 · ")) +
+                       location,
+                   12, 25, width - 24, height - 26, juce::Justification::left);
     }
 
     void selectedRowsChanged(int row) override
@@ -227,6 +256,19 @@ private:
         selectedID = markers[size_t(row)]["id"].get<std::string>();
         loadSelectedName();
         updateControls();
+    }
+
+    void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override
+    {
+        if (row >= 0 && row < int(markers.size()) && selectID(markers[size_t(row)]["id"]))
+            recallSelected();
+    }
+
+    void selectedOperation(const char* command)
+    {
+        const auto* location = selected();
+        if (location && goTo.isEnabled())
+            execute(command, {{"marker", location->at("id")}});
     }
 
     const Json* selected() const
@@ -255,9 +297,20 @@ private:
         rename.setEnabled(marker != nullptr && stopped);
         moveToPlayhead.setEnabled(marker != nullptr && stopped);
         remove.setEnabled(marker != nullptr && stopped);
-        detail.setText(markers.empty() ? text("可在时间线上按 M 添加标记；选中时间范围后可保存为 Memory Location。")
-                                       : text(std::to_string(markers.size())) +
-                                             text(" 个位置 · 修改进入工程 Undo 历史并随工程保存。"));
+        captureRoll.setEnabled(marker != nullptr && stopped);
+        clearRoll.setEnabled(marker != nullptr && stopped && !marker->value("roll_times", Json(nullptr)).is_null());
+        auto description = text("选择一个位置，可保存当前预后卷时长；召回时保留当前开关状态。");
+        if (marker)
+        {
+            const auto roll = marker->value("roll_times", Json(nullptr));
+            description = roll.is_null()
+                              ? text("未保存预后卷 · 召回时保持当前时长。")
+                              : text("已保存：预卷 ") + juce::String(roll["pre_samples"].get<double>() / 48000., 6) +
+                                    text(" 秒 · 后卷 ") + juce::String(roll["post_samples"].get<double>() / 48000., 6) +
+                                    text(" 秒");
+            description += text("\n召回位置、选区与时长为一笔 Undo；启用状态保持当前值。");
+        }
+        detail.setText(description);
     }
 
     void execute(const std::string& command, const Json& args)
@@ -274,7 +327,7 @@ private:
     }
 
     Write write;
-    Seek seek;
+    juce::ApplicationCommandManager* manager = nullptr;
     std::function<void()> close;
     Json facts = Json::object(), binding = Json::object(), markers = Json::array();
     std::string selectedID;
@@ -283,6 +336,7 @@ private:
     juce::TextEditor detail;
     juce::ListBox list;
     juce::TextEditor name;
+    juce::TextButton captureRoll{text("保存当前预后卷")}, clearRoll{text("移除预后卷记忆")};
     juce::TextButton addMarker{text("标记当前位置")}, storeSelection{text("保存当前选区")},
         goTo{text("定位 / 恢复选区")}, rename{text("重命名")}, moveToPlayhead{text("移到播放位置")},
         remove{text("删除")}, closeButton{text("关闭")};

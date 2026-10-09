@@ -175,21 +175,12 @@ void Workspace::showMemoryLocations(const std::string& markerID)
                         refresh();
                         message(text("Memory Location 已保存到工程 · 可撤销"));
                     },
-                    [this](int64_t sample, const Json& binding)
-                    {
-                        const auto current = commands.query();
-                        if (binding.value("session_token", std::string{}) !=
-                                current["session_token"].get<std::string>() ||
-                            binding.value("base_revision", uint64_t(0)) != current["revision"].get<uint64_t>())
-                            throw std::runtime_error("project changed; review the current Memory Location first");
-                        commands.seek(sample);
-                        refresh();
-                    },
                     [this]
                     {
                         memoryLocationsPanel->setVisible(false);
                         grabKeyboardFocus();
                     });
+                memoryLocationsPanel->connect(commandManager);
                 addChildComponent(*memoryLocationsPanel);
             }
             const auto current = commands.query();
