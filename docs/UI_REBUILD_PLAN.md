@@ -1,5 +1,7 @@
 # Forma 界面与基础制作计划
 
+当前增量U-P0-CLIP-TIME-01：Clip检查器时间字段与主标尺一致，淡化使用毫秒；源秒/PCM帧/工程样本分开。Tab/ShiftTab、局部文字Undo、可改提交键和Esc已接真实L1，76专项、受影响7项375检查、桌面提交/撤销/另存/Open重开通过。修复Cocoa吞ControlOption数值快捷键，未改值不产生源时间浮点漂移或空Undo。下一项为Memory Locations预后卷保存/恢复；完整U＋P0仍未完成，不进P1。M2/M3冻结、M4/M5暂缓。
+
 最新增量（U-P0-GROUP-TRANSFORMS-01）：编辑组音频修剪、淡化与片段增益已接通同一L1 Plan/Undo。左右边界和淡化长度按共同变化量联动，增益按共同dB变化量联动，保留各成员原有差异；锁定、越界、冲突或陈旧版本整笔拒绝。 原生⌘F毫秒面板改为居中卡片；89专项与7项受影响回归通过。实体淡化/撤销/另存/重开已验，Open对话框禁用与最终唯一键位/卡片截图待复测；U＋P0未完成，不进P1。
 当前增量（2026-10-09，区间波形截止）：Release/固定验签、受影响10/10、86.56秒，新52与既有62专项通过。实际hosted四采样率stereo、Click和wet Reverb Aux在最近设备样本截止，之后PCM0；native走带/光标和外部MIDI仍依赖消息线程。更新已记录per-device hook到Click之后，fresh patch/CMake exact diff通过，其他补丁保留。Mac locked未实体点击/试听，仅本轮3676结束；完整U＋P0未完成、不进P1，M2/M3冻结、M4/M5暂缓；见VERIFICATION首节。
 

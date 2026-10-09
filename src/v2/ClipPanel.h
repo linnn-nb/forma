@@ -1,10 +1,11 @@
 #pragma once
 // Read-only facts and revision-bound Plans. No mutable Edit escapes L1.
 using ClipWriter = std::function<void(const std::string&, Json, uint64_t)>;
+using ClipPanelWriter = std::function<void(const std::string&, Json, uint64_t, const std::string&)>;
 class ClipPanel final : public juce::Component
 {
 public:
-    explicit ClipPanel(ClipWriter writer) : write(std::move(writer))
+    explicit ClipPanel(ClipPanelWriter writer) : write(std::move(writer))
     {
         for (auto* c : std::initializer_list<juce::Component*>{
                  &title,     &split,      &copy,     &remove,    &lock,      &effects,  &close,   &start, &end,
@@ -21,25 +22,23 @@ public:
         const std::pair<Field*, const char*> fields[] = {{&start, "clip.start"},     {&end, "clip.end"},
                                                          {&moveTo, "clip.position"}, {&gain, "clip.gain.db"},
                                                          {&fadeIn, "clip.fade.in"},  {&fadeOut, "clip.fade.out"}};
+        int index = 0;
         for (auto [field, id] : fields)
         {
+            const int i = index++;
             field->setComponentID(id);
-            field->setInputRestrictions(20);
-            field->onBegin = [this]
+            field->setInputRestrictions(64);
+            field->setExplicitFocusOrder(i + 1);
+            field->onKey = [this](const auto& key) { return handleFieldKey(key); };
+            field->onBegin = [this, i]
             {
-                if (!dirty)
-                {
-                    dirty = true;
-                    editRevision = revision;
-                }
+                activeField = i;
+                beginDraft();
             };
-            field->onTextChange = [this]
+            field->onTextChange = [this, i]
             {
-                if (!dirty)
-                {
-                    dirty = true;
-                    editRevision = revision;
-                }
+                activeField = i;
+                beginDraft();
             };
         }
         for (auto* combo : {&inCurve, &outCurve})
@@ -51,11 +50,8 @@ public:
             combo->setSelectedId(1, juce::dontSendNotification);
             combo->onChange = [this]
             {
-                if (!dirty)
-                {
-                    dirty = true;
-                    editRevision = revision;
-                }
+                activeField = 4;
+                beginDraft();
             };
         }
         inCurve.setComponentID("clip.fade.in_curve");
@@ -74,9 +70,16 @@ public:
         {
             if (facts.is_null())
                 return;
-            auto rev = dirty ? editRevision : revision;
-            write(cmd, std::move(a), rev);
-            dirty = false;
+            guard(
+                [&]
+                {
+                    if (dirty && (editRevision != revision || editSession != session))
+                        throw std::runtime_error("工程已改变；Esc取消草稿后重新编辑");
+                    write(cmd, std::move(a), dirty ? editRevision : revision, dirty ? editSession : session);
+                    dirty = false;
+                    if (onCommitted)
+                        onCommitted();
+                });
         };
         split.onClick = [this, send]
         { send("clip.split", {{"clip", facts["id"]}, {"position_samples", playhead}, {"ref", "$right"}}); };
@@ -96,12 +99,18 @@ public:
             guard(
                 [&]
                 {
-                    send("clip.trim",
-                         {{"clip", facts["id"]}, {"start_samples", integer(start)}, {"end_samples", integer(end)}});
+                    const auto a = position(start, 0), b = position(end, 1);
+                    if (a == facts["start_samples"].get<int64_t>() && b == a + facts["length_samples"].get<int64_t>() &&
+                        draftIsCurrent())
+                    {
+                        cancelDraft();
+                        return;
+                    }
+                    send("clip.trim", {{"clip", facts["id"]}, {"start_samples", a}, {"end_samples", b}});
                 });
         };
         move.onClick = [this, send]
-        { guard([&] { send("clip.move", {{"clip", facts["id"]}, {"position_samples", integer(moveTo)}}); }); };
+        { guard([&] { send("clip.move", {{"clip", facts["id"]}, {"position_samples", position(moveTo, 2)}}); }); };
         applyGain.onClick = [this, send]
         { guard([&] { send("clip.gain", {{"clip", facts["id"]}, {"db", decimal(gain)}}); }); };
         applyFade.onClick = [this, send]
@@ -109,33 +118,71 @@ public:
             guard(
                 [&]
                 {
+                    const auto a = duration(fadeIn, 4), b = duration(fadeOut, 5);
+                    if (a == facts["fade_in_samples"].get<int64_t>() && b == facts["fade_out_samples"].get<int64_t>() &&
+                        curve(inCurve) == facts["fade_in_curve"].get<std::string>() &&
+                        curve(outCurve) == facts["fade_out_curve"].get<std::string>() && draftIsCurrent())
+                    {
+                        cancelDraft();
+                        return;
+                    }
                     send("clip.fade", {{"clip", facts["id"]},
-                                       {"in_samples", integer(fadeIn)},
-                                       {"out_samples", integer(fadeOut)},
+                                       {"in_samples", a},
+                                       {"out_samples", b},
                                        {"in_curve", curve(inCurve)},
                                        {"out_curve", curve(outCurve)}});
                 });
         };
         title.setFont(juce::FontOptions(12));
-        startLabel.setText(text("起点 samples"), juce::dontSendNotification);
-        endLabel.setText(text("终点 samples"), juce::dontSendNotification);
-        moveLabel.setText(text("移至 samples"), juce::dontSendNotification);
         gainLabel.setText("Clip dB", juce::dontSendNotification);
-        inLabel.setText(text("淡入 samples"), juce::dontSendNotification);
-        outLabel.setText(text("淡出 samples"), juce::dontSendNotification);
+        inLabel.setText(text("淡入 ms"), juce::dontSendNotification);
+        outLabel.setText(text("淡出 ms"), juce::dontSendNotification);
+    }
+    void connect(juce::ApplicationCommandManager& owner,
+                 std::function<std::string(int64_t, const std::string&, int)> formatter,
+                 std::function<int64_t(const std::string&, const std::string&, int)> parser)
+    {
+        manager = &owner;
+        formatPosition = std::move(formatter);
+        parsePosition = std::move(parser);
+    }
+    bool hasDraft() const
+    {
+        return dirty && !facts.is_null();
+    }
+    void applyFocused()
+    {
+        if (!hasDraft())
+            return;
+        auto* button = activeField < 2 ? &trim : activeField == 2 ? &move : activeField == 3 ? &applyGain : &applyFade;
+        if (button->isEnabled())
+            button->onClick();
+    }
+    void cancelDraft()
+    {
+        dirty = false;
+        update(facts, track, revision, playhead, lastPlaying, latestScale, latestFPS, session);
+        if (onCommitted)
+            onCommitted();
     }
     std::function<void()> onClose;
     std::function<void()> onEffects;
+    std::function<void()> onCommitted;
     std::function<void(const std::string&)> onError;
-    void update(Json c, std::string owner, uint64_t rev, int64_t position, bool playing)
+    void update(Json c, std::string owner, uint64_t rev, int64_t position, bool playing, const std::string& unit,
+                int fps, const std::string& token)
     {
         auto id = c.is_null() ? std::string{} : c["id"].get<std::string>();
-        bool changed = id != selected;
+        bool changed = id != selected || token != session;
         selected = id;
         facts = std::move(c);
         track = std::move(owner);
         revision = rev;
         playhead = position;
+        session = token;
+        latestScale = unit;
+        latestFPS = fps;
+        lastPlaying = playing;
         if (changed)
             dirty = false;
         effects.setEnabled(!facts.is_null());
@@ -161,23 +208,43 @@ public:
             title.setText(text("选择一个音频片段"), juce::dontSendNotification);
             return;
         }
-        title.setText(text(facts["name"].get<std::string>()) + text(" · 源偏移 ") +
-                          juce::String(facts["source_offset_samples"].get<int64_t>()) + " @48k · " +
-                          juce::String(facts["source_sample_rate"].get<double>() / 1000., 1) +
-                          text(" kHz 文件 · 拖动移动，两边修剪"),
-                      juce::dontSendNotification);
         if (!dirty)
         {
-            start.setText(juce::String(facts["start_samples"].get<int64_t>()), false);
-            end.setText(juce::String(facts["start_samples"].get<int64_t>() + facts["length_samples"].get<int64_t>()),
-                        false);
+            scale = unit;
+            frameRate = fps;
+            const auto label = text(scale == "samples"      ? "工程样本"
+                                    : scale == "bars_beats" ? "小节 | 拍"
+                                    : scale == "timecode"   ? "时间码 NDF"
+                                                            : "分:秒");
+            startLabel.setText(text("起点 · ") + label, juce::dontSendNotification);
+            endLabel.setText(text("终点 · ") + label, juce::dontSendNotification);
+            moveLabel.setText(text("移至 · ") + label, juce::dontSendNotification);
+            originalValues = {facts["start_samples"].get<int64_t>(),
+                              facts["start_samples"].get<int64_t>() + facts["length_samples"].get<int64_t>(),
+                              facts["start_samples"].get<int64_t>(),
+                              0,
+                              facts["fade_in_samples"].get<int64_t>(),
+                              facts["fade_out_samples"].get<int64_t>()};
+            start.setText(text(formatPosition(originalValues[0], scale, frameRate)), false);
+            end.setText(text(formatPosition(originalValues[1], scale, frameRate)), false);
             moveTo.setText(start.getText(), false);
             gain.setText(juce::String(facts["gain_db"].get<double>(), 2), false);
-            fadeIn.setText(juce::String(facts["fade_in_samples"].get<int64_t>()), false);
-            fadeOut.setText(juce::String(facts["fade_out_samples"].get<int64_t>()), false);
+            fadeIn.setText(juce::String(originalValues[4] / 48., 6), false);
+            fadeOut.setText(juce::String(originalValues[5] / 48., 6), false);
+            int i = 0;
+            for (auto* f : {&start, &end, &moveTo, &gain, &fadeIn, &fadeOut})
+                originalText[i++] = f->getText();
             inCurve.setSelectedId(curveID(facts["fade_in_curve"]), juce::dontSendNotification);
             outCurve.setSelectedId(curveID(facts["fade_out_curve"]), juce::dontSendNotification);
         }
+        const auto offset = facts["source_offset_seconds"].get<double>();
+        const auto sourceRate = facts["source_sample_rate"].get<double>();
+        const auto detail = text(facts["name"].get<std::string>()) + text(" · 源偏移 ") + juce::String(offset, 12) +
+                            text(" 秒 / ") + juce::String(offset * sourceRate, 6) + text(" PCM帧 · 文件 ") +
+                            juce::String(sourceRate / 1000., 1) + text(" kHz · 工程 48 kHz") +
+                            (dirty ? text(" · 草稿单位保持") : "");
+        title.setText(detail, juce::dontSendNotification);
+        title.setTooltip(detail);
     }
     void paint(juce::Graphics& g) override
     {
@@ -228,6 +295,17 @@ private:
     struct Field : juce::TextEditor
     {
         std::function<void()> onBegin;
+        std::function<bool(const juce::KeyPress&)> onKey;
+        bool isTextInputActive() const override
+        {
+            // ASCII numeric fields use JUCE key handling. Cocoa's input context otherwise
+            // consumes Control/Option shortcuts as control characters before keyPressed.
+            return false;
+        }
+        bool keyPressed(const juce::KeyPress& key) override
+        {
+            return (onKey && onKey(key)) || juce::TextEditor::keyPressed(key);
+        }
         void focusGained(FocusChangeType reason) override
         {
             juce::TextEditor::focusGained(reason);
@@ -235,6 +313,59 @@ private:
                 onBegin();
         }
     };
+    void beginDraft()
+    {
+        if (!dirty)
+        {
+            dirty = true;
+            editRevision = revision;
+            editSession = session;
+        }
+    }
+    bool draftIsCurrent() const
+    {
+        return !dirty || (editRevision == revision && editSession == session);
+    }
+    bool handleFieldKey(const juce::KeyPress& key)
+    {
+        if (manager)
+        {
+            const auto id =
+                key == juce::KeyPress::escapeKey ? 277 : manager->getKeyMappings()->findCommandForKeyPress(key);
+            if (id == 275 || id == 277)
+            {
+                manager->invokeDirectly(id, false);
+                return true;
+            }
+        }
+        if (key.getKeyCode() == juce::KeyPress::tabKey && !key.getModifiers().isCommandDown() &&
+            !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown())
+        {
+            std::array<Field*, 6> fields{&start, &end, &moveTo, &gain, &fadeIn, &fadeOut};
+            activeField = (activeField + (key.getModifiers().isShiftDown() ? 5 : 1)) % 6;
+            if (isShowing())
+            {
+                fields[activeField]->grabKeyboardFocus();
+                fields[activeField]->selectAll();
+            }
+            return true;
+        }
+        return false;
+    }
+    int64_t position(const Field& f, int index) const
+    {
+        return f.getText() == originalText[index] ? originalValues[index]
+                                                  : parsePosition(f.getText().toStdString(), scale, frameRate);
+    }
+    int64_t duration(const Field& f, int index) const
+    {
+        if (f.getText() == originalText[index])
+            return originalValues[index];
+        const auto ms = decimal(f);
+        if (ms < 0 || ms > te::Edit::maximumLength * 1000.)
+            throw std::runtime_error("请输入工程范围内的非负毫秒时长");
+        return std::llround(ms * 48.);
+    }
     template <class F> void guard(F f)
     {
         try
@@ -246,17 +377,6 @@ private:
             if (onError)
                 onError(e.what());
         }
-    }
-    static int64_t integer(const juce::TextEditor& f)
-    {
-        size_t n = 0;
-        auto s = f.getText().toStdString();
-        if (s.empty() || s.find_first_not_of("0123456789") != std::string::npos)
-            throw std::runtime_error("sample position requires a non-negative integer");
-        auto value = std::stoll(s, &n);
-        if (n != s.size())
-            throw std::runtime_error("invalid sample position");
-        return value;
     }
     static double decimal(const juce::TextEditor& f)
     {
@@ -278,7 +398,15 @@ private:
     {
         return s == "convex" ? 2 : s == "concave" ? 3 : s == "s_curve" ? 4 : 1;
     }
-    ClipWriter write;
+    ClipPanelWriter write;
+    juce::ApplicationCommandManager* manager = nullptr;
+    std::function<std::string(int64_t, const std::string&, int)> formatPosition;
+    std::function<int64_t(const std::string&, const std::string&, int)> parsePosition;
+    std::string scale = "min_sec", latestScale = "min_sec", session, editSession;
+    int frameRate = 25, latestFPS = 25, activeField = 0;
+    bool lastPlaying = false;
+    std::array<juce::String, 6> originalText;
+    std::array<int64_t, 6> originalValues{};
     Json facts = nullptr;
     std::string selected, track;
     uint64_t revision = 0, editRevision = 0;

@@ -1,5 +1,19 @@
 # 验证状态
 
+## U-P0-CLIP-TIME-01（2026-10-09）
+
+结论：Clip检查器时间单位、精确未改值、字段导航与提交/取消已接通；最终Release/固定本地身份deep/strict与指定叶证书验证通过。受影响CTest7/7、375检查、58.69秒；新增ClipTime76、既有Clip27/Source36/Processed36/Editor81/Group96/Window23。M3两项只做既有回归，不扩分析资格。不是完整U＋P0验收。
+
+实现：src/v2/ClipPanel.h将三位置字段绑定主标尺；src/v2/RollTime.cpp及EngineCommands.h提供L1只读位置转换，采用实际Tempo/Meter，小节|拍拒绝越界而不静默跨小节。淡化为ms，源偏移为真实秒/媒体PCM帧（44.1k诊断素材），工程48k单独标示。草稿冻结单位/fps/revision/session；未改值使用原样本整数，无变化trim/fade结束输入而不重写源偏移或占Undo。Workspace/Refresh/Commands共用275/277，实际committed回执后清草稿、还编辑焦点，失败保留。数值Field不用Cocoa组合输入，避免ControlOptionK成为控制字符；数字、粘贴、选择和文字Undo仍由原生TextEditor处理。没有领域命令/schema/实时/SDK/MCP扩展。
+
+专项tests/v2/ClipTimeTests.cpp使用生产WorkspaceWindow、原生Edit、44.1k双声道24-bit诊断PCM、实际Tracktion WAV渲染及独立解码；180000帧全部样本（含编辑边界）最大差0，既定预算2e-5未放宽。覆盖不足一帧的48001位置、31/47样本淡化、分数源偏移、跨Tempo/Meter24位置往返、24/25/30 NDF、非法位置、陈旧版本、单位冻结、Tab/ShiftTab、文字Undo、改键、事务Undo/Redo和重开；源哈希保持。默认帧率实际24，复核纠正旧测试消息的25字样并补显式帧率断言，仅重跑该专项通过（5.92秒）；结果见clip-time-tests.txt。
+
+实体macOS：独立签名FormaClipTimeFinalPreview，CoreAudio外置耳机48k/512。Tab/ShiftTab导航，ControlOptionK移动48001→72000（r14）、Undo/Redo；键盘100ms淡入31→4800（r17）、Undo/Redo保留移动。非法1|5拒绝且r19不递增，草稿保留，重新激活后Esc恢复1|4。原生标尺菜单切MinSec，另存ClipTimeDesktop.tracktionedit，⌘O实际Open后恢复1.5秒/2.000020833333333秒长度、100ms/47样本淡化、源偏移5.208333333333333e-6秒与单位。重开自定义键实际移动到2秒（r21），一次Undo回1.5秒（r22）。独立XML与源哈希核验一致；Undo历史重开后清空。最终真实截图通过CUA回传线程，未使用本地截图保存API、未伪造PNG文件。只结束本轮两份预览，进程核验无残留，其他用户窗口不动。
+
+修复记录：新夹具漏淡化曲线参数导致首跑失败，补全请求；未改trim仍重写源时间产生4.44e-16秒变化，修复GUI无变化路径后严格精度和全部PCM通过；编译比较string/Json类型错误已修正。3/8开始于第3小节，夹具错误将合法2|4当非法，改成实际3|4并先核验Meter。旧Clip手势的固定y=100已落到新增标尺，改用真实clipRect中心并明确Grabber工具，原断言保留；失败草稿现在须Esc取消再继续后续编辑。首轮桌面ControlOptionK被IME吞，修复后实体提交已复测。失败不计通过，未放宽音频预算。
+
+证据：evidence/U/clip-time-tests.json/txt、clip-time-preview.json与本节；旧回归JSON恢复历史原件，完整本轮重跑留ignored build-v2-tracktion/clip-time-reruns。正式产物build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，演示OpenClipTimeDemo.command。无全量回归/DMG/听感/麦克风/Windows资格；Memory roll、其他剩余U＋P0及完整产品仍未完成。
+
 ## U-P0-WINDOW-FOCUS-01（2026-10-09）
 
 结论：修复首次启动和从文本框重开工程后的编辑焦点；最终Release/固定deep/strict通过。相关CTest `forma_native_window_focus`（23）、`forma_native_editor_interactions`（81）、`forma_native_group_transforms`（96）3/3通过，200检查，24.49秒。不是全量回归；没有新SDK、依赖、schema、L1命令或实时修改。

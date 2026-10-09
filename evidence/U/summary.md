@@ -1,5 +1,11 @@
 # U 原生界面重构
 
+## U-P0-CLIP-TIME-01（2026-10-09）
+
+Release/固定deep/strict和指定叶证书条件通过；受影响CTest7/7、375检查、58.69秒，新增76专项。全部真实Tracktion PCM（含边界）差0≤2e-5，44.1k源哈希不变；帧下位置/淡化、实际Tempo/Meter、单位冻结、非法/冲突、文字Undo、改键与保存重开通过。默认24fps断言复核后仅重跑ClipTime通过（5.92秒）；输出clip-time-tests.json/txt。
+
+桌面ControlOptionK移动48001→72000、100ms淡入31→4800、Undo/Redo、非法拍号保留/Esc、主单位切换、原生另存/Open、重开改键实际执行已验；XML72000/96001/4800/47与分数源偏移一致。截图CUA回传线程，无本地PNG声明；clip-time-preview.json记录产物/源hash和实际步骤。亲手试OpenClipTimeDemo.command。两份本轮测试预览已退出，其他用户窗口及SDK补丁保留；无全量/DMG/听感/麦克风/Windows资格，完整U＋P0仍未完成。修复与下一步见VERIFICATION/NEXT_STEPS，历史段落保留。
+
 ## U-P0-WINDOW-FOCUS-01（2026-10-09）
 
 Release/固定deep/strict及相关CTest3/3通过，200检查（新增窗口23、editor81、group transforms96），24.49秒。冷启动无点击ControlOptionShiftE拆分、Undo/Redo、文本Raise/Backspace/局部Undo、从Tempo原生Open后首键Nudge和另存已实体验证；文件XML A/B3+C1、源哈希保持。输出window-focus-tests.json/txt、window-focus-preview.json、window-focus-desktop.png。亲手试build-v2-tracktion/OpenStartupKeysDemo.command，无需旧“先点拆分”步骤。自己的Range/两份Startup测试进程均已退出，保留其他窗口；无新SDK/实时/MCP/schema，无全量/DMG/听感资格，完整U＋P0待完成。

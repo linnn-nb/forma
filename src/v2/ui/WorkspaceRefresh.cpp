@@ -635,7 +635,8 @@ void Workspace::refresh()
         selectedClip.clear();
         clipFXInspector = false;
     }
-    clipPanel.update(selectedAudio, selected, facts["revision"], facts["position_samples"], playing);
+    clipPanel.update(selectedAudio, selected, facts["revision"], facts["position_samples"], playing,
+                     view["main_time_scale"], view["timecode_fps"], commands.sessionToken());
     editArea.setView(view);
     editArea.setModels(editing, selection);
     const auto viewStart = view["start_samples"].get<int64_t>(), viewSpan = view["span_samples"].get<int64_t>();

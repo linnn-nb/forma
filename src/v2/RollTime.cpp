@@ -30,6 +30,27 @@ int64_t checked(double samples)
     return std::llround(samples);
 }
 } // namespace
+std::string Commands::formatTimelinePosition(int64_t position, const std::string& unit, int fps) const
+{
+    checkThread();
+    validate(position, unit, fps);
+    if (unit != "bars_beats")
+        return formatRollDuration(position, 0, false, unit, fps);
+    const auto at = timelinePosition(position);
+    return std::to_string(at["bar"].get<int>()) + " | " + juce::String(at["beat"].get<double>(), 9).toStdString();
+}
+int64_t Commands::parseTimelinePosition(const std::string& raw, const std::string& unit, int fps) const
+{
+    checkThread();
+    validate(0, unit, fps);
+    if (unit != "bars_beats")
+        return parseRollDuration(raw, 0, false, unit, fps);
+    const auto input = juce::String(raw).trim().toStdString();
+    std::smatch match;
+    if (input.size() > 64 || !std::regex_match(input, match, std::regex(R"((\d{1,7})\s*\|\s*(\d{1,2}(?:\.\d{1,9})?))")))
+        throw std::runtime_error("工程位置格式：小节 | 拍（拍支持小数）");
+    return sampleAtBarBeat(std::stoi(match[1]), std::stod(match[2]));
+}
 std::string Commands::formatRollDuration(int64_t duration, int64_t anchor, bool pre, const std::string& unit,
                                          int fps) const
 {

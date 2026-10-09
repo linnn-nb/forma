@@ -662,7 +662,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active =
                     (musicEventPanel && musicEventPanel->isVisible() && (id != 276 || musicEventPanel->canDelete())) ||
                     (id != 276 && rollPanel && rollPanel->isVisible()) ||
-                    (id != 276 && fadesPanel && fadesPanel->isVisible());
+                    (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
+                    (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();
             if (id >= 250 && id <= 252)
@@ -757,6 +758,15 @@ bool Workspace::perform(const InvocationInfo& invocation)
             if (isShowing())
                 grabKeyboardFocus();
         }
+        return true;
+    }
+    if ((id == 275 || id == 277) && clipPanel.isVisible() && clipPanel.hasDraft() &&
+        !(musicEventPanel && musicEventPanel->isVisible()))
+    {
+        if (id == 275)
+            clipPanel.applyFocused();
+        else
+            clipPanel.cancelDraft();
         return true;
     }
     if (id >= 273 && id <= 277)

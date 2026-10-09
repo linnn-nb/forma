@@ -1,0 +1,135 @@
+Start testing: Oct 09 13:23 CST
+----------------------------------------------------------
+104/104 Testing: forma_native_clip_time
+104/104 Test: forma_native_clip_time
+Command: "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_clip_time_tests_artefacts/Release/ndaw_clip_time_tests" "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/U/clip-time-tests.json"
+Directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+"forma_native_clip_time" start time: Oct 09 13:23 CST
+Output:
+----------------------------------------------------------
+PASS owned demo never overwrites an existing source
+PASS actual stereo 44.1k PCM written
+Settings file: /var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_clip_time_tests/forma-clip-time-9027b99a33e84b6489dfd8c16b6b84d9/prefs/Settings.xml
+Creating Default Controllers...
+PASS native initial session parsed
+PASS owned source clip found in native XML
+PASS fractional source offset saved to a separate fixture
+PASS native render receipt matches independent WAV header
+PASS actual Tracktion PCM decoded
+PASS default clip position follows Min Sec with sample precision
+PASS fade duration explicitly displays milliseconds
+PASS source seconds and fractional 44.1k PCM frames are distinct from project samples
+PASS Tab advances real native time fields
+PASS Shift Tab restores previous native time field
+PASS timecode field uses current default 24 fps NDF display
+PASS registered submit key applies focused trim fields
+PASS untouched frame display never rounds actual sample bounds or source time
+PASS untouched millisecond display retains exact fade samples
+PASS native render receipt matches independent WAV header
+PASS actual Tracktion PCM decoded
+PASS all actual PCM including edit boundaries preserved by unchanged field submission
+PASS view-unit switch cannot reinterpret a focused position draft
+PASS frozen seconds draft commits then adopts latest project-sample display
+PASS one Undo restores precise position
+PASS one Redo restores real move
+PASS invalid sample input preserves draft and actual project
+PASS Escape restores current value and editing focus without a transaction
+PASS changed milliseconds commit with unchanged peer duration exact
+PASS stale revision refuses edit and retains input instead of showing success
+PASS numeric field leaves Cocoa input composition out of shortcut routing
+PASS ordinary numeric typing remains local and does not edit the project
+PASS numeric text Undo stays local before transaction submission
+PASS focused inspector executes actual remapped submit key
+PASS custom submit changes actual Edit position
+PASS custom submit is one reversible transaction
+PASS actual meter change begins bar three after native tempo change
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS timeline formatter/parser round trip uses actual Tempo and Meter
+PASS NDF frame position maps to exact project samples
+PASS NDF frame position maps to exact project samples
+PASS NDF frame position maps to exact project samples
+PASS invalid bar/beat cannot silently normalize into another bar
+PASS invalid bar/beat cannot silently normalize into another bar
+PASS invalid bar/beat cannot silently normalize into another bar
+PASS invalid bar/beat cannot silently normalize into another bar
+PASS invalid bar/beat cannot silently normalize into another bar
+PASS malformed project-sample input rejected
+PASS malformed project-sample input rejected
+PASS malformed project-sample input rejected
+PASS malformed project-sample input rejected
+PASS malformed project-sample input rejected
+PASS invalid minute second field rejected
+PASS frame outside chosen NDF rate rejected
+PASS saved clip and main display unit reopen together
+PASS custom inspector submit key survives save and reopen
+PASS source media bytes remain unchanged
+{
+  "checks": 76,
+  "demo": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_clip_time_tests/forma-clip-time-9027b99a33e84b6489dfd8c16b6b84d9/ClipTimeDemo.tracktionedit",
+  "pcm_max_error": 0.0,
+  "pcm_tolerance": 2e-05,
+  "result": "passed",
+  "scope": "actual native clip inspector, Edit, Undo, field focus and decoded Tracktion PCM; physical GUI separate"
+}
+Cleaning up temp files..
+<end of output>
+Test time =   5.92 sec
+----------------------------------------------------------
+Test Passed.
+"forma_native_clip_time" end time: Oct 09 13:23 CST
+"forma_native_clip_time" time elapsed: 00:00:05
+----------------------------------------------------------
+
+End testing: Oct 09 13:23 CST
+
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start  11: tracktion_native_processed_events
+1/7 Test  #11: tracktion_native_processed_events ...   Passed   19.26 sec
+    Start  16: tracktion_native_source_analysis
+2/7 Test  #16: tracktion_native_source_analysis ....   Passed    5.47 sec
+    Start  46: tracktion_native_clip_workspace
+3/7 Test  #46: tracktion_native_clip_workspace .....   Passed    4.36 sec
+    Start  75: forma_native_editor_interactions
+4/7 Test  #75: forma_native_editor_interactions ....   Passed   10.04 sec
+    Start 101: forma_native_group_transforms
+5/7 Test #101: forma_native_group_transforms .......   Passed   11.01 sec
+    Start 103: forma_native_window_focus
+6/7 Test #103: forma_native_window_focus ...........   Passed    3.39 sec
+    Start 104: forma_native_clip_time
+7/7 Test #104: forma_native_clip_time ..............   Passed    5.16 sec
+
+100% tests passed, 0 tests failed out of 7
+
+Total Test time (real) =  58.69 sec
+
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 104: forma_native_clip_time
+1/1 Test #104: forma_native_clip_time ...........   Passed    5.92 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   5.92 sec

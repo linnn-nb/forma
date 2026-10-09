@@ -1,5 +1,7 @@
 # 统一命令契约 v2
 
+U-P0-CLIP-TIME-01：新增两个本地只读时间转换API，不注册AI/MCP工具。GUI提交绑定输入开始时的revision与session_token，使用既有human Plan原语；冲突或非法值保留草稿并显示失败，只有实际committed回执显示成功。未改修剪/淡化不提交、不冒充新事务；Esc取消无工程写入。275默认⌘Return、可改键，277取消；键位保存重开和实体ControlOptionK执行已验。源时间只读显示秒及按真实媒体率换算的PCM帧，与48k工程样本分开。冻结M2/M3不扩资格，Undo栈不跨重开。
+
 U-P0-WINDOW-FOCUS-01：只改原生窗口和成功Open的键盘焦点生命周期，GUI仍调用同一ApplicationCommandManager与既有human Plan/Undo；没有领域/MCP工具扩展。文本框局部Undo不会产生或撤销工程事务，重开成功结束旧输入；失败Open和不同peer不抢焦点。冻结M2/M3不扩资格。
 
 U-P0-GROUP-RANGES-01：只读本地范围规划器解析当前组，所有写入仍由既有Plan原语提交；一操作一human Undo事务。目标媒体哈希、版本、Scope、锁定、64操作上限保持；未知/缺失对象不提交。Nudge保留原ID，不把默认Nudge变成隐式切片；部分组成员冲突显式要求Separate。破坏性范围超过8个原clip或60秒先预览，取消不改工程，不以新增split原语数量冒充风险大小。MCP注册表保持冻结；桌面首次快捷键焦点待修复。

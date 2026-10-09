@@ -78,6 +78,7 @@ int main(int argc, char** argv)
         }
         auto hash = Commands::mediaHash(file);
         ndaw::desktop::Workspace w(false);
+        w.uiCommands().invokeDirectly(169, false); // This historical fixture intentionally enters project samples.
         w.setVisible(true);
         w.setSize(1440, 1000);
         w.prepareImport(file);
@@ -124,8 +125,8 @@ int main(int argc, char** argv)
         field(w, "clip.gain.db", "-6");
         click(w, "clip.gain");
         check(clips(w)[0]["gain_db"] == -6, "GUI Clip Gain changes real clip level");
-        field(w, "clip.fade.in", "4800");
-        field(w, "clip.fade.out", "9600");
+        field(w, "clip.fade.in", "100");
+        field(w, "clip.fade.out", "200");
         auto* curves = dynamic_cast<juce::ComboBox*>(find(w, "clip.fade.in_curve"));
         curves->setSelectedId(2, juce::sendNotificationSync);
         click(w, "clip.fade");
@@ -152,8 +153,9 @@ int main(int argc, char** argv)
             settle();
         };
         auto beforeDrag = clips(w);
+        w.uiCommands().invokeDirectly(ndaw::desktop::editCommand::grabber, false);
         auto rect = area->clipRect(beforeDrag[0], 0);
-        drag(rect.getCentreX(), rect.getCentreX() + 30, 100);
+        drag(rect.getCentreX(), rect.getCentreX() + 30, rect.getCentreY());
         auto moved = clips(w);
         check(moved[0]["start_samples"].get<int64_t>() > beforeDrag[0]["start_samples"].get<int64_t>() &&
                   moved[0]["source_offset_samples"] == beforeDrag[0]["source_offset_samples"],
@@ -162,7 +164,7 @@ int main(int argc, char** argv)
         check(clips(w) == beforeDrag, "single Undo reverses entire drag");
         w.uiCommands().invokeDirectly(ndaw::desktop::editCommand::trim, false);
         rect = area->clipRect(beforeDrag[0], 0);
-        drag(rect.getX() + 2, rect.getX() + 16, 100);
+        drag(rect.getX() + 2, rect.getX() + 16, rect.getCentreY());
         auto edge = clips(w);
         check(edge[0]["source_offset_samples"].get<int64_t>() > beforeDrag[0]["source_offset_samples"].get<int64_t>() &&
                   edge[0]["start_samples"].get<int64_t>() > beforeDrag[0]["start_samples"].get<int64_t>(),
@@ -170,12 +172,12 @@ int main(int argc, char** argv)
         click(w, "history.undo");
         w.uiCommands().invokeDirectly(ndaw::desktop::editCommand::grabber, false);
         rect = area->clipRect(clips(w)[0], 0);
-        down(rect.getCentreX(), 100);
+        down(rect.getCentreX(), rect.getCentreY());
         click(w, "history.undo");
         auto concurrent = w.query();
-        juce::MouseEvent conflict(source, juce::Point<float>(float(rect.getCentreX() + 30), 100),
+        juce::MouseEvent conflict(source, juce::Point<float>(float(rect.getCentreX() + 30), float(rect.getCentreY())),
                                   juce::ModifierKeys::leftButtonModifier, 1, 0, 0, 0, 0, area, area, now,
-                                  {float(rect.getCentreX()), 100}, now, 1, true);
+                                  {float(rect.getCentreX()), float(rect.getCentreY())}, now, 1, true);
         area->mouseDrag(conflict);
         area->mouseUp(conflict);
         settle();
@@ -189,8 +191,11 @@ int main(int argc, char** argv)
         check(w.query() == concurrent, "typed clip edit checks original revision after interleaved human Undo");
         click(w, "history.redo");
         check(clips(w) == beforeDrag, "stale typed edit does not consume redo history");
+        dynamic_cast<juce::TextEditor*>(find(w, "clip.position"))
+            ->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));
+        settle();
         auto bounds = area->clipRect(clips(w)[0], 0);
-        down(bounds.getCentreX(), 100);
+        down(bounds.getCentreX(), bounds.getCentreY());
         settle();
         click(w, "clip.split");
         auto split = clips(w);

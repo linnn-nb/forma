@@ -1,0 +1,59 @@
+{
+  "checks": 76,
+  "demo": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_clip_time_tests/forma-clip-time-9027b99a33e84b6489dfd8c16b6b84d9/ClipTimeDemo.tracktionedit",
+  "pcm_max_error": 0.0,
+  "pcm_tolerance": 2e-05,
+  "result": "passed",
+  "scope": "actual native clip inspector, Edit, Undo, field focus and decoded Tracktion PCM; physical GUI separate",
+  "qualification": "U-P0-CLIP-TIME-01",
+  "regression": {
+    "result": "passed",
+    "suites": [
+      {
+        "name": "tracktion_native_processed_events",
+        "result": "passed",
+        "checks": 36
+      },
+      {
+        "name": "tracktion_native_source_analysis",
+        "result": "passed",
+        "checks": 36
+      },
+      {
+        "name": "tracktion_native_clip_workspace",
+        "result": "passed",
+        "checks": 27
+      },
+      {
+        "name": "forma_native_editor_interactions",
+        "result": "passed",
+        "checks": 81
+      },
+      {
+        "name": "forma_native_group_transforms",
+        "result": "passed",
+        "checks": 96
+      },
+      {
+        "name": "forma_native_window_focus",
+        "result": "passed",
+        "checks": 23
+      },
+      {
+        "name": "forma_native_clip_time",
+        "result": "passed",
+        "checks": 76
+      }
+    ],
+    "checks_total": 375,
+    "seconds": 58.69
+  },
+  "review_rerun": {
+    "name": "forma_native_clip_time",
+    "checks": 76,
+    "seconds": 5.92,
+    "result": "passed",
+    "reason": "assert actual default 24fps; correct test message"
+  },
+  "local_demo": "build-v2-tracktion/clip-time-demo-06/ClipTimeDemo.tracktionedit"
+}

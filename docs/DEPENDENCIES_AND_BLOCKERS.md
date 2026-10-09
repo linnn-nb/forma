@@ -1,5 +1,7 @@
 # 依赖与阻塞 v2
 
+当前U-P0-CLIP-TIME-01：无新依赖或授权阻塞；Release、固定本地身份deep/strict及指定叶证书条件通过。76专项/7项375检查和桌面单位/改键/撤销/另存重开通过；原SDK补丁、用户其他窗口保留，本轮两份预览已退出。数值字段使用ASCII按键路径，其他文字输入不改；时间码仅24/25/30 NDF，工程坐标仍48k。Memory roll、范围Shuffle/组MIDI/自动化、Finder关联/运行中文档事件及完整U＋P0尚未完成；听感、麦克风、Windows、耐久未新验，无DMG。
+
 当前 U-P0-WINDOW-FOCUS-01：无新增授权/依赖阻塞；Release/固定签名和3项200检查通过。冷启动与原生Open后首键实体验收通过，旧“先点击拆分”绕行对新StartupKeysFinal预览不再必要。仅本轮旧Range/StartupKeys/Final预览结束，其他用户窗口及原SDK补丁保留。Clip检查器时间单位/导航、Memory预后卷、范围Shuffle/组MIDI/自动化、完整U＋P0仍待做；第三方插件实际焦点、听感/麦克风/Windows/耐久未新验，无DMG。
 
 当前 U-P0-GROUP-RANGES-01：无新依赖、授权或SDK/实时修改；Release与固定deep/strict通过，原SDK补丁保留。298检查及实体剪切/粘贴/撤销/另存/Open重开通过；自己的Range预览进程已退出，其他用户窗口保留。首次打开工程的快捷键焦点仍需修复；Clip检查器仍有工程样本字段，需统一时间单位。范围Shuffle、MIDI/自动化剪贴板未实现；部分组成员Nudge要求先Separate，粘贴目标组布局不完整拒绝。Tracktion重叠混音不宣称等同PT Layered Editing。实体听感/麦克风、Windows、完整U＋P0未验收；无全量回归或DMG。以下旧记录按日期/资格保留。

@@ -65,7 +65,17 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
           },
           writer(), [this](const auto& track, const auto& parameter, int64_t end)
           { return commands.automationCurveSamples(track, parameter, end); }),
-      clipPanel(clipWriter()),
+      clipPanel(
+          [this](const std::string& command, Json args, uint64_t revision, const std::string& session)
+          {
+              auto plan = commands.makePlan("human", Json::array({operation(command, std::move(args))}));
+              plan["base_revision"] = revision;
+              plan["session_token"] = session;
+              const auto receipt = commands.commit(plan);
+              if (receipt.value("state", std::string{}) != "committed")
+                  throw std::runtime_error("片段编辑未提交；输入草稿保留");
+              message(text("片段编辑已提交 · 原媒体保留 · 可撤销"));
+          }),
       piano(
           [this](const auto& cmd, Json args, uint64_t revision)
           {
@@ -688,6 +698,17 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     addAndMakeVisible(groupsList);
     addAndMakeVisible(clipsList);
     initialiseCommandManager();
+    clipPanel.connect(
+        commandManager, [this](int64_t value, const std::string& unit, int fps)
+        { return commands.formatTimelinePosition(value, unit, fps); },
+        [this](const std::string& value, const std::string& unit, int fps)
+        { return commands.parseTimelinePosition(value, unit, fps); });
+    clipPanel.onCommitted = [this]
+    {
+        refresh();
+        if (isShowing())
+            grabKeyboardFocus();
+    };
     addAndMakeVisible(editingControls);
     editingControls.connect(commandManager);
     editingControls.onSettings = [this](Json patch) { setView(std::move(patch)); };
