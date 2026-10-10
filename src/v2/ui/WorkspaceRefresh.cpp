@@ -251,8 +251,39 @@ Json Workspace::selectedProcessor() const
     return nullptr;
 }
 
+void Workspace::refreshPluginLibraryTarget()
+{
+    if (!pluginLibrary)
+        return;
+    Json target = nullptr;
+    for (const auto& track : facts.value("tracks", Json::array()))
+        if (track["id"] == pluginLibraryTrack)
+            target = track;
+    std::string reason;
+    if (commands.sessionToken() != pluginLibrarySession)
+        reason = "工程已切换，请重新打开插件库";
+    else if (target.is_null())
+        reason = "请先选中目标轨道，再打开插件库";
+    else if (!target["capabilities"].value("audio_routing", false))
+        reason = "此轨道不支持音频插入，请选择音频、乐器或 Aux 轨";
+    else if (facts.value("playing", false))
+        reason = "请先停止播放，再插入插件";
+    else if (!facts["parameter_capture"].is_null())
+        reason = "请先结束参数编辑手势";
+    else if (facts["audio_configuration"].is_object() &&
+             facts["audio_configuration"].value("state", std::string{}) == "preparing")
+        reason = "请等待音频设备配置完成";
+    else if (facts["native_plugin_states"].value("pending", false))
+        reason = "正在保存插件状态，请稍候";
+    else if (!facts["native_plugin_states"]["failure"].is_null())
+        reason = "请先在检查器解决插件状态读取失败";
+    pluginLibrary->setTarget(target.is_null() ? "未选择轨道" : target["name"].get<std::string>(), reason.empty(),
+                             reason);
+}
+
 void Workspace::refreshInspector()
 {
+    refreshPluginLibraryTarget();
     auto t = selectedTrack(), owner = clipFXInspector ? selectedAudioClip() : t;
     Json ids = Json::array();
     if (!owner.is_null())
@@ -267,8 +298,9 @@ void Workspace::refreshInspector()
             for (const auto& p : owner["plugins"])
                 pluginChoice.addItem(text(p["name"].get<std::string>()), i++);
         pluginSelection = ids.empty() ? -1 : std::clamp(pluginSelection, 0, int(ids.size()) - 1);
-        pluginChoice.setSelectedId(pluginSelection + 1, juce::dontSendNotification);
     }
+    // A slot click changes selection while the actual plugin IDs stay the same.
+    pluginChoice.setSelectedId(pluginSelection + 1, juce::dontSendNotification);
     auto p = selectedProcessor();
     const bool playing = facts.value("playing", false) ||
                          (facts["audio_configuration"].is_object() &&
@@ -278,6 +310,8 @@ void Workspace::refreshInspector()
     insertButton.setEnabled(
         !owner.is_null() && !playing && !parameterEditing && unlocked &&
         (clipFXInspector ? owner.value("editable_audio", false) : t["capabilities"]["audio_routing"].get<bool>()));
+    externalLibraryButton.setEnabled(!clipFXInspector && !t.is_null() &&
+                                     t["capabilities"].value("audio_routing", false));
     pluginType.setEnabled(insertButton.isEnabled());
     pluginType.setItemEnabled(10000, !clipFXInspector);
     pluginType.setItemEnabled(5, !clipFXInspector);

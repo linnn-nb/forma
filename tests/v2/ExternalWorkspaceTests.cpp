@@ -6,6 +6,19 @@ using namespace ndaw::v2;
 namespace
 {
 int checks = 0;
+class Storage final : public te::PropertyStorage
+{
+public:
+    explicit Storage(juce::File folder) : PropertyStorage("Forma plugin entry tests"), folder(std::move(folder)) {}
+    juce::File getAppPrefsFolder() override
+    {
+        folder.createDirectory();
+        return folder;
+    }
+
+private:
+    juce::File folder;
+};
 void check(bool yes, const char* why)
 {
     if (!yes)
@@ -71,12 +84,15 @@ int main(int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI gui;
     try
     {
-        ndaw::desktop::Workspace w(false);
+        const auto prefs = juce::File::getSpecialLocation(juce::File::tempDirectory)
+                               .getChildFile("forma-plugin-entry-" + juce::Uuid().toString());
+        ndaw::desktop::Workspace w(true, std::make_unique<Storage>(prefs));
         w.setVisible(true);
         click(w, "track.create");
         auto facts = w.query();
-        w.showPluginLibrary();
+        click(w, "plugin.library.open");
         wait(w);
+        check(find(w, "plugin.library.guidance") != nullptr, "plugin library explains how to scan and insert");
         check(find(w, "plugin.library") && w.query() == facts, "native plugin library opens without Edit mutation");
         std::string au;
         auto library = w.queryPluginLibrary();
@@ -84,6 +100,15 @@ int main(int argc, char** argv)
             if (row["name"] == "AUNBandEQ" && row["status"] == "verified")
                 au = row["descriptor"];
         check(!au.empty() && w.selectLibraryPlugin(au), "only an actual verified AU descriptor can be selected");
+        click(w, "transport.play");
+        check(w.query()["playing"] && !w.queryPluginLibrary()["target_allowed"].get<bool>() &&
+                  !find(w, "plugin.library.preview")->isEnabled() &&
+                  w.queryPluginLibrary()["target_reason"].get<std::string>().find("停止播放") != std::string::npos,
+              "playback blocks insertion with an explicit reason");
+        click(w, "transport.stop");
+        check(w.queryPluginLibrary()["target_allowed"].get<bool>() && find(w, "plugin.library.preview")->isEnabled() &&
+                  w.queryPluginLibrary()["target_reason"] == "",
+              "stopping restores the selected verified plugin without reopening or rescanning");
         click(w, "plugin.library.preview");
         check(!find(w, "plugin.library") && w.query()["tracks"][0]["plugins"].size() == 1,
               "native Insert loads immediately through one L1 transaction without an extra AI confirmation");
@@ -143,6 +168,16 @@ int main(int argc, char** argv)
               "actual scanned VST3 instrument is available in native library");
         click(w, "plugin.library.preview");
         check(w.query()["tracks"][0]["plugins"].size() == 2, "native library accepts real VST3 alongside existing AU");
+        click(w, "view.mix");
+        const auto beforeSlot = w.query();
+        const auto prefix = "mix.insert:" + juce::String(beforeSlot["tracks"][0]["id"].get<std::string>()) + ":";
+        click(w, prefix + "0");
+        auto* pluginChoice = dynamic_cast<juce::ComboBox*>(find(w, "plugin.choice"));
+        check(pluginChoice && pluginChoice->getSelectedId() == 1 && w.query() == beforeSlot,
+              "existing AU slot selects the matching inspector label without an Edit transaction");
+        click(w, prefix + "1");
+        check(pluginChoice->getSelectedId() == 2 && w.query() == beforeSlot,
+              "existing Serum slot selects the matching label while plugin IDs remain unchanged");
         juce::TextEditor* programIndex = nullptr;
         const auto programDeadline = juce::Time::getMillisecondCounterHiRes() + 4000;
         do
@@ -237,10 +272,12 @@ int main(int argc, char** argv)
         check(find(w, "plugin.library.preview")->getWidth() > 0,
               "native plugin library remains usable at minimum tested workspace size");
         click(w, "plugin.library.close");
-        Json result = {{"result", "passed"},
-                       {"checks", checks},
-                       {"scope", "actual JUCE production library and AU inspector callbacks, SDK discovery/rescan and "
-                                 "real Tracktion transactions; physical desktop/editor/listening remain unqualified"}};
+        Json result = {
+            {"result", "passed"},
+            {"checks", checks},
+            {"scope",
+             "actual JUCE production library and AU inspector callbacks, SDK discovery/rescan and "
+             "real Tracktion transactions and actual device transport; physical desktop/listening remain unqualified"}};
         if (argc > 1)
         {
             std::ofstream out(argv[1]);

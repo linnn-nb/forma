@@ -13,9 +13,9 @@ public:
         list.setModel(this);
         list.setRowHeight(52);
         list.setComponentID("plugin.library.list");
-        for (auto* c :
-             std::initializer_list<juce::Component*>{&title, &target, &search, &list, &details, &discoverButton,
-                                                     &scanButton, &cancelButton, &insert, &closeButton})
+        for (auto* c : std::initializer_list<juce::Component*>{&title, &target, &search, &list, &details, &guidance,
+                                                               &discoverButton, &scanButton, &cancelButton, &insert,
+                                                               &closeButton})
             addAndMakeVisible(c);
         title.setText(text("\u63d2\u4ef6\u5e93 \u00b7 AU / VST3"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
@@ -27,6 +27,8 @@ public:
         details.setFont(juce::FontOptions(13));
         discoverButton.setComponentID("plugin.library.discover");
         scanButton.setComponentID("plugin.library.scan");
+        guidance.setComponentID("plugin.library.guidance");
+        guidance.setFont(juce::FontOptions(13));
         cancelButton.setComponentID("plugin.library.cancel");
         insert.setComponentID("plugin.library.preview");
         closeButton.setComponentID("plugin.library.close");
@@ -54,7 +56,7 @@ public:
             }
             catch (const std::exception& e)
             {
-                details.setText(text("\u672a\u751f\u6210\u8ba1\u5212\uff1a") + text(e.what()));
+                details.setText(text("插入失败：") + text(e.what()));
             }
         };
         reload();
@@ -67,15 +69,20 @@ public:
         jobs.removeAllJobs(true, 2500);
         list.setModel(nullptr);
     }
-    void setTarget(const std::string& name, bool allowed)
+    void setTarget(const std::string& name, bool allowed, const std::string& reason = {})
     {
         target.setText(text("\u63d2\u5165\u76ee\u6807\uff1a") + text(name), juce::dontSendNotification);
         targetAllowed = allowed;
+        targetReason = reason;
         controls();
     }
     Json query() const
     {
-        return {{"busy", busy}, {"rows", rows}, {"result", last}, {"target_allowed", targetAllowed}};
+        return {{"busy", busy},
+                {"rows", rows},
+                {"result", last},
+                {"target_allowed", targetAllowed},
+                {"target_reason", targetReason}};
     }
     bool selectDescriptor(const std::string& id)
     {
@@ -118,8 +125,9 @@ public:
         scanButton.setBounds(getWidth() - 237, 94, 105, 30);
         cancelButton.setBounds(getWidth() - 124, 94, 104, 30);
         int left = std::max(280, getWidth() * 3 / 5);
-        list.setBounds(20, 140, left - 30, getHeight() - 205);
-        details.setBounds(left + 8, 140, getWidth() - left - 28, getHeight() - 205);
+        list.setBounds(20, 140, left - 30, getHeight() - 245);
+        details.setBounds(left + 8, 140, getWidth() - left - 28, getHeight() - 245);
+        guidance.setBounds(20, getHeight() - 100, getWidth() - 40, 42);
         insert.setBounds(getWidth() - 270, getHeight() - 50, 250, 32);
     }
 
@@ -283,8 +291,11 @@ private:
         const auto p = selected();
         if (busy || p.is_null())
             return;
-        if (p["status"] == "verified" && targetAllowed)
-            insert.triggerClick();
+        if (p["status"] == "verified")
+        {
+            if (targetAllowed)
+                insert.triggerClick();
+        }
         else
             scanSelected();
     }
@@ -312,6 +323,19 @@ private:
         scanButton.setEnabled(!busy && !p.is_null());
         cancelButton.setEnabled(busy);
         insert.setEnabled(!busy && targetAllowed && !p.is_null() && p["status"] == "verified");
+        juce::String hint;
+        if (!targetAllowed)
+            hint = text(targetReason.empty() ? "请先选择支持音频插入的目标轨道" : targetReason);
+        else if (busy)
+            hint = text("扫描中；完成后选择插件并插入，可停止扫描");
+        else if (p.is_null())
+            hint = text("选择插件；找不到时点击发现插件，再按名称或格式筛选");
+        else if (p["status"] == "verified")
+            hint = text("扫描通过：点击插入或双击条目，加载到上方目标轨道");
+        else
+            hint = text("此条目尚未通过扫描：先点击扫描 / 重扫，成功后再插入");
+        guidance.setText(hint, juce::dontSendNotification);
+        insert.setTooltip(hint);
     }
     std::function<void()> refreshed, close;
     std::function<void(std::string)> preview;
@@ -320,8 +344,8 @@ private:
     Json rows = Json::array(), candidates = Json::array(), last = nullptr;
     std::vector<size_t> filtered;
     bool busy = false, targetAllowed = false;
-    std::string rescanFormat, rescanCandidate;
-    juce::Label title, target;
+    std::string rescanFormat, rescanCandidate, targetReason;
+    juce::Label title, target, guidance;
     juce::TextEditor search, details;
     juce::ListBox list;
     juce::TextButton discoverButton{text("\u53d1\u73b0\u63d2\u4ef6")}, scanButton{text("\u626b\u63cf / \u91cd\u626b")},

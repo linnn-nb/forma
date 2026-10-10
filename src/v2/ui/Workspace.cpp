@@ -286,6 +286,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                                            &status,
                                                            &pluginType,
                                                            &insertButton,
+                                                           &externalLibraryButton,
                                                            &pluginChoice,
                                                            &bypassButton,
                                                            &editorButton,
@@ -660,6 +661,9 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         message(preview ? text("已取消预览，工程未修改") : text("已关闭导入报告"));
         refresh();
     };
+    externalLibraryButton.setComponentID("plugin.library.open");
+    externalLibraryButton.setTooltip(text("打开已安装的 AU / VST3 插件库；未扫描的条目先扫描，再插入到所选轨道"));
+    externalLibraryButton.onClick = [this] { showPluginLibrary(); };
     insertButton.onClick = [this]
     {
         if (selected.empty() || pluginType.getSelectedId() <= 0)

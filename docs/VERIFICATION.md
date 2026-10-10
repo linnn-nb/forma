@@ -1,3 +1,11 @@
+## 2026-10-10 外部插件直接入口与状态提示
+
+结论：检查器新增独立“AU / VST3…”按钮，无需先在内置效果器下拉框寻找；原Mix空槽入口保留。插件库固定原目标轨，持续读取L1事实，明确显示播放/设备准备/参数手势/插件状态失败等禁用原因；停止后原选择直接恢复可插入。已扫描条目在目标不可插入时双击不再误重扫。实际插入仍经既有L1 Plan/commit，失败显示真实错误。已有插件槽改变选择但ID列表不变时，检查器名称现与实际实例同步。
+
+Release及固定本地签名/deep严格验签通过。最终三组一次全绿394检查/16.262秒：ExternalWorkspace75、Presentation282、InsertMenu37；另有实际AU PCM/VST3 MIDI及保存状态测试50检查通过。回执build-v2-tracktion/plugin-entry-delivery-summary.json、plugin-entry-delivery-{external,presentation,menu}.{json,log}及plugin-entry-audio.{json,log}。首轮关闭设备的测试不能Play而失败，已改用隔离prefs与实际设备并复测；早期日志保留，不计通过。没有JUCE断言；系统CoreAudioAUUI重复ObjC类警告仍记录在日志，无本轮崩溃。没有新增SDK/实时路径/IPC/依赖。
+
+实桌面：打开shortcuts-demo→右侧直接AU/VST3→搜索Serum→选择真实VST3 1.3.6.8→插入r26→打开原生Serum编辑器→关闭→⌘Z移除r27→⇧⌘Z恢复r28→原生另存plugin-entry-demo.tracktionedit。退出重启打开副本，两个AU和Serum恢复r31；最终构建重开后点Serum槽，检查器名称显示Serum，预览停止00:00供试用。未做本轮主观听感或全部插件兼容验收；工程跨重开Undo仍禁用，完整U/P0未通过。没有DMG或evidence/U新增截图。
+
 U-P0-KEYBOARD-PANEL-01（2026-10-10）：已有绑定可通过原生面板直接更改或移除；可搜索操作、分类和按键，捕获实际组合键，冲突须点击“重新分配”。键位独立撤销/重做并随工程保存；完整U/P0仍未验收。
 
 源码KeyboardSettings.h/.cpp、WorkspaceCommands/WorkspaceLayout；读取实际ApplicationCommandManager注册表，不维护第二套命令列表。替换JUCE内部私有按钮/弹窗，保留真实KeyPressMappingSet和既有L1 keymap_xml通知保存。捕获激活等待有1000ms期限，只在明确手势中请求；面板按键不触发时间线编辑或播放。确认时核对会话token与完整键位快照；键位Undo/Redo同样拒绝覆盖较新或其他会话设置。绑定控件仅在实际内容/布局变化时重建，避免相同映射通知删除待点击按钮。只读、隐藏命令使用注册表标志，绑定列表滚动显示实际所有分配。

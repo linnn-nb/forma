@@ -556,8 +556,10 @@ void Workspace::resized()
     groupTab.setBounds(right + 138, 237, 50, 26);
     autoTab.setBounds(right + 192, 237, 60, 26);
     recordTab.setBounds(right + 256, 237, 64, 26);
-    pluginType.setBounds(right + 16, 270, 190, 28);
-    insertButton.setBounds(right + 216, 270, 100, 28);
+    const int processorWidth = sideWidth - 32 - 188;
+    pluginType.setBounds(right + 16, 270, processorWidth, 28);
+    insertButton.setBounds(right + 22 + processorWidth, 270, 64, 28);
+    externalLibraryButton.setBounds(right + 92 + processorWidth, 270, 112, 28);
     pluginChoice.setBounds(right + 16, 312, sideWidth - 32, 29);
     bypassButton.setBounds(right + 16, 352, 86, 26);
     editorButton.setBounds(right + 108, 352, 108, 26);
@@ -593,9 +595,11 @@ void Workspace::resized()
     recordView.setBounds(right + 6, 274, 320, std::max(100, bottom - 274));
     recording.setSize(302, 775);
     recordView.setVisible(recordInspector);
-    for (auto* c : std::initializer_list<juce::Component*>{&pluginType, &insertButton, &pluginChoice, &bypassButton,
-                                                           &editorButton, &removeButton, &parameterView})
+    for (auto* c :
+         std::initializer_list<juce::Component*>{&pluginType, &insertButton, &externalLibraryButton, &pluginChoice,
+                                                 &bypassButton, &editorButton, &removeButton, &parameterView})
         c->setVisible(!routingInspector && !groupInspector && !autoInspector && !recordInspector);
+    externalLibraryButton.setVisible(externalLibraryButton.isVisible() && !clipFXInspector);
     previewText.setBounds(right + 16, getHeight() - 246, 300, 164);
     acceptButton.setBounds(right + 16, getHeight() - 72, 142, 30);
     rejectButton.setBounds(right + 168, getHeight() - 72, 148, 30);
@@ -603,9 +607,9 @@ void Workspace::resized()
     {
         previewText.setBounds(right + 16, 274, 300, std::max(100, getHeight() - 356));
         for (auto* c : std::initializer_list<juce::Component*>{
-                 &pluginType, &insertButton, &pluginChoice, &bypassButton, &editorButton, &removeButton, &stateStatus,
-                 &stateRetryButton, &stateRestoreButton, &programIndex, &programButton, &parameterView, &routingView,
-                 &groupView, &autoView, &recordView})
+                 &pluginType, &insertButton, &externalLibraryButton, &pluginChoice, &bypassButton, &editorButton,
+                 &removeButton, &stateStatus, &stateRetryButton, &stateRestoreButton, &programIndex, &programButton,
+                 &parameterView, &routingView, &groupView, &autoView, &recordView})
             c->setVisible(false);
     }
     if (audioSettings && audioSettings->isVisible())

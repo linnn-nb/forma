@@ -450,10 +450,7 @@ void Workspace::showPluginLibrary()
                     [this] { pluginLibrary->setVisible(false); });
             pluginLibraryTrack = selected;
             pluginLibrarySession = commands.sessionToken();
-            auto t = selectedTrack();
-            pluginLibrary->setTarget(t.is_null() ? "\u672a\u9009\u62e9\u8f68\u9053" : t["name"].get<std::string>(),
-                                     !t.is_null() && t["capabilities"]["audio_routing"].get<bool>() &&
-                                         !facts["playing"].get<bool>());
+            refreshPluginLibraryTarget();
             addAndMakeVisible(*pluginLibrary);
             resized();
             pluginLibrary->toFront(true);

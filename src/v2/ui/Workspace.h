@@ -216,6 +216,7 @@ private:
     Json selectedTrack() const;
     Json selectedProcessor() const;
     void refreshInspector();
+    void refreshPluginLibraryTarget();
     void refresh();
     void syncCommandCards();
     void timerCallback() override;
@@ -321,8 +322,9 @@ private:
         returnButton{"|<"}, stopButton{text("停止")}, playButton{text("播放")}, recordButton{text("● 录音")},
         followEditButton{text("自动化↔")}, rollButton{text("预后卷")}, metronomeButton{text("节拍器")},
         loopButton{text("循环")}, markerButton{text("Marker +")}, locationsButton{text("位置…")}, undoButton{"Undo"},
-        redoButton{"Redo"}, insertButton{text("插入")}, bypassButton{text("旁通")}, editorButton{text("插件窗口")},
-        removeButton{text("移除")}, stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
+        redoButton{"Redo"}, externalLibraryButton{text("AU / VST3…")}, insertButton{text("插入")},
+        bypassButton{text("旁通")}, editorButton{text("插件窗口")}, removeButton{text("移除")},
+        stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
         programButton{text("切换 Program")}, acceptButton{text("接受计划")}, rejectButton{text("取消")};
     juce::TextButton insertTab{text("插入 / 参数")}, routingTab{text("I/O / 发送")}, groupTab{text("组织")},
         autoTab{text("自动化")}, recordTab{text("录音")};
