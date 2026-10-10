@@ -1,10 +1,11 @@
 # 下一步
 
-显式保存的工程跨重开 Undo/Redo 已完成本轮增量验证；完整 U/P0 与完整 DAW 尚未完成，不进入 P1。
+五项反馈的修复版可试用；外部 AU 插入、编辑器、Undo/Redo、原生保存重开本轮复核通过。完整 U/P0 与完整 DAW 尚未完成，不进入 P1。
 
-1. 当前 build-v2-tracktion/FeedbackPreview.app 停在 Edit/r32、persistent-desktop-demo.tracktionedit 的恢复状态。连续 ⌘Z 六次可回到空工程，⇧⌘Z 六次恢复音频切分、增益、Aux/发送、EQ/Reverb、MIDI/自动化和 Marker；原件不会删除。旧 import-target-demo/plugin-entry-demo 没有过往历史，不会凭空获得撤销。
-2. 本轮原生⌘S另存、退出、新进程读取副本及快捷键 Undo/Redo 已验。打开使用已有 --open-session 参数；“前往文件夹”自动化路径输入异常未归因，下一明确任务先核对原生选择器焦点及手动路径操作，再收尾 U/P0 8 步。演示源媒体在保留的专项临时目录，勿清理，后续整理演示媒体路径。
-3. 外部插件已具备直接入口：选轨→检查器“AU / VST3…”→搜索→未扫描先扫描→插入→插件窗口；Mix 空槽共用入口。真实 AUNBandEQ 与 Serum 的保存重开/Undo/Redo/DSP 在本轮复验。全部第三方兼容与听感未验。
-4. 预备拍实体录音拍数/时序、大工程历史资源/保存吞吐、完整 U/P0 用户试用仍待验证。显式历史最多2048事务/256MiB，超限不静默截断；自动恢复快照保持原语义。本轮 --no-mcp 不占其他预览端点，无 MCP 验收或权限扩展。
+1. 打开 `build-v2-tracktion/FeedbackPreview.app`；当前预览已打开 `build-v2-tracktion/UP0-demo-media/Feedback-5-current-1010.tracktionedit`，停在2秒/r16，四音频轨、一乐器轨、真实媒体和AUNBandEQ保留。⌘Z一次移除AU，⇧⌘Z恢复；右侧“插件窗口”打开真实编辑器。
+2. 外部插件：选轨→检查器“AU / VST3…”→搜索→选条目→未扫描先扫描→插入。Mix空槽共用入口；加载失败显示原因，不显示假成功。Serum VST3既有实际DSP/状态资格见VERIFICATION，全部第三方兼容未验。
+3. 其余反馈：⌘I原生多选，选择现有轨道连续排列或每文件新轨；空格播放/停止；左右分隔线拖宽，⌘+滚轮缩放；Smart/Trim和片段角点直接编辑，底部常驻Clip数值表单已移除。
+4. 原生路径选择本轮已核对正常；新八步流程只完成建轨/多选导入和部分Smart分离，下一项是完成Smart移动、修剪、双淡化与Shuffle验收。旧八图保持历史标签，不冒充本轮截图。提交后等待用户试用，不自动扩展。
+5. 预备拍实体录音拍数/时序、实体捏合/声学回环、大工程历史资源/保存吞吐仍待测。显式历史最多2048事务/256MiB，超限报错；旧文件与自动恢复快照不补造历史。本轮未验MCP、无新DMG。
 
-P1、M2/M3扩充、M4/M5仍暂停；没有新DMG，不宣称全产品验收。
+P1、M2/M3扩充、M4/M5仍暂停；资格与历史回执见VERIFICATION和evidence/U/summary.md。
