@@ -1,3 +1,9 @@
+## 2026-10-10 冷启动首键修复
+
+两个独立真实进程：首次⌘O直接打开原生文件选择器；退出重开后首次⌘N直接打开新工程面板，Escape取消。之后原生打开feedback-final.tracktionedit恢复两轨/AUNBandEQ，预览停止播放供试用。真实日志确认原生key peer有焦点而JUCE focused component为空，旧父窗口guard拒绝；正式修复接收该首键，经原有统一命令层执行一次。文本/其他窗口焦点保护由自动化验证，实体名称输入未获得改值回执，不计通过。
+
+Release/固定签名/deep严格验签通过；三组一次全绿160检查/12.412秒（WindowFocus27、ClipTime57、MemoryRoll76）。build-v2-tracktion/cold-focus-regression.json和cold-ndaw_*回执；临时诊断函数移除，初期诊断启动崩溃和旧版失败不算通过。详细代码、根因、边界见VERIFICATION首条。无新DMG、SDK/RT改动或本目录截图；下一修复Mix空插入槽菜单。完整U/P0未验收。
+
 ## 2026-10-10 撤销提示与AU导入核对
 
 L1原生历史提供实际事务描述；Undo/Redo悬停与执行回执区分“导入音频 · 2 个文件”“轨道音量”。AU额外事务假设未成立，不合并独立人工编辑。实机两轨/AUNBandEQ：双选两WAV→4轨→⌘Z一次回2轨→⇧⌘Z恢复4轨；原轨−3dB→⌘Z恢复0dB且保留导入→再⌘Z回2轨；原生AU编辑器开关不新增revision。预览停在r22两轨，保留试用，无残留测试窗口。
@@ -10,7 +16,7 @@ Release/固定签名已通过，19组受影响自动化exit0、2305检查；具�
 
 多选导入、停止源音频清零、左右可拖宽度、删除常驻音频表单、显式AU/VST3入口/扫描/直接插入已落地。真实桌面双选WAV、AU编辑器、Undo/Redo、保存重开和左右拖动已执行；旧实机出现额外Undo；本次诊断确认记录是普通human Plan，非插件状态捕获，具体手势未复现。新版带AU一次撤销批量导入实机通过。最初自动化超时后恢复；未实机捏合或声学回环。
 
-产物build-v2-tracktion/FeedbackPreview.app；GUI另存feedback-final.tracktionedit，两轨/实际AUNBandEQ/左右188和432；UP0-demo-media保留。新截图feedback-au-editor.png和feedback-final-timeline.png留忽略的build目录，不扩增本目录8张旧图。提交推送后等待试用；下一工程任务是冷启动首次快捷键焦点修复。
+产物build-v2-tracktion/FeedbackPreview.app；GUI另存feedback-final.tracktionedit，两轨/实际AUNBandEQ/左右188和432；UP0-demo-media保留。新截图feedback-au-editor.png和feedback-final-timeline.png留忽略的build目录，不扩增本目录8张旧图。提交推送后等待试用；冷启动首键已由下列增量修复；下一工程任务是Mix空插入槽菜单。
 
 ---
 

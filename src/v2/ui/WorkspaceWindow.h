@@ -41,9 +41,16 @@ public:
 
     bool keyPressed(const juce::KeyPress& key) override
     {
-        // Covers the first key if it arrives before the queued focus notification.
-        // A key bubbled from a child must not be dispatched twice or override local text editing.
-        return juce::Component::getCurrentlyFocusedComponent() == this && editor().keyPressed(key);
+        // macOS can deliver the first key with a key native peer but no JUCE focused component.
+        // ComponentPeer then targets this window; no active-window notification is guaranteed first.
+        // A key bubbled from a child still must not dispatch twice or override local text editing.
+        auto* focused = juce::Component::getCurrentlyFocusedComponent();
+        auto* peer = getPeer();
+        if (!getContentComponent() || !isShowing() || !peer || !peer->isFocused() ||
+            isCurrentlyBlockedByAnotherModalComponent() || (focused != this && focused != nullptr))
+            return false;
+        handOffWindowFocus();
+        return editor().keyPressed(key);
     }
 
 private:
@@ -51,8 +58,8 @@ private:
     {
         auto* peer = getPeer();
         auto* focused = juce::Component::getCurrentlyFocusedComponent();
-        if (isShowing() && peer && peer->isFocused() && !isCurrentlyBlockedByAnotherModalComponent() &&
-            (focused == this || focused == nullptr))
+        if (getContentComponent() && isShowing() && peer && peer->isFocused() &&
+            !isCurrentlyBlockedByAnotherModalComponent() && (focused == this || focused == nullptr))
             editor().grabKeyboardFocus();
     }
 

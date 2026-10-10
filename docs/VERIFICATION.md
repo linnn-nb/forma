@@ -1,3 +1,13 @@
+U-P0-COLD-KEY-01（2026-10-10）：冷启动第一条快捷键现可直接操作；实体⌘O与⌘N在两个独立进程中通过，无需先点击控件。完整U/P0仍待试用。
+
+根因来自真实macOS诊断：showReady与两次handoff时原生peer尚未获得键盘焦点；随后第一条window-key到达，peer.isFocused=true，但JUCE focused component=null且activeWindow=false。旧WorkspaceWindow只允许focused==this，故拒绝该键。新路径仅在当前原生peer有焦点、窗口可见、内容存在且未被modal阻塞时，接受this/null焦点，交给原有Workspace/ApplicationCommandManager一次；子组件/其他窗口仍不由父窗口重新派发。L1与工程/实时链路未改。
+
+源码src/v2/ui/WorkspaceWindow.h；tests/v2/WindowFocusTests.cpp新增unfocusAllComponents后的真实ComponentPeer::handleKeyPress路径，检查原生片段拆分、revision仅+1、单笔Undo。既有自定义键位保存重开、父窗口延迟交接、TextEditor/面板/另一窗口保护和销毁安全回归保留。Release与固定本地签名/deep严格验签通过；三组一次全绿、160检查/12.412秒：WindowFocus27、ClipTime57、MemoryRoll76；输出build-v2-tracktion/cold-focus-regression.json及cold-ndaw_* JSON/log，日志无JUCE Assertion failure。
+
+实体验收：旧版首次⌘O及Raise后⌘O均无响应；正式修复版第一次冷启动直接⌘O打开原生选择器，取消退出；第二次冷启动直接⌘N显示新工程面板，Escape取消；随后⌘O打开feedback-final.tracktionedit，恢复两轨/AUNBandEQ，停在r16供试用。文字焦点保护本轮由自动化验证，实体新工程名称输入尝试未获得改值回执，不计通过。临时焦点日志初版在内容未创建时访问导致两个诊断启动崩溃，随后加入检查并定位根因；诊断函数/路径已全部移除，正式代码无该日志I/O。诊断日志留忽略build目录，不新增evidence/U截图或DMG。
+
+边界：不是全部启动方式/所有插件窗口实机认证；跨重开Undo、Mix空槽菜单、导入到已选轨和真实预备拍录音仍待补。其他用户预览保持，当前测试进程和测试面板已结束。
+
 U-FEEDBACK-HISTORY-01（2026-10-10）：批量导入及独立人工编辑现在显示真实撤销对象；此前AU额外事务猜测未成立。完整U/P0和完整DAW仍未验收。
 
 - L1 query.history提供原生历史对应的plan_id/actor/source/commands，只读展示。提交记录保存命令ID描述；Undo后保留Redo描述，旧工程无描述时显示“工程事务”。不执行这些描述，不改变原生事务边界，也不宣称跨重开Undo恢复。源码EngineCommands、Workspace/WorkspaceRefresh。

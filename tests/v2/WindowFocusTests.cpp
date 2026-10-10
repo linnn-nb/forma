@@ -102,6 +102,18 @@ int main(int argc, char** argv)
         window.showReady();
         pump();
         check(w.hasKeyboardFocus(false), "native ready window focuses editing content without a control click");
+        juce::Component::unfocusAllComponents();
+        check(juce::Component::getCurrentlyFocusedComponent() == nullptr && window.getPeer()->isFocused(),
+              "cold native key peer with no JUCE focus reproduced");
+        const auto firstKeyRevision = c.query()["revision"].get<uint64_t>();
+        check(window.getPeer()->handleKeyPress(separate),
+              "first focusless key travels through actual ComponentPeer to registered command");
+        pump();
+        check(w.hasKeyboardFocus(false) && c.query()["tracks"][0]["clips"].size() == 3 &&
+                  c.query()["revision"].get<uint64_t>() == firstKeyRevision + 1,
+              "focusless first key transfers editing focus and commits exactly one native edit");
+        w.uiCommands().invokeDirectly(6, false);
+        check(c.query()["tracks"] == before, "one Undo restores the focusless first-key edit");
         window.grabKeyboardFocus();
         check(window.hasKeyboardFocus(false), "native parent focus reproduced before queued handoff");
         check(window.keyPressed(separate), "first parent-focused key reaches the actual registered edit command");
