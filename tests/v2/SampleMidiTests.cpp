@@ -88,9 +88,7 @@ Json op(const char* name, Json args)
 }
 Json run(Commands& c, Json operations)
 {
-    std::cout << "RUN " << operations.dump() << std::endl;
     auto plan = c.makePlan("human", std::move(operations));
-    std::cout << "PLAN READY" << std::endl;
     auto receipt = c.commit(plan);
     pump();
     check(receipt["state"] == "committed", "real native transaction committed");
@@ -216,7 +214,7 @@ int main(int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI gui;
     try
     {
-        const auto dir = juce::File(argc > 2 ? argv[2] : "/tmp/forma-sample-midi")
+        const auto dir = juce::File(juce::String::fromUTF8(argc > 2 ? argv[2] : "/tmp/forma-sample-midi"))
                              .getChildFile("sample-midi-" + juce::Uuid().toString());
         dir.createDirectory();
         Workspace w(false, std::make_unique<Storage>(dir.getChildFile("prefs")));
@@ -303,7 +301,6 @@ int main(int argc, char** argv)
         const auto inputHash = juce::SHA256(fixture).toHexString();
         auto open = [&](const juce::File& file)
         {
-            std::cout << "OPEN " << file.getFullPathName() << std::endl;
             w.openSession(file);
             pump();
         };
@@ -416,7 +413,100 @@ int main(int argc, char** argv)
                 ++cases;
             }
         }
+        open(ramp);
+        samples();
+        run(c, Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 95.}})}));
+        const auto archivedHash = AudioDeviceTestAccess::clip(c, src)
+                                      .state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN")["source_hash"]
+                                      .toString()
+                                      .toStdString();
+        const auto noteID = c.query()["tracks"][0]["clips"][0]["notes"][0]["id"];
+        run(c, Json::array({op("midi.note.set", {{"clip", src},
+                                                 {"note", noteID},
+                                                 {"pitch", 62},
+                                                 {"velocity", 81},
+                                                 {"position_samples", 132000},
+                                                 {"length_samples", 36000}})}));
+        const auto editedTimes = timing(c, src), editedPlayback = playback(c, src);
+        auto events = c.query()["music"]["tempos"];
+        auto eventReceipt = run(
+            c, Json::array({op("tempo.event.set", {{"event", events[1]["id"]}, {"beat_position", 7.}, {"bpm", 67.}})}));
+        sameTimes(c, src, editedTimes, 0);
+        samePlayback(c, src, editedPlayback);
+        origin(c, src, archivedHash);
+        c.undo(eventReceipt["plan_id"]);
+        pump();
+        sameTimes(c, src, editedTimes, 0);
+        c.redo();
+        pump();
+        sameTimes(c, src, editedTimes, 0);
+        run(c, Json::array({op("tempo.event.delete", {{"event", events[1]["id"]}})}));
+        sameTimes(c, src, editedTimes, 0);
+        samePlayback(c, src, editedPlayback);
+        run(c, Json::array({op("tempo.event.create", {{"beat_position", 9.}, {"bpm", 73.}})}));
+        sameTimes(c, src, editedTimes, 0);
+        samePlayback(c, src, editedPlayback);
+        auto remappedBuffer =
+            c.prepareTimelineClipClipboard(Json::array({src}), c.sessionToken(), c.querySummary()["revision"]);
+        c.acceptClipboard(remappedBuffer["id"]);
+        run(c, Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 105.}})}));
+        auto remappedPaste = run(c, Json::array({op("timeline.clips.paste", {{"clipboard", remappedBuffer["id"]},
+                                                                             {"tracks", Json::array({target})},
+                                                                             {"position_samples", 432000},
+                                                                             {"mode", "replace"}})}));
+        sameTimes(c, inserted(remappedPaste), editedTimes, 7.);
+        origin(c, inserted(remappedPaste), archivedHash);
+        const auto projectedFile = dir.getChildFile("Projected.tracktionedit");
+        c.save(projectedFile);
+        open(projectedFile);
+        const auto unchanged = c.query();
+        for (bool corruptTimes : {false, true})
+        {
+            auto bad = juce::XmlDocument::parse(projectedFile);
+            auto* provenance = byID(*bad, src)->getChildByName("NDAW_SAMPLE_MIDI_ORIGIN");
+            check(provenance != nullptr, "saved native project contains original MIDI provenance");
+            provenance->setAttribute(corruptTimes ? "source_times" : "source_hash",
+                                     corruptTimes ? "[{\"index\":0}]" : "bad checksum");
+            const auto badFile = dir.getChildFile(corruptTimes ? "BadTimes.tracktionedit" : "BadHash.tracktionedit");
+            check(bad->writeTo(badFile), "owned damaged project fixture saved");
+            rejects([&] { c.open(badFile); }, "damaged provenance rejected before native Edit adoption");
+            check(c.query() == unchanged, "failed project open preserves live native project and revision");
+        }
+        for (bool nested : {false, true})
+        {
+            auto bad = juce::XmlDocument::parse(fixture);
+            auto* clip = byID(*bad, src);
+            if (nested)
+                clip->getChildByName("SEQUENCE")
+                    ->getChildByName("NOTE")
+                    ->addChildElement(new juce::XmlElement("EXPRESSION"));
+            else
+                clip->setAttribute("loopLengthBeats", 2.);
+            const auto badFile = dir.getChildFile(nested ? "Nested.tracktionedit" : "Loop.tracktionedit");
+            check(bad->writeTo(badFile), "owned unsupported MIDI fixture saved");
+            open(badFile);
+            const auto beforeReject = c.query();
+            rejects(
+                [&]
+                {
+                    c.makePlan("human",
+                               Json::array({op("midi.clip.timebase.set", {{"clip", src}, {"basis", "samples"}})}));
+                },
+                "unsupported loop or expression mapping rejected before writes");
+            check(c.query() == beforeReject, "unsupported MIDI timebase rejection is atomic");
+        }
         open(fixture);
+        auto basisPlan =
+            c.makePlan("human", Json::array({op("midi.clip.timebase.set", {{"clip", src}, {"basis", "samples"}})}));
+        Scope basisScope;
+        basisScope.mode = Permission::Preview;
+        basisScope.targets = {src};
+        basisScope.commands = {"midi.clip.timebase.set"};
+        basisScope.end = 48000;
+        rejects([&] { c.review(basisPlan, basisScope); }, "bounded time grant cannot change whole-performance clock");
+        basisScope.end = std::numeric_limits<int64_t>::max();
+        check(!c.review(basisPlan, basisScope)["permission"]["automatic_allowed"].get<bool>(),
+              "timebase change requires explicit local confirmation under scoped API");
         AudioDeviceTestAccess::select(w, owner);
         pump();
         c.updateUiState({{"object_selection", Json::array({{{"id", src}, {"track", owner}, {"kind", "clip"}}})}},

@@ -774,7 +774,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                             if (c["id"] == selection.objects[0]["id"] && c["kind"] == "midi")
                             {
                                 found = !c.value("locked", false) && !c.value("looped", false) &&
-                                        c.value("bulk_transform_available", false);
+                                        c.value("sample_mapping_available", false);
                                 info.setTicked(c["timebase"] ==
                                                (id == editCommand::midiBasisSamples ? "samples" : "beats"));
                             }
@@ -875,6 +875,10 @@ bool Workspace::perform(const InvocationInfo& invocation)
                 if (!pending.is_null() || selection.objects.size() != 1 || selection.objects[0]["kind"] != "clip")
                     throw std::runtime_error("先选择一个 MIDI 片段，接受或取消当前预览");
                 const std::string basis = id == editCommand::midiBasisSamples ? "samples" : "beats";
+                for (const auto& t : facts["tracks"])
+                    for (const auto& c : t["clips"])
+                        if (c["id"] == selection.objects[0]["id"] && c["timebase"] == basis)
+                            return;
                 commands.commit(commands.makePlan(
                     "human", Json::array({operation("midi.clip.timebase.set",
                                                     {{"clip", selection.objects[0]["id"]}, {"basis", basis}})})));

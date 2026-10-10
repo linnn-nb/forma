@@ -14,6 +14,19 @@ std::string hash(const void* data, size_t size)
     return juce::SHA256(data, size).toHexString().toStdString();
 }
 } // namespace
+std::string restriction(te::MidiClip& clip)
+{
+    if (clip.isLooping())
+        return "looped";
+    if (clip.getQuantisation().getType(false) != "(none)")
+        return "playback_quantisation";
+    if (clip.getGrooveTemplate().isNotEmpty())
+        return "playback_groove";
+    for (const auto& event : clip.getSequence().state)
+        if (event.hasType(te::IDs::NOTE) && event.getNumChildren())
+            return "nested_note_expression";
+    return {};
+}
 Json project(const juce::ValueTree& sequence, const tracktion::tempo::Sequence& source,
              const tracktion::tempo::Sequence& destination, double sourceContentBeat, double destinationContentBeat,
              double secondsDelta)
@@ -21,6 +34,10 @@ Json project(const juce::ValueTree& sequence, const tracktion::tempo::Sequence& 
     require(sequence.hasType(te::IDs::SEQUENCE) && std::isfinite(sourceContentBeat) &&
                 std::isfinite(destinationContentBeat) && std::isfinite(secondsDelta),
             "invalid sample MIDI mapping");
+    juce::MemoryOutputStream originalBytes;
+    sequence.writeToStream(originalBytes);
+    require(sequence.getNumChildren() <= int(maximumEvents) && originalBytes.getDataSize() <= maximumBytes,
+            "sample MIDI original sequence exceeds preparation budget");
     Json events = Json::array();
     int index = 0;
     for (const auto& event : sequence)
@@ -107,6 +124,34 @@ void validateOrigin(const juce::ValueTree& clip)
             require(data.is_array() && data.size() <= maximumEvents && !origin["source_clip"].toString().isEmpty() &&
                         origin["source_tempo_hash"].toString().length() == 64,
                     "invalid sample MIDI provenance context");
+            int previous = -1;
+            for (const auto& row : data)
+            {
+                require(row.is_object() && row.size() == 8 && row.contains("index") &&
+                            row["index"].is_number_integer() && row.contains("kind") && row["kind"].is_string(),
+                        "invalid sample MIDI provenance event");
+                const auto index = row["index"].get<int64_t>();
+                require(index > previous && index < tree.getNumChildren(), "invalid sample MIDI provenance index");
+                previous = int(index);
+                const auto event = tree.getChild(previous);
+                require((event.hasType(te::IDs::NOTE) || event.hasType(te::IDs::CONTROL) ||
+                         event.hasType(te::IDs::SYSEX)) &&
+                            row["kind"].get<std::string>() == event.getType().toString().toStdString(),
+                        "sample MIDI provenance event type mismatch");
+                for (const char* field : {"source_seconds", "source_end_seconds", "destination_seconds",
+                                          "destination_end_seconds", "beat", "length_beats"})
+                    require(row.contains(field) && row[field].is_number() && std::isfinite(row[field].get<double>()),
+                            "invalid sample MIDI provenance timestamp");
+                require(row["source_end_seconds"].get<double>() >= row["source_seconds"].get<double>() &&
+                            row["destination_end_seconds"].get<double>() >= row["destination_seconds"].get<double>() &&
+                            row["length_beats"].get<double>() >= 0,
+                        "invalid sample MIDI provenance duration");
+            }
+            size_t nativeEvents = 0;
+            for (const auto& event : tree)
+                if (event.hasType(te::IDs::NOTE) || event.hasType(te::IDs::CONTROL) || event.hasType(te::IDs::SYSEX))
+                    ++nativeEvents;
+            require(data.size() == nativeEvents, "sample MIDI provenance does not cover all original events");
         }
 }
 } // namespace ndaw::v2::sample_midi

@@ -426,21 +426,24 @@ Json Commands::midiQuery(te::MidiClip& clip) const
                                {"metadata", e->getMetadata()},
                                {"source_beat", e->getBeatPosition().inBeats()},
                                {"position_samples", sourceSamples(e->getEditTime(clip))}});
-    return {
-        {"notes", notes},
-        {"controller_events", controllers},
-        {"sysex_count", clip.getSequence().getNumSysExEvents()},
-        {"start_beat", clip.getStartBeat().inBeats()},
-        {"length_beats", clip.getLengthInBeats().inBeats()},
-        {"content_start_beat", clip.getContentStartBeat().inBeats()},
-        {"sample_event_policy", clip.getSyncType() == te::Clip::syncAbsolute ? "fixed_absolute_time" : "native_beats"},
-        {"original_midi_source_hash",
-         clip.state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN")["source_hash"].toString().toStdString()},
-        {"midi_channel", clip.getMidiChannel().getChannelNumber()},
-        {"looped", clip.isLooping()},
-        {"locked", bool(clip.state.getProperty("ndaw_locked", false))},
-        {"bulk_transform_available", transformRestriction(clip).empty()},
-        {"bulk_transform_restriction", transformRestriction(clip)}};
+    return {{"notes", notes},
+            {"controller_events", controllers},
+            {"sysex_count", clip.getSequence().getNumSysExEvents()},
+            {"start_beat", clip.getStartBeat().inBeats()},
+            {"length_beats", clip.getLengthInBeats().inBeats()},
+            {"content_start_beat", clip.getContentStartBeat().inBeats()},
+            {"sample_event_policy", clip.getSyncType() != te::Clip::syncAbsolute ? "native_beats"
+                                    : sample_midi::restriction(clip).empty()     ? "fixed_absolute_time"
+                                                                                 : "unqualified_processed_performance"},
+            {"sample_mapping_available", sample_midi::restriction(clip).empty()},
+            {"sample_mapping_restriction", sample_midi::restriction(clip)},
+            {"original_midi_source_hash",
+             clip.state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN")["source_hash"].toString().toStdString()},
+            {"midi_channel", clip.getMidiChannel().getChannelNumber()},
+            {"looped", clip.isLooping()},
+            {"locked", bool(clip.state.getProperty("ndaw_locked", false))},
+            {"bulk_transform_available", transformRestriction(clip).empty()},
+            {"bulk_transform_restriction", transformRestriction(clip)}};
 }
 Json Commands::musicQuery() const
 {

@@ -6,6 +6,7 @@ namespace ndaw::v2::sample_midi
 Json project(const juce::ValueTree& sequence, const tracktion::tempo::Sequence& source,
              const tracktion::tempo::Sequence& destination, double sourceContentBeat, double destinationContentBeat,
              double secondsDelta);
+std::string restriction(te::MidiClip& clip);
 void validateOrigin(const juce::ValueTree& clip);
 juce::ValueTree makeOrigin(const juce::ValueTree& sequence, const Json& projection, const std::string& sourceClip,
                            const std::string& tempoHash);

@@ -10,9 +10,8 @@ void require(bool ok, const char* message)
 }
 void usable(te::MidiClip& clip)
 {
-    require(!clip.isLooping() && clip.getQuantisation().getType(false) == "(none)" &&
-                clip.getGrooveTemplate().isEmpty(),
-            "sample MIDI mapping requires nonlooped performance without native quantisation/groove");
+    require(sample_midi::restriction(clip).empty(),
+            "sample MIDI mapping requires unprocessed nonlooped performance without nested expression");
     sample_midi::validateOrigin(clip.state);
 }
 std::string tempoHash(te::TempoSequence& seq)
