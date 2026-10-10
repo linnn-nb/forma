@@ -8,6 +8,22 @@ namespace ndaw::v2
 class AudioDeviceTestAccess
 {
 public:
+    static Json history(Commands& c)
+    {
+        Json transactions = Json::array();
+        for (int i = 0; i < c.metadata.getNumChildren(); ++i)
+        {
+            auto tx = c.metadata.getChild(i);
+            if (!tx.hasType("TRANSACTION"))
+                continue;
+            transactions.push_back({{"id", tx.getProperty("plan_id").toString().toStdString()},
+                                    {"source", tx.getProperty("source").toString().toStdString()},
+                                    {"capture", tx.getProperty("capture").toString().toStdString()}});
+        }
+        return {{"cursor", c.historyCursor},
+                {"transactions", transactions},
+                {"undo_description", c.edit->getUndoManager().getUndoDescription().toStdString()}};
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -146,6 +162,78 @@ int main(int argc, char** argv)
         check(w.query()["tracks"] == final && w.queryView()["workspace_panes"] == finalView["workspace_panes"] &&
                   w.queryView()["span_samples"] == finalView["span_samples"],
               "batch media and resized/zoomed workspace survive native save and reopen");
+        {
+            Workspace external(true);
+            external.setVisible(true);
+            auto& ec = AudioDeviceTestAccess::owner(external);
+            external.importAudioFiles({a});
+            wait([&] { return ec.deviceStatus().value("driver_running", false); });
+            external.showPluginLibrary();
+            wait([&] { return !external.queryPluginLibrary()["busy"].get<bool>(); });
+            std::string au;
+            const auto inventory = external.queryPluginLibrary();
+            for (const auto& row : inventory["rows"])
+                if (row["name"] == "AUNBandEQ" && row["status"] == "verified")
+                    au = row["descriptor"];
+            check(!au.empty() && external.selectLibraryPlugin(au),
+                  "actual verified AU selected for batch history regression");
+            click(external, "plugin.library.preview",
+                  [&] { return external.query()["tracks"][0]["plugins"].size() == 1; });
+            const auto auSaved = dir.getChildFile("au-import.tracktionedit");
+            click(external, "plugin.editor", [&] { return external.queryPluginEditors().size() == 1; });
+            click(external, "plugin.editor", [&] { return external.queryPluginEditors().empty(); });
+            ec.save(auSaved);
+            external.openSession(argc > 2 ? juce::File(argv[2]) : auSaved);
+            const auto beforeBatch = external.query()["tracks"];
+            auto observe = [&]
+            {
+                auto frames = ec.deviceStatus()["output_frames"].get<uint64_t>();
+                // Observe delayed SDK notifications across 0.5 seconds of real callbacks,
+                // rather than treating a short message-loop sleep as completion.
+                wait([&] { return ec.deviceStatus()["output_frames"].get<uint64_t>() >= frames + 24000; });
+            };
+            observe();
+            std::cout << "AU_HISTORY_BEFORE=" << AudioDeviceTestAccess::history(ec).dump() << std::endl;
+            external.importAudioFiles({a, b});
+            std::cout << "AU_HISTORY_IMMEDIATE=" << AudioDeviceTestAccess::history(ec).dump() << std::endl;
+            observe();
+            auto importedBatch = external.query()["tracks"];
+            std::cout << "AU_HISTORY_SETTLED=" << AudioDeviceTestAccess::history(ec).dump() << std::endl;
+            check(importedBatch.size() == beforeBatch.size() + 2,
+                  "batch import with actual AU creates exactly two tracks");
+            const auto importedHistory = external.query()["history"]["undo"];
+            check(importedHistory["commands"] ==
+                      Json::array({"track.create", "clip.import", "track.create", "clip.import"}),
+                  "actual next Undo identifies the single two-file import Plan");
+            auto* undo = dynamic_cast<juce::Button*>(find(external, "history.undo"));
+            check(undo && undo->getTooltip().contains("2 个文件"), "native Undo tooltip describes the actual batch");
+            const auto target = importedBatch[0]["id"].get<std::string>();
+            auto* fader = dynamic_cast<juce::Slider*>(find(external, "track.gain:" + juce::String(target)));
+            check(fader && fader->isEnabled(),
+                  "actual original-track volume control remains available after importing");
+            fader->setValue(-3, juce::sendNotificationSync);
+            const auto editedBatch = external.query()["tracks"];
+            check(editedBatch[0]["gain_db"] != importedBatch[0]["gain_db"] &&
+                      external.query()["history"]["undo"]["commands"] == Json::array({"track.gain"}) &&
+                      undo->getTooltip().contains("轨道音量"),
+                  "later real human fader edit is separate and identified rather than silently merged into import");
+            click(external, "history.undo", [&] { return external.query()["tracks"] == importedBatch; });
+            check(external.query()["tracks"].size() == importedBatch.size() &&
+                      external.query()["history"]["redo"]["commands"] == Json::array({"track.gain"}),
+                  "first Undo restores only later volume edit and keeps all imported audio");
+            click(external, "history.undo", [&] { return external.query()["tracks"] == beforeBatch; });
+            observe();
+            check(external.query()["tracks"] == beforeBatch,
+                  "one Undo with actual AU removes the entire batch and retains plugin state");
+            click(external, "history.redo", [&] { return external.query()["tracks"] == importedBatch; });
+            click(external, "history.redo", [&] { return external.query()["tracks"] == editedBatch; });
+            const auto retained = dir.getChildFile("au-batch-gain-final.tracktionedit");
+            ec.save(retained);
+            external.openSession(retained);
+            check(
+                external.query()["tracks"] == editedBatch && external.query()["history"]["undo"].is_null(),
+                "AU, imported media and separate fader value reopen correctly without claiming persisted Undo history");
+        }
         Workspace live(true);
         live.setVisible(true);
         auto& lc = AudioDeviceTestAccess::owner(live);

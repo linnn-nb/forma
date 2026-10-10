@@ -1,6 +1,15 @@
+U-FEEDBACK-HISTORY-01（2026-10-10）：批量导入及独立人工编辑现在显示真实撤销对象；此前AU额外事务猜测未成立。完整U/P0和完整DAW仍未验收。
+
+- L1 query.history提供原生历史对应的plan_id/actor/source/commands，只读展示。提交记录保存命令ID描述；Undo后保留Redo描述，旧工程无描述时显示“工程事务”。不执行这些描述，不改变原生事务边界，也不宣称跨重开Undo恢复。源码EngineCommands、Workspace/WorkspaceRefresh。
+- 诊断副本au-history-diagnostic.tracktionedit：额外记录属于普通human Plan，有idempotency_key，没有plugin_state/capture标记；与两轨基线相比原轨PLUGIN 1018有volume差异。具体产生手势未确认，不能把合法独立编辑合并进导入或忽略插件状态变化。
+- 实机FeedbackPreview：打开真实两轨/AUNBandEQ工程，原生多选FourOsc-render.wav与PCM-tone.wav→4轨/r17；⌘Z一次整批移除/r18，⇧⌘Z一次恢复/r19。原轨推子−3dB/r20，⌘Z恢复0dB且保留导入/r21，第二次⌘Z移除整批/r22；每步显示对应操作，AU编辑器开关后revision仍22。旧额外事务未复现，不宣称找到了此前手势根因。
+- 新自动化ClipWorkspaceTests：真实CoreAudio、AUNBandEQ保存重开/原生编辑器开关、24000回调帧延迟通知观察、两文件同笔导入、独立推子编辑分笔Undo/Redo、保存重开。生成工程与实际feedback-final原生副本两种路径均执行；最终新增描述版本生成工程70检查通过。
+- Release和固定本地签名/deep严格验签通过。受影响6组有通过回执，共375检查：Clip 70、插件GUI 63、实际AU/VST3 50、Serum私有状态92、参数GUI17、编辑83。首批5/6，Editor末尾固定95ms读取焦点失败；仅将该合成点击改为单发/实际通知/4000ms有界等待，最终定向83检查通过。不是一次全绿批次，未重复其他已通过组；首次失败日志保留。
+- 输出索引build-v2-tracktion/undo-regression-results.json（保留首批失败）及undo-editor-final.json；各undo-ndaw_* JSON/log、undo-description-final-build.log、undo-editor-final-build.log。未实机听感/声学回环/捏合，不以组件测试替代这些项目。没有SDK、RT、依赖或MCP工具变更；冷启动首键与跨重开历史继续列缺口。
+
 U-FEEDBACK-05（2026-10-10）：五项用户反馈修复已构建；完整U/P0仍待用户验收。
 
-- 批量导入：原生多选/多文件拖放，光标处每文件一轨、一份L1 Plan；错误成员整笔拒绝。无插件自动化测试一次Undo/Redo及保存重开通过；真实文件选择器双选、导入、快捷键回执已执行。带AUNBandEQ的实际窗口导入后出现额外Undo，第二次才移除整批，原因尚未确认，列入BACKLOG，不能宣称这一组合一次Undo通过。
+- 批量导入：原生多选/多文件拖放，光标处每文件一轨、一份L1 Plan；错误成员整笔拒绝。无插件自动化测试一次Undo/Redo及保存重开通过；真实文件选择器双选、导入、快捷键回执已执行。当时实际窗口观察到第二次Undo才移除整批；后续诊断及当前实机结果见下方新增资格，不再将其归因于AU状态捕获。
 - 停止持续发声：绝对相位源补丁遗漏SDK空时间区间。恢复WaveNode停止时最多40样本退坡随后清零；不关闭输入监听和效果尾音。外置耳机48k/512的真实输出回调，0/1/2秒启动三次，停止后源输出连续24000帧精确零；XRUN=0。非声学回环/听感/全插件兼容声明。
 - 原生界面：左右分隔线可拖动，工作区宽度存入L1 UI子树（schema14，13迁移已测），不进入工程Undo；Command+滚轮/触控板捏合围绕指针缩放。左右分隔线实机拖动、右宽432重开恢复、左宽188原生保存已验；捏合为原生组件事件自动化，未实机捏合。
 - 音频片段不再自动弹出底部常驻数值表单；保留时间线Smart/Trim、Spot、Fades。片段FX/锁定/增益±1dB/复位在编辑和右键菜单，注册为500–504可绑定键位。原数值表单类暂时保留但不显示。

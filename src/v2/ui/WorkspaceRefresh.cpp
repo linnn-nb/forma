@@ -557,6 +557,8 @@ void Workspace::refresh()
                parameterEditing = !facts["parameter_capture"].is_null();
     undoButton.setEnabled(facts["can_undo"].get<bool>() && !playing && !parameterEditing);
     redoButton.setEnabled(facts["can_redo"].get<bool>() && !playing && !parameterEditing);
+    undoButton.setTooltip(text("撤销：") + historyLabel(facts["history"]["undo"]));
+    redoButton.setTooltip(text("重做：") + historyLabel(facts["history"]["redo"]));
     for (auto* b : {&newTrack, &importButton, &openButton, &saveButton, &exportButton, &applyMusic})
         b->setEnabled(!playing && !parameterEditing);
     trackType.setEnabled(!playing && !parameterEditing);

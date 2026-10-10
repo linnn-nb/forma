@@ -1,3 +1,5 @@
+U-FEEDBACK-HISTORY-01（2026-10-10）：没有新增依赖、SDK/RT改动或签名阻塞。真实AU批量导入一次Undo/Redo及独立音量编辑分笔撤销通过；此前额外记录为普通human Plan，具体手势未复现。当前Release/签名通过，六组受影响测试已有通过回执；冷启动首键、跨重开Undo、实机捏合和完整U/P0试用仍未完成。多个既有预览占用MCP端点时本预览提示不可用，未关闭其他实例，GUI制作可用。
+
 U-P0-RANGE-NUDGE-01（2026-10-10）：没有新增依赖、许可、SDK/RT 或签名阻塞；Tracktion/JUCE 锁定和既有12份 SDK 补丁保持，Release 与固定本地叶证书 deep/strict 验签通过。本轮 Mac 桌面可用，已实际执行范围 Nudge/Undo/Redo/保存重开/改键；这替代本轮状态，不把历史锁定期间的未执行项追认为通过。
 未完成：MIDI 范围 Separate/主游标 Split、完整 U/P0 亲手验收；首开一次 ⌘O 无响应需要复现定位。循环/量化/Groove/表情/Warp未资格；未进行听感、真实麦克风/MIDI、低延迟、满载耐久、Windows 或发行验证。范围曲线 auto 混合基准有歧义必须明确选择；不是新增外部阻塞。
 

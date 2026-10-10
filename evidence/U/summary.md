@@ -1,10 +1,16 @@
+## 2026-10-10 撤销提示与AU导入核对
+
+L1原生历史提供实际事务描述；Undo/Redo悬停与执行回执区分“导入音频 · 2 个文件”“轨道音量”。AU额外事务假设未成立，不合并独立人工编辑。实机两轨/AUNBandEQ：双选两WAV→4轨→⌘Z一次回2轨→⇧⌘Z恢复4轨；原轨−3dB→⌘Z恢复0dB且保留导入→再⌘Z回2轨；原生AU编辑器开关不新增revision。预览停在r22两轨，保留试用，无残留测试窗口。
+
+Release/固定签名/deep严格验签通过；六组375检查有通过回执，首批5/6，Editor固定95ms早读改为单次点击等待实际通知，定向83检查通过。首批失败保留undo-regression-results.json，最终编辑回执undo-editor-final.json；均在忽略的build-v2-tracktion。新AU/人工交错专项70检查，实际原生副本亦先行验证一次Undo。不是全部产品验收、不是一次全绿批次；没有新DMG或新增本目录截图。详细范围、旧手势未复现和下一缺口见VERIFICATION/BACKLOG。
+
 ## 2026-10-10 五项用户反馈修复增量
 
 Release/固定签名已通过，19组受影响自动化exit0、2305检查；具体范围和边界见docs/VERIFICATION首条，输出索引为build-v2-tracktion/feedback-final-results.json。不是重新宣称以下8步全部通过。
 
-多选导入、停止源音频清零、左右可拖宽度、删除常驻音频表单、显式AU/VST3入口/扫描/直接插入已落地。真实桌面双选WAV、AU编辑器、Undo/Redo、保存重开和左右拖动已执行；带AU再次导入出现额外Undo，第二次才移除批次，原因未确认。最初自动化超时后恢复；未实机捏合或声学回环。
+多选导入、停止源音频清零、左右可拖宽度、删除常驻音频表单、显式AU/VST3入口/扫描/直接插入已落地。真实桌面双选WAV、AU编辑器、Undo/Redo、保存重开和左右拖动已执行；旧实机出现额外Undo；本次诊断确认记录是普通human Plan，非插件状态捕获，具体手势未复现。新版带AU一次撤销批量导入实机通过。最初自动化超时后恢复；未实机捏合或声学回环。
 
-产物build-v2-tracktion/FeedbackPreview.app；GUI另存feedback-final.tracktionedit，两轨/实际AUNBandEQ/左右188和432；UP0-demo-media保留。新截图feedback-au-editor.png和feedback-final-timeline.png留忽略的build目录，不扩增本目录8张旧图。本轮暂停等试用；下一修复是带AU的Undo历史核对。
+产物build-v2-tracktion/FeedbackPreview.app；GUI另存feedback-final.tracktionedit，两轨/实际AUNBandEQ/左右188和432；UP0-demo-media保留。新截图feedback-au-editor.png和feedback-final-timeline.png留忽略的build目录，不扩增本目录8张旧图。提交推送后等待试用；下一工程任务是冷启动首次快捷键焦点修复。
 
 ---
 

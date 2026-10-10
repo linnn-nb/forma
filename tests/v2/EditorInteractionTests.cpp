@@ -626,9 +626,29 @@ int main(int argc, char** argv)
         w.addToDesktop(juce::ComponentPeer::windowIsTemporary);
         auto* header =
             dynamic_cast<juce::TextButton*>(find(w, "clip.select:" + text(original[0]["id"].get<std::string>())));
+        check(header != nullptr, "actual desktop peer exposes the selected clip button");
+        struct ClickReceipt final : juce::Button::Listener
+        {
+            void buttonClicked(juce::Button*) override
+            {
+                ++notifications;
+            }
+            int notifications = 0;
+        } receipt;
+        header->addListener(&receipt);
         header->grabKeyboardFocus();
         header->triggerClick();
-        pump();
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 4000;
+        while (receipt.notifications == 0 && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        header->removeListener(&receipt);
+        check(receipt.notifications == 1, "single clip click delivers one real native notification within deadline");
+        if (!w.hasKeyboardFocus(false))
+        {
+            const auto* focused = juce::Component::getCurrentlyFocusedComponent();
+            std::cout << "desktop_focus=" << (focused ? focused->getComponentID() : "none")
+                      << " peer_focused=" << (w.getPeer() && w.getPeer()->isFocused()) << std::endl;
+        }
         check(w.hasKeyboardFocus(false), "actual desktop peer clip selection returns focus to global command target");
         check(!find(w, "clip.trim") && !find(w, "clip.close") && !w.queryView()["object_selection"].empty(),
               "restored clip selection retains global command focus without reopening the removed dock");

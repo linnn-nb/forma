@@ -433,7 +433,39 @@ Json Commands::query() const
         tracks.back()["input"] = recordingQuery(*t);
         tracks.back().update(hierarchyQuery(*t));
     }
+    const auto historyEntry = [&](size_t index) -> Json
+    {
+        const auto& id = history.at(index);
+        auto tx = metadata.getChildWithProperty("plan_id", juce::String(id));
+        if (!tx.isValid())
+            if (auto record = historyRecords.find(id); record != historyRecords.end())
+                tx = record->second;
+        Json commands = Json::array();
+        // Descriptions are facts for UI display, never executable instructions.
+        try
+        {
+            const auto saved = tx.getProperty("commands").toString();
+            if (saved.isNotEmpty())
+            {
+                auto parsed = Json::parse(saved.toStdString());
+                if (parsed.is_array() && parsed.size() <= 64 &&
+                    std::all_of(parsed.begin(), parsed.end(), [](const auto& item)
+                                { return item.is_string() && item.template get<std::string>().size() <= 128; }))
+                    commands = std::move(parsed);
+            }
+        }
+        catch (...)
+        { /* Legacy or damaged descriptions cannot change Undo behavior. */
+        }
+        return {{"plan_id", id},
+                {"actor", tx.getProperty("actor").toString().toStdString()},
+                {"source", tx.getProperty("source").toString().toStdString()},
+                {"commands", commands}};
+    };
     return {{"session_token", sessionToken()},
+            {"history",
+             {{"undo", historyCursor > 0 ? historyEntry(historyCursor - 1) : Json(nullptr)},
+              {"redo", historyCursor < history.size() ? historyEntry(historyCursor) : Json(nullptr)}}},
             {"time_selection", timelineRange()},
             {"editing_options", editingOptions()},
             {"shuffle_options", shuffleOptions()},
@@ -1199,6 +1231,10 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         juce::ValueTree transaction("TRANSACTION");
         transaction.setProperty("plan_id", juce::String(plan.at("plan_id").get<std::string>()), nullptr);
         transaction.setProperty("actor", juce::String(plan.at("actor").get<std::string>()), nullptr);
+        Json commandIDs = Json::array();
+        for (const auto& op : plan.at("operations"))
+            commandIDs.push_back(op.at("command"));
+        transaction.setProperty("commands", juce::String(commandIDs.dump()), nullptr);
         transaction.setProperty("idempotency_key", juce::String(key), nullptr);
         metadata.addChild(transaction, -1, &um);
     }
@@ -1263,7 +1299,9 @@ Json Commands::undo(const std::string& expected)
     require(edit->getUndoManager().getUndoDescription().endsWith(":" + juce::String(id)),
             "untracked undo transaction; command history cannot be advanced");
     edit->getTransport().freePlaybackContext();
+    const auto record = metadata.getChildWithProperty("plan_id", juce::String(id));
     require(edit->getUndoManager().undo(), "Tracktion Undo failed");
+    historyRecords[id] = record;
     restoreTransportSettings();
     --historyCursor;
     if (nativeStates)
@@ -1663,6 +1701,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     history.clear();
     historyCursor = 0;
     receipts.clear();
+    historyRecords.clear();
     activeClipboard.reset();
     stagedClipboard.reset();
     lastParameterCapture = nullptr;

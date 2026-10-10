@@ -126,6 +126,7 @@ public:
     }
 
 private:
+    static juce::String historyLabel(const Json& entry);
     juce::PopupMenu rulersMenu();
     void addMenuCommand(juce::PopupMenu&, int);
     juce::PopupMenu trackHeightMenu();

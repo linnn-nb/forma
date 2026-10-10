@@ -527,6 +527,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         invoke(
             [&]
             {
+                const auto description = historyLabel(commands.query()["history"]["undo"]);
                 commands.undo();
                 if (reportShowing && pendingConfirmation.empty())
                 {
@@ -535,7 +536,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                     else
                         showLegacyReport();
                 }
-                message(text("已撤销上一项事务"));
+                message(text("已撤销：") + description);
             });
     };
     redoButton.onClick = [this]
@@ -543,10 +544,11 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         invoke(
             [&]
             {
+                const auto description = historyLabel(commands.query()["history"]["redo"]);
                 commands.redo();
                 if (reportShowing && pendingConfirmation.empty())
                     showLegacyReport();
-                message(text("已重做上一项事务"));
+                message(text("已重做：") + description);
             });
     };
     editButton.onClick = [this]
@@ -906,5 +908,47 @@ Workspace::~Workspace()
     commandFiles.removeAllJobs(true, 2000);
     commands.stop();
     setLookAndFeel(nullptr);
+}
+} // namespace ndaw::desktop
+
+namespace ndaw::desktop
+{
+juce::String Workspace::historyLabel(const Json& entry)
+{
+    if (entry.is_null())
+        return text("无可用事务");
+    const auto& commands = entry["commands"];
+    const auto imports = std::count(commands.begin(), commands.end(), Json("clip.import"));
+    if (imports > 0)
+        return text("导入音频 · ") + juce::String(int(imports)) + text(" 个文件");
+    if (commands.size() == 1)
+    {
+        const auto id = commands[0].get<std::string>();
+        if (id == "track.gain")
+            return text("轨道音量");
+        if (id == "track.pan")
+            return text("轨道声像");
+        if (id == "track.create")
+            return text("新增轨道");
+        if (id == "track.delete")
+            return text("删除轨道");
+        if (id == "plugin.external.insert" || id == "plugin.insert")
+            return text("插入插件");
+        if (id == "plugin.remove")
+            return text("移除插件");
+        if (id == "clip.move" || id == "midi.clip.move")
+            return text("移动片段");
+        if (id == "clip.trim" || id == "midi.clip.trim")
+            return text("修剪片段");
+        if (id == "clip.gain")
+            return text("片段增益");
+    }
+    const auto source = entry.value("source", std::string{});
+    if (source == "plugin_state" || source == "plugin_state_poll")
+        return text("插件状态修改");
+    if (source == "gui-parameter" || source == "sdk-parameter" || source == "plugin_ui")
+        return text("插件参数修改");
+    return commands.empty() ? text("工程事务")
+                            : text("工程编辑 · ") + juce::String(int(commands.size())) + text(" 项操作");
 }
 } // namespace ndaw::desktop

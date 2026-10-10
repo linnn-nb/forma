@@ -1,3 +1,5 @@
+U-FEEDBACK-HISTORY-01：query新增只读history.undo/redo（null或plan_id/actor/source/commands描述）。commands只含已提交真实命令ID；旧记录/损坏描述回退通用显示，绝不执行描述。原生UndoManager、Plan/revision/actor/权限/幂等语义保持；重开后仍无可撤销历史。MCP工具和外部写权限未扩充。
+
 U-P0-RANGE-NUDGE-01（2026-10-10）：human/local_gui makeRangeNudgePlan(tracks, first, last, delta) 使用 48k 工程整数采样、稳定轨道 ID、停止走带与非零位移。timeline_range_nudge 为封闭 schema1 描述 {tracks,start_samples,end_samples,delta_samples}；preview/commit 重编译并比较完整 operations，复核 revision、实际媒体/Tempo/曲线状态、组与 Scope。伪造派生曲线命令、缺失描述、重复/失效目标、越界及 unsigned 溢出在写入前拒绝；一项范围操作对应一次 Undo/Redo。
 preview 明示完整原/目的包络、实际片段位置与曲线基准；大操作进入接受/拒绝卡片。含静音的自动化跟随只在实际 follows_edit 开启时派生；关闭时保持曲线原位置。不存在原生 MIDI Separate 的隐式切分承诺。此增量不增加 MCP 工具，M2/M3 冻结；实际桌面改键、撤销/重做和保存重開通过，测试入口 RangeNudgeTests.cpp。
 

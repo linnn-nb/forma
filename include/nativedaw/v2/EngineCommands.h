@@ -436,6 +436,8 @@ private:
         Json result;
     };
     std::map<std::string, Receipt> receipts;
+    // Undo detaches the native transaction node; retain its description for Redo.
+    std::map<std::string, juce::ValueTree> historyRecords;
     std::vector<std::string> history;
     size_t historyCursor = 0;
     static constexpr double timelineRate = 48000;
