@@ -1,3 +1,13 @@
+U-P0-KEYBOARD-PANEL-01（2026-10-10）：已有绑定可通过原生面板直接更改或移除；可搜索操作、分类和按键，捕获实际组合键，冲突须点击“重新分配”。键位独立撤销/重做并随工程保存；完整U/P0仍未验收。
+
+源码KeyboardSettings.h/.cpp、WorkspaceCommands/WorkspaceLayout；读取实际ApplicationCommandManager注册表，不维护第二套命令列表。替换JUCE内部私有按钮/弹窗，保留真实KeyPressMappingSet和既有L1 keymap_xml通知保存。捕获激活等待有1000ms期限，只在明确手势中请求；面板按键不触发时间线编辑或播放。确认时核对会话token与完整键位快照；键位Undo/Redo同样拒绝覆盖较新或其他会话设置。绑定控件仅在实际内容/布局变化时重建，避免相同映射通知删除待点击按钮。只读、隐藏命令使用注册表标志，绑定列表滚动显示实际所有分配。
+
+最终Release/固定本地签名/deep严格验签通过；四组一次全绿427检查/15.128秒（键位81、焦点27、呈现282、插入菜单37），无JUCE Assertion failure。回执build-v2-tracktion/shortcuts-final-summary.json与shortcuts-final-{keys,focus,presentation,menu}.{json,log}。首次新测试API签名编译失败、首次重开后合成按钮被刷新删除的失败保留shortcuts-test-build.log/shortcuts-native-tests.log，均不算通过。专项使用独立应用包、实际ComponentPeer::handleKeyPress、单次按钮真实通知、原生保存重开；无硬件或音频听感声明。
+
+实机：真实两轨/两个AUNBandEQ工程，搜索Grid，原F4替换为Control Option G；面板Undo恢复F4、Redo恢复新键、移除后Undo恢复。返回Edit，F2后按新键，Grid为On并显示实际新键提示。原生另存shortcuts-demo.tracktionedit、退出；最终构建重启打开副本，新键再次切到Grid。最终面板中文分隔符正常、重复说明清理；捕获时隐藏旧绑定，Escape取消/返回，预览停在00:00/r25供试用，无残留测试窗口/进程。
+
+边界：键位历史在本次应用会话内，属于设置历史；不宣称工程跨重开Undo或键位历史跨重启恢复。当前键位值保存重开通过，工程轨道和编辑Undo历史不被键位编辑改动。无新增SDK补丁、依赖、RT、IPC或MCP工具。原始媒体和旧演示工程保留；没有新DMG或新增evidence/U截图。下一阻塞是导入到已选空音频轨；跨重开工程Undo、真实预备拍录音及完整产品继续未完成。
+
 U-P0-INSERT-MENU-01（2026-10-10）：Mix 空插入槽已绑定实际按钮；后台窗口点击先等待 macOS 激活回执，再显示真实菜单。插入仍经 L1，一笔事务可撤销；不是完整 U/P0 或全插件兼容验收。
 
 - 源码：TrackHeader / MixWindow / EditWindowViews / WorkspaceCommands。显式槽位手势请求前台激活；10ms UI 定时检查、总时限1000ms，不阻塞 message thread。新手势、窗口销毁、工程 token/revision 变化使等待失效；失败显示原因，不伪报插入成功。菜单锚定实际槽位、至少240宽，选择时读取命令层当前 revision，拒绝 GUI 刷新前的过期请求。无 SDK、实时线程或固定 IPC 延迟改动。

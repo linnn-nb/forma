@@ -2,41 +2,63 @@
 #include "Theme.h"
 namespace ndaw::desktop
 {
-class KeyboardSettings final : public juce::Component
+// Application command registry remains authoritative; L1 persists its change receipt.
+class KeyboardSettings final : public juce::Component,
+                               private juce::ListBoxModel,
+                               private juce::ChangeListener,
+                               private juce::Timer
 {
 public:
-    KeyboardSettings(juce::ApplicationCommandManager& manager, std::function<void()> close,
-                     std::function<void(bool)> transfer)
-        : editor(*manager.getKeyMappings(), false)
-    {
-        setComponentID("shortcuts.panel");
-        for (auto* c : std::initializer_list<juce::Component*>{&title, &editor, &done, &load, &save})
-            addAndMakeVisible(c);
-        title.setText(text("快捷键 · Pro Tools 风格起始键位"), juce::dontSendNotification);
-        title.setFont(juce::FontOptions(18));
-        done.setComponentID("shortcuts.close");
-        done.onClick = std::move(close);
-        load.setComponentID("shortcuts.import");
-        save.setComponentID("shortcuts.export");
-        load.onClick = [transfer] { transfer(false); };
-        save.onClick = [transfer] { transfer(true); };
-    }
-    void paint(juce::Graphics& g) override
-    {
-        g.fillAll(base());
-    }
-    void resized() override
-    {
-        title.setBounds(20, 15, getWidth() - 210, 30);
-        done.setBounds(getWidth() - 150, 16, 130, 28);
-        editor.setBounds(20, 64, getWidth() - 40, getHeight() - 125);
-        load.setBounds(20, getHeight() - 46, 140, 28);
-        save.setBounds(170, getHeight() - 46, 140, 28);
-    }
+    KeyboardSettings(juce::ApplicationCommandManager&, std::function<void()> close, std::function<void(bool)> transfer,
+                     std::function<std::string()> session);
+    ~KeyboardSettings() override;
+    void paint(juce::Graphics&) override;
+    void resized() override;
+    bool keyPressed(const juce::KeyPress&) override;
+    void visibilityChanged() override;
 
 private:
-    juce::Label title;
-    juce::KeyMappingEditorComponent editor;
-    juce::TextButton done{text("返回工程")}, load{text("导入键位…")}, save{text("导出键位…")};
+    int getNumRows() override;
+    void paintListBoxItem(int, juce::Graphics&, int, int, bool) override;
+    juce::Component* refreshComponentForRow(int, bool, juce::Component*) override;
+    void selectedRowsChanged(int) override;
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
+    void timerCallback() override;
+    void rebuildList();
+    void rebuildBindings();
+    bool editable() const;
+    juce::String snapshot() const;
+    void beginCapture(int);
+    void cancelCapture();
+    void applyCapture();
+    void removeBinding(int);
+    void history(bool redo);
+    void remember(const juce::String& before);
+    void refreshHistory();
+    juce::ApplicationCommandManager& manager;
+    juce::KeyPressMappingSet& mappings;
+    std::function<std::string()> session;
+    juce::Label title, selectedTitle, description, status, captureTitle, captureMessage;
+    juce::TextEditor search;
+    juce::ListBox list;
+    juce::Viewport bindingViewport;
+    juce::Component bindings, capture;
+    std::vector<std::unique_ptr<juce::Component>> bindingControls;
+    juce::TextButton done, load, save, undo, redo, add, accept, cancel;
+    std::vector<juce::CommandID> rows;
+    juce::CommandID selected = 0;
+    int replacing = -1;
+    juce::KeyPress candidate;
+    bool capturing = false;
+    double focusDeadline = 0;
+    std::string captureSession;
+    juce::String captureSnapshot;
+    struct HistoryEntry
+    {
+        juce::String before, after;
+        std::string session;
+    };
+    std::vector<HistoryEntry> changes;
+    size_t cursor = 0;
 };
 } // namespace ndaw::desktop

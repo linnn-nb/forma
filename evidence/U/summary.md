@@ -1,3 +1,13 @@
+## 2026-10-10 原生键位面板
+
+现有键位可直接更改/移除，支持搜索、实际组合键捕获、明确冲突重新分配、键位独立Undo/Redo。真实命令注册表/KeyPressMappingSet经既有L1通知保存，过期会话/快照不能覆盖新设置。完整U/P0未完成。
+
+Release/固定本地签名/deep严格验签通过；四组最终一次全绿427检查/15.128秒：Keyboard81、WindowFocus27、Presentation282、InsertMenu37，日志无JUCE断言。回执build-v2-tracktion/shortcuts-final-summary.json及shortcuts-final-{keys,focus,presentation,menu}.{json,log}。早期编译/重开按钮通知失败保留，不计通过；详细资格见VERIFICATION首条。
+
+真实桌面：Grid F4→Control Option G，面板Undo/Redo、移除/Undo均执行；Edit里F2后新键切到Grid/On。原生另存shortcuts-demo.tracktionedit、退出；最终构建重启打开副本，保存的键位再次触发。乱码/重复说明修正，捕获时旧绑定隐藏；Escape取消并返回真实时间线。预览停止00:00/r25，保留两轨/两个真实AU供试用；当前没有测试窗口/测试进程残留。
+
+试用FeedbackPreview.app→⌘O打开同目录shortcuts-demo.tracktionedit→键位→搜索Grid→更改/移除；媒体保留UP0-demo-media。键位历史为本次应用会话内设置历史，当前值可保存重开，不是工程跨重开Undo。无SDK/RT/依赖变化、DMG或本目录新增截图；下一修复导入到所选空轨，完整产品未验收。
+
 ## 2026-10-10 插入槽菜单与插件 Program 输入修复
 
 结论：Mix空槽可直接打开真实内置效果器与AU/VST3库。macOS后台激活异步竞态已修；选择时核对L1当前revision。回归同时修复Program草稿被周期刷新覆盖，不增加SDK/RT/IPC/依赖改动。

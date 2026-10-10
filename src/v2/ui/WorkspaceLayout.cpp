@@ -293,6 +293,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (keyboardSettings && keyboardSettings->isVisible())
+        return keyboardSettings->keyPressed(key);
     if (fadesPanel && fadesPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
     if (rollPanel && rollPanel->isVisible() && key == juce::KeyPress::escapeKey)

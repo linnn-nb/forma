@@ -1465,7 +1465,7 @@ void Workspace::showShortcuts()
                 keyboardSettings->setVisible(false);
                 grabKeyboardFocus();
             },
-            [this](bool writing) { transferShortcuts(writing); });
+            [this](bool writing) { transferShortcuts(writing); }, [this] { return commands.sessionToken(); });
         addChildComponent(*keyboardSettings);
     }
     keyboardSettings->setBounds(getLocalBounds().reduced(12));

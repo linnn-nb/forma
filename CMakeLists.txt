@@ -550,7 +550,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 
 # L5 native components depend on the L1 engine; the engine never depends on UI.
 add_library(ndaw_ui STATIC
-  src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
+  src/v2/ui/KeyboardSettings.cpp src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
   src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
@@ -967,3 +967,11 @@ target_sources(ndaw_mix_insert_menu_tests PRIVATE tests/v2/MixInsertMenuTests.cp
 target_link_libraries(ndaw_mix_insert_menu_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_mix_insert_menu COMMAND ndaw_mix_insert_menu_tests "${CMAKE_BINARY_DIR}/mix-insert-menu-tests.json")
 set_tests_properties(forma_native_mix_insert_menu PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+
+juce_add_gui_app(ndaw_keyboard_settings_tests PRODUCT_NAME "ndaw_keyboard_settings_tests"
+    BUNDLE_ID "org.forma.tests.keyboard-settings")
+target_sources(ndaw_keyboard_settings_tests PRIVATE tests/v2/KeyboardSettingsTests.cpp)
+target_link_libraries(ndaw_keyboard_settings_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_keyboard_settings COMMAND ndaw_keyboard_settings_tests "${CMAKE_BINARY_DIR}/keyboard-settings-tests.json")
+set_tests_properties(forma_native_keyboard_settings PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
