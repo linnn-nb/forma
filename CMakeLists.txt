@@ -952,3 +952,11 @@ target_include_directories(ndaw_midi_trim_tests PRIVATE src/v2)
 target_link_libraries(ndaw_midi_trim_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_midi_clip_trim COMMAND ndaw_midi_trim_tests "${CMAKE_BINARY_DIR}/midi-trim-tests.json" "${CMAKE_BINARY_DIR}/midi-trim-demos")
 set_tests_properties(forma_native_midi_clip_trim PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Full time-envelope Nudge: real mixed clips, silence automation, native Undo/Open, decoded WAV.
+juce_add_console_app(ndaw_range_nudge_tests PRODUCT_NAME "ndaw_range_nudge_tests")
+target_sources(ndaw_range_nudge_tests PRIVATE tests/v2/RangeNudgeTests.cpp)
+target_include_directories(ndaw_range_nudge_tests PRIVATE src/v2)
+target_link_libraries(ndaw_range_nudge_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_range_nudge COMMAND ndaw_range_nudge_tests "${CMAKE_BINARY_DIR}/range-nudge-tests.json" "${CMAKE_BINARY_DIR}/range-nudge-demos")
+set_tests_properties(forma_native_range_nudge PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

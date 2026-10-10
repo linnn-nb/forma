@@ -270,18 +270,40 @@ void Workspace::executeEditCommand(int id)
                         juce::String summary =
                             text("范围 Nudge · 仅移动全选音频 / MIDI，部分片段保持。\n") +
                             text("选区含空白按共同采样偏移；音乐 MIDI 保留拍时长，采样 MIDI 保留秒时长。\n");
+                        const auto view = commands.uiState();
+                        auto at = [&](int64_t p)
+                        {
+                            return text(
+                                commands.formatTimelinePosition(p, view["main_time_scale"], view["timecode_fps"]));
+                        };
+                        summary += text("\n选区：") + at(first) + text(" – ") + at(last) + text(" → ") +
+                                   at(first + delta) + text(" – ") + at(last + delta) + text("\n");
+                        for (const auto& item : plan["operations"])
+                            if (item["command"] == "clip.move" || item["command"] == "midi.clip.move")
+                                for (const auto& track : facts["tracks"])
+                                    for (const auto& clip : track["clips"])
+                                        if (clip["id"] == item["args"]["clip"])
+                                            summary += text(track["name"].get<std::string>()) + text(" / ") +
+                                                       text(clip["name"].get<std::string>()) + text("：") +
+                                                       at(clip["start_samples"]) + text(" → ") +
+                                                       at(item["args"]["position_samples"]) + text("\n");
                         for (const auto& change : preview["automation_changes"])
-                            summary += text("轨道 ") + text(change["track"].get<std::string>()) +
-                                       text(" · 完整选区（含静音）的自动化按 ") +
-                                       text(change["curve_mapping"] == "beats" ? "小节拍" : "采样") + text(" 跟随\n");
-                        previewText.setText(summary + text("\n") + text(preview.dump(2)));
+                            for (const auto& track : facts["tracks"])
+                                if (track["id"] == change["track"])
+                                    summary += text(track["name"].get<std::string>()) +
+                                               text(" · 完整选区（含静音）的自动化按 ") +
+                                               text(change["curve_mapping"] == "beats" ? "小节拍" : "采样") +
+                                               text(" 跟随\n");
+                        if (preview["automation_changes"].empty())
+                            summary += text("自动化：没有曲线变化（关闭跟随时保留原位）。\n");
+                        previewText.setText(summary + text("\n接受后为一次 Undo；实际声音需要试听。"));
                         message(text("范围 Nudge · 请预览后接受或取消"));
                         return;
                     }
                     const auto receipt = commands.commit(plan);
                     require(receipt.value("state", std::string{}) == "committed", "range Nudge did not commit");
-                    message(
-                        text("Nudge 已提交 · 全选音频 / MIDI、完整选区与静音区曲线跟随 · 部分片段保持 · 一次 Undo"));
+                    message(text(
+                        "Nudge 已提交 · 全选音频 / MIDI 与选区同移 · 自动化按跟随设置处理 · 部分片段保持 · 一次 Undo"));
                     return;
                 }
                 auto ops = commands.audioRangeOperations("separate", selection.tracks, first, last);

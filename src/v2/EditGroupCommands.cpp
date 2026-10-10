@@ -155,6 +155,10 @@ Json Commands::rangeNudgeOperations(const Json& request) const
         !request.at("end_samples").is_number_integer() || !request.at("delta_samples").is_number_integer() ||
         !request.at("tracks").is_array())
         throw std::runtime_error("invalid timeline range Nudge descriptor");
+    for (const char* field : {"start_samples", "end_samples", "delta_samples"})
+        if (request.at(field).is_number_unsigned() &&
+            request.at(field).get<uint64_t>() > uint64_t(std::numeric_limits<int64_t>::max()))
+            throw std::runtime_error("range Nudge integer exceeds signed sample representation");
     const int64_t first = request.at("start_samples"), last = request.at("end_samples"),
                   delta = request.at("delta_samples");
     if (delta == 0 || edit->getTransport().isPlaying())
@@ -166,6 +170,12 @@ Json Commands::rangeNudgeOperations(const Json& request) const
     if (editingOptions().at("automation_follows_edit").get<bool>())
         for (const auto& owner : editGroupTracks(request.at("tracks")))
         {
+            bool hasCurve = false;
+            for (auto* plugin : domainTrack(owner)->pluginList)
+                for (auto* parameter : plugin->getAutomatableParameters())
+                    hasCurve |= parameter->getCurve().getNumPoints() != 0;
+            if (!hasCurve)
+                continue; // Mixed clip clocks are unambiguous when there is no shared curve.
             Json args{
                 {"track", owner}, {"start_samples", first}, {"end_samples", last}, {"position_samples", first + delta}};
             const auto changes = automationMoveChanges(args);

@@ -856,8 +856,9 @@ Json Commands::validateMusicPlan(const Json& operations) const
                                 {
                                     const auto id = item.at("command").get<std::string>();
                                     return id == "midi.clip.move" || id == "clip.move" ||
-                                           id == "automation.clips.move" || id == "session.range.set" ||
-                                           id == "session.range.clear" || id == "session.insertion.set";
+                                           id == "automation.clips.move" || id == "automation.range.move" ||
+                                           id == "session.range.set" || id == "session.range.clear" ||
+                                           id == "session.insertion.set";
                                 }),
                     "MIDI object move requires an independent movement Plan");
             require(

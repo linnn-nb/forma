@@ -34,13 +34,17 @@ Json Commands::midiClipMoveChange(const Json& args, bool includeEvents) const
     const double end =
         beats ? seq.toTime(tracktion::BeatPosition::fromBeats(c->getEndBeat().inBeats() + deltaBeat)).inSeconds()
               : c->getPosition().getEnd().inSeconds() + shift;
+    const bool sourceAtClipStart = c->getPosition().getOffset().inSeconds() == 0;
     const double content =
         beats
-            ? c->getContentStartBeat().inBeats() + deltaBeat
+            ? (sourceAtClipStart ? firstBeat : c->getContentStartBeat().inBeats() + deltaBeat)
             : seq.toBeats(tracktion::TimePosition::fromSeconds(c->getPosition().getStartOfSource().inSeconds() + shift))
                   .inBeats();
-    const double offset = beats ? start - seq.toTime(tracktion::BeatPosition::fromBeats(content)).inSeconds()
-                                : c->getPosition().getOffset().inSeconds();
+    // The identical clip/source anchor is exact native state, not an epsilon.
+    // Beat/time round trips must not invent a negative offset for an originally zero-offset clip.
+    const double offset =
+        beats ? (sourceAtClipStart ? 0. : start - seq.toTime(tracktion::BeatPosition::fromBeats(content)).inSeconds())
+              : c->getPosition().getOffset().inSeconds();
     require(std::isfinite(end) && end > start && end <= te::Edit::maximumLength && std::isfinite(offset) && offset >= 0,
             "MIDI move geometry outside native bounds");
     after["start_seconds"] = start;
