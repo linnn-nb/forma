@@ -97,6 +97,8 @@ public:
         if (p.is_null())
             return;
         auto format = p.at("format").get<std::string>(), candidate = p.at("candidate").get<std::string>();
+        rescanFormat = format;
+        rescanCandidate = candidate;
         start([format, candidate](PluginCatalog& c, std::atomic<bool>& cancel)
               { return c.scan(format, candidate, true, &cancel); });
     }
@@ -163,7 +165,11 @@ private:
                     {
                         owner->last["inventory_error"] = e.what();
                     }
-                    owner->details.setText(text(owner->last.dump(2)));
+                    if (result.value("status", std::string{}) == "failed" ||
+                        result.value("status", std::string{}) == "timeout")
+                        owner->details.setText(text("扫描未成功：") + text(result.dump(2)));
+                    else if (owner->selected().is_null())
+                        owner->details.setText(text("请选择插件。未扫描的插件先扫描，通过后即可插入。"));
                     owner->controls();
                 });
             return jobHasFinished;
@@ -239,6 +245,13 @@ private:
         list.deselectAllRows();
         list.updateContent();
         list.repaint();
+        if (!rescanCandidate.empty())
+            for (size_t i = 0; i < filtered.size(); ++i)
+                if (rows[filtered[i]]["format"] == rescanFormat && rows[filtered[i]]["candidate"] == rescanCandidate)
+                {
+                    list.selectRow(int(i));
+                    break;
+                }
         controls();
     }
     Json selected() const
@@ -265,15 +278,31 @@ private:
                        text(p.value("version", std::string{})),
                    12, 29, w - 24, 20, juce::Justification::left);
     }
+    void listBoxItemDoubleClicked(int, const juce::MouseEvent&) override
+    {
+        const auto p = selected();
+        if (busy || p.is_null())
+            return;
+        if (p["status"] == "verified" && targetAllowed)
+            insert.triggerClick();
+        else
+            scanSelected();
+    }
     void selectedRowsChanged(int) override
     {
         auto p = selected();
         if (!p.is_null())
-            details.setText(
-                text(p.dump(2)) +
-                text("\n\n\u53ea\u6709 verified "
-                     "\u6761\u76ee\u53ef\u751f\u6210\u63d2\u5165\u8ba1\u5212\u3002\u5904\u7406\u9ed8\u8ba4\u8fdb\u7a0b"
-                     "\u5185\uff1b\u626b\u63cf\u9694\u79bb\u4e0d\u7b49\u4e8e\u64ad\u653e\u6c99\u7bb1\u3002"));
+        {
+            const bool verified = p["status"] == "verified";
+            juce::String description =
+                text(p["name"].get<std::string>()) + "\n" + text(p["format"].get<std::string>()) + "\n" +
+                text(p.value("manufacturer", std::string{})) + " " + text(p.value("version", std::string{}));
+            description += verified ? text("\n\n扫描通过。点击插入或双击列表，加载到目标轨道；可撤销。")
+                                    : text("\n\n尚未通过扫描。点击扫描或双击列表，完成后才能插入。");
+            if (p.contains("error") && !p["error"].is_null())
+                description += "\n" + text(p["error"].dump());
+            details.setText(description);
+        }
         controls();
     }
     void controls()
@@ -291,11 +320,11 @@ private:
     Json rows = Json::array(), candidates = Json::array(), last = nullptr;
     std::vector<size_t> filtered;
     bool busy = false, targetAllowed = false;
+    std::string rescanFormat, rescanCandidate;
     juce::Label title, target;
     juce::TextEditor search, details;
     juce::ListBox list;
     juce::TextButton discoverButton{text("\u53d1\u73b0\u63d2\u4ef6")}, scanButton{text("\u626b\u63cf / \u91cd\u626b")},
-        cancelButton{text("\u505c\u6b62\u626b\u63cf")},
-        insert{text("\u9884\u89c8\u63d2\u5165\u5230\u76ee\u6807\u8f68\u9053")},
+        cancelButton{text("\u505c\u6b62\u626b\u63cf")}, insert{text("插入到目标轨道")},
         closeButton{text("\u8fd4\u56de\u5de5\u7a0b")};
 };

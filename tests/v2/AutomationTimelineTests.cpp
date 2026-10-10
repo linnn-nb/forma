@@ -312,6 +312,7 @@ int main(int argc, char** argv)
         auto uiBefore = c.uiState();
         auto schema7 = uiBefore;
         schema7["ui_schema"] = 7;
+        schema7.erase("workspace_panes");
         schema7.erase("track_views");
         schema7.erase("zoom_state");
         schema7.erase("waveform_zoom");
@@ -321,7 +322,7 @@ int main(int argc, char** argv)
         juce::ValueTree meta("NATIVEDAW"), state("UI");
         state.setProperty("json", text(schema7.dump()), nullptr);
         meta.addChild(state, -1, nullptr);
-        check(readUiState(meta)["ui_schema"] == 13 && readUiState(meta)["track_views"].empty(),
+        check(readUiState(meta)["ui_schema"] == 14 && readUiState(meta)["track_views"].empty(),
               "complete schema7 migrates without fabricated parameter view");
         schema7.erase("span_samples");
         state.setProperty("json", text(schema7.dump()), nullptr);
@@ -429,7 +430,7 @@ int main(int argc, char** argv)
         }
         Json report = {{"result", "passed"},
                        {"checks", checks},
-                       {"ui_schema", 13},
+                       {"ui_schema", 14},
                        {"render_rms_ratio", ratio},
                        {"source_sha256", hash},
                        {"scope", "production native widget methods and real Tracktion render; desktop mouse/listening "

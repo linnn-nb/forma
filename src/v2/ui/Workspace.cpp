@@ -239,6 +239,33 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         }
     };
 
+    inspectorDivider.onResize = [this](int width, bool final)
+    {
+        inspectorWidthPreview = std::clamp(width, 332, std::max(332, std::min(640, getWidth() - 600)));
+        resized();
+        repaint();
+        if (final)
+        {
+            auto panes = commands.uiState()["workspace_panes"];
+            panes["inspector_width"] = inspectorWidthPreview;
+            inspectorWidthPreview = -1;
+            setView({{"workspace_panes", panes}});
+        }
+    };
+    trackListDivider.onResize = [this](int width, bool final)
+    {
+        tracksWidthPreview = std::clamp(width, 96, 320);
+        resized();
+        if (final)
+        {
+            auto panes = commands.uiState()["workspace_panes"];
+            panes["tracks_width"] = tracksWidthPreview;
+            tracksWidthPreview = -1;
+            setView({{"workspace_panes", panes}});
+        }
+    };
+    addAndMakeVisible(inspectorDivider);
+    addAndMakeVisible(trackListDivider);
     for (auto* c : std::initializer_list<juce::Component*>{&menu,
                                                            &editView,
                                                            &mixView,
@@ -311,6 +338,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     parameterView.setScrollBarsShown(true, false);
     for (const auto& p : Commands::processorCatalog())
         pluginType.addItem(text(p["name"].get<std::string>()), pluginType.getNumItems() + 1);
+    pluginType.addSeparator();
+    pluginType.addItem(text("外部插件 AU / VST3…"), 10000);
     pluginType.setSelectedId(1, juce::dontSendNotification);
     counter.setComponentID("transport.main_counter");
     counter.setFont(juce::FontOptions(25, juce::Font::bold));
@@ -633,6 +662,11 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     {
         if (selected.empty() || pluginType.getSelectedId() <= 0)
             return;
+        if (pluginType.getSelectedId() == 10000)
+        {
+            showPluginLibrary();
+            return;
+        }
         auto type = Commands::processorCatalog()[pluginType.getSelectedId() - 1]["type"];
         if (clipFXInspector)
             write("clip.fx.insert", {{"clip", selectedClip}, {"type", type}});
@@ -791,6 +825,14 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
             trims.addCommandItem(&commandManager, command);
         menu.addSubMenu(text("修剪（Nudge）"), trims);
         menu.addCommandItem(&commandManager, editCommand::remove);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, 280);
+        menu.addCommandItem(&commandManager, 500);
+        menu.addCommandItem(&commandManager, 501);
+        juce::PopupMenu gain;
+        for (int command : {502, 503, 504})
+            gain.addCommandItem(&commandManager, command);
+        menu.addSubMenu("Clip Gain", gain);
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&editArea).withParentComponent(this));
     };
     editArea.onRollSettings = [this] { commandManager.invokeDirectly(279, false); };

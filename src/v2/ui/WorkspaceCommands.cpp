@@ -190,6 +190,11 @@ const std::vector<Entry>& entries()
         {278, "预卷 / 后卷开关（选区播放）", "走带", 'k', cmd},
         {279, "预卷 / 后卷设置…", "走带", 'k', cmd | shift},
         {280, "片段淡化…", "编辑", 'f', cmd},
+        {500, "片段效果…", "编辑"},
+        {501, "锁定 / 解锁片段", "编辑"},
+        {502, "Clip Gain +1 dB", "编辑"},
+        {503, "Clip Gain −1 dB", "编辑"},
+        {504, "Clip Gain 归零", "编辑"},
         {281, "Memory Location · 保存当前预后卷", "走带", 'r', cmd | shift | juce::ModifierKeys::altModifier},
         {282, "Memory Location · 移除预后卷记忆", "走带", juce::KeyPress::backspaceKey,
          cmd | shift | juce::ModifierKeys::altModifier},
@@ -452,6 +457,12 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             bool active = true;
             try
             {
+                if (id >= 500 && id <= 504)
+                {
+                    const auto clip = selectedAudioClip();
+                    active = !clip.is_null() && !facts.value("playing", false) &&
+                             (id == 501 || !clip.value("locked", false));
+                }
                 if (id >= editCommand::copy && id <= editCommand::pasteOriginal)
                 {
                     active = !mix && !midiKeyboardFocus() && !facts.value("playing", false) &&
@@ -870,6 +881,30 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id >= 501 && id <= 504)
+    {
+        const auto clip = selectedAudioClip();
+        if (clip.is_null())
+            return true;
+        if (id == 501)
+            write("clip.lock", {{"clip", clip["id"]}, {"locked", !clip.value("locked", false)}});
+        else
+            write(
+                "clip.gain",
+                {{"clip", clip["id"]},
+                 {"db", id == 504 ? 0. : std::clamp(clip.value("gain_db", 0.) + (id == 502 ? 1. : -1.), -100., 24.)}});
+        return true;
+    }
+    if (id == 500)
+    {
+        clipFXInspector = true;
+        recordInspector = routingInspector = groupInspector = autoInspector = false;
+        pluginSelection = 0;
+        lastPluginIDs.clear();
+        refresh();
+        return true;
+    }
+
     if (id == editCommand::midiBasisSamples || id == editCommand::midiBasisBeats)
     {
         invoke(

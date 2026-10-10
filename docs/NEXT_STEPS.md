@@ -1,10 +1,10 @@
 # 下一步
 
-按2026-10-10纠偏停止新功能开发；本轮完成8步实机操作、精简证据并提交推送后暂停，等待用户亲手试用，不自动进入P1。
+五项反馈修复版已可运行；本轮提交推送后暂停，等待用户试用，不自动进入P1。
 
-1. 打开 `build-v2-tracktion/UP0AcceptancePreview.app`，⌘O选择 `build-v2-tracktion/UP0-demo/UP0-Manual-final.tracktionedit`；若首键无响应，先点工程再按⌘O。
-2. 空格播放；EDIT查看片段、Marker和自动化，MIX查看EQ、混响Aux和发送；Control Option G/S是本演示自定义Grid/Slip键位。
-3. 用户反馈后优先处理真实高频阻塞。重开恢复工程内容，但不恢复既往Undo历史；未通过完整第8步。
-4. MIDI范围分离资格失败，已stash，不自动重试。恢复入口、8张截图和结果见 `evidence/U/summary.md`；其余未做项只维护 `docs/BACKLOG.md`。
+1. 双击build-v2-tracktion/FeedbackPreview.app，先点工程再⌘O打开同目录feedback-final.tracktionedit；媒体在UP0-demo-media，保持路径。两轨、真实AUNBandEQ、左右188/432宽度已保存。
+2. 导入窗口⌘点选多个WAV；空格播放/停止。拖动轨道列表和检查器边界，⌘滚轮缩放；音频编辑在Smart/Trim时间线、右键、Spot/Fades中完成，底部表单不再常驻。
+3. 外部插件：选轨→检查器“插入/参数”→下拉“外部插件 AU / VST3…”→插入；第一次发现，未扫描条目先扫描，再双击或插入；“插件窗口”打开真实编辑器。
+4. 下一项明确修复：核对带AU时批量导入后的额外Undo事务，当前实机第二次才移除整批；原因待确认。冷启动首键和历史跨重开等其他缺口见BACKLOG。核心停止回调、插件、编辑与schema回归19组通过。
 
-M2/M3冻结，M4/M5暂停。既有超范围功能保留，不扩展；未作完整产品或性能对齐声明。
+P1、M2/M3扩充、M4/M5仍暂停；本轮没有DMG，不声称完整DAW验收。

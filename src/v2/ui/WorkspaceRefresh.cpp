@@ -279,8 +279,9 @@ void Workspace::refreshInspector()
         !owner.is_null() && !playing && !parameterEditing && unlocked &&
         (clipFXInspector ? owner.value("editable_audio", false) : t["capabilities"]["audio_routing"].get<bool>()));
     pluginType.setEnabled(insertButton.isEnabled());
+    pluginType.setItemEnabled(10000, !clipFXInspector);
     pluginType.setItemEnabled(5, !clipFXInspector);
-    if (clipFXInspector && pluginType.getSelectedId() == 5)
+    if (clipFXInspector && (pluginType.getSelectedId() == 5 || pluginType.getSelectedId() == 10000))
         pluginType.setSelectedId(1, juce::dontSendNotification);
     insertButton.setComponentID(clipFXInspector ? "clip.fx.insert" : "plugin.insert");
     insertTab.setButtonText(text(clipFXInspector ? "轨道插入" : "插入 / 参数"));
@@ -397,6 +398,9 @@ void Workspace::refresh()
         if (musicEventPanel)
             musicEventPanel->setVisible(false);
         midiDivider.cancel();
+        inspectorDivider.cancel();
+        trackListDivider.cancel();
+        tracksWidthPreview = inspectorWidthPreview = -1;
         midiHeightPreview = -1;
         midiCommandContext = false;
         selectedClip.clear();

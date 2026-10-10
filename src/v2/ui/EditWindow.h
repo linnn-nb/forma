@@ -1250,6 +1250,17 @@ public:
                       {{"clip", original["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
                       captured["revision"]);
     }
+    void mouseMagnify(const juce::MouseEvent& e, float scale) override
+    {
+        if (!onViewChange || !std::isfinite(scale) || scale <= 0 || e.x < timelineLeft())
+            return;
+        const auto axis = coordinates();
+        const auto maximum = std::llround(te::Edit::maximumLength * 48000);
+        const auto next = std::clamp(int64_t(std::llround(axis.span / scale)), int64_t(480), maximum);
+        const auto anchor = axis.sampleAt(e.x);
+        const auto first = std::llround(anchor - (anchor - axis.start) * double(next) / axis.span);
+        onViewChange({{"span_samples", next}, {"start_samples", std::clamp(first, int64_t(0), maximum - next)}});
+    }
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
     {
         if (!onViewChange || (wheel.deltaX == 0 && wheel.deltaY == 0))

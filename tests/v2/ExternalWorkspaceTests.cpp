@@ -3,38 +3,248 @@
 #include <iostream>
 #include <fstream>
 using namespace ndaw::v2;
-namespace {
-int checks=0;
-void check(bool yes,const char* why){if(!yes)throw std::runtime_error(why);++checks;std::cout<<"PASS "<<why<<std::endl;}
-void settle(int ms=70){juce::MessageManager::getInstance()->runDispatchLoopUntil(ms);}
-juce::Component* find(juce::Component& c,const juce::String& id){if(c.isVisible()&&c.getComponentID()==id)return &c;for(auto* child:c.getChildren())if(auto* p=find(*child,id))return p;return nullptr;}
-void click(juce::Component& c,const juce::String& id){auto* b=dynamic_cast<juce::Button*>(find(c,id));if(!b||!b->isEnabled())throw std::runtime_error("enabled button missing "+id.toStdString());b->triggerClick();settle();}
-Json plugin(ndaw::desktop::Workspace& w){return w.query()["tracks"][0]["plugins"][0];}
-double gain(ndaw::desktop::Workspace& w){auto instance=plugin(w);for(const auto& p:instance["parameters"])if(p["id"]=="0")return p["value"];throw std::runtime_error("gain absent");}
-void wait(ndaw::desktop::Workspace& w){auto began=juce::Time::getMillisecondCounterHiRes();while(w.queryPluginLibrary()["busy"].get<bool>()&&juce::Time::getMillisecondCounterHiRes()-began<12000)settle(20);check(!w.queryPluginLibrary()["busy"].get<bool>(),"bounded background scan returns while native message loop remains responsive");}
+namespace
+{
+int checks = 0;
+void check(bool yes, const char* why)
+{
+    if (!yes)
+        throw std::runtime_error(why);
+    ++checks;
+    std::cout << "PASS " << why << std::endl;
 }
-int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
- ndaw::desktop::Workspace w(false);w.setVisible(true);click(w,"track.create");auto facts=w.query();w.showPluginLibrary();
- check(find(w,"plugin.library")&&w.query()==facts,"native plugin library opens without Edit mutation");
- std::string au;auto library=w.queryPluginLibrary();for(const auto& row:library["rows"])if(row["name"]=="AUNBandEQ"&&row["status"]=="verified")au=row["descriptor"];
- check(!au.empty()&&w.selectLibraryPlugin(au),"only an actual verified AU descriptor can be selected");click(w,"plugin.library.preview");
- check(!find(w,"plugin.library")&&w.query()==facts,"insert preview leaves the real Edit unchanged and returns to workspace");click(w,"plan.accept");
- auto p=plugin(w);check(p["external"]["loaded"]&&p["external"]["format"]=="AudioUnit"&&w.query()["tracks"][0]["plugins"].size()==1,"accept loads a real Tracktion AU instance");
- auto beforeEditor=w.query();click(w,"plugin.editor");check(w.queryPluginEditors().size()==1&&w.queryPluginEditors()[0]["native_editor"]&&w.query()==beforeEditor,"native inspector opens actual AU editor through L1 without Edit mutation");click(w,"plugin.editor");check(w.queryPluginEditors().empty()&&w.query()==beforeEditor,"native inspector closes editor without an undoable Edit change");
- auto* slider=dynamic_cast<juce::Slider*>(find(w,"plugin.parameter:0"));check(slider&&slider->isEnabled(),"native inspector presents actual AU parameter ID zero");
- slider->setValue(.75,juce::sendNotificationSync);settle();check(std::abs(gain(w)-.75)<1e-6&&w.query()["last_parameter_capture"]["state"]=="committed","GUI AU parameter edits pass through L1 human transaction");click(w,"history.undo");check(std::abs(gain(w)-.8)<1e-6,"GUI Undo restores the actual enumerated native parameter");click(w,"history.redo");check(std::abs(gain(w)-.75)<1e-6,"GUI Redo restores the same actual AU parameter");
- click(w,"plugin.bypass");check(plugin(w)["bypassed"],"native external bypass reaches actual Edit");click(w,"history.undo");check(!plugin(w)["bypassed"],"native bypass Undo restores enabled plugin");
- w.showPluginLibrary();click(w,"plugin.library.discover");wait(w);auto discovered=w.queryPluginLibrary();check(discovered["result"]["status"]=="succeeded"&&discovered["rows"].size()>2,"native library discovers real SDK candidates without claiming they are verified");
- check(w.selectLibraryPlugin(au),"actual scanned plugin stays selectable after discovery");click(w,"plugin.library.scan");wait(w);check(w.queryPluginLibrary()["result"]["status"]=="verified","native rescan consumes successful real worker receipt");
- check(w.selectLibraryPlugin(au),"rescanned descriptor keeps stable identity");click(w,"plugin.library.preview");click(w,"track.mute:"+juce::String(w.query()["tracks"][0]["id"].get<std::string>()));click(w,"plan.accept");
- check(w.query()["tracks"][0]["plugins"].size()==1,"stale insert preview cannot override a newer human edit");click(w,"plan.reject");
- w.showPluginLibrary();std::string vst;auto catalog=w.queryPluginLibrary();for(const auto& row:catalog["rows"])if(row["name"]=="Serum"&&row["format"]=="VST3"&&row["status"]=="verified")vst=row["descriptor"];
- check(!vst.empty()&&w.selectLibraryPlugin(vst),"actual scanned VST3 instrument is available in native library");click(w,"plugin.library.preview");click(w,"plan.accept");
- check(w.query()["tracks"][0]["plugins"].size()==2,"native library accepts real VST3 alongside existing AU");
- auto* programIndex=dynamic_cast<juce::TextEditor*>(find(w,"plugin.program.index"));check(programIndex&&programIndex->isEnabled()&&w.query()["tracks"][0]["plugins"][1]["external"]["program_count"]==128,"native inspector exposes actual SDK program index and count");programIndex->setText("1",false);click(w,"plugin.program");check(w.query()["tracks"][0]["plugins"][1]["external"]["program_index"]==1,"native inspector program button executes real L1 Plan");click(w,"history.undo");check(w.query()["tracks"][0]["plugins"][1]["external"]["program_index"]==0,"GUI Undo restores actual native program");click(w,"history.redo");check(w.query()["tracks"][0]["plugins"][1]["external"]["program_index"]==1,"GUI Redo restores actual native program");
- check(find(w,"plugin.parameters.next")&&find(w,"plugin.parameter:0"),"large real VST3 parameter list opens on its first bounded page");click(w,"plugin.parameters.next");check(!find(w,"plugin.parameter:0")&&find(w,"plugin.parameters.previous"),"next parameter page replaces visible controls without removing plugin parameters");click(w,"plugin.parameters.previous");check(find(w,"plugin.parameter:0"),"previous page retains access to actual original parameter");
- auto hosted=w.query()["tracks"][0]["plugins"][1];std::string programParam;for(const auto& p:hosted["parameters"])if(p["name"]=="Program")programParam=p["id"];check(!programParam.empty(),"real VST3 also exposes its actual mapped Program parameter");for(int i=0;i<8&&!find(w,"plugin.parameter:"+juce::String(programParam));++i)click(w,"plugin.parameters.next");auto* selector=dynamic_cast<juce::Slider*>(find(w,"plugin.parameter:"+juce::String(programParam)));check(selector&&selector->isEnabled(),"actual Program parameter is accessible through production pages");
- auto priorQuota=juce::SystemStats::getEnvironmentVariable("NATIVEDAW_V2_PLUGIN_STATE_LIMIT",{});::setenv("NATIVEDAW_V2_PLUGIN_STATE_LIMIT","1",1);selector->setValue(0,juce::sendNotificationSync);settle();auto failed=w.query();check(failed["native_plugin_states"]["failures"].size()==1&&find(w,"plugin.state.retry")&&find(w,"plugin.state.restore_checkpoint"),"production inspector displays the selected real instance error and recovery controls");click(w,"plugin.state.retry");check(!w.query()["native_plugin_states"]["failure"].is_null(),"GUI retry cannot display false success while actual state exceeds quota");if(priorQuota.isEmpty())::unsetenv("NATIVEDAW_V2_PLUGIN_STATE_LIMIT");else ::setenv("NATIVEDAW_V2_PLUGIN_STATE_LIMIT",priorQuota.toRawUTF8(),1);click(w,"plugin.state.restore_checkpoint");auto recovered=w.query();check(recovered["native_plugin_states"]["failure"].is_null()&&!recovered["native_plugin_states"]["pending"].get<bool>()&&!find(w,"plugin.state.retry"),"GUI restore reaches actual known state and hides resolved error controls");check(!recovered["can_undo"].get<bool>()&&!find(w,"history.undo")->isEnabled(),"native inspector cannot Undo through an irreversible recovery barrier");
- w.setSize(1120,700);w.showPluginLibrary();check(find(w,"plugin.library.preview")->getWidth()>0,"native plugin library remains usable at minimum tested workspace size");click(w,"plugin.library.close");
- Json result={{"result","passed"},{"checks",checks},{"scope","actual JUCE production library and AU inspector callbacks, SDK discovery/rescan and real Tracktion transactions; physical desktop/editor/listening remain unqualified"}};if(argc>1){std::ofstream out(argv[1]);out<<result.dump(2);}std::cout<<result.dump(2)<<std::endl;return 0;
-}catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<std::endl;return 1;}}
+void settle(int ms = 70)
+{
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(ms);
+}
+juce::Component* find(juce::Component& c, const juce::String& id)
+{
+    if (c.isVisible() && c.getComponentID() == id)
+        return &c;
+    for (auto* child : c.getChildren())
+        if (auto* p = find(*child, id))
+            return p;
+    return nullptr;
+}
+void click(juce::Component& c, const juce::String& id)
+{
+    auto* b = dynamic_cast<juce::Button*>(find(c, id));
+    if (!b || !b->isEnabled())
+        throw std::runtime_error("enabled button missing " + id.toStdString());
+    auto callback = b->onClick;
+    bool delivered = false;
+    b->onClick = [&]
+    {
+        callback();
+        delivered = true;
+    };
+    b->triggerClick();
+    const auto deadline = juce::Time::getMillisecondCounterHiRes() + 4000;
+    while (!delivered && juce::Time::getMillisecondCounterHiRes() < deadline)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+    b->onClick = callback;
+    check(delivered, "native button callback returned a real receipt within deadline");
+}
+Json plugin(ndaw::desktop::Workspace& w)
+{
+    return w.query()["tracks"][0]["plugins"][0];
+}
+double gain(ndaw::desktop::Workspace& w)
+{
+    auto instance = plugin(w);
+    for (const auto& p : instance["parameters"])
+        if (p["id"] == "0")
+            return p["value"];
+    throw std::runtime_error("gain absent");
+}
+void wait(ndaw::desktop::Workspace& w)
+{
+    auto began = juce::Time::getMillisecondCounterHiRes();
+    while (w.queryPluginLibrary()["busy"].get<bool>() && juce::Time::getMillisecondCounterHiRes() - began < 12000)
+        settle(20);
+    check(!w.queryPluginLibrary()["busy"].get<bool>(),
+          "bounded background scan returns while native message loop remains responsive");
+}
+} // namespace
+int main(int argc, char** argv)
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    try
+    {
+        ndaw::desktop::Workspace w(false);
+        w.setVisible(true);
+        click(w, "track.create");
+        auto facts = w.query();
+        w.showPluginLibrary();
+        wait(w);
+        check(find(w, "plugin.library") && w.query() == facts, "native plugin library opens without Edit mutation");
+        std::string au;
+        auto library = w.queryPluginLibrary();
+        for (const auto& row : library["rows"])
+            if (row["name"] == "AUNBandEQ" && row["status"] == "verified")
+                au = row["descriptor"];
+        check(!au.empty() && w.selectLibraryPlugin(au), "only an actual verified AU descriptor can be selected");
+        click(w, "plugin.library.preview");
+        check(!find(w, "plugin.library") && w.query()["tracks"][0]["plugins"].size() == 1,
+              "native Insert loads immediately through one L1 transaction without an extra AI confirmation");
+        auto p = plugin(w);
+        check(p["external"]["loaded"] && p["external"]["format"] == "AudioUnit" &&
+                  w.query()["tracks"][0]["plugins"].size() == 1,
+              "accept loads a real Tracktion AU instance");
+        auto beforeEditor = w.query();
+        click(w, "plugin.editor");
+        check(w.queryPluginEditors().size() == 1 && w.queryPluginEditors()[0]["native_editor"] &&
+                  w.query() == beforeEditor,
+              "native inspector opens actual AU editor through L1 without Edit mutation");
+        click(w, "plugin.editor");
+        if (!(w.queryPluginEditors().empty() && w.query() == beforeEditor))
+            std::cout << "editor_close_diff=" << Json::diff(beforeEditor, w.query()).dump().substr(0, 2400)
+                      << " editors=" << w.queryPluginEditors().size() << std::endl;
+        check(w.queryPluginEditors().empty() && w.query() == beforeEditor,
+              "native inspector closes editor without an undoable Edit change");
+        auto* slider = dynamic_cast<juce::Slider*>(find(w, "plugin.parameter:0"));
+        check(slider && slider->isEnabled(), "native inspector presents actual AU parameter ID zero");
+        slider->setValue(.75, juce::sendNotificationSync);
+        settle();
+        check(std::abs(gain(w) - .75) < 1e-6 && w.query()["last_parameter_capture"]["state"] == "committed",
+              "GUI AU parameter edits pass through L1 human transaction");
+        click(w, "history.undo");
+        check(std::abs(gain(w) - .8) < 1e-6, "GUI Undo restores the actual enumerated native parameter");
+        click(w, "history.redo");
+        check(std::abs(gain(w) - .75) < 1e-6, "GUI Redo restores the same actual AU parameter");
+        click(w, "plugin.bypass");
+        check(plugin(w)["bypassed"], "native external bypass reaches actual Edit");
+        click(w, "history.undo");
+        check(!plugin(w)["bypassed"], "native bypass Undo restores enabled plugin");
+        w.showPluginLibrary();
+        click(w, "plugin.library.discover");
+        wait(w);
+        auto discovered = w.queryPluginLibrary();
+        check(discovered["result"]["status"] == "succeeded" && discovered["rows"].size() > 2,
+              "native library discovers real SDK candidates without claiming they are verified");
+        check(w.selectLibraryPlugin(au), "actual scanned plugin stays selectable after discovery");
+        click(w, "plugin.library.scan");
+        wait(w);
+        check(w.queryPluginLibrary()["result"]["status"] == "verified",
+              "native rescan consumes successful real worker receipt");
+        check(w.selectLibraryPlugin(au), "rescanned descriptor keeps stable identity");
+        w.prepareExternalPlugin(au);
+        click(w, "track.mute:" + juce::String(w.query()["tracks"][0]["id"].get<std::string>()));
+        click(w, "plan.accept");
+        check(w.query()["tracks"][0]["plugins"].size() == 1, "stale insert preview cannot override a newer human edit");
+        click(w, "plan.reject");
+        w.showPluginLibrary();
+        std::string vst;
+        auto catalog = w.queryPluginLibrary();
+        for (const auto& row : catalog["rows"])
+            if (row["name"] == "Serum" && row["format"] == "VST3" && row["status"] == "verified")
+                vst = row["descriptor"];
+        check(!vst.empty() && w.selectLibraryPlugin(vst),
+              "actual scanned VST3 instrument is available in native library");
+        click(w, "plugin.library.preview");
+        check(w.query()["tracks"][0]["plugins"].size() == 2, "native library accepts real VST3 alongside existing AU");
+        juce::TextEditor* programIndex = nullptr;
+        const auto programDeadline = juce::Time::getMillisecondCounterHiRes() + 4000;
+        do
+        {
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+            programIndex = dynamic_cast<juce::TextEditor*>(find(w, "plugin.program.index"));
+        } while ((!programIndex || !programIndex->isEnabled()) &&
+                 juce::Time::getMillisecondCounterHiRes() < programDeadline);
+        if (!programIndex || !programIndex->isEnabled())
+        {
+            auto* choice = dynamic_cast<juce::ComboBox*>(find(w, "plugin.choice"));
+            std::cout << "selected_plugin=" << (choice ? choice->getSelectedId() : -1)
+                      << " program_field=" << (programIndex != nullptr) << std::endl;
+            const auto q = w.query();
+            for (const auto& p : q["tracks"][0]["plugins"])
+                std::cout << p["name"] << " programs=" << p["external"].value("program_count", -1) << std::endl;
+        }
+        check(programIndex && programIndex->isEnabled() &&
+                  w.query()["tracks"][0]["plugins"][1]["external"]["program_count"] == 128,
+              "native inspector exposes actual SDK program index and count");
+        auto textChanged = programIndex->onTextChange;
+        bool draftDelivered = false;
+        programIndex->onTextChange = [&]
+        {
+            textChanged();
+            draftDelivered = true;
+        };
+        programIndex->setText("1", true);
+        const auto draftDeadline = juce::Time::getMillisecondCounterHiRes() + 4000;
+        while (!draftDelivered && juce::Time::getMillisecondCounterHiRes() < draftDeadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        programIndex->onTextChange = textChanged;
+        check(draftDelivered && programIndex->getText() == "1",
+              "native text notification preserves user's program draft");
+        click(w, "plugin.program");
+        check(w.query()["tracks"][0]["plugins"][1]["external"]["program_index"] == 1,
+              "native inspector program button executes real L1 Plan");
+        click(w, "history.undo");
+        check(w.query()["tracks"][0]["plugins"][1]["external"]["program_index"] == 0,
+              "GUI Undo restores actual native program");
+        click(w, "history.redo");
+        check(w.query()["tracks"][0]["plugins"][1]["external"]["program_index"] == 1,
+              "GUI Redo restores actual native program");
+        check(find(w, "plugin.parameters.next") && find(w, "plugin.parameter:0"),
+              "large real VST3 parameter list opens on its first bounded page");
+        click(w, "plugin.parameters.next");
+        check(!find(w, "plugin.parameter:0") && find(w, "plugin.parameters.previous"),
+              "next parameter page replaces visible controls without removing plugin parameters");
+        click(w, "plugin.parameters.previous");
+        check(find(w, "plugin.parameter:0"), "previous page retains access to actual original parameter");
+        auto hosted = w.query()["tracks"][0]["plugins"][1];
+        std::string programParam;
+        for (const auto& p : hosted["parameters"])
+            if (p["name"] == "Program")
+                programParam = p["id"];
+        check(!programParam.empty(), "real VST3 also exposes its actual mapped Program parameter");
+        for (int i = 0; i < 8 && !find(w, "plugin.parameter:" + juce::String(programParam)); ++i)
+            click(w, "plugin.parameters.next");
+        auto* selector = dynamic_cast<juce::Slider*>(find(w, "plugin.parameter:" + juce::String(programParam)));
+        check(selector && selector->isEnabled(), "actual Program parameter is accessible through production pages");
+        auto priorQuota = juce::SystemStats::getEnvironmentVariable("NATIVEDAW_V2_PLUGIN_STATE_LIMIT", {});
+        ::setenv("NATIVEDAW_V2_PLUGIN_STATE_LIMIT", "1", 1);
+        selector->setValue(0, juce::sendNotificationSync);
+        settle();
+        auto failed = w.query();
+        check(failed["native_plugin_states"]["failures"].size() == 1 && find(w, "plugin.state.retry") &&
+                  find(w, "plugin.state.restore_checkpoint"),
+              "production inspector displays the selected real instance error and recovery controls");
+        click(w, "plugin.state.retry");
+        check(!w.query()["native_plugin_states"]["failure"].is_null(),
+              "GUI retry cannot display false success while actual state exceeds quota");
+        if (priorQuota.isEmpty())
+            ::unsetenv("NATIVEDAW_V2_PLUGIN_STATE_LIMIT");
+        else
+            ::setenv("NATIVEDAW_V2_PLUGIN_STATE_LIMIT", priorQuota.toRawUTF8(), 1);
+        click(w, "plugin.state.restore_checkpoint");
+        auto recovered = w.query();
+        check(recovered["native_plugin_states"]["failure"].is_null() &&
+                  !recovered["native_plugin_states"]["pending"].get<bool>() && !find(w, "plugin.state.retry"),
+              "GUI restore reaches actual known state and hides resolved error controls");
+        check(!recovered["can_undo"].get<bool>() && !find(w, "history.undo")->isEnabled(),
+              "native inspector cannot Undo through an irreversible recovery barrier");
+        w.setSize(1120, 700);
+        w.showPluginLibrary();
+        check(find(w, "plugin.library.preview")->getWidth() > 0,
+              "native plugin library remains usable at minimum tested workspace size");
+        click(w, "plugin.library.close");
+        Json result = {{"result", "passed"},
+                       {"checks", checks},
+                       {"scope", "actual JUCE production library and AU inspector callbacks, SDK discovery/rescan and "
+                                 "real Tracktion transactions; physical desktop/editor/listening remain unqualified"}};
+        if (argc > 1)
+        {
+            std::ofstream out(argv[1]);
+            out << result.dump(2);
+        }
+        std::cout << result.dump(2) << std::endl;
+        return 0;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "FAIL " << e.what() << std::endl;
+        return 1;
+    }
+}

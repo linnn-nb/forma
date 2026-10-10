@@ -16,6 +16,7 @@
 #include "MemoryLocationsPanel.h"
 #include "SpotPlacementPanel.h"
 #include "MidiDock.h"
+#include "WorkspaceDivider.h"
 #include "PianoPitchAxis.h"
 #include "MusicEventPanel.h"
 #include "RollPanel.h"
@@ -76,6 +77,7 @@ public:
     Json queryPluginLibrary() const;
     bool selectLibraryPlugin(const std::string& id);
     void prepareExternalPlugin(const std::string& descriptor);
+    void insertExternalPlugin(const std::string& descriptor);
     Json queryAutomation(const std::string& target) const;
     void openSession(const juce::File& f);
     // Startup receives a fresh Workspace; project files must not enter audio import.
@@ -303,6 +305,9 @@ private:
     PianoRoll piano;
     MidiDockDivider midiDivider;
     int midiHeightPreview = -1;
+    WorkspaceDivider trackListDivider{false}, inspectorDivider{true};
+    int tracksWidthPreview = -1, inspectorWidthPreview = -1;
+    int inspectorWidth() const;
     bool midiCommandContext = false;
     juce::Viewport editView, mixView, parameterView, routingView, groupView, autoView, recordView;
     juce::MenuBarComponent menu{this};

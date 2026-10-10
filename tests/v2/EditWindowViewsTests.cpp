@@ -247,10 +247,11 @@ int main(int argc, char** argv)
                                 "track_views", "zoom_state", "waveform_zoom", "midi_zoom", "zoom_toggle", "midi_note_height"})
             old.erase(key);
         old["ui_schema"] = 3;
+        old.erase("workspace_panes");
         ui.setProperty("json", juce::String(old.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 13 &&
+        check(migrated["ui_schema"] == 14 &&
                   migrated["edit_views"] ==
                       Json({{"io", false}, {"inserts", false}, {"sends", false}, {"comments", false}}) &&
                   migrated["object_selection"] == old["object_selection"],

@@ -170,7 +170,7 @@ int main(int argc, char** argv)
             b->triggerClick();
             pump();
         };
-        check(w.queryView()["ui_schema"] == 13 && w.queryView()["track_heights"].empty() &&
+        check(w.queryView()["ui_schema"] == 14 && w.queryView()["track_heights"].empty() &&
                   w.queryView()["zoom_presets"].size() == 5,
               "new UI defaults have seven-schema sparse heights and five usable presets");
         select(id);
@@ -206,14 +206,15 @@ int main(int argc, char** argv)
         auto* header = dynamic_cast<TrackHeader*>(find(w, "track.select:" + text(midi))->getParentComponent());
         const auto beforeResize = w.queryView();
         const auto domainBeforeResize = w.query();
+        const int resizedHeight = edit->rowHeight(2) + 37;
         const auto bottom = juce::Point<float>(200, float(header->getHeight() - 2));
         header->mouseDown(event(*header, bottom));
         header->mouseDrag(event(*header, bottom + juce::Point<float>(0, 37), true));
-        check(w.queryView() == beforeResize && edit->rowHeight(2) == 133,
+        check(w.queryView() == beforeResize && edit->rowHeight(2) == resizedHeight,
               "native header drag previews height without writing Edit");
         header->mouseUp(event(*header, bottom + juce::Point<float>(0, 37), true));
         pump();
-        check(w.queryView()["track_heights"][midi] == 133 && w.query() == domainBeforeResize,
+        check(w.queryView()["track_heights"][midi] == resizedHeight && w.query() == domainBeforeResize,
               "resize release writes only L1 UI height and preserves domain Undo/revision");
         point = edit->clipRect(w.query()["tracks"][2]["clips"][0], 2).getCentre().toFloat();
         edit->mouseDoubleClick(event(*edit, point));
@@ -324,6 +325,7 @@ int main(int argc, char** argv)
         check(w.queryView() == beforeBad, "bad presentation properties cannot partially replace valid UI state");
         auto old = beforeBad;
         old["ui_schema"] = 6;
+        old.erase("workspace_panes");
         old.erase("track_heights");
         old.erase("zoom_presets");
         old.erase("track_views");
@@ -336,7 +338,7 @@ int main(int argc, char** argv)
         ui.setProperty("json", text(old.dump()), nullptr);
         metadata.addChild(ui, -1, nullptr);
         const auto migrated = readUiState(metadata);
-        check(migrated["ui_schema"] == 13 && migrated["rulers"] == old["rulers"] &&
+        check(migrated["ui_schema"] == 14 && migrated["rulers"] == old["rulers"] &&
                   migrated["edit_views"] == old["edit_views"] && migrated["track_heights"].empty(),
               "complete schema6 migrates existing rulers and columns without invented height overrides");
         old.erase("row_height");
@@ -377,7 +379,7 @@ int main(int argc, char** argv)
         Json report{
             {"result", "passed"},
             {"checks", checks},
-            {"ui_schema", 13},
+            {"ui_schema", 14},
             {"media_sha256", hash},
             {"render_peak", beforePcm.getMagnitude(0, 0, 96000)},
             {"render_maximum_error", error},

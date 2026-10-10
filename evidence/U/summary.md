@@ -1,3 +1,13 @@
+## 2026-10-10 五项用户反馈修复增量
+
+Release/固定签名已通过，19组受影响自动化exit0、2305检查；具体范围和边界见docs/VERIFICATION首条，输出索引为build-v2-tracktion/feedback-final-results.json。不是重新宣称以下8步全部通过。
+
+多选导入、停止源音频清零、左右可拖宽度、删除常驻音频表单、显式AU/VST3入口/扫描/直接插入已落地。真实桌面双选WAV、AU编辑器、Undo/Redo、保存重开和左右拖动已执行；带AU再次导入出现额外Undo，第二次才移除批次，原因未确认。最初自动化超时后恢复；未实机捏合或声学回环。
+
+产物build-v2-tracktion/FeedbackPreview.app；GUI另存feedback-final.tracktionedit，两轨/实际AUNBandEQ/左右188和432；UP0-demo-media保留。新截图feedback-au-editor.png和feedback-final-timeline.png留忽略的build目录，不扩增本目录8张旧图。本轮暂停等试用；下一修复是带AU的Undo历史核对。
+
+---
+
 # U＋P0 实机试用交付（2026-10-10）
 
 结论：8步已用真实原生窗口、鼠标与快捷键走完；第8步的跨重开Undo未通过，不能宣称U/P0全部验收。停止新功能，提交推送后暂停，等用户亲手试用。未用MCP、CLI工程修改或内部调用替代GUI操作。

@@ -284,7 +284,7 @@ int main(int argc, char** argv)
         pump();
         check(reopened.query()["tracks"] == saved["tracks"],
               "real new Workspace reopen preserves all track text and stable IDs");
-        check(reopened.queryView()["edit_views"] == savedView["edit_views"] && reopened.queryView()["ui_schema"] == 13,
+        check(reopened.queryView()["edit_views"] == savedView["edit_views"] && reopened.queryView()["ui_schema"] == 14,
               "column visibility survives native save and reopen");
         check(reopened.uiCommands().getKeyMappings()->containsMapping(153, custom),
               "custom Comments shortcut survives reopen");
@@ -298,11 +298,12 @@ int main(int argc, char** argv)
                                 "track_views", "zoom_state", "waveform_zoom", "midi_zoom", "zoom_toggle", "midi_note_height"})
             old.erase(key);
         old["ui_schema"] = 4;
+        old.erase("workspace_panes");
         old["edit_views"].erase("comments");
         ui.setProperty("json", juce::String(old.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
         auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 13 && migrated["edit_views"]["comments"] == false &&
+        check(migrated["ui_schema"] == 14 && migrated["edit_views"]["comments"] == false &&
                   migrated["keymap_xml"] == old["keymap_xml"] &&
                   migrated["selection_tracks"] == old["selection_tracks"],
               "complete schema4 migrates preserving selection layout and user keys");
@@ -317,7 +318,7 @@ int main(int argc, char** argv)
               "Comments edits and reopen preserve actual media hash clips and routing");
         Json report{{"result", "passed"},
                     {"checks", checks},
-                    {"ui_schema", 13},
+                    {"ui_schema", 14},
                     {"scope", "native controls with actual Edit and Undo/save/reopen; closed audio device; desktop "
                               "acceptance unexecuted"}};
         if (argc > 1)

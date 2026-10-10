@@ -438,6 +438,7 @@ void Workspace::showPluginLibrary()
         {
             if (!pending.is_null() || commandFileBusy)
                 throw std::runtime_error("finish the existing preview first");
+            const bool firstOpen = !pluginLibrary;
             if (!pluginLibrary)
                 pluginLibrary = std::make_unique<PluginLibrary>(
                     [this]
@@ -445,7 +446,7 @@ void Workspace::showPluginLibrary()
                         commands.refreshPluginInventory();
                         refresh();
                     },
-                    [this](std::string descriptor) { prepareExternalPlugin(descriptor); },
+                    [this](std::string descriptor) { insertExternalPlugin(descriptor); },
                     [this] { pluginLibrary->setVisible(false); });
             pluginLibraryTrack = selected;
             pluginLibrarySession = commands.sessionToken();
@@ -456,6 +457,8 @@ void Workspace::showPluginLibrary()
             addAndMakeVisible(*pluginLibrary);
             resized();
             pluginLibrary->toFront(true);
+            if (firstOpen)
+                pluginLibrary->discover();
         });
 }
 
@@ -472,6 +475,27 @@ Json Workspace::queryPluginLibrary() const
 bool Workspace::selectLibraryPlugin(const std::string& id)
 {
     return pluginLibrary && pluginLibrary->selectDescriptor(id);
+}
+
+void Workspace::insertExternalPlugin(const std::string& descriptor)
+{
+    if (!pending.is_null() || !pendingConfirmation.empty() || commandFileBusy)
+        throw std::runtime_error("finish the current preview first");
+    if (commands.sessionToken() != pluginLibrarySession)
+        throw std::runtime_error("session changed; reopen the plugin library");
+    commands.refreshPluginInventory();
+    const auto plan =
+        commands.makePlan("human", Json::array({operation("plugin.external.insert", {{"track", pluginLibraryTrack},
+                                                                                     {"descriptor", descriptor}})}));
+    commands.commit(plan, true); // The user explicitly pressed Insert in the native library.
+    selected = pluginLibraryTrack;
+    const auto inserted = commands.query();
+    for (const auto& track : inserted["tracks"])
+        if (track["id"] == selected)
+            pluginSelection = int(track["plugins"].size()) - 1;
+    pluginLibrary->setVisible(false);
+    message(text("外部插件已加载 · 一次 Undo 撤销"));
+    refresh();
 }
 
 void Workspace::prepareExternalPlugin(const std::string& descriptor)
@@ -567,7 +591,19 @@ void Workspace::chooseAudioFiles()
                          [safe = juce::Component::SafePointer<Workspace>(this)](const auto& c)
                          {
                              if (safe && !c.getResults().isEmpty())
+                             {
                                  safe->importAudioFiles(c.getResults());
+                                 const auto token = safe->commands.sessionToken();
+                                 juce::MessageManager::callAsync(
+                                     [safe, token]
+                                     {
+                                         if (safe && safe->commands.sessionToken() == token && safe->isShowing())
+                                             if (auto* peer = safe->getPeer();
+                                                 peer && peer->isFocused() &&
+                                                 !safe->isCurrentlyBlockedByAnotherModalComponent())
+                                                 safe->grabKeyboardFocus();
+                                     });
+                             }
                          });
 }
 

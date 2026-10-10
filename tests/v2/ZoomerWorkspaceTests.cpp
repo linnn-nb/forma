@@ -345,6 +345,7 @@ int main(int argc, char** argv)
         }
         auto legacy = savedView;
         legacy["ui_schema"] = 8;
+        legacy.erase("workspace_panes");
         legacy.erase("zoom_state");
         legacy.erase("waveform_zoom");
         legacy.erase("midi_zoom");
@@ -355,7 +356,7 @@ int main(int argc, char** argv)
         state.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(state, -1, nullptr);
         const auto migrated = readUiState(meta);
-        check(migrated["ui_schema"] == 13 && migrated["track_views"] == legacy["track_views"] &&
+        check(migrated["ui_schema"] == 14 && migrated["track_views"] == legacy["track_views"] &&
                   migrated["zoom_state"]["history"].empty() && migrated["keymap_xml"] == legacy["keymap_xml"],
               "complete schema8 migration preserves all old view facts without invented zoom history");
         legacy.erase("rulers");
@@ -556,7 +557,7 @@ int main(int argc, char** argv)
         check(error <= 1e-7, "actual rendered PCM unchanged by view navigation");
         Json result = {{"result", "passed"},
                        {"checks", checks},
-                       {"ui_schema", 13},
+                       {"ui_schema", 14},
                        {"overview_checks", overviewChecks},
                        {"overview_geometry", overviewWidths},
                        {"source_sha256", hash},

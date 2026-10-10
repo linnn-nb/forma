@@ -2,242 +2,183 @@
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
-using ndaw::desktop::text;
+using namespace ndaw::desktop;
+namespace ndaw::v2
+{
+class AudioDeviceTestAccess
+{
+public:
+    static Commands& owner(Workspace& w)
+    {
+        return w.commands;
+    }
+};
+} // namespace ndaw::v2
 namespace
 {
 int checks = 0;
-void check(bool b, const char* s)
+void check(bool yes, const char* why)
 {
-    if (!b)
-        throw std::runtime_error(s);
+    if (!yes)
+        throw std::runtime_error(why);
     ++checks;
-    std::cout << "PASS " << s << std::endl;
+    std::cout << "PASS " << why << std::endl;
 }
-void settle(int ms = 80)
+template <class F> void wait(F ready)
 {
-    juce::MessageManager::getInstance()->runDispatchLoopUntil(ms);
+    const auto deadline = juce::Time::getMillisecondCounterHiRes() + 4000;
+    while (!ready() && juce::Time::getMillisecondCounterHiRes() < deadline)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+    check(ready(), "production callback completed within deadline");
 }
-juce::Component* find(juce::Component& p, const juce::String& id)
+juce::Component* find(juce::Component& c, const juce::String& id)
 {
-    if (!p.isVisible())
+    if (!c.isVisible())
         return nullptr;
-    if (p.getComponentID() == id)
-        return &p;
-    for (auto* c : p.getChildren())
-        if (auto* f = find(*c, id))
-            return f;
+    if (c.getComponentID() == id)
+        return &c;
+    for (auto* child : c.getChildren())
+        if (auto* result = find(*child, id))
+            return result;
     return nullptr;
 }
-void click(juce::Component& p, const juce::String& id)
+template <class F> void click(Workspace& w, const juce::String& id, F ready)
 {
-    auto* b = dynamic_cast<juce::Button*>(find(p, id));
-    if (!b || !b->isEnabled())
-        throw std::runtime_error("button unavailable: " + id.toStdString());
+    auto* b = dynamic_cast<juce::Button*>(find(w, id));
+    check(b && b->isEnabled(), "real enabled GUI command exists");
     b->triggerClick();
-    settle();
+    wait(ready);
 }
-void field(juce::Component& p, const char* id, const char* value)
+juce::File fixture(const juce::File& dir, const juce::String& name, double frequency)
 {
-    auto* f = dynamic_cast<juce::TextEditor*>(find(p, id));
-    if (!f || !f->isEnabled())
-        throw std::runtime_error("field unavailable");
-    static_cast<juce::Component*>(f)->focusGained(juce::Component::focusChangedDirectly);
-    f->setText(value, true);
+    auto path = dir.getChildFile(name + ".wav");
+    juce::AudioBuffer<float> pcm(2, 144000);
+    for (int ch = 0; ch < 2; ++ch)
+        for (int i = 0; i < pcm.getNumSamples(); ++i)
+            pcm.setSample(ch, i, float(.02 * std::sin(juce::MathConstants<double>::twoPi * frequency * i / 48000)));
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::OutputStream> out = path.createOutputStream();
+    auto writer = wav.createWriterFor(
+        out, juce::AudioFormatWriterOptions{}.withSampleRate(48000).withNumChannels(2).withBitsPerSample(24));
+    check(writer && writer->writeFromAudioSampleBuffer(pcm, 0, pcm.getNumSamples()), "actual file PCM created");
+    return path;
 }
-Json op(const char* cmd, Json a)
+void resize(juce::Component& c, int dx)
 {
-    return {{"command", cmd}, {"args", a}};
-}
-Json clips(ndaw::desktop::Workspace& w)
-{
-    return w.query()["tracks"][0]["clips"];
+    auto mouse = juce::Desktop::getInstance().getMainMouseSource();
+    auto now = juce::Time::getCurrentTime();
+    juce::MouseEvent down(mouse, {3.f, 30.f}, juce::ModifierKeys::leftButtonModifier, 0, 0, 0, 0, 0, &c, &c, now,
+                          {3.f, 30.f}, now, 1, false);
+    juce::MouseEvent drag(mouse, {float(3 + dx), 30.f}, juce::ModifierKeys::leftButtonModifier, 0, 0, 0, 0, 0, &c, &c,
+                          now, {3.f, 30.f}, now, 1, true);
+    const auto target = drag.getScreenPosition();
+    c.mouseDown(down);
+    c.mouseDrag(drag);
+    const auto local = c.getLocalPoint(nullptr, target).toFloat();
+    juce::MouseEvent up(mouse, local, {}, 0, 0, 0, 0, 0, &c, &c, now, {3.f, 30.f}, now, 1, true);
+    c.mouseUp(up);
 }
 } // namespace
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    const auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory)
+                         .getChildFile("forma-feedback-" + juce::Uuid().toString());
+    dir.createDirectory();
     try
     {
-        auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory)
-                       .getChildFile("ndaw-clip-ui-" + juce::Uuid().toString());
-        dir.createDirectory();
-        auto file = dir.getChildFile("actual.wav");
-        {
-            juce::WavAudioFormat wav;
-            std::unique_ptr<juce::OutputStream> s = file.createOutputStream();
-            auto writer = wav.createWriterFor(
-                s, juce::AudioFormatWriterOptions{}.withSampleRate(48000).withNumChannels(2).withBitsPerSample(24));
-            if (!writer)
-                throw std::runtime_error("writer failed");
-            juce::AudioBuffer<float> pcm(2, 192000);
-            for (int i = 0; i < 192000; ++i)
-                for (int c = 0; c < 2; ++c)
-                    pcm.setSample(c, i, float(.1 * std::sin(2 * juce::MathConstants<double>::pi * 1000 * i / 48000.)));
-            if (!writer->writeFromAudioSampleBuffer(pcm, 0, 192000))
-                throw std::runtime_error("write failed");
-        }
-        auto hash = Commands::mediaHash(file);
-        ndaw::desktop::Workspace w(false);
-        w.uiCommands().invokeDirectly(169, false); // This historical fixture intentionally enters project samples.
-        w.setVisible(true);
+        auto a = fixture(dir, "birds", 437), b = fixture(dir, "wind", 659);
+        const auto ha = Commands::mediaHash(a), hb = Commands::mediaHash(b);
+        Workspace w(false);
         w.setSize(1440, 1000);
-        w.prepareImport(file);
-        click(w, text("plan.accept"));
-        auto original = clips(w);
-        std::string id = original[0]["id"], track = w.query()["tracks"][0]["id"];
-        click(w, text("clip.select:" + id));
-        check(find(w, "clip.trim") && find(w, "clip.gain"), "native clip header selection opens real edit dock");
-        field(w, "clip.start", "24000");
-        field(w, "clip.end", "168000");
-        click(w, "clip.trim");
-        auto trimmed = clips(w);
-        check(trimmed[0]["start_samples"] == 24000 && trimmed[0]["source_offset_samples"] == 24000 &&
-                  trimmed[0]["length_samples"] == 144000,
-              "GUI trim commits source-preserving native Edit mapping");
-        Commands c(false);
-        c.commit(c.makePlan("human", Json::array({op("track.create", {{"name", "actual"}, {"ref", "$a"}}),
-                                                  op("clip.import", {{"track", "$a"},
-                                                                     {"path", file.getFullPathName().toStdString()},
-                                                                     {"position_samples", 0},
-                                                                     {"ref", "$c"}}),
-                                                  op("track.gain", {{"track", "$a"}, {"db", -12}})})));
-        auto cid = c.query()["tracks"][0]["clips"][0]["id"];
-        auto plan = c.makePlan(
-            "agent:gui-equivalence",
-            Json::array({op("clip.trim", {{"clip", cid}, {"start_samples", 24000}, {"end_samples", 168000}})}));
-        c.commit(plan, true);
-        auto agent = c.query()["tracks"][0]["clips"][0];
-        auto human = trimmed[0];
-        human.erase("id");
-        agent.erase("id");
-        check(human == agent, "GUI and accepted Agent Plan produce same clip facts apart from instance IDs");
-        click(w, "history.undo");
-        check(clips(w) == original, "GUI Undo restores original clip and offset");
-        click(w, "history.redo");
-        check(clips(w) == trimmed, "GUI Redo retains trimmed stable ID");
-        field(w, "clip.position", "48000");
-        settle(55);
-        check(dynamic_cast<juce::TextEditor*>(find(w, "clip.position"))->getText() == "48000",
-              "focused typed position survives background facts refresh before commit");
-        click(w, "clip.move");
-        check(clips(w)[0]["start_samples"] == 48000 && clips(w)[0]["source_offset_samples"] == 24000,
-              "GUI exact position entry moves clip without changing source offset");
-        field(w, "clip.gain.db", "-6");
-        click(w, "clip.gain");
-        check(clips(w)[0]["gain_db"] == -6, "GUI Clip Gain changes real clip level");
-        field(w, "clip.fade.in", "100");
-        field(w, "clip.fade.out", "200");
-        auto* curves = dynamic_cast<juce::ComboBox*>(find(w, "clip.fade.in_curve"));
-        curves->setSelectedId(2, juce::sendNotificationSync);
-        click(w, "clip.fade");
-        check(clips(w)[0]["fade_in_samples"] == 4800 && clips(w)[0]["fade_out_samples"] == 9600 &&
-                  clips(w)[0]["fade_in_curve"] == "convex",
-              "GUI fade values and curve reach actual native DSP properties");
-        auto* area = dynamic_cast<ndaw::desktop::EditArea*>(find(w, "edit.timeline"));
-        check(area != nullptr, "actual timeline is addressable for gesture regression");
-        auto source = juce::Desktop::getInstance().getMainMouseSource();
+        w.setVisible(true);
+        auto& c = AudioDeviceTestAccess::owner(w);
+        w.importAudioFiles({a, b});
+        auto imported = w.query()["tracks"];
+        check(imported.size() == 2 && imported[0]["clips"].size() == 1 && imported[1]["clips"].size() == 1,
+              "batch import creates one real audio track per file at the same cursor");
+        click(w, "history.undo", [&] { return w.query()["tracks"].empty(); });
+        click(w, "history.redo", [&] { return w.query()["tracks"] == imported; });
+        const auto before = w.query();
+        w.importAudioFiles({a, dir.getChildFile("missing.wav")});
+        check(w.query() == before, "one invalid batch member rejects the complete import without partial tracks");
+        const auto clip = imported[0]["clips"][0]["id"].get<std::string>();
+        auto* area = find(w, "edit.timeline");
+        check(area, "native timeline present");
+        const auto height = area->getHeight();
+        click(w, "clip.select:" + juce::String(clip), [&] { return !w.queryView()["object_selection"].empty(); });
+        check(!find(w, "clip.trim") && !find(w, "clip.gain") && area->getHeight() == height,
+              "selecting audio keeps full timeline height and does not open the removed numeric form");
+        auto* divider = find(w, "workspace.inspector.divider");
+        check(divider, "inspector resize handle present");
+        resize(*divider, -80);
+        check(w.queryView()["workspace_panes"]["inspector_width"] == 412,
+              "inspector width is changed by a native drag through L1 view persistence");
+        divider = find(w, "workspace.tracks.divider");
+        check(w.getComponentAt(divider->getBounds().getCentre()) == divider,
+              "track browser does not cover the actual mouse hit region of its resize handle");
+        resize(*divider, 50);
+        check(w.queryView()["workspace_panes"]["tracks_width"] == 188, "track browser width is freely draggable");
+        auto legacy = w.queryView();
+        legacy["ui_schema"] = 13;
+        legacy.erase("workspace_panes");
+        juce::ValueTree meta("NATIVEDAW"), ui("UI");
+        ui.setProperty("json", text(legacy.dump()), nullptr);
+        meta.addChild(ui, -1, nullptr);
+        const auto migrated = readUiState(meta);
+        check(migrated["ui_schema"] == 14 && migrated["workspace_panes"]["inspector_width"] == 332 &&
+                  migrated["object_selection"] == legacy["object_selection"],
+              "schema13 projects migrate to default pane widths while preserving actual selection");
+        const auto view = w.queryView();
+        auto* timeline = dynamic_cast<EditWindow*>(area);
+        auto mouse = juce::Desktop::getInstance().getMainMouseSource();
         auto now = juce::Time::getCurrentTime();
-        auto down = [&](int x, int y)
+        juce::MouseEvent gesture(mouse, {700.f, 220.f}, {}, 0, 0, 0, 0, 0, timeline, timeline, now, {700.f, 220.f}, now,
+                                 1, false);
+        timeline->mouseMagnify(gesture, 1.5f);
+        check(w.queryView()["span_samples"].get<int64_t>() < view["span_samples"].get<int64_t>(),
+              "native pinch gesture zooms the actual timeline around the pointer");
+        const auto saved = dir.getChildFile("session.tracktionedit");
+        c.save(saved);
+        const auto final = w.query()["tracks"];
+        const auto finalView = w.queryView();
+        w.openSession(saved);
+        check(w.query()["tracks"] == final && w.queryView()["workspace_panes"] == finalView["workspace_panes"] &&
+                  w.queryView()["span_samples"] == finalView["span_samples"],
+              "batch media and resized/zoomed workspace survive native save and reopen");
+        Workspace live(true);
+        live.setVisible(true);
+        auto& lc = AudioDeviceTestAccess::owner(live);
+        live.importAudioFiles({a});
+        wait([&] { return lc.deviceStatus().value("driver_running", false); });
+        Json stops = Json::array();
+        for (int start : {0, 48000, 96000})
         {
-            juce::MouseEvent e(source, juce::Point<float>(float(x), float(y)), juce::ModifierKeys::leftButtonModifier,
-                               1, 0, 0, 0, 0, area, area, now, {float(x), float(y)}, now, 1, false);
-            area->mouseDown(e);
-        };
-        auto drag = [&](int from, int to, int y)
-        {
-            down(from, y);
-            juce::MouseEvent e(source, juce::Point<float>(float(to), float(y)), juce::ModifierKeys::leftButtonModifier,
-                               1, 0, 0, 0, 0, area, area, now, {float(from), float(y)}, now, 1, true);
-            area->mouseDrag(e);
-            area->mouseUp(e);
-            settle();
-        };
-        auto beforeDrag = clips(w);
-        w.uiCommands().invokeDirectly(ndaw::desktop::editCommand::grabber, false);
-        auto rect = area->clipRect(beforeDrag[0], 0);
-        drag(rect.getCentreX(), rect.getCentreX() + 30, rect.getCentreY());
-        auto moved = clips(w);
-        check(moved[0]["start_samples"].get<int64_t>() > beforeDrag[0]["start_samples"].get<int64_t>() &&
-                  moved[0]["source_offset_samples"] == beforeDrag[0]["source_offset_samples"],
-              "timeline drag issues one real source-preserving move Plan");
-        click(w, "history.undo");
-        check(clips(w) == beforeDrag, "single Undo reverses entire drag");
-        w.uiCommands().invokeDirectly(ndaw::desktop::editCommand::trim, false);
-        rect = area->clipRect(beforeDrag[0], 0);
-        drag(rect.getX() + 2, rect.getX() + 16, rect.getCentreY());
-        auto edge = clips(w);
-        check(edge[0]["source_offset_samples"].get<int64_t>() > beforeDrag[0]["source_offset_samples"].get<int64_t>() &&
-                  edge[0]["start_samples"].get<int64_t>() > beforeDrag[0]["start_samples"].get<int64_t>(),
-              "timeline Trim tool drag maps source and session together");
-        click(w, "history.undo");
-        w.uiCommands().invokeDirectly(ndaw::desktop::editCommand::grabber, false);
-        rect = area->clipRect(clips(w)[0], 0);
-        down(rect.getCentreX(), rect.getCentreY());
-        click(w, "history.undo");
-        auto concurrent = w.query();
-        juce::MouseEvent conflict(source, juce::Point<float>(float(rect.getCentreX() + 30), float(rect.getCentreY())),
-                                  juce::ModifierKeys::leftButtonModifier, 1, 0, 0, 0, 0, area, area, now,
-                                  {float(rect.getCentreX()), float(rect.getCentreY())}, now, 1, true);
-        area->mouseDrag(conflict);
-        area->mouseUp(conflict);
-        settle();
-        check(w.query() == concurrent, "stale clip drag cannot overwrite interleaved human Undo");
-        click(w, "history.redo");
-        check(clips(w) == beforeDrag, "concurrent rejection preserves subsequent Redo");
-        field(w, "clip.position", "12345");
-        click(w, "history.undo");
-        concurrent = w.query();
-        click(w, "clip.move");
-        check(w.query() == concurrent, "typed clip edit checks original revision after interleaved human Undo");
-        click(w, "history.redo");
-        check(clips(w) == beforeDrag, "stale typed edit does not consume redo history");
-        dynamic_cast<juce::TextEditor*>(find(w, "clip.position"))
-            ->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));
-        settle();
-        auto bounds = area->clipRect(clips(w)[0], 0);
-        down(bounds.getCentreX(), bounds.getCentreY());
-        settle();
-        click(w, "clip.split");
-        auto split = clips(w);
-        check(split.size() == 2 && split[0]["id"] == id && split[1]["parent_clip"] == id,
-              "GUI playhead split inserts real second clip with source lineage");
-        click(w, "history.undo");
-        check(clips(w) == beforeDrag, "GUI split Undo restores original whole clip");
-        click(w, "clip.lock");
-        check(clips(w)[0]["locked"] && !find(w, "clip.move")->isEnabled() && !find(w, "clip.delete")->isEnabled(),
-              "lock disables destructive and positional UI edits");
-        click(w, "clip.lock");
-        check(!clips(w)[0]["locked"] && find(w, "clip.move")->isEnabled(), "unlock restores actual edit affordances");
-        click(w, "clip.copy");
-        check(clips(w).size() == 2 && clips(w)[1]["parent_clip"] == id,
-              "GUI copy creates an independent non-destructive clip");
-        click(w, "history.undo");
-        click(w, "clip.delete");
-        check(clips(w).empty() && !find(w, "clip.trim"), "GUI delete removes actual clip and closes stale dock");
-        click(w, "history.undo");
-        check(clips(w) == beforeDrag, "GUI deleted clip Undo restores state");
-        click(w, text("clip.select:" + id));
-        auto beforeBad = w.query();
-        field(w, "clip.start", "1.5");
-        click(w, "clip.trim");
-        check(w.query() == beforeBad, "invalid exact position cannot modify native Edit");
-        field(w, "clip.start", "48000");
-        field(w, "clip.end", "192000");
-        click(w, "clip.trim");
-        check(Commands::mediaHash(file) == hash, "GUI edits preserve original media hash");
-        click(w, "clip.close");
-        check(!find(w, "clip.trim") && w.queryView()["object_selection"].empty(),
-              "closing clip dock clears selection reference and does not reopen on facts refresh");
-        Json result = {{"result", "passed"},
-                       {"checks", checks},
-                       {"scope", "production JUCE clip controls and gestures, actual Edit changes; GUI/accepted "
-                                 "structured Agent equivalence, not LLM or external MCP"}};
+            lc.seek(start);
+            click(
+                live, "transport.play", [&]
+                { return lc.query()["playing"].get<bool>() && lc.deviceStatus()["output_peak"].get<double>() > .001; });
+            click(live, "transport.stop", [&] { return !lc.query()["playing"].get<bool>(); });
+            wait([&] { return lc.deviceStatus()["output_peak"].get<double>() == 0; });
+            const auto frames = lc.deviceStatus()["output_frames"].get<uint64_t>();
+            wait([&] { return lc.deviceStatus()["output_frames"].get<uint64_t>() >= frames + 24000; });
+            auto status = lc.deviceStatus();
+            check(status["output_peak"] == 0,
+                  "real device callback output stays silent for 0.5 seconds after GUI Stop");
+            stops.push_back(status);
+        }
+        check(Commands::mediaHash(a) == ha && Commands::mediaHash(b) == hb, "source media retained unchanged");
+        Json report{{"result", "passed"},
+                    {"checks", checks},
+                    {"device_stop_measurements", stops},
+                    {"scope", "real PCM import, L1 atomic history, native workspace gestures and save/reopen; real "
+                              "hardware callbacks, not acoustic loopback or subjective listening"}};
         if (argc > 1)
         {
             std::ofstream out(argv[1]);
-            out << result.dump(2);
+            out << report.dump(2);
         }
-        std::cout << result.dump(2) << std::endl;
+        std::cout << report.dump(2) << std::endl;
         dir.deleteRecursively();
         return 0;
     }

@@ -185,7 +185,7 @@ int main(int argc, char** argv)
         juce::ValueTree metadata("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(old.dump()), nullptr);
         metadata.addChild(ui, -1, nullptr);
-        check(readUiState(metadata)["ui_schema"] == 13 && readUiState(metadata)["span_samples"] == old["span_samples"],
+        check(readUiState(metadata)["ui_schema"] == 14 && readUiState(metadata)["span_samples"] == old["span_samples"],
               "previous eight-field UI subtree migrates without discarding viewport");
         old.erase("start_samples");
         ui.setProperty("json", text(old.dump()), nullptr);
@@ -630,11 +630,8 @@ int main(int argc, char** argv)
         header->triggerClick();
         pump();
         check(w.hasKeyboardFocus(false), "actual desktop peer clip selection returns focus to global command target");
-        auto* close = dynamic_cast<juce::TextButton*>(find(w, "clip.close"));
-        close->triggerClick();
-        pump();
-        check(!find(w, "clip.trim") && w.queryView()["object_selection"].empty() && w.hasKeyboardFocus(false),
-              "closing restored clip dock clears reference and retains command focus");
+        check(!find(w, "clip.trim") && !find(w, "clip.close") && !w.queryView()["object_selection"].empty(),
+              "restored clip selection retains global command focus without reopening the removed dock");
         if (!demoSession.getFullPathName().isEmpty())
             owner.save(demoSession);
         w.removeFromDesktop();

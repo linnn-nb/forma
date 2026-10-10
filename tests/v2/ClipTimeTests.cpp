@@ -156,136 +156,34 @@ int main(int argc, char** argv)
                          {"selection_tracks", Json::array({track})}},
                         c.sessionToken());
         pump();
-        check(field(w, "clip.start").getText() == "0:01.000021",
-              "default clip position follows Min Sec with sample precision");
-        check(field(w, "clip.fade.in").getText() == "0.645833", "fade duration explicitly displays milliseconds");
-        auto* detail = dynamic_cast<juce::Label*>(find(w, "clip.detail"));
-        const auto frames = detail ? detail->getText()
-                                         .fromFirstOccurrenceOf(" / ", false, false)
-                                         .upToFirstOccurrenceOf(" PCM", false, false)
-                                         .getDoubleValue()
-                                   : -1.;
-        check(detail && detail->getText().contains("0.000005208333") &&
-                  std::abs(frames - .25 * 44100. / 48000.) <= 0.000000500001 && detail->getText().contains("44.1"),
-              "source seconds and fractional 44.1k PCM frames are distinct from project samples");
-        auto& start = field(w, "clip.start");
-        start.grabKeyboardFocus();
-        check(start.keyPressed(juce::KeyPress(juce::KeyPress::tabKey)) && field(w, "clip.end").hasKeyboardFocus(false),
-              "Tab advances real native time fields");
-        check(field(w, "clip.end")
-                      .keyPressed(juce::KeyPress(juce::KeyPress::tabKey, juce::ModifierKeys::shiftModifier, 0)) &&
-                  start.hasKeyboardFocus(false),
-              "Shift Tab restores previous native time field");
-        start.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));
-        pump();
-        w.uiCommands().invokeDirectly(168, false);
-        pump();
-        check(field(w, "clip.start").getText() == "00:00:01:00" && w.queryView()["timecode_fps"] == 24,
-              "timecode field uses current default 24 fps NDF display");
-        start.grabKeyboardFocus();
-        check(start.keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0)),
-              "registered submit key applies focused trim fields");
-        pump();
-        check(clip(c)["start_samples"] == 48001 && clip(c)["length_samples"] == original["length_samples"] &&
+        check(c.formatTimelinePosition(original["start_samples"], "min_sec", 24) == "0:01.000021",
+              "position formatter retains sample precision independently of the removed inspector");
+        w.showSpotPlacement(id);
+        field(w, "edit.spot.bar").setText("3", false);
+        field(w, "edit.spot.beat").setText("1", false);
+        auto* apply = dynamic_cast<juce::Button*>(find(w, "edit.spot.apply"));
+        check(apply && apply->isEnabled(), "contextual Spot panel exposes actual placement");
+        apply->triggerClick();
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 2000;
+        while (clip(c)["start_samples"] != 192000 && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        check(clip(c)["start_samples"] == 192000 &&
                   clip(c)["source_offset_seconds"] == original["source_offset_seconds"],
-              "untouched frame display never rounds actual sample bounds or source time");
-        auto& fade = field(w, "clip.fade.in");
-        fade.grabKeyboardFocus();
-        fade.keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0));
-        pump();
-        check(clip(c)["fade_in_samples"] == 31 && clip(c)["fade_out_samples"] == 47,
-              "untouched millisecond display retains exact fade samples");
-        const auto afterAudio = render(c, folder.getChildFile("unchanged.wav"));
-        double error = 0, energy = 0;
-        for (int ch = 0; ch < 2; ++ch)
-            for (int i = 0; i < 180000; ++i)
-            {
-                error = std::max(error, std::abs(double(beforeAudio.getSample(ch, i)) - afterAudio.getSample(ch, i)));
-                energy += std::abs(beforeAudio.getSample(ch, i));
-            }
-        check(energy > 100 && error <= 2e-5,
-              "all actual PCM including edit boundaries preserved by unchanged field submission");
-
-        w.uiCommands().invokeDirectly(167, false);
-        pump();
-        auto& move = field(w, "clip.position");
-        move.grabKeyboardFocus();
-        move.setText("0:02.500000", true);
-        pump();
-        w.uiCommands().invokeDirectly(169, false);
-        pump();
-        check(move.getText() == "0:02.500000", "view-unit switch cannot reinterpret a focused position draft");
-        move.keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0));
-        pump();
-        check(clip(c)["start_samples"] == 120000 && move.getText() == "120000" &&
-                  clip(c)["source_offset_seconds"] == original["source_offset_seconds"],
-              "frozen seconds draft commits then adopts latest project-sample display");
+              "Spot panel moves real clip while retaining fractional original source time");
         w.uiCommands().invokeDirectly(6, false);
         pump();
-        check(clip(c)["start_samples"] == 48001, "one Undo restores precise position");
-        w.uiCommands().invokeDirectly(7, false);
-        pump();
-        check(clip(c)["start_samples"] == 120000, "one Redo restores real move");
-        w.uiCommands().invokeDirectly(6, false);
-        pump();
-        move.grabKeyboardFocus();
-        move.setText("1.5", true);
-        pump();
-        const auto unchanged = c.query()["tracks"];
-        move.keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0));
-        pump();
-        check(c.query()["tracks"] == unchanged && move.getText() == "1.5" && move.hasKeyboardFocus(false),
-              "invalid sample input preserves draft and actual project");
-        move.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));
-        pump();
-        check(move.getText() == "48001" && w.hasKeyboardFocus(false),
-              "Escape restores current value and editing focus without a transaction");
-        fade.grabKeyboardFocus();
-        fade.setText("100", true);
-        pump();
-        fade.keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0));
-        pump();
-        check(clip(c)["fade_in_samples"] == 4800 && clip(c)["fade_out_samples"] == 47,
-              "changed milliseconds commit with unchanged peer duration exact");
-        w.uiCommands().invokeDirectly(6, false);
-        pump();
-        move.grabKeyboardFocus();
-        move.setText("96000", true);
-        pump();
-        run(c, Json::array({operation("track.gain", {{"track", track}, {"db", -3}})}));
-        const auto stale = c.query()["tracks"];
-        move.keyPressed(juce::KeyPress(juce::KeyPress::returnKey, juce::ModifierKeys::commandModifier, 0));
-        pump();
-        check(c.query()["tracks"] == stale && move.getText() == "96000",
-              "stale revision refuses edit and retains input instead of showing success");
-        move.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));
-        pump();
-        const juce::KeyPress customSubmit('k', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
-        move.grabKeyboardFocus();
-        check(!move.isTextInputActive(), "numeric field leaves Cocoa input composition out of shortcut routing");
-        const auto textEditState = c.query()["tracks"];
-        move.selectAll();
-        move.keyPressed(juce::KeyPress('9', {}, '9'));
-        check(move.getText() == "9" && c.query()["tracks"] == textEditState,
-              "ordinary numeric typing remains local and does not edit the project");
-        move.keyPressed(juce::KeyPress('z', juce::ModifierKeys::commandModifier, 0));
-        check(move.getText() == "48001" && c.query()["tracks"] == textEditState,
-              "numeric text Undo stays local before transaction submission");
-        move.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));
-        pump();
+        check(clip(c) == original, "Spot is one reversible transaction");
+        const auto undoAudio = render(c, folder.getChildFile("undo.wav"));
+        double error = 0;
+        for (int channel = 0; channel < 2; ++channel)
+            for (int frame = 0; frame < beforeAudio.getNumSamples(); ++frame)
+                error = std::max(error, std::abs(double(beforeAudio.getSample(channel, frame)) -
+                                                 undoAudio.getSample(channel, frame)));
+        check(error < 2e-5, "Spot Undo restores original real rendered PCM");
         auto* keys = w.uiCommands().getKeyMappings();
+        const juce::KeyPress customSubmit('k', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
         keys->clearAllKeyPresses(275);
         keys->addKeyPress(275, customSubmit);
-        pump();
-        move.grabKeyboardFocus();
-        move.setText("120000", true);
-        pump();
-        check(move.keyPressed(customSubmit), "focused inspector executes actual remapped submit key");
-        pump();
-        check(clip(c)["start_samples"] == 120000, "custom submit changes actual Edit position");
-        w.uiCommands().invokeDirectly(6, false);
-        pump();
-        check(clip(c)["start_samples"] == 48001, "custom submit is one reversible transaction");
         run(c, Json::array(
                    {operation("tempo.set", {{"position_samples", 96000}, {"bpm", 60}}),
                     operation("meter.set", {{"position_samples", 288000}, {"numerator", 3}, {"denominator", 8}})}));
@@ -319,14 +217,13 @@ int main(int argc, char** argv)
               "custom inspector submit key survives save and reopen");
         check(Commands::mediaHash(source) == hash, "source media bytes remain unchanged");
         window.setVisible(false);
-        Json report{
-            {"result", "passed"},
-            {"checks", checks},
-            {"pcm_max_error", error},
-            {"pcm_tolerance", 2e-5},
-            {"demo", saved.getFullPathName().toStdString()},
-            {"scope",
-             "actual native clip inspector, Edit, Undo, field focus and decoded Tracktion PCM; physical GUI separate"}};
+        Json report{{"result", "passed"},
+                    {"checks", checks},
+                    {"pcm_max_error", error},
+                    {"pcm_tolerance", 2e-5},
+                    {"demo", saved.getFullPathName().toStdString()},
+                    {"scope", "actual contextual Spot panel, sample formatter, Edit, Undo and decoded Tracktion PCM; "
+                              "physical GUI separate"}};
         if (argc > 1)
         {
             std::ofstream out(argv[1]);

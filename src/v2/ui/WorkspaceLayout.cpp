@@ -64,6 +64,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSubMenu(text("修剪（Nudge）"), trimNudge);
         addMenuCommand(p, 226);
         addMenuCommand(p, 280);
+        for (int id : {500, 501, 502, 503, 504})
+            addMenuCommand(p, id);
         addMenuCommand(p, 218);
         addMenuCommand(p, 253);
         addMenuCommand(p, 254);
@@ -395,9 +397,9 @@ void Workspace::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xff526476));
     g.drawHorizontalLine(167, 0, float(getWidth()));
     g.drawHorizontalLine(getHeight() - 29, 0, float(getWidth()));
-    const int right = getWidth() - 332;
+    const int right = getWidth() - inspectorWidth();
     g.setColour(juce::Colour(0xff202a34));
-    g.fillRect(right, 168, 332, getHeight() - 197);
+    g.fillRect(right, 168, inspectorWidth(), getHeight() - 197);
     g.setColour(juce::Colour(0xffb7c7d8));
     g.setFont(juce::FontOptions(11));
     g.drawText(text(clipFXInspector ? "CLIP FX / 片段效果" : "INSPECTOR / 轨道检查器"), right + 16, 175, 298, 25,
@@ -511,23 +513,31 @@ void Workspace::resized()
     scrollRight.setBounds(nav + 313, 128, 30, 24);
     editingControls.setBounds(nav + 347, 128, getWidth() - nav - 357, 24);
     editingControls.setVisible(!mix);
-    const int left = commands.uiState()["tracks_list"].get<bool>() ? 138 : 0;
-    int right = getWidth() - 332, areaHeight = getHeight() - 191;
-    bool clipDock = !selectedClip.empty() && !mix && !pianoMode;
+    const auto panes = commands.uiState()["workspace_panes"];
+    const int left = commands.uiState()["tracks_list"].get<bool>()
+                         ? (tracksWidthPreview >= 0 ? tracksWidthPreview : panes["tracks_width"].get<int>())
+                         : 0;
+    const int sideWidth = inspectorWidth();
+    int right = getWidth() - sideWidth, areaHeight = getHeight() - 191;
+    inspectorDivider.setBounds(right - 6, 162, 6, areaHeight);
+    inspectorDivider.setWidth(sideWidth);
+    trackListDivider.setBounds(left - 6, 162, 6, areaHeight);
+    trackListDivider.setWidth(left);
+    trackListDivider.setVisible(left > 0);
     const auto midiState = commands.uiState();
     const int midiHeight =
         std::clamp(midiHeightPreview >= 0 ? midiHeightPreview : midiState["midi_dock_height"].get<int>(), 220,
                    std::max(220, areaHeight - 110));
-    int dockHeight = pianoMode ? midiHeight + 8 : clipDock ? 182 : 0;
+    int dockHeight = pianoMode ? midiHeight + 8 : 0;
     const int groupsHeight = std::clamp(areaHeight / 3, 150, 220);
-    tracksList.setBounds(0, 162, left, areaHeight - groupsHeight - 4);
-    groupsList.setBounds(0, 162 + areaHeight - groupsHeight, left, groupsHeight);
+    tracksList.setBounds(0, 162, std::max(0, left - 6), areaHeight - groupsHeight - 4);
+    groupsList.setBounds(0, 162 + areaHeight - groupsHeight, std::max(0, left - 6), groupsHeight);
     groupsList.setVisible(left > 0);
-    clipsList.setBounds(right + 6, getHeight() - 222, 320, 190);
-    editView.setBounds(left, 162, right - left, areaHeight - dockHeight);
+    clipsList.setBounds(right + 6, getHeight() - 222, sideWidth - 12, 190);
+    editView.setBounds(left, 162, right - left - 6, areaHeight - dockHeight);
     clipPanel.setBounds(left, getHeight() - 29 - dockHeight, right - left, dockHeight);
-    clipPanel.setVisible(clipDock);
-    mixView.setBounds(left, 162, right - left, areaHeight);
+    clipPanel.setVisible(false); // Clip edits live on the timeline, Spot and Fades panels.
+    mixView.setBounds(left, 162, right - left - 6, areaHeight);
     piano.setBounds(left, 162 + areaHeight - midiHeight, right - left, midiHeight);
     midiDivider.setBounds(left, 162 + areaHeight - midiHeight - 8, right - left, 8);
     midiDivider.setHeight(midiHeight);
@@ -536,7 +546,7 @@ void Workspace::resized()
     mixView.setVisible(mix);
     piano.setVisible(pianoMode);
     editView.setScrollBarsShown(false, false);
-    editArea.setSize(std::max(400, right - left), areaHeight - dockHeight);
+    editArea.setSize(std::max(400, right - left - 6), areaHeight - dockHeight);
     mixArea.setSize(std::max(right - left, int(facts.value("tracks", Json::array()).size()) * 150 + 180),
                     std::max(420, areaHeight - 14));
     insertTab.setBounds(right + 8, 237, 64, 26);
@@ -546,7 +556,7 @@ void Workspace::resized()
     recordTab.setBounds(right + 256, 237, 64, 26);
     pluginType.setBounds(right + 16, 270, 190, 28);
     insertButton.setBounds(right + 216, 270, 100, 28);
-    pluginChoice.setBounds(right + 16, 312, 300, 29);
+    pluginChoice.setBounds(right + 16, 312, sideWidth - 32, 29);
     bypassButton.setBounds(right + 16, 352, 86, 26);
     editorButton.setBounds(right + 108, 352, 108, 26);
     removeButton.setBounds(right + 222, 352, 94, 26);
@@ -567,8 +577,8 @@ void Workspace::resized()
     stateRestoreButton.setBounds(right + 136, 415, 180, 26);
     programIndex.setBounds(right + 16, parameterTop - 28, 65, 25);
     programButton.setBounds(right + 91, parameterTop - 28, 225, 25);
-    parameterView.setBounds(right + 8, parameterTop, 316, std::max(40, bottom - parameterTop));
-    parameters.setSize(300, parameters.getHeight());
+    parameterView.setBounds(right + 8, parameterTop, sideWidth - 16, std::max(40, bottom - parameterTop));
+    parameters.setSize(sideWidth - 32, parameters.getHeight());
     routingView.setBounds(right + 6, 274, 320, std::max(100, bottom - 274));
     routing.setSize(302, 380);
     routingView.setVisible(routingInspector);
@@ -606,5 +616,16 @@ void Workspace::resized()
     rejectButton.setButtonText(legacyView && !preview ? text("关闭报告") : text("取消"));
     status.setBounds(12, getHeight() - 27, getWidth() - 320, 24);
     recoveryIndicator.setBounds(getWidth() - 300, getHeight() - 27, 288, 24);
+}
+} // namespace ndaw::desktop
+
+namespace ndaw::desktop
+{
+int Workspace::inspectorWidth() const
+{
+    const int requested = inspectorWidthPreview >= 0
+                              ? inspectorWidthPreview
+                              : commands.uiState()["workspace_panes"]["inspector_width"].get<int>();
+    return std::clamp(requested, 332, std::max(332, std::min(640, getWidth() - 600)));
 }
 } // namespace ndaw::desktop

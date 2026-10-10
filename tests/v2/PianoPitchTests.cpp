@@ -313,10 +313,11 @@ int main(int argc, char** argv)
         auto legacy = c.uiState();
         legacy.erase("midi_note_height");
         legacy["ui_schema"] = 12;
+        legacy.erase("workspace_panes");
         juce::ValueTree meta("NATIVEDAW"), ui("UI");
         ui.setProperty("json", text(legacy.dump()), nullptr);
         meta.addChild(ui, -1, nullptr);
-        check(readUiState(meta)["ui_schema"] == 13 && readUiState(meta)["midi_note_height"] == 14.,
+        check(readUiState(meta)["ui_schema"] == 14 && readUiState(meta)["midi_note_height"] == 14.,
               "complete legacy schema12 migrates without guessing old pitch height");
         legacy.erase("midi_scroll_y");
         ui.setProperty("json", text(legacy.dump()), nullptr);
@@ -348,7 +349,7 @@ int main(int argc, char** argv)
                   "native pitch control visible at minimum window");
         const Json report{{"checks", checks},
                           {"failures", 0},
-                          {"ui_schema", 13},
+                          {"ui_schema", 14},
                           {"test_directory", dir.getFullPathName().toStdString()},
                           {"source_sha256", sourceHash},
                           {"audio_pcm_max_error", pcmError},
