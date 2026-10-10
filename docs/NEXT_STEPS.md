@@ -2,13 +2,13 @@
 
 U＋P0仍未完成，用户亲手确认后才进入P1。M2/M3冻结，M4/M5暂缓。
 
-本轮整MIDI移动/Grabber/Spot/Nudge、混合编辑组与共享曲线已接真实Edit；1893专项检查，12项受影响测试最终通过（父提交首批11/12，输入校验修复后2/2复测）。原生WAV发声96000→432000，Undo回原位置。Mac锁定，实体操作/试听未执行。
+本轮完成主时间线MIDI Trim/四个边界Nudge、混合编辑组、一笔Undo/Redo、保存重开与改键。原SEQ/来源/实际事件和曲线工程时间保持；分数采样未改端点不吸附。2810专项，6/6受影响CTest同批93.52s；真实WAV发声2秒→4秒、Undo恢复。Mac锁定，实体GUI/试听未执行。
 
-1. 接通主时间线MIDI Trim/边界Nudge：音乐与采样基准分别处理起点、终点及源偏移；保持原SEQ来源和事件，编辑组/共享曲线整笔校验。
-2. 补齐时间范围Nudge对MIDI/混合轨道的明确语义与可预览边界；沿用同一L1、可改键、Undo和保存重开，不能静默省略MIDI。
-3. 桌面可用后演示当前Grabber、Spot、五种Nudge与改键；核对完整U＋P0场景，再请求本级用户验收。
+1. 接通时间范围Nudge的MIDI/混合轨道语义：明确完整/部分片段选择、编辑组、音乐/采样时长与选区包络；不能静默忽略MIDI。
+2. 对部分片段的分离与移动、源映射/共享曲线/重叠冲突给出可预览计划，沿用human L1/native Undo、可改键、保存重开。
+3. 桌面可用后实体验收Trim/四个边界Nudge、整体移动、Spot、改键与打开保存；核对完整U＋P0再请求用户确认。
 
 可运行：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app。
-本轮入口：build-v2-tracktion/OpenMidiMoveDemo.command、MidiMovePreview.app（独立ID，未启动，旧预览保留）。选第一个MIDI片段，演示Nudge键Control+Option+Shift+J；F3 Spot、Grabber拖动、Undo/Redo及保存/Open。详细资格在VERIFICATION和evidence/U/midi-move-qualification.json。
+本轮入口：build-v2-tracktion/OpenMidiTrimDemo.command、MidiTrimPreview.app（独立ID，未启动，旧预览保留）。Trim工具拖MIDI两端；演示Ctrl+Option+Shift+K修剪终点、⌘Z恢复；快捷键编辑器可改四个边界命令。详见VERIFICATION/evidence/U/midi-trim-qualification.json。
 
-音乐MIDI共同秒基Shuffle跨变化、循环/量化/Groove/表情/Warp未资格；硬件、全面插件、满载耐久、Windows及发行继续未完成。
+循环/量化/Groove/表情/Warp未资格；音乐MIDI共同秒基Shuffle跨变化、硬件、全面插件、满载耐久、Windows、发行继续未完成。

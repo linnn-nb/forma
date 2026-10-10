@@ -1,3 +1,12 @@
+U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+
+测试tests/v2/MidiTrimTests.cpp：16个几何矩阵（步进/坡形Tempo×beats/samples×裁短/恢复/跨Tempo/1采样），额外分数采样原生端点；实际NOTE/CONTROL/SYSEX getter与round(48k×秒)，原SEQ opaque属性/来源哈希不变，未选片段不变。一笔Undo/Redo、原生保存/Open，曲线原点ID/实际显式基础值不变。
+事件预算1ns，48k规范采样投影完全相同；源秒/拍偏移预算1e−12。四个边界命令×五种Nudge×两种基准，生产Trim鼠标草稿绘制/释放、ControlOptionShiftK改键、重开后的首个键；均为自动化组件输入，无桌面peer，不能当实体验收。
+混合组两种锚点、音频源起点越界、锁定MIDI同组成员、循环/表情、非法类型/未知字段/伪造哈希/外部actor/旧版本整笔拒绝；原工程/PCM哈希不变。独立解码实际WAV，发声96000→192000，Undo回96000；不声称全部PCM逐位相同或插件尾音硬截止。
+首轮2709专项通过；检查中补充了分数采样端点和预览派生单位的一致性，最终2810检查。最终提交f205f52的6/6一次批次93.52s；五份旧回执按原字节/SHA恢复，当前trim输出保持最新。evidence/U/midi-trim-{tests,qualification}.json、midi-trim-regression.txt；全部测试进程终止。
+边界：循环/原生量化/Groove/表情未资格；时间范围MIDI/混合Nudge仍待补；实体GUI/试听、设备与硬件MIDI时序、满载耐久、Windows和发行未完成。本轮不宣称Pro Tools边界自动化完全等价。
+
 U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 1893专项，8个时钟用例；12项受影响测试最终通过，父批次和修复复测分别保存。固定本地签名/Release通过，独立预览未启动，无DMG。下一项MIDI时间线Trim/边界与范围Nudge。详见midi-move-qualification.json。

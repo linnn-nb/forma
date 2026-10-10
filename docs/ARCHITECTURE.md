@@ -1,3 +1,9 @@
+U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+
+L1：src/v2/MidiClipTrim.cpp、MusicCommands/EngineCommands/Scope/EditGroupCommands；共享纯变换ClipGroupTransform；GUI EditWindow/GroupedClipDraft与WorkspaceEditing/Commands。midi.clip.trim要求稳定clip ID、整数start_samples/end_samples（48k工程采样）、封闭state_hash、human/local_gui、停止状态。只允许独立修剪Plan（可含同组音频修剪）；版本/源哈希/成员冲突在写入前拒绝，一个Plan/native Undo，不新增MCP工具、依赖、SDK或实时处理。
+未改动的端点保留原生double；新起点不能早于源内容，终点可揭示原MIDI序列及空白，不虚构音频帧上限。minimum_start_samples把现有规范位置作为合法未改动端点，避免ceil源位置与round片段位置之间的分数采样差异强迫用户多修剪一采样；没有epsilon。只读草稿给实际源偏移/拍偏移/最早边界，显示音符维持原位置，绘制裁到真实Clip。
+
 U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 midi.clip.move只在L1/message thread、停止状态执行；makePlan封闭实际MIDICLIP/Tempo/轨道曲线基准哈希，提交前复核版本。音频/MIDI组按共同采样位置偏移，每个MIDI保留自身时间基准；共享曲线由既有automation.clips.move派生，源快照后先清空再写目的，auto歧义/重叠冲突拒绝。

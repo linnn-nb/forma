@@ -1,3 +1,6 @@
+U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+
 U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 U-P0-SAMPLE-MIDI-01（核验2026-10-10）：官方 Pro Tools Reference Guide 2026.4，印刷1124/PDF1226、Chapter41“Tick- and Sample-Based Timebases”：采样MIDI/乐器轨的事件在Tempo/Meter修改中保持绝对位置；音乐基准MIDI保持音乐位置、时长响应Tempo。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，本地SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。本轮从本地完整官方内容核验，未运行Pro Tools对照。
