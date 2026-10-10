@@ -1,3 +1,6 @@
+U-P0-RANGE-NUDGE-01（2026-10-10）：参考官方 Pro Tools Reference Guide 2026.4，核验日 2026-10-10，印刷920–921/PDF1022–1023：范围 Nudge 只移动完全包含的片段，不隐式切开；跨轨范围的静音自动化应跟随。来源 https://resources.avid.com/SupportFiles/PT/Pro_Tools_Reference_Guide_2026.4.pdf，本地 SHA256 884307db872723dbddf8cad3897b47d9b36fface96636ecc8bc49de46792f8a8。已读取官方本地内容，未运行 Pro Tools 对照。
+Forma 的范围路径实现完整包络、静音/空轨曲线、混合编辑组、真实原生 MIDI 与媒体映射；40 个几何场景/6144 曲线取值、Undo/重开和实桌面快捷键通过。实际曲线按轨道声明的单一基准跟随，不声称与 Pro Tools 所有时钟/播放中 Nudge 等价；部分片段仍需先 Separate（MIDI Separate 未完成）。参考不是完成度门槛。
+
 U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 

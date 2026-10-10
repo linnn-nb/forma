@@ -1,3 +1,15 @@
+U-P0-RANGE-NUDGE-01（2026-10-10）：范围 Nudge 的原生音频/MIDI、编辑组与完整静音自动化包络通过受测资格；U＋P0 仍未完成，不进入 P1。
+
+源码：8216f1d 首个可构建步骤；0b1d160 为最终引擎/专项资格；1b3d2df 仅更新帮助文案，重新构建 NativeDAW 并验签。实现 src/v2/{EditGroupCommands,EngineCommands,AutomationCommands,AutomationMove,MidiClipMove,MusicCommands}.cpp、ui/WorkspaceEditing.cpp；tests/v2/RangeNudgeTests.cpp 与 CMake 专项 forma_native_range_nudge（180秒上限）。
+专项15337检查：40矩阵（阶跃/坡形Tempo×音乐/采样MIDI×五种Nudge×双方向）；实际NOTE/CC/SysEx时间误差≤1ns且round(48000×秒)完全相等，完整原SEQ/opaque属性/来源、原始PCM哈希、稳定ID与未选对象保持。一笔revision/Undo/Redo/原生Save/Open。6144原生曲线取值覆盖前后空白/片段间隙/空轨，重开继续相同预算；最大误差1.1920928955078125e−7，预算参数span×1e−7＋两float ULP，未为通过而放宽。实际FourOsc区间渲染WAV独立解码，发声样本96000→100800，Undo回96000。
+混合编辑组展开/去重、部分成员整笔拒绝、只有部分片段时只移动选区不隐式切片、Follow关闭保持实际曲线；混合时钟无曲线可用，auto共享曲线歧义拒绝/显式基准可用。伪造metadata/operation/hash、外部actor、过期版本、重复目标、负边界/unsigned溢出、锁定与循环均在写入前拒绝。大型预览接受/拒绝、首次重开改键属于真实生产组件自动化资格。
+最终0b1d160的一次受影响CTest批次8/8通过，268.06秒：groups、group_ranges、automation_move、boundary_nudge、sample_midi、midi_clip_move、midi_clip_trim、range_nudge。七份历史回执在采集fresh输出后恢复原字节并核验SHA256；原失败日志保留。早期fixture/API问题、零偏移一采样负源偏移以及独立Plan未接纳派生曲线命令均修复后再通过；不描述成首轮全绿。
+
+实桌面CUA：打开自有RangeNudgeGuiStart原生工程，Control+Option+Shift+J：选区1.000→1.010秒；⌘Z→1.000，⇧⌘Z→1.010。原生保存副本RangeNudgeGuiSaved，⌘O重开后首个同键→1.020、⌘Z→1.010。独立读取保存原生XML：两个所选MIDI起点2→2.0099999999999998、5→5.0099999999999998；未选音频/乐器位置不变。此次桌面只实操MIDI选区，混合/组/曲线范围为上面的自动化资格，不能混称。空格启动实际走带后观察到7.047秒、实际外置耳机48k/512状态，已点停止并确认播放可用；没有听感或峰值量测声明。首开第一次⌘O未响应，改用菜单并在随后⌘O成功，尚待专门定位，不写成冷启动首键全通过。
+
+产物：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；独立RangeNudgePreview.app（org.forma.preview.rangenudge）、OpenRangeNudgeDemo.command。固定叶SHA1 F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F的签名/deep严格验签通过；旧预览保留，无DMG。双击入口，Control+Option+Shift+J右移10ms、⌘Z/⇧⌘Z；保存副本后⌘O打开、再试首键。
+证据 evidence/U/range-nudge-{tests,qualification}.json、range-nudge-regression.txt、range-nudge-desktop.png 与AX；原几何/失败日志位于自有build-v2-tracktion/range-nudge-*。仍未完成MIDI范围Separate/Split、完整U/P0、硬件/听感/低延迟/满载耐久/Windows/发行；M2/M3冻结、M4/M5暂缓。
+
 U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 

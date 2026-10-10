@@ -1,3 +1,6 @@
+U-P0-RANGE-NUDGE-01（2026-10-10）：human/local_gui makeRangeNudgePlan(tracks, first, last, delta) 使用 48k 工程整数采样、稳定轨道 ID、停止走带与非零位移。timeline_range_nudge 为封闭 schema1 描述 {tracks,start_samples,end_samples,delta_samples}；preview/commit 重编译并比较完整 operations，复核 revision、实际媒体/Tempo/曲线状态、组与 Scope。伪造派生曲线命令、缺失描述、重复/失效目标、越界及 unsigned 溢出在写入前拒绝；一项范围操作对应一次 Undo/Redo。
+preview 明示完整原/目的包络、实际片段位置与曲线基准；大操作进入接受/拒绝卡片。含静音的自动化跟随只在实际 follows_edit 开启时派生；关闭时保持曲线原位置。不存在原生 MIDI Separate 的隐式切分承诺。此增量不增加 MCP 工具，M2/M3 冻结；实际桌面改键、撤销/重做和保存重開通过，测试入口 RangeNudgeTests.cpp。
+
 U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 

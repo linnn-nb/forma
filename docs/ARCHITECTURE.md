@@ -1,3 +1,6 @@
+U-P0-RANGE-NUDGE-01（2026-10-10）：范围 Nudge 已接通音频/MIDI、编辑组与完整选区的曲线（含静音/空轨），一笔 L1/native Undo。GUI 的 WorkspaceEditing 只调用 Commands::makeRangeNudgePlan；EditGroupCommands 编译实际组成员、媒体/事件哈希及完整采样包络，EngineCommands 预览/提交时重新编译核对。AutomationMove 先冻结真实曲线再移动；曲线使用轨道声明的单一基准，混合 auto 有曲线歧义则整笔拒绝，无曲线可执行。局部 automation.range.move 只允许封闭 human/local_gui 范围计划派生，不能由调用者或外部 actor 注入；停止状态、64 操作上限，未新增 SDK/RT/MCP/依赖。
+完全包含的片段才移动；部分片段跳过，同组部分成员冲突拒绝，禁止隐式 Separate。音乐 MIDI 保留原拍事件与音乐时长，采样 MIDI 保留实际事件秒位置；选区自身保持完整采样包络。MidiClipMove 的原源偏移恰为零时保持相同源/片段拍锚与精确零偏移，修复左移一采样产生负偏移；不使用 epsilon。验证和实桌面范围见 VERIFICATION 最新节；完整 U＋P0 尚未完成。
+
 U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 

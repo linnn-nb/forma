@@ -25,4 +25,6 @@ U-P0-MIDI-MOVE-01：整MIDI移动只经L1；GUI只读原生草稿，分组展开
 
 MIDI Trim：只经L1、停止状态，保持完整原SEQ与曲线工程时间；未改端点保留原生double。禁止把MIDI源虚构成固定音频帧上限，分数采样源边界不用epsilon。资格见VERIFICATION。
 
+范围Nudge：只有L1封闭描述能派生automation.range.move，预览重编译核对；保持完整静音包络，部分片段不隐式Separate。原生零源偏移保持精确同锚，无epsilon。资格见VERIFICATION。
+
 入口：docs/PRODUCT_SPEC.md、docs/AI_COMMAND_CONTRACT.md、docs/M0_REPORT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/MCP_WORKFLOW.md、docs/RECOVERY_WORKFLOW.md、docs/ANALYSIS_WORKFLOW.md。

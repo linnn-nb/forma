@@ -1,3 +1,6 @@
+U-P0-RANGE-NUDGE-01（2026-10-10）：没有新增依赖、许可、SDK/RT 或签名阻塞；Tracktion/JUCE 锁定和既有12份 SDK 补丁保持，Release 与固定本地叶证书 deep/strict 验签通过。本轮 Mac 桌面可用，已实际执行范围 Nudge/Undo/Redo/保存重开/改键；这替代本轮状态，不把历史锁定期间的未执行项追认为通过。
+未完成：MIDI 范围 Separate/主游标 Split、完整 U/P0 亲手验收；首开一次 ⌘O 无响应需要复现定位。循环/量化/Groove/表情/Warp未资格；未进行听感、真实麦克风/MIDI、低延迟、满载耐久、Windows 或发行验证。范围曲线 auto 混合基准有歧义必须明确选择；不是新增外部阻塞。
+
 U-P0-MIDI-TRIM-01（2026-10-10）：主时间线 MIDI Trim 工具和四个边界 Nudge 接通同一 L1/native Undo；音乐/采样基准保留完整原 SEQ、CC、SysEx、原始来源与实际事件时间，只改变可见边界/源偏移。音频/MIDI编辑组按共同边界变化联动；共享曲线和显式基础值保留工程时间。Release/固定本地验签、专项2810检查及受影响6/6 CTest（93.52s）通过，保存重开与改键已验。真实FourOsc WAV发声点96000→192000，Undo恢复。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
 
 
