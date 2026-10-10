@@ -66,7 +66,14 @@ void ui(const juce::File& folder){
     w.startMcp(Permission::Preview,folder.getChildFile("gateway/socket"));const auto token=w.queryRecovery()["session_token"];
     readyButton(w,"session.new.confirm")->onClick();check(w.queryRecovery()["busy"]&&w.queryRecovery()["session_token"]==token&&w.queryMcpStatus()["permission"]["mode"]=="read_only","GUI local confirmation revokes external writing immediately, before backup completes");idle([&]{return w.queryRecovery();});pump();
     check(w.queryRecovery()["state"]=="created"&&w.query()["tracks"].empty()&&!find(w,"session.new.panel")&&w.queryRecovery()["catalog"]["entries"].size()==1,"actual production callbacks switch only after backup and close the preview");
-    check(!w.query()["can_undo"].get<bool>()&&w.queryMcpStatus()["permission"]["mode"]=="read_only","old Undo and external Preview are not carried into new Edit");click(w,"track.create");check(w.query()["tracks"].size()==1&&w.query()["can_undo"],"ordinary native track creation works in the new session");click(w,"history.undo");check(w.query()["tracks"].empty(),"new-session human Undo operates only on its own new history");
+    check(!w.query()["can_undo"].get<bool>()&&w.queryMcpStatus()["permission"]["mode"]=="read_only","old Undo and external Preview are not carried into new Edit");click(w,"track.create");
+    if (!(w.query()["tracks"].size()==1 && w.query()["can_undo"].get<bool>())) {
+        auto* label=dynamic_cast<juce::Label*>(find(w,"workspace.status"));
+        std::cerr << Json{{"case","new_session_track_create_failure"},{"project",w.query()},
+            {"recovery",w.queryRecovery()},{"button_enabled",button(w,"track.create")->isEnabled()},
+            {"status",label?label->getText().toStdString():std::string("missing")}}.dump() << std::endl;
+    }
+    check(w.query()["tracks"].size()==1&&w.query()["can_undo"],"ordinary native track creation works in the new session");click(w,"history.undo");check(w.query()["tracks"].empty(),"new-session human Undo operates only on its own new history");
     w.showNewSession();pump();w.setSize(1600,1000);pump();check(find(w,"session.new.confirm")->getBounds().getWidth()>0&&find(w,"session.new.panel")->getBounds()==w.getLocalBounds(),"new-session preview resizes with actual workspace");
     check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey))&&!find(w,"session.new.panel"),"Escape cancels the local panel instead of controlling hidden transport");w.stopMcp();
 }
