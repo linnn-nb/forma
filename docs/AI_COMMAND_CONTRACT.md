@@ -1,3 +1,7 @@
+U-P0-SAMPLE-MIDI-01：新增 human/local_gui midi.clip.timebase.set {clip:实际稳定ID,basis:samples|beats}，仅一项操作/停止状态/无待录音或参数采集；锁定、循环、播放量化/Groove、嵌套表情拒绝。preview 的 midi_changes 明示 command、operation_index、timebase_before/after、event_policy；采样 Paste/Shuffle 的 after.sample_midi_projection 展示实际事件原/目的秒位置与原生b/l/time投影。封闭hash、revision、幂等及单笔native Undo保持；不是允许Agent注入事件映射的公共工具。
+
+query增加sample_event_policy、sample_mapping_available/restriction、original_midi_source_hash，只读实际Edit；不支持的已导入采样MIDI如实标为unqualified_processed_performance。Scope覆盖完整performance/future Tempo，有限时间授权拒绝、不可自动执行；其他actor在makePlan即拒绝。原始SEQ来源归档不当作当前音频证据，后续人工音符编辑仍从当前实际SEQ再映射。默认OptionShiftF8/F9，可改键；同基准重复GUI操作不创建空历史。
+
 U-P0-OBJECT-SHUFFLE-01：human/local_gui 的 timeline.clips.erase 与 midi.clips.erase 支持 action:cut|delete（缺失默认 cut），ripple 允许实际整对象快照。preview 增加 selection_kind/action/object_intervals，每轨记录原区间并集、累计 removed_samples/removed_beats、curve_timebase 和真实 before/after；整对象删除全局 displacement 为0，实际位移必须读各片段。对象 Paste 继续显示完整包络与替换终点。一 Plan/Undo、revision/幂等/媒体/hash/Scope 复核保持；Agent 无此本地编辑权限，不增加 MCP 工具。
 
 GUI Cut 仅成功回执后接纳暂存剪贴板，Delete 和取消均保留先前已接受快照。复制带空隙，删除只收拢各轨所选占用并集；不能承诺不相邻对象 Cut→Paste Original 精确还原，应使用 Undo。查询片段 length_samples 使用 round(end)−round(start)，与预览和 Scope 一致。Save/Open 保存原生内容，RAM 剪贴板和 Undo 历史不伪称跨重开保留。未选重叠、锁定、sample-sync MIDI 跨变化、Warp/部分循环仍保守拒绝；实测入口 ObjectShuffleTests.cpp。

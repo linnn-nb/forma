@@ -1,3 +1,5 @@
+U-P0-SAMPLE-MIDI-01（2026-10-10）：所选 MIDI 片段可用“编辑 → MIDI 片段时间基准”或可改快捷键选择采样/小节拍。采样事件在 Tempo/Meter、采样 Paste/Shuffle 中保持实际绝对时间或预览的共同秒位移；音乐事件维持原拍位置。一笔撤销/重做，保存重开；来源原序列另存于原生工程以保留原数据。当前是逐片段基准，与Pro Tools逐轨控制不同；循环、播放量化/Groove及MPE表情、完整U＋P0和实体试听仍未完成。验证和产物见VERIFICATION最新节。
+
 U-P0-OBJECT-SHUFFLE-01（2026-10-10）：整片段混合音频/MIDI的Shuffle Cut/Delete/Paste已接通原生预览、单笔Undo/Redo、保存重开与可改快捷键。删除按各轨所选占用并集收拢并保留间隙，粘贴使用完整复制包络；曲线跟随用户单一轨道基准，片段各自保留采样/音乐基准。采样长度以round(end)−round(start)统一，有限double保存精度保持。实测与边界见VERIFICATION最新节。
 
 本节与SHARED-CLOCK/MUSICAL-SHUFFLE资格替代下方历史“混合/对象Shuffle一律拒绝”的已测范围；未选重叠、锁定、采样同步MIDI跨变化、Warp/部分循环仍保守拒绝。完整U＋P0未完成，用户实体验收前不进入P1；M2/M3冻结，M4/M5暂缓；不宣称Pro Tools全面工作流等价。Mac锁定，实体GUI/听感未执行。

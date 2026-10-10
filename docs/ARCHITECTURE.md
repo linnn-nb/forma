@@ -1,3 +1,7 @@
+U-P0-SAMPLE-MIDI-01（2026-10-10）：Tracktion syncAbsolute 只固定片段边界，SDK EditTimecodeRemapperSnapshot 不固定内部 MIDI 事件。L1 SampleMidiMap/Commands 在 Tempo/Meter 修改前冻结实际事件秒位置，修改后按新原生 Tempo 投影 NOTE b/l、CONTROL b、SYSEX time；采样 Paste/Shuffle 同样按冻结源 Tempo 和当前目的 Tempo 映射。音乐基准仍保留原拍事件，音乐 MIDI 的共同秒基 Shuffle 跨变化仍拒绝。
+
+首次投影在实际 MIDICLIP 内存 NDAW_SAMPLE_MIDI_ORIGIN schema1：原 SEQUENCE 的 Base64 ValueTree 字节、SHA256、实际时间、源clip与Tempo哈希；后续编辑不覆盖该原始来源。当前原生SEQ是可编辑/播放的投影，不是另一个引擎。一次 Plan/UndoManager 包括 Tempo、事件和来源记录；撤销首次映射同时撤销来源节点。候选Edit采用前校验原数据CRC、行布局/有限时间/完整覆盖。65536事件、8MiB原序列与投影、64MiB Tempo准备预算；停止状态/message thread，循环/原生量化/Groove/嵌套音符表情未资格即整笔拒绝。没有新SDK补丁、依赖、实时路径或MCP工具；资格见VERIFICATION本增量。
+
 U-P0-OBJECT-SHUFFLE-01（2026-10-10）：整片段 Cut/Delete 在 L1 按每轨所选区间并集收拢，只累计已结束区间的位移，保留中间未选空隙及片段。音乐 MIDI 在 native 模式按累计原生拍数移动，音频/采样片段按累计样本；共享曲线使用轨道明确基准，auto 有歧义拒绝。Paste 使用冻结完整包络（含空隙），不是删除并集的逆操作；Undo 恢复原生事务。未选重叠、锁定和未资格映射在写入前整笔拒绝。
 
 MusicalCurveMap 保留后缀已知源端点，防止拍/秒往返舍入丢掉末端原生跳变；不使用 epsilon 吸附。查询与 Scope 的片段样本长度统一为 round(end)−round(start)。NativeEditXml 在正常暂存保存和 detached 恢复快照中，以 classic locale/max_digits10 保存有限 double，保留整数/字符串/opaque 属性，不改实时路径、SDK 或部署系统版本。代码入口 MidiClipClipboard/AutomationClear/MusicalCurveMap/NativeEditXml、UI WorkspaceMidiClipClipboard/Editing/Commands；资格见 VERIFICATION 最新节。

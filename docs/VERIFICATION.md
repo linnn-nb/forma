@@ -1,3 +1,11 @@
+U-P0-SAMPLE-MIDI-01（2026-10-10）：采样同步 MIDI 的实际 NOTE/CC/SysEx 跨 Tempo/Meter、片段复制粘贴和 Shuffle 保持绝对时间/明确共同秒位移。编辑菜单、OptionShiftF8/F9及自定义键共用 human L1；每项一笔原生Undo/Redo，可保存重开，首次投影保留原SEQ字节/来源时间/哈希。代码 SampleMidiMap/Commands、MusicCommands、MidiClipClipboard、Scope与WorkspaceCommands/Layout/Editing；自动化专项 SampleMidiTests，官方参考见UI_PARITY本增量。
+
+Release与固定叶证书deep/strict验签通过；最终源码6155a4f（基础7dbd96a）。专项1141检查、10个阶跃/渐变Tempo映射场景通过；实际原生NOTE/CC/SysEx时间误差须≤1ns且48k样本投影精确相等，实际exportToPlaybackMidiSequence字节相等/时间≤1ns；FourOsc WAV独立解码，Tempo前后实际起音样本均96000。覆盖偏移、范围/整片段Paste、删除后缀、Undo/Redo/重开、后续人工音符编辑、Tempo事件增改删、冻结复制后再改Tempo、损坏原数据CRC/时间行拒绝、循环/嵌套表情拒绝、Scope/Agent权限/陈旧Plan和改键。该容差是受测数学/事件路径预算，不是硬件时钟或Pro Tools性能对照。
+
+23项不同受影响CTest最终有通过结果，非一次全绿：首批22/23、396.43秒；新建空工程后新增轨道的组件断言失败，未改源码定向复测通过、3.50秒。间歇原因未定，保留可靠性差距，不宣称已修复；18份历史回执恢复原字节并实际逐一验SHA256。成功CTest stdout截断为1024字节，1141来自fresh专项JSON，不推测总检查数。证据 evidence/U/sample-midi-{tests,qualification}.json、sample-midi-regression.txt；完整自有构建/失败日志在build-v2-tracktion/sample-midi-*，11份当轮历史路径回执另存fresh-partial，不覆盖旧证据。
+
+Mac锁定，实体GUI/试听未执行；SampleMidiPreview.app（org.forma.preview.samplemidi）固定签名、独立bundle、--no-mcp且未启动，无新DMG。双击build-v2-tracktion/OpenSampleMidiDemo.command，所选片段已为采样基准：改顶部Tempo并应用，观察音符绝对位置；CmdZ/ShiftCmdZ，另存/CmdO重开。OptionShiftF9切回拍基；本演示采样键改为ControlOptionShiftK，默认OptionShiftF8可在快捷键编辑器恢复。循环/原生量化/Groove/MPE仍未资格，逐片段控制并非PT逐轨完整等价；音乐MIDI的共同秒基Shuffle跨变化仍拒绝。U＋P0未完成，不进入P1；下一项先查新增轨道间歇失败，再补整MIDI对象移动/Nudge。
+
 U-P0-OBJECT-SHUFFLE-01（2026-10-10）：整片段混合音频/MIDI Shuffle Cut/Delete/Paste接通真实预览、接受/取消、一笔native Undo/Redo、可改快捷键和保存重开。删除按每轨所选占用区间并集收拢，保留间隙；粘贴使用完整复制包络。Release/固定叶证书deep/strict验签通过，专项4729检查、16清理＋24粘贴场景、245760原生DSP取值通过。
 
 23项不同受影响CTest最终通过：21项在82a0d83通过，2项旧MIDI测试修订数字文本比较后在61d0cec重新构建通过（135检查/10.62秒）；生产代码未再变化，非一次全绿批次。首轮487.18秒，原失败保留；19份历史回执恢复原字节并逐一验SHA。完整U＋P0未完成，不进入P1；Mac锁定，实体GUI/听感未执行，独立预览未启动。M2/M3冻结、M4/M5暂缓。

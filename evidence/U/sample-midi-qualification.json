@@ -1,0 +1,140 @@
+{
+  "state": "passed_across_two_batches",
+  "source_commit": "6155a4fc3e3e76c4ece9c99e72f9ae7c17eb8510",
+  "first_batch": [
+    {
+      "test": "tracktion_native_new_session",
+      "seconds": 4.53495,
+      "state": "failed"
+    },
+    {
+      "test": "tracktion_session_recovery",
+      "seconds": 16.8776,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_native_session_recovery",
+      "seconds": 3.02279,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_music_notes",
+      "seconds": 6.68962,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_native_music_workspace",
+      "seconds": 3.07323,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_midi_transform",
+      "seconds": 4.49774,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_native_midi_transform_workspace",
+      "seconds": 5.16436,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_permission_scope",
+      "seconds": 2.90112,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_native_plugin_states",
+      "seconds": 20.0098,
+      "state": "passed"
+    },
+    {
+      "test": "tracktion_paged_project_queries",
+      "seconds": 4.75872,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_ui_navigation",
+      "seconds": 3.71434,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_music_events",
+      "seconds": 7.13922,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_midi_timing",
+      "seconds": 20.1368,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_midi_clipboard",
+      "seconds": 10.4834,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_midi_clip_timeline",
+      "seconds": 6.57118,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_midi_range_timeline",
+      "seconds": 4.69078,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_mixed_clipboard",
+      "seconds": 12.8857,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_mixed_shuffle",
+      "seconds": 23.6626,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_musical_shuffle",
+      "seconds": 36.6548,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_shared_clock",
+      "seconds": 70.7204,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_musical_clipboard",
+      "seconds": 18.261,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_object_shuffle",
+      "seconds": 99.0392,
+      "state": "passed"
+    },
+    {
+      "test": "forma_native_sample_midi",
+      "seconds": 10.9118,
+      "state": "passed"
+    }
+  ],
+  "targeted_unchanged_source_retry": [
+    {
+      "test": "tracktion_native_new_session",
+      "seconds": 3.49882,
+      "state": "passed"
+    }
+  ],
+  "distinct_affected_tests": 23,
+  "specialist_checks": 1141,
+  "mapping_cases": 10,
+  "event_time_budget_seconds": 1e-09,
+  "native_instrument_onset_sample": 96000,
+  "first_batch_wall_seconds": 396.43,
+  "original_failure": "new-session GUI component ordinary track creation assertion; unchanged-source retry passed; intermittent cause unresolved",
+  "historical_receipts_restored_sha256_verified": 18,
+  "fresh_historical_path_reports_captured_before_restore": 11,
+  "test_stdout_capture": "CTest successful stdout limited to 1024 bytes; checks read from fresh specialist JSON, no aggregate count inferred",
+  "physical_gui": "unexecuted: Mac locked",
+  "preview_launched": false
+}

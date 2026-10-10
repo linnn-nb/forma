@@ -112,3 +112,7 @@ evidence/U/*
 !evidence/U/object-shuffle-tests.json
 !evidence/U/object-shuffle-qualification.json
 !evidence/U/object-shuffle-regression.txt
+
+!evidence/U/sample-midi-tests.json
+!evidence/U/sample-midi-qualification.json
+!evidence/U/sample-midi-regression.txt

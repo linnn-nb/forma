@@ -1,3 +1,5 @@
+U-P0-SAMPLE-MIDI-01：MIDI片段采样/小节拍基准菜单与可改键接通L1原生事务；采样事件真实跨Tempo/Meter和Paste/Shuffle映射，原序列/时间/哈希保留。独立SampleMidiPreview/OpenSampleMidiDemo已准备但未启动，实体GUI/听感未执行；不是完整U＋P0，不进入P1。音乐MIDI的共同秒基Shuffle跨变化、循环/Groove/MPE、整MIDI对象移动/Nudge与其他剩余边界继续补齐；资格见VERIFICATION最新节。
+
 U-P0-OBJECT-SHUFFLE-01（2026-10-10）：主时间线整片段混合音频/MIDI的 Shuffle Cut/Delete/Paste 已接入真实 L1 预览、接受/取消和一笔 Undo；CmdC/CmdX/Backspace/CmdV 共用可改键，工程原生内容保存重开。预览明确“每轨只收拢所选片段占用区间的并集，保留间隙”，列出每轨区间、曲线基准及真实位移；Paste 保留完整复制包络。详细实测、失败修复和演示入口见 VERIFICATION/NEXT_STEPS 最新节。
 
 本节替代历史“整对象 Shuffle 未实现”，仅覆盖本次已测范围，不宣称 Pro Tools 全面行为等价。完整 U＋P0仍未完成，不进入 P1；sample-sync MIDI 跨变化、Warp/部分循环与实体GUI/听感仍未资格。M2/M3 冻结、M4/M5 暂缓。
