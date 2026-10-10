@@ -1,9 +1,0 @@
-{
-  "checks": 1141,
-  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/sample-midi-demos/sample-midi-7b303033ee7e45168c8ec70fe8f0b56f/SampleMidiReady.tracktionedit",
-  "limits": "nonlooped MIDI without native quantisation/groove or nested expression; original sequence provenance retained; Mac physical GUI/listening unexecuted",
-  "mapping_cases": 10,
-  "native_event_time_budget_seconds": 1e-09,
-  "render_onset_sample": 96000,
-  "state": "passed"
-}

@@ -1,7 +1,9 @@
 # Forma Studio 工程规则
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
-- 首先阅读 docs/UI_REBUILD_PLAN.md、docs/ARCHITECTURE.md；当前按 U＋P0→P1→P2→P3 推进，每级完成须用户亲手确认后再进入下一级。
+- 以用户 CODEX_PROMPT_P0_CORRECTION.md（2026-10-10）为准：停止新功能，实机验收 U＋P0 的8步；只修阻塞点。提交推送后暂停线程，等用户试用确认，不得自动继续。
+- 后续只做当前 P 级清单；主流程、数据完整、明确拒绝、可绑定快捷键即为完成标准。位置精确到采样，不穷尽亚采样/混合时钟组合；同项连续两轮边界工作即止损进 BACKLOG。
+- evidence/U 只留 summary.md 与8步关键截图；中间输出放自有忽略的 build 目录。
 - M2/M3 保持可用，不再扩充工具或分析资格；M4/M5 暂缓。AI 界面收进菜单，不占据制作主界面。
 - 视图状态在 Edit 的 UI 子树由 L1 写入并保存，不进入 Undo；工程编辑仍为一笔手势一笔事务。
 - 原生组件放 src/v2/ui；全局操作使用 JUCE ApplicationCommandManager；新代码遵守 .clang-format（120 列）。

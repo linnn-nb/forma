@@ -1,8 +1,0 @@
-{
-  "budget": "1e-7 parameter span plus two float ULP; unchanged",
-  "checks": 576,
-  "maximum_native_error": 1.7881393432617188e-07,
-  "probes": 3192948,
-  "scope": "48 kHz timeline samples, fractionally placed native points, positive/negative strong curves and steps",
-  "state": "passed"
-}

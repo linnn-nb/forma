@@ -1,8 +1,0 @@
-{
-  "checks": 151,
-  "render_max_error": 0.0,
-  "result": "passed",
-  "scope": "production native Zoomer commands and component mouse/key dispatch with real Tracktion source/render; desktop physical gestures separately pending",
-  "source_sha256": "03ea36f061bb90d4b2b6d19c060486b9338852d330360adb84ed3d6d0507023d",
-  "ui_schema": 9
-}

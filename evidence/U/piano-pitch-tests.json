@@ -1,9 +1,0 @@
-{
-  "audio_pcm_max_error": 0.0,
-  "checks": 57,
-  "failures": 0,
-  "physical_gui": "not executed",
-  "source_sha256": "4f5d5ec0dbb66946ef0b6d4052bf09a7fdf2ae39897ebad2b36a67ad9a7fe4a1",
-  "test_directory": "/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_piano_pitch_tests/forma-piano-pitch-904516517f5c4ab68851e75e669af90e",
-  "ui_schema": 13
-}

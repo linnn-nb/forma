@@ -1,8 +1,0 @@
-Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
-Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
-    Start 83: forma_native_groups
-1/1 Test #83: forma_native_groups ..............   Passed   10.19 sec
-
-100% tests passed, 0 tests failed out of 1
-
-Total Test time (real) =  10.20 sec

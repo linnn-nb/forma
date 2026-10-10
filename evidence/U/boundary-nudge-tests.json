@@ -1,8 +1,0 @@
-{
-  "automation_semantics": "native project-time curves retained; PT Trim boundary parity unverified",
-  "checks": 189,
-  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/boundary-nudge-demos/boundary-10bb7b1b09584832bd120f5fdef555aa/BoundaryDesktopReady.tracktionedit",
-  "pcm_budget": 2e-05,
-  "pcm_max_error": 0.0,
-  "state": "passed"
-}

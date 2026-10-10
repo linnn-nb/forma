@@ -1,3 +1,5 @@
+U-P0-DESKTOP-08（2026-10-10纠偏）：按UI第七节完成8步真实鼠标/快捷键操作，每步一张截图。第1步导入总是新建轨道，第4步真实预备拍录音未测，第8步重开Undo历史为空；不能宣称U/P0全部通过。EQ、Reverb/Aux发送、Smart编辑、Spot/Nudge、Marker/循环、钢琴卷帘和自定义两键位均有实际GUI回执。基线Release重建成功，证据/新测试数量/演示入口统一见 evidence/U/summary.md。旧U中间文件从当前Git树移除，历史证据可从父提交ba1b5ed及其历史找回。以下记录为历史资格，不代表本轮新增功能；精度按采样，不再细化亚采样边界。提交推送后暂停，等待用户试用。
+
 U-P0-RANGE-NUDGE-01（2026-10-10）：范围 Nudge 的原生音频/MIDI、编辑组与完整静音自动化包络通过受测资格；U＋P0 仍未完成，不进入 P1。
 
 源码：8216f1d 首个可构建步骤；0b1d160 为最终引擎/专项资格；1b3d2df 仅更新帮助文案，重新构建 NativeDAW 并验签。实现 src/v2/{EditGroupCommands,EngineCommands,AutomationCommands,AutomationMove,MidiClipMove,MusicCommands}.cpp、ui/WorkspaceEditing.cpp；tests/v2/RangeNudgeTests.cpp 与 CMake 专项 forma_native_range_nudge（180秒上限）。

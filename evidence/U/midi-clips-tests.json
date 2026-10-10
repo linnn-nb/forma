@@ -1,9 +1,0 @@
-{
-  "beat_budget": 1e-11,
-  "checks": 69,
-  "demo": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-clips-demos/midi-clips-20d09cdeaa12431d914eeb04385308f4/MidiClipsDesktopReady.tracktionedit",
-  "limits": "partial source range, mixed audio/MIDI, Shuffle, tempo-remapped automation not implemented",
-  "onset_budget_samples": 64,
-  "onset_samples": 312000,
-  "state": "passed"
-}
