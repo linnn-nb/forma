@@ -217,6 +217,34 @@ double seekMapping(te::Engine& engine, const juce::File& file)
                     error, std::abs(double(audio.getSample(ch, i)) - signal(ch, (target + i) / double(rate) + offset)));
         reference += block;
     }
+    head.stop();
+    for (int stopped = 0; stopped < 5; ++stopped)
+    {
+        head.setReferenceSampleRange({reference, reference + block});
+        state.update(rate, {reference, reference + block}, te::ProcessState::UpdateContinuityFlags::yes);
+        audio.clear();
+        const auto beforeAlloc = allocations, beforeFree = releases;
+        watch = true;
+        player.process({block, {reference, reference + block}, {audio.getView(), midi}});
+        watch = false;
+        check(beforeAlloc == allocations && beforeFree == releases,
+              "stopped native source performs no allocation or release");
+        double peak = 0;
+        for (int ch = 0; ch < 2; ++ch)
+            for (int frame = stopped == 0 ? 40 : 0; frame < block; ++frame)
+                peak = std::max(peak, std::abs(double(audio.getSample(ch, frame))));
+        check(peak == 0, "stopped source becomes exactly silent after its bounded 40-frame de-click");
+        reference += block;
+    }
+    head.play();
+    head.setReferenceSampleRange({reference, reference + block});
+    state.update(rate, {reference, reference + block}, te::ProcessState::UpdateContinuityFlags::yes);
+    audio.clear();
+    player.process({block, {reference, reference + block}, {audio.getView(), midi}});
+    double resumedPeak = 0;
+    for (int frame = 40; frame < block; ++frame)
+        resumedPeak = std::max(resumedPeak, std::abs(double(audio.getSample(0, frame))));
+    check(resumedPeak > .01, "native source resumes real PCM after Stop without silencing the whole graph");
     check(error < 2e-5,
           "forward/backward native seeks restore fractional source phase after native 40-frame smoothing");
     return error;

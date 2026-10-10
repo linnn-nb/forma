@@ -558,28 +558,51 @@ void Workspace::openSession(const juce::File& f)
     }
 }
 
+void Workspace::chooseAudioFiles()
+{
+    chooser = std::make_unique<juce::FileChooser>(text("导入音频 · 可多选"), juce::File{},
+                                                  "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles |
+                             juce::FileBrowserComponent::canSelectMultipleItems,
+                         [safe = juce::Component::SafePointer<Workspace>(this)](const auto& c)
+                         {
+                             if (safe && !c.getResults().isEmpty())
+                                 safe->importAudioFiles(c.getResults());
+                         });
+}
+
 void Workspace::importAudio(const juce::File& f)
 {
     if (f.hasFileExtension("ndaw"))
-    {
         prepareLegacyImport(f);
+    else
+        importAudioFiles({f});
+}
+
+void Workspace::importAudioFiles(const juce::Array<juce::File>& files)
+{
+    if (files.isEmpty())
         return;
-    }
     invoke(
         [&]
         {
             if (!pending.is_null() || !pendingConfirmation.empty() || commandFileBusy)
                 throw std::runtime_error("finish the current preview before importing audio");
-            auto plan = commands.makePlan(
-                "human",
-                Json::array({operation("track.create",
-                                       {{"name", f.getFileNameWithoutExtension().toStdString()}, {"ref", "$import"}}),
-                             operation("clip.import", {{"track", "$import"},
-                                                       {"path", f.getFullPathName().toStdString()},
-                                                       {"position_samples", facts["position_samples"]}})}));
+            Json operations = Json::array();
+            for (int i = 0; i < files.size(); ++i)
+            {
+                const auto& f = files[i];
+                const auto ref = "$import" + std::to_string(i);
+                operations.push_back(
+                    operation("track.create", {{"name", f.getFileNameWithoutExtension().toStdString()}, {"ref", ref}}));
+                operations.push_back(operation("clip.import", {{"track", ref},
+                                                               {"path", f.getFullPathName().toStdString()},
+                                                               {"position_samples", facts["position_samples"]}}));
+            }
+            const auto plan = commands.makePlan("human", operations);
             commands.commit(plan);
             setView({{"workspace", "edit"}});
-            message(text("音频已导入至光标 · 原始媒体保留 · 一次 Undo 撤销"));
+            message(juce::String(files.size()) + text(" 个音频已导入至光标 · 每文件一轨 · 一次 Undo 撤销"));
         });
 }
 

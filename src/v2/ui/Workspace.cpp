@@ -426,7 +426,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 message(text("起始 Tempo / 拍号已提交 · 音符按节拍跟随，导入音频按采样保持"));
             });
     };
-    importButton.onClick = [this] { choose(false, [this](const auto& f) { importAudio(f); }); };
+    importButton.onClick = [this] { chooseAudioFiles(); };
     openButton.onClick = [this] { choose(false, [this](const auto& f) { openSession(f); }, "*.tracktionedit;*.ndaw"); };
     saveButton.onClick = [this]
     {

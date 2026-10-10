@@ -82,6 +82,8 @@ public:
     void openLocalFile(const juce::File& f);
     void prepareImport(const juce::File& f);
     void importAudio(const juce::File& f);
+    void importAudioFiles(const juce::Array<juce::File>& files);
+    void chooseAudioFiles();
     Json queryLegacyReports() const;
     void prepareLegacyImport(const juce::File& f);
     void showLegacyReport();

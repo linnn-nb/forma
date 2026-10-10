@@ -269,16 +269,24 @@ void Workspace::dispatchCommand(int id)
 
 bool Workspace::isInterestedInFileDrag(const juce::StringArray& files)
 {
-    return files.size() == 1;
+    return !files.isEmpty();
 }
 
 void Workspace::filesDropped(const juce::StringArray& files, int, int)
 {
-    auto file = juce::File(files[0]);
-    if (file.hasFileExtension("json"))
-        importCommandFile(file);
+    if (files.isEmpty())
+        return;
+    if (files.size() == 1 && juce::File(files[0]).hasFileExtension("json"))
+        importCommandFile(juce::File(files[0]));
+    else if (files.size() == 1 && juce::File(files[0]).hasFileExtension("ndaw"))
+        importAudio(juce::File(files[0]));
     else
-        importAudio(file);
+    {
+        juce::Array<juce::File> batch;
+        for (const auto& file : files)
+            batch.add(juce::File(file));
+        importAudioFiles(batch);
+    }
 }
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
