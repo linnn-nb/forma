@@ -371,7 +371,7 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                 else
                     out += text("Shuffle 采样模式：后方内容共同移动 ") +
                            juce::String(change["displacement_samples"].get<int64_t>()) +
-                           text(" 个工程采样；MIDI 仅支持恒定 Tempo / 拍号区间。\n");
+                           text(" 个工程采样；采样 MIDI 保持事件绝对时间；音乐 MIDI 仍需恒定 Tempo / 拍号区间。\n");
                 out += text("速度图与未选轨道保持原位置；保留空轨与空白。\n");
             }
             for (const auto& id : change["range_tracks"])
@@ -391,6 +391,11 @@ juce::String Workspace::shufflePreviewText(const Json& preview) const
                     ++retained;
             out += text("新增片段：") + juce::String(added) + text(" · 移除片段：") + juce::String(removed) +
                    text(" · 修改 / 保留片段：") + juce::String(retained) + "\n";
+            for (const auto& clip : change["clips"])
+                if (!clip["after"].is_null() && clip["after"].contains("sample_midi_projection"))
+                    out += text("采样 MIDI · ") + trackName(clip["after"]["track"].get<std::string>()) + text("：") +
+                           juce::String(int(clip["after"]["sample_midi_projection"]["events"].size())) +
+                           text(" 个事件按绝对时间投影，原始序列保留。\n");
             if (change.value("ripple", false))
                 for (const auto& clip : change["clips"])
                     if (!clip["before"].is_null() && !clip["after"].is_null() &&

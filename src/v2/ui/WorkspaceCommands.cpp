@@ -63,6 +63,10 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::altModifier},
         {editCommand::curveBasisBeats, "轨道自动化跟随：小节拍", "编辑", juce::KeyPress::F7Key,
          juce::ModifierKeys::altModifier},
+        {editCommand::midiBasisSamples, "MIDI 片段：采样时间基准", "编辑", juce::KeyPress::F8Key,
+         juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+        {editCommand::midiBasisBeats, "MIDI 片段：小节拍时间基准", "编辑", juce::KeyPress::F9Key,
+         juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {editCommand::slip, "Slip 自由编辑", "编辑", juce::KeyPress::F2Key},
         {editCommand::spot, "Spot 按小节与拍置入", "编辑", juce::KeyPress::F3Key},
         {editCommand::grid, "Grid 绝对网格", "编辑", juce::KeyPress::F4Key},
@@ -759,6 +763,23 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                                                   : id == editCommand::curveBasisSamples ? "samples"
                                                                                                          : "beats"));
             }
+            if (id == editCommand::midiBasisSamples || id == editCommand::midiBasisBeats)
+            {
+                active = !mix && !facts.value("playing", false) && pending.is_null() && selection.objects.size() == 1 &&
+                         selection.objects[0]["kind"] == "clip";
+                bool found = false;
+                if (active)
+                    for (const auto& t : facts["tracks"])
+                        for (const auto& c : t["clips"])
+                            if (c["id"] == selection.objects[0]["id"] && c["kind"] == "midi")
+                            {
+                                found = !c.value("locked", false) && !c.value("looped", false) &&
+                                        c.value("bulk_transform_available", false);
+                                info.setTicked(c["timebase"] ==
+                                               (id == editCommand::midiBasisSamples ? "samples" : "beats"));
+                            }
+                active = active && found;
+            }
             if (id == editCommand::shuffleSamples || id == editCommand::shuffleNative)
             {
                 active = !facts.value("playing", false) && pending.is_null() &&
@@ -846,6 +867,22 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == editCommand::midiBasisSamples || id == editCommand::midiBasisBeats)
+    {
+        invoke(
+            [&]
+            {
+                if (!pending.is_null() || selection.objects.size() != 1 || selection.objects[0]["kind"] != "clip")
+                    throw std::runtime_error("先选择一个 MIDI 片段，接受或取消当前预览");
+                const std::string basis = id == editCommand::midiBasisSamples ? "samples" : "beats";
+                commands.commit(commands.makePlan(
+                    "human", Json::array({operation("midi.clip.timebase.set",
+                                                    {{"clip", selection.objects[0]["id"]}, {"basis", basis}})})));
+                message(
+                    text(basis == "samples" ? "MIDI 事件按绝对时间保持 · 可撤销" : "MIDI 事件按小节拍保持 · 可撤销"));
+            });
+        return true;
+    }
     if (id >= editCommand::curveBasisAuto && id <= editCommand::curveBasisBeats)
     {
         invoke(

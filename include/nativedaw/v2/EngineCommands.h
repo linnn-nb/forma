@@ -271,6 +271,10 @@ private:
     te::MidiClip* midiClip(const std::string&) const;
     Json musicQuery() const;
     Json midiQuery(te::MidiClip&) const;
+    void applySampleMidiProjection(te::MidiClip&, const Json&, const juce::ValueTree&, const std::string& sourceClip,
+                                   const std::string& tempoHash);
+    Json sampleMidiTempoSnapshot() const;
+    void remapSampleMidiTempo(const Json&);
     void initialiseMusicIDs(juce::UndoManager* = nullptr);
     Json validateMusicPlan(const Json&) const;
     Json captureMidiClipClipboard(const Json& clips, const Json& range, const std::string&, uint64_t);

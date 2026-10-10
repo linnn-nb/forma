@@ -1,3 +1,4 @@
+#include "SampleMidiMap.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include <limits>
 
@@ -317,6 +318,9 @@ void Commands::registerMusicCommands(Json& registry)
     registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
+    add("midi.clip.timebase.set", {{"clip", str}, {"basis", {{"type", "string"}, {"enum", {"samples", "beats"}}}}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-SAMPLE-MIDI-01";
     add("midi.clips.paste", {{"clipboard", str},
                              {"tracks", {{"type", "array"}, {"items", str}, {"maxItems", 64}}},
                              {"position_samples", position},
@@ -422,17 +426,21 @@ Json Commands::midiQuery(te::MidiClip& clip) const
                                {"metadata", e->getMetadata()},
                                {"source_beat", e->getBeatPosition().inBeats()},
                                {"position_samples", sourceSamples(e->getEditTime(clip))}});
-    return {{"notes", notes},
-            {"controller_events", controllers},
-            {"sysex_count", clip.getSequence().getNumSysExEvents()},
-            {"start_beat", clip.getStartBeat().inBeats()},
-            {"length_beats", clip.getLengthInBeats().inBeats()},
-            {"content_start_beat", clip.getContentStartBeat().inBeats()},
-            {"midi_channel", clip.getMidiChannel().getChannelNumber()},
-            {"looped", clip.isLooping()},
-            {"locked", bool(clip.state.getProperty("ndaw_locked", false))},
-            {"bulk_transform_available", transformRestriction(clip).empty()},
-            {"bulk_transform_restriction", transformRestriction(clip)}};
+    return {
+        {"notes", notes},
+        {"controller_events", controllers},
+        {"sysex_count", clip.getSequence().getNumSysExEvents()},
+        {"start_beat", clip.getStartBeat().inBeats()},
+        {"length_beats", clip.getLengthInBeats().inBeats()},
+        {"content_start_beat", clip.getContentStartBeat().inBeats()},
+        {"sample_event_policy", clip.getSyncType() == te::Clip::syncAbsolute ? "fixed_absolute_time" : "native_beats"},
+        {"original_midi_source_hash",
+         clip.state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN")["source_hash"].toString().toStdString()},
+        {"midi_channel", clip.getMidiChannel().getChannelNumber()},
+        {"looped", clip.isLooping()},
+        {"locked", bool(clip.state.getProperty("ndaw_locked", false))},
+        {"bulk_transform_available", transformRestriction(clip).empty()},
+        {"bulk_transform_restriction", transformRestriction(clip)}};
 }
 Json Commands::musicQuery() const
 {
@@ -568,6 +576,13 @@ Json Commands::validateMusicPlan(const Json& operations) const
     std::map<std::string, std::string> tracks;
     std::set<std::string> refs;
     Json diff = Json::array();
+    if (std::any_of(operations.begin(), operations.end(),
+                    [](const Json& op)
+                    {
+                        const std::string cmd = op.at("command");
+                        return cmd.starts_with("tempo.") || cmd.starts_with("meter.");
+                    }))
+        (void)sampleMidiTempoSnapshot(); // Validate unsupported sources before any native write.
     size_t operationIndex = 0;
     for (auto* t : te::getAudioTracks(*edit))
     {
@@ -704,13 +719,25 @@ Json Commands::validateMusicPlan(const Json& operations) const
                     ids[key] = beat;
             }
             diff.push_back({{"command", cmd}, {"event", key}, {"before_beat", previous.inBeats()}, {"after", a}});
+            const auto previousSequence = seq;
             seq = sequence();
             for (auto& [_, c] : clips)
                 if (!c.beats)
                 {
-                    c.start = seq.toBeats(time(c.absoluteStart)).inBeats();
-                    c.end = seq.toBeats(time(c.absoluteEnd)).inBeats();
-                    c.content = seq.toBeats(time(c.absoluteContent)).inBeats();
+                    const double nextContent = seq.toBeats(previousSequence.toTime(BP::fromBeats(c.content))).inBeats();
+                    const auto absoluteStart = previousSequence.toTime(BP::fromBeats(c.start));
+                    const auto absoluteEnd = previousSequence.toTime(BP::fromBeats(c.end));
+                    for (auto& [__, n] : c.notes)
+                    {
+                        const auto startTime = previousSequence.toTime(BP::fromBeats(c.content + n.source));
+                        const auto endTime = previousSequence.toTime(BP::fromBeats(c.content + n.source + n.length));
+                        const double startBeat = seq.toBeats(startTime).inBeats();
+                        n.source = startBeat - nextContent;
+                        n.length = seq.toBeats(endTime).inBeats() - startBeat;
+                    }
+                    c.start = seq.toBeats(absoluteStart).inBeats();
+                    c.end = seq.toBeats(absoluteEnd).inBeats();
+                    c.content = nextContent;
                 }
         }
         else if (cmd == "tempo.set" || cmd == "meter.set")
@@ -753,13 +780,25 @@ Json Commands::validateMusicPlan(const Json& operations) const
                     meters.push_back({beat, num, den, false});
                 std::sort(meters.begin(), meters.end(), [](auto& a, auto& b) { return a.startBeat < b.startBeat; });
             }
+            const auto previousSequence = seq;
             seq = sequence();
             for (auto& [_, c] : clips)
                 if (!c.beats)
                 {
-                    c.start = seq.toBeats(time(c.absoluteStart)).inBeats();
-                    c.end = seq.toBeats(time(c.absoluteEnd)).inBeats();
-                    c.content = seq.toBeats(time(c.absoluteContent)).inBeats();
+                    const double nextContent = seq.toBeats(previousSequence.toTime(BP::fromBeats(c.content))).inBeats();
+                    const auto absoluteStart = previousSequence.toTime(BP::fromBeats(c.start));
+                    const auto absoluteEnd = previousSequence.toTime(BP::fromBeats(c.end));
+                    for (auto& [__, n] : c.notes)
+                    {
+                        const auto startTime = previousSequence.toTime(BP::fromBeats(c.content + n.source));
+                        const auto endTime = previousSequence.toTime(BP::fromBeats(c.content + n.source + n.length));
+                        const double startBeat = seq.toBeats(startTime).inBeats();
+                        n.source = startBeat - nextContent;
+                        n.length = seq.toBeats(endTime).inBeats() - startBeat;
+                    }
+                    c.start = seq.toBeats(absoluteStart).inBeats();
+                    c.end = seq.toBeats(absoluteEnd).inBeats();
+                    c.content = nextContent;
                 }
         }
         else if (cmd == "midi.clip.create")
@@ -774,6 +813,27 @@ Json Commands::validateMusicPlan(const Json& operations) const
             auto begin = a.at("position_samples").get<int64_t>(), end = begin + a.at("length_samples").get<int64_t>();
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
+        }
+        else if (cmd == "midi.clip.timebase.set")
+        {
+            require(operations.size() == 1 && !edit->getTransport().isPlaying() && recordingCapture.is_null() &&
+                        parameterCapture.is_null() && capture.is_null() && !audioConfigurationPending(),
+                    "MIDI timebase requires one stopped native transaction");
+            const std::string target = a.at("clip"), basis = a.at("basis");
+            require(clips.contains(target) && (basis == "samples" || basis == "beats"), "invalid MIDI timebase target");
+            const auto& c = clips.at(target);
+            require(!c.locked && !c.looped && !c.playbackProcessed,
+                    "locked/looped/processed MIDI timebase not qualified");
+            auto* actual = midiClip(target);
+            require(actual != nullptr, "MIDI timebase source disappeared");
+            if (basis == "samples")
+                (void)sample_midi::project(actual->getSequence().state, seq, seq, c.content, c.content, 0);
+            diff.push_back({{"command", cmd},
+                            {"operation_index", index},
+                            {"clip", target},
+                            {"timebase_before", c.beats ? "beats" : "samples"},
+                            {"timebase_after", basis},
+                            {"event_policy", "sample events retain absolute time; beat events retain native beats"}});
         }
         else if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips."))
         {
@@ -889,6 +949,7 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
     {
         const bool isTempo = cmd.starts_with("tempo."), creating = cmd.ends_with("create"),
                    removing = cmd.ends_with("delete");
+        const auto sampleMidi = sampleMidiTempoSnapshot();
         te::EditTimecodeRemapperSnapshot snap;
         snap.savePreChangeState(*edit);
         juce::ValueTree state;
@@ -944,11 +1005,13 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
         seq.updateTempoData();
         snap.remapEdit(*edit);
+        remapSampleMidiTempo(sampleMidi);
         objects.push_back({{"id", id(state)}, {"kind", isTempo ? "tempo" : "meter"}, {"deleted", removing}});
         return;
     }
     if (cmd == "tempo.set" || cmd == "meter.set")
     {
+        const auto sampleMidi = sampleMidiTempoSnapshot();
         te::EditTimecodeRemapperSnapshot snap;
         snap.savePreChangeState(*edit);
         auto beat = seq.toBeats(time(a.at("position_samples")));
@@ -984,6 +1047,7 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
             edit->createNewItemID().writeID(state, &um);
         seq.updateTempoData();
         snap.remapEdit(*edit);
+        remapSampleMidiTempo(sampleMidi);
         objects.push_back({{"id", id(state)}, {"kind", cmd == "tempo.set" ? "tempo" : "meter"}});
         return;
     }
@@ -1002,6 +1066,12 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
     }
     auto* c = midiClip(a.at("clip"));
     require(c != nullptr, "MIDI clip disappeared");
+    if (cmd == "midi.clip.timebase.set")
+    {
+        c->setSyncType(a.at("basis") == "samples" ? te::Clip::syncAbsolute : te::Clip::syncBarsBeats);
+        objects.push_back({{"id", c->itemID.toString().toStdString()}, {"kind", "midi_clip"}});
+        return;
+    }
     te::MidiNote* note = nullptr;
     if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time")
     {

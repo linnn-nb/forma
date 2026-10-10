@@ -1,3 +1,4 @@
+#include "SampleMidiMap.h"
 #include "NativeEditXml.h"
 #include "MasterAnalysis.h"
 #include <nativedaw/v2/EngineCommands.h>
@@ -686,7 +687,7 @@ Json Commands::preview(const Json& plan) const
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
         if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips.") || cmd == "midi.notes.time" ||
-            cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
+            cmd == "midi.notes.erase" || cmd == "midi.notes.paste" || cmd == "midi.clip.timebase.set")
             require(actor == "human", "MIDI timing edits are local GUI only during U phase");
         if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set" ||
             cmd == "location.recall" || cmd.starts_with("location.roll."))
@@ -1596,6 +1597,9 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     for (auto* t : te::getAllTracks(*candidate))
         require(readAutomationEditBasis(t->state) == "auto" || dynamic_cast<te::AudioTrack*>(t),
                 "saved automation edit basis on unsupported track type");
+    for (auto* t : te::getAudioTracks(*candidate))
+        for (auto* c : t->getClips())
+            sample_midi::validateOrigin(c->state);
     readRollState(candidate->state.getChildWithName("NATIVEDAW"));
     for (auto* location : candidate->getMarkerManager().getMarkers())
         if (location)

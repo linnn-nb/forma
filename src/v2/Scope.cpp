@@ -205,6 +205,17 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 }
             automatic = false;
         }
+        else if (cmd == "midi.clip.timebase.set")
+        {
+            auto* c = midiClip(a.at("clip"));
+            require(c != nullptr, "scope requires existing MIDI timebase target");
+            object(c->itemID.toString().toStdString(), c->getTrack());
+            full();
+            automatic = false;
+            impacts.push_back({{"command", cmd},
+                               {"clip", c->itemID.toString().toStdString()},
+                               {"extent", "whole MIDI performance and future Tempo mapping"}});
+        }
         else if (cmd.starts_with("midi.note"))
         {
             auto* c = midiClip(a["clip"]);

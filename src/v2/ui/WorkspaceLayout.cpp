@@ -46,6 +46,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id : {editCommand::curveBasisAuto, editCommand::curveBasisSamples, editCommand::curveBasisBeats})
             addMenuCommand(curveBasis, id);
         p.addSubMenu(text("轨道自动化跟随（复制 / Shuffle）"), curveBasis);
+        juce::PopupMenu midiBasis;
+        addMenuCommand(midiBasis, editCommand::midiBasisSamples);
+        addMenuCommand(midiBasis, editCommand::midiBasisBeats);
+        p.addSubMenu(text("MIDI 片段时间基准"), midiBasis);
         p.addSeparator();
         addMenuCommand(p, 6);
         addMenuCommand(p, 7);

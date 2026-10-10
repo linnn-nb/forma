@@ -1,3 +1,4 @@
+#include "SampleMidiMap.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativePluginStates.h"
 namespace ndaw::v2
@@ -40,6 +41,8 @@ Json facts(te::MidiClip& c)
             {"offset_beats", c.getOffsetInBeats().inBeats()},
             {"source_offset_seconds", p.getOffset().inSeconds()},
             {"timebase", c.getSyncType() == te::Clip::syncBarsBeats ? "beats" : "samples"},
+            {"sample_mapping_eligible",
+             !c.isLooping() && c.getQuantisation().getType(false) == "(none)" && c.getGrooveTemplate().isEmpty()},
             {"looped", c.isLooping()},
             {"note_count", c.getSequence().getNumNotes()},
             {"controller_count", c.getSequence().getNumControllerEvents()},
@@ -428,7 +431,9 @@ Json Commands::timelineClipPasteExtent(const std::string& id, int64_t point) con
     Json result = Json::array();
     for (const auto& entry : b->manifest["entries"])
     {
-        auto f = b->entries.at(entry["token"]).facts;
+        const auto& frozenEntry = b->entries.at(entry["token"]);
+        auto f = frozenEntry.facts;
+        const auto original = f;
         auto start = time(point + f["start_samples"].get<int64_t>() - b->manifest["start_samples"].get<int64_t>());
         auto end = start + tracktion::TimeDuration::fromSeconds(f["length_samples"].get<int64_t>() / rate);
         double offset = f["source_offset_seconds"];
@@ -463,6 +468,16 @@ Json Commands::timelineClipPasteExtent(const std::string& id, int64_t point) con
         f["source_offset_seconds"] = offset;
         f["offset_beats"] = offset * seq.getBeatsPerSecondAt(start);
         f["clipboard_token"] = entry["token"];
+        if (f["kind"] == "midi" && f["timebase"] == "samples")
+        {
+            require(f.value("sample_mapping_eligible", false),
+                    "sample MIDI Paste cannot map loops/quantisation/groove");
+            edit->tempoSequence.toBeats(time(point));
+            f["sample_midi_projection"] = sample_midi::project(
+                frozenEntry.state.getChildWithName(te::IDs::SEQUENCE), *b->tempoSnapshot,
+                edit->tempoSequence.getInternalSequence(), original["content_start_beat"], f["content_start_beat"],
+                start.inSeconds() - original["start_seconds"].get<double>());
+        }
         result.push_back(std::move(f));
     }
     return result;
@@ -555,6 +570,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
             return f;
         const double start = f["start_seconds"], end = f["end_seconds"], offset = f["source_offset_seconds"];
         const double shift = delta / rate;
+        const auto original = f;
 
         if (f["kind"] == "midi" && f["timebase"] == "beats" && rippleMapping == "native")
         {
@@ -587,7 +603,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         require(sample(tracktion::TimePosition::fromSeconds(start + shift)) >= 0 &&
                     end + shift <= te::Edit::maximumLength,
                 "Shuffle suffix exceeds session bounds");
-        if (f["kind"] == "midi")
+        if (f["kind"] == "midi" && f["timebase"] != "samples")
         {
             // Retain every native event and its musical duration. A common seconds ripple
             // is qualified only where the complete performance/content corridor has one
@@ -610,7 +626,7 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
                         "MIDI Shuffle suffix crosses a Meter change; use Slip or a constant-tempo range");
             }
         }
-        else
+        else if (f["kind"] == "audio")
             require(f.value("default_reader", false), "Shuffle cannot move an unqualified direct/HQ audio reader");
         f["start_seconds"] = start + shift;
         f["end_seconds"] = end + shift;
@@ -621,6 +637,17 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         if (f["kind"] == "midi")
             f["content_start_beat"] =
                 edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(start + shift - offset)).inBeats();
+        if (f["kind"] == "midi" && f["timebase"] == "samples")
+        {
+            require(f.value("sample_mapping_eligible", false),
+                    "sample MIDI Shuffle cannot map loops/quantisation/groove");
+            auto* source = midiClip(f["clip"]);
+            require(source != nullptr, "sample MIDI Shuffle source disappeared");
+            edit->tempoSequence.toBeats(time(0));
+            const auto& seq = edit->tempoSequence.getInternalSequence();
+            f["sample_midi_projection"] = sample_midi::project(
+                source->getSequence().state, seq, seq, original["content_start_beat"], f["content_start_beat"], shift);
+        }
         return f;
     };
     if (cmd.ends_with(".erase"))
@@ -885,11 +912,13 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
         {"removal_end_samples", removalEnd},
         {"suffix_policy",
          objectRipple ? "per-track selected interval union; gaps retained; per-clip accumulated displacement"
-         : rippleMapping == "native" ? "audio/sample MIDI: common samples; beat MIDI: common native beats"
-                                     : "common samples; MIDI requires a constant Tempo/Meter corridor"},
+         : rippleMapping == "native"
+             ? "audio/sample MIDI: common samples; beat MIDI: common native beats"
+             : "common samples; sample MIDI events projected; beat MIDI requires constant Tempo/Meter corridor"},
         {"range_timebase", b->manifest.value("range_timebase", "per_clip")},
         {"mapping_policy", "audio retains samples; MIDI retains native timebase; mixed range covers both envelopes"},
-        {"controller_policy", "native clip subtree retained, including CC, SysEx, takes and opaque fields"}};
+        {"controller_policy", "beat MIDI retains raw events; sample MIDI projects timestamps with immutable original "
+                              "sequence provenance; CC/SysEx payload and opaque fields retained"}};
     auto sealed = result;
     sealed.erase("operation_index");
     const auto encoded = sealed.dump();
@@ -949,6 +978,14 @@ void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, J
         c->setPosition({{tracktion::TimePosition::fromSeconds(after["start_seconds"]),
                          tracktion::TimePosition::fromSeconds(after["end_seconds"])},
                         tracktion::TimeDuration::fromSeconds(after["source_offset_seconds"])});
+        if (auto* midi = dynamic_cast<te::MidiClip*>(c); midi && after.contains("sample_midi_projection"))
+        {
+            const auto source = frozen ? clipboardEntry(after["clipboard_token"])->state : states.at(item["clip"]);
+            applySampleMidiProjection(
+                *midi, after["sample_midi_projection"], source.getChildWithName(te::IDs::SEQUENCE), after["clip"],
+                frozen ? clipboardBuffer(a.at("clipboard"))->manifest.at("source_tempo_hash").get<std::string>()
+                       : hash(edit->tempoSequence.getState()));
+        }
         if (auto* wave = dynamic_cast<te::WaveAudioClip*>(c))
         {
             wave->setFadeIn(tracktion::TimeDuration::fromSeconds(after["fade_in_samples"].get<int64_t>() / rate));
