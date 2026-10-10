@@ -1,3 +1,4 @@
+#include "NativeEditXml.h"
 #include "RecoveryStore.h"
 #include <algorithm>
 #include <fstream>
@@ -115,7 +116,9 @@ Json write(const juce::File& directory, Snapshot snapshot)
     require(catalog["entries"].size() < maximumSnapshots,
             "recovery snapshot capacity reached; archive copies explicitly");
     require(snapshot.state.hasType(te::IDs::EDIT), "snapshot is not an Edit");
-    const auto xml = snapshot.state.toXmlString().toStdString();
+    const auto document = preciseEditXml(snapshot.state);
+    require(document != nullptr, "recovery native XML serialization failed");
+    const auto xml = document->toString().toStdString();
     require(!xml.empty() && xml.size() <= uint64_t(maximumBytes), "snapshot exceeds 64 MiB budget");
     require(catalog["bytes"].get<int64_t>() + int64_t(xml.size()) + 256 * 1024 <= maximumTotalBytes,
             "recovery disk budget reached; archive copies explicitly");

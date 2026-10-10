@@ -1,3 +1,4 @@
+#include "NativeEditXml.h"
 #include "MasterAnalysis.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "TimelineState.h"
@@ -1550,6 +1551,8 @@ Json Commands::save(const juce::File& destination)
     try
     {
         require(te::EditFileOperations(*edit).writeToFile(staged, false), "Edit save failed");
+        auto xml = preciseEditXml(edit->state); // SDK already flushed real plugin/base state above.
+        require(xml && xml->writeTo(staged), "lossless native Edit XML save failed");
         publish(staged, destination);
     }
     catch (...)
