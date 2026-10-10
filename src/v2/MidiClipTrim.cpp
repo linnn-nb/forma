@@ -44,9 +44,11 @@ Json Commands::midiClipTrimChange(const Json& args, bool includeFacts) const
                   {"end_seconds", end},
                   {"source_offset_seconds", offset},
                   {"source_offset_samples", std::llround(offset * timelineRate)},
+                  {"offset_beats", offset * seq.getBeatsPerSecondAt(tracktion::TimePosition::fromSeconds(start)).v},
                   {"start_beat", seq.toBeats(tracktion::TimePosition::fromSeconds(start)).inBeats()},
                   {"end_beat", seq.toBeats(tracktion::TimePosition::fromSeconds(end)).inBeats()},
                   {"content_start_beat", seq.toBeats(tracktion::TimePosition::fromSeconds(start - offset)).inBeats()}});
+    after["minimum_start_samples"] = std::min<int64_t>(first, std::ceil(std::max(0., start - offset) * timelineRate));
     after["length_beats"] = after["end_beat"].get<double>() - after["start_beat"].get<double>();
     if (!includeFacts)
         return {{"after", after}};

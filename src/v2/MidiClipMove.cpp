@@ -53,6 +53,8 @@ Json Commands::midiClipMoveChange(const Json& args, bool includeEvents) const
     after["end_beat"] = seq.toBeats(tracktion::TimePosition::fromSeconds(end)).inBeats();
     after["content_start_beat"] = content;
     after["source_offset_seconds"] = offset;
+    after["source_offset_samples"] = std::llround(offset * timelineRate);
+    after["minimum_start_samples"] = std::min<int64_t>(target, std::ceil(std::max(0., start - offset) * timelineRate));
     after["offset_beats"] = offset * seq.getBeatsPerSecondAt(tracktion::TimePosition::fromSeconds(start)).v;
     if (!beats && includeEvents)
         after["sample_midi_projection"] =

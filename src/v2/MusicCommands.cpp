@@ -443,7 +443,8 @@ Json Commands::midiQuery(te::MidiClip& clip) const
             {"source_offset_seconds", clip.getPosition().getOffset().inSeconds()},
             {"source_offset_samples", std::llround(clip.getPosition().getOffset().inSeconds() * 48000.)},
             {"minimum_start_samples",
-             int64_t(std::ceil(std::max(0., clip.getPosition().getStartOfSource().inSeconds()) * 48000.))},
+             std::min<int64_t>(std::llround(clip.getPosition().getStart().inSeconds() * 48000.),
+                               std::ceil(std::max(0., clip.getPosition().getStartOfSource().inSeconds()) * 48000.))},
             {"sample_event_policy", clip.getSyncType() != te::Clip::syncAbsolute ? "native_beats"
                                     : sample_midi::restriction(clip).empty()     ? "fixed_absolute_time"
                                                                                  : "unqualified_processed_performance"},
