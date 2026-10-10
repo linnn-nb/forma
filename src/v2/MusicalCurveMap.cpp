@@ -17,9 +17,10 @@ auto beat(double value)
     return tracktion::BeatPosition::fromBeats(value);
 }
 } // namespace
-std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion::tempo::Sequence& source,
-                                const tracktion::tempo::Sequence& destination, double originBeat, double start,
-                                double high, double tolerance)
+static std::vector<Point> musicalSliceImpl(const std::vector<Point>& curve, const tracktion::tempo::Sequence& source,
+                                           const tracktion::tempo::Sequence& destination, double originBeat,
+                                           double start, double high, double tolerance,
+                                           std::optional<std::pair<double, double>> exactSourceBounds)
 {
     require(!curve.empty() && high >= start && tolerance > 0, "invalid musical automation slice");
     const double anchor = destination.toBeats(time(start)).inBeats();
@@ -27,7 +28,10 @@ std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion
     { return destination.toTime(beat(anchor + source.toBeats(time(at)).inBeats() - originBeat)).inSeconds(); };
     auto inverse = [&](double at)
     { return source.toTime(beat(originBeat + destination.toBeats(time(at)).inBeats() - anchor)).inSeconds(); };
-    const double low = inverse(start), end = inverse(high);
+    // A suffix has known original endpoints. Keep them exactly: inverse(forward(t))
+    // can round below a native jump and accidentally discard its final event.
+    const double low = exactSourceBounds ? exactSourceBounds->first : inverse(start);
+    const double end = exactSourceBounds ? exactSourceBounds->second : inverse(high);
     require(low >= 0 && end >= low && std::isfinite(end), "musical source mapping outside bounds");
     if (high == start)
         return {{start, nativeValue(curve, low), 0, {}}};
@@ -60,7 +64,7 @@ std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion
     std::vector<std::pair<double, double>> guards;
     auto guard = [&](double from, bool incoming)
     {
-        const double at = forward(from);
+        const double at = from == low ? start : from == end ? high : forward(from);
         if (at < start || at > high)
             return;
         const double adjacent = adjacentTimelineSample(at, incoming);
@@ -130,6 +134,12 @@ std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion
         result.insert(result.begin(), {start, value, 0, {}});
     return result;
 }
+std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion::tempo::Sequence& source,
+                                const tracktion::tempo::Sequence& destination, double originBeat, double start,
+                                double high, double tolerance)
+{
+    return musicalSliceImpl(curve, source, destination, originBeat, start, high, tolerance, std::nullopt);
+}
 std::vector<Point> musicalSuffix(const std::vector<Point>& source, const tracktion::tempo::Sequence& seq,
                                  double sourceStart, double destinationStart, double tolerance)
 {
@@ -145,7 +155,7 @@ std::vector<Point> musicalSuffix(const std::vector<Point>& source, const trackti
             p.time = destinationStart;
         return tail;
     }
-    return musicalSlice(source, seq, seq, origin, destinationStart, end, tolerance);
+    return musicalSliceImpl(source, seq, seq, origin, destinationStart, end, tolerance, std::pair{sourceStart, last});
 }
 std::vector<Point> musicalCollapse(const std::vector<Point>& source, const tracktion::tempo::Sequence& seq,
                                    double first, double last, double tolerance)

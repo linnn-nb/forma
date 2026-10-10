@@ -304,7 +304,7 @@ Json Commands::queryObjects(const Json& args) const
                         Json facts{{"id", id(clip)},
                                    {"name", clip.getName().toStdString()},
                                    {"start_samples", samples(position.getStart())},
-                                   {"length_samples", std::llround(position.getLength().inSeconds() * timelineRate)},
+                                   {"length_samples", samples(position.getEnd()) - samples(position.getStart())},
                                    {"kind", clip.isMidi() ? "midi" : "audio"},
                                    {"timebase", clip.getSyncType() == te::Clip::syncBarsBeats ? "beats" : "samples"}};
                         if (auto* midi = dynamic_cast<te::MidiClip*>(&clip))

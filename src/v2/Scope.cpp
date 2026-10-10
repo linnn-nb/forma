@@ -217,7 +217,8 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
             {
                 auto pos = c->getPosition();
                 span(std::llround(pos.getStart().inSeconds() * timelineRate),
-                     std::llround(pos.getLength().inSeconds() * timelineRate));
+                     std::llround(pos.getEnd().inSeconds() * timelineRate) -
+                         std::llround(pos.getStart().inSeconds() * timelineRate));
             }
             if (cmd == "midi.notes.quantize" || cmd == "midi.notes.transpose" || cmd == "midi.notes.time" ||
                 cmd == "midi.notes.erase" || cmd == "midi.notes.paste")
@@ -291,7 +292,7 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                         "Clip FX effect tails require unrestricted time scope until their footprint is qualified");
                 const auto pos = clip->getPosition();
                 auto start = std::llround(pos.getStart().inSeconds() * timelineRate),
-                     length = std::llround(pos.getLength().inSeconds() * timelineRate);
+                     length = std::llround(pos.getEnd().inSeconds() * timelineRate) - start;
                 span(start, length);
                 impacts.push_back({{"command", cmd},
                                    {"object", id},

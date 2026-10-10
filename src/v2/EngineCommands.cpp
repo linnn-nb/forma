@@ -401,7 +401,8 @@ Json Commands::query() const
             Json info{{"id", c->itemID.toString().toStdString()},
                       {"name", c->getName().toStdString()},
                       {"start_samples", std::llround(p.getStart().inSeconds() * timelineRate)},
-                      {"length_samples", std::llround(p.getLength().inSeconds() * timelineRate)}};
+                      {"length_samples", std::llround(p.getEnd().inSeconds() * timelineRate) -
+                                             std::llround(p.getStart().inSeconds() * timelineRate)}};
             const auto barsBeats = edit->tempoSequence.toBarsAndBeats(p.getStart());
             info["bar"] = barsBeats.bars + 1;
             info["beat"] = barsBeats.beats.inBeats() + 1.0;
