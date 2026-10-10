@@ -287,12 +287,14 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
         juce::Array<juce::File> batch;
         for (const auto& file : files)
             batch.add(juce::File(file));
-        importAudioFiles(batch);
+        showAudioImport(batch);
     }
 }
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (audioImportPanel && audioImportPanel->isVisible())
+        return audioImportPanel->handleKey(key);
     if (keyboardSettings && keyboardSettings->isVisible())
         return keyboardSettings->keyPressed(key);
     if (fadesPanel && fadesPanel->isVisible() && key == juce::KeyPress::escapeKey)
@@ -456,6 +458,8 @@ void Workspace::resized()
         memoryLocationsPanel->setBounds(getLocalBounds());
     if (spotPlacementPanel)
         spotPlacementPanel->setBounds(getLocalBounds());
+    if (audioImportPanel)
+        audioImportPanel->setBounds(getLocalBounds());
     if (newSessionPanel)
         newSessionPanel->setBounds(getLocalBounds());
     if (pluginLibrary)

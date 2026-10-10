@@ -824,6 +824,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false);
             if (id >= 275 && id <= 277)
                 active =
+                    (id != 276 && audioImportPanel && audioImportPanel->isVisible()) ||
                     (musicEventPanel && musicEventPanel->isVisible() && (id != 276 || musicEventPanel->canDelete())) ||
                     (id != 276 && memoryLocationsPanel && memoryLocationsPanel->isVisible() &&
                      (id == 277 || memoryLocationsPanel->canRecall())) ||
@@ -875,13 +876,21 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     info.setTicked(std::all_of(targets.begin(), targets.end(),
                                                [](const auto& t) { return t["input"]["armed"].template get<bool>(); }));
             }
-            info.setActive(active);
+            info.setActive(active && (!(audioImportPanel && audioImportPanel->isVisible()) || id == 275 || id == 277));
             return;
         }
 }
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (audioImportPanel && audioImportPanel->isVisible())
+    {
+        if (id == 275)
+            audioImportPanel->execute();
+        else if (id == 277)
+            audioImportPanel->handleKey(juce::KeyPress(juce::KeyPress::escapeKey));
+        return true;
+    }
     if (id >= 501 && id <= 504)
     {
         const auto clip = selectedAudioClip();

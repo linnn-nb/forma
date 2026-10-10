@@ -20,6 +20,7 @@
 #include "PianoPitchAxis.h"
 #include "MusicEventPanel.h"
 #include "RollPanel.h"
+#include "AudioImportPanel.h"
 #include "FadesPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -86,6 +87,7 @@ public:
     void importAudio(const juce::File& f);
     void importAudioFiles(const juce::Array<juce::File>& files);
     void chooseAudioFiles();
+    void showAudioImport(const juce::Array<juce::File>& files, Json context = nullptr);
     Json queryLegacyReports() const;
     void prepareLegacyImport(const juce::File& f);
     void showLegacyReport();
@@ -126,6 +128,7 @@ public:
     }
 
 private:
+    Json audioImportContext() const;
     static juce::String historyLabel(const Json& entry);
     juce::PopupMenu rulersMenu();
     void addMenuCommand(juce::PopupMenu&, int);
@@ -265,6 +268,7 @@ private:
     juce::ApplicationCommandManager commandManager;
     std::map<int, std::function<void()>> commandActions;
     std::unique_ptr<KeyboardSettings> keyboardSettings;
+    std::unique_ptr<AudioImportPanel> audioImportPanel;
     bool loadingKeymap = false;
     std::string lastKeymapSession;
     GroupsList groupsList{[this](const auto& id) { selectMixGroup(id); },

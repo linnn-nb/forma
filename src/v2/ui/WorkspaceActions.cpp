@@ -579,29 +579,100 @@ void Workspace::openSession(const juce::File& f)
     }
 }
 
+Json Workspace::audioImportContext() const
+{
+    const auto current = commands.query();
+    Json target = nullptr;
+    for (const auto& track : current["tracks"])
+        if (track["id"] == selected)
+            target = track;
+    const bool allowed = !target.is_null() && (target["type"] == "audio" || target["type"] == "instrument");
+    return {{"session_token", commands.sessionToken()},
+            {"base_revision", current["revision"]},
+            {"position_samples", current["position_samples"]},
+            {"track", selected},
+            {"track_name", target.is_null() ? "未选择可导入音频的轨道" : target["name"].get<std::string>()},
+            {"track_allowed", allowed},
+            {"existing_clips", target.is_null() ? 0 : int(target["clips"].size())}};
+}
+
+void Workspace::showAudioImport(const juce::Array<juce::File>& files, Json context)
+{
+    if (files.isEmpty())
+        return;
+    invoke(
+        [&]
+        {
+            if (!pending.is_null() || !pendingConfirmation.empty() || commandFileBusy ||
+                (audioImportPanel && audioImportPanel->isVisible()))
+                throw std::runtime_error("请先完成或取消当前预览");
+            if (context.is_null())
+                context = audioImportContext();
+            if (context["session_token"] != commands.sessionToken() ||
+                context["base_revision"] != commands.querySummary()["revision"])
+                throw std::runtime_error("选择文件期间工程已改动，请重新导入");
+            if (!audioImportPanel)
+            {
+                audioImportPanel = std::make_unique<AudioImportPanel>(
+                    [this](const auto& media, bool intoSelected, const Json& binding)
+                    {
+                        if (binding["session_token"] != commands.sessionToken() ||
+                            binding["base_revision"] != commands.querySummary()["revision"])
+                            throw std::runtime_error("工程已改动，请取消并重新导入");
+                        if (!pending.is_null() || !pendingConfirmation.empty() || commandFileBusy)
+                            throw std::runtime_error("请先完成当前命令请求");
+                        if (intoSelected && !binding["track_allowed"].get<bool>())
+                            throw std::runtime_error("所选轨道不支持音频导入");
+                        auto plan =
+                            commands.makeAudioImportPlan(media, intoSelected ? binding["track"].get<std::string>() : "",
+                                                         binding["position_samples"].get<int64_t>());
+                        plan["base_revision"] = binding["base_revision"];
+                        commands.commit(plan);
+                        audioImportPanel->setVisible(false);
+                        setView({{"workspace", "edit"}});
+                        message(juce::String(media.size()) + text(intoSelected
+                                                                      ? " 个音频已连续导入所选轨道 · 一次 Undo 撤销"
+                                                                      : " 个音频已导入 · 每文件一轨 · 一次 Undo 撤销"));
+                        refresh();
+                        if (isShowing())
+                            grabKeyboardFocus();
+                    },
+                    [this]
+                    {
+                        audioImportPanel->setVisible(false);
+                        refresh();
+                        if (isShowing())
+                            grabKeyboardFocus();
+                    });
+                addChildComponent(*audioImportPanel);
+            }
+            audioImportPanel->bind(files, context);
+            audioImportPanel->setBounds(getLocalBounds());
+            audioImportPanel->setVisible(true);
+            audioImportPanel->toFront(true);
+            if (isShowing())
+                audioImportPanel->grabKeyboardFocus();
+        });
+}
+
 void Workspace::chooseAudioFiles()
 {
-    chooser = std::make_unique<juce::FileChooser>(text("导入音频 · 可多选"), juce::File{},
-                                                  "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
-    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles |
-                             juce::FileBrowserComponent::canSelectMultipleItems,
-                         [safe = juce::Component::SafePointer<Workspace>(this)](const auto& c)
-                         {
-                             if (safe && !c.getResults().isEmpty())
-                             {
-                                 safe->importAudioFiles(c.getResults());
-                                 const auto token = safe->commands.sessionToken();
-                                 juce::MessageManager::callAsync(
-                                     [safe, token]
-                                     {
-                                         if (safe && safe->commands.sessionToken() == token && safe->isShowing())
-                                             if (auto* peer = safe->getPeer();
-                                                 peer && peer->isFocused() &&
-                                                 !safe->isCurrentlyBlockedByAnotherModalComponent())
-                                                 safe->grabKeyboardFocus();
-                                     });
-                             }
-                         });
+    invoke(
+        [&]
+        {
+            if (audioImportPanel && audioImportPanel->isVisible())
+                throw std::runtime_error("请先完成或取消当前导入");
+            const auto context = audioImportContext();
+            chooser = std::make_unique<juce::FileChooser>(text("导入音频 · 可多选"), juce::File{},
+                                                          "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
+            chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles |
+                                     juce::FileBrowserComponent::canSelectMultipleItems,
+                                 [safe = juce::Component::SafePointer<Workspace>(this), context](const auto& c)
+                                 {
+                                     if (safe && !c.getResults().isEmpty())
+                                         safe->showAudioImport(c.getResults(), context);
+                                 });
+        });
 }
 
 void Workspace::importAudio(const juce::File& f)
@@ -609,7 +680,7 @@ void Workspace::importAudio(const juce::File& f)
     if (f.hasFileExtension("ndaw"))
         prepareLegacyImport(f);
     else
-        importAudioFiles({f});
+        showAudioImport({f});
 }
 
 void Workspace::importAudioFiles(const juce::Array<juce::File>& files)
@@ -621,18 +692,7 @@ void Workspace::importAudioFiles(const juce::Array<juce::File>& files)
         {
             if (!pending.is_null() || !pendingConfirmation.empty() || commandFileBusy)
                 throw std::runtime_error("finish the current preview before importing audio");
-            Json operations = Json::array();
-            for (int i = 0; i < files.size(); ++i)
-            {
-                const auto& f = files[i];
-                const auto ref = "$import" + std::to_string(i);
-                operations.push_back(
-                    operation("track.create", {{"name", f.getFileNameWithoutExtension().toStdString()}, {"ref", ref}}));
-                operations.push_back(operation("clip.import", {{"track", ref},
-                                                               {"path", f.getFullPathName().toStdString()},
-                                                               {"position_samples", facts["position_samples"]}}));
-            }
-            const auto plan = commands.makePlan("human", operations);
+            const auto plan = commands.makeAudioImportPlan(files, {}, commands.query()["position_samples"]);
             commands.commit(plan);
             setView({{"workspace", "edit"}});
             message(juce::String(files.size()) + text(" 个音频已导入至光标 · 每文件一轨 · 一次 Undo 撤销"));

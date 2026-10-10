@@ -898,6 +898,7 @@ Workspace::~Workspace()
 {
     stopTimer();
     commandManager.getKeyMappings()->removeChangeListener(this);
+    audioImportPanel.reset();
     keyboardSettings.reset();
     exportPanel.reset();
     analysisPanel.reset();

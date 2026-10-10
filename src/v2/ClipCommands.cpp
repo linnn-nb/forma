@@ -176,6 +176,53 @@ void Commands::registerClipCommands(Json& r)
     r.back()["units"]["wet_only"] =
         "Reverb only: dry=0, wet=1/3; native clip gain/pan before plugins and fades after plugins";
 }
+Json Commands::makeAudioImportPlan(const juce::Array<juce::File>& files, const std::string& target,
+                                   int64_t positionSamples) const
+{
+    checkThread();
+    require(!files.isEmpty() && files.size() <= (target.empty() ? 32 : 64),
+            "一次导入最多新建32轨，或在现有轨连续导入64个文件");
+    constexpr int64_t limit = int64_t(1) << 53;
+    require(positionSamples >= 0 && positionSamples < limit, "导入位置超出工程采样范围");
+    if (!target.empty())
+    {
+        auto* t = track(target);
+        require(t && (trackType(*t) == "audio" || trackType(*t) == "instrument"), "导入目标必须为实际音频轨或乐器轨");
+    }
+    Json operations = Json::array();
+    int64_t next = positionSamples;
+    for (int i = 0; i < files.size(); ++i)
+    {
+        const auto& source = files[i];
+        std::string destination = target;
+        if (target.empty())
+        {
+            destination = "$import" + std::to_string(i);
+            operations.push_back(
+                {{"command", "track.create"},
+                 {"args", {{"name", source.getFileNameWithoutExtension().toStdString()}, {"ref", destination}}}});
+        }
+        operations.push_back(
+            {{"command", "clip.import"},
+             {"args",
+              {{"track", destination}, {"path", source.getFullPathName().toStdString()}, {"position_samples", next}}}});
+        if (!target.empty())
+        {
+            // Bind the metadata used for consecutive placement to the same media bytes.
+            // makePlan and commit recheck this supplied hash before any Edit mutation.
+            operations.back()["args"]["media_hash"] = mediaHash(source);
+            te::AudioFile audio(edit->engine, source);
+            const double frames = audio.getLength() * rate;
+            require(audio.isValid() && std::isfinite(frames) && frames >= .5 && frames < double(limit),
+                    "音频文件无效或时长超出导入范围");
+            const auto length = std::llround(frames);
+            require(length < limit - next, "批量音频终点超出工程采样范围");
+            next += length;
+        }
+    }
+    return makePlan("human", std::move(operations));
+}
+
 Json Commands::validateClipPlan(const Json& ops) const
 {
     std::map<std::string, Model> clips;

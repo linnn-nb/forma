@@ -34,6 +34,10 @@ public:
     Json refreshPluginInventory(const juce::File& directory = juce::File{});
     Json pluginInventory() const;
     Json makePlan(const std::string& actor, Json operations) const;
+    // Import lengths are resolved here on the message thread, never by GUI or the audio callback.
+    // Empty target creates one audio track per file; an existing audio/instrument target is sequential.
+    Json makeAudioImportPlan(const juce::Array<juce::File>& files, const std::string& target,
+                             int64_t positionSamples) const;
     // Local human planner: resolve an entire time collapse before whole-clip group expansion.
     // Preview recompiles the descriptor, so callers cannot bypass group linkage by editing a flag.
     Json makeRangeNudgePlan(const Json& tracks, int64_t first, int64_t last, int64_t delta) const;

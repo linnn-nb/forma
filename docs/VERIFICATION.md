@@ -1,3 +1,13 @@
+## 2026-10-10 导入到所选轨道
+
+结论：原生多文件选择和音频拖放现在先显示导入设置，可选择每文件新建一轨，或从捕获的光标位置连续导入实际音频/乐器轨。空目标轨默认选中，已有片段时默认新轨；明确选择现有轨后保留原片段、增益和路由，重叠会叠加播放。取消不改变工程，整个批次一个L1 human Plan/native Undo事务。文件选择前绑定session token/revision/光标，版本变化拒绝，关闭工程取消旧设置；连续放置用真实媒体时长和哈希，不按假波形计算。仅L1修改Edit。源码ClipCommands、WorkspaceActions/Commands/Layout/Refresh、AudioImportPanel；测试AudioImportDestinationTests。
+
+最终Release构建、固定本地签名/deep严格验签通过。四组最终通过回执共451检查：新导入72、原ClipWorkspace70、Presentation282、WindowFocus27；不是首批一次全绿。首批新测试查询外部创建Aux的按钮未等实际界面刷新而失败，增加真实视图操作回执后定向复测72通过；早期planner引用GUI辅助函数的编译失败已修。旧失败日志保留，不计通过。回执build-v2-tracktion/import-destination-final-summary.json、import-destination-final.{json,log}与import-destination-ndaw_*。没有新增SDK、实时链路、IPC、依赖或MCP工具。
+
+专项实际44.1/48k源连续放置于96000/108000工程采样，Tracktion渲染36000帧并从真实PCM核对两段RMS与−6dB推子；原媒体哈希不变。单笔Undo/Redo保留稳定Clip ID，原生保存重开保留轨道/片段/增益/路由。已有片段、新轨模式、错误成员原子拒绝、取消、陈旧版本、会话切换、捕获光标与不支持目标均有回执；专项关闭设备，不冒充实体试听。
+
+实际桌面：新建audio 1/r1→⌘I→原生文件选择器Cmd点击选中两个WAV→设置显示两文件、现有audio 1、位置0→Return导入/r2。⌘Z/r3只移除两片段保留轨道，⇧⌘Z/r4恢复。原生另存新的import-target-demo.tracktionedit后退出，最终构建重启、⌘O打开该副本，一轨/两片段恢复。预览停在00:00，Undo重开后禁用仍是明确缺口。另一个已有预览占用MCP endpoint，当前实例启动提示真实冲突；未关闭其他用户实例、不计本轮MCP通过。没有新DMG或evidence/U截图；完整U/P0仍待用户试用。
+
 ## 2026-10-10 外部插件直接入口与状态提示
 
 结论：检查器新增独立“AU / VST3…”按钮，无需先在内置效果器下拉框寻找；原Mix空槽入口保留。插件库固定原目标轨，持续读取L1事实，明确显示播放/设备准备/参数手势/插件状态失败等禁用原因；停止后原选择直接恢复可插入。已扫描条目在目标不可插入时双击不再误重扫。实际插入仍经既有L1 Plan/commit，失败显示真实错误。已有插件槽改变选择但ID列表不变时，检查器名称现与实际实例同步。
