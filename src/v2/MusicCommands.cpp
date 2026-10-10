@@ -318,6 +318,10 @@ void Commands::registerMusicCommands(Json& registry)
     registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
+    add("midi.clip.move", {{"clip", str}, {"position_samples", position}, {"state_hash", str}});
+    registry.back()["schema"]["required"] = {"clip", "position_samples"};
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIDI-MOVE-01";
     add("midi.clip.timebase.set", {{"clip", str}, {"basis", {{"type", "string"}, {"enum", {"samples", "beats"}}}}});
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-SAMPLE-MIDI-01";
@@ -817,6 +821,27 @@ Json Commands::validateMusicPlan(const Json& operations) const
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
         }
+        else if (cmd == "midi.clip.move")
+        {
+            require(std::all_of(operations.begin(), operations.end(),
+                                [](const Json& item)
+                                {
+                                    const auto id = item.at("command").get<std::string>();
+                                    return id == "midi.clip.move" || id == "clip.move" ||
+                                           id == "automation.clips.move" || id == "session.range.set" ||
+                                           id == "session.range.clear" || id == "session.insertion.set";
+                                }),
+                    "MIDI object move requires an independent movement Plan");
+            require(
+                std::count_if(operations.begin(), operations.end(), [&](const Json& item)
+                              { return item.at("command") == cmd && item.at("args").at("clip") == a.at("clip"); }) == 1,
+                "duplicate MIDI move target");
+            auto change = midiClipMoveChange(a);
+            require(a.contains("state_hash") && a.at("state_hash") == change.at("state_hash"),
+                    "MIDI move requires a sealed native source");
+            change["operation_index"] = index;
+            diff.push_back(std::move(change));
+        }
         else if (cmd == "midi.clip.timebase.set")
         {
             require(operations.size() == 1 && !edit->getTransport().isPlaying() && recordingCapture.is_null() &&
@@ -1052,6 +1077,11 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         snap.remapEdit(*edit);
         remapSampleMidiTempo(sampleMidi);
         objects.push_back({{"id", id(state)}, {"kind", cmd == "tempo.set" ? "tempo" : "meter"}});
+        return;
+    }
+    if (cmd == "midi.clip.move")
+    {
+        executeMidiClipMove(a, objects);
         return;
     }
     if (cmd == "midi.clip.create")

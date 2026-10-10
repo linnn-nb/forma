@@ -25,6 +25,8 @@ std::vector<Point> musicalSuffix(const std::vector<Point>&, const tracktion::tem
                                  double destinationStart, double tolerance);
 std::vector<Point> musicalCollapse(const std::vector<Point>&, const tracktion::tempo::Sequence&, double first,
                                    double last, double tolerance);
+std::vector<Point> musicalMoveSlice(const std::vector<Point>&, const tracktion::tempo::Sequence&, double sourceStart,
+                                    double destinationStart, double high, double tolerance);
 std::vector<Point> musicalSlice(const std::vector<Point>&, const tracktion::tempo::Sequence& source,
                                 const tracktion::tempo::Sequence& destination, double originBeat, double start,
                                 double high, double tolerance);

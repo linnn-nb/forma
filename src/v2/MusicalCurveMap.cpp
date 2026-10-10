@@ -134,6 +134,15 @@ static std::vector<Point> musicalSliceImpl(const std::vector<Point>& curve, cons
         result.insert(result.begin(), {start, value, 0, {}});
     return result;
 }
+std::vector<Point> musicalMoveSlice(const std::vector<Point>& curve, const tracktion::tempo::Sequence& seq,
+                                    double sourceStart, double destinationStart, double high, double tolerance)
+{
+    const double origin = seq.toBeats(time(sourceStart)).inBeats();
+    const double anchor = seq.toBeats(time(destinationStart)).inBeats();
+    const double sourceHigh = seq.toTime(beat(origin + seq.toBeats(time(high)).inBeats() - anchor)).inSeconds();
+    return musicalSliceImpl(curve, seq, seq, origin, destinationStart, high, tolerance,
+                            std::pair{sourceStart, sourceHigh});
+}
 std::vector<Point> musicalSlice(const std::vector<Point>& curve, const tracktion::tempo::Sequence& source,
                                 const tracktion::tempo::Sequence& destination, double originBeat, double start,
                                 double high, double tolerance)

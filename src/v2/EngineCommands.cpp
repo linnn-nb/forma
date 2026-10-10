@@ -500,6 +500,13 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
                 a[key] = report.at(key);
             }
         }
+        else if (cmd == "midi.clip.move")
+        {
+            const auto fingerprint = midiClipMoveChange(a).at("state_hash");
+            if (a.contains("state_hash"))
+                require(a.at("state_hash") == fingerprint, "supplied MIDI move source is stale");
+            a["state_hash"] = fingerprint;
+        }
         else if (cmd == "plugin.external.insert")
         {
             auto p = externalDescriptor(a.at("descriptor"));
@@ -687,7 +694,8 @@ Json Commands::preview(const Json& plan) const
         require(entry->value("execution", std::string("plan")) == "plan",
                 "control commands require the control API, not a Plan");
         if (cmd.starts_with("midi.clips.") || cmd.starts_with("timeline.clips.") || cmd == "midi.notes.time" ||
-            cmd == "midi.notes.erase" || cmd == "midi.notes.paste" || cmd == "midi.clip.timebase.set")
+            cmd == "midi.notes.erase" || cmd == "midi.notes.paste" || cmd == "midi.clip.timebase.set" ||
+            cmd == "midi.clip.move")
             require(actor == "human", "MIDI timing edits are local GUI only during U phase");
         if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set" ||
             cmd == "location.recall" || cmd.starts_with("location.roll."))

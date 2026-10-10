@@ -12,6 +12,8 @@ void require(bool ok, const char* why)
 struct Interval
 {
     int64_t first, last, delta;
+    double sourceStart, sourceEnd, destinationStart, destinationEnd, beatDelta;
+    bool musical;
 };
 // Source is frozen before any vacancy or destination write. Keep native IDs for
 // transported original points; generated boundary guards get new IDs at commit.
@@ -33,8 +35,8 @@ Json Commands::followAudioClipMoves(const Json& operations) const
     checkThread();
     for (const auto& op : operations)
         require(op.at("command") != "automation.clips.move", "automation move is derived from actual clip moves only");
-    if (std::none_of(operations.begin(), operations.end(),
-                     [](const Json& op) { return op.at("command") == "clip.move"; }))
+    if (std::none_of(operations.begin(), operations.end(), [](const Json& op)
+                     { return op.at("command") == "clip.move" || op.at("command") == "midi.clip.move"; }))
         return operations;
     Json result = Json::array();
     std::map<std::string, Json> byTrack;
@@ -60,7 +62,8 @@ Json Commands::followAudioClipMoves(const Json& operations) const
         if (command == "clip.split" || command == "clip.trim" || command == "clip.delete" || command == "clip.import" ||
             command == "clip.copy")
             changesExtents = true;
-        if (command != "clip.move" || !editingOptions()["automation_follows_edit"].get<bool>())
+        if ((command != "clip.move" && command != "midi.clip.move") ||
+            !editingOptions()["automation_follows_edit"].get<bool>())
             continue;
         const std::string id = args.at("clip");
         if (id.starts_with("$"))
@@ -73,7 +76,7 @@ Json Commands::followAudioClipMoves(const Json& operations) const
                                 "split/import first, then move its actual clip ID with automation follow");
             continue; // New/empty track: no existing curve to transport; native Plan validation resolves it.
         }
-        auto* clip = audioClip(id);
+        auto* clip = timelineClip(id);
         require(clip && args.at("position_samples").is_number_integer(), "invalid actual clip move target");
         const auto start = std::llround(clip->getPosition().getStart().inSeconds() * timelineRate);
         const int64_t destination = args.at("position_samples");
@@ -112,6 +115,9 @@ Json Commands::automationMoveChanges(const Json& args) const
     auto* track = domainTrack(target);
     require(track && args.at("moves").is_array() && !args.at("moves").empty() && args.at("moves").size() <= 64,
             "invalid clip automation move");
+    edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(0));
+    const auto& seq = edit->tempoSequence.getInternalSequence();
+    const bool musical = timelineShuffleTimebase(target, 0) == "beats";
     std::vector<Interval> intervals;
     std::set<std::string> clips;
     const auto maximum = std::llround(te::Edit::maximumLength * timelineRate);
@@ -121,7 +127,7 @@ Json Commands::automationMoveChanges(const Json& args) const
                     move.at("position_samples").is_number_integer(),
                 "invalid native move descriptor");
         const std::string id = move.at("clip");
-        auto* clip = audioClip(id);
+        auto* clip = timelineClip(id);
         require(clip && clip->getTrack() == track && clips.insert(id).second, "actual unique clips required on track");
         const auto position = clip->getPosition();
         const int64_t first = std::llround(position.getStart().inSeconds() * timelineRate),
@@ -129,25 +135,50 @@ Json Commands::automationMoveChanges(const Json& args) const
                       destination = move.at("position_samples");
         require(first >= 0 && last > first && destination >= 0 && destination <= maximum - (last - first),
                 "clip automation move exceeds session bounds");
-        intervals.push_back({first, last, destination - first});
+        const double low = dynamic_cast<te::MidiClip*>(clip) ? position.getStart().inSeconds() : first / timelineRate;
+        const double high = dynamic_cast<te::MidiClip*>(clip) ? position.getEnd().inSeconds() : last / timelineRate;
+        const double start = destination / timelineRate;
+        const double beatDelta = seq.toBeats(tracktion::TimePosition::fromSeconds(start)).inBeats() -
+                                 seq.toBeats(tracktion::TimePosition::fromSeconds(low)).inBeats();
+        const double end =
+            musical ? seq.toTime(tracktion::BeatPosition::fromBeats(
+                                     seq.toBeats(tracktion::TimePosition::fromSeconds(high)).inBeats() + beatDelta))
+                          .inSeconds()
+                    : high + start - low;
+        require(end > start && end <= te::Edit::maximumLength, "automation move destination exceeds native bounds");
+        intervals.push_back({first, last, destination - first, low, high, start, end, beatDelta, musical});
     }
-    std::sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::sort(intervals.begin(), intervals.end(),
+              [](const auto& a, const auto& b) { return a.sourceStart < b.sourceStart; });
+    auto sameMap = [](const Interval& a, const Interval& b)
+    {
+        return a.musical == b.musical &&
+               (a.musical ? a.beatDelta == b.beatDelta
+                          : (a.destinationStart - a.sourceStart) == (b.destinationStart - b.sourceStart));
+    };
     std::vector<Interval> merged;
     for (const auto& interval : intervals)
     {
-        if (!merged.empty() && interval.first < merged.back().last)
-            require(interval.delta == merged.back().delta,
-                    "overlapping source clips cannot move shared automation by different offsets");
-        if (!merged.empty() && interval.first <= merged.back().last && interval.delta == merged.back().delta)
-            merged.back().last = std::max(merged.back().last, interval.last);
+        if (!merged.empty() && interval.sourceStart < merged.back().sourceEnd)
+            require(sameMap(interval, merged.back()),
+                    "overlapping clips cannot move shared automation by different mappings");
+        if (!merged.empty() && interval.sourceStart <= merged.back().sourceEnd && sameMap(interval, merged.back()))
+        {
+            if (interval.sourceEnd > merged.back().sourceEnd)
+            {
+                merged.back().last = interval.last;
+                merged.back().sourceEnd = interval.sourceEnd;
+                merged.back().destinationEnd = interval.destinationEnd;
+            }
+        }
         else
             merged.push_back(interval);
     }
     auto destinations = merged;
     std::sort(destinations.begin(), destinations.end(),
-              [](const auto& a, const auto& b) { return a.first + a.delta < b.first + b.delta; });
+              [](const auto& a, const auto& b) { return a.destinationStart < b.destinationStart; });
     for (size_t i = 1; i < destinations.size(); ++i)
-        require(destinations[i].first + destinations[i].delta >= destinations[i - 1].last + destinations[i - 1].delta,
+        require(destinations[i].destinationStart >= destinations[i - 1].destinationEnd,
                 "different moved source curves overlap at destination; one shared lane cannot represent both");
     Json lanes = Json::array(), fingerprint = Json::array();
     size_t inputs = 0, derived = 0, affected = 0;
@@ -166,15 +197,21 @@ Json Commands::automationMoveChanges(const Json& args) const
             const double tolerance = span * relativeError;
             auto after = before;
             for (auto it = merged.rbegin(); it != merged.rend(); ++it)
-                after = clearRange(after, it->first / timelineRate, it->last / timelineRate, tolerance, true);
+                after = clearRange(after, it->sourceStart, it->sourceEnd, tolerance, true);
             for (const auto& interval : destinations)
             {
-                const double low = interval.first / timelineRate, end = interval.last / timelineRate,
-                             shift = interval.delta / timelineRate;
-                auto body = startSlice(before, low, end - 1. / timelineRate, tolerance, low + shift == 0);
-                for (auto& point : body)
-                    point.time += shift;
-                after = replace(std::move(after), std::move(body), low + shift, end + shift, tolerance);
+                const double low = interval.sourceStart, end = interval.sourceEnd;
+                const double shift = interval.destinationStart - low;
+                auto body = interval.musical
+                                ? musicalMoveSlice(before, seq, low, interval.destinationStart,
+                                                   adjacentTimelineSample(interval.destinationEnd, true), tolerance)
+                                : startSlice(before, low, adjacentTimelineSample(end, true), tolerance,
+                                             interval.destinationStart == 0);
+                if (!interval.musical)
+                    for (auto& point : body)
+                        point.time += shift;
+                after = replace(std::move(after), std::move(body), interval.destinationStart, interval.destinationEnd,
+                                tolerance);
                 require(after.size() <= maximumPoints, "clip move exceeds intermediate point budget");
             }
             const auto beforeJson = serialise(before), afterJson = serialise(after);
@@ -213,9 +250,16 @@ Json Commands::automationMoveChanges(const Json& args) const
                  {"policy", "frozen source; anchored vacancies; overwrite destination; retain moved point IDs"}});
             fingerprint.push_back({lane, hash});
         }
+    fingerprint.push_back({{"curve_mapping", musical ? "beats" : "samples"},
+                           {"track_basis", automationEditBasis(target)},
+                           {"tempo", edit->tempoSequence.getState().createXml()->toString().toStdString()}});
+    for (const auto& descriptor : args.at("moves"))
+        if (midiClip(descriptor.at("clip")))
+            fingerprint.push_back(midiClipMoveChange(descriptor).at("state_hash"));
     const auto encoded = fingerprint.dump();
     return {{"track", target},
             {"action", "move"},
+            {"curve_mapping", musical ? "beats" : "samples"},
             {"moves", args.at("moves")},
             {"lanes", lanes},
             {"derived_points", derived},

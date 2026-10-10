@@ -205,6 +205,23 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 }
             automatic = false;
         }
+        else if (cmd == "midi.clip.move")
+        {
+            const auto change = midiClipMoveChange(a);
+            auto* c = midiClip(a.at("clip"));
+            object(c->itemID.toString().toStdString(), c->getTrack());
+            automatic = false;
+            for (const char* side : {"before", "after"})
+            {
+                const auto& value = change.at(side);
+                span(value.at("start_samples"), value.at("length_samples"));
+                impacts.push_back({{"command", cmd},
+                                   {"clip", a.at("clip")},
+                                   {"side", side},
+                                   {"start_samples", value.at("start_samples")},
+                                   {"length_samples", value.at("length_samples")}});
+            }
+        }
         else if (cmd == "midi.clip.timebase.set")
         {
             auto* c = midiClip(a.at("clip"));
