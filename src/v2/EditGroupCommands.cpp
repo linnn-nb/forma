@@ -103,8 +103,10 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
             // part of a clip. Never turn a default Nudge into an implicit cut of the user's source arrangement.
             if (action == "move" && (begin < first || end > last))
                 continue;
-            if (c["kind"] != "audio" || !c.value("editable_audio", false) || c.value("locked", false) ||
-                c.value("offline_clip_effects", false))
+            if (c.value("locked", false) ||
+                !((c["kind"] == "audio" && c.value("editable_audio", false) &&
+                   !c.value("offline_clip_effects", false)) ||
+                  (action == "move" && c["kind"] == "midi" && c.value("sample_mapping_available", false))))
                 throw std::runtime_error("entire range edit refused: overlapping clip is locked or unsupported");
             if (action == "move")
             {
@@ -119,7 +121,8 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
                                 throw std::runtime_error(
                                     "group Nudge would move a partial peer; Separate (Cmd+E) first");
                 if (delta != 0)
-                    append("clip.move", {{"clip", c["id"]}, {"position_samples", begin + delta}});
+                    append(c["kind"] == "midi" ? "midi.clip.move" : "clip.move",
+                           {{"clip", c["id"]}, {"position_samples", begin + delta}});
                 continue;
             }
             const auto left = std::max(begin, first), right = std::min(end, last);
@@ -136,6 +139,51 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
                 append("clip.delete", {{"clip", middle}});
         }
     }
+    return operations;
+}
+Json Commands::makeRangeNudgePlan(const Json& tracks, int64_t first, int64_t last, int64_t delta) const
+{
+    const Json request{
+        {"schema", 1}, {"tracks", tracks}, {"start_samples", first}, {"end_samples", last}, {"delta_samples", delta}};
+    return makePlanImpl("human", rangeNudgeOperations(request), nullptr, nullptr, nullptr, nullptr, nullptr, request);
+}
+Json Commands::rangeNudgeOperations(const Json& request) const
+{
+    checkThread();
+    if (!request.is_object() || request.size() != 5 || !request.at("schema").is_number_integer() ||
+        request.at("schema").get<int64_t>() != 1 || !request.at("start_samples").is_number_integer() ||
+        !request.at("end_samples").is_number_integer() || !request.at("delta_samples").is_number_integer() ||
+        !request.at("tracks").is_array())
+        throw std::runtime_error("invalid timeline range Nudge descriptor");
+    const int64_t first = request.at("start_samples"), last = request.at("end_samples"),
+                  delta = request.at("delta_samples");
+    if (delta == 0 || edit->getTransport().isPlaying())
+        throw std::runtime_error("range Nudge requires a nonzero offset and stopped transport");
+    // All actual group targets must be inside the original range. No implicit Separate.
+    // Group expansion seals native MIDI/PCM identities and deduplicates the common delta.
+    auto moves = expandEditGroupEdits(audioRangeOperations("move", request.at("tracks"), first, last, delta));
+    Json operations = Json::array();
+    if (editingOptions().at("automation_follows_edit").get<bool>())
+        for (const auto& owner : editGroupTracks(request.at("tracks")))
+        {
+            Json args{
+                {"track", owner}, {"start_samples", first}, {"end_samples", last}, {"position_samples", first + delta}};
+            const auto changes = automationMoveChanges(args);
+            if (!changes.at("lanes").empty())
+            {
+                args["state_hash"] = changes.at("state_hash");
+                operations.push_back({{"command", "automation.range.move"}, {"args", std::move(args)}});
+            }
+        }
+    for (const auto& move : moves)
+        operations.push_back(move);
+    // The time selection keeps its complete (possibly silent) sample envelope. Beat clips
+    // keep musical duration; their resulting native extents are independently previewed.
+    operations.push_back({{"command", "session.range.set"},
+                          {"args", {{"start_samples", first + delta}, {"end_samples", last + delta}}}});
+    operations.push_back({{"command", "session.insertion.set"}, {"args", {{"position_samples", first + delta}}}});
+    if (operations.size() > 64)
+        throw std::runtime_error("range Nudge and full-envelope automation exceed 64-operation budget");
     return operations;
 }
 Json Commands::makeAudioClearRangePlan(const Json& tracks, int64_t first, int64_t last, bool cut) const

@@ -473,7 +473,8 @@ Json Commands::makePlan(const std::string& actor, Json ops) const
     return makePlanImpl(actor, std::move(ops), nullptr);
 }
 Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuffleRange, const Json& clipboardPaste,
-                            const Json& audioClear, const Json& automationRange, const Json& audioClipClear) const
+                            const Json& audioClear, const Json& automationRange, const Json& audioClipClear,
+                            const Json& rangeNudge) const
 {
     checkThread();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -565,7 +566,7 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
     }
     const auto requested = ops;
     if (shuffleRange.is_null() && clipboardPaste.is_null() && audioClear.is_null() && automationRange.is_null() &&
-        audioClipClear.is_null())
+        audioClipClear.is_null() && rangeNudge.is_null())
     {
         ops = expandMixGroupFlags(ops);
         if (actor == "human")
@@ -577,7 +578,9 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
               {"base_revision", revision},
               {"idempotency_key", juce::Uuid().toString().toStdString()},
               {"operations", ops}};
-    if (!shuffleRange.is_null())
+    if (!rangeNudge.is_null())
+        plan["timeline_range_nudge"] = rangeNudge;
+    else if (!shuffleRange.is_null())
         plan["shuffle_range"] = shuffleRange;
     else if (!clipboardPaste.is_null())
         plan["clipboard_paste"] = clipboardPaste;
@@ -622,7 +625,16 @@ Json Commands::preview(const Json& plan) const
     require(ops.is_array() && !ops.empty() && ops.size() <= 64, "operation limit (1..64)");
     const auto requested = plan.value("requested_operations", ops);
     require(requested.is_array() && !requested.empty() && requested.size() <= 64, "requested operation limit (1..64)");
-    if (plan.contains("audio_clip_clear"))
+    if (plan.contains("timeline_range_nudge"))
+    {
+        require(actor == "human" && !plan.contains("requested_operations") && !plan.contains("shuffle_range") &&
+                    !plan.contains("clipboard_paste") && !plan.contains("audio_clear_range") &&
+                    !plan.contains("automation_range") && !plan.contains("audio_clip_clear"),
+                "range Nudge is a compiled standalone local human Plan");
+        require(ops == rangeNudgeOperations(plan.at("timeline_range_nudge")),
+                "range Nudge targets or full-envelope automation changed; rebuild the entire Plan");
+    }
+    else if (plan.contains("audio_clip_clear"))
     {
         require(actor == "human" && !plan.contains("requested_operations") && !plan.contains("shuffle_range") &&
                     !plan.contains("clipboard_paste") && !plan.contains("audio_clear_range") &&
@@ -674,6 +686,9 @@ Json Commands::preview(const Json& plan) const
     {
         const auto cmd = op.at("command").get<std::string>();
         const auto& a = op.at("args");
+        if (cmd == "automation.range.move")
+            require(actor == "human" && plan.contains("timeline_range_nudge"),
+                    "full-envelope automation move requires compiled local human range Nudge");
         if (cmd == "automation.clips.move")
             require(actor == "human" && plan.contains("requested_operations"),
                     "clip automation move requires compiled local human clip moves");
@@ -928,6 +943,8 @@ Json Commands::preview(const Json& plan) const
                 {"marker_changes", markerDiff},
                 {"group_changes", groupDiff},
                 {"legacy_imports", legacyDiff}};
+    if (plan.contains("timeline_range_nudge"))
+        result["timeline_range_nudge"] = plan["timeline_range_nudge"];
     if (plan.contains("clipboard_paste"))
         result["clipboard_paste"] = plan["clipboard_paste"];
     if (plan.contains("audio_clear_range"))

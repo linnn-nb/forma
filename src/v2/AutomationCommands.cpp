@@ -178,6 +178,14 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-AUTOMATION-CLIPS-CLEAR-01";
     registry.back()["units"] = {{"clips", "stable native clip IDs; extents resolved as 48000 Hz session samples"}};
+    add("automation.range.move", {{"track", string},
+                                  {"start_samples", position},
+                                  {"end_samples", position},
+                                  {"position_samples", position},
+                                  {"state_hash", string}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-RANGE-NUDGE-01";
+    registry.back()["units"] = {{"position_samples", "48000 Hz; complete selected range including silence"}};
     add("automation.clips.move",
         {{"track", string},
          {"moves",
@@ -375,7 +383,7 @@ Json Commands::validateAutomationPlan(const Json& operations) const
                     "unsupported automation mode");
             continue;
         }
-        if (cmd == "automation.clips.move")
+        if (cmd == "automation.clips.move" || cmd == "automation.range.move")
         {
             auto change = automationMoveChanges(args);
             require(!change["lanes"].empty() && args.at("state_hash") == change["state_hash"],
@@ -447,7 +455,7 @@ Json Commands::validateAutomationPlan(const Json& operations) const
 }
 void Commands::executeAutomationOperation(const std::string& cmd, const Json& args, Json& objects)
 {
-    if (cmd == "automation.clips.move")
+    if (cmd == "automation.clips.move" || cmd == "automation.range.move")
     {
         const auto changes = automationMoveChanges(args);
         require(args.at("state_hash") == changes["state_hash"], "clip move curve changed before commit");

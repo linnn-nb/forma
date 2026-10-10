@@ -255,19 +255,39 @@ void Workspace::executeEditCommand(int id)
                         : direction * int64_t(editing.nudge == "sample" ? 1
                                               : editing.nudge == "10ms" ? 480
                                                                         : 4800);
-                auto ops =
-                    commands.audioRangeOperations(separate ? "separate" : "move", selection.tracks, first, last, delta);
-                if (separate && ops.empty())
-                    throw std::runtime_error("no audio boundary inside this range to separate");
                 if (!separate)
                 {
-                    ops.push_back(operation("session.range.set",
-                                            {{"start_samples", first + delta}, {"end_samples", last + delta}}));
-                    ops.push_back(operation("session.insertion.set", {{"position_samples", first + delta}}));
+                    require(pending.is_null() && pendingClipboardPlan.empty(),
+                            "accept or reject the existing preview before range Nudge");
+                    auto plan = commands.makeRangeNudgePlan(selection.tracks, first, last, delta);
+                    const auto preview = commands.preview(plan);
+                    size_t curveImpact = 0;
+                    for (const auto& change : preview["automation_changes"])
+                        curveImpact += change["affected_points"].get<size_t>();
+                    if (plan["operations"].size() > 10 || curveImpact > 128 || last - first > 60 * 48000)
+                    {
+                        pending = plan;
+                        juce::String summary =
+                            text("范围 Nudge · 仅移动全选音频 / MIDI，部分片段保持。\n") +
+                            text("选区含空白按共同采样偏移；音乐 MIDI 保留拍时长，采样 MIDI 保留秒时长。\n");
+                        for (const auto& change : preview["automation_changes"])
+                            summary += text("轨道 ") + text(change["track"].get<std::string>()) +
+                                       text(" · 完整选区（含静音）的自动化按 ") +
+                                       text(change["curve_mapping"] == "beats" ? "小节拍" : "采样") + text(" 跟随\n");
+                        previewText.setText(summary + text("\n") + text(preview.dump(2)));
+                        message(text("范围 Nudge · 请预览后接受或取消"));
+                        return;
+                    }
+                    const auto receipt = commands.commit(plan);
+                    require(receipt.value("state", std::string{}) == "committed", "range Nudge did not commit");
+                    message(
+                        text("Nudge 已提交 · 全选音频 / MIDI、完整选区与静音区曲线跟随 · 部分片段保持 · 一次 Undo"));
+                    return;
                 }
+                auto ops = commands.audioRangeOperations("separate", selection.tracks, first, last);
+                require(!ops.empty(), "no audio boundary inside this range to separate");
                 commands.commit(commands.makePlan("human", ops));
-                message(text(separate ? "选区两端已拆分 · 同组范围外音频保留 · 一次 Undo"
-                                      : "Nudge 已提交 · 仅移动全选音频 · 部分片段先用 ⌘E 拆分 · 一次 Undo"));
+                message(text("选区两端已拆分 · 同组范围外音频保留 · 一次 Undo"));
                 return;
             }
             auto clips = selectedEditClips();

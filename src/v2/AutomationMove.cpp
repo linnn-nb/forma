@@ -113,15 +113,40 @@ Json Commands::automationMoveChanges(const Json& args) const
     checkThread();
     const std::string target = args.at("track");
     auto* track = domainTrack(target);
-    require(track && args.at("moves").is_array() && !args.at("moves").empty() && args.at("moves").size() <= 64,
+    const bool range = args.contains("start_samples");
+    require(track &&
+                (range || (args.at("moves").is_array() && !args.at("moves").empty() && args.at("moves").size() <= 64)),
             "invalid clip automation move");
     edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(0));
     const auto& seq = edit->tempoSequence.getInternalSequence();
-    const bool musical = timelineShuffleTimebase(target, 0) == "beats";
+    const auto basis = timelineShuffleTimebase(target, 0);
+    require(!range || basis != "mixed", "mixed timebase range automation needs an explicit track basis");
+    const bool musical = basis == "beats";
     std::vector<Interval> intervals;
     std::set<std::string> clips;
     const auto maximum = std::llround(te::Edit::maximumLength * timelineRate);
-    for (const auto& move : args.at("moves"))
+    if (range)
+    {
+        require(args.at("start_samples").is_number_integer() && args.at("end_samples").is_number_integer() &&
+                    args.at("position_samples").is_number_integer(),
+                "integer range move positions required");
+        const int64_t first = args.at("start_samples"), last = args.at("end_samples"),
+                      destination = args.at("position_samples");
+        require(first >= 0 && last > first && last <= maximum && destination >= 0 &&
+                    destination <= maximum - (last - first),
+                "range automation move outside session bounds");
+        const double low = first / timelineRate, high = last / timelineRate, start = destination / timelineRate;
+        const double beatDelta = seq.toBeats(tracktion::TimePosition::fromSeconds(start)).inBeats() -
+                                 seq.toBeats(tracktion::TimePosition::fromSeconds(low)).inBeats();
+        const double end =
+            musical ? seq.toTime(tracktion::BeatPosition::fromBeats(
+                                     seq.toBeats(tracktion::TimePosition::fromSeconds(high)).inBeats() + beatDelta))
+                          .inSeconds()
+                    : high + start - low;
+        require(end > start && end <= te::Edit::maximumLength, "musical range automation exceeds native bounds");
+        intervals.push_back({first, last, destination - first, low, high, start, end, beatDelta, musical});
+    }
+    for (const auto& move : range ? Json::array() : args.at("moves"))
     {
         require(move.is_object() && move.size() == 2 && move.at("clip").is_string() &&
                     move.at("position_samples").is_number_integer(),
@@ -253,14 +278,22 @@ Json Commands::automationMoveChanges(const Json& args) const
     fingerprint.push_back({{"curve_mapping", musical ? "beats" : "samples"},
                            {"track_basis", automationEditBasis(target)},
                            {"tempo", edit->tempoSequence.getState().createXml()->toString().toStdString()}});
-    for (const auto& descriptor : args.at("moves"))
+    fingerprint.push_back(range ? args : Json{{"moves", args.at("moves")}});
+    // A supplied state_hash is an output seal, never part of its own fingerprint.
+    if (range)
+        fingerprint.back().erase("state_hash");
+    for (const auto& descriptor : range ? Json::array() : args.at("moves"))
         if (midiClip(descriptor.at("clip")))
             fingerprint.push_back(midiClipMoveChange(descriptor).at("state_hash"));
     const auto encoded = fingerprint.dump();
     return {{"track", target},
             {"action", "move"},
             {"curve_mapping", musical ? "beats" : "samples"},
-            {"moves", args.at("moves")},
+            {"moves", range ? Json::array() : args.at("moves")},
+            {"range", range ? Json{{"start_samples", args.at("start_samples")},
+                                   {"end_samples", args.at("end_samples")},
+                                   {"position_samples", args.at("position_samples")}}
+                            : Json(nullptr)},
             {"lanes", lanes},
             {"derived_points", derived},
             {"affected_points", affected + derived},
