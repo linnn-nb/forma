@@ -9,7 +9,7 @@ void require(bool ok, const char* why)
         throw std::runtime_error(why);
 }
 } // namespace
-Json Commands::midiClipMoveChange(const Json& args) const
+Json Commands::midiClipMoveChange(const Json& args, bool includeEvents) const
 {
     checkThread();
     auto* c = midiClip(args.at("clip"));
@@ -25,6 +25,7 @@ Json Commands::midiClipMoveChange(const Json& args) const
     const auto& seq = edit->tempoSequence.getInternalSequence();
     const auto before = timelineClipFacts(*c);
     auto after = before;
+    after.erase("state_hash");
     const bool beats = c->getSyncType() == te::Clip::syncBarsBeats;
     const double start = target / timelineRate;
     const double firstBeat = seq.toBeats(tracktion::TimePosition::fromSeconds(start)).inBeats();
@@ -53,9 +54,11 @@ Json Commands::midiClipMoveChange(const Json& args) const
     after["content_start_beat"] = content;
     after["source_offset_seconds"] = offset;
     after["offset_beats"] = offset * seq.getBeatsPerSecondAt(tracktion::TimePosition::fromSeconds(start)).v;
-    if (!beats)
+    if (!beats && includeEvents)
         after["sample_midi_projection"] =
             sample_midi::project(c->getSequence().state, seq, seq, c->getContentStartBeat().inBeats(), content, shift);
+    if (!includeEvents)
+        return {{"after", after}};
     juce::MemoryOutputStream bytes;
     c->state.writeToStream(bytes);
     edit->tempoSequence.getState().writeToStream(bytes);
@@ -69,6 +72,13 @@ Json Commands::midiClipMoveChange(const Json& args) const
             {"state_hash", juce::SHA256(bytes.getData(), bytes.getDataSize()).toHexString().toStdString()},
             {"policy", beats ? "native beat events and musical duration retained"
                              : "absolute event times shifted; original sequence provenance retained"}};
+}
+Json Commands::midiClipMoveExtent(const std::string& clip, int64_t target, const std::string& session,
+                                  uint64_t version) const
+{
+    checkThread();
+    require(session == sessionToken() && version == revision, "MIDI drag preview is stale");
+    return midiClipMoveChange({{"clip", clip}, {"position_samples", target}}, false).at("after");
 }
 void Commands::executeMidiClipMove(const Json& args, Json& objects)
 {

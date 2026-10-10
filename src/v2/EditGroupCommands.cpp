@@ -302,6 +302,46 @@ Json Commands::expandEditGroupEdits(const Json& ops) const
     for (const auto& op : ops)
     {
         const auto command = op.at("command").get<std::string>();
+        if (command == "clip.move" || command == "midi.clip.move")
+        {
+            const auto id = op.at("args").at("clip").get<std::string>();
+            if (id.starts_with("$"))
+            {
+                result.push_back(op);
+                continue;
+            }
+            if (!clips.contains(id))
+                throw std::runtime_error("move requires an existing clip");
+            const int64_t delta =
+                op.at("args").at("position_samples").get<int64_t>() - clips.at(id).at("start_samples").get<int64_t>();
+            for (const auto& target : editGroupClipSelection(id))
+            {
+                const auto peerID = target.at("id").get<std::string>();
+                const auto position = clips.at(peerID).at("start_samples").get<int64_t>() + delta;
+                Json args = {{"clip", peerID}, {"position_samples", position}};
+                const bool midi = midiClip(peerID) != nullptr;
+                const auto peerCommand = midi ? "midi.clip.move" : "clip.move";
+                if (midi)
+                    args["state_hash"] = midiClipMoveChange(args).at("state_hash");
+                else if (auto* peer = audioClip(peerID))
+                    args["media_hash"] = mediaHash(peer->getOriginalFile());
+                else
+                    throw std::runtime_error("group move contains an unsupported clip");
+                Json resolved = {{"command", peerCommand}, {"args", args}};
+                const auto key = std::string(peerCommand) + ":" + peerID;
+                if (seen.contains(key))
+                {
+                    if (seen.at(key) != resolved)
+                        throw std::runtime_error("conflicting Edit group moves in one Plan");
+                    continue;
+                }
+                seen[key] = resolved;
+                result.push_back(resolved);
+                if (result.size() > 64)
+                    throw std::runtime_error("expanded Edit group Plan exceeds 64 operation budget");
+            }
+            continue;
+        }
         if (command != "clip.move" && command != "clip.trim" && command != "clip.fade" && command != "clip.gain")
         {
             result.push_back(op);

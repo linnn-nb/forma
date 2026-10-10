@@ -523,8 +523,10 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         bool splitTarget = false;
                         for (const auto& c : clips)
                         {
-                            active = active && c["kind"] == "audio" && c.value("editable_audio", false) &&
-                                     !c.value("locked", false);
+                            active = active && !c.value("locked", false) &&
+                                     ((c["kind"] == "audio" && c.value("editable_audio", false)) ||
+                                      (id != editCommand::split && c["kind"] == "midi" &&
+                                       c.value("sample_mapping_available", false)));
                             const auto point = facts.value("position_samples", int64_t(0));
                             splitTarget |=
                                 point > c["start_samples"].get<int64_t>() &&

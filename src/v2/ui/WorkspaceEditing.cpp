@@ -298,13 +298,16 @@ void Workspace::executeEditCommand(int id)
                                                                         : 4800);
                 for (const auto& c : clips)
                 {
-                    if (c["kind"] != "audio" || !c.value("editable_audio", false) || c.value("locked", false))
+                    if (c.value("locked", false) ||
+                        !((c["kind"] == "audio" && c.value("editable_audio", false)) ||
+                          (c["kind"] == "midi" && c.value("sample_mapping_available", false))))
                         throw std::runtime_error(
                             "entire nudge refused: selected clip is locked or its edit type is not yet supported");
                     const auto target = c["start_samples"].get<int64_t>() + delta;
                     if (target < 0)
                         throw std::runtime_error("entire nudge would cross session start");
-                    ops.push_back(operation("clip.move", {{"clip", c["id"]}, {"position_samples", target}}));
+                    ops.push_back(operation(c["kind"] == "midi" ? "midi.clip.move" : "clip.move",
+                                            {{"clip", c["id"]}, {"position_samples", target}}));
                 }
                 if (clips.empty() && !selection.range.is_null())
                 {

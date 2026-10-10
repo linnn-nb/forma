@@ -37,6 +37,8 @@ struct GroupedClipDraft
     {
         if (drag.is_null() || !drag.contains("clip") || !includes(drag, original["id"]))
             return original;
+        if (drag.contains("mapped_moves") && drag["mapped_moves"].contains(original.at("id").get<std::string>()))
+            return drag["mapped_moves"].at(original.at("id").get<std::string>());
         const auto cmd = command(drag);
         return clipgroup::preview(original, cmd,
                                   clipgroup::relative(cmd, args(drag, start, end), drag["clip"], original,
@@ -54,8 +56,9 @@ struct GroupedClipDraft
             for (const auto& c : track["clips"])
                 if (includes(drag, c["id"]))
                 {
-                    const int64_t s = c["start_samples"], n = c["length_samples"], in = c["fade_in_samples"],
-                                  out = c["fade_out_samples"];
+                    const int64_t s = c["start_samples"], n = c["length_samples"],
+                                  in = c.value("fade_in_samples", int64_t(0)),
+                                  out = c.value("fade_out_samples", int64_t(0));
                     if (mode == "move")
                     {
                         lower = std::max(lower, -s);

@@ -204,9 +204,10 @@ void Workspace::showSpotPlacement(const std::string& clipID)
                 for (const auto& candidate : track["clips"])
                     if (candidate.value("id", std::string{}) == clipID)
                         clip = candidate;
-            if (clip.is_null() || clip.value("kind", std::string{}) != "audio" ||
-                !clip.value("editable_audio", false) || clip.value("locked", false))
-                throw std::runtime_error("Spot requires one unlocked, supported audio clip");
+            if (clip.is_null() || clip.value("locked", false) ||
+                !((clip.value("kind", std::string{}) == "audio" && clip.value("editable_audio", false)) ||
+                  (clip.value("kind", std::string{}) == "midi" && clip.value("sample_mapping_available", false))))
+                throw std::runtime_error("Spot requires one unlocked, supported audio or MIDI clip");
             if (!spotPlacementPanel)
             {
                 spotPlacementPanel = std::make_unique<SpotPlacementPanel>(
@@ -218,9 +219,18 @@ void Workspace::showSpotPlacement(const std::string& clipID)
                             binding.value("base_revision", uint64_t(0)) != latest["revision"].get<uint64_t>())
                             throw std::runtime_error("工程已变化；请关闭 Spot 并根据最新工程重新打开");
                         const auto target = commands.sampleAtBarBeat(bar, beat);
-                        auto plan = commands.makePlan(
-                            "human",
-                            Json::array({operation("clip.move", {{"clip", id}, {"position_samples", target}})}));
+                        auto plan = commands.makePlan("human", Json::array({operation(
+                                                                   [&]
+                                                                       {
+                                                                           for (const auto& t : latest["tracks"])
+                                                                               for (const auto& item : t["clips"])
+                                                                                   if (item["id"] == id)
+                                                                                       return item["kind"] == "midi";
+                                                                           return false;
+                                                                       }()
+                                                                       ? "midi.clip.move"
+                                                                       : "clip.move",
+                                                                   {{"clip", id}, {"position_samples", target}})}));
                         plan["session_token"] = binding["session_token"];
                         plan["base_revision"] = binding["base_revision"];
                         const auto receipt = commands.commit(plan);

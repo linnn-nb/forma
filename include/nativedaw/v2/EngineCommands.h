@@ -124,6 +124,7 @@ public:
 
     Json editGroupTracks(const Json& seeds) const;
     Json editGroupClipSelection(const std::string& clip) const;
+    Json midiClipMoveExtent(const std::string&, int64_t, const std::string&, uint64_t) const;
     // Read-only planner: precise range edits resolve current Edit groups before producing ordinary Plan operations.
     Json audioRangeOperations(const std::string& action, const Json& tracks, int64_t first, int64_t last,
                               int64_t delta = 0) const;
@@ -273,7 +274,7 @@ private:
     Json midiQuery(te::MidiClip&) const;
     void applySampleMidiProjection(te::MidiClip&, const Json&, const juce::ValueTree&, const std::string& sourceClip,
                                    const std::string& tempoHash);
-    Json midiClipMoveChange(const Json&) const;
+    Json midiClipMoveChange(const Json&, bool includeEvents = true) const;
     void executeMidiClipMove(const Json&, Json& objects);
     Json sampleMidiTempoSnapshot() const;
     void remapSampleMidiTempo(const Json&);

@@ -349,6 +349,7 @@ public:
     std::function<int64_t(int64_t, double)> onSnap;
     std::function<void(std::string, bool)> onClipSelection;
     std::function<Json(const std::string&)> onLinkedClips;
+    std::function<Json(const std::string&, int64_t, const std::string&, uint64_t)> onMidiMoveExtent;
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t, std::string, int64_t)> onRange;
@@ -731,7 +732,9 @@ public:
                         cursor = juce::MouseCursor::CrosshairCursor;
                     else if (gesture == EditingModel::Gesture::select)
                         cursor = juce::MouseCursor::IBeamCursor;
-                    else if (gesture == EditingModel::Gesture::move && audio)
+                    else if (gesture == EditingModel::Gesture::move &&
+                             (audio || (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
+                                        !clip.value("locked", false))))
                         cursor = juce::MouseCursor::DraggingHandCursor;
                     else if (audio &&
                              (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right ||
@@ -964,7 +967,9 @@ public:
                         if (selectClip)
                             selectClip(c["id"]);
                     }
-                    if (audio && !facts.value("playing", false))
+                    if ((audio || (c["kind"] == "midi" && c.value("sample_mapping_available", false) &&
+                                   !c.value("locked", false) && toolGesture == EditingModel::Gesture::move)) &&
+                        !facts.value("playing", false))
                     {
                         const auto gesture = toolGesture;
                         const auto mode = gesture == EditingModel::Gesture::left      ? "left"
@@ -1072,9 +1077,11 @@ public:
             repaint();
             return;
         }
-        int64_t start = c["start_samples"], length = c["length_samples"], offset = c["source_offset_samples"],
-                source =
-                    std::llround(c["source_frames"].get<int64_t>() / c["source_sample_rate"].get<double>() * 48000);
+        int64_t start = c["start_samples"], length = c["length_samples"],
+                offset = c.value("source_offset_samples", int64_t(0)),
+                source = c["kind"] == "audio" ? std::llround(c["source_frames"].get<int64_t>() /
+                                                             c["source_sample_rate"].get<double>() * 48000)
+                                              : 0;
         if (mode == "move")
         {
             dragStart = std::clamp(snapped(std::max(int64_t(0), start + raw - dragPoint), e.mods), int64_t(0),
@@ -1092,6 +1099,35 @@ public:
             dragEnd = std::clamp(snapped(raw, e.mods), start + 1, start + source - offset);
         }
         GroupedClipDraft::constrain(facts, drag, dragStart, dragEnd);
+        if (mode == "move")
+        {
+            try
+            {
+                Json mapped = Json::object();
+                const auto delta = dragStart - c["start_samples"].get<int64_t>();
+                for (const auto& track : facts["tracks"])
+                    for (const auto& peer : track["clips"])
+                        if (peer["kind"] == "midi" && GroupedClipDraft::includes(drag, peer["id"]))
+                        {
+                            if (!onMidiMoveExtent)
+                                throw std::runtime_error("MIDI move preview unavailable");
+                            const auto id = peer["id"].get<std::string>();
+                            mapped[id] = onMidiMoveExtent(id, peer["start_samples"].get<int64_t>() + delta,
+                                                          drag["session"], drag["revision"]);
+                        }
+                drag["mapped_moves"] = std::move(mapped);
+                if (c["kind"] == "midi")
+                    dragEnd = dragStart +
+                              drag["mapped_moves"].at(c["id"].get<std::string>())["length_samples"].get<int64_t>();
+            }
+            catch (const std::exception&)
+            {
+                drag = nullptr;
+                dragged = false;
+                repaint();
+                return;
+            }
+        }
         resized();
         dragged = mode != "move" || std::abs(e.x - dragX) >= 3;
         repaint();
@@ -1167,7 +1203,8 @@ public:
             dragEnd == original["start_samples"].get<int64_t>() + original["length_samples"].get<int64_t>())
             return;
         if (mode == "move")
-            clipWrite("clip.move", {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);
+            clipWrite(original["kind"] == "midi" ? "midi.clip.move" : "clip.move",
+                      {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);
         else
             clipWrite("clip.trim", {{"clip", original["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
                       captured["revision"]);
