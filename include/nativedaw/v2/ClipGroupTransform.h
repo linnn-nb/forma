@@ -28,10 +28,13 @@ inline Json relative(const std::string& command, const Json& args, const Json& a
         const auto right = amount(args.at("end_samples"), maximum) - start - length;
         const auto nextLength = peerLength + right - left;
         const double offset =
-            peer.value("source_offset_seconds", peer["source_offset_samples"].get<int64_t>() / 48000.) + left / 48000.;
-        const double source = peer["source_frames"].get<double>() / peer["source_sample_rate"].get<double>();
+            peer.value("source_offset_seconds", peer.value("source_offset_samples", int64_t(0)) / 48000.) +
+            left / 48000.;
+        const bool midi = peer.value("kind", std::string{}) == "midi";
+        const double source =
+            midi ? maximum / 48000. : peer["source_frames"].get<double>() / peer["source_sample_rate"].get<double>();
         if (peerStart + left < 0 || nextLength <= 0 || peerStart + peerLength + right > maximum || offset < -1e-12 ||
-            nextLength / 48000. > source - offset + 1e-12)
+            (!midi && nextLength / 48000. > source - offset + 1e-12))
             throw std::runtime_error("entire group trim exceeds a member's timeline or original source");
         result["start_samples"] = peerStart + left;
         result["end_samples"] = peerStart + peerLength + right;
@@ -74,7 +77,10 @@ inline Json preview(const Json& peer, const std::string& command, const Json& ar
         result["length_samples"] = length;
         result["source_offset_samples"] = peer["source_offset_samples"].get<int64_t>() + left;
         result["source_offset_seconds"] =
-            peer.value("source_offset_seconds", peer["source_offset_samples"].get<int64_t>() / 48000.) + left / 48000.;
+            peer.value("source_offset_seconds", peer.value("source_offset_samples", int64_t(0)) / 48000.) +
+            left / 48000.;
+        if (peer.value("kind", std::string{}) == "midi")
+            return result;
         int64_t in = peer["fade_in_samples"], out = peer["fade_out_samples"];
         if (in + out > length)
         {

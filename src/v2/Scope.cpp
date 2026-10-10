@@ -205,9 +205,9 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 }
             automatic = false;
         }
-        else if (cmd == "midi.clip.move")
+        else if (cmd == "midi.clip.move" || cmd == "midi.clip.trim")
         {
-            const auto change = midiClipMoveChange(a);
+            const auto change = cmd == "midi.clip.move" ? midiClipMoveChange(a) : midiClipTrimChange(a);
             auto* c = midiClip(a.at("clip"));
             object(c->itemID.toString().toStdString(), c->getTrack());
             automatic = false;

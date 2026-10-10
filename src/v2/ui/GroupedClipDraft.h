@@ -43,6 +43,12 @@ struct GroupedClipDraft
             preview.update(drag["mapped_moves"].at(original.at("id").get<std::string>()));
             return preview;
         }
+        if (drag.contains("mapped_trims") && drag["mapped_trims"].contains(original.at("id").get<std::string>()))
+        {
+            auto preview = original;
+            preview.update(drag["mapped_trims"].at(original.at("id").get<std::string>()));
+            return preview;
+        }
         const auto cmd = command(drag);
         return clipgroup::preview(original, cmd,
                                   clipgroup::relative(cmd, args(drag, start, end), drag["clip"], original,
@@ -72,20 +78,26 @@ struct GroupedClipDraft
                     else if (mode == "left")
                     {
                         const auto available =
-                            c.value("source_offset_seconds", c["source_offset_samples"].get<int64_t>() / 48000.);
-                        lower = std::max(lower, std::max(-s, int64_t(std::ceil(-available * 48000. - 1e-7))));
+                            c.value("source_offset_seconds", c.value("source_offset_samples", int64_t(0)) / 48000.);
+                        lower = std::max(lower, c["kind"] == "midi"
+                                                    ? c["minimum_start_samples"].get<int64_t>() - s
+                                                    : std::max(-s, int64_t(std::ceil(-available * 48000. - 1e-7))));
                         upper = std::min(upper, n - 1);
                         delta = start - anchor["start_samples"].get<int64_t>();
                     }
                     else if (mode == "right")
                     {
                         const auto available =
-                            c["source_frames"].get<double>() / c["source_sample_rate"].get<double>() -
-                            c.value("source_offset_seconds", c["source_offset_samples"].get<int64_t>() / 48000.) -
+                            (c["kind"] == "midi"
+                                 ? maximum / 48000.
+                                 : c["source_frames"].get<double>() / c["source_sample_rate"].get<double>()) -
+                            c.value("source_offset_seconds", c.value("source_offset_samples", int64_t(0)) / 48000.) -
                             n / 48000.;
                         lower = std::max(lower, 1 - n);
-                        upper =
-                            std::min(upper, std::min(maximum - s - n, int64_t(std::floor(available * 48000. + 1e-7))));
+                        upper = std::min(
+                            upper, c["kind"] == "midi"
+                                       ? maximum - s - n
+                                       : std::min(maximum - s - n, int64_t(std::floor(available * 48000. + 1e-7))));
                         delta = end - anchor["start_samples"].get<int64_t>() - anchor["length_samples"].get<int64_t>();
                     }
                     else

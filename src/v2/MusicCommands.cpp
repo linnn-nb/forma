@@ -318,6 +318,10 @@ void Commands::registerMusicCommands(Json& registry)
     registry.back()["schema"]["required"] = {"clipboard", "tracks", "position_samples", "mode"};
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-MIXED-CLIPBOARD-01";
+    add("midi.clip.trim", {{"clip", str}, {"start_samples", position}, {"end_samples", position}, {"state_hash", str}});
+    registry.back()["schema"]["required"] = {"clip", "start_samples", "end_samples"};
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "U-P0-MIDI-TRIM-01";
     add("midi.clip.move", {{"clip", str}, {"position_samples", position}, {"state_hash", str}});
     registry.back()["schema"]["required"] = {"clip", "position_samples"};
     registry.back()["tool_visibility"] = "local_gui";
@@ -436,6 +440,10 @@ Json Commands::midiQuery(te::MidiClip& clip) const
             {"start_beat", clip.getStartBeat().inBeats()},
             {"length_beats", clip.getLengthInBeats().inBeats()},
             {"content_start_beat", clip.getContentStartBeat().inBeats()},
+            {"source_offset_seconds", clip.getPosition().getOffset().inSeconds()},
+            {"source_offset_samples", std::llround(clip.getPosition().getOffset().inSeconds() * 48000.)},
+            {"minimum_start_samples",
+             int64_t(std::ceil(std::max(0., clip.getPosition().getStartOfSource().inSeconds()) * 48000.))},
             {"sample_event_policy", clip.getSyncType() != te::Clip::syncAbsolute ? "native_beats"
                                     : sample_midi::restriction(clip).empty()     ? "fixed_absolute_time"
                                                                                  : "unqualified_processed_performance"},
@@ -821,6 +829,25 @@ Json Commands::validateMusicPlan(const Json& operations) const
             double start = seq.toBeats(time(begin)).inBeats();
             clips[ref] = {start, seq.toBeats(time(end)).inBeats(), start, begin, end, begin, true, false, {}};
         }
+        else if (cmd == "midi.clip.trim")
+        {
+            require(std::all_of(operations.begin(), operations.end(),
+                                [](const Json& item)
+                                {
+                                    const std::string command = item.at("command");
+                                    return command == "midi.clip.trim" || command == "clip.trim";
+                                }),
+                    "MIDI trim requires an independent boundary Plan");
+            require(
+                std::count_if(operations.begin(), operations.end(), [&](const Json& item)
+                              { return item.at("command") == cmd && item.at("args").at("clip") == a.at("clip"); }) == 1,
+                "duplicate MIDI trim target");
+            auto change = midiClipTrimChange(a);
+            require(a.contains("state_hash") && a.at("state_hash") == change.at("state_hash"),
+                    "MIDI trim requires a sealed native source");
+            change["operation_index"] = index;
+            diff.push_back(std::move(change));
+        }
         else if (cmd == "midi.clip.move")
         {
             require(std::all_of(operations.begin(), operations.end(),
@@ -1077,6 +1104,11 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         snap.remapEdit(*edit);
         remapSampleMidiTempo(sampleMidi);
         objects.push_back({{"id", id(state)}, {"kind", cmd == "tempo.set" ? "tempo" : "meter"}});
+        return;
+    }
+    if (cmd == "midi.clip.trim")
+    {
+        executeMidiClipTrim(a, objects);
         return;
     }
     if (cmd == "midi.clip.move")

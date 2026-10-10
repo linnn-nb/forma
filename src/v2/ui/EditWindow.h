@@ -350,6 +350,7 @@ public:
     std::function<void(std::string, bool)> onClipSelection;
     std::function<Json(const std::string&, const std::string&)> onLinkedClips;
     std::function<Json(const std::string&, int64_t, const std::string&, uint64_t)> onMidiMoveExtent;
+    std::function<Json(const std::string&, int64_t, int64_t, const std::string&, uint64_t)> onMidiTrimExtent;
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t, std::string, int64_t)> onRange;
@@ -736,7 +737,10 @@ public:
                              (audio || (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
                                         !clip.value("locked", false))))
                         cursor = juce::MouseCursor::DraggingHandCursor;
-                    else if (audio &&
+                    else if ((audio ||
+                              (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
+                               !clip.value("locked", false) &&
+                               (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right))) &&
                              (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right ||
                               gesture == EditingModel::Gesture::fadeIn || gesture == EditingModel::Gesture::fadeOut))
                         cursor = juce::MouseCursor::LeftRightResizeCursor;
@@ -967,8 +971,11 @@ public:
                         if (selectClip)
                             selectClip(c["id"]);
                     }
-                    if ((audio || (c["kind"] == "midi" && c.value("sample_mapping_available", false) &&
-                                   !c.value("locked", false) && toolGesture == EditingModel::Gesture::move)) &&
+                    if ((audio ||
+                         (c["kind"] == "midi" && c.value("sample_mapping_available", false) &&
+                          !c.value("locked", false) &&
+                          (toolGesture == EditingModel::Gesture::move || toolGesture == EditingModel::Gesture::left ||
+                           toolGesture == EditingModel::Gesture::right))) &&
                         !facts.value("playing", false))
                     {
                         const auto gesture = toolGesture;
@@ -1090,13 +1097,17 @@ public:
         }
         else if (mode == "left")
         {
-            dragStart = std::clamp(snapped(raw, e.mods), std::max(int64_t(0), start - offset), start + length - 1);
+            dragStart = std::clamp(snapped(raw, e.mods),
+                                   c["kind"] == "midi" ? c["minimum_start_samples"].get<int64_t>()
+                                                       : std::max(int64_t(0), start - offset),
+                                   start + length - 1);
             dragEnd = start + length;
         }
         else
         {
             dragStart = start;
-            dragEnd = std::clamp(snapped(raw, e.mods), start + 1, start + source - offset);
+            dragEnd =
+                std::clamp(snapped(raw, e.mods), start + 1, c["kind"] == "midi" ? maximum : start + source - offset);
         }
         GroupedClipDraft::constrain(facts, drag, dragStart, dragEnd);
         if (mode == "move")
@@ -1119,6 +1130,35 @@ public:
                 if (c["kind"] == "midi")
                     dragEnd = dragStart +
                               drag["mapped_moves"].at(c["id"].get<std::string>())["length_samples"].get<int64_t>();
+            }
+            catch (const std::exception&)
+            {
+                drag = nullptr;
+                dragged = false;
+                repaint();
+                return;
+            }
+        }
+        if (mode == "left" || mode == "right")
+        {
+            try
+            {
+                Json mapped = Json::object();
+                const auto left = dragStart - c["start_samples"].get<int64_t>();
+                const auto right = dragEnd - c["start_samples"].get<int64_t>() - c["length_samples"].get<int64_t>();
+                for (const auto& track : facts["tracks"])
+                    for (const auto& peer : track["clips"])
+                        if (peer["kind"] == "midi" && GroupedClipDraft::includes(drag, peer["id"]))
+                        {
+                            if (!onMidiTrimExtent)
+                                throw std::runtime_error("MIDI trim preview unavailable");
+                            const auto id = peer["id"].get<std::string>();
+                            mapped[id] = onMidiTrimExtent(id, peer["start_samples"].get<int64_t>() + left,
+                                                          peer["start_samples"].get<int64_t>() +
+                                                              peer["length_samples"].get<int64_t>() + right,
+                                                          drag["session"], drag["revision"]);
+                        }
+                drag["mapped_trims"] = std::move(mapped);
             }
             catch (const std::exception&)
             {
@@ -1206,7 +1246,8 @@ public:
             clipWrite(original["kind"] == "midi" ? "midi.clip.move" : "clip.move",
                       {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);
         else
-            clipWrite("clip.trim", {{"clip", original["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
+            clipWrite(original["kind"] == "midi" ? "midi.clip.trim" : "clip.trim",
+                      {{"clip", original["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},
                       captured["revision"]);
     }
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override

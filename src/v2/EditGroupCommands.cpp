@@ -354,6 +354,53 @@ Json Commands::expandEditGroupEdits(const Json& ops) const
             }
             continue;
         }
+        if (command == "clip.trim" || command == "midi.clip.trim")
+        {
+            const auto& input = op.at("args");
+            for (const auto& [key, value] : input.items())
+                if (key != "clip" && key != "start_samples" && key != "end_samples" &&
+                    key != (command == "midi.clip.trim" ? "state_hash" : "media_hash"))
+                    throw std::runtime_error("unsupported grouped trim argument: " + key);
+            const auto id = input.at("clip").get<std::string>();
+            if (id.starts_with("$"))
+            {
+                result.push_back(op);
+                continue;
+            }
+            if (!clips.contains(id))
+                throw std::runtime_error("trim source clip not found");
+            for (const auto& peer : editGroupClipSelection(id))
+            {
+                const auto peerID = peer.at("id").get<std::string>();
+                auto args = clipgroup::relative("clip.trim", input, clips.at(id), clips.at(peerID),
+                                                std::llround(te::Edit::maximumLength * 48000.));
+                const bool midi = midiClip(peerID) != nullptr;
+                const auto peerCommand = midi ? "midi.clip.trim" : "clip.trim";
+                args.erase("state_hash");
+                args.erase("media_hash");
+                if (midi)
+                    args["state_hash"] = midiClipTrimChange(args).at("state_hash");
+                else if (auto* c = audioClip(peerID))
+                    args["media_hash"] = mediaHash(c->getOriginalFile());
+                else
+                    throw std::runtime_error("unsupported grouped trim source");
+                auto resolved = op;
+                resolved["command"] = peerCommand;
+                resolved["args"] = args;
+                const auto key = std::string(peerCommand) + ":" + peerID;
+                if (seen.contains(key))
+                {
+                    if (seen.at(key) != resolved)
+                        throw std::runtime_error("conflicting grouped trim changes");
+                    continue;
+                }
+                seen[key] = resolved;
+                result.push_back(resolved);
+                if (result.size() > 64)
+                    throw std::runtime_error("grouped trim exceeds 64 operation budget");
+            }
+            continue;
+        }
         if (command != "clip.move" && command != "clip.trim" && command != "clip.fade" && command != "clip.gain")
         {
             result.push_back(op);

@@ -152,15 +152,16 @@ void Workspace::executeEditCommand(int id)
             if (editCommand::boundaryNudge(id))
             {
                 const auto clips = selectedEditClips();
-                require(!clips.empty(), "select complete audio clips before boundary Nudge");
+                require(!clips.empty(), "select complete audio or MIDI clips before boundary Nudge");
                 const bool startEdge = id == editCommand::trimStartBack || id == editCommand::trimStartForward;
                 const int direction = id == editCommand::trimStartBack || id == editCommand::trimEndBack ? -1 : 1;
                 int64_t anchor = std::numeric_limits<int64_t>::max();
                 for (const auto& clip : clips)
                 {
-                    require(clip["kind"] == "audio" && clip.value("editable_audio", false) &&
-                                !clip.value("locked", false),
-                            "entire boundary Nudge refused: unsupported or locked audio clip");
+                    require(!clip.value("locked", false) &&
+                                ((clip["kind"] == "audio" && clip.value("editable_audio", false)) ||
+                                 (clip["kind"] == "midi" && clip.value("sample_mapping_available", false))),
+                            "entire boundary Nudge refused: unsupported or locked clip");
                     const int64_t edge =
                         clip["start_samples"].get<int64_t>() + (startEdge ? 0 : clip["length_samples"].get<int64_t>());
                     anchor = std::min(anchor, edge);
@@ -180,8 +181,9 @@ void Workspace::executeEditCommand(int id)
                                   last = clip["start_samples"].get<int64_t>() + clip["length_samples"].get<int64_t>() +
                                          (startEdge ? 0 : delta);
                     require(first >= 0 && last > first, "entire boundary Nudge would cross start or invert a clip");
-                    operations.push_back(operation(
-                        "clip.trim", {{"clip", clip["id"]}, {"start_samples", first}, {"end_samples", last}}));
+                    operations.push_back(
+                        operation(clip["kind"] == "midi" ? "midi.clip.trim" : "clip.trim",
+                                  {{"clip", clip["id"]}, {"start_samples", first}, {"end_samples", last}}));
                 }
                 // Native track curves remain at project time for this ordinary
                 // nondestructive edge edit. Do not claim PT boundary equivalence.
