@@ -1,0 +1,462 @@
+{
+  "state": "passed",
+  "test": "U-P0-NEW-SESSION-DISPATCH-01",
+  "source_commit": "363cd49ff72d671e1501ce44b6f91e05f1f7caa4",
+  "source_test_sha256": "cb43ba523fb8ea8b3ed4e207b51ea3eda8a36cc569c98c4bee53fb36693073a8",
+  "cause": "JUCE triggerClick asynchronously posts clickMessageId; fixed 30 ms pump was not an acknowledgement",
+  "production_code_changed": false,
+  "reproduction": {
+    "initial_delivered": 0,
+    "initial_tracks": 0,
+    "delivered_after_drain": 1,
+    "tracks_after_drain": 1,
+    "undo_after_drain": true,
+    "elapsed_ms": 66.048
+  },
+  "runs": [
+    {
+      "run": 0,
+      "checks": 34,
+      "process_seconds": 4.408000458,
+      "report_sha256": "b0f3dadbdbcd424b1b350e2366dd6dbb6627a3f137651af8d10511a8cb5a5742",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.231792
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.009458
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.794708
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.106125
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "checks": 34,
+      "process_seconds": 3.526548375,
+      "report_sha256": "aefeee9e9361487e9ee5d2ed54d02ff23108eb971a74bc9df8cac0fabedf2d53",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.965375
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.009875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 17.335583
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.161208
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "checks": 34,
+      "process_seconds": 3.600092791,
+      "report_sha256": "ecfa89017e90328c96add2ffa3ec10389ea7679a89e1163cb582829183ce110b",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 15.534209
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.011833
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 30.981375
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 0.005833
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "checks": 34,
+      "process_seconds": 3.4231507080000014,
+      "report_sha256": "74e6c49e45d424d35147cfabe5310d8d679e463ef7c8af5888e7448cfe1a5189",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.172875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.007625
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 17.106333
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 17.358958
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "checks": 34,
+      "process_seconds": 3.591755124999999,
+      "report_sha256": "d8635b0560ba60c0668186fbbc5c67dac91995cad6f9159b7dedb5d6c3d56651",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 14.837625
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.008375
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.819625
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.090708
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "checks": 34,
+      "process_seconds": 3.558071625,
+      "report_sha256": "1b679fd495e7b61506e0b531ce2536fa9683c92d27ff90da04f9ddc2c7f38b9c",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.976875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.009417
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 0.004542
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 0.00925
+        }
+      ]
+    },
+    {
+      "run": 6,
+      "checks": 34,
+      "process_seconds": 3.6001678340000005,
+      "report_sha256": "3001babdb9720915b97e76695b4370cc6f5b11c659ab445678180cd43018c50b",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.157875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.011917
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 17.172417
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.150542
+        }
+      ]
+    },
+    {
+      "run": 7,
+      "checks": 34,
+      "process_seconds": 3.5514829579999976,
+      "report_sha256": "134ea8147761412e3d4c46dbfe4caed92ac1fad36961ef23016eb5cc30b61700",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.809167
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.018834
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.670875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.180917
+        }
+      ]
+    },
+    {
+      "run": 8,
+      "checks": 34,
+      "process_seconds": 3.5848526250000035,
+      "report_sha256": "51f06985c5a819dd329d41319863355dc00dc8fe10e280defa7ea213eb250bba",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 17.027875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.009167
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.195209
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.140125
+        }
+      ]
+    },
+    {
+      "run": 9,
+      "checks": 34,
+      "process_seconds": 3.4551751659999965,
+      "report_sha256": "13eb9c9870f93ff132b398ea670bc4fa2ac00a54460f286ee3e240cc209748eb",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.119875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.0075
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.742541
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.180708
+        }
+      ]
+    },
+    {
+      "run": 10,
+      "checks": 34,
+      "process_seconds": 3.5672503340000006,
+      "report_sha256": "fd53cd1e1841356c4e92e5fab0efc886085efa6f6474b041b760637dbcbf8d4a",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 15.576917
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.01
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 31.501875
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 0.011333
+        }
+      ]
+    },
+    {
+      "run": 11,
+      "checks": 34,
+      "process_seconds": 3.524335291,
+      "report_sha256": "ebb2b97fe3b109198a90cedbc8d957b00f3c559efd537b8a8882fa70abe80c15",
+      "dispatch": [
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 16.511209
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "session.new.cancel",
+          "delivered": 1,
+          "elapsed_ms": 0.009625
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "track.create",
+          "delivered": 1,
+          "elapsed_ms": 17.312959
+        },
+        {
+          "budget_ms": 500,
+          "case": "native_button_dispatch",
+          "control": "history.undo",
+          "delivered": 1,
+          "elapsed_ms": 1.111333
+        }
+      ]
+    }
+  ],
+  "independent_processes": 12,
+  "checks": 408,
+  "actual_click_notifications": 48,
+  "maximum_dispatch_ms": 31.501875,
+  "notification_budget_ms": 500,
+  "original_budgets_unchanged": {
+    "async_recovery_seconds": 5,
+    "snapshot_capture_ms": 1000,
+    "three_second_stereo_render_ms": 10000
+  },
+  "desktop_gui": "unexecuted: Mac locked",
+  "qualification_limits": "production JUCE components/listeners/callbacks and actual Edit/filesystem/renderer; synthetic queued button input, not human input latency or durability qualification"
+}

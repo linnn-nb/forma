@@ -116,3 +116,5 @@ evidence/U/*
 !evidence/U/sample-midi-tests.json
 !evidence/U/sample-midi-qualification.json
 !evidence/U/sample-midi-regression.txt
+
+!evidence/U/new-session-dispatch-tests.json

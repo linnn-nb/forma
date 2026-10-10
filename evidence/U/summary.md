@@ -1,3 +1,9 @@
+U-P0-NEW-SESSION-DISPATCH-01（2026-10-10）：上一轮“新建空工程后新增轨道”间歇失败已定位为测试读取时序。诊断真实JUCE按钮监听器：原30ms派发返回时通知0/轨道0，继续派发到66.048ms，通知1/轨道1且can_undo=true；期间没有重发点击或调用私有产品回调。JUCE Button::triggerClick/postCommandMessage与handleCommandMessage源码提供同一路径依据。
+
+NewSessionTests::click现等待该实际Button::Listener通知一次，预先规定500ms消息派发上限；超时/重复通知拒绝，仍检验真实Edit及Undo。原5秒恢复任务、1秒快照捕获、3秒立体声渲染10秒预算保持。最终363cd49（诊断c4c7ace），目标构建通过；12次独立进程、408检查、48次实际按钮通知全部通过，最长通知31.501875ms。这里只是合成队列输入资格，不是实体点击延迟或耐久测试；生产代码、SDK/RT/依赖/存储/命令权限均未改变。
+
+原始失败/诊断保留自有build-v2-tracktion/new-session-{diagnostics,click-trace,dispatch-qualification}；精简结果evidence/U/new-session-dispatch-tests.json。此节替代旧“新增轨道原因未定”记录，只解决受测误报；不扩大为全部GUI稳定性。Mac锁定，实体GUI/试听未执行，无新预览进程、无新DMG；既有SampleMidiPreview与演示入口保留。U＋P0未完成，不进入P1，下一项整MIDI对象移动/Nudge、编辑组与真实曲线跟随。
+
 U-P0-SAMPLE-MIDI-01（2026-10-10）：采样同步 MIDI 的实际 NOTE/CC/SysEx 跨 Tempo/Meter、片段复制粘贴和 Shuffle 保持绝对时间/明确共同秒位移。编辑菜单、OptionShiftF8/F9及自定义键共用 human L1；每项一笔原生Undo/Redo，可保存重开，首次投影保留原SEQ字节/来源时间/哈希。代码 SampleMidiMap/Commands、MusicCommands、MidiClipClipboard、Scope与WorkspaceCommands/Layout/Editing；自动化专项 SampleMidiTests，官方参考见UI_PARITY本增量。
 
 Release与固定叶证书deep/strict验签通过；最终源码6155a4f（基础7dbd96a）。专项1141检查、10个阶跃/渐变Tempo映射场景通过；实际原生NOTE/CC/SysEx时间误差须≤1ns且48k样本投影精确相等，实际exportToPlaybackMidiSequence字节相等/时间≤1ns；FourOsc WAV独立解码，Tempo前后实际起音样本均96000。覆盖偏移、范围/整片段Paste、删除后缀、Undo/Redo/重开、后续人工音符编辑、Tempo事件增改删、冻结复制后再改Tempo、损坏原数据CRC/时间行拒绝、循环/嵌套表情拒绝、Scope/Agent权限/陈旧Plan和改键。该容差是受测数学/事件路径预算，不是硬件时钟或Pro Tools性能对照。
