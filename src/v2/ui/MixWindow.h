@@ -19,7 +19,7 @@ public:
     std::function<void(std::string, juce::Component&, bool)> onTrackOptions;
     std::function<void(std::string, int)> onRecordingCommand;
     std::function<void(std::string, juce::Component&)> onMonitorMenu;
-    std::function<void(std::string, int)> onInsert;
+    std::function<void(std::string, int, juce::Component&)> onInsert;
     std::function<void(std::string)> onRouting, onComments;
     void update(const Json& facts, const std::string& selected, const Json& device)
     {
@@ -34,10 +34,10 @@ public:
             {
                 auto c = std::make_unique<TrackHeader>(
                     id, true, write, select,
-                    [this](std::string id, int index)
+                    [this](std::string id, int index, juce::Component& anchor)
                     {
                         if (onInsert)
-                            onInsert(id, index);
+                            onInsert(id, index, anchor);
                     },
                     [this](std::string id)
                     {

@@ -320,9 +320,16 @@ void Workspace::refreshInspector()
     {
         programTarget = p["id"];
         programDraft = false;
+        programPublishedIndex = -1;
     }
-    if (programs && !programDraft)
-        programIndex.setText(juce::String(p["external"].value("program_index", 0)), false);
+    const int reportedProgram = programs ? p["external"].value("program_index", 0) : -1;
+    // Do not rewrite an unchanged SDK value while TextEditor is queuing a user's change.
+    // Its asynchronous onTextChange may arrive after the periodic workspace refresh.
+    if (programs && !programDraft && reportedProgram != programPublishedIndex)
+    {
+        programPublishedIndex = reportedProgram;
+        programIndex.setText(juce::String(reportedProgram), false);
+    }
     programButton.setButtonText(programs
                                     ? text("切换 Program · ") + text(p["external"].value("program_name", std::string{}))
                                     : text("切换 Program"));

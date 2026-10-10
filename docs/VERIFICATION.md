@@ -1,3 +1,13 @@
+U-P0-INSERT-MENU-01（2026-10-10）：Mix 空插入槽已绑定实际按钮；后台窗口点击先等待 macOS 激活回执，再显示真实菜单。插入仍经 L1，一笔事务可撤销；不是完整 U/P0 或全插件兼容验收。
+
+- 源码：TrackHeader / MixWindow / EditWindowViews / WorkspaceCommands。显式槽位手势请求前台激活；10ms UI 定时检查、总时限1000ms，不阻塞 message thread。新手势、窗口销毁、工程 token/revision 变化使等待失效；失败显示原因，不伪报插入成功。菜单锚定实际槽位、至少240宽，选择时读取命令层当前 revision，拒绝 GUI 刷新前的过期请求。无 SDK、实时线程或固定 IPC 延迟改动。
+- 回归发现并修复另一真实竞态：插件 Program 草稿的异步文本通知到达前，周期刷新把输入1改回原值0。WorkspaceRefresh 仅在实际 SDK Program 索引变化时写回字段；选择插件重置发布索引。ExternalWorkspaceTests 增加待送达文本通知期间切到 Mix 的真实命令，检查草稿保留且 revision 不变，随后执行实际 Program/Undo/Redo。
+- 新测试 MixInsertMenuTests 是独立 JUCE 应用包：实际后台激活、SDK popup/menuItem accessibility action、真实 Equaliser/一笔 Undo/Redo、原生保存重开、取消无事务、权威 revision 冲突。没有私调菜单回调或重复点击。最初 console 进程不能获得 NSApp 激活资格；应用包首次暴露激活竞态、测试空指针崩溃，已加空值检查并修复生产竞态。旧失败日志保留于忽略的 build 目录，不算通过。
+
+最终资格：Release/固定本地签名/deep严格验签通过；四组一次全绿429检查/20.848秒：Mix菜单37、EditViews46、Presentation282、外部插件64。回执build-v2-tracktion/mix-final-summary.json及mix-final-{menu,views,presentation,external}.{json,log}，无JUCE Assertion failure；不代表全量产品验收。旧console失败mix-insert-menu.log、应用包测试崩溃mix-insert-menu-app.log、两次Program失败mix-external.log/mix-external-final.log保留，均不算通过。
+
+桌面：Mix PCM空槽→真实菜单→AU/VST3库→实际AUNBandEQ；真实编辑器开关、一次⌘Z/⇧⌘Z、原生另存mix-insert-demo.tracktionedit已执行。最终构建重启打开副本恢复两轨/两个AU；B槽选Equaliser/r23、⌘Z/r24，保留两AU供试用。当前无测试窗口/测试进程残留；未听感、声学回环或全插件认证。快捷键已有键位菜单、导入到所选空轨、跨重开Undo和真实预备拍录音继续待补。完整U/P0未验收，没有新DMG或evidence/U截图。
+
 U-P0-COLD-KEY-01（2026-10-10）：冷启动第一条快捷键现可直接操作；实体⌘O与⌘N在两个独立进程中通过，无需先点击控件。完整U/P0仍待试用。
 
 根因来自真实macOS诊断：showReady与两次handoff时原生peer尚未获得键盘焦点；随后第一条window-key到达，peer.isFocused=true，但JUCE focused component=null且activeWindow=false。旧WorkspaceWindow只允许focused==this，故拒绝该键。新路径仅在当前原生peer有焦点、窗口可见、内容存在且未被modal阻塞时，接受this/null焦点，交给原有Workspace/ApplicationCommandManager一次；子组件/其他窗口仍不由父窗口重新派发。L1与工程/实时链路未改。

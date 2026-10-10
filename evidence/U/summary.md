@@ -1,3 +1,13 @@
+## 2026-10-10 插入槽菜单与插件 Program 输入修复
+
+结论：Mix空槽可直接打开真实内置效果器与AU/VST3库。macOS后台激活异步竞态已修；选择时核对L1当前revision。回归同时修复Program草稿被周期刷新覆盖，不增加SDK/RT/IPC/依赖改动。
+
+Release/固定本地签名/deep严格验签通过；最终四组一次全绿429检查/20.848秒（菜单37、EditViews46、Presentation282、外部插件64），无JUCE Assertion failure。回执build-v2-tracktion/mix-final-summary.json和mix-final-{menu,views,presentation,external}.{json,log}。早期console激活失败、应用包测试空指针崩溃、两次Program草稿0→1→0失败均保留日志，不计通过。新增测试使用独立应用包、实际SDK菜单accessibility action和真实te::Edit，无私调菜单回调或重发点击。
+
+真实桌面：feedback-final两轨/AUNBandEQ→Mix PCM-tone空槽→AU/VST3库→AUNBandEQ实际插入r17，真实编辑器打开关闭仍r17；⌘Z移除/r18，⇧⌘Z恢复/r19；原生另存mix-insert-demo.tracktionedit后退出。最终构建重启原生打开该副本，两轨及两个真实AU恢复；B槽可显示完整菜单，选Equaliser/r23，⌘Z/r24移除测试EQ。预览停在该工程，两AU保留、播放停止，无测试窗口残留。未实机听感/声学回环/所有插件资格；跨重开Undo仍禁用，完整U/P0仍未验收。
+
+试用：build-v2-tracktion/FeedbackPreview.app；⌘O打开同目录mix-insert-demo.tracktionedit，媒体保持UP0-demo-media。Mix点空槽→AU/VST3插件库→选条目（未扫描先扫描）→插入到目标轨道；右侧“插件窗口”打开编辑器。提交推送后等用户试用；下一阻塞为已有键位按钮弹出菜单，不自动进入P1。没有新DMG或新增本目录截图。
+
 ## 2026-10-10 冷启动首键修复
 
 两个独立真实进程：首次⌘O直接打开原生文件选择器；退出重开后首次⌘N直接打开新工程面板，Escape取消。之后原生打开feedback-final.tracktionedit恢复两轨/AUNBandEQ，预览停止播放供试用。真实日志确认原生key peer有焦点而JUCE focused component为空，旧父窗口guard拒绝；正式修复接收该首键，经原有统一命令层执行一次。文本/其他窗口焦点保护由自动化验证，实体名称输入未获得改值回执，不计通过。

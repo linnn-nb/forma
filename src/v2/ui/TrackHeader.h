@@ -7,8 +7,8 @@ class TrackHeader final : public juce::Component
 {
 public:
     TrackHeader(std::string id, bool strip, Writer write, std::function<void(std::string)> select,
-                std::function<void(std::string, int)> insert = {}, std::function<void(std::string)> route = {},
-                std::function<void(std::string)> comment = {})
+                std::function<void(std::string, int, juce::Component&)> insert = {},
+                std::function<void(std::string)> route = {}, std::function<void(std::string)> comment = {})
         : id(std::move(id)), strip(strip), write(std::move(write)), select(std::move(select)),
           focusInsert(std::move(insert)), focusRouting(std::move(route)), focusComments(std::move(comment))
     {
@@ -53,7 +53,7 @@ public:
                 slot->onClick = [this, i]
                 {
                     if (focusInsert)
-                        focusInsert(this->id, i);
+                        focusInsert(this->id, i, *insertSlots[size_t(i)]);
                 };
                 addAndMakeVisible(*slot);
                 insertSlots.push_back(std::move(slot));
@@ -540,7 +540,7 @@ private:
                 panStoppedGesture = false;
     Writer write;
     std::function<void(std::string)> select, focusRouting, focusComments;
-    std::function<void(std::string, int)> focusInsert;
+    std::function<void(std::string, int, juce::Component&)> focusInsert;
     std::vector<std::unique_ptr<juce::TextButton>> insertSlots;
     juce::TextButton sendSlot, outputSlot, comments;
 

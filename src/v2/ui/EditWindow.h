@@ -175,10 +175,10 @@ public:
                 controls.push_back(std::move(c));
                 auto views = std::make_unique<EditWindowViews>(
                     id,
-                    [this](auto t, int slot)
+                    [this](auto t, int slot, juce::Component& anchor)
                     {
                         if (onInsert)
-                            onInsert(t, slot);
+                            onInsert(t, slot, anchor);
                     },
                     [this](auto t, bool input)
                     {
@@ -355,7 +355,7 @@ public:
     std::function<void(std::string)> onContext;
     std::function<void(Json, Json, uint64_t, std::string, int64_t)> onRange;
     std::function<void(std::string)> onComments;
-    std::function<void(std::string, int)> onInsert;
+    std::function<void(std::string, int, juce::Component&)> onInsert;
     std::function<void(std::string, bool)> onRouting;
     std::function<void(std::string, std::string)> onSend;
     int columnCount() const

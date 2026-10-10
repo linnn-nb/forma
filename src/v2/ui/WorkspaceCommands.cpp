@@ -302,7 +302,8 @@ void Workspace::initialiseCommandManager()
     editArea.onMonitorMenu =
         mixArea.onMonitorMenu = [this](auto id, auto& component) { showTrackMonitorMenu(id, component); };
     editArea.onTrackHeight = [this](auto id, int height, auto session) { setTrackHeight(id, height, session); };
-    mixArea.onInsert = [this](std::string id, int index) { focusMixInsert(id, index); };
+    mixArea.onInsert = [this](std::string id, int index, juce::Component& anchor)
+    { focusMixInsert(id, index, anchor); };
     mixArea.onRouting = [this](std::string id)
     {
         select(id);
@@ -1504,7 +1505,7 @@ void Workspace::transferShortcuts(bool writing)
         },
         "*.xml");
 }
-void Workspace::focusMixInsert(const std::string& target, int index)
+void Workspace::focusMixInsert(const std::string& target, int index, juce::Component& anchor)
 {
     select(target);
     clipFXInspector = false;
@@ -1524,7 +1525,43 @@ void Workspace::focusMixInsert(const std::string& target, int index)
         return;
     }
     const auto token = commands.sessionToken();
-    const auto revision = facts["revision"];
+    const auto revision = commands.querySummary()["revision"].get<uint64_t>();
+    // Only an explicit slot gesture activates the application. macOS activation is asynchronous;
+    // opening a popup before its receipt lets JUCE dismiss the menu as a background application.
+    if (!juce::Process::isForegroundProcess())
+        juce::Process::makeForegroundProcess();
+    getTopLevelComponent()->toFront(true);
+    grabKeyboardFocus();
+    refresh();
+    showMixInsertMenu(target, &anchor, token, revision, ++insertMenuRequest,
+                      juce::Time::getMillisecondCounterHiRes() + 1000.0);
+}
+void Workspace::showMixInsertMenu(const std::string& target, juce::Component::SafePointer<juce::Component> anchor,
+                                  const std::string& token, uint64_t revision, uint64_t request, double deadline)
+{
+    if (request != insertMenuRequest || !anchor || !anchor->isShowing())
+        return;
+    if (commands.sessionToken() != token || commands.querySummary()["revision"] != revision)
+    {
+        message(text("工程已变更，请重新打开插入菜单"));
+        return;
+    }
+    if (!juce::Process::isForegroundProcess())
+    {
+        if (juce::Time::getMillisecondCounterHiRes() >= deadline)
+        {
+            message(text("窗口未取得前台激活，请重新点击插入槽"));
+            return;
+        }
+        juce::Timer::callAfterDelay(
+            10,
+            [safe = juce::Component::SafePointer<Workspace>(this), target, anchor, token, revision, request, deadline]
+            {
+                if (safe)
+                    safe->invoke([&] { safe->showMixInsertMenu(target, anchor, token, revision, request, deadline); });
+            });
+        return;
+    }
     juce::PopupMenu menu;
     menu.setLookAndFeel(&theme);
     auto catalog = Commands::processorCatalog();
@@ -1534,7 +1571,7 @@ void Workspace::focusMixInsert(const std::string& target, int index)
     menu.addSeparator();
     menu.addItem(100, text("AU / VST3 插件库…"));
     menu.showMenuAsync(
-        juce::PopupMenu::Options().withParentComponent(this),
+        juce::PopupMenu::Options().withTargetComponent(*anchor).withParentComponent(this).withMinimumWidth(240),
         [safe = juce::Component::SafePointer<Workspace>(this), target, token, revision, catalog](int result)
         {
             if (!safe || !result)
@@ -1542,7 +1579,7 @@ void Workspace::focusMixInsert(const std::string& target, int index)
             safe->invoke(
                 [&]
                 {
-                    if (safe->commands.sessionToken() != token || safe->facts["revision"] != revision)
+                    if (safe->commands.sessionToken() != token || safe->commands.querySummary()["revision"] != revision)
                         throw std::runtime_error("project changed while insert menu was open");
                     if (result == 100)
                     {
@@ -1558,7 +1595,6 @@ void Workspace::focusMixInsert(const std::string& target, int index)
                         safe->grabKeyboardFocus();
                 });
         });
-    refresh();
 }
 void Workspace::showRollSettings()
 {

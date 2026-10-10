@@ -960,3 +960,10 @@ target_include_directories(ndaw_range_nudge_tests PRIVATE src/v2)
 target_link_libraries(ndaw_range_nudge_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_range_nudge COMMAND ndaw_range_nudge_tests "${CMAKE_BINARY_DIR}/range-nudge-tests.json" "${CMAKE_BINARY_DIR}/range-nudge-demos")
 set_tests_properties(forma_native_range_nudge PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_gui_app(ndaw_mix_insert_menu_tests PRODUCT_NAME "ndaw_mix_insert_menu_tests"
+    BUNDLE_ID "org.forma.tests.mix-insert")
+target_sources(ndaw_mix_insert_menu_tests PRIVATE tests/v2/MixInsertMenuTests.cpp)
+target_link_libraries(ndaw_mix_insert_menu_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_mix_insert_menu COMMAND ndaw_mix_insert_menu_tests "${CMAKE_BINARY_DIR}/mix-insert-menu-tests.json")
+set_tests_properties(forma_native_mix_insert_menu PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

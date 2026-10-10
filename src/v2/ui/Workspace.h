@@ -178,7 +178,10 @@ private:
     void selectMixGroup(const std::string&);
     void toggleMixGroup(const std::string&, bool);
     std::unique_ptr<MixGroupEditor> mixGroupEditor;
-    void focusMixInsert(const std::string&, int);
+    void focusMixInsert(const std::string&, int, juce::Component&);
+    void showMixInsertMenu(const std::string&, juce::Component::SafePointer<juce::Component>, const std::string&,
+                           uint64_t, uint64_t, double);
+    uint64_t insertMenuRequest = 0;
     void transferShortcuts(bool);
     std::unique_ptr<juce::XmlElement> shortcutSnapshot();
     bool restoreShortcuts(const juce::XmlElement&);
@@ -248,6 +251,7 @@ private:
     std::string workspaceSession;
     juce::Label recoveryIndicator;
     bool programDraft = false;
+    int programPublishedIndex = -1;
     std::string programTarget;
     bool updatingTransportControls = false;
     Toolbar toolbar;

@@ -6,7 +6,7 @@ namespace ndaw::desktop
 class EditWindowViews final : public juce::Component
 {
 public:
-    EditWindowViews(std::string owner, std::function<void(std::string, int)> insert,
+    EditWindowViews(std::string owner, std::function<void(std::string, int, juce::Component&)> insert,
                     std::function<void(std::string, bool)> route,
                     std::function<void(std::string, std::string)> send = {},
                     std::function<void(std::string)> comment = {})
@@ -42,7 +42,7 @@ public:
             a->onClick = [this, i]
             {
                 if (this->insert)
-                    this->insert(this->owner, i);
+                    this->insert(this->owner, i, *inserts[size_t(i)]);
             };
             addAndMakeVisible(*a);
             inserts.push_back(std::move(a));
@@ -163,7 +163,7 @@ public:
 
 private:
     std::string owner;
-    std::function<void(std::string, int)> insert;
+    std::function<void(std::string, int, juce::Component&)> insert;
     std::function<void(std::string, bool)> route;
     std::function<void(std::string, std::string)> send;
     std::function<void(std::string)> comment;

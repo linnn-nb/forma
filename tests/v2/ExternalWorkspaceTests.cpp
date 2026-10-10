@@ -170,11 +170,18 @@ int main(int argc, char** argv)
             textChanged();
             draftDelivered = true;
         };
+        std::cout << "program_draft_before=" << programIndex->getText()
+                  << " native=" << w.query()["tracks"][0]["plugins"][1]["external"]["program_index"] << std::endl;
+        const auto draftRevision = w.query()["revision"];
         programIndex->setText("1", true);
+        w.uiCommands().invokeDirectly(9, false); // Refresh Mix while the native text notification is queued.
+        check(programIndex->getText() == "1" && w.query()["revision"] == draftRevision,
+              "workspace refresh preserves pending program input without committing an edit");
         const auto draftDeadline = juce::Time::getMillisecondCounterHiRes() + 4000;
         while (!draftDelivered && juce::Time::getMillisecondCounterHiRes() < draftDeadline)
             juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
         programIndex->onTextChange = textChanged;
+        std::cout << "program_draft_receipt=" << draftDelivered << " after=" << programIndex->getText() << std::endl;
         check(draftDelivered && programIndex->getText() == "1",
               "native text notification preserves user's program draft");
         click(w, "plugin.program");
