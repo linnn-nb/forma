@@ -1,3 +1,7 @@
+U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+下一项：MIDI时间线Trim/边界Nudge与范围Nudge语义；桌面可用后实体验收。本级用户确认前不进入P1。
+
 U-P0-SAMPLE-MIDI-01：MIDI片段采样/小节拍基准菜单与可改键接通L1原生事务；采样事件真实跨Tempo/Meter和Paste/Shuffle映射，原序列/时间/哈希保留。独立SampleMidiPreview/OpenSampleMidiDemo已准备但未启动，实体GUI/听感未执行；不是完整U＋P0，不进入P1。音乐MIDI的共同秒基Shuffle跨变化、循环/Groove/MPE、整MIDI对象移动/Nudge与其他剩余边界继续补齐；资格见VERIFICATION最新节。
 
 U-P0-OBJECT-SHUFFLE-01（2026-10-10）：主时间线整片段混合音频/MIDI的 Shuffle Cut/Delete/Paste 已接入真实 L1 预览、接受/取消和一笔 Undo；CmdC/CmdX/Backspace/CmdV 共用可改键，工程原生内容保存重开。预览明确“每轨只收拢所选片段占用区间的并集，保留间隙”，列出每轨区间、曲线基准及真实位移；Paste 保留完整复制包络。详细实测、失败修复和演示入口见 VERIFICATION/NEXT_STEPS 最新节。

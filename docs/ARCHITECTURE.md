@@ -1,3 +1,8 @@
+U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+midi.clip.move只在L1/message thread、停止状态执行；makePlan封闭实际MIDICLIP/Tempo/轨道曲线基准哈希，提交前复核版本。音频/MIDI组按共同采样位置偏移，每个MIDI保留自身时间基准；共享曲线由既有automation.clips.move派生，源快照后先清空再写目的，auto歧义/重叠冲突拒绝。
+只读midiClipMoveExtent给GUI原生位置/真实音符草稿，不调用事件投影、完整序列序列化或发布音频图；版本失效即取消。拍基跨Tempo的预览长度取原生映射，保留原对象ID/名称。MusicalCurveMap以同一beatDelta映射；只合并forward结果精确相等的分段别名，保护原曲线事件和已知端点，两个重要事件重合则拒绝。
+
 U-P0-SAMPLE-MIDI-01（2026-10-10）：Tracktion syncAbsolute 只固定片段边界，SDK EditTimecodeRemapperSnapshot 不固定内部 MIDI 事件。L1 SampleMidiMap/Commands 在 Tempo/Meter 修改前冻结实际事件秒位置，修改后按新原生 Tempo 投影 NOTE b/l、CONTROL b、SYSEX time；采样 Paste/Shuffle 同样按冻结源 Tempo 和当前目的 Tempo 映射。音乐基准仍保留原拍事件，音乐 MIDI 的共同秒基 Shuffle 跨变化仍拒绝。
 
 首次投影在实际 MIDICLIP 内存 NDAW_SAMPLE_MIDI_ORIGIN schema1：原 SEQUENCE 的 Base64 ValueTree 字节、SHA256、实际时间、源clip与Tempo哈希；后续编辑不覆盖该原始来源。当前原生SEQ是可编辑/播放的投影，不是另一个引擎。一次 Plan/UndoManager 包括 Tempo、事件和来源记录；撤销首次映射同时撤销来源节点。候选Edit采用前校验原数据CRC、行布局/有限时间/完整覆盖。65536事件、8MiB原序列与投影、64MiB Tempo准备预算；停止状态/message thread，循环/原生量化/Groove/嵌套音符表情未资格即整笔拒绝。没有新SDK补丁、依赖、实时路径或MCP工具；资格见VERIFICATION本增量。

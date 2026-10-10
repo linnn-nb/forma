@@ -1,3 +1,8 @@
+U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+midi.clip.move：clip稳定ID、position_samples（48k工程采样整数）、state_hash；makePlan生成/复核哈希，不能以旧哈希或外部actor冒充本地操作。当前human/local_gui、低风险可逆、停止状态、完整片段及实际before/after影响范围；U-P0-MIDI-MOVE-01。Plan包含实际事件/路由基准/曲线变化预览，同笔native Undo与真实receipt。
+该命令及只读GUI草稿没有新增MCP工具；M2/M3冻结。音频/MIDI编辑组展开前拒绝小数、越界和未知参数，不能截断或丢弃字段绕过schema。
+
 U-P0-SAMPLE-MIDI-01：新增 human/local_gui midi.clip.timebase.set {clip:实际稳定ID,basis:samples|beats}，仅一项操作/停止状态/无待录音或参数采集；锁定、循环、播放量化/Groove、嵌套表情拒绝。preview 的 midi_changes 明示 command、operation_index、timebase_before/after、event_policy；采样 Paste/Shuffle 的 after.sample_midi_projection 展示实际事件原/目的秒位置与原生b/l/time投影。封闭hash、revision、幂等及单笔native Undo保持；不是允许Agent注入事件映射的公共工具。
 
 query增加sample_event_policy、sample_mapping_available/restriction、original_midi_source_hash，只读实际Edit；不支持的已导入采样MIDI如实标为unqualified_processed_performance。Scope覆盖完整performance/future Tempo，有限时间授权拒绝、不可自动执行；其他actor在makePlan即拒绝。原始SEQ来源归档不当作当前音频证据，后续人工音符编辑仍从当前实际SEQ再映射。默认OptionShiftF8/F9，可改键；同基准重复GUI操作不创建空历史。

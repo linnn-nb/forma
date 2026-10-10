@@ -1,3 +1,15 @@
+U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+- 新专项：tests/v2/MidiMoveTests.cpp；L1：src/v2/MidiClipMove.cpp、EditGroupCommands.cpp、AutomationMove.cpp、MusicalCurveMap.cpp；GUI：EditWindow/GroupedClipDraft、WorkspaceEditing/Actions/Commands。
+- 原生 getter 实际 NOTE/CC/SysEx 时间：1ns预设预算，round(48k×秒)必须完全相同。步进/坡形Tempo，两种片段基准，移动/同笔Undo/Redo/保存重开；原SEQ opaque属性、来源CRC/哈希保留。真实FourOsc WAV独立解码，发声点96000→432000，Undo回到96000。
+- 共享 Volume 强曲线实测；采样/拍基，真实AutomationIterator评估、原点ID/位置、撤销/重开。误差预算维持参数跨度1e−7＋2个float ULP，最大观测跨度误差1.1920928955078125e−7；未以此宣称全部插件精度或音质。
+- 原生组件合成 Grabber（包含绘制草稿）、Spot实际按钮通知、五种前向Nudge与Undo、改键及重开后的首个键；无桌面peer，组件配置可见并非实体桌面验收。按钮单发，真实通知500ms上限，无重发或私调回调兜底。
+- 输入/权限：小数位置、额外参数、过期版本、伪造源哈希、外部actor、锁定/循环/表情，以及音频锚点的锁定MIDI同组成员整笔拒绝。原始PCM和原工程文件哈希不变。
+- 真实故障：测试最初读取未公开的MIDI源偏移字段，改为原生getter；坡形Tempo产生两个源double→完全相同目的double，MusicalCurveMap只合并该精确别名，保留真实事件/端点，两个真实事件不能合并则拒绝，无epsilon；测试无peer不能用isShowing判实体可见。Groups回归暴露小数位置被展开时截断，现先校验整数/边界/额外参数再展开。
+- 首批12项427.25s，11通过/Groups失败；修复后的Groups＋MIDI move复测2/2，23.24s；其他11项证据在父提交7e01293，输入校验修复cb1efb5。并非最终提交上的一次全绿批次。一次第三轮旧二进制诊断在重建结束前启动，明确排除资格。
+- evidence/U/midi-move-{tests,qualification,regression-parent}.json及midi-move-regression.txt、midi-move-input-fix.txt；12份既有回执按原字节/SHA恢复。没有新增SDK补丁、依赖、实时处理或MCP工具。
+- 未资格：MIDI时间线Trim/边界Nudge、范围Nudge/全部CC曲线编辑、循环/原生量化/Groove/表情；实体拖拽/试听、硬件MIDI时序、其他设备率、全面插件与满载耐久。完整U＋P0继续未完成。
+
 U-P0-NEW-SESSION-DISPATCH-01（2026-10-10）：上一轮“新建空工程后新增轨道”间歇失败已定位为测试读取时序。诊断真实JUCE按钮监听器：原30ms派发返回时通知0/轨道0，继续派发到66.048ms，通知1/轨道1且can_undo=true；期间没有重发点击或调用私有产品回调。JUCE Button::triggerClick/postCommandMessage与handleCommandMessage源码提供同一路径依据。
 
 NewSessionTests::click现等待该实际Button::Listener通知一次，预先规定500ms消息派发上限；超时/重复通知拒绝，仍检验真实Edit及Undo。原5秒恢复任务、1秒快照捕获、3秒立体声渲染10秒预算保持。最终363cd49（诊断c4c7ace），目标构建通过；12次独立进程、408检查、48次实际按钮通知全部通过，最长通知31.501875ms。这里只是合成队列输入资格，不是实体点击延迟或耐久测试；生产代码、SDK/RT/依赖/存储/命令权限均未改变。

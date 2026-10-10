@@ -21,4 +21,6 @@
 - 每个可构建步骤提交 Git；证据只保留 evidence/<milestone>/summary.md 与关键输出；每个 P 级一份精简证据与真实截图，只跑受影响测试；级别完成才全量回归和打包。
 - 付费、上传音频、系统安全修改、覆盖用户原始文件须授权。公开发布须用户明确授权。仓库重构和已授权依赖无需重复询问。
 
+U-P0-MIDI-MOVE-01：整MIDI移动只经L1；GUI只读原生草稿，分组展开前校验整数/边界/未知参数；MusicalCurveMap只合并精确相同目的double的分段别名，保留真实点/端点，无epsilon。资格和剩余边界见VERIFICATION。
+
 入口：docs/PRODUCT_SPEC.md、docs/AI_COMMAND_CONTRACT.md、docs/M0_REPORT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/MCP_WORKFLOW.md、docs/RECOVERY_WORKFLOW.md、docs/ANALYSIS_WORKFLOW.md。

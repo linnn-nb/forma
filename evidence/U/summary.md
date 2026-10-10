@@ -1,3 +1,7 @@
+U-P0-MIDI-MOVE-01（2026-10-10）：主时间线整 MIDI 片段移动接通 Grabber、Spot 和五种 Nudge/可改键；音频/MIDI 编辑组共同偏移，拍基保留原 SEQ 与音乐时长，采样基投影实际 NOTE/CC/SysEx 时间并保留原始来源。共享曲线按轨道明确时间基准跟随；一笔 L1 human/native Undo，保存重开已验。专项1893检查；12项受影响测试最终通过（首批11/12，分组小数采样输入失败修复后2/2复测）。Release与固定本地签名通过。Mac锁定，实体操作/试听未执行；完整U＋P0未完成，不进P1。
+
+1893专项，8个时钟用例；12项受影响测试最终通过，父批次和修复复测分别保存。固定本地签名/Release通过，独立预览未启动，无DMG。下一项MIDI时间线Trim/边界与范围Nudge。详见midi-move-qualification.json。
+
 U-P0-NEW-SESSION-DISPATCH-01（2026-10-10）：上一轮“新建空工程后新增轨道”间歇失败已定位为测试读取时序。诊断真实JUCE按钮监听器：原30ms派发返回时通知0/轨道0，继续派发到66.048ms，通知1/轨道1且can_undo=true；期间没有重发点击或调用私有产品回调。JUCE Button::triggerClick/postCommandMessage与handleCommandMessage源码提供同一路径依据。
 
 NewSessionTests::click现等待该实际Button::Listener通知一次，预先规定500ms消息派发上限；超时/重复通知拒绝，仍检验真实Edit及Undo。原5秒恢复任务、1秒快照捕获、3秒立体声渲染10秒预算保持。最终363cd49（诊断c4c7ace），目标构建通过；12次独立进程、408检查、48次实际按钮通知全部通过，最长通知31.501875ms。这里只是合成队列输入资格，不是实体点击延迟或耐久测试；生产代码、SDK/RT/依赖/存储/命令权限均未改变。
