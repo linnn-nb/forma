@@ -749,7 +749,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     editArea.onMidiMoveExtent =
         [this](const std::string& id, int64_t target, const std::string& session, uint64_t revision)
     { return commands.midiClipMoveExtent(id, target, session, revision); };
-    editArea.onLinkedClips = [this](const std::string& id)
+    editArea.onLinkedClips = [this](const std::string& id, const std::string& mode)
     {
         try
         {
@@ -762,7 +762,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                              !((clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                 clip.value("source_frames", int64_t(0)) > 0 &&
                                 clip.value("source_sample_rate", 0.) > 0) ||
-                               (clip["kind"] == "midi" && clip.value("sample_mapping_available", false)))))
+                               (mode == "move" && clip["kind"] == "midi" &&
+                                clip.value("sample_mapping_available", false)))))
                             throw std::runtime_error("整组编辑不可用：成员已锁定、媒体缺失或编辑类型尚未支持");
             return linked;
         }

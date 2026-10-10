@@ -348,7 +348,7 @@ public:
     std::function<void(Json)> onViewChange;
     std::function<int64_t(int64_t, double)> onSnap;
     std::function<void(std::string, bool)> onClipSelection;
-    std::function<Json(const std::string&)> onLinkedClips;
+    std::function<Json(const std::string&, const std::string&)> onLinkedClips;
     std::function<Json(const std::string&, int64_t, const std::string&, uint64_t)> onMidiMoveExtent;
     std::function<void(const std::string&)> onMarkerClick;
     std::function<void(std::string)> onContext;
@@ -987,7 +987,7 @@ public:
                                 {"preview_fade_out", c.value("fade_out_samples", int64_t(0))}};
                         if (onLinkedClips)
                         {
-                            drag["linked"] = onLinkedClips(c["id"]);
+                            drag["linked"] = onLinkedClips(c["id"], mode);
                             if (drag["linked"].empty())
                             {
                                 drag = nullptr;

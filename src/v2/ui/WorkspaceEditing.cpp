@@ -93,7 +93,7 @@ void Workspace::executeEditCommand(int id)
             if (clips.size() == 1)
                 showSpotPlacement(clips[0]["id"].get<std::string>());
             else
-                message(text("Spot 模式已启用 · 选择一个音频片段后按 F3 打开置入对话框"));
+                message(text("Spot 模式已启用 · 选择一个音频或 MIDI 片段后按 F3 打开置入对话框"));
         }
         else
             message(text(id == editCommand::shuffle ? "Shuffle 涟漪编辑已启用 · 删除选中片段会推进后续片段"

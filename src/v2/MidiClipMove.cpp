@@ -23,7 +23,7 @@ Json Commands::midiClipMoveChange(const Json& args, bool includeEvents) const
     require(target >= 0 && target <= std::llround(te::Edit::maximumLength * timelineRate), "MIDI move outside session");
     edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(0));
     const auto& seq = edit->tempoSequence.getInternalSequence();
-    const auto before = timelineClipFacts(*c);
+    const auto before = includeEvents ? timelineClipFacts(*c) : Json{{"kind", "midi"}};
     auto after = before;
     after.erase("state_hash");
     const bool beats = c->getSyncType() == te::Clip::syncBarsBeats;
@@ -58,7 +58,27 @@ Json Commands::midiClipMoveChange(const Json& args, bool includeEvents) const
         after["sample_midi_projection"] =
             sample_midi::project(c->getSequence().state, seq, seq, c->getContentStartBeat().inBeats(), content, shift);
     if (!includeEvents)
+    {
+        after["notes"] = Json::array();
+        require(c->getSequence().getNumNotes() <= 65536, "MIDI preview exceeds note budget");
+        auto mapped = [&](tracktion::TimePosition position)
+        {
+            return beats ? seq.toTime(tracktion::BeatPosition::fromBeats(seq.toBeats(position).inBeats() + deltaBeat))
+                         : position + tracktion::TimeDuration::fromSeconds(shift);
+        };
+        for (auto* note : c->getSequence().getNotes())
+        {
+            const auto begin = mapped(note->getEditStartTime(*c)), finish = mapped(note->getEditEndTime(*c));
+            after["notes"].push_back({{"id", te::EditItemID::fromID(note->state).toString().toStdString()},
+                                      {"pitch", note->getNoteNumber()},
+                                      {"velocity", note->getVelocity()},
+                                      {"muted", note->isMute()},
+                                      {"position_samples", std::llround(begin.inSeconds() * timelineRate)},
+                                      {"length_samples", std::llround(finish.inSeconds() * timelineRate) -
+                                                             std::llround(begin.inSeconds() * timelineRate)}});
+        }
         return {{"after", after}};
+    }
     juce::MemoryOutputStream bytes;
     c->state.writeToStream(bytes);
     edit->tempoSequence.getState().writeToStream(bytes);

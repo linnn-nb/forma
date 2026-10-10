@@ -24,10 +24,11 @@ static std::vector<Point> musicalSliceImpl(const std::vector<Point>& curve, cons
 {
     require(!curve.empty() && high >= start && tolerance > 0, "invalid musical automation slice");
     const double anchor = destination.toBeats(time(start)).inBeats();
+    const double beatDelta = anchor - originBeat;
     auto forward = [&](double at)
-    { return destination.toTime(beat(anchor + source.toBeats(time(at)).inBeats() - originBeat)).inSeconds(); };
+    { return destination.toTime(beat(source.toBeats(time(at)).inBeats() + beatDelta)).inSeconds(); };
     auto inverse = [&](double at)
-    { return source.toTime(beat(originBeat + destination.toBeats(time(at)).inBeats() - anchor)).inSeconds(); };
+    { return source.toTime(beat(destination.toBeats(time(at)).inBeats() - beatDelta)).inSeconds(); };
     // A suffix has known original endpoints. Keep them exactly: inverse(forward(t))
     // can round below a native jump and accidentally discard its final event.
     const double low = exactSourceBounds ? exactSourceBounds->first : inverse(start);
@@ -86,10 +87,59 @@ static std::vector<Point> musicalSliceImpl(const std::vector<Point>& curve, cons
         if (p.curve < -.5f && p.curve > -1.f)
             guard(p.time, false);
     }
+    // A destination section inverse and a source section can be distinct source
+    // doubles yet have exactly the same forward-mapped double. Coalesce only
+    // that representational alias, not nearby times. Retain original curve
+    // events and known endpoints; refusing two distinct real events is safer
+    // than losing an ID or jump. No epsilon or enlarged value budget is used.
+    for (auto a = knots.begin(); a != knots.end();)
+    {
+        auto b = std::next(a);
+        if (b == knots.end())
+            break;
+        if (forward(a->first) != forward(b->first))
+        {
+            a = b;
+            continue;
+        }
+        auto significant = [&](double at)
+        {
+            return at == low || at == end ||
+                   std::any_of(curve.begin(), curve.end(), [&](const Point& point) { return point.time == at; });
+        };
+        require(!std::any_of(curve.begin(), curve.end(),
+                             [&](const Point& point) { return point.time > a->first && point.time < b->first; }),
+                "musical alias contains a real interior automation event");
+        const bool keepA = significant(a->first), keepB = significant(b->first);
+        require(!(keepA && keepB), "distinct real automation events map to one representable time");
+        const double from = keepA ? a->first : b->first;
+        const double to = from == low ? start : from == end ? high : forward(from);
+        auto previous = a == knots.begin() ? knots.end() : std::prev(a);
+        if (keepA)
+        {
+            a->second = to;
+            knots.erase(b);
+        }
+        else
+        {
+            b->second = to;
+            knots.erase(a);
+            a = b;
+        }
+        if (previous != knots.end())
+            a = previous;
+    }
     std::vector<Point> result;
     for (auto a = knots.begin(), b = std::next(a); b != knots.end(); ++a, ++b)
     {
-        require(b->first > a->first && b->second > a->second, "musical mapping lost time resolution");
+        if (!(b->first > a->first && b->second > a->second))
+        {
+            std::ostringstream detail;
+            detail.precision(17);
+            detail << "musical mapping lost time resolution: " << a->first << ":" << a->second << " -> " << b->first
+                   << ":" << b->second << " canonical " << forward(a->first) << ":" << forward(b->first);
+            throw std::runtime_error(detail.str());
+        }
         const double middle = (a->second + b->second) * .5;
         const bool bridge =
             std::any_of(guards.begin(), guards.end(), [&](auto g) { return middle > g.first && middle < g.second; });
@@ -139,7 +189,7 @@ std::vector<Point> musicalMoveSlice(const std::vector<Point>& curve, const track
 {
     const double origin = seq.toBeats(time(sourceStart)).inBeats();
     const double anchor = seq.toBeats(time(destinationStart)).inBeats();
-    const double sourceHigh = seq.toTime(beat(origin + seq.toBeats(time(high)).inBeats() - anchor)).inSeconds();
+    const double sourceHigh = seq.toTime(beat(seq.toBeats(time(high)).inBeats() - (anchor - origin))).inSeconds();
     return musicalSliceImpl(curve, seq, seq, origin, destinationStart, high, tolerance,
                             std::pair{sourceStart, sourceHigh});
 }

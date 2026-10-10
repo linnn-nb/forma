@@ -38,7 +38,11 @@ struct GroupedClipDraft
         if (drag.is_null() || !drag.contains("clip") || !includes(drag, original["id"]))
             return original;
         if (drag.contains("mapped_moves") && drag["mapped_moves"].contains(original.at("id").get<std::string>()))
-            return drag["mapped_moves"].at(original.at("id").get<std::string>());
+        {
+            auto preview = original;
+            preview.update(drag["mapped_moves"].at(original.at("id").get<std::string>()));
+            return preview;
+        }
         const auto cmd = command(drag);
         return clipgroup::preview(original, cmd,
                                   clipgroup::relative(cmd, args(drag, start, end), drag["clip"], original,
