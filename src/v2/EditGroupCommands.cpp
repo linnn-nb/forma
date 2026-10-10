@@ -304,6 +304,16 @@ Json Commands::expandEditGroupEdits(const Json& ops) const
         const auto command = op.at("command").get<std::string>();
         if (command == "clip.move" || command == "midi.clip.move")
         {
+            const auto& input = op.at("args");
+            if (!input.is_object() || !input.at("position_samples").is_number_integer())
+                throw std::runtime_error("group move requires an integer sample position");
+            if (input.at("position_samples").get<double>() < 0 ||
+                input.at("position_samples").get<double>() > std::llround(te::Edit::maximumLength * 48000.))
+                throw std::runtime_error("group move position outside native session bounds");
+            for (const auto& [key, value] : input.items())
+                if (key != "clip" && key != "position_samples" &&
+                    key != (command == "midi.clip.move" ? "state_hash" : "media_hash"))
+                    throw std::runtime_error("unsupported group move argument: " + key);
             const auto id = op.at("args").at("clip").get<std::string>();
             if (id.starts_with("$"))
             {
@@ -327,7 +337,9 @@ Json Commands::expandEditGroupEdits(const Json& ops) const
                     args["media_hash"] = mediaHash(peer->getOriginalFile());
                 else
                     throw std::runtime_error("group move contains an unsupported clip");
-                Json resolved = {{"command", peerCommand}, {"args", args}};
+                auto resolved = op;
+                resolved["command"] = peerCommand;
+                resolved["args"] = std::move(args);
                 const auto key = std::string(peerCommand) + ":" + peerID;
                 if (seen.contains(key))
                 {

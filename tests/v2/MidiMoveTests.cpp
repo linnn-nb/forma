@@ -37,28 +37,9 @@ public:
     {
         return {{"selection", w.selection.objects}, {"status", w.status.getText().toStdString()}};
     }
-    static Json pending(Workspace& w)
-    {
-        return w.pending;
-    }
-    static void accept(Workspace& w, bool yes)
-    {
-        if (yes)
-            w.acceptButton.onClick();
-        else
-            w.rejectButton.onClick();
-    }
-    static juce::String preview(Workspace& w)
-    {
-        return w.previewText.getText();
-    }
     static void select(Workspace& w, const std::string& id)
     {
         w.selectAudioClip(id);
-    }
-    static juce::ValueTree state(Commands& c)
-    {
-        return c.edit->state.createCopy();
     }
 };
 } // namespace ndaw::v2
@@ -179,38 +160,6 @@ void origin(Commands& c, const std::string& id, const std::string& expected)
     const auto provenance = state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN");
     check(provenance.isValid() && provenance["source_hash"].toString().toStdString() == expected,
           "immutable original native sequence hash retained");
-}
-std::string inserted(const Json& receipt)
-{
-    for (const auto& x : receipt["objects"])
-        if (x.contains("clipboard_token"))
-            return x["id"];
-    throw std::runtime_error("missing native inserted MIDI receipt");
-}
-Json playback(Commands& c, const std::string& id)
-{
-    auto& clip = AudioDeviceTestAccess::clip(c, id);
-    const auto sequence = clip.getSequence().exportToPlaybackMidiSequence(clip, te::MidiList::TimeBase::seconds, false);
-    Json result = Json::array();
-    for (int i = 0; i < sequence.getNumEvents(); ++i)
-    {
-        const auto& message = sequence.getEventPointer(i)->message;
-        result.push_back(
-            {{"payload", juce::String::toHexString(message.getRawData(), message.getRawDataSize()).toStdString()},
-             {"seconds", message.getTimeStamp()}});
-    }
-    return result;
-}
-void samePlayback(Commands& c, const std::string& id, const Json& expected)
-{
-    const auto actual = playback(c, id);
-    check(actual.size() == expected.size(), "native playback MIDI event count retained");
-    for (size_t i = 0; i < actual.size(); ++i)
-    {
-        check(actual[i]["payload"] == expected[i]["payload"], "actual native playback MIDI bytes unchanged");
-        check(std::abs(actual[i]["seconds"].get<double>() - expected[i]["seconds"].get<double>()) <= 1e-9,
-              "actual native playback timestamps retain declared 1 ns budget");
-    }
 }
 int renderOnset(Commands& c, const juce::File& file, int64_t start, int64_t end)
 {
@@ -386,12 +335,6 @@ int main(int argc, char** argv)
             w.openSession(file);
             pump();
         };
-        auto samples = [&]
-        {
-            for (const auto& id : {src, suffix, dest})
-                run(c, Json::array({op("midi.clip.timebase.set", {{"clip", id}, {"basis", "samples"}})}));
-        };
-
         int cases = 0;
         double worstCurveError = 0;
         for (const auto& file : {fixture, ramp})
@@ -543,9 +486,10 @@ int main(int argc, char** argv)
         const auto wave = dir.getChildFile("Peer.wav");
         {
             juce::WavAudioFormat format;
-            auto stream = std::make_unique<juce::FileOutputStream>(wave);
-            std::unique_ptr<juce::AudioFormatWriter> writer(
-                format.createWriterFor(stream.release(), 48000, 2, 24, {}, 0));
+            std::unique_ptr<juce::OutputStream> stream = wave.createOutputStream();
+            auto writer = format.createWriterFor(
+                stream,
+                juce::AudioFormatWriterOptions{}.withSampleRate(48000).withNumChannels(2).withBitsPerSample(24));
             juce::AudioBuffer<float> pcm(2, 240000);
             for (int i = 0; i < pcm.getNumSamples(); ++i)
                 for (int ch = 0; ch < 2; ++ch)
@@ -582,6 +526,22 @@ int main(int argc, char** argv)
             pump();
             check(actualClip(c, src)["start_samples"] == 96000 && actualClip(c, peerClip)["start_samples"] == 96000,
                   "mixed group Undo restores both stable clips");
+        }
+        {
+            auto locked = juce::XmlDocument::parse(groupFile);
+            byID(*locked, src)->setAttribute("ndaw_locked", 1);
+            const auto file = dir.getChildFile("LockedMixedGroup.tracktionedit");
+            check(locked->writeTo(file), "owned locked mixed-group fixture written");
+            open(file);
+            const auto before = c.query();
+            rejects(
+                [&]
+                {
+                    c.makePlan("human",
+                               Json::array({op("clip.move", {{"clip", peerClip}, {"position_samples", 432000}})}));
+                },
+                "audio anchor cannot bypass locked MIDI group peer");
+            check(c.query() == before, "mixed peer lock refusal is atomic for audio MIDI and revision");
         }
         check(juce::SHA256(wave).toHexString() == waveHash, "original group PCM unchanged");
         open(fixture);
@@ -637,7 +597,22 @@ int main(int argc, char** argv)
                            Json::array({op("midi.clip.move", {{"clip", src}, {"position_samples", 432000}})}));
             },
             "local MIDI move cannot be granted by an external actor string");
-        check(c.query() == guardedNative, "source hash and actor refusals preserve state and revision");
+        rejects(
+            [&]
+            {
+                c.makePlan("human",
+                           Json::array({op("midi.clip.move", {{"clip", src}, {"position_samples", 432000.5}})}));
+            },
+            "fractional MIDI position cannot become an integer during expansion");
+        rejects(
+            [&]
+            {
+                c.makePlan("human",
+                           Json::array({op("midi.clip.move",
+                                           {{"clip", src}, {"position_samples", 432000}, {"unsupported", true}})}));
+            },
+            "group expansion cannot discard unsupported command arguments");
+        check(c.query() == guardedNative, "source hash actor and argument refusals preserve state and revision");
         // Production shared Nudge keys, actual source basis, and independently decoded instrument output.
         open(fixture);
         run(c, Json::array({op("midi.clip.timebase.set", {{"clip", src}, {"basis", "samples"}})}));
