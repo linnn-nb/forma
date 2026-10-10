@@ -112,7 +112,17 @@ Json data(const juce::File& saved, const std::string& id)
             Json a = Json::object();
             for (int i = 0; i < x.getNumAttributes(); ++i)
                 if (x.getAttributeName(i) != "id")
-                    a[x.getAttributeName(i).toStdString()] = x.getAttributeValue(i).toStdString();
+                {
+                    const auto name = x.getAttributeName(i);
+                    // Native beat fields are doubles. Compare their exact parsed value,
+                    // not display spelling (3.0 vs 3 or round-trip decimal tails).
+                    // All unknown/opaque fields and nonnumeric event payloads stay exact strings.
+                    const bool beatField = (x.hasTagName("NOTE") && (name == "b" || name == "l")) ||
+                                           (x.hasTagName("CONTROL") && name == "b") ||
+                                           (x.hasTagName("SYSEX") && name == "time");
+                    a[name.toStdString()] =
+                        beatField ? Json(x.getDoubleAttribute(name)) : Json(x.getAttributeValue(i).toStdString());
+                }
             (x.hasTagName("NOTE") ? notes : events).push_back(a);
         }
         for (auto* child = x.getFirstChildElement(); child; child = child->getNextElement())
