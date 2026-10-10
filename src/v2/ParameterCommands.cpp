@@ -83,6 +83,7 @@ void Commands::beginParameterCapture()
     require(recordingCapture.is_null(), "stop recording before native parameter edits");
     require(midiConfiguration.is_null() || midiConfiguration.value("state", std::string{}) != "requested",
             "wait for MIDI configuration");
+    checkpointHistory();
     parameterCapture = {{"plan_id", juce::Uuid().toString().toStdString()},
                         {"actor", "human"},
                         {"source", parameterSource},
@@ -113,9 +114,7 @@ void Commands::finishParameterCapture(bool interrupted)
         tx.setProperty("source", juce::String(result["source"].get<std::string>()), nullptr);
         tx.setProperty("capture", juce::String(result.dump()), nullptr);
         metadata.addChild(tx, -1, &edit->getUndoManager());
-        history.resize(historyCursor);
-        history.push_back(id);
-        ++historyCursor;
+        recordHistory(id);
     }
     parameterCapture = nullptr;
     parameterTransactionStarted = false;

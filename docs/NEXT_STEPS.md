@@ -1,10 +1,10 @@
 # 下一步
 
-本轮现有轨道导入已构建与实机验证；提交推送后等待用户试用，不自动进入P1。
+显式保存的工程跨重开 Undo/Redo 已完成本轮增量验证；完整 U/P0 与完整 DAW 尚未完成，不进入 P1。
 
-1. 启动build-v2-tracktion/FeedbackPreview.app，⌘O打开同目录import-target-demo.tracktionedit；一轨两真实片段，媒体在UP0-demo-media，保留路径。当前预览已停在该工程00:00。
-2. 选空音频/乐器轨→⌘I→Cmd或Shift多选文件→选择“现有轨道”或“新建轨道”→Return导入；Escape取消。现有轨模式按文件顺序连续排列，已有片段保留且重叠叠加播放。一笔⌘Z/⇧⌘Z撤销/重做，保存副本可重开。
-3. 外部插件：选轨→右侧“AU / VST3…”→搜索→未扫描先扫描→插入→“插件窗口”；也可Mix空槽。plugin-entry-demo.tracktionedit保留两AU/一Serum VST3，真实编辑器、Undo/Redo及状态重开已验。
-4. 完整U/P0尚待用户试用；下一明确工程缺口是跨重开Undo，需设计持久历史与恢复冲突策略。预备拍实体录音时序未实测；当前另一个预览占MCP endpoint，本轮不验收MCP、不关闭用户其他实例。
+1. 当前 build-v2-tracktion/FeedbackPreview.app 停在 Edit/r32、persistent-desktop-demo.tracktionedit 的恢复状态。连续 ⌘Z 六次可回到空工程，⇧⌘Z 六次恢复音频切分、增益、Aux/发送、EQ/Reverb、MIDI/自动化和 Marker；原件不会删除。旧 import-target-demo/plugin-entry-demo 没有过往历史，不会凭空获得撤销。
+2. 本轮原生⌘S另存、退出、新进程读取副本及快捷键 Undo/Redo 已验。打开使用已有 --open-session 参数；“前往文件夹”自动化路径输入异常未归因，下一明确任务先核对原生选择器焦点及手动路径操作，再收尾 U/P0 8 步。演示源媒体在保留的专项临时目录，勿清理，后续整理演示媒体路径。
+3. 外部插件已具备直接入口：选轨→检查器“AU / VST3…”→搜索→未扫描先扫描→插入→插件窗口；Mix 空槽共用入口。真实 AUNBandEQ 与 Serum 的保存重开/Undo/Redo/DSP 在本轮复验。全部第三方兼容与听感未验。
+4. 预备拍实体录音拍数/时序、大工程历史资源/保存吞吐、完整 U/P0 用户试用仍待验证。显式历史最多2048事务/256MiB，超限不静默截断；自动恢复快照保持原语义。本轮 --no-mcp 不占其他预览端点，无 MCP 验收或权限扩展。
 
-P1、M2/M3扩充、M4/M5仍暂停；没有新DMG，不声称完整DAW验收。
+P1、M2/M3扩充、M4/M5仍暂停；没有新DMG，不宣称全产品验收。

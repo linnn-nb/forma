@@ -1,3 +1,17 @@
+## 2026-10-10 工程跨重开 Undo / Redo
+
+结论：显式保存的原生工程带有版本化的本地编辑历史；新进程重开后可以连续 Undo 到保存历史的初始状态，并逐笔 Redo。新编辑继续接入同一个 JUCE UndoManager，Undo 后新分支丢弃旧未来，保留原生对象 ID 与媒体原件。没有第二套音频引擎或命令入口。
+
+L1 PersistentHistory 保存脱离实时图的真实 Edit 前后快照、事务 ID、游标及校验哈希，加载前检查与当前工程绑定。恢复时就地协调原生 ValueTree，保留对象/自动化曲线身份；显式参数基础值与原生外部插件状态分别恢复。插件恢复后的异步参数回声先按实际实例同步，避免伪造 human 事务。UI 布局和当前 REQUEST_AUDIT 不随编辑 Undo 回滚；历史记录不授予 Agent 权限、不恢复本次执行回执、不自动重放请求。代码 PersistentHistory、EngineCommands、NativePluginStates、Parameter/Automation/RecordingCommands；测试 PersistentHistoryTests、ExternalPluginTests、RequestRecoveryTests。
+
+Release 与固定本地签名/deep strict 验签通过。最终受影响七组一次全绿：PersistentHistory 42、ClipWorkspace 70、真实 AU/VST3 63、SessionRecovery 52、RequestRecovery 63、AudioImport 72、Music 44，共 406 检查、64.505 秒，无 JUCE 断言。回执 build-v2-tracktion/persistent-history-release-summary.json 与 history-release-ndaw_*.{json,log}。早期三组回归失败（全局 flush 导致批量撤销异常、Serum 私有 blob 改写、相对媒体绑定）及后续 AU 异步回声冲突均保留日志，已修复并复测，不算初次全绿；不是完整产品或全部插件兼容验收。
+
+专项验证：保存时保留未来 Redo 游标，重开后新旧事务穿越、分支 ID 不复用、陈旧 Plan 拒绝、损坏校验在替换 Edit 前拒绝。音频/MIDI/路由/插件/曲线状态精确比较；真实 Tracktion WAV 渲染确认持久 −6 dB 推子 Undo/Redo 的 RMS 比例（容差 3e−6），原始媒体哈希不变。真实 AUNBandEQ 参数/插入与 Serum MIDI/Mute 的持久 Undo/Redo 再次渲染核对 DSP，不只是按钮标签。
+
+桌面实际：由专项真实保存工程准备 persistent-undo-demo.tracktionedit，启动参数 --open-session 打开新进程，⌘Z 六次到空工程、⇧⌘Z 六次恢复；随后原生⌘S另存 persistent-desktop-demo.tracktionedit（r19），⌘Q退出且进程结束；新进程通过同一打开参数读该桌面保存副本（r20），再次六次 Undo 到空工程/r26、六次 Redo/r32，切到 Edit，保持停止。最终预览为 FeedbackPreview.app，源媒体仍绑定保留的专项临时目录；演示副本不覆盖用户文件。原生“前往文件夹”弹层本轮自动化路径/回车操作异常、未确定工具焦点或应用原因；已终止该自有测试进程及窗口，不冒充文件选择器通过。保存选择器的真实保存与回执通过，重开入口使用已有启动参数。未做声学回环或主观听感。
+
+边界：旧文件没有历史不会补造过往 Undo；新保存历史最多 2048 事务/256 MiB 解码 XML，超限明确拒绝保存而不静默截断。大工程内存/保存吞吐仍待测。自动恢复快照现有 undo_restored=false 语义保持；工程撤销不删除录音或已导出文件，不抹掉副作用。当前插件版本不可恢复的参数会明确失败；不宣称跨插件版本普遍可逆。MCP 本轮以 --no-mcp 避免其他预览端点冲突，无权限/工具扩充。未改 SDK、实时处理、IPC 或依赖；未打 DMG、未新增 evidence/U 截图。完整 U/P0、实体预备拍录音时序与全产品尚未完成。
+
 ## 2026-10-10 导入到所选轨道
 
 结论：原生多文件选择和音频拖放现在先显示导入设置，可选择每文件新建一轨，或从捕获的光标位置连续导入实际音频/乐器轨。空目标轨默认选中，已有片段时默认新轨；明确选择现有轨后保留原片段、增益和路由，重叠会叠加播放。取消不改变工程，整个批次一个L1 human Plan/native Undo事务。文件选择前绑定session token/revision/光标，版本变化拒绝，关闭工程取消旧设置；连续放置用真实媒体时长和哈希，不按假波形计算。仅L1修改Edit。源码ClipCommands、WorkspaceActions/Commands/Layout/Refresh、AudioImportPanel；测试AudioImportDestinationTests。

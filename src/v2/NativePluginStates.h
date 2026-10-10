@@ -21,6 +21,7 @@ public:
     Json control(const std::string&, const Json&);
     void setProgram(const std::string&, int);
     void historyState(const std::string&, const char*);
+    void copyCheckpoints(juce::ValueTree) const;
 
 private:
     struct Snapshot;

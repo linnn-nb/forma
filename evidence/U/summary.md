@@ -1,3 +1,11 @@
+## 2026-10-10 工程跨重开历史
+
+显式保存现在保留真实 Edit 历史与 Redo 游标，重开通过同一原生 UndoManager 撤销/重做，并可接续新事务。布局、当前 Agent 审计/权限/执行回执不被历史恢复。真实 AU/VST3 参数回声冲突已修复；媒体原件保留。
+
+Release/固定本地 deep strict 签名通过；最终七组 406 检查/64.505 秒全绿，无 JUCE 断言。早期回归失败保留并复测；详细证据与边界见 VERIFICATION 最新节和忽略目录 build-v2-tracktion/persistent-history-release-summary.json、history-release-ndaw_*。
+
+桌面：专项真实保存工程→新进程打开→六次⌘Z到空工程/Redo恢复→原生另存 persistent-desktop-demo.tracktionedit→⌘Q退出→新进程打开桌面副本→六次Undo/Redo恢复。重开使用 --open-session；本轮文件选择器“前往文件夹”自动化异常，未计通过，已清理自有异常测试进程。最终预览停在 Edit/r32、三轨真实片段/路由/效果器，供试用；源媒体保留在专项临时目录。旧文件不补造历史，2048事务/256MiB上限超出明确报错，自动恢复快照/副作用不冒充可撤销；完整U/P0仍未完成，无新DMG或本目录截图。
+
 ## 2026-10-10 现有轨道导入
 
 原生多选后选择目的轨：空音频/乐器轨默认现有轨，按真实时长连续排列；新轨模式仍每文件一轨。整个批次一笔L1 human/native Undo，拒绝陈旧版本和无效成员，保留原片段、增益、路由与媒体。

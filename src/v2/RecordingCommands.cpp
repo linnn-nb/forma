@@ -341,6 +341,7 @@ Json Commands::record(const juce::File& directory)
     require(!targets.empty(), "no armed tracks");
     require(!edit->getTransport().looping && !edit->recordingPunchInOut,
             "linear recording only; Punch/Loop qualification is M6");
+    checkpointHistory();
     recordingDirectory = directory;
     recordingError.clear();
     auto plan = juce::Uuid().toString().toStdString();
@@ -556,9 +557,7 @@ void Commands::finishRecordingCapture(bool unexpected)
         tx.setProperty("source", "native-recording", nullptr);
         tx.setProperty("receipt", juce::String(receipt.dump()), nullptr);
         metadata.addChild(tx, -1, &um);
-        history.resize(historyCursor);
-        history.push_back(receipt["plan_id"]);
-        ++historyCursor;
+        recordHistory(receipt["plan_id"]);
     }
     else
     {

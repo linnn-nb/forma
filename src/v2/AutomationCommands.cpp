@@ -536,6 +536,7 @@ void Commands::beginAutomationCapture()
     if (tracks.empty())
         return;
     edit->getTransport().freePlaybackContext();
+    checkpointHistory();
     auto id = juce::Uuid().toString().toStdString();
     capture = {{"plan_id", id},
                {"actor", "human"},
@@ -667,8 +668,6 @@ void Commands::finishAutomationCapture()
     lastCapture = capture;
     capture = nullptr;
     bumpRevision();
-    history.resize(historyCursor);
-    history.push_back(id);
-    ++historyCursor;
+    recordHistory(id);
 }
 } // namespace ndaw::v2

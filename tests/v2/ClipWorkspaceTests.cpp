@@ -230,9 +230,9 @@ int main(int argc, char** argv)
             const auto retained = dir.getChildFile("au-batch-gain-final.tracktionedit");
             ec.save(retained);
             external.openSession(retained);
-            check(
-                external.query()["tracks"] == editedBatch && external.query()["history"]["undo"].is_null(),
-                "AU, imported media and separate fader value reopen correctly without claiming persisted Undo history");
+            check(external.query()["tracks"] == editedBatch &&
+                      external.query()["history"]["undo"]["commands"] == Json::array({"track.gain"}),
+                  "AU, imported media and separate fader value reopen with the actual persisted Undo transaction");
         }
         Workspace live(true);
         live.setVisible(true);

@@ -422,12 +422,10 @@ void NativePluginStates::publish(Watch& w, std::shared_ptr<Snapshot> old, std::s
     tx.setProperty("source", source, nullptr);
     tx.setProperty("capture", juce::String(last.dump()), nullptr);
     owner.metadata.addChild(tx, -1, &owner.edit->getUndoManager());
-    owner.history.resize(owner.historyCursor);
-    owner.history.push_back(txid);
-    ++owner.historyCursor;
+    w.checkpoint = next;
+    owner.recordHistory(txid);
     owner.bumpRevision();
     last["revision"] = owner.revision;
-    w.checkpoint = next;
     w.knownOverrides.clear();
     w.dirty.store(0, std::memory_order_relaxed);
     w.invalidated = false;
@@ -536,6 +534,23 @@ void NativePluginStates::setProgram(const std::string& target, int index)
         throw;
     }
 }
+void NativePluginStates::copyCheckpoints(juce::ValueTree copy) const
+{
+    owner.checkThread();
+    auto visit = [&](auto&& self, juce::ValueTree node) -> void
+    {
+        if (node.hasType(te::IDs::PLUGIN))
+            if (auto found = watches.find(node[te::IDs::id].toString().toStdString()); found != watches.end())
+                if (auto state = found->second->checkpoint)
+                {
+                    node.setProperty(te::IDs::state, state->blob->toBase64Encoding(), nullptr);
+                    node.setProperty(te::IDs::programNum, state->program, nullptr);
+                }
+        for (auto child : node)
+            self(self, child);
+    };
+    visit(visit, copy);
+}
 void NativePluginStates::historyState(const std::string& id, const char* state)
 {
     if (!last.is_null() && last.value("plan_id", std::string{}) == id)
@@ -608,9 +623,7 @@ Json NativePluginStates::control(const std::string& cmd, const Json& args)
     tx.setProperty("reversible", false, nullptr);
     tx.setProperty("plugin", juce::String(target), nullptr);
     owner.metadata.addChild(tx, -1, &owner.edit->getUndoManager());
-    owner.history.resize(owner.historyCursor);
-    owner.history.push_back(txid);
-    ++owner.historyCursor;
+    owner.recordHistory(txid);
     last = {{"plan_id", txid},     {"state", "restored_checkpoint"},
             {"actor", "human"},    {"source", "plugin_state_recovery"},
             {"plugin", target},    {"revision", owner.revision},

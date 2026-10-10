@@ -92,7 +92,7 @@ void recovery(const juce::File& folder){
         c.open(file);auto reopened=q.connect("agent:reopened");auto status=request(reopened,"gain-once");
         check(status["status"]=="recovery_requires_review"&&status["receipt"].is_null()&&!status["trusted_current_run"].get<bool>()&&!status["owned"].get<bool>(),"saved marker is historical data, not current success or Undo authority");
         check(status["historical_marker"]["state"]==(file==committed?"committed":"undone"),"saved marker retains actual committed or undone history");
-        const auto before=c.query()["tracks"];check(result(reopened.submit("plan",body))["status"]=="failed"&&c.query()["tracks"]==before&&!c.query()["can_undo"].get<bool>(),"saved request cannot silently replay or fabricate persistent Undo");q.revoke(reopened.id());
+        const auto before=c.query()["tracks"];check(result(reopened.submit("plan",body))["status"]=="failed"&&c.query()["tracks"]==before&&c.query()["can_undo"].get<bool>(),"saved request cannot silently replay; restored local Undo does not grant Agent permission");q.revoke(reopened.id());
     }
     auto xml=juce::XmlDocument::parse(committed);auto state=juce::ValueTree::fromXml(*xml);auto audit=state.getChildWithName("NATIVEDAW").getChildWithName("REQUEST_AUDIT");check(audit.getNumChildren()==1,"one keyed successful Plan creates one saved audit marker");
     audit.addChild(audit.getChild(0).createCopy(),-1,nullptr);const auto corrupt=folder.getChildFile("duplicate.tracktionedit");corrupt.replaceWithText(state.toXmlString());c.open(corrupt);

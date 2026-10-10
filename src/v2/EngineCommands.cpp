@@ -6,6 +6,7 @@
 #include <limits>
 #include "PluginEditorWindows.h"
 #include "NativePluginStates.h"
+#include "PersistentHistory.h"
 #include "SessionRecovery.h"
 #include "OutputProbe.h"
 #include <juce_cryptography/juce_cryptography.h>
@@ -265,6 +266,7 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     edit->getParameterChangeHandler().setUserChangeListener(this);
     nativeStates = std::make_unique<NativePluginStates>(*this);
     nativeStates->sync();
+    persistentHistory = std::make_unique<PersistentHistory>(*this);
 }
 Commands::~Commands()
 {
@@ -275,6 +277,8 @@ Commands::~Commands()
     scrubDecoder.reset();
     closePluginEditors(true);
     nativeStates.reset();
+    edit->getUndoManager().clearUndoHistory();
+    persistentHistory.reset();
     edit->getParameterChangeHandler().setUserChangeListener(nullptr);
     undoBoundaryInhibitor.reset();
     edit.reset();
@@ -1059,6 +1063,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             break;
         }
     releaseMidiKeys();
+    checkpointHistory();
     te::Edit::UndoTransactionInhibitor inhibitor(*edit);
     auto& um = edit->getUndoManager();
     um.beginNewTransaction(
@@ -1252,9 +1257,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     closePluginEditors();
     if (nativeStates)
         nativeStates->sync(true);
-    history.resize(historyCursor);
-    history.push_back(plan.at("plan_id"));
-    ++historyCursor;
+    recordHistory(plan.at("plan_id"));
     Json result{
         {"plan_id", plan.at("plan_id")}, {"actor", plan.at("actor")}, {"revision", revision},   {"objects", objects},
         {"state", "committed"},          {"replayed", false},         {"audio_verified", false}};
@@ -1623,7 +1626,7 @@ Json Commands::save(const juce::File& destination)
     try
     {
         require(te::EditFileOperations(*edit).writeToFile(staged, false), "Edit save failed");
-        auto xml = preciseEditXml(edit->state); // SDK already flushed real plugin/base state above.
+        auto xml = preciseEditXml(persistentHistory->save()); // Includes checked local history, never live permissions.
         require(xml && xml->writeTo(staged), "lossless native Edit XML save failed");
         publish(staged, destination);
     }
@@ -1646,9 +1649,25 @@ void Commands::open(const juce::File& source)
     stop();
     auto xml = juce::XmlDocument::parse(source);
     require(xml && xml->hasTagName("EDIT"), "invalid Edit XML");
-    auto candidate = te::loadEditFromFile(engine, source);
+    auto loaded = juce::ValueTree::fromXml(*xml);
+    auto archive = PersistentHistory::read(loaded, source);
+    auto info = loaded.getChildWithName("NATIVEDAW");
+    info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);
+    // Include all past/future native IDs while the SDK initializes its allocator.
+    // A new edit after Undo must not reuse an ID retained by cached history nodes.
+    juce::ValueTree reserve("HISTORY_ID_RESERVE");
+    if (archive.highestID > 0)
+    {
+        te::EditItemID::fromRawID(archive.highestID).writeID(reserve, nullptr);
+        loaded.addChild(reserve, -1, nullptr);
+    }
+    auto options = te::Edit::Options{engine, loaded, te::ProjectItemID::fromProperty(loaded, te::IDs::projectID)};
+    options.editFileRetriever = [source] { return source; };
+    auto candidate = te::Edit::createEdit(std::move(options));
     require(candidate != nullptr, "invalid Edit file");
     adoptEdit(std::move(candidate));
+    edit->state.removeChild(reserve, nullptr);
+    persistentHistory->install(std::move(archive));
 }
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
@@ -1686,6 +1705,8 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     externalPreparedRates.clear();
     externalParameterLayouts.clear();
     undoBoundaryInhibitor.reset();
+    edit->getUndoManager().clearUndoHistory();
+    persistentHistory.reset();
     releaseRollGraph();
     edit = std::move(candidate);
     rollPlayback = nullptr;
@@ -1719,6 +1740,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     bumpRevision();
     sessionID = juce::Uuid().toString().toStdString();
     edit->getParameterChangeHandler().setUserChangeListener(this);
+    persistentHistory = std::make_unique<PersistentHistory>(*this);
 }
 std::string Commands::sessionToken() const
 {

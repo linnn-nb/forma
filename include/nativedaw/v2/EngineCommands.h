@@ -16,6 +16,7 @@ class AudioDeviceTestAccess;
 class PluginEditorWindows;
 class NativePluginStates;
 class SessionRecovery;
+class PersistentHistory;
 class MasterAnalysis;
 class ScrubPlayback;
 struct SelectionOutputGateState;
@@ -54,7 +55,7 @@ public:
     std::string sessionToken() const;
     Json transactionStatus(const std::string&) const;
     // A live receipt is authoritative. Saved markers are untrusted history and
-    // never grant permission, restore Undo or authorize replay after reopening.
+    // never grant permission or authorize replay after reopening; local Undo is restored separately.
     Json requestRecovery(const std::string& requestKey) const;
     static constexpr size_t maximumRequestRecords = 4096;
     Json undo(const std::string& expectedPlan = {});
@@ -181,6 +182,7 @@ private:
     void adoptEdit(std::unique_ptr<te::Edit>);
     static void registerRecoveryCommands(Json&);
     friend class NativePluginStates;
+    friend class PersistentHistory;
     std::unique_ptr<NativePluginStates> nativeStates;
     void captureNativeStates() const;
     void nativeStateOwned(bool);
@@ -441,6 +443,9 @@ private:
     };
     std::map<std::string, Receipt> receipts;
     // Undo detaches the native transaction node; retain its description for Redo.
+    void checkpointHistory();
+    void recordHistory(const std::string&);
+    std::unique_ptr<PersistentHistory> persistentHistory;
     std::map<std::string, juce::ValueTree> historyRecords;
     std::vector<std::string> history;
     size_t historyCursor = 0;
