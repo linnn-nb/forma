@@ -80,6 +80,14 @@ double rms(Commands& c, const juce::File& dir)
     check(reader && reader->read(&pcm, 0, 48000, 0, true, true), "real exported PCM decoded");
     return pcm.getRMSLevel(0, 12000, 24000);
 }
+Json volumePoints(Commands& c, const std::string& track)
+{
+    const auto facts = c.automationQuery(track);
+    for (const auto& lane : facts["lanes"])
+        if (lane["parameter"] == "volume")
+            return lane["points"];
+    throw std::runtime_error("native volume parameter missing");
+}
 void flow(const juce::File& dir)
 {
     auto source = dir.getChildFile("source.wav");
@@ -89,6 +97,8 @@ void flow(const juce::File& dir)
     std::vector<Json> stages;
     std::vector<std::string> ids;
     std::string track, clip;
+    Json expectedPoints;
+    double expectedAudio = 0;
     {
         Commands c(false, std::make_unique<Storage>(dir.getChildFile("prefs-original")));
         stages.push_back(c.query()["tracks"]);
@@ -130,6 +140,8 @@ void flow(const juce::File& dir)
                                                       {"curve", 0}})}));
         next(Json::array({op("marker.create", {{"name", "Chorus"}, {"position_samples", 24000}})}));
         c.updateUiState({{"workspace", "mix"}}, c.sessionToken());
+        expectedPoints = volumePoints(c, track);
+        expectedAudio = rms(c, dir);
         auto receipt = c.save(file);
         check(receipt["sha256"] == Commands::mediaHash(file),
               "save returns the checksum of the real history-bearing document");
@@ -164,6 +176,8 @@ void flow(const juce::File& dir)
     }
     check(!c.query()["can_undo"].get<bool>() && c.query()["can_redo"],
           "continuous Undo reaches the initial empty project without losing Redo");
+    // Exercise the SDK's 1 s unused-plugin reclamation before reconstruction.
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(1200);
     const auto reopenedSession = c.sessionToken();
     for (size_t i = 0; i < ids.size(); ++i)
     {
@@ -177,6 +191,21 @@ void flow(const juce::File& dir)
     check(c.sessionToken() == reopenedSession && c.query()["revision"].get<uint64_t>() > revision,
           "Undo preserves live session identity and monotonically advances revision");
     check(c.uiState()["workspace"] == "mix", "editing history does not revert the user's saved workspace");
+    check(volumePoints(c, track) == expectedPoints, "full saved-history Redo restores points in the live SDK curve");
+    check(std::abs(rms(c, dir) - expectedAudio) < 3e-6,
+          "full saved-history Redo renders the same automation as before closing");
+    const auto automatedAudio = rms(c, dir);
+    for (size_t i = ids.size(); i > 0; --i)
+        c.undo(ids[i - 1]);
+    for (size_t i = 0; i < ids.size(); ++i)
+        c.redo();
+    pump();
+    check(c.query()["tracks"] == stages.back(),
+          "rapid full-history replay reconnects live native automation curves, not just XML points");
+    check(volumePoints(c, track) == expectedPoints,
+          "rapid full-history Redo preserves native parameter curve identity");
+    check(std::abs(rms(c, dir) - automatedAudio) < 3e-6,
+          "rapid full-history replay preserves actual automated audio output");
     auto stale = c.makePlan("human", Json::array({op("track.gain", {{"track", track}, {"db", -12}})}));
     c.undo();
     pump();
@@ -263,6 +292,46 @@ void gainAudio(const juce::File& dir)
     check(std::abs(reduced / dry - std::pow(10., -6. / 20.)) < 3e-6 && std::abs(redone - reduced) < 3e-6,
           "persisted fader Undo and Redo restore real DSP not just saved labels");
 }
+void savedCurveReplay(const juce::File& file, const juce::File& dir)
+{
+    Commands c(false, std::make_unique<Storage>(dir.getChildFile("gui-fixture-prefs")));
+    c.open(file);
+    pump();
+    Json expected = Json::object();
+    size_t pointCount = 0;
+    const auto tracks = c.query()["tracks"];
+    for (const auto& t : tracks)
+    {
+        const auto id = t["id"].get<std::string>();
+        expected[id] = volumePoints(c, id);
+        pointCount += expected[id].size();
+    }
+    check(pointCount > 0, "saved GUI fixture contains actual live automation points before replay");
+    int count = 0;
+    while (c.query()["can_undo"] && count < 2048)
+    {
+        c.undo();
+        pump();
+        ++count;
+    }
+    check(!c.query()["can_undo"], "saved GUI fixture reaches its initial history boundary");
+    // PluginCache releases unused instances on its 1 s native timer. A user
+    // can pause at the empty project; replay must also work with new instances.
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(1200);
+    for (int i = 0; i < count; ++i)
+    {
+        c.redo();
+        pump();
+        // The native Edit view enumerates parameters after every history step,
+        // including before a plugin's first automation curve is reattached.
+        const auto liveTracks = c.query()["tracks"];
+        for (const auto& t : liveTracks)
+            c.automationQuery(t["id"].get<std::string>());
+    }
+    pump();
+    for (auto it = expected.begin(); it != expected.end(); ++it)
+        check(volumePoints(c, it.key()) == it.value(), "saved GUI fixture reconnects each live volume curve");
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -274,6 +343,8 @@ int main(int argc, char** argv)
         dir.createDirectory();
         flow(dir);
         gainAudio(dir);
+        if (argc > 2)
+            savedCurveReplay(juce::File(juce::String::fromUTF8(argv[2])), dir);
         Json receipt{{"result", "passed"},
                      {"checks", checks},
                      {"fixture", dir.getFullPathName().toStdString()},

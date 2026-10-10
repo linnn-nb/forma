@@ -313,7 +313,16 @@ void PersistentHistory::restore(const juce::ValueTree& image)
         // an invisible, still-running curve in the SDK parameter object.
         for (auto* plugin : te::getAllPlugins(*owner.edit, true))
             for (auto* parameter : plugin->getAutomatableParameters())
-                parameter->getCurve().clear(nullptr);
+            {
+                auto& curve = parameter->getCurve();
+                curve.clear(nullptr);
+                // PluginCache may have retired the old instance while the user
+                // paused in history. A new parameter then owns a different empty,
+                // detached curve. Reconcile into that live node, not the archive's
+                // old node: the SDK curve source and its listeners retain it.
+                nodes["CURVE:" + plugin->itemID.toString().toStdString() + ":" + parameter->paramID.toStdString()] =
+                    curve.state;
+            }
         patch(owner.edit->state, desired);
         for (auto* plugin : te::getAllPlugins(*owner.edit, true))
         {
