@@ -1,3 +1,15 @@
+## 2026-10-10 当前原生8步收尾与自动化恢复修复
+
+结论：当前试用主流程已走完；关闭重开后33次原生Undo到初始工程、33次Redo恢复音频/MIDI/路由/效果/Marker/键位与实际2点曲线。预备拍实体录音与新8张截图归档仍有缺口。当前结果以evidence/U/summary.md为准；下面各条为较早增量，不冒充当前完整验收。
+
+GUI发现全量Redo在空工程停留后显示平线。专项在SDK的1秒PluginCache回收后复现：历史XML有点但新参数曲线空。PersistentHistory::restore在清空现有曲线后用当前原生参数持有的节点覆盖历史节点索引；只在L1/message thread恢复，不改SDK或实时链路。测试增加实际SDK点比较、已知PCM真实渲染RMS、快速回放、回收后逐笔回放以及可选原生GUI文件重放。失败日志history-curve-gui-cache-baseline保留，修复后通过；不是仅验证保存标签。
+
+源码dd7a76f，Release构建、生产/FeedbackPreview固定签名deep/strict通过。最终7组通过/0失败，共427检查/74.431秒，无JUCE断言；索引build-v2-tracktion/history-curve-final-summary.json。历史63、ClipWorkspace70、真实AU/VST3 63、SessionRecovery52、RequestRecovery63、AudioImport72、Music44。诊断专项先失败1后通过；另一次UTF-8测试路径构造失败已修，构建目标名错误已更正，旧日志均留build，不宣称首次全绿。
+
+当前真实原生工程UP0-demo-media/UP0-current-1010-verified.tracktionedit：987441字节、33历史事务/34快照、6轨、2 MIDI音和2音量点。原生另存后再次⌘O重开/r126，停在2.832秒。原始UP0-current-1010及故障restored副本保留。实际AUNBandEQ在全量Redo后再次打开原生编辑器并关闭；全部第三方兼容和听感未验。多选导入、两处改键、Mix槽EQ、Reverb Aux/post发送、Smart双淡化与Shuffle具体手势见summary。
+
+当前8张目录截图仍为旧基线，仅本次工具输出展示新原生图，落盘归档未补齐。没有DMG、AI扩充、实体录音时序、声学回环或大工程/长期/Windows验证。提交推送后暂停等待用户试用；不能包装成完整DAW完成。
+
 ## 2026-10-10 五项反馈修复版复核
 
 当前源码 ff7aa0c 与运行中的 FeedbackPreview 一致；本轮没有新增产品代码。独立 AU/VST3 入口真实操作：选 audio 1 → AU/VST3 → 搜索 AUNBandEQ → 选已扫描条目 → 插入 r10 → 打开真实编辑器 → 关闭 → ⌘Z r11 移除 → ⇧⌘Z r12 恢复。原生 ⌘S 新存 UP0-demo-media/Feedback-5-current-1010.tracktionedit；⌘O 原生选择该文件重开，AUNBandEQ 与历史恢复，⌘Z r15 / ⇧⌘Z r16 再次移除/恢复。最终停止在 2 秒，保留四条音频轨、一条乐器轨、实际媒体与 AU 供试用；不声称 AU 听感或全部第三方兼容。
