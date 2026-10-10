@@ -1,0 +1,38 @@
+First affected run, source 82a0d836a35d94f88591cd57d6f9d3c096611b33 (two decimal-text assertions failed):
+ 1/23 Test  #22: tracktion_native_new_session ........   Passed    4.76 sec
+ 2/23 Test  #23: tracktion_session_recovery ..........   Passed   16.88 sec
+ 3/23 Test  #24: tracktion_native_session_recovery ...   Passed    3.00 sec
+ 4/23 Test  #28: tracktion_pan_audio .................   Passed   19.68 sec
+ 5/23 Test  #38: tracktion_folder_vca ................   Passed   11.23 sec
+ 6/23 Test  #56: tracktion_permission_scope ..........   Passed    2.94 sec
+ 7/23 Test  #64: tracktion_native_plugin_states ......   Passed   21.12 sec
+ 8/23 Test  #70: tracktion_paged_project_queries .....   Passed    4.95 sec
+ 9/23 Test  #74: forma_native_ui_navigation ..........   Passed    3.81 sec
+10/23 Test  #76: forma_native_audio_clipboard ........   Passed    6.67 sec
+11/23 Test #106: forma_native_shuffle_ranges .........   Passed   21.25 sec
+12/23 Test #108: forma_native_automation_shuffle .....   Passed   48.75 sec
+13/23 Test #109: forma_native_automation_clipboard ...   Passed   29.26 sec
+14/23 Test #110: forma_native_automation_follow ......   Passed    6.33 sec
+15/23 Test #111: forma_native_automation_clear .......   Passed   22.80 sec
+16/23 Test #118: forma_native_midi_clip_timeline .....***Failed    1.97 sec
+17/23 Test #119: forma_native_midi_range_timeline ....***Failed    1.72 sec
+18/23 Test #120: forma_native_mixed_clipboard ........   Passed   12.86 sec
+19/23 Test #121: forma_native_mixed_shuffle ..........   Passed   23.62 sec
+20/23 Test #122: forma_native_musical_shuffle ........   Passed   36.43 sec
+21/23 Test #123: forma_native_shared_clock ...........   Passed   70.58 sec
+22/23 Test #124: forma_native_musical_clipboard ......   Passed   18.41 sec
+23/23 Test #127: forma_native_object_shuffle .........   Passed   98.12 sec
+91% tests passed, 2 tests failed out of 23
+Total Test time (real) = 487.18 sec
+
+Test-only correction source 61d0cecad040b9895b44d5d29470eff097014185; other production/test source unchanged:
+Internal ctest changing into directory: /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+Test project /Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion
+    Start 118: forma_native_midi_clip_timeline
+1/2 Test #118: forma_native_midi_clip_timeline ....   Passed    6.31 sec
+    Start 119: forma_native_midi_range_timeline
+2/2 Test #119: forma_native_midi_range_timeline ...   Passed    4.28 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  10.60 sec

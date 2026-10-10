@@ -1,3 +1,19 @@
+U-P0-OBJECT-SHUFFLE-01（2026-10-10）：整片段混合音频/MIDI Shuffle Cut/Delete/Paste接通真实预览、接受/取消、一笔native Undo/Redo、可改快捷键和保存重开。删除按每轨所选占用区间并集收拢，保留间隙；粘贴使用完整复制包络。Release/固定叶证书deep/strict验签通过，专项4729检查、16清理＋24粘贴场景、245760原生DSP取值通过。
+
+23项不同受影响CTest最终通过：21项在82a0d83通过，2项旧MIDI测试修订数字文本比较后在61d0cec重新构建通过（135检查/10.62秒）；生产代码未再变化，非一次全绿批次。首轮487.18秒，原失败保留；19份历史回执恢复原字节并逐一验SHA。完整U＋P0未完成，不进入P1；Mac锁定，实体GUI/听感未执行，独立预览未启动。M2/M3冻结、M4/M5暂缓。
+
+实现：MidiClipClipboard/AutomationClear、MusicCommands、ui/WorkspaceMidiClipClipboard/Commands/Editing；测试tests/v2/ObjectShuffleTests.cpp与forma_native_object_shuffle。原生播放迭代器验证音量/声像/实际EQ参数，在阶跃、native ramp和恒速Tempo、拍号变化、两种曲线基准、不同替换长度下逐点对照；Save/Open后重复同一DSP取值。最大归一化误差1.7881393432617188e-7，逐点预算仍为1e-7实际参数跨度＋2参考float ULP，没有放宽；派生保存拍位置误差0，原生POINT样本投影精确。
+
+真实WAV独立解码并验证格式、48k/双声道、实际帧数和非静音；实际FourOsc与音频分开验证，源媒体/输入原生夹具SHA不变。恢复快照真实写盘、hash读取、L1采用后状态一致，33个有限原生double精确往返。GUI组件实际调用同一快捷键/Plan，取消保留旧剪贴板，Delete不更换剪贴板；Undo/Redo/另存/Open与改键通过，不冒充实体桌面验收。重开不保留RAM剪贴板和旧Undo历史。
+
+发现并修复：JUCE默认显示格式丢失double尾数，使6个POINT保存重开投影偏一采样；NativeEditXml以classic/max_digits10处理正常暂存保存及恢复快照，不改变SDK或部署系统版本。原生后缀映射inverse(forward(t))舍入丢失末端强曲线跳变（原差0.0670189559），MusicalCurveMap保留已知源端点，严格采样守卫不加epsilon。查询/Scope长度统一为round(end)−round(start)，消除Ramp下与预览差一采样。旧NOTE/CONTROL/SYSEX测试的数字文本断言（如3.0/3、小数尾数）改为已知拍字段精确double值比较；未知属性/CC值/SysEx载荷仍精确字符串比较，原输入文件未改。首轮复制边界测试修正为既有一目的采样半开锚定规则，GUI夹具修正实际轨引用/临时查询生命周期；原失败均不作通过。
+
+亲手试：保存退出旧Forma，双击build-v2-tracktion/OpenObjectShuffleDemo.command。自有测试PCM工程已选5个音频/MIDI整对象，native Shuffle与采样曲线基准已设；CmdX或Backspace看到每轨删除并集/位移预览，先拒绝，再接受，Space试听、CmdZ/ShiftCmdZ。再次Copy整对象，选Destination 1，在9秒置入或选9–9.5秒范围，ControlOptionShiftJ粘贴；该工程预设自定义粘贴键，可改回CmdV。另存、CmdO重开；重开后再Copy。OptionF5/F6/F7切auto/samples/beats曲线跟随。源FourOsc旁通以听到真实音频，乐器可独立启用验证MIDI，不承诺同时透传输入音频。
+
+产物：Release/Forma.app、ObjectShufflePreview.app（org.forma.preview.objectshuffle，--no-mcp）与OpenObjectShuffleDemo.command；完整路径在evidence/U/object-shuffle-tests.json的demo字段。证据另有object-shuffle-qualification.json、object-shuffle-regression.txt；完整日志在build-v2-tracktion/object-shuffle-qualification与object-shuffle-numeric-retry，早期失败object-shuffle-*-test.log保留。CTest成功stdout有1024字节上限，JSON明确记录此限制，不声称归档了完整成功stdout。无新DMG/截图/实体麦克风资格。
+
+本节替代历史“整对象Shuffle未实现”，仅限受测路径。未选对象重叠、锁定、采样同步MIDI跨变化、Warp/部分循环仍保守拒绝；多对象Cut删除并集与Paste完整包络不同，不承诺Cut→Paste Original精确逆向，Undo才恢复原状态。硬件、其他设备率、第三方全面兼容、满载/耐久、Windows、发行和完整U＋P0仍待验收。下一项核对U＋P0剩余边界，先处理采样同步MIDI跨Tempo/Meter的实际映射，再完成用户实体验收；不提前进入P1。
+
 U-P0-SHARED-CLOCK-01（2026-10-10）：同轨混合音频/MIDI的共享自动化可明确按采样或小节拍跟随复制/范围Shuffle；基准设置、编辑均一笔native Undo，可保存重开、有可改快捷键。旧音频Copy后修改目的基准接通原生时间线流程，保持复制时冻结数据。最终17/17受影响CTest通过，2938检查/333.66秒；专项682检查、102656原生DSP取值，源码4078bbd（基础b7d5d1e），Release与固定叶证书deep/strict验签通过。
 
 本节替代历史“同轨混合基准有共享曲线一律拒绝”的范围：显式选择可执行，auto仍拒绝歧义。不是全局Tempo编辑跟随模式；片段仍按自己的timebase移动。采样同步MIDI跨变化、一般混合对象Shuffle、Warp及部分循环仍未资格；完整U＋P0未完成，不进入P1，M2/M3冻结、M4/M5暂缓。Mac锁定，实体GUI/听感未执行，独立演示未启动。

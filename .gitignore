@@ -108,3 +108,7 @@ evidence/U/*
 !evidence/U/shared-clock-qualification.json
 
 !evidence/U/shared-clock-regression.txt
+
+!evidence/U/object-shuffle-tests.json
+!evidence/U/object-shuffle-qualification.json
+!evidence/U/object-shuffle-regression.txt

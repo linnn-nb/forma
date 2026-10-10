@@ -1,3 +1,7 @@
+U-P0-OBJECT-SHUFFLE-01（2026-10-10）：整片段混合音频/MIDI的Shuffle Cut/Delete/Paste已接通原生预览、单笔Undo/Redo、保存重开与可改快捷键。删除按各轨所选占用并集收拢并保留间隙，粘贴使用完整复制包络；曲线跟随用户单一轨道基准，片段各自保留采样/音乐基准。采样长度以round(end)−round(start)统一，有限double保存精度保持。实测与边界见VERIFICATION最新节。
+
+本节与SHARED-CLOCK/MUSICAL-SHUFFLE资格替代下方历史“混合/对象Shuffle一律拒绝”的已测范围；未选重叠、锁定、采样同步MIDI跨变化、Warp/部分循环仍保守拒绝。完整U＋P0未完成，用户实体验收前不进入P1；M2/M3冻结，M4/M5暂缓；不宣称Pro Tools全面工作流等价。Mac锁定，实体GUI/听感未执行。
+
 U-P0-MIXED-CLIPBOARD-01（2026-10-10）：混合音频/MIDI对象与范围的Copy/Cut/Paste/Duplicate/Paste Original接通L1原生快照，保留空轨、空白、两侧片段、Clip EQ、CC/SysEx、曲线与基础值；共用可改键、一笔Undo/Redo和保存重开。Release/固定签名通过；最终15/15受影响CTest、2555检查、255.21秒（专项94，8192原生值探测），真实PCM最大差2.384185791e-7。Mac锁定，实体操作/试听未执行，预览未启动；完整U＋P0未完成，不进P1。
 
 此节替代历史混合媒体范围“未实现”，仅限本次受测路径。同轨混合基准且有曲线、Shuffle、Warp和部分循环仍拒绝；下一项混合范围Shuffle。M2/M3冻结，M4/M5暂缓。

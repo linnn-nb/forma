@@ -1,3 +1,7 @@
+U-P0-OBJECT-SHUFFLE-01：human/local_gui 的 timeline.clips.erase 与 midi.clips.erase 支持 action:cut|delete（缺失默认 cut），ripple 允许实际整对象快照。preview 增加 selection_kind/action/object_intervals，每轨记录原区间并集、累计 removed_samples/removed_beats、curve_timebase 和真实 before/after；整对象删除全局 displacement 为0，实际位移必须读各片段。对象 Paste 继续显示完整包络与替换终点。一 Plan/Undo、revision/幂等/媒体/hash/Scope 复核保持；Agent 无此本地编辑权限，不增加 MCP 工具。
+
+GUI Cut 仅成功回执后接纳暂存剪贴板，Delete 和取消均保留先前已接受快照。复制带空隙，删除只收拢各轨所选占用并集；不能承诺不相邻对象 Cut→Paste Original 精确还原，应使用 Undo。查询片段 length_samples 使用 round(end)−round(start)，与预览和 Scope 一致。Save/Open 保存原生内容，RAM 剪贴板和 Undo 历史不伪称跨重开保留。未选重叠、锁定、sample-sync MIDI 跨变化、Warp/部分循环仍保守拒绝；实测入口 ObjectShuffleTests.cpp。
+
 U-P0-SHARED-CLOCK-01（2026-10-10）：track.automation_edit_basis.set 参数 {track:实际稳定ID,basis:auto|samples|beats}，单位是复制/范围Shuffle的曲线跟随策略；仅 human/local_gui、低风险、可逆、独立事务，Scope必须覆盖所属全轨。folder/不存在对象/非法枚举/旧版本/非human/复合设置 Plan 拒绝；相同值不生成假成功。不是参数处理精度或全局Tempo跟随模式；不扩充冻结MCP注册表。
 
 查询轨道 automation_edit_basis；timeline/midi原生片段预览中 automation_edit_bases 声明当前目的设置，每条lane的 time_mapping 和 suffix_timebase 分别声明冻结源复制与目的后缀实际映射。基准参与封闭state_hash和revision校验，用户改设置后不能提交旧Plan覆盖人工操作。一个共享轨只有一条同参数曲线：auto不能解释混合基准时整笔拒绝，必须由用户明确选samples/beats；片段自身timebase保持。

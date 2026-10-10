@@ -1,3 +1,7 @@
+U-P0-OBJECT-SHUFFLE-01（2026-10-10）：整片段 Cut/Delete 在 L1 按每轨所选区间并集收拢，只累计已结束区间的位移，保留中间未选空隙及片段。音乐 MIDI 在 native 模式按累计原生拍数移动，音频/采样片段按累计样本；共享曲线使用轨道明确基准，auto 有歧义拒绝。Paste 使用冻结完整包络（含空隙），不是删除并集的逆操作；Undo 恢复原生事务。未选重叠、锁定和未资格映射在写入前整笔拒绝。
+
+MusicalCurveMap 保留后缀已知源端点，防止拍/秒往返舍入丢掉末端原生跳变；不使用 epsilon 吸附。查询与 Scope 的片段样本长度统一为 round(end)−round(start)。NativeEditXml 在正常暂存保存和 detached 恢复快照中，以 classic locale/max_digits10 保存有限 double，保留整数/字符串/opaque 属性，不改实时路径、SDK 或部署系统版本。代码入口 MidiClipClipboard/AutomationClear/MusicalCurveMap/NativeEditXml、UI WorkspaceMidiClipClipboard/Editing/Commands；资格见 VERIFICATION 最新节。
+
 U-P0-SHARED-CLOCK-01（2026-10-10）：L1 track.automation_edit_basis.set 为实际 AudioTrack 设置 auto/samples/beats；NDAW_AUTOMATION_EDIT_BASIS schema1 存在所属原生轨，auto 用缺失节点表达。human/local_gui、停止状态、完整轨道 Scope、独立 Plan/native Undo；查询 automation_edit_basis 是实际保存事实，候选 Edit 严格检验 schema/字段/重复节点/支持轨型后采用。
 
 原生时间线剪贴板冻结每条轨的 track_timebases，显式值优先，否则维持既有片段推断。范围 Shuffle 的曲线后缀在 native 模式按目的轨明确基准映射，片段仍分别按原采样/音乐时间移动；samples 模式保持共同采样位移。共同包络取片段和实际源曲线映射的最晚结束，不让拍基曲线被较短音频裁掉。封闭 state_hash 包含受影响轨的声明，人工改基准使旧计划失效；没有把曲线处理 timeBase 改为 beats，也不承诺后来编辑 Tempo 自动移动全部曲线。

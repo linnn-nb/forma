@@ -1,3 +1,7 @@
+U-P0-OBJECT-SHUFFLE-01（2026-10-10）：主时间线整片段混合音频/MIDI的 Shuffle Cut/Delete/Paste 已接入真实 L1 预览、接受/取消和一笔 Undo；CmdC/CmdX/Backspace/CmdV 共用可改键，工程原生内容保存重开。预览明确“每轨只收拢所选片段占用区间的并集，保留间隙”，列出每轨区间、曲线基准及真实位移；Paste 保留完整复制包络。详细实测、失败修复和演示入口见 VERIFICATION/NEXT_STEPS 最新节。
+
+本节替代历史“整对象 Shuffle 未实现”，仅覆盖本次已测范围，不宣称 Pro Tools 全面行为等价。完整 U＋P0仍未完成，不进入 P1；sample-sync MIDI 跨变化、Warp/部分循环与实体GUI/听感仍未资格。M2/M3 冻结、M4/M5 暂缓。
+
 U-P0-SHARED-CLOCK-01（2026-10-10）：Edit→编辑→轨道自动化跟随（复制 / Shuffle），选中轨可用自动/采样/小节拍；OptionF5/F6/F7，可自定义，停止状态启用。设置一笔Undo、保存重开；预览未处理时不允许改基准。共享曲线跟随声明与复制/后缀实际映射来自真实Plan；旧音频Copy后改目的设置也走同一原生预览/接受/取消，原剪贴板冻结数据保持。
 
 这是Forma处理共享轨混合时间的明确策略，不宣称Pro Tools同名行为或全面等价。片段保持原timebase，曲线按用户单一选择跟随；默认自动有歧义拒绝。完整U＋P0仍未完成，不进入P1，M2/M3冻结、M4/M5暂缓。实测、演示入口及未完成范围见VERIFICATION/NEXT_STEPS最新节。
