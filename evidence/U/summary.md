@@ -1,6 +1,14 @@
-# U＋P0 试用交付（2026-10-10，当前）
+# U＋P0 试用交付（更新至2026-10-11）
 
 结论：五项用户反馈修复版已可试用；本次原生8步主流程完成，预备拍实体录音时序仍未验。新发现的全量Redo自动化绑定问题已修复并实机复测。提交推送后暂停，等待用户试用；不宣称完整DAW或P1已完成。
+
+## 2026-10-11 预备拍实录准备（仍未录到实体输入）
+
+原生GUI建立独立音频轨，选择本机测试目录，120 BPM / 4/4 / 一小节预备拍并开启节拍器。两次⌘Z恢复点击与预备拍关闭，两次⇧⌘Z恢复；原生另存并⌘O重开，预备拍仍为一小节/r8。准备工程为 `build-v2-tracktion/count-in-native-1011/Count-in-native-1011-ready.tracktionedit`；没有武断开启监听或录音待命，没有生成WAV，不上传媒体。
+
+点击“启用输入设备”后，macOS TCC日志确认收到本bundle的Microphone请求并进入PROMPTING，GUI仍显示“尚未授权”。电脑操作工具明确拒绝访问系统 `UserNotificationCenter`；已请用户亲手在系统提示里允许“Forma Feedback Preview”。没有绕过权限，也没有把设置恢复测试算成预备拍实体录音时序通过。允许后下一步才是选择轨道输入、待命、短时实录，核对录音文件与时间位置。
+
+本轮无生产代码改动，无构建或自动化测试重跑（0执行）；原生设置/Undo/Redo/重开检查通过，实体录音1项阻塞。上一节427检查为2026-10-10结果，不计入本轮。当前窗口为上述录音准备工程；完整制作演示仍用下文verified工程。其他预览和SDK本地补丁保留。
 
 ## 原生八步
 
@@ -23,7 +31,7 @@
 
 应用：`build-v2-tracktion/FeedbackPreview.app`（源码dd7a76f，固定本地签名，独立bundle org.forma.preview.feedback1010）；也有生产 `NativeDAW_artefacts/Release/Forma.app`。
 
-当前已打开、停止在2.832秒/r126的工程：`build-v2-tracktion/UP0-demo-media/UP0-current-1010-verified.tracktionedit`。真实媒体在同目录；不要移动/删除。切EDIT/MIX，空格播放/停止，选片段用Smart/Trim/角点；⌘I可多选，⌘Z/⇧⌘Z验证；AU/VST3入口在右侧。原文件和故障诊断副本均保留，未覆盖用户原件。
+完整制作演示工程（2026-10-10验证停止在2.832秒/r126）：`build-v2-tracktion/UP0-demo-media/UP0-current-1010-verified.tracktionedit`。真实媒体在同目录；不要移动/删除。切EDIT/MIX，空格播放/停止，选片段用Smart/Trim/角点；⌘I可多选，⌘Z/⇧⌘Z验证；AU/VST3入口在右侧。原文件和故障诊断副本均保留，未覆盖用户原件。
 
 ## 构建、测试与证据边界
 
