@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 当前独立性能专项：按 CODEX_PROMPT_PERF.md 做阶段0/A/B，不进入P1；两轮预算失败先止损。设备/负载对照已完成；已定位并修复SDK把工作线程实时预算设到创建者线程的错误，6策略实际Mach检查和175项功能回归通过，尚待无人工负载5分钟播放复测。A未验收、不进入B、不把线程策略检查当零XRUN证明。证据入口 evidence/perf/summary.md；完成专项后暂停，不恢复原目标。
+- 当前独立性能专项：按 CODEX_PROMPT_PERF.md 做阶段0/A/B，不进入P1；两轮预算失败先止损。设备/负载对照及SDK线程预算修复已完成；6策略18检查、175功能检查通过。原霓潮/耳机/48k/256帧/无人工负载300秒实测零XRUN、平均paint30.45Hz、主线程15.84%仍超15%预算。A未完整验收，已按两轮止损再次询问下一步；答复前不追加优化或进入B。证据入口 evidence/perf/summary.md；完成专项后暂停，不恢复原目标。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
 - 当前试用：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。
