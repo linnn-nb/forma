@@ -43,11 +43,21 @@ private:
         void paint(juce::Graphics& g) override
         {
             Performance::Span measured("playhead_paint");
+            if (Performance::enabled)
+            {
+                const auto now = juce::Time::getMillisecondCounterHiRes();
+                if (lastMeasuredPaintMs > 0)
+                    Performance::samples["playhead_interval"].push_back(now - lastMeasuredPaintMs);
+                lastMeasuredPaintMs = now;
+            }
+            else
+                lastMeasuredPaintMs = 0;
             g.setColour(juce::Colour(0xffedca72));
             g.drawVerticalLine(x, 0, float(getHeight()));
         }
         int x = 0;
         int64_t position = -1;
+        double lastMeasuredPaintMs = 0;
     };
     EditWindow& body;
     Head head;

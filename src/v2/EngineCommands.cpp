@@ -1588,7 +1588,8 @@ Json Commands::deviceStatus() const
            {"output_peak", outputProbe->peak.load(std::memory_order_relaxed)},
            {"output_maximum", outputProbe->maximum.load(std::memory_order_relaxed)},
            {"output_frames", outputProbe->frames.load(std::memory_order_relaxed)},
-           {"measurement_scope", "Tracktion processing section; excludes driver and final output tap"}};
+           {"measurement_scope",
+            "Tracktion graph, output probe and limiter; excludes JUCE dispatch and CoreAudio driver"}};
     j["output_meters"] = outputMeters();
     j["active_output_channels"] = Json::array();
     if (d)
