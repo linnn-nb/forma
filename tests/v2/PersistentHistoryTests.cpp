@@ -7,6 +7,23 @@
 #include <iostream>
 using namespace ndaw::v2;
 using namespace ndaw::desktop;
+namespace ndaw::v2
+{
+class PerformanceTestAccess
+{
+public:
+    static Json nativeIdentities(Commands& c)
+    {
+        Json result = Json::object();
+        for (auto* plugin : te::getAllPlugins(*c.edit, true))
+            if (auto* external = dynamic_cast<te::ExternalPlugin*>(plugin))
+                result[plugin->itemID.toString().toStdString()] = {
+                    reinterpret_cast<uintptr_t>(plugin),
+                    reinterpret_cast<uintptr_t>(external->getAudioPluginInstance())};
+        return result;
+    }
+};
+} // namespace ndaw::v2
 namespace
 {
 int checks = 0;
@@ -387,6 +404,93 @@ void savedCurveReplay(const juce::File& file, const juce::File& dir)
     for (auto it = expected.begin(); it != expected.end(); ++it)
         check(volumePoints(c, it.key()) == it.value(), "saved GUI fixture reconnects each live volume curve");
 }
+void retention(const juce::File& dir)
+{
+    Commands c(false, std::make_unique<Storage>(dir.getChildFile("limit-prefs")));
+    run(c, Json::array({op("track.create", {{"name", "Limit"}, {"ref", "$t"}})}));
+    const std::string track = c.query()["tracks"][0]["id"];
+    for (int i = 0; i < 210; ++i)
+        run(c, Json::array({op("track.rename", {{"track", track}, {"name", "Limit " + std::to_string(i)}})}));
+    const auto retained = c.query()["history"]["retention"];
+    check(retained["retained_steps"] == 200 && retained["discarded_steps"] == 11 &&
+              retained["encoded_bytes"].get<size_t>() < 32 * 1024 * 1024 &&
+              !retained["notice"].get<std::string>().empty(),
+          "200-step cap discards oldest entries and exposes actual limits and notice");
+    auto file = dir.getChildFile("limit.tracktionedit");
+    c.save(file);
+    c.open(file);
+    int count = 0;
+    while (c.query()["can_undo"].get<bool>() && count < 201)
+    {
+        c.undo();
+        ++count;
+    }
+    check(count == 200 && c.query()["tracks"][0]["name"] == "Limit 9" && !c.query()["can_undo"].get<bool>(),
+          "reopened capped history stops at the real retained baseline");
+    auto undone = dir.getChildFile("limit-undone.tracktionedit");
+    c.save(undone);
+    c.open(undone);
+    for (int i = 0; i < 200; ++i)
+        c.redo();
+    check(c.query()["tracks"][0]["name"] == "Limit 209" && !c.query()["can_redo"].get<bool>(),
+          "cap preserves and reopens the complete retained Redo branch");
+}
+Json stableTracks(Json tracks)
+{
+    for (auto& t : tracks)
+        for (auto& p : t["plugins"])
+            if (p.contains("external"))
+            {
+                p["external"].erase("saved_state_hash");
+                p["external"].erase("saved_state_bytes");
+            }
+    return tracks;
+}
+void legacySong(const juce::File& source, const juce::File& dir)
+{
+    const auto hash = Commands::mediaHash(source);
+    auto xml = juce::XmlDocument::parse(source);
+    auto old = juce::ValueTree::fromXml(*xml);
+    check(int(old.getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY")["schema"]) == 1,
+          "legacy qualification uses an actual schema1 document");
+    Commands c(false, std::make_unique<Storage>(dir.getChildFile("legacy-prefs")));
+    c.open(source);
+    pump();
+    const auto original = stableTracks(c.query()["tracks"]);
+    const auto identities = PerformanceTestAccess::nativeIdentities(c);
+    check(identities.size() >= 6, "actual six-instance third-party plugin fixture loaded");
+    const std::string track = original[0]["id"];
+    const double gain = original[0]["base_gain_db"];
+    const auto reads = c.query()["native_plugin_states"]["state_reads"];
+    run(c, Json::array({op("track.gain", {{"track", track}, {"db", gain - .1}})}));
+    c.undo();
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(1200);
+    c.redo();
+    pump();
+    check(PerformanceTestAccess::nativeIdentities(c) == identities,
+          "fader Undo and delayed Redo keep unrelated actual plugin and processor instances");
+    check(c.query()["native_plugin_states"]["state_reads"] == reads,
+          "unrelated fader transaction does not read all opaque plugin states");
+    c.undo();
+    pump();
+    check(stableTracks(c.query()["tracks"]) == original, "six-instance live Undo restores public project facts");
+    auto file = dir.getChildFile("legacy-migrated.tracktionedit");
+    c.save(file);
+    auto saved = juce::XmlDocument::parse(file);
+    auto history =
+        juce::ValueTree::fromXml(*saved).getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY");
+    check(int(history["schema"]) == 2, "explicit Save Copy converts schema1 into schema2");
+    c.open(file);
+    pump();
+    const auto after = stableTracks(c.query()["tracks"]);
+    c.redo();
+    pump();
+    c.undo();
+    pump();
+    check(stableTracks(c.query()["tracks"]) == after,
+          "six-instance persisted Redo and Undo cross migration with equal public state");
+    check(Commands::mediaHash(source) == hash, "legacy user document is byte-for-byte preserved");
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -399,7 +503,10 @@ int main(int argc, char** argv)
         deltaCodec();
         flow(dir);
         gainAudio(dir);
-        if (argc > 2)
+        retention(dir);
+        if (argc > 3 && std::string(argv[2]) == "legacy")
+            legacySong(juce::File(juce::String::fromUTF8(argv[3])), dir);
+        else if (argc > 2)
             savedCurveReplay(juce::File(juce::String::fromUTF8(argv[2])), dir);
         Json receipt{{"result", "passed"},
                      {"checks", checks},

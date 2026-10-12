@@ -131,6 +131,9 @@ public:
     }
 
 private:
+    // Bound buttons and floating panels unregister on destruction. The manager
+    // must be constructed first and destroyed after every such component.
+    juce::ApplicationCommandManager commandManager;
     Json lastLayoutState = nullptr;
     void updateRealtime();
     juce::VBlankAttachment frameClock;
@@ -273,7 +276,6 @@ private:
     SelectionModel selection;
     EditingModel editing;
     Theme theme;
-    juce::ApplicationCommandManager commandManager;
     std::map<int, std::function<void()>> commandActions;
     std::unique_ptr<KeyboardSettings> keyboardSettings;
     std::unique_ptr<AudioImportPanel> audioImportPanel;
