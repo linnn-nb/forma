@@ -35,8 +35,38 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
     auto began=juce::Time::getMillisecondCounterHiRes();auto start=c.record(dir);settle(220);tracks=c.query()["tracks"];check(c.query()["recording"].get<bool>()&&start["targets"].size()==2,"native transport actually records two armed tracks");auto f=juce::File(juce::String(tracks[0]["input"]["recording_file"].get<std::string>()));auto bytes=f.getSize();settle(420);check(f.getSize()>bytes&&bytes>100,"native disk writer grows WAV during recording rather than after Stop");fails([&]{c.seek(0);},"seek rejected during recording");fails([&]{c.save(dir.getChildFile("during.tracktionedit"));},"save rejected during recording");fails([&]{c.makePlan("human",Json::array({op("track.gain",{{"track",a},{"db",-3}})}));},"overlapping edit rejected during capture");c.stop();auto receipt=c.query()["last_recording"];check(receipt["state"]=="committed"&&receipt["files"].size()==2&&!c.query()["recording"].get<bool>(),"Stop validates both actual files and emits success receipt");auto elapsed=juce::Time::getMillisecondCounterHiRes()-began;tracks=c.query()["tracks"];check(tracks[0]["clips"].size()==1&&tracks[1]["clips"].size()==1,"native recordings become real Edit clips");std::vector<juce::File> files;std::vector<std::string> hashes;
     for(const auto& file:receipt["files"]){auto path=juce::File(juce::String(file["path"].get<std::string>()));auto pcm=audio(path);check(file["channels"]==1&&file["pcm_bits"]==24&&file["sample_rate"]==48000,"recorded physical channel format is mono 24-bit 48 kHz");double rms=pcm.getRMSLevel(0,256,pcm.getNumSamples()-512);check(std::abs(rms-.1/std::sqrt(2.))<3e-4,"recorded PCM preserves known signal level");int crosses=0;for(int n=257;n<pcm.getNumSamples()-256;++n)if(pcm.getSample(0,n-1)<=0&&pcm.getSample(0,n)>0)++crosses;double hz=crosses*48000./(pcm.getNumSamples()-512);double expected=files.empty()?1000:400;check(std::abs(hz-expected)<2,"each captured track preserves its actual input channel frequency");files.push_back(path);hashes.push_back(Commands::mediaHash(path));}
     check(std::abs(receipt["files"][0]["frames"].get<int64_t>()-receipt["files"][1]["frames"].get<int64_t>())<=256,"parallel recordings finish within one fixed 256-frame block budget");
-    c.undo(receipt["plan_id"]);check(c.query()["tracks"][0]["clips"].empty()&&c.query()["tracks"][1]["clips"].empty(),"one Undo removes both captured clips");for(int i=0;i<2;++i)check(files[i].existsAsFile()&&Commands::mediaHash(files[i])==hashes[i],"Undo retains recorded source file unchanged");c.redo();check(c.query()["tracks"][0]["clips"]==tracks[0]["clips"],"Redo restores original clip IDs and media references");
-    auto saved=dir.getChildFile("record.tracktionedit");c.save(saved);{Commands reopened(false);reopened.open(saved);auto q=reopened.query();check(q["tracks"][0]["clips"]==tracks[0]["clips"]&&q["tracks"][0]["input"]["device"]==left,"reopen preserves clips and unavailable original input reference");auto rendered=reopened.render(dir.getChildFile("export.wav"),0,q["length_samples"]);check(rendered["audio_verified"]&&rendered["peak"].get<double>()>.01,"recorded project actually exports audible PCM");}
+    c.undo(receipt["plan_id"]);
+    check(c.query()["tracks"][0]["clips"].empty() && c.query()["tracks"][1]["clips"].empty(),
+          "one Undo removes both captured clips");
+    for (int i = 0; i < 2; ++i)
+        check(files[i].existsAsFile() && Commands::mediaHash(files[i]) == hashes[i],
+              "Undo retains recorded source file unchanged");
+    // Do not pump the message loop between Undo and Redo: queued SDK sorting
+    // must not consume the Redo branch after an immediate recording Undo.
+    c.redo();
+    check(c.query()["tracks"][0]["clips"] == tracks[0]["clips"] &&
+              c.query()["tracks"][1]["clips"] == tracks[1]["clips"],
+          "immediate Redo restores both recorded tracks, original clip IDs and media references");
+    auto saved = dir.getChildFile("record.tracktionedit");
+    c.save(saved);
+    {
+        Commands reopened(false);
+        reopened.open(saved);
+        auto q = reopened.query();
+        check(q["tracks"][0]["clips"] == tracks[0]["clips"] && q["tracks"][0]["input"]["device"] == left,
+              "reopen preserves clips and unavailable original input reference");
+        reopened.undo(receipt["plan_id"]);
+        check(reopened.query()["tracks"][0]["clips"].empty() &&
+                  reopened.query()["tracks"][1]["clips"].empty(),
+              "one Undo after reopen removes the complete multitrack recording");
+        reopened.redo();
+        check(reopened.query()["tracks"][0]["clips"] == tracks[0]["clips"] &&
+                  reopened.query()["tracks"][1]["clips"] == tracks[1]["clips"],
+              "Redo after reopen restores both recorded tracks without hardware reassignment");
+        auto rendered = reopened.render(dir.getChildFile("export.wav"), 0, q["length_samples"]);
+        check(rendered["audio_verified"] && rendered["peak"].get<double>() > .01,
+              "recorded project actually exports audible PCM");
+    }
 #if JUCE_MAC || JUCE_LINUX
     run(c,Json::array({op("track.arm",{{"track",b},{"enabled",false}})}));c.seek(0);struct rlimit oldLimit;getrlimit(RLIMIT_FSIZE,&oldLimit);auto oldSignal=std::signal(SIGXFSZ,SIG_IGN);struct rlimit small=oldLimit;small.rlim_cur=32768;
     auto faulty=c.record(dir);setrlimit(RLIMIT_FSIZE,&small);settle(900);setrlimit(RLIMIT_FSIZE,&oldLimit);std::signal(SIGXFSZ,oldSignal);if(c.query()["recording"].get<bool>())c.stop();auto failed=c.query()["last_recording"];check(failed["state"]=="failed"&&!failed["error"].get<std::string>().empty(),"real OS file-size write failure produces failed receipt, never success");check(!c.query()["recording"].get<bool>()&&c.query()["recording_capture"].is_null(),"actual writer failure stops transport and ends recording transaction");if(!failed["clips"].empty()){c.undo(failed["plan_id"]);c.redo();check(c.query()["last_recording"]["state"]=="failed","Redo cannot turn a failed recording receipt into success");}

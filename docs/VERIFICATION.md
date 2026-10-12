@@ -1,4 +1,12 @@
-## 2026-10-11 原生预备拍设置恢复与实录权限阻塞
+## 2026-10-12 预备拍真实麦克风录音与Redo修复
+
+结论：麦克风权限已授权，原生GUI一小节预备拍录音、整笔Undo/Redo、保存重开及新构建再次Undo/Redo通过。MacBook Pro麦克风、48 kHz/512，实际单声道24-bit WAV长19.487771秒，935413帧，片段起点307393采样、源偏移0。整个源文件哈希保持，非零真实PCM；只读文件验证13项通过。声音点击的物理时序、声学往返延迟未测，不能用正确片段位置替代。媒体留本地build目录，试用工程和原生操作详见evidence/U/summary.md。
+
+修复快速Undo录音后Redo失败：SDK排序会触发第二次排序通知，晚到Undo之后时污染原生事务并丢弃Redo分支。EngineCommands::settleClipOrder在L1/message thread有界排空排序回声；不泵消息队列、不改SDK/RT。RecordingTests核对两轨立即Redo与重开后整笔Undo/Redo，保留实际媒体与ID验证。初次1组失败和诊断复现日志保留，最终4组/192检查通过、0失败，21.767秒：Recording40、TransportWorkspace17、PersistentHistory63、AudioImport72，无JUCE断言。build-v2-tracktion/count-in-1012-final-summary.json记录测试输出；实录只读检查见count-in-native-1011/verification-1012.json。历史427等不计入本次执行。
+
+Release构建、生产与FeedbackPreview固定证书deep/strict验签通过。更新同一预览bundle后授权保留，首次原生⌘O打开verified实录工程并撤销/重做通过；当前停止8.002秒/r36。原生操作截图已在工具输出展示，新8张落盘图尚缺。没有新DMG/依赖/SDK补丁/实时修改；其他用户窗口和媒体保留，测试已退出。提交推送后按用户要求暂停，等待试用，不进入P1。
+
+## 2026-10-11 原生预备拍设置恢复与实录权限阻塞（历史，已解除）
 
 独立GUI工程120 BPM/4/4，一小节预备拍与点击经原生两次Undo、两次Redo、另存、⌘O重开恢复/r8。准备工程及边界见evidence/U/summary.md最新节。实体输入尚未录音：系统TCC已进入PROMPTING，应用仍为not_determined；工具安全策略禁止操作UserNotificationCenter，已请求用户手动允许。未绕过权限，未生成WAV。无生产代码变动、无构建/自动化重跑；历史427检查不计本轮。
 
