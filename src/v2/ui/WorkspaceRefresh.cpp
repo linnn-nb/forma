@@ -1,3 +1,4 @@
+#include <nativedaw/v2/Performance.h>
 #include "Workspace.h"
 namespace ndaw::desktop
 {
@@ -410,6 +411,7 @@ void Workspace::refreshInspector()
 
 void Workspace::refresh()
 {
+    ndaw::v2::Performance::Span measured("refresh");
     const bool sessionChanged = workspaceSession != commands.sessionToken();
     if (exportPanel && exportPanel->isVisible())
         exportPanel->update(commands.analysisStatus());
@@ -739,6 +741,7 @@ void Workspace::refresh()
 
 void Workspace::timerCallback()
 {
+    ndaw::v2::Performance::Span measured("ui_tick");
     const auto started = juce::Time::getMillisecondCounterHiRes();
     if (started < nextBackgroundRefreshMs)
         return;

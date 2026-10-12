@@ -28,6 +28,7 @@
 namespace ndaw::v2
 {
 class McpTestAccess;
+class PerformanceTestAccess;
 }
 namespace ndaw::desktop
 {
@@ -54,6 +55,7 @@ class Workspace final : public juce::Component,
 {
     friend class ndaw::v2::AudioDeviceTestAccess;
     friend class ndaw::v2::McpTestAccess;
+    friend class ndaw::v2::PerformanceTestAccess;
 
 public:
     explicit Workspace(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});

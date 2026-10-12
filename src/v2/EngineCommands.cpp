@@ -1,3 +1,4 @@
+#include <nativedaw/v2/Performance.h>
 #include "SampleMidiMap.h"
 #include "NativeEditXml.h"
 #include "MasterAnalysis.h"
@@ -391,6 +392,7 @@ Json Commands::registry()
 }
 Json Commands::query() const
 {
+    Performance::Span measured("query");
     checkThread();
     captureNativeStates();
     Json tracks = Json::array();
@@ -1015,6 +1017,7 @@ void Commands::performTrackFlag(te::Track& track, const std::string& command, bo
 }
 Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
 {
+    Performance::Span measured("commit");
     checkThread();
     captureNativeStates();
     scope.validate();
@@ -1286,6 +1289,7 @@ Json Commands::transactionStatus(const std::string& id) const
 }
 Json Commands::undo(const std::string& expected)
 {
+    Performance::Span measured("undo");
     checkThread();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -1330,6 +1334,7 @@ Json Commands::undo(const std::string& expected)
 }
 Json Commands::redo()
 {
+    Performance::Span measured("redo");
     checkThread();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -1614,6 +1619,7 @@ Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
 }
 Json Commands::save(const juce::File& destination)
 {
+    Performance::Span measured("save");
     checkThread();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");

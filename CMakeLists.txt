@@ -989,3 +989,10 @@ target_sources(ndaw_keyboard_settings_tests PRIVATE tests/v2/KeyboardSettingsTes
 target_link_libraries(ndaw_keyboard_settings_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_keyboard_settings COMMAND ndaw_keyboard_settings_tests "${CMAKE_BINARY_DIR}/keyboard-settings-tests.json")
 set_tests_properties(forma_native_keyboard_settings PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Production L1/GUI performance qualification with actual native plugins.
+juce_add_console_app(ndaw_performance_tests PRODUCT_NAME "ndaw_performance_tests")
+target_sources(ndaw_performance_tests PRIVATE tests/v2/PerformanceTests.cpp)
+target_link_libraries(ndaw_performance_tests PRIVATE ndaw_ui)
+add_test(NAME forma_performance COMMAND ndaw_performance_tests "${CMAKE_BINARY_DIR}/perf-scratch/regression.json" create regression)
+set_tests_properties(forma_performance PROPERTIES TIMEOUT 300 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
