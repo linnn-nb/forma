@@ -1,0 +1,271 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+#pragma once
+#include <nativedaw/v2/EngineCommands.h>
+
+namespace ndaw::v2::history_delta
+{
+using Path = Json;
+inline void require(bool ok, const char* reason)
+{
+    if (!ok)
+        throw std::runtime_error(reason);
+}
+inline std::string identity(const juce::ValueTree& n)
+{
+    for (const char* p : {"id", "ndaw_id", "plan_id"})
+        if (n.hasProperty(p))
+            return n.getType().toString().toStdString() + ":" + p + ":" + n[p].toString().toStdString();
+    if (n.hasType("BASE"))
+        return "BASE:" + n["plugin"].toString().toStdString() + ":" + n["parameter"].toString().toStdString();
+    if (n.hasType(te::IDs::AUTOMATIONCURVE))
+    {
+        const auto p = n.hasProperty(te::IDs::paramID) ? n[te::IDs::paramID] : n[te::IDs::name];
+        if (p.toString().isNotEmpty())
+            return "CURVE:" + p.toString().toStdString();
+    }
+    return {};
+}
+inline std::vector<Path> locators(juce::ValueTree parent)
+{
+    std::vector<Path> result;
+    std::map<std::string, int> ordinals;
+    std::set<std::string> keys;
+    for (auto child : parent)
+    {
+        const auto type = child.getType().toString().toStdString(), key = identity(child);
+        require(key.empty() || keys.insert(key).second, "duplicate persistent node identity");
+        result.push_back({{"type", type}, {"key", key}, {"ordinal", key.empty() ? ordinals[type]++ : 0}});
+    }
+    return result;
+}
+inline int find(juce::ValueTree parent, const Path& part)
+{
+    require(part.is_object() && part.size() == 3 && part.at("type").is_string() && part.at("key").is_string() &&
+                part.at("ordinal").is_number_integer(),
+            "invalid history node locator");
+    int ordinal = 0;
+    for (int i = 0; i < parent.getNumChildren(); ++i)
+    {
+        const auto child = parent.getChild(i);
+        if (child.getType().toString().toStdString() != part["type"].get<std::string>())
+            continue;
+        const auto key = identity(child);
+        if (!part["key"].get<std::string>().empty())
+        {
+            if (key == part["key"].get<std::string>())
+                return i;
+        }
+        else if (key.empty() && ordinal++ == part["ordinal"].get<int>())
+            return i;
+    }
+    return -1;
+}
+inline juce::ValueTree resolve(juce::ValueTree root, const Path& path)
+{
+    require(path.is_array() && path.size() <= 128, "invalid persistent history path");
+    for (const auto& part : path)
+    {
+        const auto i = find(root, part);
+        if (i < 0)
+            return {};
+        root = root.getChild(i);
+    }
+    return root;
+}
+inline Path address(juce::ValueTree node)
+{
+    Path result = Json::array();
+    for (auto parent = node.getParent(); parent.isValid(); parent = node.getParent())
+    {
+        result.insert(result.begin(), locators(parent).at(size_t(parent.indexOf(node))));
+        node = parent;
+    }
+    return result;
+}
+inline bool prefix(const Path& a, const Path& b)
+{
+    return a.size() <= b.size() && std::equal(a.begin(), a.end(), b.begin());
+}
+using Normalise = std::function<juce::ValueTree(juce::ValueTree)>;
+inline juce::ValueTree image(juce::ValueTree n, const Normalise& normalise)
+{
+    auto value = (normalise ? normalise(n) : n).createCopy();
+    if (normalise)
+        for (int i = value.getNumChildren(); --i >= 0;)
+        {
+            auto child = image(value.getChild(i), normalise);
+            value.removeChild(i, nullptr);
+            value.addChild(child, i, nullptr);
+        }
+    return value;
+}
+inline juce::ValueTree difference(const juce::ValueTree& before, juce::ValueTree after,
+                                  const Path& path = Json::array(), bool recursive = true, Normalise normalise = {})
+{
+    if (normalise)
+        after = normalise(after);
+    require(before.isValid() && after.hasType(before.getType()), "history scope identity changed");
+    if (!normalise && before.isEquivalentTo(after))
+        return juce::ValueTree("DELTA");
+    juce::ValueTree result("DELTA"), change("CHANGE"), old("BEFORE"), next("AFTER");
+    change.setProperty("path", juce::String(path.dump()), nullptr);
+    std::set<juce::Identifier> names;
+    for (const auto node : {before, after})
+        for (int i = 0; i < node.getNumProperties(); ++i)
+            names.insert(node.getPropertyName(i));
+    Json changed = Json::array();
+    for (const auto& name : names)
+        if (before.hasProperty(name) != after.hasProperty(name) || before[name] != after[name])
+        {
+            changed.push_back(name.toString().toStdString());
+            if (before.hasProperty(name))
+                old.setProperty(name, before[name], nullptr);
+            if (after.hasProperty(name))
+                next.setProperty(name, after[name], nullptr);
+        }
+    if (!changed.empty())
+    {
+        change.setProperty("properties", juce::String(changed.dump()), nullptr);
+        change.addChild(old, -1, nullptr);
+        change.addChild(next, -1, nullptr);
+    }
+    if (!recursive)
+    {
+        if (!changed.empty())
+            result.addChild(change, -1, nullptr);
+        return result;
+    }
+    const auto a = locators(before), b = locators(after);
+    std::map<std::string, int> ai, bi;
+    for (size_t i = 0; i < a.size(); ++i)
+        ai[a[i].dump()] = int(i);
+    for (size_t i = 0; i < b.size(); ++i)
+        bi[b[i].dump()] = int(i);
+    Json commonA = Json::array(), commonB = Json::array();
+    for (size_t i = 0; i < a.size(); ++i)
+        if (!bi.contains(a[i].dump()))
+        {
+            juce::ValueTree removed("REMOVE");
+            removed.setProperty("locator", juce::String(a[i].dump()), nullptr);
+            removed.setProperty("index", int(i), nullptr);
+            removed.addChild(before.getChild(int(i)).createCopy(), -1, nullptr);
+            change.addChild(removed, -1, nullptr);
+        }
+        else
+            commonA.push_back(a[i]);
+    for (size_t i = 0; i < b.size(); ++i)
+        if (!ai.contains(b[i].dump()))
+        {
+            juce::ValueTree added("ADD");
+            added.setProperty("locator", juce::String(b[i].dump()), nullptr);
+            added.setProperty("index", int(i), nullptr);
+            added.addChild(image(after.getChild(int(i)), normalise), -1, nullptr);
+            change.addChild(added, -1, nullptr);
+        }
+        else
+            commonB.push_back(b[i]);
+    if (commonA != commonB)
+    {
+        change.setProperty("order_before", juce::String(Json(a).dump()), nullptr);
+        change.setProperty("order_after", juce::String(Json(b).dump()), nullptr);
+    }
+    if (change.getNumProperties() > 1 || change.getNumChildren() > 0)
+        result.addChild(change, -1, nullptr);
+    for (size_t i = 0; i < a.size(); ++i)
+        if (auto match = bi.find(a[i].dump()); match != bi.end())
+        {
+            auto childPath = path;
+            childPath.push_back(a[i]);
+            auto children =
+                difference(before.getChild(int(i)), after.getChild(match->second), childPath, true, normalise);
+            for (auto child : children)
+                result.addChild(child.createCopy(), -1, nullptr);
+        }
+    return result;
+}
+using Reconcile = std::function<juce::ValueTree(juce::ValueTree, const juce::ValueTree&)>;
+inline juce::ValueTree inverse(const juce::ValueTree& delta)
+{
+    juce::ValueTree result("DELTA");
+    for (int i = delta.getNumChildren(); --i >= 0;)
+    {
+        auto old = delta.getChild(i);
+        juce::ValueTree next("CHANGE");
+        next.copyPropertiesFrom(old, nullptr);
+        if (old.hasProperty("order_before"))
+        {
+            next.setProperty("order_before", old["order_after"], nullptr);
+            next.setProperty("order_after", old["order_before"], nullptr);
+        }
+        for (auto child : old)
+        {
+            juce::ValueTree value(child.hasType("BEFORE")   ? "AFTER"
+                                  : child.hasType("AFTER")  ? "BEFORE"
+                                  : child.hasType("ADD")    ? "REMOVE"
+                                  : child.hasType("REMOVE") ? "ADD"
+                                                            : child.getType().toString());
+            value.copyPropertiesAndChildrenFrom(child, nullptr);
+            next.addChild(value, -1, nullptr);
+        }
+        result.addChild(next, -1, nullptr);
+    }
+    return result;
+}
+inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forward, Reconcile reconcile = {})
+{
+    require(delta.hasType("DELTA"), "invalid history delta");
+    for (int step = 0; step < delta.getNumChildren(); ++step)
+    {
+        const auto change = delta.getChild(forward ? step : delta.getNumChildren() - step - 1);
+        require(change.hasType("CHANGE"), "invalid history delta change");
+        auto target = resolve(root, Json::parse(change["path"].toString().toStdString()));
+        require(target.isValid(), "persistent history target unavailable");
+        if (change.hasProperty("properties"))
+        {
+            const auto values = change.getChildWithName(forward ? "AFTER" : "BEFORE");
+            require(values.isValid(), "persistent property image missing");
+            for (const auto& name : Json::parse(change["properties"].toString().toStdString()))
+            {
+                require(name.is_string(), "invalid persistent property name");
+                const auto key = juce::Identifier(name.get<std::string>());
+                if (values.hasProperty(key))
+                    target.setProperty(key, values[key], nullptr);
+                else
+                    target.removeProperty(key, nullptr);
+            }
+        }
+        const auto removeType = juce::Identifier(forward ? "REMOVE" : "ADD");
+        const auto addType = juce::Identifier(forward ? "ADD" : "REMOVE");
+        for (int i = change.getNumChildren(); --i >= 0;)
+            if (auto child = change.getChild(i); child.hasType(removeType))
+            {
+                const auto at = find(target, Json::parse(child["locator"].toString().toStdString()));
+                require(at >= 0, "persistent removed child unavailable");
+                target.removeChild(at, nullptr);
+            }
+        for (auto child : change)
+            if (child.hasType(addType))
+            {
+                require(child.getNumChildren() == 1, "persistent child image missing");
+                auto value = reconcile ? reconcile(target, child.getChild(0)) : child.getChild(0).createCopy();
+                if (auto parent = value.getParent(); parent.isValid())
+                    parent.removeChild(value, nullptr);
+                target.addChild(value, int(child["index"]), nullptr);
+            }
+        if (change.hasProperty("order_before"))
+        {
+            const auto order = Json::parse(change[forward ? "order_after" : "order_before"].toString().toStdString());
+            require(order.is_array() && int(order.size()) == target.getNumChildren(), "invalid history child order");
+            std::vector<juce::ValueTree> values;
+            for (const auto& part : order)
+            {
+                const auto at = find(target, part);
+                require(at >= 0, "persistent ordered child unavailable");
+                values.push_back(target.getChild(at));
+            }
+            for (int i = 0; i < int(values.size()); ++i)
+                target.moveChild(target.indexOf(values[size_t(i)]), i, nullptr);
+        }
+    }
+}
+} // namespace ndaw::v2::history_delta

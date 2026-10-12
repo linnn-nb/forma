@@ -614,6 +614,14 @@ void Workspace::refresh()
     redoButton.setEnabled(facts["can_redo"].get<bool>() && !playing && !parameterEditing);
     undoButton.setTooltip(text("撤销：") + historyLabel(facts["history"]["undo"]));
     redoButton.setTooltip(text("重做：") + historyLabel(facts["history"]["redo"]));
+    const auto& retention = facts["history"]["retention"];
+    if (retention.is_object() && retention.value("discarded_steps", size_t{}) > 0)
+    {
+        const auto notice = text(retention["notice"].get<std::string>());
+        if (!status.getText().contains(notice))
+            status.setText(status.getText() + text(" · ") + notice, juce::dontSendNotification);
+        undoButton.setTooltip(undoButton.getTooltip() + text("\n") + notice);
+    }
     for (auto* b : {&newTrack, &importButton, &openButton, &saveButton, &exportButton, &applyMusic})
         b->setEnabled(!playing && !parameterEditing);
     trackType.setEnabled(!playing && !parameterEditing);

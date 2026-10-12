@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "ui/Workspace.h"
 #include "PersistentHistory.h"
+#include "HistoryDelta.h"
+#include "NativeEditXml.h"
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
@@ -31,6 +33,57 @@ template <class F> void fails(F f, const char* why)
 void pump()
 {
     juce::MessageManager::getInstance()->runDispatchLoopUntil(25);
+}
+void deltaCodec()
+{
+    juce::ValueTree original("EDIT"), track("TRACK"), plugin("PLUGIN"), clip("MIDICLIP"), sequence("SEQ");
+    track.setProperty("id", "10", nullptr);
+    plugin.setProperty("id", "11", nullptr);
+    plugin.setProperty("state", juce::String::repeatedString("opaque", 5000), nullptr);
+    plugin.setProperty("gain", 0., nullptr);
+    track.addChild(plugin, -1, nullptr);
+    clip.setProperty("id", "12", nullptr);
+    for (int i = 0; i < 4; ++i)
+    {
+        juce::ValueTree note("NOTE");
+        note.setProperty("ndaw_id", juce::String(i + 100), nullptr);
+        note.setProperty("pitch", 60 + i, nullptr);
+        sequence.addChild(note, -1, nullptr);
+    }
+    clip.addChild(sequence, -1, nullptr);
+    track.addChild(clip, -1, nullptr);
+    original.addChild(track, -1, nullptr);
+    auto after = original.createCopy();
+    after.getChild(0).getChild(0).setProperty("gain", -6., nullptr);
+    auto delta = history_delta::difference(original, after);
+    check(preciseEditXml(delta)->toString().getNumBytesAsUTF8() < 1000,
+          "gain delta excludes unchanged opaque plugin state and MIDI subtree");
+    auto live = original.createCopy();
+    const auto stablePlugin = live.getChild(0).getChild(0);
+    history_delta::apply(live, delta, true);
+    check(live.isEquivalentTo(after) && live.getChild(0).getChild(0) == stablePlugin,
+          "delta changes gain while preserving unrelated node identity");
+    history_delta::apply(live, delta, false);
+    check(live.isEquivalentTo(original), "inverse property delta restores the exact original tree");
+    auto notes = after.getChild(0).getChild(1).getChild(0);
+    notes.getChild(2).setProperty("pitch", 75, nullptr);
+    notes.removeChild(0, nullptr);
+    notes.moveChild(2, 0, nullptr);
+    juce::ValueTree added("NOTE");
+    added.setProperty("ndaw_id", "999", nullptr);
+    added.setProperty("pitch", 40, nullptr);
+    notes.addChild(added, 1, nullptr);
+    delta = history_delta::difference(original, after);
+    auto encoded = preciseEditXml(delta);
+    delta = juce::ValueTree::fromXml(*encoded);
+    history_delta::apply(live, delta, true);
+    check(juce::ValueTree::fromXml(*preciseEditXml(live))
+              .isEquivalentTo(juce::ValueTree::fromXml(*preciseEditXml(after))),
+          "serialized mixed delta preserves edits insertions deletions and order");
+    history_delta::apply(live, delta, false);
+    check(juce::ValueTree::fromXml(*preciseEditXml(live))
+              .isEquivalentTo(juce::ValueTree::fromXml(*preciseEditXml(original))),
+          "serialized mixed delta reverses with stable note identities");
 }
 class Storage final : public te::PropertyStorage
 {
@@ -343,6 +396,7 @@ int main(int argc, char** argv)
         auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory)
                        .getChildFile("forma-persisted-" + juce::Uuid().toString());
         dir.createDirectory();
+        deltaCodec();
         flow(dir);
         gainAudio(dir);
         if (argc > 2)

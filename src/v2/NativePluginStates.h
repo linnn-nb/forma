@@ -9,7 +9,7 @@ class NativePluginStates final : private juce::Timer
 public:
     explicit NativePluginStates(Commands&);
     ~NativePluginStates();
-    void sync(bool checkpoint = false);
+    void sync(bool checkpoint = false, const std::set<std::string>& targets = {});
     void reset();
     void owned(bool);
     void drain();

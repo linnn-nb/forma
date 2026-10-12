@@ -1,5 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativePluginStates.h"
+#include "PersistentHistory.h"
 
 namespace ndaw::v2
 {
@@ -197,6 +198,8 @@ bool Commands::requestParameterChange(te::AutomatableParameter& p, float value, 
 {
     if (ownedParameterWrites > 0)
     {
+        if (juce::MessageManager::getInstance()->isThisTheMessageThread() && persistentHistory)
+            persistentHistory->parameterTouched(p);
         if (juce::MessageManager::getInstance()->isThisTheMessageThread() &&
             processorCache.erase(p.getOwnerID().toString().toStdString()) > 0)
             invalidateFacts();

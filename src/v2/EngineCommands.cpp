@@ -40,6 +40,27 @@ bool isTrackFlag(const std::string& command)
 {
     return command == "track.mute" || command == "track.solo" || command == "track.solo_safe";
 }
+bool historyNeedsGraphRetirement(const juce::ValueTree& record)
+{
+    try
+    {
+        const auto commands = Json::parse(record["commands"].toString().toStdString());
+        if (!commands.is_array() || commands.empty())
+            return true;
+        return !std::all_of(commands.begin(), commands.end(),
+                            [](const Json& command)
+                            {
+                                if (!command.is_string())
+                                    return false;
+                                const auto id = command.get<std::string>();
+                                return id == "track.gain" || id == "track.pan" || id.starts_with("midi.note.");
+                            });
+    }
+    catch (...)
+    {
+        return true;
+    }
+}
 bool trackFlag(const te::Track& track, const std::string& command)
 {
     if (command == "track.mute")
@@ -265,6 +286,9 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     restoreTransportSettings();
     initialiseMusicIDs();
     initialiseAutomationIDs();
+    // Native track slot lists retain this singleton parent. Initialise it before
+    // user history, so creating the first track does not own its lifetime.
+    (void)edit->getSceneList();
     edit->getAutomationRecordManager().setReadingAutomation(true);
     edit->getAutomationRecordManager().setWritingAutomation(false);
     edit->getUndoManager().clearUndoHistory();
@@ -580,7 +604,8 @@ const Json& Commands::queryFacts() const
     factCache = {
         {"session_token", sessionToken()},
         {"history",
-         {{"undo", historyCursor > 0 ? historyEntry(historyCursor - 1) : Json(nullptr)},
+         {{"retention", persistentHistory ? persistentHistory->status() : Json(nullptr)},
+          {"undo", historyCursor > 0 ? historyEntry(historyCursor - 1) : Json(nullptr)},
           {"redo", historyCursor < history.size() ? historyEntry(historyCursor) : Json(nullptr)}}},
         {"time_selection", timelineRange()},
         {"editing_options", editingOptions()},
@@ -1160,15 +1185,15 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     // (notably Delay length, whose SDK DSP can otherwise grow its buffer in process).
     for (const auto& op : plan.at("operations"))
         if (op.at("command") == "session.import_legacy" || op.at("command").get<std::string>().starts_with("clip.") ||
-            ((op.at("command") == "track.gain" || op.at("command") == "track.pan") &&
-             !edit->getTransport().isPlaying()) ||
             op.at("command") == "track.pan_law" || op.at("command").get<std::string>().starts_with("automation.") ||
             op.at("command").get<std::string>().starts_with("plugin.") ||
             op.at("command").get<std::string>().starts_with("send.") || op.at("command") == "track.output" ||
             op.at("command") == "track.create" || op.at("command") == "track.parent" ||
             op.at("command") == "track.order" || op.at("command") == "track.delete" ||
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
-            op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("midi.") ||
+            op.at("command") == "track.monitor" ||
+            (op.at("command").get<std::string>().starts_with("midi.") &&
+             !op.at("command").get<std::string>().starts_with("midi.note.")) ||
             op.at("command").get<std::string>().starts_with("timeline.clips.") ||
             op.at("command").get<std::string>().starts_with("marker.") ||
             op.at("command").get<std::string>().starts_with("location.") ||
@@ -1418,12 +1443,16 @@ Json Commands::undo(const std::string& expected)
     settleClipOrder(*edit);
     require(edit->getUndoManager().getUndoDescription().endsWith(":" + juce::String(id)),
             "untracked undo transaction; command history cannot be advanced");
-    edit->getTransport().freePlaybackContext();
     const auto record = metadata.getChildWithProperty("plan_id", juce::String(id));
+    checkpointHistory();
+    if (historyNeedsGraphRetirement(record))
+        edit->getTransport().freePlaybackContext();
     require(edit->getUndoManager().undo(), "Tracktion Undo failed");
     historyRecords[id] = record;
     restoreTransportSettings();
     --historyCursor;
+    if (persistentHistory)
+        persistentHistory->moved();
     if (nativeStates)
         nativeStates->historyState(id, "undone");
     if (!lastParameterCapture.is_null() && lastParameterCapture["plan_id"] == id)
@@ -1459,10 +1488,17 @@ Json Commands::redo()
     settleClipOrder(*edit);
     require(edit->getUndoManager().getRedoDescription().endsWith(":" + juce::String(id)),
             "untracked redo transaction; command history cannot be advanced");
-    edit->getTransport().freePlaybackContext();
+    auto record = metadata.getChildWithProperty("plan_id", juce::String(id));
+    if (!record.isValid() && historyRecords.contains(id))
+        record = historyRecords.at(id);
+    checkpointHistory();
+    if (historyNeedsGraphRetirement(record))
+        edit->getTransport().freePlaybackContext();
     require(edit->getUndoManager().redo(), "Tracktion Redo failed");
     restoreTransportSettings();
     ++historyCursor;
+    if (persistentHistory)
+        persistentHistory->moved();
     if (nativeStates)
         nativeStates->historyState(id, "committed");
     if (!lastParameterCapture.is_null() && lastParameterCapture["plan_id"] == id)

@@ -277,7 +277,7 @@ void NativePluginStates::persist(const std::string& target, const Snapshot& s)
         p->state.removeProperty(te::IDs::parameters, nullptr);
 }
 
-void NativePluginStates::sync(bool checkpoint)
+void NativePluginStates::sync(bool checkpoint, const std::set<std::string>& targets)
 {
     owner.checkThread();
     std::erase_if(watches, [&](const auto& item) { return owner.processor(item.first) != item.second->plugin.get(); });
@@ -302,6 +302,9 @@ void NativePluginStates::sync(bool checkpoint)
             }
             else if (checkpoint && !owner.edit->getTransport().isPlaying())
             {
+                // Unrelated edits must not read or restore every opaque processor.
+                if (!targets.contains(key) && found->second->knownOverrides.empty() && !found->second->invalidated)
+                    continue;
                 if (!found->second->error.is_null())
                     continue;
                 const auto bits = found->second->dirty.load(std::memory_order_relaxed);
