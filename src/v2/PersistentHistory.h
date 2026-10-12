@@ -38,6 +38,7 @@ private:
         juce::ValueTree delta;
         juce::String data;
         std::string hash;
+        std::set<std::string> references;
     };
     struct Block
     {
@@ -49,7 +50,7 @@ private:
     juce::ValueTree collect();
     void refreshBases();
     void restore(const juce::ValueTree&, bool);
-    void applyBases(const juce::ValueTree&);
+    void applyBases(const juce::ValueTree&, bool changedExternal = false);
     void index(juce::ValueTree);
     void patch(juce::ValueTree, const juce::ValueTree&);
     void mark(juce::ValueTree, bool);
@@ -57,6 +58,7 @@ private:
     Step encode(juce::ValueTree);
     void rebuildUndo();
     void trim();
+    void pruneBlocks();
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override;
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
@@ -72,5 +74,6 @@ private:
     size_t discarded = 0;
     bool replaying = false;
     bool journalApplied = false;
+    bool saving = false;
 };
 } // namespace ndaw::v2

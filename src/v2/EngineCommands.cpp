@@ -1781,10 +1781,27 @@ Json Commands::save(const juce::File& destination)
     auto staged = destination.getSiblingFile(destination.getFileName() + "-" + juce::Uuid().toString() + ".tmp");
     try
     {
-        require(te::EditFileOperations(*edit).writeToFile(staged, false), "Edit save failed");
-        auto xml = preciseEditXml(persistentHistory->save()); // Includes checked local history, never live permissions.
-        require(xml && xml->writeTo(staged), "lossless native Edit XML save failed");
-        publish(staged, destination);
+        {
+            Performance::Span native("save_native_flush");
+            // A Save Copy needs flushed native state, not a snapshot of the old
+            // source file or an intermediate XML that is immediately overwritten.
+            te::EditPlaybackContext::RealtimePriorityDisabler disabler(engine);
+            edit->flushState();
+        }
+        juce::ValueTree image;
+        {
+            Performance::Span journal("save_journal");
+            image = persistentHistory->save();
+        }
+        {
+            Performance::Span xmlWrite("save_xml_write");
+            auto xml = preciseEditXml(image); // Checked local history, never live permissions.
+            require(xml && xml->writeTo(staged), "lossless native Edit XML save failed");
+        }
+        {
+            Performance::Span publication("save_publish");
+            publish(staged, destination);
+        }
     }
     catch (...)
     {

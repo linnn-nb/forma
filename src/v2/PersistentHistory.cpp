@@ -47,11 +47,11 @@ juce::ValueTree withoutHistory(juce::ValueTree state)
     meta.removeProperty("revision", nullptr);
     return state;
 }
-juce::String serialise(const juce::ValueTree& state)
+juce::String serialise(const juce::ValueTree& state, bool compact = false)
 {
     auto xml = preciseEditXml(state);
     require(bool(xml), "history XML could not be serialized");
-    return xml->toString();
+    return compact ? xml->toString(juce::XmlElement::TextFormat{}.singleLine()) : xml->toString();
 }
 std::string digest(const juce::String& data)
 {
@@ -198,7 +198,7 @@ juce::ValueTree PersistentHistory::normalise(juce::ValueTree n)
                 n.removeChild(i, nullptr);
         n.addChild(bases.createCopy(), -1, nullptr);
     }
-    else if (n.hasType(te::IDs::PLUGIN) && owner.nativeStates)
+    else if (n.hasType(te::IDs::PLUGIN) && owner.nativeStates && !saving)
     {
         n = n.createCopy();
         owner.nativeStates->copyCheckpoints(n);
@@ -409,6 +409,7 @@ void PersistentHistory::checkpoint()
             composed.addChild(change.createCopy(), -1, nullptr);
         replace(owner.historyCursor, composed);
     }
+    pruneBlocks();
 }
 void PersistentHistory::moved(bool forward)
 {
@@ -425,6 +426,7 @@ void PersistentHistory::moved(bool forward)
 PersistentHistory::Step PersistentHistory::encode(juce::ValueTree delta)
 {
     auto packed = delta.createCopy();
+    std::set<std::string> references;
     auto pack = [&](auto&& self, juce::ValueTree n) -> void
     {
         for (int i = 0; i < n.getNumProperties(); ++i)
@@ -435,8 +437,9 @@ PersistentHistory::Step PersistentHistory::encode(juce::ValueTree delta)
                 continue;
             juce::ValueTree block("BLOCK");
             block.setProperty("value", value, nullptr);
-            const auto data = serialise(block);
+            const auto data = serialise(block, true);
             const auto key = digest(data);
+            references.insert(key);
             blocks.try_emplace(key, Block{value, data});
             juce::ValueTree ref("PACKED_BLOCK");
             ref.setProperty("property", name.toString(), nullptr);
@@ -449,8 +452,8 @@ PersistentHistory::Step PersistentHistory::encode(juce::ValueTree delta)
                 self(self, child);
     };
     pack(pack, packed);
-    auto data = serialise(packed);
-    return {std::move(delta), data, digest(data)};
+    auto data = serialise(packed, true);
+    return {std::move(delta), data, digest(data), std::move(references)};
 }
 void PersistentHistory::appended()
 {
@@ -460,45 +463,41 @@ void PersistentHistory::appended()
     steps.push_back(encode(collect()));
     trim();
 }
+void PersistentHistory::pruneBlocks()
+{
+    std::set<std::string> used;
+    for (const auto& step : steps)
+        used.insert(step.references.begin(), step.references.end());
+    std::erase_if(blocks, [&](const auto& pair) { return !used.contains(pair.first); });
+}
 void PersistentHistory::trim()
 {
-    auto prune = [&]
-    {
-        std::set<std::string> used;
-        for (const auto& step : steps)
-        {
-            auto xml = juce::XmlDocument::parse(step.data);
-            auto visit = [&](auto&& self, const juce::XmlElement& n) -> void
-            {
-                if (n.hasTagName("PACKED_BLOCK"))
-                    used.insert(n.getStringAttribute("hash").toStdString());
-                for (auto* child = n.getFirstChildElement(); child; child = child->getNextElement())
-                    self(self, *child);
-            };
-            visit(visit, *xml);
-        }
-        std::erase_if(blocks, [&](const auto& pair) { return !used.contains(pair.first); });
-    };
-    size_t total = 0;
-    for (const auto& step : steps)
-        total += size_t(step.data.getNumBytesAsUTF8());
-    for (const auto& [_, block] : blocks)
-        total += size_t(block.data.getNumBytesAsUTF8());
+    pruneBlocks();
+    auto bytes = [&] { return status()["encoded_bytes"].get<size_t>(); };
     bool changed = false;
-    while (steps.size() > maximumSteps || (total > maximumBytes && steps.size() > 1))
+    while (steps.size() > maximumSteps || (bytes() > maximumBytes && steps.size() > 1))
     {
-        require(owner.historyCursor > 0, "history budget cannot discard current Redo boundary");
-        total -= size_t(steps.front().data.getNumBytesAsUTF8());
-        steps.erase(steps.begin());
-        owner.historyRecords.erase(owner.history.front());
-        owner.history.erase(owner.history.begin());
-        --owner.historyCursor;
+        if (owner.historyCursor > 0)
+        {
+            steps.erase(steps.begin());
+            owner.historyRecords.erase(owner.history.front());
+            owner.history.erase(owner.history.begin());
+            --owner.historyCursor;
+        }
+        else
+        {
+            // A deep-Undo legacy file must keep its current state. With no past
+            // left, truncate the distant future rather than cross the cursor.
+            steps.pop_back();
+            owner.historyRecords.erase(owner.history.back());
+            owner.history.pop_back();
+        }
         ++discarded;
         changed = true;
+        pruneBlocks();
     }
     if (changed)
     {
-        prune();
         nodes.clear();
         index(observed);
         rebuildUndo();
@@ -517,10 +516,11 @@ Json PersistentHistory::status() const
             {"maximum_bytes", maximumBytes},
             {"encoded_bytes", bytes},
             {"discarded_steps", discarded},
-            {"notice", discarded ? "历史上限200步或32MiB；最旧步骤已丢弃，当前工程与媒体保留" : ""}};
+            {"notice", discarded ? "历史上限200步或32MiB；历史窗口已截断，当前工程与媒体保留" : ""}};
 }
 juce::ValueTree PersistentHistory::save()
 {
+    juce::ScopedValueSetter<bool> flushedState(saving, true);
     checkpoint();
     require(steps.size() == owner.history.size(), "persistent history boundary is missing");
     require(status()["encoded_bytes"].get<size_t>() <= maximumBytes, "one transaction exceeds 32 MiB history budget");
@@ -856,7 +856,7 @@ void PersistentHistory::restore(const juce::ValueTree& delta, bool forward)
             selected.addChild(base.createCopy(), -1, nullptr);
     info.addChild(selected, -1, nullptr);
     values.addChild(info, -1, nullptr);
-    applyBases(values);
+    applyBases(values, true);
     for (const auto& [id, parameters] : curves)
         if (auto* plugin = findPlugin(*owner.edit, id))
             for (const auto& name : parameters)
@@ -877,7 +877,7 @@ void PersistentHistory::restore(const juce::ValueTree& delta, bool forward)
     journalApplied = true;
     dirty.clear();
 }
-void PersistentHistory::applyBases(const juce::ValueTree& image)
+void PersistentHistory::applyBases(const juce::ValueTree& image, bool changedExternal)
 {
     Commands::ParameterWriteGuard guard(owner);
     std::map<juce::String, te::Plugin*> plugins;
@@ -893,7 +893,7 @@ void PersistentHistory::applyBases(const juce::ValueTree& image)
             continue;
         auto parameter = plugin->getAutomatableParameterByID(base["parameter"].toString());
         require(parameter != nullptr, "saved history parameter is unavailable in this plugin version");
-        if (dynamic_cast<te::ExternalPlugin*>(plugin) && parameter->getCurve().getNumPoints() == 0)
+        if (!changedExternal && dynamic_cast<te::ExternalPlugin*>(plugin) && parameter->getCurve().getNumPoints() == 0)
             continue;
         const double value = double(base["value"]);
         require(std::isfinite(value) && value >= parameter->valueRange.start && value <= parameter->valueRange.end,

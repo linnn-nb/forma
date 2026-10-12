@@ -22,6 +22,10 @@ public:
                     reinterpret_cast<uintptr_t>(external->getAudioPluginInstance())};
         return result;
     }
+    static bool editorOpen(Commands& c, const std::string& id)
+    {
+        return c.nativePluginEditorOpen(id);
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -435,6 +439,40 @@ void retention(const juce::File& dir)
     check(c.query()["tracks"][0]["name"] == "Limit 209" && !c.query()["can_redo"].get<bool>(),
           "cap preserves and reopens the complete retained Redo branch");
 }
+Json stableTracks(Json tracks);
+void byteRetention(const juce::File& dir)
+{
+    Commands c(false, std::make_unique<Storage>(dir.getChildFile("byte-limit-prefs")));
+    Json create = Json::array();
+    for (int t = 0; t < 45; ++t)
+        create.push_back(
+            op("track.create", {{"name", "Block " + std::to_string(t)}, {"ref", "$t" + std::to_string(t)}}));
+    run(c, create);
+    const auto tracks = c.query()["tracks"];
+    for (int step = 0; step < 190; ++step)
+    {
+        Json edits = Json::array();
+        for (int t = 0; t < 45; ++t)
+        {
+            auto value = std::to_string(step) + ":" + std::to_string(t) + ":";
+            value += std::string(4096 - value.size(), char('a' + (step + t) % 26));
+            edits.push_back(op("track.comment", {{"track", tracks[t]["id"]}, {"value", value}}));
+        }
+        c.commit(c.makePlan("human", edits));
+    }
+    const auto limit = c.query()["history"]["retention"];
+    check(limit["discarded_steps"].get<size_t>() > 0 && limit["retained_steps"].get<size_t>() < 191 &&
+              limit["encoded_bytes"].get<size_t>() <= 32 * 1024 * 1024,
+          "real L1 comment transactions reach the production 32MiB cap before the 200-step limit");
+    const auto state = stableTracks(c.query()["tracks"]);
+    auto file = dir.getChildFile("byte-limit.tracktionedit");
+    c.save(file);
+    c.open(file);
+    c.undo();
+    c.redo();
+    check(stableTracks(c.query()["tracks"]) == state,
+          "byte-capped project saves reopens and replays actual retained content");
+}
 Json stableTracks(Json tracks)
 {
     for (auto& t : tracks)
@@ -459,6 +497,10 @@ void legacySong(const juce::File& source, const juce::File& dir)
     const auto original = stableTracks(c.query()["tracks"]);
     const auto identities = PerformanceTestAccess::nativeIdentities(c);
     check(identities.size() >= 6, "actual six-instance third-party plugin fixture loaded");
+    const auto editor = identities.items().begin().key();
+    c.pluginEditorControl("plugin.editor.open", {{"plugin", editor}});
+    pump();
+    check(PerformanceTestAccess::editorOpen(c, editor), "actual unrelated Serum editor opens");
     const std::string track = original[0]["id"];
     const double gain = original[0]["base_gain_db"];
     const auto reads = c.query()["native_plugin_states"]["state_reads"];
@@ -469,6 +511,7 @@ void legacySong(const juce::File& source, const juce::File& dir)
     pump();
     check(PerformanceTestAccess::nativeIdentities(c) == identities,
           "fader Undo and delayed Redo keep unrelated actual plugin and processor instances");
+    check(PerformanceTestAccess::editorOpen(c, editor), "live fader Undo and delayed Redo preserve unrelated editor");
     check(c.query()["native_plugin_states"]["state_reads"] == reads,
           "unrelated fader transaction does not read all opaque plugin states");
     c.undo();
@@ -482,6 +525,9 @@ void legacySong(const juce::File& source, const juce::File& dir)
     check(int(history["schema"]) == 2, "explicit Save Copy converts schema1 into schema2");
     c.open(file);
     pump();
+    const auto reopenedIdentities = PerformanceTestAccess::nativeIdentities(c);
+    c.pluginEditorControl("plugin.editor.open", {{"plugin", editor}});
+    pump();
     const auto after = stableTracks(c.query()["tracks"]);
     c.redo();
     pump();
@@ -489,6 +535,10 @@ void legacySong(const juce::File& source, const juce::File& dir)
     pump();
     check(stableTracks(c.query()["tracks"]) == after,
           "six-instance persisted Redo and Undo cross migration with equal public state");
+    check(PerformanceTestAccess::editorOpen(c, editor) &&
+              PerformanceTestAccess::nativeIdentities(c) == reopenedIdentities,
+          "persisted fader Redo and Undo preserve unrelated native editor and processor instances");
+    c.pluginEditorControl("plugin.editor.close", {{"plugin", editor}});
     check(Commands::mediaHash(source) == hash, "legacy user document is byte-for-byte preserved");
 }
 } // namespace
@@ -504,6 +554,7 @@ int main(int argc, char** argv)
         flow(dir);
         gainAudio(dir);
         retention(dir);
+        byteRetention(dir);
         if (argc > 3 && std::string(argv[2]) == "legacy")
             legacySong(juce::File(juce::String::fromUTF8(argv[3])), dir);
         else if (argc > 2)
