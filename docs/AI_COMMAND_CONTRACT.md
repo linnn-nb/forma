@@ -1,3 +1,9 @@
+# 当前历史契约（2026-10-13）
+
+Plan / actor / revision / 幂等 / Scope / 确认规则不变。schema 2 持久 Undo 只记录真实工程增量，不恢复外部客户端的活动权限或把旧审计记录当作成功回执。原生实时 Undo 与重开后的 DeltaAction 分别推进同一镜像，SDK 延迟写入并入相邻事务边界，不能生成重复事务。
+
+`query.history.retention` 返回 schema、maximum_steps=200、maximum_bytes=33554432、encoded_bytes、discarded_steps 与 notice。超限截断窗口，当前事实与媒体保留；单笔仍超过 32 MiB 时保存明确失败。外部插件回放仅涉及本笔变化的真实参数/状态；无关窗口和实例保留。schema 1 只读校验后迁移，另存为 schema 2；损坏链整笔拒绝。最新实际验证见 VERIFICATION；下方旧历史资格文字保留日期，不代表当前状态。
+
 U-P0-PERSISTED-HISTORY-01（2026-10-10）：本地历史为编辑事实的校验快照，不是可执行 Plan、可信 Agent 回执或授权。重开旋转 session token；Undo/Redo 递增 revision、使旧 Plan 失效，一笔事务仍由原生 UndoManager 管理。UI 与当前请求审计不被编辑历史覆盖，重开后的请求重试仍须重新查询/规划/预览/本地授权；恢复历史不授予扩展权限。已有 irreversible 事务继续阻止 Undo；录音原件、导出文件和自动恢复快照不伪称被历史回滚。专项 RequestRecovery 63 检查通过；此节替代下方历史“Undo不跨重开”的限制，仅适用于带新历史的显式保存文件。RAM剪贴板与键位独立设置历史的语义保持。无新增 MCP 工具。
 
 U-FEEDBACK-HISTORY-01：query新增只读history.undo/redo（null或plan_id/actor/source/commands描述）。commands只含已提交真实命令ID；旧记录/损坏描述回退通用显示，绝不执行描述。原生UndoManager、Plan/revision/actor/权限/幂等语义保持；显式保存的本地历史重开后独立恢复，旧文件没有历史不补造。MCP工具和外部写权限未扩充。

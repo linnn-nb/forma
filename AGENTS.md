@@ -1,9 +1,9 @@
 # Forma Studio 工程规则
 
-- 当前独立性能专项：按 CODEX_PROMPT_PERF.md 做阶段0/A/B，不进入P1；两轮预算失败先止损。设备/负载对照及SDK线程预算修复已完成；6策略18检查、175功能检查通过。原霓潮/耳机/48k/256帧/无人工负载300秒实测零XRUN、平均paint30.45Hz、主线程15.84%仍超15%预算。A未完整验收；用户已选择进入B增量历史并保留A差距。当前实现schema2增量日志、选择性回放和历史上限，尚未通过B回归与性能验收；不进入P1。证据入口 evidence/perf/summary.md；完成专项后暂停，不恢复原目标。
+- 当前独立性能专项：按 CODEX_PROMPT_PERF.md 做阶段0/A/B，不进入P1。B增量历史/保存/迁移/200步与32MiB限制完成，Release受影响11套件892检查、ASAN65检查及压力CTest通过；具体资格见 evidence/perf/summary.md。保留A主线程15.84%超15%预算、屏幕present与完整交互未测，以及旧压力schema1转换约252秒。按用户要求暂停，等用户亲手试用，不恢复原目标。当前应用 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；迁移试用副本 build-v2-tracktion/perf-scratch/Neon-Tide-schema2-trial.tracktionedit，原歌曲/媒体不覆盖。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
-- 当前试用：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。
+- 历史U/P0试用（不是当前性能构建）：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。
 - 以用户 CODEX_PROMPT_P0_CORRECTION.md（2026-10-10）为准：停止新功能，实机验收 U＋P0 的8步；只修阻塞点。提交推送后暂停线程，等用户试用确认，不得自动继续。
 - 2026-10-10五项反馈修复优先于旧8步：多选导入、停止发声、面板缩放、去掉常驻Clip表单、外部插件入口。检查器独立AU/VST3入口、禁用原因与停止恢复、已有槽选择名称同步已验证；当前构建已交付；Mix槽菜单已锚定并等待有界macOS激活回执，Program草稿刷新竞态已修；键位面板可搜索、更改/移除、独立设置Undo/Redo并由L1保存；AU批量导入一次Undo实机通过，独立音量编辑分别撤销，旧额外事务手势未复现。提交推送后等试用，不自动扩展。
 - 导入设置已接通现有音频/乐器轨连续放置与原新轨模式；捕获会话/版本/光标、整笔L1 Undo与保存重开已验，默认不覆盖已有片段。显式新保存的工程跨重开Undo/Redo已验证（PersistentHistory；旧文件不补造历史、自动恢复快照仍不恢复Undo）；大工程资源预算待测。

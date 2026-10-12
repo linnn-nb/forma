@@ -1,3 +1,11 @@
+# 当前架构补充：增量历史（2026-10-13）
+
+B 使用 `HistoryDelta.h` / `PersistentHistory` 的 schema 2 日志：L1 在 message thread 观察 Edit，记录属性、子树及顺序的变化；一个 Plan 仍对应一笔原生 UndoManager 事务。仅保留一个当前镜像，参数按变动 owner 收集，较大状态块以 SHA256 共享；撤销只回放涉及的插件、曲线与基础值。SCENES 等原生根单例保持节点身份，GUI 命令管理器先构造、最后销毁。
+
+持久化最多 200 步或 32 MiB 编码数据；截断后通过查询和 GUI 提示保留边界，不改变当前工程与源媒体。深度 Undo 文件若没有可删的过去，截断远端 Redo。schema 1 在候选状态校验后读入，显式另存时转 schema 2；校验失败拒绝采用。保存执行 SDK `flushState()`、一次最终 XML 写入及原子发布，避免读取旧文件快照和重复写盘。
+
+本节是当前历史实现；下方旧阶段记录保留追溯，其全量快照及旧未验证描述由最新 VERIFICATION 中的实际资格替代。性能专项结束后暂停，不进入 P1。
+
 U-P0-RANGE-NUDGE-01（2026-10-10）：范围 Nudge 已接通音频/MIDI、编辑组与完整选区的曲线（含静音/空轨），一笔 L1/native Undo。GUI 的 WorkspaceEditing 只调用 Commands::makeRangeNudgePlan；EditGroupCommands 编译实际组成员、媒体/事件哈希及完整采样包络，EngineCommands 预览/提交时重新编译核对。AutomationMove 先冻结真实曲线再移动；曲线使用轨道声明的单一基准，混合 auto 有曲线歧义则整笔拒绝，无曲线可执行。局部 automation.range.move 只允许封闭 human/local_gui 范围计划派生，不能由调用者或外部 actor 注入；停止状态、64 操作上限，未新增 SDK/RT/MCP/依赖。
 完全包含的片段才移动；部分片段跳过，同组部分成员冲突拒绝，禁止隐式 Separate。音乐 MIDI 保留原拍事件与音乐时长，采样 MIDI 保留实际事件秒位置；选区自身保持完整采样包络。MidiClipMove 的原源偏移恰为零时保持相同源/片段拍锚与精确零偏移，修复左移一采样产生负偏移；不使用 epsilon。验证和实桌面范围见 VERIFICATION 最新节；完整 U＋P0 尚未完成。
 
