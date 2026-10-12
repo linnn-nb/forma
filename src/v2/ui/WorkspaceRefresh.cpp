@@ -739,8 +739,16 @@ void Workspace::refresh()
 
 void Workspace::timerCallback()
 {
+    const auto started = juce::Time::getMillisecondCounterHiRes();
+    if (started < nextBackgroundRefreshMs)
+        return;
     syncCommandCards();
     refresh();
+    // A dense native plugin snapshot can take longer than the 50 ms timer.
+    // Leave message-thread time for mouse, keyboard and accessibility requests.
+    // Explicit edits still refresh synchronously; only background polling yields.
+    const auto finished = juce::Time::getMillisecondCounterHiRes();
+    nextBackgroundRefreshMs = finished + std::clamp((finished - started) * 3.0, 0.0, 1000.0);
     const auto roll = facts["transport_settings"]["roll_playback"];
     if (!roll.is_null() && (roll["state"] == "failed" || roll["state"] == "interrupted"))
         message(text("选区播放失败 / 中断：") + text(roll.value("error", std::string("native transport interrupted"))));

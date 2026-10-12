@@ -128,6 +128,7 @@ public:
     }
 
 private:
+    double nextBackgroundRefreshMs = 0;
     Json audioImportContext() const;
     static juce::String historyLabel(const Json& entry);
     juce::PopupMenu rulersMenu();

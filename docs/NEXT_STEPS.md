@@ -2,6 +2,8 @@
 
 当前五项反馈修复版与原生8步主流程可试用。提交推送后暂停，等待用户反馈；不自动进入P1，不宣称完整DAW验收。
 
+2026-10-12实际制作试用：《霓潮》已在FeedbackPreview打开、停在0秒；工程 `../outputs/forma-neon-tide-20261012/霓潮.tracktionedit`，真实试听 `Neon Tide - Final.wav`。6个Serum实例、530可编辑MIDI音符、1轨原创鼓组。当前优先缺陷是该多实例工程重开后的混音Redo历史冲突，已恢复保存的最终版本，见BACKLOG与VERIFICATION最新节；不扩大此前单实例/录音Redo的资格。
+
 1. 打开 `build-v2-tracktion/FeedbackPreview.app`，⌘O选择 `build-v2-tracktion/UP0-demo-media/UP0-current-1010-verified.tracktionedit`。该文件上次验证停止在2.832秒/r126；四音频、一乐器、一个Reverb Aux，真实媒体同目录。
 2. 外部插件：选轨→右侧 **AU / VST3…** →搜索→选条目→未扫描先扫描→插入→插件窗口；Mix空槽共用入口。演示已装AUNBandEQ，真实编辑器已验证。失败有真实原因，不显示假成功。
 3. ⌘I多选导入；空格播放/停止；左右分隔线拖宽，⌘+滚轮缩放；Smart/Trim和角点直接编辑。EDIT音量视图Pencil、MIX EQ/Reverb/send均可试。Control Option G/S切Grid/Slip；⌘Z/⇧⌘Z支持保存历史，33次可到初始工程再恢复。

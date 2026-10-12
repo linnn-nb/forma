@@ -60,14 +60,16 @@ Json Commands::pluginInventory() const
 }
 Json Commands::externalDescriptor(const std::string& id) const
 {
-    for (const auto& p : externalInventory.value("plugins", Json::array()))
-        if (p["id"] == id)
-        {
-            const auto& f = p["module_fingerprint"];
-            require(pluginModuleFingerprint(f["format"], f["candidate"]) == f,
-                    "plugin module changed or missing; rescan before loading");
-            return p;
-        }
+    const auto entries = externalInventory.find("plugins");
+    if (entries != externalInventory.end())
+        for (const auto& p : *entries)
+            if (p["id"] == id)
+            {
+                const auto& f = p["module_fingerprint"];
+                require(pluginModuleFingerprint(f["format"], f["candidate"]) == f,
+                        "plugin module changed or missing; rescan before loading");
+                return p;
+            }
     throw std::runtime_error("scanned plugin descriptor unavailable; scan or rescan first");
 }
 bool Commands::mayLoadExternal(te::ExternalPlugin& plugin) const
@@ -79,14 +81,19 @@ bool Commands::mayLoadExternal(te::ExternalPlugin& plugin) const
         auto id = plugin.state.getProperty("ndaw_external_descriptor").toString().toStdString();
         if (id.empty())
             return false;
-        Json p = nullptr;
-        for (const auto& item : externalInventory.value("plugins", Json::array()))
-            if (item["id"] == id)
-                p = item;
-        if (p.is_null() || !p.value("module_available", false))
+        const auto entries = externalInventory.find("plugins");
+        if (entries == externalInventory.end())
             return false;
-        return p["module_hash"] == plugin.state.getProperty("ndaw_external_module_hash").toString().toStdString() &&
-               p["file_or_identifier"] == plugin.desc.fileOrIdentifier.toStdString();
+        const Json* p = nullptr;
+        // The catalog contains full scan results. Borrow it while checking an
+        // instance instead of copying every descriptor on every GUI refresh.
+        for (const auto& item : *entries)
+            if (item["id"] == id)
+                p = &item;
+        if (p == nullptr || !p->value("module_available", false))
+            return false;
+        return (*p)["module_hash"] == plugin.state.getProperty("ndaw_external_module_hash").toString().toStdString() &&
+               (*p)["file_or_identifier"] == plugin.desc.fileOrIdentifier.toStdString();
     }
     catch (const std::exception&)
     {
