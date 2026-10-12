@@ -24,7 +24,7 @@ public:
     ~PersistentHistory();
     void checkpoint();
     void appended();
-    void moved();
+    void moved(bool forward);
     void parameterTouched(te::AutomatableParameter&);
     Json status() const;
     juce::ValueTree save();
@@ -71,5 +71,6 @@ private:
     std::map<std::string, Block> blocks;
     size_t discarded = 0;
     bool replaying = false;
+    bool journalApplied = false;
 };
 } // namespace ndaw::v2

@@ -1452,7 +1452,7 @@ Json Commands::undo(const std::string& expected)
     restoreTransportSettings();
     --historyCursor;
     if (persistentHistory)
-        persistentHistory->moved();
+        persistentHistory->moved(false);
     if (nativeStates)
         nativeStates->historyState(id, "undone");
     if (!lastParameterCapture.is_null() && lastParameterCapture["plan_id"] == id)
@@ -1498,7 +1498,7 @@ Json Commands::redo()
     restoreTransportSettings();
     ++historyCursor;
     if (persistentHistory)
-        persistentHistory->moved();
+        persistentHistory->moved(true);
     if (nativeStates)
         nativeStates->historyState(id, "committed");
     if (!lastParameterCapture.is_null() && lastParameterCapture["plan_id"] == id)

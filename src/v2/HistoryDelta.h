@@ -33,7 +33,9 @@ inline std::vector<Path> locators(juce::ValueTree parent)
     for (auto child : parent)
     {
         const auto type = child.getType().toString().toStdString(), key = identity(child);
-        require(key.empty() || keys.insert(key).second, "duplicate persistent node identity");
+        if (!key.empty() && !keys.insert(key).second)
+            throw std::runtime_error("duplicate persistent node identity in " +
+                                     parent.getType().toString().toStdString() + ": " + key);
         result.push_back({{"type", type}, {"key", key}, {"ordinal", key.empty() ? ordinals[type]++ : 0}});
     }
     return result;

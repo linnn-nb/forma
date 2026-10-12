@@ -410,8 +410,16 @@ void PersistentHistory::checkpoint()
         replace(owner.historyCursor, composed);
     }
 }
-void PersistentHistory::moved()
+void PersistentHistory::moved(bool forward)
 {
+    // Live native actions update the Edit but not the detached journal. Restored
+    // actions already move both. Never mistake the Undo itself for a late echo.
+    if (!journalApplied)
+    {
+        const auto at = forward ? owner.historyCursor - 1 : owner.historyCursor;
+        history_delta::apply(mirror, steps.at(at).delta, forward);
+    }
+    journalApplied = false;
     checkpoint();
 }
 PersistentHistory::Step PersistentHistory::encode(juce::ValueTree delta)
@@ -866,6 +874,7 @@ void PersistentHistory::restore(const juce::ValueTree& delta, bool forward)
     }
     // The mirror already has the current boundary; move only this delta in it.
     history_delta::apply(mirror, delta, forward);
+    journalApplied = true;
     dirty.clear();
 }
 void PersistentHistory::applyBases(const juce::ValueTree& image)
