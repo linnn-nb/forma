@@ -104,7 +104,7 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
 
 Json Workspace::selectedAudioClip() const
 {
-    for (const auto& t : facts.value("tracks", Json::array()))
+    for (const auto& t : arrayField(facts, "tracks"))
         for (const auto& c : t["clips"])
             if (c["id"] == selectedClip)
                 return c;
@@ -238,7 +238,7 @@ juce::String Workspace::trackName(const std::string& id) const
 
 Json Workspace::selectedTrack() const
 {
-    for (const auto& t : facts.value("tracks", Json::array()))
+    for (const auto& t : arrayField(facts, "tracks"))
         if (t["id"] == selected)
             return t;
     return nullptr;
@@ -257,7 +257,7 @@ void Workspace::refreshPluginLibraryTarget()
     if (!pluginLibrary)
         return;
     Json target = nullptr;
-    for (const auto& track : facts.value("tracks", Json::array()))
+    for (const auto& track : arrayField(facts, "tracks"))
         if (track["id"] == pluginLibraryTrack)
             target = track;
     std::string reason;
@@ -513,7 +513,12 @@ void Workspace::refresh()
                 message(text("实际设备正在准备 · 等待音频回调回执"));
         }
     }
-    facts = commands.query();
+    commands.queryFacts();
+    const auto& rollStatus = facts["transport_settings"]["roll_playback"];
+    if (!rollStatus.is_null() && (rollStatus["state"] == "failed" || rollStatus["state"] == "interrupted"))
+        message(text(rollStatus.value("error", std::string("native transport interrupted"))));
+    if (!facts["last_recording"].is_null() && facts["last_recording"]["state"] == "failed")
+        message(text(facts["last_recording"]["error"].get<std::string>()));
     static const std::array<std::pair<const char*, int>, 5> countInModes{
         {{"none", 1}, {"one_beat", 2}, {"two_beats", 3}, {"one_bar", 4}, {"two_bars", 5}}};
     const auto transportSettings = facts.value("transport_settings", Json::object());
@@ -734,28 +739,78 @@ void Workspace::refresh()
     refreshInspector();
     if (memoryLocationsPanel && memoryLocationsPanel->isVisible())
         memoryLocationsPanel->update(facts);
-    resized();
+    Json visibleChildren = Json::array();
+    for (const auto* child : getChildren())
+        if (child->isVisible())
+            visibleChildren.push_back(child->getComponentID().toStdString());
+    const Json layout{{"children", visibleChildren},
+                      {"view", view},
+                      {"mix", mix},
+                      {"piano", pianoMode},
+                      {"report", reportShowing},
+                      {"pending", !pending.is_null()},
+                      {"routing", routingInspector},
+                      {"record", recordInspector},
+                      {"group", groupInspector},
+                      {"automation", autoInspector},
+                      {"clip_fx", clipFXInspector}};
+    if (layout != lastLayoutState)
+    {
+        lastLayoutState = layout;
+        resized();
+        repaint();
+    }
     commandManager.commandStatusChanged();
-    repaint();
+    updateRealtime();
 }
 
+void Workspace::updateRealtime()
+{
+    const auto state = commands.realtimeState();
+    const auto view = commands.uiState();
+    const auto scale = view["main_time_scale"].get<std::string>();
+    auto display = scale == "samples"    ? juce::String(state.position)
+                   : scale == "timecode" ? TimelineCoordinates::frames(state.position, view["timecode_fps"].get<int>())
+                   : scale == "bars_beats" ? juce::String(state.bar) + " | " + juce::String(state.beat, 3)
+                                           : TimelineCoordinates::minutesSeconds(state.position);
+    counter.setText(display, juce::dontSendNotification);
+    musicPosition.setText(juce::String(state.bar) + " | " + juce::String(state.beat, 2) + text("  小节 / 拍"),
+                          juce::dontSendNotification);
+    editArea.setPlayhead(state.position);
+    piano.setPlayhead(state.positionBeats);
+    const auto meters = commands.outputMeters();
+    float peak = 0;
+    for (const auto& channel : meters["channels"])
+        peak = std::max(peak, channel["sample_peak"].get<float>());
+    if (deviceFacts.value("output_peak", 0.f) != peak)
+    {
+        deviceFacts["output_peak"] = peak;
+        repaint(getWidth() - 235, 70, 220, 50);
+    }
+    deviceFacts["output_meters"] = meters;
+    mixArea.updateMeters(deviceFacts);
+    if (lastMeterRequest && meters.value("reset_applied", uint64_t(0)) >= lastMeterRequest)
+    {
+        lastMeterRequest = 0;
+        message(text("输出峰值已复位 · 持续过载会重新标记"));
+    }
+    const auto interval = state.playing || state.recording ? 33 : 200;
+    if (getTimerInterval() != interval)
+        startTimer(interval);
+}
 void Workspace::timerCallback()
 {
     ndaw::v2::Performance::Span measured("ui_tick");
-    const auto started = juce::Time::getMillisecondCounterHiRes();
-    if (started < nextBackgroundRefreshMs)
-        return;
-    syncCommandCards();
-    refresh();
-    // A dense native plugin snapshot can take longer than the 50 ms timer.
-    // Leave message-thread time for mouse, keyboard and accessibility requests.
-    // Explicit edits still refresh synchronously; only background polling yields.
-    const auto finished = juce::Time::getMillisecondCounterHiRes();
-    nextBackgroundRefreshMs = finished + std::clamp((finished - started) * 3.0, 0.0, 1000.0);
-    const auto roll = facts["transport_settings"]["roll_playback"];
-    if (!roll.is_null() && (roll["state"] == "failed" || roll["state"] == "interrupted"))
-        message(text("选区播放失败 / 中断：") + text(roll.value("error", std::string("native transport interrupted"))));
-    if (!facts["last_recording"].is_null() && facts["last_recording"]["state"] == "failed")
-        message(text("录音失败：") + text(facts["last_recording"]["error"].get<std::string>()));
+    updateRealtime();
+    // Service progress is queried only while its own panel is open, without
+    // rebuilding Edit facts, tracks, plugin controls or timeline layout.
+    if (exportPanel && exportPanel->isVisible())
+        exportPanel->update(commands.analysisStatus());
+    if (analysisPanel && analysisPanel->isVisible())
+        analysisPanel->update(commands.analysisStatus());
+    if (recoveryPanel && recoveryPanel->isVisible())
+        recoveryPanel->update(commands.recoveryStatus());
+    if (audioSettings && audioSettings->isVisible())
+        audioSettings->updateRuntime(commands.audioDevices());
 }
 } // namespace ndaw::desktop

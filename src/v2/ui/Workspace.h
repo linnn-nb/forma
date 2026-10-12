@@ -29,7 +29,7 @@ namespace ndaw::v2
 {
 class McpTestAccess;
 class PerformanceTestAccess;
-}
+} // namespace ndaw::v2
 namespace ndaw::desktop
 {
 #include "../RoutingPanel.h"
@@ -130,7 +130,8 @@ public:
     }
 
 private:
-    double nextBackgroundRefreshMs = 0;
+    Json lastLayoutState = nullptr;
+    void updateRealtime();
     Json audioImportContext() const;
     static juce::String historyLabel(const Json& entry);
     juce::PopupMenu rulersMenu();
@@ -300,7 +301,8 @@ private:
     std::string pendingConfirmation;
     bool commandFileBusy = false;
     juce::File recordDirectory;
-    Json facts = Json::object(), deviceFacts = Json::object(), pending = nullptr;
+    const Json& facts = commands.queryFacts();
+    Json deviceFacts = Json::object(), pending = nullptr;
     std::string selected, selectedClip, lastPluginIDs, lastMusicMap;
     int pluginSelection = 0;
     bool clipFXInspector = false, reportShowing = false, mix = false, recordInspector = false, routingInspector = false,

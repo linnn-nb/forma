@@ -14,6 +14,16 @@ public:
         setWantsKeyboardFocus(true);
         setComponentID("midi.canvas");
     }
+    void setPlayhead(double beat)
+    {
+        if (positionBeat == beat || clip.is_null())
+            return;
+        const auto start = clip["start_beat"].get<double>();
+        const auto old = positionBeat;
+        positionBeat = beat;
+        for (const auto p : {old, beat})
+            repaint(64 + int((p - start) * zoom) - 1, 0, 3, getHeight());
+    }
     void update(const Json& value, uint64_t revision, bool playing, double snap, int width, double positionBeat,
                 const std::string& session = "", double zoom = 72., double noteHeight = 14.)
     {
@@ -733,6 +743,11 @@ public:
         detail.setFont(juce::FontOptions(12));
         setComponentID("midi.editor");
         view.setViewPosition(0, 32 + (127 - 84) * 14);
+    }
+    void setPlayhead(double beat)
+    {
+        positionBeat = beat;
+        canvas.setPlayhead(beat);
     }
     void update(const Json& track, uint64_t revision, bool playing, double positionBeat,
                 const std::string& session = "", const Json& ui = Json::object(), const Json& noteIDs = Json::array())

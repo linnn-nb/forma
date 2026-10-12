@@ -139,9 +139,13 @@ struct NativePluginStates::Action final : juce::UndoableAction
     std::shared_ptr<Snapshot> before, after;
     bool first = true;
 };
-NativePluginStates::NativePluginStates(Commands& c) : owner(c) {}
+NativePluginStates::NativePluginStates(Commands& c) : owner(c)
+{
+    startTimerHz(5);
+}
 NativePluginStates::~NativePluginStates()
 {
+    stopTimer();
     reset();
 }
 void NativePluginStates::reset()

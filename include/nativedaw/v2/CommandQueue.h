@@ -34,6 +34,7 @@ public:
     void grant(const std::string& client,const Scope&);
     void revoke(const std::string& client);
     void setSelection(const std::string& track,const std::string& clip={});
+    void onCardsChanged(std::function<void()>);
     Json pending();
     Json resolve(const std::string& confirmationID,bool accepted);
     Json status() const;

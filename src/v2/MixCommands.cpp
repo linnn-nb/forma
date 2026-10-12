@@ -225,6 +225,12 @@ Json Commands::processorQuery(te::PluginList& list) const
     {
         if (!supported(*plugin))
             continue;
+        const auto cacheID = plugin->itemID.toString().toStdString();
+        if (auto it = processorCache.find(cacheID); it != processorCache.end())
+        {
+            plugins.push_back(it->second);
+            continue;
+        }
         Json parameters = Json::array();
         for (auto* p : plugin->getAutomatableParameters())
             parameters.push_back(parameterQuery(*plugin, *p));
@@ -283,7 +289,8 @@ Json Commands::processorQuery(te::PluginList& list) const
             result["owner_clip"] = clip->itemID.toString().toStdString();
             result["automation_workflow_qualified"] = false;
         }
-        plugins.push_back(result);
+        processorCache[cacheID] = result;
+        plugins.push_back(std::move(result));
     }
     return plugins;
 }
@@ -412,6 +419,8 @@ void Commands::setParameterValue(te::Plugin& p, te::AutomatableParameter& parame
                                  juce::NotificationType nt)
 {
     ParameterWriteGuard guard(*this);
+    processorCache.erase(p.itemID.toString().toStdString());
+    invalidateFacts();
     auto& um = edit->getUndoManager();
     if (dynamic_cast<te::ExternalPlugin*>(&p) && parameter.paramID != "dry level" && parameter.paramID != "wet level")
     {

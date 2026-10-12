@@ -4,7 +4,7 @@
 namespace ndaw::v2
 {
 // L1 owns these checkpoints. The processor callback only sets lock-free flags.
-class NativePluginStates final
+class NativePluginStates final : private juce::Timer
 {
 public:
     explicit NativePluginStates(Commands&);
@@ -24,6 +24,10 @@ public:
     void copyCheckpoints(juce::ValueTree) const;
 
 private:
+    void timerCallback() override
+    {
+        drain();
+    }
     struct Snapshot;
     struct Watch;
     struct Action;

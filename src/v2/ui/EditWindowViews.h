@@ -70,7 +70,8 @@ public:
         output.setEnabled(capable && bool(route));
         input.setTooltip(text("输入 / 待命 / 监听：打开录音检查器"));
         output.setTooltip(text("输出路由：打开 I/O 检查器"));
-        const auto plugins = facts.value("plugins", Json::array()), sendFacts = facts.value("sends", Json::array());
+        const auto& plugins = facts.at("plugins");
+        const auto& sendFacts = facts.at("sends");
         for (int i = 0; i < 5; ++i)
         {
             const auto letter = juce::String::charToString(juce::juce_wchar('A' + i));

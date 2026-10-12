@@ -29,7 +29,8 @@ struct Performance
             auto sorted = values;
             std::sort(sorted.begin(), sorted.end());
             if (!sorted.empty())
-                result[name] = {{"count", sorted.size()}, {"p95_ms", sorted[size_t(.95 * (sorted.size() - 1))]},
+                result[name] = {{"count", sorted.size()},
+                                {"p95_ms", sorted[size_t(.95 * (sorted.size() - 1))]},
                                 {"max_ms", sorted.back()},
                                 {"total_ms", std::accumulate(sorted.begin(), sorted.end(), 0.)}};
         }

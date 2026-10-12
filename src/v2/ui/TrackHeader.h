@@ -301,6 +301,9 @@ public:
     }
     void update(const Json& value, bool selected)
     {
+        if (facts == value && lastSelected == selected)
+            return;
+        lastSelected = selected;
         facts = value;
         if (strip)
         {
@@ -506,6 +509,7 @@ private:
     juce::ComboBox viewChoice;
     Json viewLanes = Json::array();
     bool midiViews = false;
+    bool lastSelected = false;
     bool live() const
     {
         return facts.value("playing", false) && facts.value("automation_writing", false) &&

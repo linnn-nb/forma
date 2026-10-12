@@ -263,6 +263,8 @@ void flow(const juce::File& dir)
           "GUI command undoes the same persisted domain transaction");
     check(workspace.uiCommands().invokeDirectly(7, false), "registered GUI Redo command executes after reopening");
     pump();
+    if (workspace.query()["tracks"] != stages.back())
+        std::cout << "GUI_DIFF " << Json::diff(stages.back(), workspace.query()["tracks"]).dump() << std::endl;
     check(workspace.query()["tracks"] == stages.back(),
           "production GUI and domain API share restored state and native history");
 }

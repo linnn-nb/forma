@@ -891,12 +891,28 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
 
     setSize(1440, 880);
     refresh();
-    startTimerHz(20);
+    commands.addChangeListener(this);
+    commandQueue.onCardsChanged(
+        [safe = juce::Component::SafePointer<Workspace>(this)]
+        {
+            juce::MessageManager::callAsync(
+                [safe]
+                {
+                    if (safe)
+                    {
+                        safe->syncCommandCards();
+                        safe->refresh();
+                    }
+                });
+        });
+    startTimerHz(5);
 }
 
 Workspace::~Workspace()
 {
     stopTimer();
+    commands.removeChangeListener(this);
+    commandQueue.onCardsChanged({});
     commandManager.getKeyMappings()->removeChangeListener(this);
     audioImportPanel.reset();
     keyboardSettings.reset();

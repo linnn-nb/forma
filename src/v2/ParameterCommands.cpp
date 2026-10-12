@@ -196,7 +196,12 @@ bool Commands::requestParameterGesture(te::AutomatableParameter& p, bool beginni
 bool Commands::requestParameterChange(te::AutomatableParameter& p, float value, juce::NotificationType nt)
 {
     if (ownedParameterWrites > 0)
+    {
+        if (juce::MessageManager::getInstance()->isThisTheMessageThread() &&
+            processorCache.erase(p.getOwnerID().toString().toStdString()) > 0)
+            invalidateFacts();
         return true;
+    }
     juce::ScopedValueSetter<std::string> source(parameterSource,
                                                 parameterSource == "sdk-parameter" &&
                                                         nativePluginEditorOpen(p.getOwnerID().toString().toStdString())

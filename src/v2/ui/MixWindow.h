@@ -71,14 +71,21 @@ public:
         }
         for (size_t i = 0; i < controls.size(); ++i)
         {
-            auto item = facts["tracks"][i];
+            auto item = channelFacts(facts["tracks"][i]);
             item["playing"] = facts["playing"];
             item["recording_controls_pending"] = TrackRecordingState::blocked(facts);
             item["automation_writing"] = !facts["automation_capture"].is_null();
             item["recording"] = !facts["recording_capture"].is_null();
             controls[i]->update(item, trackIDs[i] == selected);
         }
-        meters = device.value("output_meters", Json::object());
+        updateMeters(device);
+    }
+    void updateMeters(const Json& device)
+    {
+        const auto& next = device.at("output_meters");
+        if (meters == next)
+            return;
+        meters = next;
         physical = device.value("active_output_channels", Json::array());
         auto frames = meters.value("frames", uint64_t(0));
         const auto now = juce::Time::getMillisecondCounterHiRes();
@@ -93,7 +100,7 @@ public:
         available = device.value("available", false) && device.value("driver_running", false) &&
                     meters.value("available", false) && now - lastAdvance <= maxAge;
         reset.setEnabled(available && !meters.value("reset_pending", false));
-        repaint();
+        repaint(masterX(), 8, 150, getHeight() - 16);
     }
     void resized() override
     {

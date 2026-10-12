@@ -461,7 +461,7 @@ std::pair<juce::ValueTree, Json> Commands::recoverySnapshot()
             map(child);
     };
     map(detached);
-    auto name = te::EditFileOperations(*edit).getEditFile().getFileNameWithoutExtension().toStdString();
+    auto name = edit->editFileRetriever().getFileNameWithoutExtension().toStdString();
     if (name.empty())
         name = metadata.getProperty("session_name", "Untitled").toString().toStdString();
     Json meta{{"id", juce::Uuid().toString().removeCharacters("-").toStdString()},

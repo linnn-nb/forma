@@ -15,7 +15,7 @@ Json Workspace::clipboardSelection() const
     const auto owners = selection.objects.empty() && !selection.range.is_null()
                             ? commands.editGroupTracks(selection.tracks)
                             : selection.tracks;
-    for (const auto& t : facts.value("tracks", Json::array()))
+    for (const auto& t : arrayField(facts, "tracks"))
         for (const auto& c : t["clips"])
         {
             const auto begin = c["start_samples"].get<int64_t>(), end = begin + c["length_samples"].get<int64_t>();

@@ -553,7 +553,7 @@ void Workspace::resized()
     piano.setVisible(pianoMode);
     editView.setScrollBarsShown(false, false);
     editArea.setSize(std::max(400, right - left - 6), areaHeight - dockHeight);
-    mixArea.setSize(std::max(right - left, int(facts.value("tracks", Json::array()).size()) * 150 + 180),
+    mixArea.setSize(std::max(right - left, int(arrayField(facts, "tracks").size()) * 150 + 180),
                     std::max(420, areaHeight - 14));
     insertTab.setBounds(right + 8, 237, 64, 26);
     routingTab.setBounds(right + 76, 237, 58, 26);

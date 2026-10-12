@@ -271,10 +271,13 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     edit->getParameterChangeHandler().setUserChangeListener(this);
     nativeStates = std::make_unique<NativePluginStates>(*this);
     nativeStates->sync();
+    edit->state.addListener(this);
     persistentHistory = std::make_unique<PersistentHistory>(*this);
 }
 Commands::~Commands()
 {
+    edit->state.removeListener(this);
+    removeAllChangeListeners();
     masterAnalysis.reset();
     recovery.reset();
     stopTimer();
@@ -392,6 +395,108 @@ Json Commands::registry()
 }
 Json Commands::query() const
 {
+    Performance::Span measured("query_call");
+    return queryFacts();
+}
+void Commands::invalidateFacts()
+{
+    ++factsEpoch;
+    sendChangeMessage();
+}
+void Commands::stateChanged(juce::ValueTree node)
+{
+    if (!juce::MessageManager::getInstance()->isThisTheMessageThread())
+        return;
+    // Transport position and saved layout are independent of project facts.
+    auto removedPlugins = [&](auto&& self, const juce::ValueTree& n) -> void
+    {
+        if (n.hasType(te::IDs::PLUGIN))
+            processorCache.erase(n[te::IDs::id].toString().toStdString());
+        for (auto child : n)
+            self(self, child);
+    };
+    if (!node.getParent().isValid() && node != edit->state)
+        removedPlugins(removedPlugins, node);
+    for (auto n = node; n.isValid(); n = n.getParent())
+    {
+        if (n.hasType("UI") || n.hasType(te::IDs::TRANSPORT))
+            return;
+        if (n.hasType(te::IDs::PLUGIN))
+        {
+            processorCache.erase(n[te::IDs::id].toString().toStdString());
+            break;
+        }
+    }
+    invalidateFacts();
+}
+Commands::RealtimeState Commands::realtimeState() const
+{
+    checkThread();
+    auto& transport = edit->getTransport();
+    const auto position = transport.getPosition();
+    const auto bars = edit->tempoSequence.toBarsAndBeats(position);
+    RealtimeState result{std::llround(position.inSeconds() * timelineRate),
+                         transport.isPlaying(),
+                         transport.isRecording(),
+                         edit->tempoSequence.getBpmAt(position),
+                         bars.beats.inBeats() + 1.,
+                         edit->tempoSequence.toBeats(position).inBeats(),
+                         bars.bars + 1};
+    const int flags = int(result.playing) | (int(result.recording) << 1);
+    if (flags != observedTransportFlags)
+    {
+        observedTransportFlags = flags;
+        const_cast<Commands*>(this)->invalidateFacts();
+    }
+    if (scrubPlayback)
+        result.position = scrubStatus().value("position_samples", result.position);
+    return result;
+}
+const Json& Commands::queryFacts() const
+{
+    checkThread();
+    captureNativeStates();
+    const auto runtime = realtimeState();
+    if (cachedFactsEpoch == factsEpoch)
+    {
+        factCache["playing"] = runtime.playing;
+        factCache["recording"] = runtime.recording;
+        factCache["position_samples"] = runtime.position;
+        factCache["music"]["bar"] = runtime.bar;
+        factCache["music"]["beat"] = runtime.beat;
+        factCache["music"]["position_beats"] = runtime.positionBeats;
+        factCache["music"]["bpm"] = runtime.bpm;
+        const auto& meter = edit->tempoSequence.getTimeSigAt(edit->getTransport().getPosition());
+        factCache["music"]["numerator"] = meter.numerator.get();
+        factCache["music"]["denominator"] = meter.denominator.get();
+        factCache["native_plugin_states"] = nativeStates ? nativeStates->query() : Json(nullptr);
+        factCache["recording_capture"] = recordingCapture;
+        factCache["automation_capture"] = capture;
+        factCache["parameter_capture"] = parameterCapture;
+        factCache["last_recording"] = lastRecording;
+        factCache["last_automation_capture"] = lastCapture;
+        factCache["last_parameter_capture"] = lastParameterCapture;
+        factCache["transport_settings"] = transportSettingsQuery();
+        // MCP's live values retain their documented meaning during automation.
+        for (auto& t : factCache["tracks"])
+            if (auto* audio = track(t["id"]))
+            {
+                t["gain_db"] = audio->getVolumePlugin()->getVolumeDb();
+                t["pan"] = audio->getVolumePlugin()->getPan();
+                if (runtime.playing)
+                    for (auto& p : t["plugins"])
+                        if (auto* plugin = processor(p["id"]))
+                            for (auto& parameter : p["parameters"])
+                                if (auto actual = plugin->getAutomatableParameterByID(
+                                        juce::String(parameter["id"].get<std::string>()));
+                                    actual && actual->getCurve().getNumPoints() > 0)
+                                {
+                                    parameter["current_value"] = actual->getCurrentValue();
+                                    parameter["display"] = actual->getCurrentValueAsStringWithLabel().toStdString();
+                                }
+            }
+        return factCache;
+    }
     Performance::Span measured("query");
     checkThread();
     captureNativeStates();
@@ -472,43 +577,46 @@ Json Commands::query() const
                 {"source", tx.getProperty("source").toString().toStdString()},
                 {"commands", commands}};
     };
-    return {{"session_token", sessionToken()},
-            {"history",
-             {{"undo", historyCursor > 0 ? historyEntry(historyCursor - 1) : Json(nullptr)},
-              {"redo", historyCursor < history.size() ? historyEntry(historyCursor) : Json(nullptr)}}},
-            {"time_selection", timelineRange()},
-            {"editing_options", editingOptions()},
-            {"shuffle_options", shuffleOptions()},
-            {"recording_readiness", recordingReadiness()},
-            {"audio_configuration", audioConfiguration},
-            {"native_plugin_states", nativeStates ? nativeStates->query() : Json(nullptr)},
-            {"parameter_capture", parameterCapture},
-            {"last_parameter_capture", lastParameterCapture},
-            {"parameter_failure", parameterFailure},
-            {"revision", revision},
-            {"recording", edit->getTransport().isRecording()},
-            {"recording_capture", recordingCapture},
-            {"last_recording", lastRecording},
-            {"automation_capture", capture},
-            {"last_automation_capture", lastCapture},
-            {"music", musicQuery()},
-            {"transport_settings", transportSettingsQuery()},
-            {"master_gain_db", edit->getMasterVolumePlugin()->getVolumeDb()},
-            {"master_pan_law", int(edit->getMasterVolumePlugin()->getPanLaw())},
-            {"timeline_sample_rate", timelineRate},
-            {"tracks", tracks},
-            {"markers", markerQuery()},
-            {"mix_groups", mixGroupsQuery()},
-            {"length_samples", std::llround(edit->getLength().inSeconds() * timelineRate)},
-            {"scrub", scrubStatus()},
-            {"position_samples", scrubPlayback
-                                     ? scrubStatus()["position_samples"].get<int64_t>()
-                                     : std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
-            {"playing", edit->getTransport().isPlaying()},
-            {"can_undo", historyCursor > 0 &&
-                             bool(metadata.getChildWithProperty("plan_id", juce::String(history.at(historyCursor - 1)))
-                                      .getProperty("reversible", true))},
-            {"can_redo", historyCursor < history.size()}};
+    factCache = {
+        {"session_token", sessionToken()},
+        {"history",
+         {{"undo", historyCursor > 0 ? historyEntry(historyCursor - 1) : Json(nullptr)},
+          {"redo", historyCursor < history.size() ? historyEntry(historyCursor) : Json(nullptr)}}},
+        {"time_selection", timelineRange()},
+        {"editing_options", editingOptions()},
+        {"shuffle_options", shuffleOptions()},
+        {"recording_readiness", recordingReadiness()},
+        {"audio_configuration", audioConfiguration},
+        {"native_plugin_states", nativeStates ? nativeStates->query() : Json(nullptr)},
+        {"parameter_capture", parameterCapture},
+        {"last_parameter_capture", lastParameterCapture},
+        {"parameter_failure", parameterFailure},
+        {"revision", revision},
+        {"recording", edit->getTransport().isRecording()},
+        {"recording_capture", recordingCapture},
+        {"last_recording", lastRecording},
+        {"automation_capture", capture},
+        {"last_automation_capture", lastCapture},
+        {"music", musicQuery()},
+        {"transport_settings", transportSettingsQuery()},
+        {"master_gain_db", edit->getMasterVolumePlugin()->getVolumeDb()},
+        {"master_pan_law", int(edit->getMasterVolumePlugin()->getPanLaw())},
+        {"timeline_sample_rate", timelineRate},
+        {"tracks", tracks},
+        {"markers", markerQuery()},
+        {"mix_groups", mixGroupsQuery()},
+        {"length_samples", std::llround(edit->getLength().inSeconds() * timelineRate)},
+        {"scrub", scrubStatus()},
+        {"position_samples", scrubPlayback
+                                 ? scrubStatus()["position_samples"].get<int64_t>()
+                                 : std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
+        {"playing", edit->getTransport().isPlaying()},
+        {"can_undo",
+         historyCursor > 0 && bool(metadata.getChildWithProperty("plan_id", juce::String(history.at(historyCursor - 1)))
+                                       .getProperty("reversible", true))},
+        {"can_redo", historyCursor < history.size()}};
+    cachedFactsEpoch = factsEpoch;
+    return factCache;
 }
 Json Commands::makePlan(const std::string& actor, Json ops) const
 {
@@ -1001,6 +1109,7 @@ void Commands::bumpRevision()
 {
     ++revision;
     metadata.setProperty("revision", juce::int64(revision), nullptr);
+    invalidateFacts();
 }
 void Commands::performTrackGain(te::Track& track, float db)
 {
@@ -1718,7 +1827,11 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     edit->getUndoManager().clearUndoHistory();
     persistentHistory.reset();
     releaseRollGraph();
+    edit->state.removeListener(this);
+    processorCache.clear();
     edit = std::move(candidate);
+    edit->state.addListener(this);
+    invalidateFacts();
     rollPlayback = nullptr;
     undoBoundaryInhibitor = std::move(newInhibitor);
     metadata = edit->state.getOrCreateChildWithName("NATIVEDAW", nullptr);

@@ -86,6 +86,7 @@ struct QueueState : std::enable_shared_from_this<QueueState>
     std::map<std::string, std::shared_ptr<QueueClientState>> clients;
     std::map<std::string, PlanRecord> plans;
     std::map<std::string, Confirmation> confirmations;
+    std::function<void()> cardsChanged;
     std::map<std::string, RequestRecord> requests;
     std::string ledgerSession;
     std::string selectedTrack, selectedClip;
@@ -446,6 +447,7 @@ struct QueueState : std::enable_shared_from_this<QueueState>
     void drain()
     {
         messageThread();
+        const auto cardsBefore = confirmations.size();
         auto began = Clock::now();
         int count = 0;
         while (count++ < 8 && Clock::now() - began < std::chrono::milliseconds(5))
@@ -480,6 +482,8 @@ struct QueueState : std::enable_shared_from_this<QueueState>
             r["deadline_expired_during_execution"] = Clock::now() > j->deadline;
             j->finish(std::move(r));
         }
+        if (confirmations.size() != cardsBefore && cardsChanged)
+            cardsChanged();
         bool again;
         {
             std::lock_guard lock(mutex);
@@ -645,6 +649,7 @@ void CommandQueue::revoke(const std::string& id)
         }
     std::erase_if(state->plans, [&](const auto& entry) { return entry.second.client == c; });
     state->clients.erase(id);
+    if (state->cardsChanged) state->cardsChanged();
 }
 void CommandQueue::setSelection(const std::string& track, const std::string& clip)
 {
@@ -652,6 +657,11 @@ void CommandQueue::setSelection(const std::string& track, const std::string& cli
     require(track.size() <= 256 && clip.size() <= 256, "selection ID too long");
     state->selectedTrack = track;
     state->selectedClip = clip;
+}
+void CommandQueue::onCardsChanged(std::function<void()> callback)
+{
+    messageThread();
+    state->cardsChanged = std::move(callback);
 }
 Json CommandQueue::pending()
 {

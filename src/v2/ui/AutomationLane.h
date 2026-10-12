@@ -20,6 +20,15 @@ public:
         grid = lines;
         playhead = position;
     }
+    void setPlayhead(int64_t position)
+    {
+        if (playhead == position)
+            return;
+        const auto old = playhead;
+        playhead = position;
+        for (const auto p : {old, position})
+            repaint(int(std::round(axis.pixelAt(p))) - 1, 0, 3, getHeight());
+    }
     void previewRange(const Json& range)
     {
         rangeView = range;

@@ -48,6 +48,9 @@ public:
     void update(const Json& value, const std::string& selection, const Json& grid,
                 const std::string& clipSelection = {}, const Json& rulerContext = Json::object())
     {
+        if (facts == value && selected == selection && selectedClip == clipSelection && this->grid == grid &&
+            this->rulerContext == rulerContext)
+            return;
         if (!drag.is_null() && drag.value("session", std::string{}) != value.value("session_token", std::string{}))
             drag = nullptr;
         if (!resizeTrack.empty() && resizeSession != value.value("session_token", std::string{}))
@@ -201,7 +204,7 @@ public:
         }
         for (size_t i = 0; i < controls.size(); ++i)
         {
-            auto item = facts["tracks"][i];
+            auto item = channelFacts(facts["tracks"][i]);
             item["playing"] = facts["playing"];
             item["recording_controls_pending"] = TrackRecordingState::blocked(facts);
             item["automation_writing"] = !facts["automation_capture"].is_null();
@@ -250,8 +253,23 @@ public:
         updateAutomation();
         repaint();
     }
+    void setPlayhead(int64_t position)
+    {
+        const auto previous = facts.value("position_samples", int64_t(0));
+        if (previous == position)
+            return;
+        const auto axis = coordinates();
+        facts["position_samples"] = position;
+        for (const auto p : {previous, position})
+            repaint(int(std::round(axis.pixelAt(p))) - 1, 0, 3, getHeight());
+        for (auto& lane : automationLanes)
+            if (lane->isVisible())
+                lane->setPlayhead(position);
+    }
     void setView(const Json& value)
     {
+        if (view == value)
+            return;
         if (scrubGesture)
             for (const auto* key : {"edit_tool", "start_samples", "span_samples", "first_row", "rulers", "edit_views",
                                     "track_heights", "track_views", "midi_zoom"})
@@ -486,7 +504,7 @@ public:
         g.reduceClipRegion(juce::Rectangle<int>(timelineLeft(), rulerHeight(),
                                                 std::max(1, getWidth() - timelineLeft() - 16),
                                                 std::max(1, getHeight() - rulerHeight() - 16)));
-        for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
+        for (size_t i = 0; i < arrayField(facts, "tracks").size(); ++i)
         {
             g.setColour(juce::Colour(facts["tracks"][i]["id"] == selected ? 0xff21313d : 0xff1c2530));
             g.fillRect(timelineLeft(), rowY(int(i)), getWidth() - timelineLeft(), rowHeight(int(i)) - 1);
@@ -514,7 +532,7 @@ public:
             g.drawVerticalLine(left, rulerHeight(), float(getHeight()));
             g.drawVerticalLine(right, rulerHeight(), float(getHeight()));
         };
-        for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
+        for (size_t i = 0; i < arrayField(facts, "tracks").size(); ++i)
         {
             int y = rowY(int(i));
             const auto& t = facts["tracks"][i];
@@ -592,7 +610,7 @@ public:
         int x = int(std::round(axis.pixelAt(facts.value("position_samples", int64_t(0)))));
         g.setColour(juce::Colour(0xffedca72));
         g.drawVerticalLine(x, 0, float(getHeight()));
-        if (facts.value("tracks", Json::array()).empty())
+        if (arrayField(facts, "tracks").empty())
         {
             g.setColour(juce::Colour(0xffb2c3d4));
             g.setFont(juce::FontOptions(18));
@@ -693,7 +711,7 @@ public:
             automationLanes[i]->setBounds(bounds);
             automationLanes[i]->setVisible(!viewParameter(trackIDs[i]).empty() && controls[i]->isVisible());
         }
-        for (size_t i = 0; i < facts.value("tracks", Json::array()).size(); ++i)
+        for (size_t i = 0; i < arrayField(facts, "tracks").size(); ++i)
             for (const auto& c : facts["tracks"][i]["clips"])
                 if (headers.contains(c["id"]))
                 {

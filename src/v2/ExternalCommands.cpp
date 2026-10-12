@@ -51,6 +51,8 @@ Json Commands::refreshPluginInventory(const juce::File& directory)
         }
     }
     externalInventory = {{"directory", root.string()}, {"revision", inventory["revision"]}, {"plugins", entries}};
+    processorCache.clear();
+    invalidateFacts();
     return externalInventory;
 }
 Json Commands::pluginInventory() const

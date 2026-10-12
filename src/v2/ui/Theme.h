@@ -7,6 +7,27 @@
 namespace ndaw::desktop
 {
 using namespace ndaw::v2;
+inline const Json& arrayField(const Json& value, const char* key)
+{
+    static const Json empty = Json::array();
+    const auto it = value.find(key);
+    return it == value.end() ? empty : *it;
+}
+// Channel controls need names, flags and scalar mix facts, not every synth parameter or note.
+inline Json channelFacts(const Json& track)
+{
+    Json result = Json::object();
+    for (auto it = track.begin(); it != track.end(); ++it)
+        if (it.key() != "clips" && it.key() != "plugins")
+            result[it.key()] = it.value();
+    result["clips"] = Json::array();
+    for (const auto& clip : track["clips"])
+        result["clips"].push_back({{"id", clip["id"]}, {"name", clip["name"]}, {"kind", clip["kind"]}});
+    result["plugins"] = Json::array();
+    for (const auto& plugin : track["plugins"])
+        result["plugins"].push_back({{"id", plugin["id"]}, {"name", plugin["name"]}, {"type", plugin["type"]}});
+    return result;
+}
 inline juce::String text(const char* s)
 {
     return juce::String::fromUTF8(s);

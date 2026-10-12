@@ -26,7 +26,7 @@ Json Workspace::selectedEditClips() const
         return clips;
     }
     Json result = Json::array();
-    for (const auto& t : facts.value("tracks", Json::array()))
+    for (const auto& t : arrayField(facts, "tracks"))
         for (const auto& c : t["clips"])
         {
             if (selection.contains(c["id"]))

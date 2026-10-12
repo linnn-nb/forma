@@ -20,12 +20,28 @@ class PersistentHistory;
 class MasterAnalysis;
 class ScrubPlayback;
 struct SelectionOutputGateState;
-class Commands : private juce::Timer, private te::ParameterChangeHandler::UserChangeListener
+class Commands : public juce::ChangeBroadcaster,
+                 private juce::Timer,
+                 private te::ParameterChangeHandler::UserChangeListener,
+                 private juce::ValueTree::Listener
 {
 public:
     explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
     ~Commands();
     Json query() const;
+    const Json& queryFacts() const;
+    struct RealtimeState
+    {
+        int64_t position = 0;
+        bool playing = false, recording = false;
+        double bpm = 120, beat = 1, positionBeats = 0;
+        int bar = 1;
+    };
+    RealtimeState realtimeState() const;
+    uint64_t factsGeneration() const
+    {
+        return factsEpoch;
+    }
     Json querySummary(const std::string& selectedTrack = {}, const std::string& selectedClip = {}) const;
     Json queryObjects(const Json&) const;
     static constexpr size_t maximumQueryPageBytes = 256 * 1024;
@@ -153,6 +169,31 @@ public:
     Json legacyReports() const;
 
 private:
+    void invalidateFacts();
+    void stateChanged(juce::ValueTree);
+    void valueTreePropertyChanged(juce::ValueTree& n, const juce::Identifier&) override
+    {
+        stateChanged(n);
+    }
+    void valueTreeChildAdded(juce::ValueTree& n, juce::ValueTree& child) override
+    {
+        stateChanged(child);
+        stateChanged(n);
+    }
+    void valueTreeChildRemoved(juce::ValueTree& n, juce::ValueTree& child, int) override
+    {
+        stateChanged(child);
+        stateChanged(n);
+    }
+    void valueTreeChildOrderChanged(juce::ValueTree& n, int, int) override
+    {
+        stateChanged(n);
+    }
+    mutable Json factCache = Json::object();
+    mutable std::map<std::string, Json> processorCache;
+    mutable uint64_t cachedFactsEpoch = UINT64_MAX;
+    uint64_t factsEpoch = 0;
+    mutable int observedTransportFlags = -1;
     Json makePlanImpl(const std::string& actor, Json operations, const Json& shuffleRange,
                       const Json& clipboardPaste = nullptr, const Json& audioClear = nullptr,
                       const Json& automationRange = nullptr, const Json& audioClipClear = nullptr,

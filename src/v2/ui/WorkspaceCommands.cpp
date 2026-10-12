@@ -1447,8 +1447,13 @@ bool Workspace::restoreShortcuts(const juce::XmlElement& xml)
         }
     return true;
 }
-void Workspace::changeListenerCallback(juce::ChangeBroadcaster*)
+void Workspace::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
+    if (source == &commands)
+    {
+        refresh();
+        return;
+    }
     if (loadingKeymap)
         return;
     // A queued change from the old window may arrive after a native file has opened.

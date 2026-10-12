@@ -13,7 +13,7 @@ Json Workspace::recordingCommandTargets() const
             ids.push_back(selected);
     }
     Json targets = Json::array();
-    for (const auto& track : facts.value("tracks", Json::array()))
+    for (const auto& track : arrayField(facts, "tracks"))
         if (TrackRecordingState::supported(track) && std::find(ids.begin(), ids.end(), track["id"]) != ids.end())
             targets.push_back(track);
     return targets;
