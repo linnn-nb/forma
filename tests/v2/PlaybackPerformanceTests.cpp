@@ -5,6 +5,7 @@
 #include <iostream>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
+#include <libproc.h>
 #include <sys/resource.h>
 using namespace ndaw::v2;
 namespace ndaw::v2
@@ -92,6 +93,33 @@ double processCpu()
     rusage usage{};
     getrusage(RUSAGE_SELF, &usage);
     return usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 + usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6;
+}
+Json threadInventory()
+{
+    std::array<uint64_t, 512> ids{};
+    const auto bytes = proc_pidinfo(getpid(), PROC_PIDLISTTHREADS, 0, ids.data(), int(sizeof(ids)));
+    if (bytes <= 0)
+        return {{"available", false}};
+    Json values = Json::array();
+    int graphWorkers = 0;
+    for (int i = 0; i < bytes / int(sizeof(uint64_t)); ++i)
+    {
+        proc_threadinfo info{};
+        if (proc_pidinfo(getpid(), PROC_PIDTHREADINFO, ids[size_t(i)], &info, sizeof(info)) != sizeof(info))
+            continue;
+        const auto name = std::string(info.pth_name, strnlen(info.pth_name, sizeof(info.pth_name)));
+        graphWorkers += name == "Tracktion audio graph";
+        values.push_back({{"id", ids[size_t(i)]},
+                          {"name", name},
+                          {"policy", info.pth_policy},
+                          {"priority", info.pth_curpri},
+                          {"run_state", info.pth_run_state}});
+    }
+    return {{"available", true},
+            {"capacity_reached", bytes == int(sizeof(ids))},
+            {"graph_workers", graphWorkers},
+            {"threads", values},
+            {"scope", "read-only own process thread inventory; snapshot states do not prove a waiting cause"}};
 }
 // Test-only passive callback after the real Tracktion callback. Its contribution
 // to the device mix is zero. No Edit writes, allocation, I/O, locks or waiting on
@@ -332,6 +360,7 @@ int main(int argc, char** argv)
         PerformanceTestAccess::refresh(w);
         pump(1000);
         const auto initialFacts = c.query();
+        const auto initialThreads = threadInventory();
         const auto parameterHash = parameterFingerprint(initialFacts);
         const auto initialDevice = c.deviceStatus();
         PerformanceTestAccess::resetStatistics(c);
@@ -372,6 +401,8 @@ int main(int argc, char** argv)
                     {"main_cpu_pct", 100 * (cpu1 - cpu0) / seconds},
                     {"process_cpu_pct", 100 * (process1 - process0) / seconds},
                     {"view", mode},
+                    {"thread_inventory_initial", initialThreads},
+                    {"thread_inventory_final", threadInventory()},
                     {"public_parameter_hash", parameterHash},
                     {"public_parameter_hash_final", finalParameterHash},
                     {"revision_initial", initialFacts["revision"]},

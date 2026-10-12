@@ -1,0 +1,121 @@
+diff --git a/modules/tracktion_graph/tracktion_graph/tracktion_NodePlayerThreadPools.cpp b/modules/tracktion_graph/tracktion_graph/tracktion_NodePlayerThreadPools.cpp
+index 489942b..3eb4587 100644
+--- a/modules/tracktion_graph/tracktion_graph/tracktion_NodePlayerThreadPools.cpp
++++ b/modules/tracktion_graph/tracktion_graph/tracktion_NodePlayerThreadPools.cpp
+@@ -54,9 +54,13 @@ struct ThreadPoolCV : public LockFreeMultiThreadedNodePlayer::ThreadPool
+ 
+         for (size_t i = 0; i < numThreads; ++i)
+         {
+-            threads.emplace_back ([this] { runThread(); });
+-            setThreadPriority (threads.back(), 10);
+-            tryToUpgradeCurrentThreadToRealtime (rtOpts);
++            threads.emplace_back ([this, rtOpts]
++            {
++                juce::Thread::setCurrentThreadName ("Tracktion audio graph");
++                setCurrentThreadPriority (10);
++                tryToUpgradeCurrentThreadToRealtime (rtOpts);
++                runThread();
++            });
+         }
+     }
+ 
+@@ -189,9 +193,13 @@ struct ThreadPoolRT : public LockFreeMultiThreadedNodePlayer::ThreadPool
+ 
+         for (size_t i = 0; i < numThreads; ++i)
+         {
+-            threads.emplace_back ([this] { runThread(); });
+-            setThreadPriority (threads.back(), 10);
+-            tryToUpgradeCurrentThreadToRealtime (rtOpts);
++            threads.emplace_back ([this, rtOpts]
++            {
++                juce::Thread::setCurrentThreadName ("Tracktion audio graph");
++                setCurrentThreadPriority (10);
++                tryToUpgradeCurrentThreadToRealtime (rtOpts);
++                runThread();
++            });
+         }
+     }
+ 
+@@ -299,9 +307,13 @@ struct ThreadPoolHybrid : public LockFreeMultiThreadedNodePlayer::ThreadPool
+ 
+         for (size_t i = 0; i < numThreads; ++i)
+         {
+-            threads.emplace_back ([this] { runThread(); });
+-            setThreadPriority (threads.back(), 10);
+-            tryToUpgradeCurrentThreadToRealtime (rtOpts);
++            threads.emplace_back ([this, rtOpts]
++            {
++                juce::Thread::setCurrentThreadName ("Tracktion audio graph");
++                setCurrentThreadPriority (10);
++                tryToUpgradeCurrentThreadToRealtime (rtOpts);
++                runThread();
++            });
+         }
+     }
+ 
+@@ -455,9 +467,13 @@ struct ThreadPoolSem : public LockFreeMultiThreadedNodePlayer::ThreadPool
+ 
+         for (size_t i = 0; i < numThreads; ++i)
+         {
+-            threads.emplace_back ([this] { runThread(); });
+-            setThreadPriority (threads.back(), 10);
+-            tryToUpgradeCurrentThreadToRealtime (rtOpts);
++            threads.emplace_back ([this, rtOpts]
++            {
++                juce::Thread::setCurrentThreadName ("Tracktion audio graph");
++                setCurrentThreadPriority (10);
++                tryToUpgradeCurrentThreadToRealtime (rtOpts);
++                runThread();
++            });
+         }
+     }
+ 
+@@ -562,9 +578,13 @@ struct ThreadPoolSemHybrid : public LockFreeMultiThreadedNodePlayer::ThreadPool
+ 
+         for (size_t i = 0; i < numThreads; ++i)
+         {
+-            threads.emplace_back ([this] { runThread(); });
+-            setThreadPriority (threads.back(), 10);
+-            tryToUpgradeCurrentThreadToRealtime (rtOpts);
++            threads.emplace_back ([this, rtOpts]
++            {
++                juce::Thread::setCurrentThreadName ("Tracktion audio graph");
++                setCurrentThreadPriority (10);
++                tryToUpgradeCurrentThreadToRealtime (rtOpts);
++                runThread();
++            });
+         }
+     }
+ 
+diff --git a/modules/tracktion_graph/utilities/tracktion_Threads.cpp b/modules/tracktion_graph/utilities/tracktion_Threads.cpp
+index 497adb3..04fc437 100644
+--- a/modules/tracktion_graph/utilities/tracktion_Threads.cpp
++++ b/modules/tracktion_graph/utilities/tracktion_Threads.cpp
+@@ -118,4 +118,13 @@ bool setThreadPriority (std::thread& t, int priority)
+     return setThreadPriority (t.native_handle(), priority);
+ }
+ 
++bool setCurrentThreadPriority (int priority)
++{
++   #ifdef _WIN32
++    return setThreadPriority (GetCurrentThread(), priority);
++   #else
++    return setThreadPriority (pthread_self(), priority);
++   #endif
++}
++
+ } // namespace tracktion::inline graph
+diff --git a/modules/tracktion_graph/utilities/tracktion_Threads.h b/modules/tracktion_graph/utilities/tracktion_Threads.h
+index 1517e22..1faa295 100644
+--- a/modules/tracktion_graph/utilities/tracktion_Threads.h
++++ b/modules/tracktion_graph/utilities/tracktion_Threads.h
+@@ -21,6 +21,9 @@ namespace tracktion::inline graph {
+ */
+ bool setThreadPriority (std::thread&, int priority);
+ 
++/** Sets the priority of the calling worker, in the range 0 to 10. */
++bool setCurrentThreadPriority (int priority);
++
+ /** Tries to upgrade the current thread to realtime priority. */
+ bool tryToUpgradeCurrentThreadToRealtime (const juce::Thread::RealtimeOptions&);
+ 
