@@ -279,7 +279,7 @@ int main(int argc, char** argv)
     {
         if (argc < 4)
             throw std::runtime_error(
-                "report session seconds [edit|mix|hidden] [output device] [buffer frames] [workgroup:0|1]");
+                "report session seconds [edit|mix|hidden] [output device] [buffer frames] [workgroup:0|1] [test-edit]");
         const std::string mode = argc > 4 ? argv[4] : "edit";
         const int duration = std::stoi(argv[3]), buffer = argc > 6 ? std::stoi(argv[6]) : 256;
         if ((mode != "edit" && mode != "mix" && mode != "hidden") || duration < 1 || duration > 1800)
@@ -331,7 +331,8 @@ int main(int argc, char** argv)
         c.play();
         PerformanceTestAccess::refresh(w);
         pump(1000);
-        const auto parameterHash = parameterFingerprint(c.query());
+        const auto initialFacts = c.query();
+        const auto parameterHash = parameterFingerprint(initialFacts);
         const auto initialDevice = c.deviceStatus();
         PerformanceTestAccess::resetStatistics(c);
         Performance::samples.clear();
@@ -339,19 +340,47 @@ int main(int argc, char** argv)
         const auto started = juce::Time::getMillisecondCounterHiRes(), cpu0 = mainCpu(), process0 = processCpu();
         clock.begin();
         Monitor monitor(c, clock);
+        if (argc > 8 && std::string(argv[8]) == "test-edit")
+        {
+            // Positive control for the diagnostic guard: a real reversible L1
+            // edit in this disposable in-memory session, never a fake receipt.
+            juce::Timer::callAfterDelay(
+                250,
+                [&c, target = initialFacts["tracks"][0]["id"].get<std::string>(),
+                 db = initialFacts["tracks"][0]["gain_db"].get<double>()]
+                {
+                    c.commit(
+                        c.makePlan("human", Json::array({op("track.gain", {{"track", target}, {"db", db - .1}})})));
+                });
+        }
         std::cout << "READY pid=" << getpid() << std::endl;
         pump(duration * 1000);
         const auto seconds = (juce::Time::getMillisecondCounterHiRes() - started) / 1000.;
+        const auto cpu1 = mainCpu(), process1 = processCpu();
+        Performance::enabled = false;
         const auto timing = Performance::report();
         clock.finish();
         for (const auto& gap : clock.drain())
             monitor.callbackGaps.push_back(gap);
         const auto finalDevice = c.deviceStatus();
+        const auto finalFacts = c.query();
+        const auto finalParameterHash = parameterFingerprint(finalFacts);
+        const bool editActivity = timing.contains("commit") || initialFacts["revision"] != finalFacts["revision"] ||
+                                  parameterHash != finalParameterHash;
+        const bool controlActivity = editActivity || timing.contains("refresh") || timing.contains("query_call");
         Json report{{"seconds", seconds},
-                    {"main_cpu_pct", 100 * (mainCpu() - cpu0) / seconds},
-                    {"process_cpu_pct", 100 * (processCpu() - process0) / seconds},
+                    {"main_cpu_pct", 100 * (cpu1 - cpu0) / seconds},
+                    {"process_cpu_pct", 100 * (process1 - process0) / seconds},
                     {"view", mode},
                     {"public_parameter_hash", parameterHash},
+                    {"public_parameter_hash_final", finalParameterHash},
+                    {"revision_initial", initialFacts["revision"]},
+                    {"revision_final", finalFacts["revision"]},
+                    {"history_initial", initialFacts["history"]},
+                    {"history_final", finalFacts["history"]},
+                    {"edit_activity_detected", editActivity},
+                    {"control_activity_detected", controlActivity},
+                    {"passive_playback_condition", !controlActivity},
                     {"workgroup_requested", workgroup},
                     {"workgroup", PerformanceTestAccess::workgroup(c)},
                     {"fixture_sha256", Commands::mediaHash(juce::File(juce::String::fromUTF8(argv[2])))},
