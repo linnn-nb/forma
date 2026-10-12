@@ -401,21 +401,22 @@ void Workspace::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xff526476));
     g.drawHorizontalLine(167, 0, float(getWidth()));
     g.drawHorizontalLine(getHeight() - 29, 0, float(getWidth()));
-    const int right = getWidth() - inspectorWidth();
+    const int right = inspectorDivider.getRight();
+    const int sideWidth = getWidth() - right;
     g.setColour(juce::Colour(0xff202a34));
-    g.fillRect(right, 168, inspectorWidth(), getHeight() - 197);
+    g.fillRect(right, 168, sideWidth, getHeight() - 197);
     g.setColour(juce::Colour(0xffb7c7d8));
     g.setFont(juce::FontOptions(11));
     g.drawText(text(clipFXInspector ? "CLIP FX / 片段效果" : "INSPECTOR / 轨道检查器"), right + 16, 175, 298, 25,
                juce::Justification::left);
     g.setColour(juce::Colours::white);
     g.setFont(juce::FontOptions(17, juce::Font::bold));
-    auto t = clipFXInspector ? selectedAudioClip() : selectedTrack();
+    const auto& t = clipFXInspector ? selectedAudioClip() : selectedTrack();
     g.drawText(t.is_null() ? text("未选择轨道") : text(t["name"].get<std::string>()), right + 16, 206, 298, 28,
                juce::Justification::left);
     g.setFont(juce::FontOptions(11));
     g.setColour(juce::Colour(0xff91a3b7));
-    auto p = selectedProcessor();
+    const auto& p = selectedProcessor();
     if (p.is_null() && !routingInspector && !groupInspector && !autoInspector && !recordInspector)
     {
         g.setFont(juce::FontOptions(13));
@@ -552,7 +553,7 @@ void Workspace::resized()
     mixView.setVisible(mix);
     piano.setVisible(pianoMode);
     editView.setScrollBarsShown(false, false);
-    editArea.setSize(std::max(400, right - left - 6), areaHeight - dockHeight);
+    editSurface.setSize(std::max(400, right - left - 6), areaHeight - dockHeight);
     mixArea.setSize(std::max(right - left, int(arrayField(facts, "tracks").size()) * 150 + 180),
                     std::max(420, areaHeight - 14));
     insertTab.setBounds(right + 8, 237, 64, 26);

@@ -323,7 +323,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                                            &audioSettingsButton,
                                                            &rangeButton})
         addAndMakeVisible(c);
-    editView.setViewedComponent(&editArea, false);
+    editView.setViewedComponent(&editSurface, false);
     mixView.setViewedComponent(&mixArea, false);
     parameterView.setViewedComponent(&parameters, false);
     routingView.setViewedComponent(&routing, false);
@@ -906,11 +906,25 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 });
         });
     startTimerHz(5);
+    frameClock = juce::VBlankAttachment(this,
+                                        [this](double timestamp)
+                                        {
+                                            if (!frameActive || timestamp + 1e-6 < frameDeadline)
+                                                return;
+                                            Performance::Span measured("ui_frame");
+                                            updateRealtime();
+                                            frameDeadline += .033;
+                                            // One update per display callback; missed frames never start a catch-up
+                                            // loop.
+                                            if (frameDeadline < timestamp - .033)
+                                                frameDeadline = timestamp + .033;
+                                        });
 }
 
 Workspace::~Workspace()
 {
     stopTimer();
+    frameClock = {};
     commands.removeChangeListener(this);
     commandQueue.onCardsChanged({});
     commandManager.getKeyMappings()->removeChangeListener(this);

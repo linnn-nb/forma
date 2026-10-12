@@ -159,8 +159,10 @@ int main(int argc, char** argv)
         window.setVisible(true);
         auto& c = PerformanceTestAccess::commands(w);
         const bool create = std::string(argv[2]) == "create";
-        const auto file =
-            create ? scratch.getChildFile("stress.tracktionedit") : juce::File(juce::String::fromUTF8(argv[2]));
+        // A repeat run must preserve the earlier qualification fixture. L1
+        // intentionally rejects overwriting an existing session destination.
+        const auto file = create ? scratch.getChildFile("stress.tracktionedit").getNonexistentSibling()
+                                 : juce::File(juce::String::fromUTF8(argv[2]));
         if (create)
             fixture(c, file);
         w.openSession(file);

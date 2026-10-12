@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include <nativedaw/v2/Performance.h>
 #include "TrackHeader.h"
 #include "TrackPresentation.h"
 #include "EditWindowViews.h"
@@ -156,6 +157,7 @@ public:
                         canvas->previewRange({{"start_samples", std::min(dragStart, dragEnd)},
                                               {"end_samples", std::max(dragStart, dragEnd)}});
                 };
+                lane->setExternalPlayhead(externalPlayhead);
                 addChildComponent(*lane);
                 automationLanes.push_back(std::move(lane));
                 c->onHeight = [this](auto id, int height, bool finished)
@@ -253,6 +255,16 @@ public:
         updateAutomation();
         repaint();
     }
+    void setExternalPlayhead(bool enabled)
+    {
+        externalPlayhead = enabled;
+        for (auto& lane : automationLanes)
+            lane->setExternalPlayhead(enabled);
+    }
+    int playheadPixel(int64_t position) const
+    {
+        return int(std::round(coordinates().pixelAt(position)));
+    }
     void setPlayhead(int64_t position)
     {
         const auto previous = facts.value("position_samples", int64_t(0));
@@ -260,6 +272,8 @@ public:
             return;
         const auto axis = coordinates();
         facts["position_samples"] = position;
+        if (externalPlayhead)
+            return;
         for (const auto p : {previous, position})
             repaint(int(std::round(axis.pixelAt(p))) - 1, 0, 3, getHeight());
         for (auto& lane : automationLanes)
@@ -453,6 +467,7 @@ public:
     }
     void paint(juce::Graphics& g) override
     {
+        ndaw::v2::Performance::Span measured("timeline_paint");
         g.fillAll(base());
         const auto axis = coordinates();
         Rulers::draw(g, axis, grid, getWidth() - 16, view, facts, rulerContext);
@@ -608,8 +623,11 @@ public:
             }
         }
         int x = int(std::round(axis.pixelAt(facts.value("position_samples", int64_t(0)))));
-        g.setColour(juce::Colour(0xffedca72));
-        g.drawVerticalLine(x, 0, float(getHeight()));
+        if (!externalPlayhead)
+        {
+            g.setColour(juce::Colour(0xffedca72));
+            g.drawVerticalLine(x, 0, float(getHeight()));
+        }
         if (arrayField(facts, "tracks").empty())
         {
             g.setColour(juce::Colour(0xffb2c3d4));
@@ -1555,6 +1573,7 @@ private:
     WaveformZoomControls waveformControls;
     MidiZoomControls midiZoomControls;
     Json view = Json::object();
+    bool externalPlayhead = false;
     Json facts = Json::object(), grid = Json::array(), drag = nullptr;
     std::string selected, selectedClip;
     int dragX = 0, dragRow = 0, endRow = 0;

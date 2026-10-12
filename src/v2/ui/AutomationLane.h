@@ -20,6 +20,10 @@ public:
         grid = lines;
         playhead = position;
     }
+    void setExternalPlayhead(bool enabled)
+    {
+        externalPlayhead = enabled;
+    }
     void setPlayhead(int64_t position)
     {
         if (playhead == position)
@@ -106,7 +110,8 @@ public:
             g.fillRect(float(left), 0.f, float(std::max(1., right - left)), float(getHeight()));
         }
         g.setColour(juce::Colour(0xffe8c880));
-        g.drawVerticalLine(int(std::round(axis.pixelAt(playhead))), 0, float(getHeight()));
+        if (!externalPlayhead)
+            g.drawVerticalLine(int(std::round(axis.pixelAt(playhead))), 0, float(getHeight()));
         if (lane.is_null())
         {
             g.setColour(juce::Colour(0xffdba66c));
@@ -355,6 +360,7 @@ private:
     uint64_t revision = 0;
     bool enabled = false, rangeGesture = false;
     Json grid = Json::array(), rangeView = nullptr;
+    bool externalPlayhead = false;
     int64_t playhead = 0;
     Json lane = nullptr, samples = Json::array(), draft = nullptr;
     TimelineCoordinates axis;

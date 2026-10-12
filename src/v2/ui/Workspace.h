@@ -1,6 +1,7 @@
 #pragma once
 #include "Theme.h"
 #include "EditWindow.h"
+#include "TimelineSurface.h"
 #include "MixWindow.h"
 #include "Inspector.h"
 #include "TracksList.h"
@@ -132,6 +133,9 @@ public:
 private:
     Json lastLayoutState = nullptr;
     void updateRealtime();
+    juce::VBlankAttachment frameClock;
+    bool frameActive = false;
+    double frameDeadline = 0;
     Json audioImportContext() const;
     static juce::String historyLabel(const Json& entry);
     juce::PopupMenu rulersMenu();
@@ -213,15 +217,15 @@ private:
     std::string pendingClipboardPlan;
     void commitTimeSelection(Json range, Json tracks, uint64_t revision, std::string session, int64_t insertion);
     Json selectedEditClips() const;
-    Json selectedAudioClip() const;
+    const Json& selectedAudioClip() const;
     Writer writer();
     void message(const juce::String& s);
     void invoke(std::function<void()> f);
     void write(const std::string& cmd, Json args);
     void select(std::string id);
     juce::String trackName(const std::string& id) const;
-    Json selectedTrack() const;
-    Json selectedProcessor() const;
+    const Json& selectedTrack() const;
+    const Json& selectedProcessor() const;
     void refreshInspector();
     void refreshPluginLibraryTarget();
     void refresh();
@@ -310,6 +314,7 @@ private:
     juce::String sessionName = "Untitled";
     Waveforms waves;
     EditWindow editArea;
+    TimelineSurface editSurface{editArea};
     MixWindow mixArea;
     InspectorParameters parameters;
     RoutingPanel routing;

@@ -1,3 +1,9 @@
+## 2026-10-12 性能专项 A 与播放诊断（未通过性能验收）
+
+已完成事件驱动facts缓存、真实时间线缓存与独立播放头、绘制const引用；停止CPU从22.40%到4.53%，停止完整refresh/query为0。最后300.005秒的Edit播放平均头绘制30.31Hz、主线程16.15%、XRUN增量264；不把平均绘制率当作稳定帧率验收。两轮播放实验仍未达预算，已按用户专项止损规则再次请求决定，B未进入。机器、测试条件、所有失败和旧数值见[evidence/perf/summary.md](../evidence/perf/summary.md)。
+
+最终Release同一源码8组718项/72.66秒通过、0失败、无JUCE断言，涵盖Clip点击/缩放/保存重开、原生插件、持久Undo、自动化、MCP确认。补测Clip缓存引用失效的退出异常已修并复测；临时诊断移除。固定本地deep/strict验签通过。性能CTest先因重复测试文件名失败，工具修正后300.07秒超时，仍为0通过/1失败，未补造后续压力指标。原始歌曲/交付WAV哈希不变，所有Forma及测试实例退出；可运行构建为`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，旧FeedbackPreview没有更新，不算当前性能构建。无DMG、RT/DSP/SDK修改或P1推进。
+
 ## 2026-10-12 实际 Serum 编曲与多实例界面响应
 
 用户要求在Forma新建工程并用Serum编曲。实际创建《Neon Tide · 霓潮》：114 BPM、A小调、32小节，6个已扫描Serum 1.3.6.8 VST3实例、6段可编辑MIDI/530音符，另有1轨原创合成鼓组PCM。Codex通过真实MCP查询、版本化Plan和原生GUI确认提交，保留回执；新建前保存旧工程恢复副本。最终本地工程 `../outputs/forma-neon-tide-20261012/霓潮.tracktionedit`，已打开并停在开头；WAV为同目录 `Neon Tide - Final.wav`，真实Tracktion渲染75.368417秒、48 kHz/双声道/PCM24（含8秒尾音）。独立全文件解码Peak −2.085965 dBFS、RMS −20.953047 dBFS；原生分析LUFS-I −20.107733、True Peak −2.068425 dBTP，末尾及后续2秒检查通过。没有满幅削波；不宣称符合界面示例−14 LUFS交付目标或主观听感通过。媒体和工程留本机，未上传。

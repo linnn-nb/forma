@@ -41,20 +41,22 @@ ClipWriter Workspace::clipWriter()
 void Workspace::selectAudioClip(const std::string& id, bool additive)
 {
     midiCommandContext = false;
+    // This L1 query may publish a rebuilt facts cache. Acquire references only
+    // afterwards; no track/clip reference may survive that publication.
+    Json linked;
+    try
+    {
+        linked = commands.editGroupClipSelection(id);
+    }
+    catch (const std::exception& e)
+    {
+        message(text(e.what()));
+        return;
+    }
     for (const auto& t : facts["tracks"])
         for (const auto& c : t["clips"])
             if (c["id"] == id)
             {
-                Json linked;
-                try
-                {
-                    linked = commands.editGroupClipSelection(id);
-                }
-                catch (const std::exception& e)
-                {
-                    message(text(e.what()));
-                    return;
-                }
                 const bool remove = additive && selection.contains(id);
                 if (!additive)
                     selection.objects.clear();
@@ -102,13 +104,14 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
             }
 }
 
-Json Workspace::selectedAudioClip() const
+const Json& Workspace::selectedAudioClip() const
 {
     for (const auto& t : arrayField(facts, "tracks"))
         for (const auto& c : t["clips"])
             if (c["id"] == selectedClip)
                 return c;
-    return nullptr;
+    static const Json missing = nullptr;
+    return missing;
 }
 
 Writer Workspace::writer()
@@ -236,20 +239,22 @@ juce::String Workspace::trackName(const std::string& id) const
     return text(id);
 }
 
-Json Workspace::selectedTrack() const
+const Json& Workspace::selectedTrack() const
 {
     for (const auto& t : arrayField(facts, "tracks"))
         if (t["id"] == selected)
             return t;
-    return nullptr;
+    static const Json missing = nullptr;
+    return missing;
 }
 
-Json Workspace::selectedProcessor() const
+const Json& Workspace::selectedProcessor() const
 {
-    auto t = clipFXInspector ? selectedAudioClip() : selectedTrack();
+    const auto& t = clipFXInspector ? selectedAudioClip() : selectedTrack();
     if (!t.is_null() && pluginSelection >= 0 && pluginSelection < int(t["plugins"].size()))
         return t["plugins"][pluginSelection];
-    return nullptr;
+    static const Json missing = nullptr;
+    return missing;
 }
 
 void Workspace::refreshPluginLibraryTarget()
@@ -776,7 +781,7 @@ void Workspace::updateRealtime()
     counter.setText(display, juce::dontSendNotification);
     musicPosition.setText(juce::String(state.bar) + " | " + juce::String(state.beat, 2) + text("  小节 / 拍"),
                           juce::dontSendNotification);
-    editArea.setPlayhead(state.position);
+    editSurface.setPosition(state.position);
     piano.setPlayhead(state.positionBeats);
     const auto meters = commands.outputMeters();
     float peak = 0;
@@ -794,14 +799,21 @@ void Workspace::updateRealtime()
         lastMeterRequest = 0;
         message(text("输出峰值已复位 · 持续过载会重新标记"));
     }
-    const auto interval = state.playing || state.recording ? 33 : 200;
+    const bool displayActive = (state.playing || state.recording) && isShowing() && getPeer() != nullptr;
+    if (displayActive != frameActive)
+    {
+        frameActive = displayActive;
+        frameDeadline = 0;
+    }
+    const auto interval = frameActive ? 200 : state.playing || state.recording ? 33 : 200;
     if (getTimerInterval() != interval)
         startTimer(interval);
 }
 void Workspace::timerCallback()
 {
     ndaw::v2::Performance::Span measured("ui_tick");
-    updateRealtime();
+    if (!frameActive || !commands.realtimeState().playing)
+        updateRealtime();
     // Service progress is queried only while its own panel is open, without
     // rebuilding Edit facts, tracks, plugin controls or timeline layout.
     if (exportPanel && exportPanel->isVisible())

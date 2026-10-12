@@ -308,6 +308,7 @@ private:
     std::string parameterSource = "sdk-parameter";
     bool parameterTransactionStarted = false;
     friend class ParameterTestAccess;
+    friend class PerformanceTestAccess;
     static void registerTimelineCommands(Json&);
     Json validateTimelinePlan(const Json&) const;
     void executeTimelineOperation(const std::string&, const Json&);
