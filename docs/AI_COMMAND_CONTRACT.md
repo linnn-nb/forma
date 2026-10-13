@@ -1,3 +1,7 @@
+# 多来源 Comp 候选契约（2026-10-13）
+
+`playlist.comp.create {track,name,segments:[{source,clip,start_samples,end_samples}]}`：human/local_gui、停止状态、单操作Plan/native Undo；范围为48k工程采样。一次1–64段；所有对象/范围/媒体指纹先校验，嵌套未知字段、整数溢出、越界和重叠整笔拒绝。预览逐段列出来源/区间、gaps=silence，明确playback_changed=false/target_changed=false。成功回执返回真实Playlist与Clip ID，重试不重复；保存重开可整笔Undo/Redo。GUI暂存清单不是工程事实，不产生历史；版本变化丢弃草稿并显示原因。MCP/Agent权限未扩展。
+
 # P1 Playlist 编辑契约（2026-10-13）
 
 新增 human/local_gui 命令：`playlist.create {track,name,role,source?}`、`playlist.rename {track,playlist,name}`、`playlist.target/select {track,playlist}`、`playlist.lock {track,playlist,locked}`、`playlist.take.register {track,source,clip,name}`、`playlist.promote {track,source,target,clip,start_samples,end_samples}`。create 的 role 是 main/comp；source 省略表示空列表，否则复制原生片段并分配新 ID。新列表不改变当前播放或 target。

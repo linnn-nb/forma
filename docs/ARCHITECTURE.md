@@ -1,3 +1,7 @@
+# 多来源候选（2026-10-13）
+
+L1 `PlaylistEditing.cpp` 新增一次创建非活动Comp的原生事务，先验证整个选择集再写入；源列表不变，原生片段复制保留源时间/gain/fade/Take ID与媒体哈希。GUI `PlaylistPanel` 暂存只读选择清单，实际接受经原命令层；revision/session变化清空草稿，不另建音频图或数据事实。新命令和可改键525–528见AI_COMMAND_CONTRACT；真实PCM/历史/GUI组件资格见evidence/P1。关联多轨及逐段区间试听继续实现。
+
 # P1 Playlist / Comp 架构补充（2026-10-13）
 
 单轨 Playlist 管理和源区间提升已接通。`src/v2/PlaylistEditing.cpp` 是唯一写入口：create/rename/target/lock/select/take.register/promote 均在 message thread 经 Plan 和原生 UndoManager 提交。`AudioTrack/NDAW_PLAYLISTS` 保存非活动原生 Clip 状态；活动内容只存在 Tracktion 轨道，未建立第二个播放引擎或影子片段库。尚未编辑过的音频轨只读投影稳定的 `main:<track ID>`，第一次写入才物化节点。

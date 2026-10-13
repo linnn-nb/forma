@@ -1,3 +1,5 @@
+> 2026-10-13多来源候选：继续作为工作流参考，不是全量对齐验收。v1 COMP-02中的多来源选段、非活动候选、整任务Undo和媒体保持已迁到Tracktion；代码PlaylistEditing/PlaylistPanel，105专项与341相关检查通过，证据evidence/P1。状态：部分实现；关联多轨、逐段区间试听/实体拖选和Agent候选资格尚缺，无新外部依赖，不宣称Pro Tools实机等价。
+
 > 2026-10-13 Playlist增量：本表仍是工作流参考，不是Pro Tools全量验收门槛。单轨列表管理/原Take保留/选区提升/一次Undo已在Tracktion实现；未做Pro Tools实机对照，不宣称等价。
 
 | 当前v2项 | 实现/测试证据 | 验收与剩余差距 | 状态 |

@@ -303,6 +303,79 @@ int main(int argc, char** argv)
         check(moved.moveFileTo(b), "owned source restored");
         rejects([&] { c.makePlan("agent:test", Json::array({op("playlist.promote", promote)})); },
                 "local Playlist commands do not expand Agent permission");
+        const auto beforeCandidate = lists(c, t);
+        Json segments = Json::array(
+            {{{"source", main}, {"clip", original}, {"start_samples", 0}, {"end_samples", 24000}},
+             {{"source", take}, {"clip", sourceBefore[0]["id"]}, {"start_samples", 48000}, {"end_samples", 72000}},
+             {{"source", main}, {"clip", original}, {"start_samples", 96000}, {"end_samples", 132000}}});
+        Json candidateArgs{{"track", t}, {"name", "Multi-source candidate"}, {"segments", segments}};
+        auto candidatePlan = c.makePlan("human", Json::array({op("playlist.comp.create", candidateArgs)}));
+        auto candidatePreview = c.preview(candidatePlan);
+        check(lists(c, t) == beforeCandidate && candidatePreview["playlist_changes"][0]["segments"] == segments &&
+                  !candidatePreview["playlist_changes"][0]["playback_changed"].get<bool>(),
+              "multi-source preview describes exact choices and leaves playback intact");
+        const auto candidateReceipt = c.commit(candidatePlan);
+        const std::string candidate = candidateReceipt["objects"][0]["id"];
+        const auto candidateState = lists(c, t);
+        check(candidateState["active"] == beforeCandidate["active"] &&
+                  candidateState["target"] == beforeCandidate["target"] && item(c, t, main)["clips"] == mainBefore &&
+                  item(c, t, take)["clips"] == sourceBefore,
+              "inactive multi-source Comp preserves playback, target and every source");
+        const auto candidateClips = item(c, t, candidate)["clips"];
+        check(candidateClips.size() == 3 && candidateReceipt["objects"].size() == 4 &&
+                  candidateClips[1]["take_id"] == takeData["take_id"] &&
+                  Json::parse(candidateClips[1]["comp_origin"].get<std::string>())["media_hash"] == hashB,
+              "candidate has real clip receipts and immutable Take/media lineage");
+        check(c.commit(candidatePlan)["replayed"] == true && lists(c, t) == candidateState,
+              "candidate retry does not create another Playlist");
+        c.undo(candidateReceipt["plan_id"]);
+        check(lists(c, t) == beforeCandidate, "one Undo removes entire candidate and preserves sources");
+        c.redo();
+        check(lists(c, t) == candidateState, "candidate Redo restores all original IDs and choices");
+        auto candidateFile = root.getChildFile("Candidate.tracktionedit");
+        c.save(candidateFile);
+        {
+            Commands reopened(false, std::make_unique<Storage>(root.getChildFile("candidate-prefs")));
+            reopened.open(candidateFile);
+            check(lists(reopened, t) == candidateState, "inactive candidate survives save/reopen exactly");
+            reopened.undo(candidateReceipt["plan_id"]);
+            check(lists(reopened, t) == beforeCandidate, "reopened candidate is undone as one task");
+            reopened.redo();
+            check(lists(reopened, t) == candidateState, "reopened candidate Redo is exact");
+            run(reopened, "playlist.select", {{"track", t}, {"playlist", candidate}});
+            auto pcm = render(reopened, root);
+            compare(pcm, baseline, 0, 24000, "candidate first source preserves native fade/gain");
+            compare(pcm, alternate, 48000, 72000, "candidate second source preserves source offset/fade/gain");
+            compare(pcm, baseline, 96000, 132000, "candidate final source preserves native fade/gain");
+            juce::AudioBuffer<float> silence(2, 144000);
+            silence.clear();
+            compare(pcm, silence, 24000, 48000, "candidate first gap remains actual silence");
+            compare(pcm, silence, 72000, 96000, "candidate second gap remains actual silence");
+            compare(pcm, silence, 132000, 144000, "candidate unselected tail remains actual silence");
+        }
+        auto invalidCandidate = [&](Json a, const char* why)
+        {
+            const auto state = lists(c, t);
+            rejects([&] { run(c, "playlist.comp.create", a); }, why);
+            check(lists(c, t) == state, "invalid candidate never partially attaches clips or a Playlist");
+        };
+        auto bad = candidateArgs;
+        bad["segments"][1]["start_samples"] = 12000;
+        invalidCandidate(bad, "overlapping candidate choices rejected");
+        bad = candidateArgs;
+        bad["segments"][1]["clip"] = "missing";
+        invalidCandidate(bad, "missing candidate source rejected");
+        bad = candidateArgs;
+        bad["segments"][1]["end_samples"] = uint64_t(-1);
+        invalidCandidate(bad, "overflowing nested sample position rejected");
+        bad = candidateArgs;
+        bad["segments"][1]["extra"] = true;
+        invalidCandidate(bad, "unknown candidate segment field rejected");
+        auto mediaPlan = c.makePlan("human", Json::array({op("playlist.comp.create", candidateArgs)}));
+        check(b.moveFileTo(moved), "candidate source moved for fingerprint fault");
+        rejects([&] { c.commit(mediaPlan); }, "nested candidate source media hash rechecked at commit");
+        check(lists(c, t)["items"].size() == candidateState["items"].size(), "media fault leaves no candidate");
+        check(moved.moveFileTo(b), "candidate source restored after fault");
         // Actual native components + ApplicationCommandManager, not a second editing path.
         RecordingTestAccess::select(workspace, t);
         check(workspace.uiCommands().invokeDirectly(514, true), "Playlist menu/shortcut command accepted");
@@ -327,22 +400,23 @@ int main(int argc, char** argv)
         pump();
         auto* lanes = find(workspace, "playlist.lanes");
         check(lanes != nullptr, "actual waveform lanes exist");
-        auto chooseRange = [&]
+        auto chooseRangeFrom = [&](const std::string& playlist, int64_t begin, int64_t end)
         {
             auto snapshot = lists(c, t);
             int row = 0;
             for (const auto& list : snapshot["items"])
             {
-                if (list["id"] == take)
+                if (list["id"] == playlist)
                     break;
                 ++row;
             }
-            const float x1 = 200.f + float(lanes->getWidth() - 200) * .075f;
-            const float x2 = 200.f + float(lanes->getWidth() - 200) * .2f;
+            const float x1 = 200.f + float(lanes->getWidth() - 200) * float(begin / 480000.);
+            const float x2 = 200.f + float(lanes->getWidth() - 200) * float(end / 480000.);
             lanes->mouseDown(mouse(*lanes, {x1, float(26 + row * 106 + 50)}));
             lanes->mouseDrag(mouse(*lanes, {x2, float(26 + row * 106 + 50)}, true));
             lanes->mouseUp(mouse(*lanes, {x2, float(26 + row * 106 + 50)}, true));
         };
+        auto chooseRange = [&] { chooseRangeFrom(take, 36000, 96000); };
         const auto beforeGesture = lists(c, t);
         chooseRange();
         auto* promoteButton = dynamic_cast<juce::Button*>(find(workspace, "ui.command:519"));
@@ -364,10 +438,57 @@ int main(int argc, char** argv)
         workspace.uiCommands().invokeDirectly(519, false);
         check(lists(c, t) == humanState, "stale native panel range cannot overwrite intervening human edit");
         RecordingTestAccess::refresh(workspace);
+        auto* choices = dynamic_cast<juce::ListBox*>(find(workspace, "playlist.candidate.segments"));
+        auto* addChoice = dynamic_cast<juce::Button*>(find(workspace, "ui.command:525"));
+        auto* acceptChoices = dynamic_cast<juce::Button*>(find(workspace, "ui.command:527"));
+        check(choices && addChoice && acceptChoices, "native Comp candidate preview controls exist");
+        const auto draftState = lists(c, t);
+        const auto draftVersion = c.query()["revision"];
+        chooseRange();
+        addChoice->triggerClick();
+        wait([&] { return choices->getListBoxModel()->getNumRows() == 1; },
+             "native Add Choice stages actual source selection");
+        chooseRangeFrom(main, 0, 24000);
+        addChoice->triggerClick();
+        wait([&] { return choices->getListBoxModel()->getNumRows() == 2; },
+             "second source appears in native preview list");
+        check(lists(c, t) == draftState && c.query()["revision"] == draftVersion,
+              "draft preview does not edit native project or add history");
+        choices->selectRow(1);
+        workspace.uiCommands().invokeDirectly(526, true);
+        wait([&] { return choices->getListBoxModel()->getNumRows() == 1; },
+             "draft choice can be removed before commit");
+        addChoice->triggerClick();
+        wait([&] { return choices->getListBoxModel()->getNumRows() == 2; }, "removed choice can be selected again");
+        auto* candidateName = dynamic_cast<juce::TextEditor*>(find(workspace, "playlist.candidate.name"));
+        check(candidateName != nullptr, "native candidate name editor exists");
+        candidateName->setText("GUI multi-source Comp");
+        acceptChoices->triggerClick();
+        wait([&] { return lists(c, t)["items"].size() == draftState["items"].size() + 1; },
+             "native Accept creates one candidate from whole preview");
+        const auto acceptedChoices = lists(c, t);
+        check(acceptedChoices["active"] == draftState["active"] && acceptedChoices["target"] == draftState["target"] &&
+                  acceptedChoices["items"].back()["clips"].size() == 2 && choices->getListBoxModel()->getNumRows() == 0,
+              "accepted candidate retains playback and clears submitted draft only");
+        workspace.uiCommands().invokeDirectly(6, true);
+        wait([&] { return lists(c, t) == draftState; }, "GUI candidate has one Undo for every segment");
+        workspace.uiCommands().invokeDirectly(7, true);
+        wait([&] { return lists(c, t) == acceptedChoices; }, "GUI candidate Redo restores complete choices");
+        RecordingTestAccess::refresh(workspace);
+        chooseRange();
+        addChoice->triggerClick();
+        wait([&] { return choices->getListBoxModel()->getNumRows() == 1; },
+             "new candidate draft staged for conflict check");
+        run(c, "playlist.rename", {{"track", t}, {"playlist", main}, {"name", "New human edit"}});
+        auto conflictState = lists(c, t);
+        workspace.uiCommands().invokeDirectly(527, false);
+        check(lists(c, t) == conflictState, "stale whole candidate cannot replace later human edit");
+        RecordingTestAccess::refresh(workspace);
+        check(choices->getListBoxModel()->getNumRows() == 0, "human revision invalidates candidate draft visibly");
         check(workspace.uiCommands().getKeyMappings()->findCommandForKeyPress(
                   juce::KeyPress('c', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0)) == 208,
               "new Comp shortcut preserves existing track colour shortcut");
-        for (int id = 514; id <= 524; ++id)
+        for (int id = 514; id <= 528; ++id)
             check(!workspace.uiCommands().getKeyMappings()->getKeyPressesAssignedToCommand(id).isEmpty(),
                   "Playlist action has remappable default shortcut");
         check(Commands::mediaHash(a) == hashA && Commands::mediaHash(b) == hashB,

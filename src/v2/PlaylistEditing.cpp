@@ -50,6 +50,27 @@ juce::File media(te::Edit& e, juce::ValueTree c)
 {
     return te::SourceFileReference::findFileFromString(e, c.getProperty(te::IDs::source).toString());
 }
+const Json& candidateSegments(const Json& a)
+{
+    const auto& segments = a.at("segments");
+    require(segments.is_array() && !segments.empty() && segments.size() <= 64,
+            "Comp candidate requires 1..64 segments per transaction");
+    for (const auto& s : segments)
+    {
+        require(s.is_object() && s.size() == 4 && s.contains("source") && s["source"].is_string() &&
+                    s.contains("clip") && s["clip"].is_string(),
+                "Comp segment requires source, clip, start_samples and end_samples");
+        for (const char* key : {"start_samples", "end_samples"})
+            require(s.contains(key) && s[key].is_number_integer() &&
+                        (!s[key].is_number_unsigned() ||
+                         s[key].get<uint64_t>() <= uint64_t(std::numeric_limits<int64_t>::max())) &&
+                        s[key].get<int64_t>() >= 0,
+                    "Comp segment position must be a nonnegative representable sample integer");
+        require(s["end_samples"].get<int64_t>() > s["start_samples"].get<int64_t>(),
+                "Comp segment must have positive duration");
+    }
+    return segments;
+}
 void qualifySlice(te::Edit& edit, juce::ValueTree c)
 {
     require(c.hasType(te::IDs::AUDIOCLIP), "Comp selection requires an audio clip");
@@ -129,6 +150,19 @@ void Commands::registerPlaylistCommands(Json& r)
          {"end_samples", integer}},
         {"source", "target", "clip", "start_samples", "end_samples"});
     add("playlist.take.register", {{"source", string}, {"clip", string}, {"name", string}}, {"source", "clip", "name"});
+    add("playlist.comp.create",
+        {{"name", string},
+         {"segments",
+          {{"type", "array"},
+           {"minItems", 1},
+           {"maxItems", 64},
+           {"items",
+            {{"type", "object"},
+             {"properties",
+              {{"source", string}, {"clip", string}, {"start_samples", integer}, {"end_samples", integer}}},
+             {"required", {"source", "clip", "start_samples", "end_samples"}},
+             {"additionalProperties", false}}}}}},
+        {"name", "segments"});
 }
 bool Commands::activePlaylistLocked(te::AudioTrack& t) const
 {
@@ -178,6 +212,11 @@ std::string Commands::playlistMediaFingerprint(const Json& a) const
         if (a.contains(key))
             for (auto c : clipsFor(*t, a[key]))
                 paths.insert(media(*edit, c).getFullPathName().toStdString());
+    if (a.contains("segments"))
+        for (const auto& s : candidateSegments(a))
+            for (auto c : clipsFor(*t, s["source"]))
+                if (str(c, "id") == s["clip"].get<std::string>())
+                    paths.insert(media(*edit, c).getFullPathName().toStdString());
     Json hashes = Json::array();
     for (const auto& path : paths)
     {
@@ -237,6 +276,36 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         }
         if (a.contains("source"))
             existing("source");
+        if (cmd == "playlist.comp.create")
+        {
+            std::vector<std::pair<int64_t, int64_t>> ranges;
+            for (const auto& s : candidateSegments(a))
+            {
+                require(listFor(*t, s["source"]).isValid(), "Comp source Playlist no longer exists");
+                juce::ValueTree source;
+                for (auto c : clipsFor(*t, s["source"]))
+                    if (str(c, "id") == s["clip"].get<std::string>())
+                        source = c;
+                require(source.isValid(), "Comp source clip no longer exists");
+                qualifySlice(*edit, source);
+                const int64_t begin = s["start_samples"], end = s["end_samples"];
+                require(begin >= frame(source, "start") && end <= frame(source, "start") + frame(source, "length"),
+                        "Comp segment must lie inside its source clip");
+                ranges.emplace_back(begin, end);
+            }
+            std::sort(ranges.begin(), ranges.end());
+            for (size_t i = 1; i < ranges.size(); ++i)
+                require(ranges[i - 1].second <= ranges[i].first,
+                        "Comp candidate segments overlap; remove or trim a choice first");
+            diff.push_back({{"command", cmd},
+                            {"track", a["track"]},
+                            {"name", a["name"]},
+                            {"segments", a["segments"]},
+                            {"playback_changed", false},
+                            {"target_changed", false},
+                            {"gaps", "silence"},
+                            {"source_playlists", "preserved"}});
+        }
         if (cmd == "playlist.promote" || cmd == "playlist.take.register")
         {
             juce::ValueTree source;
@@ -279,7 +348,7 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                                 {"outside_range", "preserved"}});
             }
         }
-        if (cmd != "playlist.promote")
+        if (cmd != "playlist.promote" && cmd != "playlist.comp.create")
             diff.push_back({{"command", cmd}, {"change", a}, {"playback_changed", cmd == "playlist.select"}});
     }
     return diff;
@@ -310,6 +379,40 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
     }
     auto copy = [&](juce::ValueTree c)
     { return te::ClipCopy::fromClipboardState(c, false).withNewItemID(*edit).getState().createCopy(); };
+    if (cmd == "playlist.comp.create")
+    {
+        juce::ValueTree candidate("PLAYLIST");
+        const auto id = juce::Uuid().toString();
+        candidate.setProperty("id", id, nullptr);
+        candidate.setProperty("name", juce::String(a["name"].get<std::string>()), nullptr);
+        candidate.setProperty("role", "comp", nullptr);
+        candidate.setProperty(
+            "origin",
+            juce::String(
+                Json({{"kind", "multi_source_comp"}, {"segments", a["segments"]}, {"revision", revision}}).dump()),
+            nullptr);
+        objects.push_back({{"id", id.toStdString()}, {"kind", "playlist"}, {"track", a["track"]}});
+        for (const auto& s : a["segments"])
+            for (auto c : clipsFor(t, s["source"]))
+                if (str(c, "id") == s["clip"].get<std::string>())
+                {
+                    auto inserted = sliced(copy(c), s["start_samples"], s["end_samples"]);
+                    inserted.setProperty("ndaw_locked", false, nullptr);
+                    auto origin = s;
+                    origin["source_playlist"] = origin["source"];
+                    origin.erase("source");
+                    origin["source_clip"] = origin["clip"];
+                    origin.erase("clip");
+                    origin["revision"] = revision;
+                    origin["media_hash"] = mediaHash(media(*edit, c));
+                    inserted.setProperty("ndaw_comp_origin", juce::String(origin.dump()), nullptr);
+                    candidate.addChild(inserted, -1, nullptr);
+                    objects.push_back({{"id", str(inserted, "id")}, {"kind", "clip"}, {"playlist", id.toStdString()}});
+                    break;
+                }
+        lists.addChild(candidate, -1, &um);
+        return;
+    }
     if (cmd == "playlist.create" || cmd == "playlist.take.register")
     {
         juce::ValueTree list("PLAYLIST");

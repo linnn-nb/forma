@@ -230,6 +230,14 @@ const std::vector<Entry>& entries()
         {523, "所选 Playlist 用于播放", "Playlist", 'p',
          juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
         {524, "关闭 Playlists", "Playlist", 'w', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {525, "加入 Comp 候选清单", "Playlist", '1',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {526, "移除候选所选片段", "Playlist", '2',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {527, "创建多来源 Comp 候选", "Playlist", '3',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {528, "清空 Comp 候选清单", "Playlist", '4',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {513, "切换 Punch 补录", "录音", 'p', juce::ModifierKeys::altModifier},
         {511, "上一个 Playlist / Take", "录音", '[', juce::ModifierKeys::altModifier},
         {512, "下一个 Playlist / Take", "录音", ']', juce::ModifierKeys::altModifier},
@@ -901,7 +909,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     if (t["id"] == selected && t.value("type", std::string{}) == "audio")
                         active = !facts.value("playing", false);
             }
-            if (id >= 515 && id <= 524)
+            if (id >= 515 && id <= 528)
                 active = playlistPanel && playlistPanel->isVisible() && playlistPanel->canExecute(id) &&
                          (id == 524 || !facts.value("playing", false));
             if (id == 513)
@@ -1182,7 +1190,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
         invoke([&] { showPlaylists(); });
         return true;
     }
-    if (id >= 515 && id <= 524 && playlistPanel && playlistPanel->isVisible())
+    if (id >= 515 && id <= 528 && playlistPanel && playlistPanel->isVisible())
     {
         playlistPanel->execute(id);
         commandManager.commandStatusChanged();

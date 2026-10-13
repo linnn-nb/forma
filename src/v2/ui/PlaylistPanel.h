@@ -9,7 +9,7 @@ class PlaylistPanel final : public juce::Component
 public:
     using Submit = std::function<Json(const std::string&, Json, uint64_t, const std::string&)>;
     PlaylistPanel(Submit submit, std::function<void()> close)
-        : submit(std::move(submit)), close(std::move(close)), canvas(*this)
+        : submit(std::move(submit)), close(std::move(close)), canvas(*this), draftModel(*this)
     {
         setComponentID("playlist.panel");
         addAndMakeVisible(title);
@@ -18,6 +18,15 @@ public:
         addAndMakeVisible(view);
         addAndMakeVisible(scroll);
         addAndMakeVisible(zoom);
+        addAndMakeVisible(candidateName);
+        addAndMakeVisible(draftList);
+        candidateName.setComponentID("playlist.candidate.name");
+        candidateName.setText("Candidate Comp");
+        candidateName.setTooltip(text("候选 Comp 名称；创建后不自动切换播放或目标"));
+        candidateName.setInputRestrictions(64);
+        draftList.setComponentID("playlist.candidate.segments");
+        draftList.setModel(&draftModel);
+        draftList.setRowHeight(24);
         name.setComponentID("playlist.name");
         name.setInputRestrictions(64);
         title.setFont(juce::FontOptions(20, juce::Font::bold));
@@ -40,7 +49,11 @@ public:
                                                                          {521, "登记 Take"},
                                                                          {522, "锁定 / 解锁"},
                                                                          {523, "用于播放"},
-                                                                         {524, "关闭"}})
+                                                                         {524, "关闭"},
+                                                                         {525, "加入候选"},
+                                                                         {526, "移除所选段"},
+                                                                         {527, "创建候选"},
+                                                                         {528, "清空候选"}})
         {
             auto button = std::make_unique<juce::TextButton>(text(label));
             addAndMakeVisible(*button);
@@ -51,6 +64,7 @@ public:
     void connect(juce::ApplicationCommandManager& manager)
     {
         name.connect(manager);
+        candidateName.connect(manager, 527);
         for (auto& [id, b] : buttons)
         {
             b->setComponentID("ui.command:" + juce::String(id));
@@ -63,6 +77,10 @@ public:
             data.is_null() || data["revision"] != next["revision"] || data["session_token"] != next["session_token"];
         if (changed)
         {
+            if (!draft.empty())
+                draftNotice = text("工程版本已变化，未提交的候选清单已清空；请重新选段。");
+            draft = Json::array();
+            draftList.updateContent();
             sourceClip.clear();
             begin = end = 0;
             canvas.dragging = false;
@@ -99,6 +117,8 @@ public:
         track = std::move(id);
         source.clear();
         data = nullptr;
+        draft = Json::array();
+        draftNotice.clear();
     }
     bool canExecute(int id) const
     {
@@ -110,6 +130,12 @@ public:
             return !sourceClip.empty() && end > begin && data["target"] != source;
         if (id == 521)
             return !sourceClip.empty();
+        if (id == 525)
+            return !sourceClip.empty() && end > begin && draft.size() < 64;
+        if (id == 526)
+            return draftList.getSelectedRow() >= 0 && draftList.getSelectedRow() < int(draft.size());
+        if (id == 527 || id == 528)
+            return !draft.empty();
         return true;
     }
     void execute(int id)
@@ -123,8 +149,38 @@ public:
             return;
         try
         {
+            if (id == 525)
+            {
+                for (const auto& segment : draft)
+                    if (segment["start_samples"].get<int64_t>() < end && segment["end_samples"].get<int64_t>() > begin)
+                        throw std::runtime_error("候选片段有重叠，请先移除旧选段或缩短选区");
+                draft.push_back(
+                    {{"source", source}, {"clip", sourceClip}, {"start_samples", begin}, {"end_samples", end}});
+                draftNotice.clear();
+                draftList.updateContent();
+                draftList.selectRow(int(draft.size()) - 1);
+                refreshStatus();
+                return;
+            }
+            if (id == 526 || id == 528)
+            {
+                if (id == 526)
+                    draft.erase(draft.begin() + draftList.getSelectedRow());
+                else
+                    draft = Json::array();
+                draftNotice.clear();
+                draftList.updateContent();
+                refreshStatus();
+                return;
+            }
             Json a{{"track", track}};
             std::string cmd;
+            if (id == 527)
+            {
+                cmd = "playlist.comp.create";
+                a["name"] = candidateName.getText().toStdString();
+                a["segments"] = draft;
+            }
             if (id == 515 || id == 516 || id == 520)
             {
                 cmd = "playlist.create";
@@ -175,6 +231,11 @@ public:
                 }
             status.setText(text("已提交 · 可 Undo / Redo。点列表名称选择，拖选波形后提升到 TARGET。"),
                            juce::dontSendNotification);
+            if (id == 527)
+            {
+                draftNotice.clear();
+                status.setText(text("候选已创建 · 原播放和目标保留 · 整份候选一次 Undo。"), juce::dontSendNotification);
+            }
             canvas.repaint();
         }
         catch (const std::exception& e)
@@ -199,6 +260,12 @@ public:
             buttons.at(id)->setBounds(actions.removeFromLeft(118).reduced(2));
         zoom.setBounds(actions.removeFromLeft(160).reduced(3));
         status.setBounds(r.removeFromBottom(34));
+        auto candidate = r.removeFromBottom(112);
+        auto candidateTools = candidate.removeFromTop(32);
+        candidateName.setBounds(candidateTools.removeFromLeft(200).reduced(2));
+        for (int id : {525, 526, 527, 528})
+            buttons.at(id)->setBounds(candidateTools.removeFromLeft(112).reduced(2));
+        draftList.setBounds(candidate.reduced(0, 2));
         scroll.setBounds(r.removeFromBottom(14));
         view.setBounds(r);
         canvas.setSize(std::max(300, view.getMaximumVisibleWidth()),
@@ -207,6 +274,39 @@ public:
     }
 
 private:
+    struct DraftModel final : juce::ListBoxModel
+    {
+        PlaylistPanel& owner;
+        explicit DraftModel(PlaylistPanel& p) : owner(p) {}
+        int getNumRows() override
+        {
+            return int(owner.draft.size());
+        }
+        juce::String getNameForRow(int row) override
+        {
+            if (row < 0 || row >= int(owner.draft.size()))
+                return {};
+            const auto& s = owner.draft[row];
+            std::string label = s["source"];
+            for (const auto& list : owner.data["items"])
+                if (list["id"] == s["source"])
+                    label = list["name"];
+            return juce::String(row + 1) + "  " + text(label) + "    " +
+                   juce::String(s["start_samples"].get<int64_t>() / 48000., 6) + " – " +
+                   juce::String(s["end_samples"].get<int64_t>() / 48000., 6) + text(" 秒 · 原工程位置");
+        }
+        void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override
+        {
+            g.fillAll(selected ? juce::Colour(0xff344252) : juce::Colour(0xff191e25));
+            g.setColour(juce::Colours::white);
+            g.setFont(12.f);
+            g.drawText(getNameForRow(row), 8, 0, width - 16, height, juce::Justification::centredLeft);
+        }
+        void selectedRowsChanged(int) override
+        {
+            owner.refreshStatus();
+        }
+    };
     struct Canvas : juce::Component, juce::ScrollBar::Listener
     {
         PlaylistPanel& owner;
@@ -350,11 +450,15 @@ private:
     }
     void refreshStatus()
     {
-        status.setText(end > begin
+        status.setText(!draftNotice.isEmpty() ? draftNotice
+                       : end > begin
                            ? text("选区 ") + juce::String(begin / 48000., 6) + " – " + juce::String(end / 48000., 6) +
                                  text(" 秒 · 提升仅替换 TARGET 的这一区间，源 Take 保留")
                            : text("点选列表；用于播放切换当前 Take，空格试听。拖选波形 → 提升选区；新建 Comp "
-                                  "复制当前列表并保留原播放。"),
+                                  "复制当前列表并保留原播放。") +
+                                 (draft.empty()
+                                      ? juce::String{}
+                                      : text(" · 未提交候选 ") + juce::String(int(draft.size())) + text(" 段")),
                        juce::dontSendNotification);
         for (auto& [id, b] : buttons)
             b->setEnabled(canExecute(id));
@@ -371,9 +475,10 @@ private:
     class NameEditor : public juce::TextEditor
     {
     public:
-        void connect(juce::ApplicationCommandManager& m)
+        void connect(juce::ApplicationCommandManager& m, int enter = 517)
         {
             manager = &m;
+            enterCommand = enter;
         }
         bool keyPressed(const juce::KeyPress& key) override
         {
@@ -381,9 +486,9 @@ private:
             {
                 const int command = key == juce::KeyPress::escapeKey ? 524
                                     : key == juce::KeyPress::returnKey
-                                        ? 517
+                                        ? enterCommand
                                         : manager->getKeyMappings()->findCommandForKeyPress(key);
-                if (command >= 515 && command <= 524)
+                if (command >= 515 && command <= 528)
                 {
                     manager->invokeDirectly(command, false);
                     return true;
@@ -394,6 +499,7 @@ private:
 
     private:
         juce::ApplicationCommandManager* manager = nullptr;
+        int enterCommand = 517;
     };
     Submit submit;
     std::function<void()> close;
@@ -405,6 +511,11 @@ private:
     NameEditor name;
     std::map<int, std::unique_ptr<juce::TextButton>> buttons;
     Canvas canvas;
+    Json draft = Json::array();
+    juce::String draftNotice;
+    DraftModel draftModel;
+    juce::ListBox draftList;
+    NameEditor candidateName;
     juce::Viewport view;
     juce::ScrollBar scroll{false};
     juce::Slider zoom;

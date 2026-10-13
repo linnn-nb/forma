@@ -1,3 +1,28 @@
+# P1：多来源 Comp 候选（2026-10-13）
+
+结论：Release主程序与固定本地签名通过；6组446项检查通过、0失败/0JUCE断言，串行总计87.987秒。不同Playlist的选择可暂存为候选清单，移除或清空后一次创建独立Comp；源Take、活动播放和target不变。未提交清单不写Edit/历史；提交后整份候选一次Undo/Redo，显式保存重开仍保持。
+
+亲手试：Option+L打开Playlists，在不同列表波形中拖选→「加入候选」；清单显示来源名称与原工程区间。确认后「创建候选」，再「用于播放」试听。Ctrl+Shift+Option+1/2/3/4分别为加入、移除、创建、清空，均可改键；候选名称输入框Return也执行创建。范围重叠明确拒绝；段间空白保留静音。此版本单笔最多64段，属于明确的事务准备预算，不限制轨道数量。
+
+代码：`src/v2/PlaylistEditing.cpp`新增`playlist.comp.create`，L1先验证全部源/媒体指纹、字段、范围和不重叠，再添加非活动原生Playlist；新Clip保持Take身份、源gain/fade及`ndaw_comp_origin`。`ui/PlaylistPanel.h`是本地草稿与原生清单，session/revision变化使草稿失效；只有创建按钮调用L1，GUI不写Edit。没有新的依赖、SDK补丁或MCP权限。以v1 `tests/PlaylistTests.h::COMP-02`为行为规格；尚未恢复其Agent候选或关联多轨部分。
+
+| 程序 | 检查数 | 秒 | 结果 |
+|---|---:|---:|---|
+| ndaw_playlist_editing_tests | 105 | 5.733 | 通过 |
+| ndaw_loop_recording_tests | 51 | 7.639 | 通过 |
+| ndaw_punch_recording_tests | 124 | 19.074 | 通过 |
+| ndaw_persistent_history_tests | 65 | 38.447 | 通过 |
+| ndaw_clip_tests | 58 | 10.933 | 通过 |
+| ndaw_recording_readiness_tests | 43 | 6.161 | 通过 |
+
+新增比较三个不同来源选段与原生参考渲染，含源增益/淡化、段间和尾端静音，逐样本最大误差0，原容差2e-6/每次3秒渲染10秒预算不变。验证整个候选Undo/Redo、保存重开与持久历史、实际回执/重试不复制、重叠/未知字段/溢出/失效来源拒绝、源文件移动后的提交拒绝、真实GUI组件预览/移除/提交与过期人机草稿拒绝。原媒体SHA256不变。首轮测试误用ListBox计数API导致编译失败，改读getListBoxModel并消除弃用调用后最终构建/测试通过，未降低断言。
+
+输出：`build-v2-tracktion/p1-candidate-regression-results.json`、`p1-candidate-ndaw_*.log/.json`、`p1-candidate-regression-build.log`；没有全仓回归或新DMG。实际桌面已补验上轮GUI保存副本重开，并在新构建打开本轮含多来源候选的工程及面板。新候选清单的坐标拖选仍遇到桌面工具noWindowsAvailable，未宣称实体拖选/试听通过；原生组件鼠标事件资格单列。仅使用已标识合成测试音频，未上传音频。
+
+主程序SHA256：`f6413f7cf7d851a427d92f76c10795e1c14728fe0b9a336168ccbf7a9ed81ecd`。当前应用路径保持不变，没有复制Preview.app。下一项关联多轨Comp（共同选区、源相位、全部成员一笔事务），再补交叉淡化；逐段区间试听、实体操作、其他采样率/硬件、性能A、Windows及完整P1仍未完成。
+
+## 历史：单轨范围提升增量
+
 # P1：单轨 Playlist / Comp（2026-10-13）
 
 结论：当前Release主程序构建与固定本地deep/strict验签通过；6组共400项检查最终通过，无JUCE断言。本增量完成列表管理、Take登记、源区间提升与真实波形面板，完整P1继续推进多来源/关联多轨和交叉淡化。没有新SDK补丁、依赖或DMG。
