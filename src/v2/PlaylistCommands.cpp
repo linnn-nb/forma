@@ -46,12 +46,25 @@ void validatePlaylists(te::Edit& edit)
 Json Commands::playlistQuery(te::AudioTrack& track) const
 {
     auto lists = track.state.getChildWithName("NDAW_PLAYLISTS");
+    if (!lists.isValid() && trackType(track) == "audio")
+    {
+        const auto id = "main:" + track.itemID.toString().toStdString();
+        return {{"active", id},
+                {"target", id},
+                {"items", Json::array({{{"id", id},
+                                        {"name", "Main"},
+                                        {"role", "main"},
+                                        {"locked", false},
+                                        {"active", true},
+                                        {"clip_count", track.getClips().size()}}})}};
+    }
     Json items = Json::array();
     const auto active = value(lists, "active");
     for (auto list : lists)
         items.push_back({{"id", value(list, "id")},
                          {"name", value(list, "name")},
                          {"role", value(list, "role")},
+                         {"locked", bool(list.getProperty("locked", false))},
                          {"active", value(list, "id") == active},
                          {"clip_count", value(list, "id") == active ? track.getClips().size() : list.getNumChildren()},
                          {"take_id", value(list, "take_id")},
@@ -62,21 +75,9 @@ Json Commands::playlistQuery(te::AudioTrack& track) const
                          {"complete", bool(list.getProperty("complete", false))}});
     return {{"active", active}, {"target", value(lists, "target")}, {"items", items}};
 }
-void Commands::validatePlaylistPlan(const Json& ops) const
-{
-    for (const auto& op : ops)
-        if (op["command"] == "playlist.select")
-        {
-            require(ops.size() == 1, "Playlist selection is a standalone transaction");
-            auto* t = track(op["args"]["track"]);
-            require(t && trackType(*t) == "audio", "Playlist requires an audio track");
-            const auto lists = t->state.getChildWithName("NDAW_PLAYLISTS");
-            require(findList(lists, op["args"]["playlist"]).isValid(), "Playlist no longer exists");
-        }
-}
 void Commands::selectPlaylist(te::AudioTrack& track, const std::string& id)
 {
-    auto lists = track.state.getChildWithName("NDAW_PLAYLISTS");
+    auto lists = ensurePlaylists(track);
     auto previous = findList(lists, value(lists, "active"));
     auto next = findList(lists, id);
     require(previous.isValid() && next.isValid(), "invalid Playlist reference");
@@ -112,7 +113,7 @@ juce::ValueTree Commands::ensurePlaylists(te::AudioTrack& track)
         lists = juce::ValueTree("NDAW_PLAYLISTS");
         lists.setProperty("schema", 1, nullptr);
         juce::ValueTree main("PLAYLIST");
-        const auto id = juce::Uuid().toString();
+        const auto id = "main:" + track.itemID.toString();
         main.setProperty("id", id, nullptr);
         main.setProperty("name", "Main", nullptr);
         main.setProperty("role", "main", nullptr);

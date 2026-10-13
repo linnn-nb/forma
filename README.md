@@ -10,6 +10,12 @@
 
 实际 macOS 开发构建；波形来自本地原创合成 PCM，截图不代表实体录音或完整 U＋P0 验收。[真实 Mix 截图](.github/assets/forma-mix.png) · [CHANGELOG](CHANGELOG.md)。
 
+## 当前 P1：Playlist / Comp
+
+选中音频轨后按 Option+L 打开 Playlists：新建或复制列表、重命名、登记 Take，选中候选后「设为目标」。在其他列表的真实波形上拖选，再「提升选区 ↑」（Control+Option+U）替换目标对应范围；原 Take 和区间外音频保留。「用于播放」切换试听，Cmd+Z / Cmd+Shift+Z 撤销与重做，显式保存后仍可恢复历史。所有操作可在键位面板重映射。
+
+目前是单轨增量；多来源批量候选、关联多轨 Comp 和交叉淡化继续实现。实体拖选复验尚未完成，自动组件交互、真实PCM和持久历史已测。[验证范围](evidence/P1/summary.md)。
+
 ## 快速开始
 
 安装 Xcode Command Line Tools、CMake 和 Git 后：

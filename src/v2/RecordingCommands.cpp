@@ -49,9 +49,7 @@ void Commands::registerRecordingCommands(Json& r)
     add("track.input", {{"track", string}, {"device", string}});
     add("track.arm", {{"track", string}, {"enabled", {{"type", "boolean"}}}});
     add("track.monitor", {{"track", string}, {"mode", {{"type", "string"}, {"enum", {"off", "auto", "on"}}}}});
-    add("playlist.select", {{"track", string}, {"playlist", string}});
-    r.back()["tool_visibility"] = "local_gui";
-    r.back()["test"] = "P1-LOOP-01";
+
 }
 std::string Commands::inputAvailability(const te::InputDevice* input) const
 {
@@ -157,6 +155,8 @@ Json Commands::recordingReadiness() const
         if (!t || !bool(t->state.getProperty("ndaw_armed", false)))
             continue;
         ++armed;
+        if (activePlaylistLocked(*t))
+            block("playlist_locked", "Active Playlist is locked", t);
         const auto q = recordingQuery(*t);
         const auto type = trackType(*t);
         if (loop && type != "audio")

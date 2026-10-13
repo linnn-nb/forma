@@ -1,3 +1,34 @@
+# P1：单轨 Playlist / Comp（2026-10-13）
+
+结论：当前Release主程序构建与固定本地deep/strict验签通过；6组共400项检查最终通过，无JUCE断言。本增量完成列表管理、Take登记、源区间提升与真实波形面板，完整P1继续推进多来源/关联多轨和交叉淡化。没有新SDK补丁、依赖或DMG。
+
+## 操作与验收范围
+
+运行 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，选择音频轨，Option+L打开Playlists。新建Comp复制所选列表且不改变播放/目标；选候选→设为目标；在另一个Take波形拖选→提升选区（Ctrl+Option+U）。用于播放为Ctrl+Option+P，登记Take为Ctrl+Option+K，Cmd+Z/Cmd+Shift+Z撤销/重做。命令514–524全部有默认可改快捷键；Ctrl+Option+C仍是原轨道颜色，创建Comp使用Cmd+Ctrl+Option+C。编辑默认保留原媒体，保存重开恢复列表与历史。
+
+实际原生窗口：成功新建Comp（r30）、设目标（r31）、切换播放（r32）、Undo（r33）、Redo（r34）；MacBook Pro扬声器48k/512帧真实走带和非零Master电平可见，随后停止。保存 `GUI-Comp-verified.tracktionedit`，解析实际文件确认6个Playlist、活动/目标相同、活动3片段，原列表仍在。夹具路径记录于下述专项JSON；音源为测试合成PCM，未冒称人声实录或人工听感。
+
+坐标点击/拖选没有从桌面工具得到有效结果，后续Go To原生路径面板返回零尺寸捕获错误；实体拖选及GUI重开未完成。自动原生组件鼠标事件/按钮/快捷键和跨重开Undo的资格独立记录，不替代实体复验。本轮没有将工具故障写成桌面锁定或Forma崩溃。
+
+## 自动化证据
+
+| 程序 | 检查数 | 实际结果 |
+|---|---:|---|
+| ndaw_playlist_editing_tests | 59 | 通过；3秒144000帧原生渲染，PCM最大误差0，容差2e-6，每次渲染预算10秒 |
+| ndaw_loop_recording_tests | 51 | 修正默认列表断言后通过；比较录前两轨完整Playlist并确认Undo移除原生录音节点 |
+| ndaw_punch_recording_tests | 124 | 通过，18.946秒 |
+| ndaw_clip_tests | 58 | 通过，10.609秒 |
+| ndaw_persistent_history_tests | 65 | 通过，34.949秒 |
+| ndaw_recording_readiness_tests | 43 | 通过，6.368秒 |
+
+可复核输出：`build-v2-tracktion/p1-playlist-editing-tests.json`、`p1-playlist-tests.log`、`p1-playlist-regression-results.json`、`p1-playlist-ndaw_*.log/.json`。Playlist和循环最终复测未单独记录墙钟时长，不补造总耗时。测试入口 `forma_playlist_editing`；不是全仓套件。源码 `PlaylistEditing.cpp`、`PlaylistCommands.cpp`、`WorkspacePlaylists.cpp`、`PlaylistPanel.h`，测试 `tests/v2/PlaylistEditingTests.cpp`。
+
+验证了目标两侧与源gain/fade的真实PCM保持、稳定对象ID、原Take不变、来源哈希、一次事务/幂等、锁定、失效版本、缺失媒体、保存重开后Undo/Redo、GUI同源命令及可改键。测试先发现AudioFile缓存仍把被移走文件判有效，生产入口补实际文件存在性检查后通过。初次循环回归因默认Main由空值变成稳定只读投影失败；改为比较录前状态和原生节点移除，没有放宽媒体/Undo断言。
+
+范围：单来源片段、单轨、绝对时间、正常速度、gain fade；Clip FX、速度淡化/伸缩/变调/循环、编辑组及多来源/关联多轨尚未资格。实体麦克风、人工听感、Windows、耐久、发行公证与性能A仍未通过。当前二进制SHA256：`f1b7f284b329470b4c682f0761eaaccad12dbaa8c5724d27384ee8620133ceb6`。
+
+## 历史：此前循环/Punch增量
+
 # P1：循环音频与选区 Punch（2026-10-13）
 
 结论：Release构建与固定本地deep/strict验签通过；受影响10组1202项检查通过，最终子套件累计138.404秒，0失败/0JUCE断言。这是P1第二个可运行增量，完整Playlist管理/Comp和交叉淡化未完成。Mac锁定，实体操作、麦克风录音及试听未执行。无DMG、音频上传或新性能对照。

@@ -1,3 +1,9 @@
+> 2026-10-13 Playlist增量：本表仍是工作流参考，不是Pro Tools全量验收门槛。单轨列表管理/原Take保留/选区提升/一次Undo已在Tracktion实现；未做Pro Tools实机对照，不宣称等价。
+
+| 当前v2项 | 实现/测试证据 | 验收与剩余差距 | 状态 |
+|---|---|---|---|
+| Playlist管理、Take源区间、单轨Comp | src/v2/PlaylistEditing.cpp、ui/PlaylistPanel.h；tests/v2/PlaylistEditingTests.cpp；evidence/P1/summary.md | Option+L→新建/目标→拖选提升→播放→Undo→保存重开；59专项和341相关检查通过，部分实体操作已验；拖选实体复验、多来源/关联多轨、边界交叉淡化待完成；无新外部依赖 | 部分实现 |
+
 > 2026-10-13：用户已授权P1，本表只作交互/工作流参考。Tracktion音频循环与选区Punch部分实现；连续源/原Playlist保留，循环下限2秒。Punch不等于QuickPunch/TrackPunch/DestructivePunch。实体录音、设备PDC、完整Comp及交叉淡化未验/未完成。下方v1实现与旧暂停只作行为规格和追溯，不代表v2资格。
 
 | 当前v2项 | 代码/测试证据 | 验收/差距 | 状态 |

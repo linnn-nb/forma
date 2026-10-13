@@ -1,3 +1,11 @@
+# P1 Playlist / Comp 架构补充（2026-10-13）
+
+单轨 Playlist 管理和源区间提升已接通。`src/v2/PlaylistEditing.cpp` 是唯一写入口：create/rename/target/lock/select/take.register/promote 均在 message thread 经 Plan 和原生 UndoManager 提交。`AudioTrack/NDAW_PLAYLISTS` 保存非活动原生 Clip 状态；活动内容只存在 Tracktion 轨道，未建立第二个播放引擎或影子片段库。尚未编辑过的音频轨只读投影稳定的 `main:<track ID>`，第一次写入才物化节点。
+
+`queryPlaylists` 按需查询非活动列表供原生 `PlaylistPanel` 绘制实际源波形；常规工程 facts 不展开所有非活动片段。GUI 草稿绑定 session/revision，提交前再次校验；媒体指纹覆盖源/目标实际文件。Comp 只替换明确采样区间，保留目标两侧、源 Take、实际 gain/fade 和来源记录；区间切片沿用 Punch 的源锚定淡化。新建候选不切换播放，也不改目标。
+
+本增量无新 SDK 补丁或依赖。当前资格是正常速度、绝对时间音频与 gain fade；伸缩/变调/循环、Clip FX、编辑组与多来源批量/关联多轨 Comp 仍待后续补齐。每项测试、音频与实体 GUI 范围见 `evidence/P1/summary.md`。以下保留历史架构记录。
+
 # P1 Punch 架构补充（2026-10-13）
 
 选区 Punch 复用 Tracktion 输入、录音图、writer 和渲染；L1 `PunchCommands.cpp` / `RecordingCommands.cpp` 在 message thread 配置并结束一次多轨事务。选区是替换范围，前后卷扩展为连续采集范围；录音生成完整源 Take 和独立补录 Playlist，原列表保留。提前停止仅替换实录交集，尚未到入点时只保留 Take。正常音频录音附件统一为采样时间基准，避免新录片段不能再次补录。

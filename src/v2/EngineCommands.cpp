@@ -402,6 +402,7 @@ Json Commands::registry()
     registerPanCommands(result);
     registerAutomationCommands(result);
     registerRecordingCommands(result);
+    registerPlaylistCommands(result);
     registerAudioDeviceCommands(result);
     result.push_back({{"id", "audio.meters.reset"},
                       {"schema", {{"type", "object"}, {"properties", Json::object()}, {"additionalProperties", false}}},
@@ -675,7 +676,14 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
     {
         auto cmd = op.at("command").get<std::string>();
         auto& a = op.at("args");
-        if (cmd == "session.import_legacy")
+        if (cmd.starts_with("playlist."))
+        {
+            const auto fingerprint = playlistMediaFingerprint(a);
+            if (a.contains("media_fingerprint"))
+                require(a["media_fingerprint"] == fingerprint, "Playlist media changed since planning");
+            a["media_fingerprint"] = fingerprint;
+        }
+        else if (cmd == "session.import_legacy")
         {
             auto report = prepareLegacy(file(a.at("path")))["report"];
             for (const char* key : {"document_hash", "dependencies_hash"})
@@ -895,7 +903,7 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
                     "clipboard snapshot expired or unavailable to this actor");
         auto reg = registry();
-        if (cmd == "playlist.select" || cmd == "transport.punch.set")
+        if (cmd.starts_with("playlist.") || cmd == "transport.punch.set")
             require(actor == "human", "Playlist selection is a local GUI command");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
         require(entry != reg.end() && a.is_object(), "unknown command");
@@ -1026,7 +1034,7 @@ Json Commands::preview(const Json& plan) const
         {
             // Whole-Plan clip preflight below tracks source mapping, locks and local IDs.
         }
-        else if (cmd == "track.input" || cmd == "track.arm" || cmd == "track.monitor" || cmd == "playlist.select")
+        else if (cmd == "track.input" || cmd == "track.arm" || cmd == "track.monitor" || cmd.starts_with("playlist."))
         {
             // Whole-Plan input validation below.
         }
@@ -1104,7 +1112,7 @@ Json Commands::preview(const Json& plan) const
     const auto panDiff = validatePanPlan(ops);
     const auto clipDiff = validateClipPlan(ops);
     validateRecordingPlan(ops);
-    validatePlaylistPlan(ops);
+    const auto playlistDiff = validatePlaylistPlan(ops);
     const auto automationDiff = validateAutomationPlan(ops);
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
@@ -1129,6 +1137,7 @@ Json Commands::preview(const Json& plan) const
                 {"transport_changes", transportDiff},
                 {"marker_changes", markerDiff},
                 {"group_changes", groupDiff},
+                {"playlist_changes", playlistDiff},
                 {"legacy_imports", legacyDiff}};
     if (plan.contains("timeline_range_nudge"))
         result["timeline_range_nudge"] = plan["timeline_range_nudge"];
@@ -1203,7 +1212,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.create" || op.at("command") == "track.parent" ||
             op.at("command") == "track.order" || op.at("command") == "track.delete" ||
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
-            op.at("command") == "track.monitor" || op.at("command") == "playlist.select" ||
+            op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("playlist.") ||
             (op.at("command").get<std::string>().starts_with("midi.") &&
              !op.at("command").get<std::string>().starts_with("midi.note.")) ||
             op.at("command").get<std::string>().starts_with("timeline.clips.") ||
@@ -1292,8 +1301,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                 }
                 executeClipOperation(cmd, resolved, objects, musicAliases);
             }
-            else if (cmd == "playlist.select")
-                selectPlaylist(*track(a.at("track")), a.at("playlist"));
+            else if (cmd.starts_with("playlist."))
+                executePlaylistOperation(cmd, a, objects);
             else if (cmd == "track.input" || cmd == "track.arm" || cmd == "track.monitor")
             {
                 auto resolved = a;

@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现音频循环与选区Punch，以v1行为测试为规格，保留连续源文件、原Playlist、短末轮与补录结果；下一项完整Playlist/Comp。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
+- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现音频循环与选区Punch，以v1行为测试为规格，保留连续源文件、原Playlist、短末轮与补录结果；单轨Playlist管理与区间Comp已实现并自动验证；下一项v1多来源候选及关联多轨Comp，再做交叉淡化。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
 - 历史U/P0试用（不是当前性能构建）：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。
@@ -26,6 +26,7 @@
 - 合成按钮 triggerClick 是异步消息；自动化测试等待实际通知/回执并设时限，不用固定短睡眠当完成，也不重发点击或私调回调作为兜底。
 - 不伪造波形、播放、电平或模型执行结果。未实测明确标注；媒体原件不可覆盖。
 - M0 中止关口是两个工作轮；M1 验收后删除架构第 9 节的退役模块。v1 历史保存在本地 v1-legacy-engine 标签。
+- 复用当前 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，不复制命名预览包；旧预览已按用户要求清理，历史文档中的预览路径不保证存在。
 - 每个可构建步骤提交 Git；证据只保留 evidence/<milestone>/summary.md 与关键输出；每个 P 级一份精简证据与真实截图，只跑受影响测试；级别完成才全量回归和打包。
 - 付费、上传音频、系统安全修改、覆盖用户原始文件须授权。公开发布须用户明确授权。仓库重构和已授权依赖无需重复询问。
 

@@ -79,6 +79,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSeparator();
         for (int id = 230; id <= 235; ++id)
             addMenuCommand(p, id);
+        juce::PopupMenu playlists;
+        for (int id = 514; id <= 524; ++id)
+            addMenuCommand(playlists, id);
+        p.addSubMenu(text("Playlists / Comp"), playlists);
         addMenuCommand(p, 513);
         addMenuCommand(p, 511);
         addMenuCommand(p, 512);
@@ -300,6 +304,11 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return audioImportPanel->handleKey(key);
     if (keyboardSettings && keyboardSettings->isVisible())
         return keyboardSettings->keyPressed(key);
+    if (playlistPanel && playlistPanel->isVisible() && key == juce::KeyPress::escapeKey)
+    {
+        playlistPanel->execute(524);
+        return true;
+    }
     if (fadesPanel && fadesPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
     if (rollPanel && rollPanel->isVisible() && key == juce::KeyPress::escapeKey)
@@ -448,6 +457,8 @@ void Workspace::resized()
         exportPanel->setBounds(getLocalBounds());
     if (zoomTogglePanel)
         zoomTogglePanel->setBounds(getLocalBounds());
+    if (playlistPanel)
+        playlistPanel->setBounds(8, 168, getWidth() - 16, getHeight() - 205);
     if (fadesPanel)
         fadesPanel->setBounds(getLocalBounds());
     if (rollPanel)

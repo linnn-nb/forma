@@ -17,6 +17,13 @@ public:
     {
         return w.commands;
     }
+    static bool hasStoredPlaylists(Commands& c)
+    {
+        for (auto* track : te::getAudioTracks(*c.edit))
+            if (track->state.getChildWithName("NDAW_PLAYLISTS").isValid())
+                return true;
+        return false;
+    }
     static void select(ndaw::desktop::Workspace& w, const std::string& id)
     {
         w.refresh();
@@ -201,6 +208,8 @@ int main(int argc, char** argv)
                             op("track.arm", {{"track", "$a"}, {"enabled", true}}),
                             op("track.arm", {{"track", "$b"}, {"enabled", true}})}));
         const auto originals = c.query()["tracks"][0]["clips"];
+        const auto originalPlaylistsA = c.query()["tracks"][0]["playlists"];
+        const auto originalPlaylistsB = c.query()["tracks"][1]["playlists"];
         const std::string a = c.query()["tracks"][0]["id"];
         run(c, Json::array({op("session.range.set", {{"start_samples", 37}, {"end_samples", 24037}}),
                             op("transport.loop.set", {{"enabled", true}})}));
@@ -253,7 +262,9 @@ int main(int argc, char** argv)
         }
         c.undo(receipt["plan_id"]);
         check(c.query()["tracks"][0]["clips"] == originals && c.query()["tracks"][1]["clips"].empty() &&
-                  c.query()["tracks"][0]["playlists"]["items"].empty(),
+                  c.query()["tracks"][0]["playlists"] == originalPlaylistsA &&
+                  c.query()["tracks"][1]["playlists"] == originalPlaylistsB &&
+                  !RecordingTestAccess::hasStoredPlaylists(c),
               "one Undo restores original clips and removes complete multi-track Take attachment");
         c.redo();
         check(c.query()["tracks"][0]["clips"] == recordedTracks[0]["clips"] &&

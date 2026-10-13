@@ -1,3 +1,11 @@
+# P1 Playlist 编辑契约（2026-10-13）
+
+新增 human/local_gui 命令：`playlist.create {track,name,role,source?}`、`playlist.rename {track,playlist,name}`、`playlist.target/select {track,playlist}`、`playlist.lock {track,playlist,locked}`、`playlist.take.register {track,source,clip,name}`、`playlist.promote {track,source,target,clip,start_samples,end_samples}`。create 的 role 是 main/comp；source 省略表示空列表，否则复制原生片段并分配新 ID。新列表不改变当前播放或 target。
+
+每项是停止状态、单操作 Plan、一次可撤销事务；makePlan 补入封闭 `media_fingerprint`，preview/commit 重查文件与 revision。所有范围为 48000 Hz 工程采样，源实际格式独立保留。预览 `playlist_changes` 列出替换片段与范围；提交回执 objects 返回真实新对象，重复提交只回放已提交结果。失效媒体、锁定目标、越界源、过期草稿均拒绝，不改原 Take。
+
+Take 登记记录 source_interval、原列表/片段/源偏移/媒体哈希和版本，不能称为麦克风实录；Comp 片段记录实际 source_playlist/source_clip、区间和媒体哈希。持久 Undo/Redo 已通过保存重开测试。L5 只查询和生成命令；本轮不扩充 MCP 或 Agent 权限。多来源候选与关联多轨事务下一步实现。
+
 # P1 Punch 命令补充（2026-10-13）
 
 `transport.punch.set {enabled}`：human/local_gui、停止状态、版本校验、一笔 Undo；启用须有当前时间选区，并在同笔事务关闭 Loop，反向启用 Loop 也关闭 Punch。变更预览列出连带模式变化。GUI 检查器和可改键命令513（默认 Option+P）共用此入口，未扩充 MCP/Agent 权限。

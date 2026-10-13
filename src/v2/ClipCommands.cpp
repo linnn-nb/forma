@@ -124,7 +124,9 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
             {"fade_out_samples", sample(c.getFadeOut().inSeconds())},
             {"fade_in_curve", curveName(c.getFadeInType())},
             {"fade_out_curve", curveName(c.getFadeOutType())},
-            {"locked", bool(c.state.getProperty("ndaw_locked", false))},
+            {"locked", bool(c.state.getProperty("ndaw_locked", false)) ||
+                           (dynamic_cast<te::AudioTrack*>(c.getTrack()) &&
+                            activePlaylistLocked(*static_cast<te::AudioTrack*>(c.getTrack())))},
             {"plugins", processorQuery(*c.getPluginList())},
             {"clip_fx_count", c.getPluginList()->size()},
             {"offline_clip_effects", c.effectsEnabled()},

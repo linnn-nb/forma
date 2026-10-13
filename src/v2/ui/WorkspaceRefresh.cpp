@@ -439,6 +439,8 @@ void Workspace::refresh()
         readOnly.mode = Permission::ReadOnly;
         resetCommandClient(readOnly);
         selected.clear();
+        if (playlistPanel)
+            playlistPanel->setVisible(false);
         if (fadesPanel)
             fadesPanel->setVisible(false);
         if (rollPanel)
@@ -516,6 +518,17 @@ void Workspace::refresh()
                 message(text("设备配置失败：") + text(receipt.value("error", std::string{})));
             else if (receipt["state"] == "preparing")
                 message(text("实际设备正在准备 · 等待音频回调回执"));
+        }
+    }
+    if (playlistPanel && playlistPanel->isVisible())
+    {
+        try
+        {
+            playlistPanel->bind(commands.queryPlaylists(playlistPanel->trackID()));
+        }
+        catch (const std::exception&)
+        {
+            playlistPanel->setVisible(false);
         }
     }
     commands.queryFacts();

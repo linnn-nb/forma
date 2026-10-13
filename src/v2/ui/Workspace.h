@@ -23,6 +23,7 @@
 #include "RollPanel.h"
 #include "AudioImportPanel.h"
 #include "FadesPanel.h"
+#include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
 #include "../TimelineState.h"
@@ -161,6 +162,8 @@ private:
     void restoreZoom();
     void executeZoomToggle(int);
     void followZoomToggle();
+    void showPlaylists();
+    std::unique_ptr<PlaylistPanel> playlistPanel;
     void showFades();
     std::unique_ptr<FadesPanel> fadesPanel;
     void showRollSettings();

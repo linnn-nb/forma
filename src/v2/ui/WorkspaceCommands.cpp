@@ -215,6 +215,21 @@ const std::vector<Entry>& entries()
         {233, "所选轨道监听 Auto（待命时）", "录音"},
         {234, "所选轨道监听 On", "录音"},
         {235, "轨道录音与输入设置…", "录音", 'r', cmd | juce::ModifierKeys::altModifier},
+        {514, "Playlists / Comp…", "Playlist", 'l', juce::ModifierKeys::altModifier},
+        {515, "新建空 Playlist", "Playlist", 'n', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {516, "复制 Playlist", "Playlist", 'd', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {517, "重命名 Playlist", "Playlist", 'r', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {518, "设为目标 Playlist", "Playlist", 't', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {519, "提升选区到目标 Playlist", "Playlist", 'u',
+         juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {520, "新建 Comp 候选", "Playlist", 'c',
+         cmd | juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {521, "登记源片段 Take", "Playlist", 'k', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {522, "锁定 / 解锁 Playlist", "Playlist", 'l',
+         juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {523, "所选 Playlist 用于播放", "Playlist", 'p',
+         juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+        {524, "关闭 Playlists", "Playlist", 'w', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
         {513, "切换 Punch 补录", "录音", 'p', juce::ModifierKeys::altModifier},
         {511, "上一个 Playlist / Take", "录音", '[', juce::ModifierKeys::altModifier},
         {512, "下一个 Playlist / Take", "录音", ']', juce::ModifierKeys::altModifier},
@@ -879,6 +894,16 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     info.setTicked(std::all_of(targets.begin(), targets.end(),
                                                [](const auto& t) { return t["input"]["armed"].template get<bool>(); }));
             }
+            if (id == 514)
+            {
+                active = false;
+                for (const auto& t : arrayField(facts, "tracks"))
+                    if (t["id"] == selected && t.value("type", std::string{}) == "audio")
+                        active = !facts.value("playing", false);
+            }
+            if (id >= 515 && id <= 524)
+                active = playlistPanel && playlistPanel->isVisible() && playlistPanel->canExecute(id) &&
+                         (id == 524 || !facts.value("playing", false));
             if (id == 513)
             {
                 info.setTicked(facts["transport_settings"].value("punch_enabled", false));
@@ -1150,6 +1175,17 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id >= 230 && id <= 235)
     {
         executeRecordingCommand(id);
+        return true;
+    }
+    if (id == 514)
+    {
+        invoke([&] { showPlaylists(); });
+        return true;
+    }
+    if (id >= 515 && id <= 524 && playlistPanel && playlistPanel->isVisible())
+    {
+        playlistPanel->execute(id);
+        commandManager.commandStatusChanged();
         return true;
     }
     if (id == 513)

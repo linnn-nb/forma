@@ -30,6 +30,7 @@ public:
     explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
     ~Commands();
     Json query() const;
+    Json queryPlaylists(const std::string& trackID) const;
     const Json& queryFacts() const;
     struct RealtimeState
     {
@@ -390,7 +391,11 @@ private:
     std::string inputAvailability(const te::InputDevice*) const;
     Json recordingReadiness() const;
     Json playlistQuery(te::AudioTrack&) const;
-    void validatePlaylistPlan(const Json&) const;
+    Json validatePlaylistPlan(const Json&) const;
+    static void registerPlaylistCommands(Json&);
+    std::string playlistMediaFingerprint(const Json&) const;
+    void executePlaylistOperation(const std::string&, const Json&, Json&);
+    bool activePlaylistLocked(te::AudioTrack&) const;
     void selectPlaylist(te::AudioTrack&, const std::string&);
     void makeLoopPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
     juce::ValueTree ensurePlaylists(te::AudioTrack&);
