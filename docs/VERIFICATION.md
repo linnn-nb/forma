@@ -1,3 +1,7 @@
+P1 本轮结论（2026-10-13）：Release/固定本地 deep-strict 签名通过；12 套件中 11 套、1,291 项通过，混合剪贴板 PARAMETER_BASES 重复 ID 失败，未通过完整 P1。最终构建原生桌面长度编辑/Undo/Redo/移除已验；实听、硬件与全流程未验。版本绑定与实时插入点修复、新夹具及全部失败记录见 [P1证据](../evidence/P1/summary.md)。
+
+P1-CROSSFADE-01（2026-10-13）：CrossfadeEditing.cpp、CrossfadePanel.h、EditWindow.h；测试 CrossfadeTests.cpp，受影响 Clip/GroupTransform/PlaylistEditing/Punch/EditorInteraction/PersistentHistory/PlaylistAudition。测试真实 PCM/WAV、线性/等功率曲线、源 envelope 相乘、多麦极性抵消、同一事务/幂等/Scope/锁定/不足余量/三重重叠、双端过渡、保存/重开/原历史、坏配对拒绝、原生异步按钮/Smart拖动/Command F/取消/改键。预算：每次渲染10秒，线性及状态恢复误差2e-6、曲线2e-4（沿用原 Native fade 测试），新套件120秒。没有实体试听、PDC、耐久或性能 A 新结论；实际输出见 evidence/P1/summary.md。
+
 P1-PLAYLIST-AUDITION-01（2026-10-13）：代码 src/v2/PlaylistAudition.cpp、PlaylistEditing.cpp、SelectionOutputGate.h、ui/PlaylistPanel.h；测试 tests/v2/PlaylistAuditionTests.cpp 与 PersistentHistoryTests.cpp。核验非活动 Take、活动来源、未提交单/多轨段、轨道增益/Read 曲线、来源/路由排除、精确输出边界、完成/取消回位与停止静音、普通播放恢复、循环/节拍器设置保留、缺失媒体/旧版本/重叠拒绝、原生按钮/两段前后切换/空格和可改键、保存重开 Undo/Redo。数值窗口按实际音频回调采样边界，不能使用有滞后的 GUI 走带时间；音频容差 2e-6 不变。实际结果及失败复测见 evidence/P1/summary.md；没有宣称实机听感/PDC或完整 P1 通过。
 
 # P1 关联 Comp 整组移动（2026-10-13）

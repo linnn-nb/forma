@@ -269,6 +269,8 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        // Outside-L1 fixture edits intentionally start a new, history-free import.
+        xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         byID(*xml, audio)->setAttribute("qualification_extra", "retained-audio-state");
         auto* seq = byID(*xml, midi)->getChildByName("SEQUENCE");
         byID(*xml, midi)->setAttribute("qualification_extra", "retained-MIDI-state");

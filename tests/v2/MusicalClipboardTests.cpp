@@ -203,6 +203,8 @@ int main(int argc, char** argv)
                 const auto raw = caseFolder.getChildFile("Raw.tracktionedit");
                 c.save(raw);
                 auto xml = juce::XmlDocument::parse(raw);
+                // Keep deliberate fixture edits separate from validated saved history.
+                xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
                 if (ramp)
                     ramps(*xml);
                 auto* marked = byID(*xml, points(c, source)[1]["id"]);

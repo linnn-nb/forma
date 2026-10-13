@@ -203,6 +203,9 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        // This is a deliberately edited import fixture, not a saved Undo stack.
+        // Its native XML changes must not retain an incompatible history hash.
+        xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         auto* first = byID(*xml, selected[0].get<std::string>());
         auto* second = byID(*xml, selected[1].get<std::string>());
         first->setAttribute("b", 1.999999876543);
@@ -434,6 +437,16 @@ int main(int argc, char** argv)
         pump();
         selectSource();
         canvas->restoreSelection(selected);
+        pump();
+        const auto clipboardBeforeInterleave = c.clipboard();
+        c.commit(c.makePlan("human", Json::array({operation("track.gain", {{"track", owner}, {"db", -17.}})})));
+        // An external query republishes L1's facts without rebinding the piano.
+        const auto interleaved = c.query();
+        check(w.uiCommands().invokeDirectly(editCommand::copy, false), "stale MIDI Copy reaches the shared command");
+        check(c.query() == interleaved && c.clipboard() == clipboardBeforeInterleave &&
+                  AudioDeviceTestAccess::status(w).find("refresh changed project") != std::string::npos,
+              "MIDI clipboard validates the displayed revision after a concurrent facts query");
+        c.undo();
         pump();
         auto lockedXML = juce::XmlDocument::parse(imported);
         byID(*lockedXML, destination)->setAttribute("ndaw_locked", true);

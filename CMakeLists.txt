@@ -81,7 +81,7 @@ add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePlugi
     src/v2/MidiClipMove.cpp src/v2/MidiClipTrim.cpp src/v2/EngineCommands.cpp src/v2/PersistentHistory.cpp src/v2/TransportCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupCommands.cpp src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/MarkerCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/PunchCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -1035,3 +1035,10 @@ target_include_directories(ndaw_playlist_audition_tests PRIVATE src/v2)
 target_link_libraries(ndaw_playlist_audition_tests PRIVATE ndaw_ui)
 add_test(NAME forma_playlist_audition COMMAND ndaw_playlist_audition_tests "${CMAKE_BINARY_DIR}/playlist-audition-tests.json")
 set_tests_properties(forma_playlist_audition PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_crossfade_tests PRODUCT_NAME "ndaw_crossfade_tests")
+target_sources(ndaw_crossfade_tests PRIVATE tests/v2/CrossfadeTests.cpp)
+target_include_directories(ndaw_crossfade_tests PRIVATE src/v2)
+target_link_libraries(ndaw_crossfade_tests PRIVATE ndaw_ui)
+add_test(NAME forma_crossfade COMMAND ndaw_crossfade_tests "${CMAKE_BINARY_DIR}/crossfade-tests.json")
+set_tests_properties(forma_crossfade PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

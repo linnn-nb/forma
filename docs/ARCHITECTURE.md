@@ -1,3 +1,11 @@
+走带缓存（2026-10-13）：Cmd E 启用/分割、Nudge 和粘贴入口从实时走带状态读插入点；结构 facts 不随每帧位置更新而全量重建，显示版本保护仍独立生效。
+
+GUI 版本保护（2026-10-13）：Workspace 借用 L1 facts 缓存以避免全量拷贝，另存实际绑定视图的 revision；只有 refresh 完成绑定后推进该值。外部查询重新发布缓存不能提前推进视图版本。Nudge/Delete、音频/MIDI/自动化剪贴板以绑定版本校验及生成 Plan，过期拒绝后刷新，不覆盖交错人工编辑。
+
+P1 交叉淡化（2026-10-13）：CrossfadeEditing 是 L1 的原生片段/元数据适配器，不是新 DSP 引擎。AudioTrack 的 NDAW_CROSSFADES 保存 schema1 稳定 ID、所属 Playlist、配对 Clip、范围/切点和所拥有边界的恢复快照。当前/非活动列表的引用在采纳 Edit 前校验；缺失媒体保留引用，编辑时另验真实 SHA256。原生 Clip 位置、源偏移、fade 和关联布局共处一个 UndoManager 事务。共享移动更新配对/恢复锚；独立移动/修剪/分割/淡化/删除解除配对，原生坡度按该操作保留或修改，预览声明解除。复制保留声音但尚不重建配对对象，保留为差距。
+
+原生图以独立 FadeInOutNode 相乘继承的源时间 envelope 和当前 Clip-local fade；源曲线在创建过渡前固定，避免被新曲线重解释。扩展既有 render-bus-only SDK 补丁（仍为13份审计补丁）。图准备在非实时线程；不新增实时分配、服务、IPC 或 I/O。GUI CrossfadePanel/EditWindow 只读事实/草稿，所有写入经 L1。
+
 P1 逐段试听（2026-10-13）：L1 PlaylistAudition/PlaylistEditing 准备临时原生片段快照（同一 Engine、forRendering Edit，无独立设备或事实存储），经已审计 Tracktion createNodeForAuditionClips 建立原生源节点。唯一活动 Edit 提供原路由、插件和 Read 自动化；原生输出后的 SelectionOutputGate 使用实际设备采样边界静音与结束。message thread 发布/回收图，停止前原子静音，clearNodes 后释放快照；回调无新增分配/锁/I/O。版本、会话、设备代次和两秒无进展监测返回明确失败。现有 render-bus SDK 补丁扩展，仍为 13 份审计补丁。
 
 历史恢复修复：参数基础值初始化完成后才安装 UndoManager 堆栈，保留已存 Redo 分支；HistoryDelta 维持原顺序，对原生节点提前跨父转移记内部回执，后续移除只消费相同父节点/locator 的实际转移，未知缺失仍拒绝。没有改变工程格式或降低校验。

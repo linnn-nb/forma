@@ -33,7 +33,7 @@ bool Workspace::executeAutomationClipboardCommand(int id)
             if (!parameterContext && id != editCommand::pasteOriginal)
                 throw std::runtime_error("select the actual destination automation parameter view");
             if (!pending.is_null() || workspaceSession != commands.sessionToken() ||
-                facts["revision"] != commands.querySummary()["revision"])
+                workspaceRevision != commands.querySummary()["revision"])
                 throw std::runtime_error("finish preview or refresh changed project before automation editing");
             auto targets = automationRangeTargets();
             auto captured = buffer;
@@ -49,7 +49,7 @@ bool Workspace::executeAutomationClipboardCommand(int id)
                 if (!remove)
                 {
                     captured =
-                        commands.prepareAutomationClipboard(targets, first, last, workspaceSession, facts["revision"]);
+                        commands.prepareAutomationClipboard(targets, first, last, workspaceSession, workspaceRevision);
                     if (id == editCommand::copy)
                     {
                         commands.acceptClipboard(captured["id"]);
@@ -71,7 +71,7 @@ bool Workspace::executeAutomationClipboardCommand(int id)
                 if (id == editCommand::pasteOriginal)
                     targets = captured["targets"];
                 first = id == editCommand::pasteOriginal ? captured["start_samples"].get<int64_t>()
-                        : selection.range.is_null()      ? facts["position_samples"].get<int64_t>()
+                        : selection.range.is_null()      ? commands.realtimeState().position
                                                          : selection.range["start_samples"].get<int64_t>();
                 last = first + captured["end_samples"].get<int64_t>() - captured["start_samples"].get<int64_t>();
             }
@@ -181,7 +181,7 @@ void Workspace::executeAutomationViewCommand(int id)
             if (o["kind"] == "automation_point")
                 ops.push_back(operation("automation.point.delete",
                                         {{"track", o["track"]}, {"parameter", o["parameter"]}, {"point", o["id"]}}));
-        commitAutomationGesture(ops, facts["revision"], commands.sessionToken());
+        commitAutomationGesture(ops, workspaceRevision, commands.sessionToken());
         return;
     }
     invoke(

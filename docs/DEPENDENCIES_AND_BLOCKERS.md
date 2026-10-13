@@ -1,3 +1,7 @@
+P1 当前阻断：mixed_clipboard 真实混合音频/MIDI粘贴触发 PARAMETER_BASES 重复 ID（含 Clip EQ）。最终构建复测失败，先修克隆/历史注册并验证失败状态，完整 P1 不计通过；无授权或外部依赖需求。原生桌面淡化编辑/撤销已通过，听感与录音硬件资格分开。
+
+P1 交叉淡化（2026-10-13）：依赖提交及许可证不变，既有 Tracktion 图补丁修复源 envelope/本地 fade 的乘法及曲线归属；完整 diff 仍由 CMake 审计。普通速度、绝对时间、gain fade 音频；Clip FX、Warp/反向/变调/循环源和 MIDI 明确待资格。配对对象复制重建、实体录音/试听、完整P1制作回归尚未完成；旧性能 A、180秒自动化矩阵和实体多输入/PDC/耐久限制保留。v1-legacy-engine 的 CompSets.cpp/LinkedCompTests.h 为居中余量、线性/等功率和三重重叠的行为依据，不宣称旧引擎逐位相同。
+
 P1 逐段试听（2026-10-13）：依赖提交/许可证不变；扩展 patches/tracktion-render-bus-only.patch 的原生片段节点构造入口，完整 vendor diff 仍由 CMake 字节审计（13 份补丁）。不新增插件 IPC、播放器、模型或服务。资格为普通速度、绝对时间音频及 gain-fade，Read、未冻结；hardware insert/rack/sidechain、Clip FX、变调/Warp/循环源明确拒绝，保留后续范围。64 源段、64 路由轨和 16 MiB 快照为显式准备预算。桌面操作本轮启动成功，随后 CUA 连续超时；完整实体试听未通过，不能用 hosted PCM 替代。完整自动化矩阵 180 秒超时及性能 A 保留。
 
 P1 整组移动（2026-10-13）：没有新依赖、SDK 补丁、账户或授权阻塞；沿用固定 Tracktion/JUCE 与本地开发签名。活动关联 Comp 的整体移动、编辑组/自动化跟随和持久历史已接通。Mac 当前锁定，实机鼠标与当前构建重启验收未执行；继续代码和自动回归，不用 CLI 代称实机通过。区间试听、交叉淡化、实体多输入/PDC、其他采样率/耐久、性能 A 及完整 P1 保留。开发构建未公证；复用原有 Forma.app，不复制预览或打包 DMG。

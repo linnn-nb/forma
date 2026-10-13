@@ -12,6 +12,17 @@ public:
     {
         return w.commands;
     }
+    static Json binding(Workspace& w)
+    {
+        return {{"objects", w.selection.objects},
+                {"selected", w.selected},
+                {"revision", w.workspaceRevision},
+                {"view", w.commands.uiState()}};
+    }
+    static void refresh(Workspace& w)
+    {
+        w.refresh();
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -75,9 +86,12 @@ void click(Workspace& w, const juce::String& id)
 }
 void key(Workspace& w, char k, bool alt = false)
 {
-    check(w.keyPressed(
-              juce::KeyPress(k, juce::ModifierKeys::commandModifier | (alt ? juce::ModifierKeys::altModifier : 0), k)),
-          "native global clipboard shortcut accepted");
+    const bool invoked = w.keyPressed(
+        juce::KeyPress(k, juce::ModifierKeys::commandModifier | (alt ? juce::ModifierKeys::altModifier : 0), k));
+    if (!invoked)
+        std::cout << "CLIPBOARD_INACTIVE key=" << k << " binding=" << AudioDeviceTestAccess::binding(w).dump()
+                  << std::endl;
+    check(invoked, "native global clipboard shortcut accepted");
 }
 Json run(Commands& c, Json ops)
 {
@@ -100,12 +114,14 @@ void objects(Workspace& w, Commands& c, Json ids)
                     tracks.push_back(t["id"]);
             }
     c.updateUiState({{"object_selection", refs}, {"selection_tracks", tracks}}, c.sessionToken());
+    AudioDeviceTestAccess::refresh(w);
     pump();
 }
 void range(Workspace& w, Commands& c, int64_t first, int64_t last, Json tracks)
 {
     run(c, Json::array({operation("session.range.set", {{"start_samples", first}, {"end_samples", last}})}));
     c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", tracks}}, c.sessionToken());
+    AudioDeviceTestAccess::refresh(w);
     pump();
 }
 void cursor(Workspace& w, Commands& c, int64_t at, const std::string& track)
@@ -336,11 +352,14 @@ int main(int argc, char** argv)
         check(c.query()["tracks"] == overwriteBefore["tracks"],
               "overwrite Paste and interval splitting share one Undo");
         objects(w, c, Json::array({pa["id"]}));
-        const auto stale = c.query();
-        run(c, Json::array({operation("clip.move", {{"clip", pa["id"]}, {"position_samples", 301000}})}));
+        const auto previousClipboard = c.clipboard();
+        c.commit(c.makePlan("human",
+                            Json::array({operation("clip.move", {{"clip", pa["id"]}, {"position_samples", 301000}})})));
+        // No event pump: publish facts without refreshing the displayed geometry.
         const auto human = c.query();
         w.keyPressed(juce::KeyPress('x', juce::ModifierKeys::commandModifier, 'x'));
-        check(c.query()["tracks"] == human["tracks"] && c.query()["revision"] == human["revision"],
+        check(c.query()["tracks"] == human["tracks"] && c.query()["revision"] == human["revision"] &&
+                  c.clipboard() == previousClipboard,
               "stale UI Cut cannot overwrite an interleaved human clip move before timer refresh");
         w.uiCommands().invokeDirectly(6, false);
         run(c, Json::array({operation("clip.lock", {{"clip", pa["id"]}, {"locked", true}})}));

@@ -1,3 +1,40 @@
+# P1：真实交叉淡化与过期界面保护（2026-10-13）
+
+结论：Release 主程序构建及固定本地 deep/strict 验签通过；12 个受影响套件中 11 个通过，共 1,291 项，0 JUCE 断言；mixed_clipboard 在 3.760 秒失败，完整 P1 未验收。最终子套件累计 170.387 秒，不是性能指标或全仓回归；各时限和数值容差没有放宽。
+
+亲手试：当前 Forma.app 已打开自有 Crossfade-Demo 工程。跨相邻切点选择范围后 Command F，或选轨 Control Command F；选线性/等功率、输入长度，Command Return 提交，Command Z/Shift Command Z 撤销/重做。Smart Tool 拖动双曲线框边界改变范围，双击打开面板；Control Shift Command F 移除。均可改键并随工程保存，Undo/Redo 历史保存重开专项已验。配对对象复制重建尚未实现，复制保留原生音频坡度；不据此宣称完整交叉淡化工作流或完整 P1 通过。
+
+实现：CrossfadeEditing.cpp 的 playlist.crossfade / remove、源哈希/余量/锁定/三重重叠预检；同一 L1 事务更新原生片段、偏移、fade、稳定配对 ID 和关联 Comp 布局。Edit 组/关联多麦共用切点，成员外边界保持；共同移动保留配对，独立结构编辑解除配对并在预览声明。CrossfadePanel.h / EditWindow.h 只读事实与草稿，写入仍经 L1。原生 FadeInOutNode 相乘源时间 envelope 和 Clip-local transition；既有 render-bus-only 补丁扩展，CMake 仍审计完整 13 份锁定 SDK 补丁，无新增依赖、实时 I/O/锁/分配或插件 IPC。
+
+| 套件 | 检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| crossfade | 75 | 6.806 | 通过 |
+| clip | 58 | 10.679 | 通过 |
+| group_transform | 99 | 11.838 | 通过 |
+| playlist_editing | 227 | 15.902 | 通过 |
+| punch_recording | 124 | 19.194 | 通过 |
+| editor_interaction | 83 | 11.122 | 通过 |
+| persistent_history | 67 | 36.483 | 通过 |
+| playlist_audition | 98 | 8.019 | 通过 |
+| audio_clipboard | 49 | 7.139 | 通过 |
+| midi_clipboard | 133 | 9.97 | 通过 |
+| mixed_clipboard | 未完成 | 3.76 | 失败 |
+| musical_clipboard | 278 | 29.475 | 通过 |
+
+音频：4 个实际 Tracktion/WAV 渲染；线性最大误差 1.1920928955078125e-7（容差 2e-6），等功率 1.1695968088476505e-7（容差 2e-4），每次渲染预算 10 秒。源 envelope 乘积、多麦相反极性抵消、两端独立过渡与局部移除、原媒体 SHA256、幂等、Scope、坏配对打开拒绝、原生异步按钮/Smart/Command F 与保存重开已验。真实素材导入与实体听感/PDC/硬件录音/耐久不在此次声音资格内。
+
+修复与失败：继承源 envelope 曾覆盖新 fade，改为独立原生节点相乘并固定源曲线。借用 facts 缓存被外部查询提前刷新会掩盖过期 UI 版本，新增只随实际 refresh 绑定推进的 workspaceRevision；Nudge/Delete、音频/MIDI/自动化剪贴板用显示版本校验。Cmd E 与粘贴使用真实走带位置，避免结构缓存的旧光标。Editor 83 项、音频 stale Cut、MIDI 查询交错后 Copy 拒绝均通过。旧 MIDI/混合/音乐时间夹具在修改 XML 后保留已校验历史，GUI 正确拒绝打开；派生夹具现在显式移除历史，正式保存重开校验保持。音频夹具准备视图后显式绑定，适配已取消全量轮询的 UI；未放宽声音、状态或版本断言。
+
+仍失败：修正夹具后 mixed_clipboard 的真实混合粘贴在 PARAMETER_BASES 触发 `duplicate persistent node identity ... BASE:1051:Low-pass freq`；最终链接复测仍失败。下一项先查 Clip EQ 克隆/参数历史注册，补验拒绝后的工程与历史一致性，再推进 P1 跨流程。不能把此失败计作通过或完整 P1 完成。
+
+桌面：最终 SHA256 构建正常退出旧进程后重新启动，原生文件选择器打开自有工程；100→20 ms 提交、Undo 100、Redo 20、移除与 Undo 20 的 r8→r13 回执实际可见。截图在本线程由 CUA 显示，PNG 文件归档未完成。没有播放/听感或实机 Smart 拖动资格。仅自有夹具变化，未覆盖用户原文件；未新增预览包/DMG。
+
+产物：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，主程序 SHA256 `18ae3e068d6724ee175819630ab52af00d13dffe74504478cc6c509c2d8263f0`。固定身份签名有效，不等于 Apple 公证。自有自动 fixture：/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_crossfade_tests/forma-crossfade-aa1a5345e4364a338e8c60f7af13ac76。
+
+可复查输出（忽略的 build 目录）：p1-crossfade-current-results.json；p1-crossfade-release-build.log / p1-crossfade-clock-build.log；p1-crossfade-final-crossfade.json/log；p1-crossfade-final-mixed_clipboard.log；p1-crossfade-regression-results.json（初次 Editor 失败），p1-crossfade-editor-trace-tests.log / p1-crossfade-postfix-editor.log；p1-crossfade-release-*_clipboard.log（旧夹具失败）。旧性能 A、完整自动化矩阵 180 秒超时、实体多输入/其他采样率/MIDI循环Punch/迁移/耐久继续保留。不进入 P2/P3。
+
+以下为此前增量证据。
+
 # P1：来源与候选逐段试听（2026-10-13）
 
 结论：Release 构建、固定本地签名 deep/strict 通过；7 个受影响套件共 862 项通过，停止专项额外 197 项复测通过，0 JUCE 断言。来源选区/所选列表、未创建候选的单/多轨分段、上一段/下一段、空格启动/停止回位可用，532–537 均可改键。试听不改变活动/目标列表或编辑历史。完整 P1 仍缺交叉淡化，实体听感与旧未通过项保留。

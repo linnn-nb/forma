@@ -1,7 +1,7 @@
 # 下一步（2026-10-13）
 
-来源选区、所选 Playlist 和未创建候选分段试听已接通真实 Tracktion 图，上一段/下一段、空格停止回位和可改键共用 L1。临时试听不改变活动列表、原曲线或编辑历史；接受候选继续一笔 Undo/Redo、保存重开。实测与当前限制见 evidence/P1/summary.md。
+交叉淡化已接通真实源余量、线性/等功率、关联 Comp/Edit 组、原生 Command F 面板/Smart 边界拖动及移除，保存重开与统一历史。真实构建、测试输出及失败修复见 evidence/P1/summary.md；不据局部结果宣称完整 P1 通过。
 
-下一项：P1 交叉淡化编辑，复用 Tracktion 原生 fade，主时间线/Comp 的真实波形与手势预览、L1 一笔提交、Undo/Redo、保存重开和可改键。先核验 v1 行为与现有淡化代码，不进入 P2/P3，不追加性能 A 或完整自动化矩阵优化。
+下一项：修复 mixed_clipboard 的 Clip EQ 克隆/参数历史重复 ID，验证失败不损坏工程/历史；随后 P1 跨流程回归（循环→Punch→Take/Playlist→候选Comp→交叉淡化→保存重开/Undo），复验当前原生界面。补齐双片段/Playlist复制时的配对对象重建与尚未资格录音边界，再判断完整 P1 关口；关口前不制作新 DMG、不进入 P2/P3。本轮不追加性能 A 或完整自动化矩阵优化。
 
-BACKLOG：完整自动化矩阵 180 秒预算未通过；实体当前构建试听/CUA 超时复验。其他限制：64 原语/试听源段、普通速度/绝对时间/gain-fade Comp，硬件/rack/sidechain/Clip FX 试听待资格；循环 2 秒下限、MIDI循环/Punch、实体多输入/其他采样率/PDC/耐久、schema1迁移与性能 A。复用现有 Forma.app，不复制预览；完整 P1 才全仓回归/DMG。
+BACKLOG：完整自动化矩阵180秒预算未通过；实体录音/试听与完整制作复验；MIDI循环/Punch、实体多输入/其他采样率/PDC/耐久、schema1迁移与性能 A。原生音频 Comp/交叉淡化对特殊速度、Warp、Clip FX等仍明确拒绝，继续保留完整产品范围。复用现有 Forma.app，不复制预览包。

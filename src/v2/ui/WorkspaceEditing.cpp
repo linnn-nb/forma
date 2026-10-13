@@ -125,14 +125,16 @@ void Workspace::executeEditCommand(int id)
     invoke(
         [&]
         {
-            if (workspaceSession != commands.sessionToken() || facts["revision"] != commands.querySummary()["revision"])
+            if (workspaceSession != commands.sessionToken() || workspaceRevision != commands.querySummary()["revision"])
                 throw std::runtime_error("project changed before editing command; refresh and retry");
-            const auto position = facts["position_samples"].get<int64_t>();
+            // Transport seeks do not rebind structural facts. Use the same live
+            // insertion position as the counter, after checking edit revision.
+            const auto position = commands.realtimeState().position;
             if (midiKeyboardFocus() &&
                 (editCommand::boundaryNudge(id) || id == editCommand::nudgeBack || id == editCommand::nudgeForward))
             {
                 const auto notes = piano.timingSelection();
-                require(!notes.is_null() && notes["revision"] == facts["revision"],
+                require(!notes.is_null() && notes["revision"] == workspaceRevision,
                         "MIDI selection changed before timing edit");
                 const int direction =
                     id == editCommand::nudgeBack || id == editCommand::trimStartBack || id == editCommand::trimEndBack
@@ -244,7 +246,7 @@ void Workspace::executeEditCommand(int id)
                     auto owners = selection.tracks.empty() ? Json::array({selected}) : selection.tracks;
                     commitTimeSelection(
                         {{"start_samples", std::min(anchor, *target)}, {"end_samples", std::max(anchor, *target)}},
-                        owners, facts["revision"], workspaceSession, std::min(anchor, *target));
+                        owners, workspaceRevision, workspaceSession, std::min(anchor, *target));
                     return;
                 }
                 commands.seek(*target);
@@ -520,7 +522,7 @@ void Workspace::executeDeleteCommand()
         [&]
         {
             require(workspaceSession == commands.sessionToken() &&
-                        facts["revision"] == commands.querySummary()["revision"],
+                        workspaceRevision == commands.querySummary()["revision"],
                     "project changed before Delete; refresh and retry");
             require(pending.is_null(), "accept or reject the existing preview before Delete");
             const bool ripple = editing.mode == "shuffle";
@@ -538,7 +540,7 @@ void Workspace::executeDeleteCommand()
             for (const auto& op : plan["operations"])
                 if (op["args"].contains("clip") && !op["args"]["clip"].get<std::string>().starts_with("$"))
                     touched.insert(op["args"]["clip"].get<std::string>());
-            plan["base_revision"] = facts["revision"];
+            plan["base_revision"] = workspaceRevision;
             const auto preview = commands.preview(plan);
             size_t automationImpact = 0;
             for (const auto& change : preview["automation_changes"])
@@ -570,11 +572,88 @@ void Workspace::executeDeleteCommand()
 
 namespace ndaw::desktop
 {
+void Workspace::showCrossfade(Json target)
+{
+    const auto current = commands.query();
+    require(!current.value("playing", false), "请先停止走带");
+    if (target.is_null())
+    {
+        int64_t at = current["position_samples"];
+        if (!selection.range.is_null())
+            at = selection.range["start_samples"].get<int64_t>() +
+                 (selection.range["end_samples"].get<int64_t>() - selection.range["start_samples"].get<int64_t>()) / 2;
+        target = commands.crossfadeTarget(selected, at);
+        if (!selection.range.is_null() &&
+            selection.range["start_samples"].get<int64_t>() <= target["join_samples"].get<int64_t>() &&
+            selection.range["end_samples"].get<int64_t>() >= target["join_samples"].get<int64_t>())
+        {
+            target["start_samples"] = selection.range["start_samples"];
+            target["end_samples"] = selection.range["end_samples"];
+        }
+    }
+    const auto pairs = commands.crossfadePairs(target);
+    if (!crossfadePanel)
+    {
+        crossfadePanel = std::make_unique<CrossfadePanel>(
+            [this](Json ops, uint64_t version, std::string session)
+            {
+                try
+                {
+                    require(commands.sessionToken() == session && commands.query()["revision"] == version,
+                            "工程已修改，请重新打开交叉淡化");
+                    auto plan = commands.makePlan("human", ops);
+                    const auto preview = commands.preview(plan);
+                    const auto receipt = commands.commit(plan);
+                    require(receipt["state"] == "committed", "交叉淡化未提交");
+                    crossfadePanel->setVisible(false);
+                    refresh();
+                    message(text("交叉淡化已提交 · 原媒体保留 · 一次 Undo"));
+                    return std::string{};
+                }
+                catch (const std::exception& e)
+                {
+                    return std::string(e.what());
+                }
+            });
+        addChildComponent(*crossfadePanel);
+        crossfadePanel->connect(commandManager);
+    }
+    if (fadesPanel)
+        fadesPanel->setVisible(false);
+    if (rollPanel)
+        rollPanel->setVisible(false);
+    if (musicEventPanel)
+        musicEventPanel->setVisible(false);
+    crossfadePanel->show(current, std::move(target), pairs.size());
+    crossfadePanel->setBounds(getLocalBounds());
+    crossfadePanel->setVisible(true);
+    crossfadePanel->toFront(true);
+    commandManager.commandStatusChanged();
+}
 void Workspace::showFades()
 {
+    if (crossfadePanel)
+        crossfadePanel->setVisible(false);
     const auto current = commands.query();
     if (current.value("playing", false))
         throw std::runtime_error("请先停止走带");
+    if (!selection.range.is_null())
+    {
+        try
+        {
+            const auto first = selection.range["start_samples"].get<int64_t>(),
+                       last = selection.range["end_samples"].get<int64_t>();
+            auto target = commands.crossfadeTarget(selected, first + (last - first) / 2);
+            if (first <= target["join_samples"].get<int64_t>() && last >= target["join_samples"].get<int64_t>())
+            {
+                showCrossfade();
+                return;
+            }
+        }
+        catch (const std::exception&)
+        {
+        }
+    }
     Json clip = nullptr;
     for (const auto& track : current["tracks"])
         for (const auto& candidate : track["clips"])

@@ -358,6 +358,8 @@ public:
     RollRuler rollRuler;
     std::function<void(Json, uint64_t, std::string)> onRollChange;
     std::function<void()> onRollSettings;
+    std::function<void(Json)> onCrossfadeOpen;
+    std::function<Json(const Json&)> onCrossfadePairs;
     std::function<void(Json, uint64_t)> onLoopRange;
     std::function<void(std::string, int64_t, std::string)> onMusicEvent;
     int rulerHeight() const
@@ -560,7 +562,8 @@ public:
                 continue;
             for (const auto& original : t["clips"])
             {
-                const auto c = GroupedClipDraft::clip(original, drag, dragStart, dragEnd);
+                auto c = GroupedClipDraft::clip(original, drag, dragStart, dragEnd);
+                c = crossfadeDraft(std::move(c));
                 auto rect = clipRect(c, int(i));
                 double start = c["start_samples"].get<int64_t>() / 48000.,
                        length = c["length_samples"].get<int64_t>() / 48000.;
@@ -608,6 +611,43 @@ public:
                 }
             }
         }
+        for (size_t row = 0; row < facts["tracks"].size(); ++row)
+            if (row < controls.size() && controls[row]->isVisible() &&
+                viewParameter(facts["tracks"][row]["id"]).empty())
+                for (auto xf : facts["tracks"][row].value("crossfades", Json::array()))
+                {
+                    if (!drag.is_null() && drag.value("mode", std::string{}).starts_with("crossfade") &&
+                        xf["join_samples"] == drag["crossfade"]["join_samples"])
+                    {
+                        xf["start_samples"] = dragStart;
+                        xf["end_samples"] = dragEnd;
+                    }
+                    auto box = crossfadeRect(xf, int(row));
+                    g.setColour(juce::Colour(0xffe2c17b).withAlpha(.18f));
+                    g.fillRect(box);
+                    g.setColour(juce::Colour(0xffe2c17b));
+                    g.drawRect(box, 1.f);
+                    juce::Path in, out;
+                    const bool power = xf["curve"] == "equal_power";
+                    for (int n = 0; n <= 32; ++n)
+                    {
+                        const float u = n / 32.f, px = box.getX() + box.getWidth() * u;
+                        const float a = power ? std::sin(u * juce::MathConstants<float>::halfPi) : u,
+                                    b = power ? std::cos(u * juce::MathConstants<float>::halfPi) : 1 - u;
+                        if (n == 0)
+                        {
+                            in.startNewSubPath(px, box.getBottom() - a * box.getHeight());
+                            out.startNewSubPath(px, box.getBottom() - b * box.getHeight());
+                        }
+                        else
+                        {
+                            in.lineTo(px, box.getBottom() - a * box.getHeight());
+                            out.lineTo(px, box.getBottom() - b * box.getHeight());
+                        }
+                    }
+                    g.strokePath(in, juce::PathStrokeType(1.5f));
+                    g.strokePath(out, juce::PathStrokeType(1.5f));
+                }
         drawSelection(selection.range, selection.tracks);
         if (!drag.is_null() && dragged)
         {
@@ -616,7 +656,7 @@ public:
                     {{"start_samples", std::min(dragStart, dragEnd)}, {"end_samples", std::max(dragStart, dragEnd)}},
                     rangeTracks());
             else if (drag["mode"] != "fade_in" && drag["mode"] != "fade_out" && drag["mode"] != "loop_start" &&
-                     drag["mode"] != "loop_end")
+                     drag["mode"] != "loop_end" && !drag["mode"].get<std::string>().starts_with("crossfade"))
             {
                 g.setColour(accent().withAlpha(.25f));
                 for (size_t row = 0; row < facts["tracks"].size(); ++row)
@@ -790,6 +830,11 @@ public:
         }
         if (ZoomGesture::isTool(editing.tool) && e.x >= timelineLeft())
             cursor = juce::MouseCursor::CrosshairCursor;
+        if (editing.tool == "smart" && row >= 0 && row < int(facts["tracks"].size()) &&
+            viewParameter(facts["tracks"][size_t(row)]["id"]).empty())
+            for (const auto& xf : facts["tracks"][size_t(row)].value("crossfades", Json::array()))
+                if (crossfadeRect(xf, row).contains(e.position))
+                    cursor = juce::MouseCursor::LeftRightResizeCursor;
         setMouseCursor(cursor);
     }
     void mouseExit(const juce::MouseEvent&) override
@@ -822,6 +867,38 @@ public:
         }
         if (e.x < timelineLeft() || e.x >= getWidth() - 14 || e.y >= getHeight() - 14)
             return;
+        const int xfRow = rowAt(e.y);
+        if (editing.tool == "smart" && !facts.value("playing", false) && xfRow >= 0 &&
+            xfRow < int(facts["tracks"].size()) && viewParameter(facts["tracks"][size_t(xfRow)]["id"]).empty())
+            for (const auto& xf : facts["tracks"][size_t(xfRow)].value("crossfades", Json::array()))
+                if (crossfadeRect(xf, xfRow).contains(e.position))
+                {
+                    if (e.getNumberOfClicks() > 1)
+                    {
+                        if (onCrossfadeOpen)
+                            onCrossfadeOpen(xf);
+                        return;
+                    }
+                    try
+                    {
+                        const auto pairs = onCrossfadePairs ? onCrossfadePairs(xf) : Json::array();
+                        drag = {{"mode",
+                                 e.x < crossfadeRect(xf, xfRow).getCentreX() ? "crossfade_left" : "crossfade_right"},
+                                {"crossfade", xf},
+                                {"pairs", pairs},
+                                {"session", facts["session_token"]},
+                                {"revision", facts["revision"]}};
+                        dragStart = xf["start_samples"];
+                        dragEnd = xf["end_samples"];
+                        return;
+                    }
+                    catch (const std::exception& error)
+                    {
+                        if (onAutomationError)
+                            onAutomationError(error.what());
+                        return;
+                    }
+                }
         const auto axis = coordinates();
         const int row = std::clamp(rowAt(e.y), 0, std::max(0, visibleRows() - 1));
         // macOS Ctrl-left-click is also a popup gesture; the documented Cmd+Ctrl ruler chord wins.
@@ -1073,6 +1150,19 @@ public:
             repaint();
             return;
         }
+        if (!drag.is_null() && drag.value("mode", std::string{}).starts_with("crossfade"))
+        {
+            const auto point = coordinates().sampleAt(e.position.x);
+            const int64_t join = drag["crossfade"]["join_samples"];
+            if (drag["mode"] == "crossfade_left")
+                dragStart = std::clamp(point, int64_t(0), std::min(join, dragEnd - 2));
+            else
+                dragEnd =
+                    std::clamp(point, std::max(join, dragStart + 2), std::llround(te::Edit::maximumLength * 48000.));
+            dragged = true;
+            repaint();
+            return;
+        }
         if (scrubGesture)
         {
             const auto request = scrubMotion.move(e, juce::Time::getMillisecondCounterHiRes());
@@ -1267,6 +1357,20 @@ public:
         }
         if (!dragged || !clipWrite)
             return;
+        if (mode.starts_with("crossfade"))
+        {
+            const auto& xf = captured["crossfade"];
+            if (dragStart != xf["start_samples"] || dragEnd != xf["end_samples"])
+                clipWrite("playlist.crossfade",
+                          {{"track", xf["track"]},
+                           {"left", xf["left"]},
+                           {"right", xf["right"]},
+                           {"start_samples", dragStart},
+                           {"end_samples", dragEnd},
+                           {"curve", xf["curve"]}},
+                          captured["revision"]);
+            return;
+        }
         const auto& original = captured["clip"];
         if (mode == "fade_in" || mode == "fade_out")
         {
@@ -1379,6 +1483,40 @@ public:
     }
 
 private:
+    juce::Rectangle<float> crossfadeRect(const Json& xf, int row) const
+    {
+        const auto axis = coordinates();
+        const float first = axis.pixelAt(xf["start_samples"]), last = axis.pixelAt(xf["end_samples"]);
+        const float width = std::max(12.f, last - first);
+        return juce::Rectangle<float>((first + last - width) / 2, float(rowY(row) + 24), width,
+                                      float(std::max(20, rowHeight(row) - 48)))
+            .getIntersection(juce::Rectangle<float>(float(timelineLeft()), float(rulerHeight()),
+                                                    float(getWidth() - timelineLeft() - 16),
+                                                    float(getHeight() - rulerHeight() - 16)));
+    }
+    Json crossfadeDraft(Json clip) const
+    {
+        if (drag.is_null() || !drag.value("mode", std::string{}).starts_with("crossfade"))
+            return clip;
+        for (const auto& pair : drag["pairs"])
+        {
+            if (clip["id"] == pair["left"])
+            {
+                clip["length_samples"] = dragEnd - clip["start_samples"].get<int64_t>();
+                clip["fade_out_samples"] = dragEnd - dragStart;
+            }
+            if (clip["id"] == pair["right"])
+            {
+                const int64_t delta = dragStart - clip["start_samples"].get<int64_t>();
+                clip["start_samples"] = dragStart;
+                clip["length_samples"] = clip["length_samples"].get<int64_t>() - delta;
+                clip["source_offset_seconds"] = clip.value("source_offset_seconds", 0.) + delta / 48000.;
+                clip["fade_in_samples"] = dragEnd - dragStart;
+            }
+        }
+        return clip;
+    }
+
     void beginTimeSelection(const juce::MouseEvent& e, int64_t point)
     {
         const bool extend = e.mods.isShiftDown();

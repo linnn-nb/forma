@@ -78,11 +78,11 @@ void Workspace::executeClipboardCommand(int id)
         [&]
         {
             require(workspaceSession == commands.sessionToken() &&
-                        facts["revision"] == commands.querySummary()["revision"],
+                        workspaceRevision == commands.querySummary()["revision"],
                     "project changed before clipboard command; refresh and retry");
             require(pending.is_null(), "accept or reject pending preview first");
             pendingClipboard = nullptr;
-            const auto revision = facts["revision"];
+            const auto revision = workspaceRevision;
             Json buffer;
             Json slices = Json::array(), ops = Json::array(), plan = nullptr;
             if (id == editCommand::copy || id == editCommand::cut || id == editCommand::duplicate)
@@ -168,7 +168,7 @@ void Workspace::executeClipboardCommand(int id)
                 const auto length = buffer["end_samples"].get<int64_t>() - origin;
                 const auto point = id == editCommand::duplicate       ? origin + length
                                    : id == editCommand::pasteOriginal ? origin
-                                   : selection.range.is_null()        ? facts["position_samples"].get<int64_t>()
+                                   : selection.range.is_null()        ? commands.realtimeState().position
                                                                       : selection.range["start_samples"].get<int64_t>();
                 require(point >= 0 && point <= std::llround(te::Edit::maximumLength * 48000) - length,
                         "clipboard paste exceeds session bounds");

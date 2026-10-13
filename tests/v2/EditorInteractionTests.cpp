@@ -376,6 +376,10 @@ int main(int argc, char** argv)
         // The command target still holds the pre-move UI snapshot; no event pump.
         w.keyPressed(juce::KeyPress('.', 0, '.'));
         auto* conflictStatus = dynamic_cast<juce::Label*>(find(w, "workspace.status"));
+        if (owner.query() != interleavedMove || !conflictStatus ||
+            !conflictStatus->getText().contains("project changed"))
+            std::cout << "STALE_NUDGE status=" << (conflictStatus ? conflictStatus->getText() : "missing")
+                      << " diff=" << Json::diff(interleavedMove, owner.query()).dump() << std::endl;
         check(owner.query() == interleavedMove && conflictStatus &&
                   conflictStatus->getText().contains("project changed"),
               "Nudge rejects stale clip positions without overwriting an interleaved human move");
@@ -475,7 +479,12 @@ int main(int argc, char** argv)
               "Option Tab returns to previous boundary without an edit transaction");
         owner.seek(82000);
         pump();
-        check(w.keyPressed(juce::KeyPress('e', juce::ModifierKeys::commandModifier, 'e')) && clipFacts(w).size() == 3,
+        const bool splitInvoked = w.keyPressed(juce::KeyPress('e', juce::ModifierKeys::commandModifier, 'e'));
+        if (!splitInvoked || clipFacts(w).size() != 3)
+            std::cout << "SPLIT status=" << (errorStatus ? errorStatus->getText() : "missing")
+                      << " invoked=" << splitInvoked << " facts=" << clipFacts(w).dump()
+                      << " position=" << owner.realtimeState().position << std::endl;
+        check(splitInvoked && clipFacts(w).size() == 3,
               "Cmd E separates real selected audio at playhead without numeric input");
         w.uiCommands().invokeDirectly(6, false);
         check(clipFacts(w) == original, "one Undo restores original clip after split");

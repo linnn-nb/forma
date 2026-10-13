@@ -443,6 +443,8 @@ void Workspace::refresh()
             playlistPanel->setVisible(false);
         if (fadesPanel)
             fadesPanel->setVisible(false);
+        if (crossfadePanel)
+            crossfadePanel->setVisible(false);
         if (rollPanel)
             rollPanel->setVisible(false);
         if (musicEventPanel)
@@ -532,6 +534,7 @@ void Workspace::refresh()
         }
     }
     commands.queryFacts();
+    const auto boundRevision = facts["revision"].get<uint64_t>();
     const auto& rollStatus = facts["transport_settings"]["roll_playback"];
     if (!rollStatus.is_null() && (rollStatus["state"] == "failed" || rollStatus["state"] == "interrupted"))
         message(text(rollStatus.value("error", std::string("native transport interrupted"))));
@@ -791,6 +794,7 @@ void Workspace::refresh()
         resized();
         repaint();
     }
+    workspaceRevision = boundRevision;
     commandManager.commandStatusChanged();
     updateRealtime();
 }

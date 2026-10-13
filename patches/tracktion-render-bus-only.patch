@@ -1,35 +1,53 @@
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-index e37d1e4..978f7c7 100644
+index e37d1e4..2de187b 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-@@ -367,6 +367,13 @@ std::unique_ptr<tracktion::graph::Node> createFadeNodeForClip (AudioClipBase& cl
+@@ -365,22 +365,37 @@ std::unique_ptr<Node> createInsertReturnNode (InsertPlugin&, tracktion::graph::P
+ std::unique_ptr<tracktion::graph::Node> createFadeNodeForClip (AudioClipBase& clip, EditTimeRange clipTimeRangeToUse,
+                                                                std::unique_ptr<Node> node, const CreateNodeParams& params)
  {
-     auto fIn = clip.getFadeIn();
-     auto fOut = clip.getFadeOut();
-+    // Non-destructive source envelope retained by a sliced Punch/Comp clip.
-+    auto inherited = clip.state.getChildWithName ("NDAW_FADE_ORIGIN");
+-    auto fIn = clip.getFadeIn();
+-    auto fOut = clip.getFadeOut();
+-
++    const auto inherited = clip.state.getChildWithName ("NDAW_FADE_ORIGIN");
 +    if (inherited.isValid())
 +    {
-+        fIn = TimeDuration::fromSeconds (double (inherited["in_length"]));
-+        fOut = TimeDuration::fromSeconds (double (inherited["out_length"]));
++        const auto source = clip.getPosition().getStartOfSource();
++        const auto first = source + TimeDuration::fromSeconds (double (inherited["in_origin"]));
++        const auto last = source + TimeDuration::fromSeconds (double (inherited["out_origin"]));
++        const auto fIn = TimeDuration::fromSeconds (double (inherited["in_length"]));
++        const auto fOut = TimeDuration::fromSeconds (double (inherited["out_length"]));
++        const auto inType = static_cast<AudioFadeCurve::Type> (int (inherited.getProperty ("in_curve", int (clip.getFadeInType()))));
++        const auto outType = static_cast<AudioFadeCurve::Type> (int (inherited.getProperty ("out_curve", int (clip.getFadeOutType()))));
++        if (fIn > 0_td || fOut > 0_td)
++            node = makeNode<FadeInOutNode> (std::move (node), params.processState,
++                                            TimeRange (first, first + fIn), TimeRange (last - fOut, last),
++                                            inType, outType, true);
 +    }
- 
++
++    // Clip-local transition ramps multiply the retained source envelope. They
++    // must not replace its lengths or reinterpret its original curve types.
++    const auto fIn = clip.getFadeIn();
++    const auto fOut = clip.getFadeOut();
      if (fIn > 0_td || fOut > 0_td)
      {
-@@ -374,6 +381,12 @@ std::unique_ptr<tracktion::graph::Node> createFadeNodeForClip (AudioClipBase& cl
+         const bool speedIn = clip.getFadeInBehaviour() == AudioClipBase::speedRamp && fIn > 0_td;
          const bool speedOut = clip.getFadeOutBehaviour() == AudioClipBase::speedRamp && fOut > 0_td;
- 
-         auto pos = toTime (clipTimeRangeToUse, clip.edit.tempoSequence);
-+        if (inherited.isValid())
-+        {
-+            const auto source = clip.getPosition().getStartOfSource();
-+            pos = { source + TimeDuration::fromSeconds (double (inherited["in_origin"])),
-+                    source + TimeDuration::fromSeconds (double (inherited["out_origin"])) };
-+        }
+-
+-        auto pos = toTime (clipTimeRangeToUse, clip.edit.tempoSequence);
++        const auto pos = toTime (clipTimeRangeToUse, clip.edit.tempoSequence);
          node = makeNode<FadeInOutNode> (std::move (node), params.processState,
                                          speedIn ? TimeRange (pos.getStart(), pos.getStart() + juce::jmin (TimeDuration::fromSeconds (0.003), fIn))
                                                  : TimeRange (pos.getStart(), pos.getStart() + fIn),
-@@ -1571,7 +1584,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+                                         speedOut ? TimeRange (pos.getEnd() - juce::jmin (TimeDuration::fromSeconds (0.003), fOut), pos.getEnd())
+                                                  : TimeRange (pos.getEnd() - fOut, pos.getEnd()),
+-                                        clip.getFadeInType(), clip.getFadeOutType(),
+-                                        true);
++                                        clip.getFadeInType(), clip.getFadeOutType(), true);
+     }
+ 
+     return node;
+@@ -1571,7 +1586,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
          trackMuteState->setKeepProcessingWhileMuted();
      }
  
@@ -39,7 +57,7 @@ index e37d1e4..978f7c7 100644
      if (node)
      {
          // When recording, clips should be muted but the plugin should still be audible so use two muting Nodes
-@@ -1586,15 +1600,25 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+@@ -1586,15 +1602,25 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
                                                std::move (node), false);
          }
  
@@ -68,7 +86,7 @@ index e37d1e4..978f7c7 100644
          node = makeNode<LiveMidiInjectingNode> (at, std::move (node));
  
      if (node == nullptr && inputTracks.isEmpty() && liveInputNode == nullptr)
-@@ -1735,6 +1759,9 @@ std::unique_ptr<tracktion::graph::Node> createNodeForSubmixTrack (FolderTrack& s
+@@ -1735,6 +1761,9 @@ std::unique_ptr<tracktion::graph::Node> createNodeForSubmixTrack (FolderTrack& s
  //==============================================================================
  std::unique_ptr<tracktion::graph::Node> createNodeForTrack (Track& track, const CreateNodeParams& params)
  {
@@ -78,7 +96,7 @@ index e37d1e4..978f7c7 100644
      if (auto t = dynamic_cast<AudioTrack*> (&track))
      {
          if (! t->isProcessing (true))
-@@ -1968,7 +1995,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -1968,7 +1997,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
  
      for (auto t : getAllTracks (edit))
      {
@@ -88,7 +106,7 @@ index e37d1e4..978f7c7 100644
              continue;
  
          if (auto output = getTrackOutput (*t))
-@@ -2004,7 +2032,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2004,7 +2034,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
      {
          for (auto t : getAllTracks (edit))
          {
@@ -98,7 +116,7 @@ index e37d1e4..978f7c7 100644
                  continue;
  
              if (auto output = getTrackOutput (*t))
-@@ -2122,9 +2151,6 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2122,9 +2153,6 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
              node = createMasterFadeInOutNode (edit, std::move (node), params);
              node = EditNodeBuilder::insertOptionalLastStageNode (std::move (node));
  
@@ -108,7 +126,7 @@ index e37d1e4..978f7c7 100644
              if (edit.getIsPreviewEdit() && node != nullptr)
                  if (auto previewMeasurer = edit.getPreviewLevelMeasurer())
                      node = makeNode<SharedLevelMeasuringNode> (std::move (previewMeasurer), std::move (node));
-@@ -2141,7 +2167,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2141,7 +2169,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
                                                                           ChannelMap::conversion (incomingChannels, deviceChannels));
          }
  
@@ -117,7 +135,7 @@ index e37d1e4..978f7c7 100644
          {
              auto clickAndTracksNode = makeSummingNode ({ node.release(),
                                                           makeNode<ClickNode> (edit, getNumChannelsFromDevice (*device),
-@@ -2149,6 +2175,11 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2149,6 +2177,11 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
              node = std::move (clickAndTracksNode);
          }
  
@@ -129,7 +147,7 @@ index e37d1e4..978f7c7 100644
          if (auto outputDeviceNode = createNodeForDevice (epc, *device, playHeadState, std::move (node)))
              outputNode->addInput (std::move (outputDeviceNode));
      }
-@@ -2171,7 +2202,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2171,7 +2204,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
  
      for (auto t : getAllTracks (edit))
      {
@@ -139,7 +157,7 @@ index e37d1e4..978f7c7 100644
              continue;
  
          // Skip submix children (they're built by their parent) and tracks with no TrackOutput
-@@ -2186,7 +2218,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2186,7 +2220,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
          }
  
          if (auto node = createNodeForTrack (*t, params))
@@ -154,7 +172,7 @@ index e37d1e4..978f7c7 100644
      }
  
      auto sumNode = std::make_unique<SummingNode> (std::move (trackNodes));
-@@ -2200,6 +2239,22 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2200,6 +2241,22 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
      return node;
  }
  

@@ -69,7 +69,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                     throw std::runtime_error(why);
             };
             require(workspaceSession == commands.sessionToken() &&
-                        facts["revision"] == commands.querySummary()["revision"] && pending.is_null(),
+                        workspaceRevision == commands.querySummary()["revision"] && pending.is_null(),
                     "refresh project or resolve pending preview before timeline editing");
 
             pendingClipboard = nullptr;
@@ -93,7 +93,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                                 timebases.size() > 1
                           : adaptAudio || existing["kind"] == "timeline_clips";
             Json buffer = adaptAudio ? commands.prepareTimelineFromAudioClipboard(existing["id"], workspaceSession,
-                                                                                  facts["revision"])
+                                                                                  workspaceRevision)
                                      : existing;
             if (adaptAudio)
                 pendingClipboard = buffer;
@@ -112,12 +112,12 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
                 buffer =
                     mixed   ? (range ? commands.prepareTimelineRangeClipboard(
                                          selection.tracks, selection.range["start_samples"],
-                                         selection.range["end_samples"], workspaceSession, facts["revision"])
-                                     : commands.prepareTimelineClipClipboard(clips, workspaceSession, facts["revision"]))
+                                         selection.range["end_samples"], workspaceSession, workspaceRevision)
+                                     : commands.prepareTimelineClipClipboard(clips, workspaceSession, workspaceRevision))
                     : range ? commands.prepareMidiRangeClipboard(selection.tracks, selection.range["start_samples"],
                                                                  selection.range["end_samples"], workspaceSession,
-                                                                 facts["revision"])
-                            : commands.prepareMidiClipClipboard(clips, workspaceSession, facts["revision"]);
+                                                                 workspaceRevision)
+                            : commands.prepareMidiClipClipboard(clips, workspaceSession, workspaceRevision);
                 if (id == editCommand::copy)
                 {
                     commands.acceptClipboard(buffer["id"]);
@@ -150,7 +150,7 @@ bool Workspace::executeMidiTimelineClipboardCommand(int id)
             {
                 const int64_t point = id == editCommand::duplicate       ? buffer["end_samples"].get<int64_t>()
                                       : id == editCommand::pasteOriginal ? buffer["start_samples"].get<int64_t>()
-                                      : selection.range.is_null()        ? facts["position_samples"].get<int64_t>()
+                                      : selection.range.is_null()        ? commands.realtimeState().position
                                                                   : selection.range["start_samples"].get<int64_t>();
                 Json targets = Json::array();
                 if (id == editCommand::duplicate || id == editCommand::pasteOriginal)

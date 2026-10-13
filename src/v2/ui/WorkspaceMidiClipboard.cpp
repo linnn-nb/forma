@@ -7,7 +7,7 @@ void Workspace::executeMidiClipboardCommand(int id)
         [&]
         {
             if (workspaceSession != commands.sessionToken() ||
-                facts["revision"] != commands.querySummary()["revision"] || !pending.is_null())
+                workspaceRevision != commands.querySummary()["revision"] || !pending.is_null())
                 throw std::runtime_error(
                     "refresh changed project or resolve pending preview before MIDI clipboard editing");
             if (editing.mode == "shuffle" && id != editCommand::copy)
@@ -20,11 +20,11 @@ void Workspace::executeMidiClipboardCommand(int id)
             if (capture)
             {
                 const auto selected = piano.timingSelection();
-                if (selected.is_null() || selected["revision"] != facts["revision"])
+                if (selected.is_null() || selected["revision"] != workspaceRevision)
                     throw std::runtime_error("select actual editable MIDI notes first");
                 selectedNotes = selected["note_ids"];
                 buffer =
-                    commands.prepareMidiNoteClipboard(target["id"], selectedNotes, workspaceSession, facts["revision"]);
+                    commands.prepareMidiNoteClipboard(target["id"], selectedNotes, workspaceSession, workspaceRevision);
                 if (id == editCommand::copy)
                 {
                     commands.acceptClipboard(buffer["id"]);
@@ -61,10 +61,10 @@ void Workspace::executeMidiClipboardCommand(int id)
                 args["placement"] = id == editCommand::duplicate       ? "after"
                                     : id == editCommand::pasteOriginal ? "original"
                                                                        : "cursor";
-                args["position_samples"] =
-                    args["placement"] == "cursor"
-                        ? (selection.range.is_null() ? facts["position_samples"] : selection.range["start_samples"])
-                        : Json(0);
+                args["position_samples"] = args["placement"] == "cursor"
+                                               ? (selection.range.is_null() ? Json(commands.realtimeState().position)
+                                                                            : selection.range["start_samples"])
+                                               : Json(0);
             }
             const auto receipt = commands.commit(commands.makePlan(
                 "human", Json::array({operation(cutting ? "midi.notes.erase" : "midi.notes.paste", args)})));

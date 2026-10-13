@@ -189,7 +189,9 @@ const std::vector<Entry>& entries()
         {277, "取消当前编辑设置", "编辑"},
         {278, "预卷 / 后卷开关（选区播放）", "走带", 'k', cmd},
         {279, "预卷 / 后卷设置…", "走带", 'k', cmd | shift},
-        {280, "片段淡化…", "编辑", 'f', cmd},
+        {280, "淡化 / 交叉淡化…", "编辑", 'f', cmd},
+        {538, "交叉淡化…", "编辑", 'f', cmd | juce::ModifierKeys::ctrlModifier},
+        {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
         {502, "Clip Gain +1 dB", "编辑"},
@@ -577,6 +579,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                  facts.value("parameter_capture", Json(nullptr)).is_null() &&
                                  (!clips.empty() || !selection.range.is_null());
                         bool splitTarget = false;
+                        const auto point = commands.realtimeState().position;
                         for (const auto& c : clips)
                         {
                             active = active &&
@@ -585,7 +588,6 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                      ((c["kind"] == "audio" && c.value("editable_audio", false)) ||
                                       (id != editCommand::split && c["kind"] == "midi" &&
                                        c.value("sample_mapping_available", false)));
-                            const auto point = facts.value("position_samples", int64_t(0));
                             splitTarget |=
                                 point > c["start_samples"].get<int64_t>() &&
                                 point < c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>();
@@ -857,8 +859,16 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == 281 || id == 282)
                 active = memoryLocationsPanel && memoryLocationsPanel->isVisible() &&
                          (id == 281 ? memoryLocationsPanel->canCaptureRoll() : memoryLocationsPanel->canClearRoll());
+            if (id == 539)
+                active = !facts.value("playing", false) &&
+                         ((crossfadePanel && crossfadePanel->isVisible())
+                              ? crossfadePanel->canRemove()
+                              : (!selected.empty() && !commands.crossfades(selected).empty()));
+            if (id == 538)
+                active = !mix && !facts.value("playing", false) && !selected.empty();
             if (id == 280)
-                active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
+                active = !mix && !facts.value("playing", false) &&
+                         (!selectedAudioClip().is_null() || (!selection.range.is_null() && !selected.empty()));
             if (id == 278 || id == 279)
                 active = !facts.value("playing", false);
             if (id == 278)
@@ -876,6 +886,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                      (id == 277 || memoryLocationsPanel->canRecall())) ||
                     (id != 276 && rollPanel && rollPanel->isVisible()) ||
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
+                    (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();
@@ -1069,6 +1080,50 @@ bool Workspace::perform(const InvocationInfo& invocation)
             if (isShowing())
                 grabKeyboardFocus();
         }
+        return true;
+    }
+    if (id == 539)
+    {
+        invoke(
+            [&]
+            {
+                if (crossfadePanel && crossfadePanel->isVisible())
+                    crossfadePanel->execute(true);
+                else
+                {
+                    const auto current = commands.query();
+                    auto list = commands.crossfades(selected);
+                    if (list.empty())
+                        throw std::runtime_error("请选择现有交叉淡化");
+                    const int64_t at = selection.range.is_null()
+                                           ? current["position_samples"].get<int64_t>()
+                                           : selection.range["start_samples"].get<int64_t>() +
+                                                 (selection.range["end_samples"].get<int64_t>() -
+                                                  selection.range["start_samples"].get<int64_t>()) /
+                                                     2;
+                    auto target = list[0];
+                    for (const auto& candidate : list)
+                        if (std::abs(candidate["join_samples"].get<int64_t>() - at) <
+                            std::abs(target["join_samples"].get<int64_t>() - at))
+                            target = candidate;
+                    target["existing"] = true;
+                    showCrossfade(target);
+                    crossfadePanel->execute(true);
+                }
+            });
+        return true;
+    }
+    if (id == 538)
+    {
+        invoke([&] { showCrossfade(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && crossfadePanel && crossfadePanel->isVisible())
+    {
+        if (id == 275)
+            crossfadePanel->execute();
+        else
+            crossfadePanel->setVisible(false);
         return true;
     }
     if (id == 280)
@@ -1725,6 +1780,8 @@ void Workspace::showRollSettings()
 {
     if (fadesPanel)
         fadesPanel->setVisible(false);
+    if (crossfadePanel)
+        crossfadePanel->setVisible(false);
     if (musicEventPanel)
         musicEventPanel->setVisible(false);
     if (!rollPanel)
@@ -1777,6 +1834,8 @@ void Workspace::showMusicEvent(const std::string& kind, double beat, const std::
 {
     if (fadesPanel)
         fadesPanel->setVisible(false);
+    if (crossfadePanel)
+        crossfadePanel->setVisible(false);
     if (rollPanel)
         rollPanel->setVisible(false);
     if (commands.query().value("playing", false))

@@ -1,3 +1,7 @@
+P1 交叉淡化契约（2026-10-13）：`playlist.crossfade {track,left,right,start_samples,end_samples,curve}`，curve=linear/equal_power；`playlist.crossfade.remove {track,left,right}`。media_fingerprint 由 L1 封闭并在预检/提交重验，local_gui/human、停止状态、单操作 Plan；MCP/Agent 权限不扩展。最多32对/64片段，所有启用 Edit 组和活动关联 Comp 成员先整体解析，源余量/锁定/相同切点/两采样下限/工程边界/三重重叠任一失败整笔拒绝。预览有全部配对的前后位置、源偏移、淡化，Scope 覆盖全部受影响轨，回执返回真实稳定对象 ID；幂等重试不复制。
+
+范围使用48k工程采样，文件采样率独立。去掉过渡只恢复该侧边界，保留后续增益及另一端过渡。跨重开 Undo/Redo 沿用原历史；无成功提交回执不关闭草稿为成功。crossfadeTarget/crossfadePairs/crossfades 为本地只读查询，原生层唯一写入口仍是 L1。
+
 P1 试听控制（2026-10-13）：本地 L1 playlistAudition(start/stop/status)，不增加 MCP 权限或工具。start 必须绑定 session_token、base_revision、track、48k 工程 start_samples/end_samples，选择 playlist 或显式 segments 二者之一；草稿每段指定真实 track/source/clip/范围，最多 64 段且同轨不重叠。回执包含原对象、源媒体 SHA256、mode、处理块数、实际设备采样边界/采样率和失败原因。requested 不代表已经发声；实际输出回调后才 playing，输出边界 reached 后 completed。编辑、录音及高风险未资格路由不混入试听；停止/完成恢复光标与循环设置，不写编辑历史。接受候选仍须既有 Plan/权限/提交/Undo 入口。
 
 P1-LINKED-COMP-MOVE-01（2026-10-13）：复用 clip.move，不新增 MCP 工具。L1 在 makePlan/preview 两处展开活动关联 Comp 的全部片段及每段相交的启用 Edit 组；可传递到另一关联集，去重且保持同一采样位移。每个成员使用自己的媒体哈希，Scope 覆盖全部原/目标区间；64 原语预算包含自动化，缺失、锁定、越界、过期或不同位移整笔拒绝。没有普通 Edit 组也必须展开 Comp。完整提交后在同一 UndoManager 事务更新全部 linked_layout；保存重开继续校验源映射、共同区间和持久 Undo/Redo。

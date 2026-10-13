@@ -64,6 +64,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSubMenu(text("修剪（Nudge）"), trimNudge);
         addMenuCommand(p, 226);
         addMenuCommand(p, 280);
+        addMenuCommand(p, 538);
+        addMenuCommand(p, 539);
         for (int id : {500, 501, 502, 503, 504})
             addMenuCommand(p, id);
         addMenuCommand(p, 218);
@@ -309,6 +311,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         playlistPanel->execute(524);
         return true;
     }
+    if (crossfadePanel && crossfadePanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (fadesPanel && fadesPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
     if (rollPanel && rollPanel->isVisible() && key == juce::KeyPress::escapeKey)
@@ -461,6 +465,8 @@ void Workspace::resized()
         playlistPanel->setBounds(8, 168, getWidth() - 16, getHeight() - 205);
     if (fadesPanel)
         fadesPanel->setBounds(getLocalBounds());
+    if (crossfadePanel)
+        crossfadePanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)

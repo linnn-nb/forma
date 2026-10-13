@@ -23,6 +23,7 @@
 #include "RollPanel.h"
 #include "AudioImportPanel.h"
 #include "FadesPanel.h"
+#include "CrossfadePanel.h"
 #include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -165,7 +166,9 @@ private:
     void showPlaylists();
     std::unique_ptr<PlaylistPanel> playlistPanel;
     void showFades();
+    void showCrossfade(Json target = nullptr);
     std::unique_ptr<FadesPanel> fadesPanel;
+    std::unique_ptr<CrossfadePanel> crossfadePanel;
     void showRollSettings();
     std::unique_ptr<RollPanel> rollPanel;
     void showMusicEvent(const std::string&, double, const std::string& = "");
@@ -267,6 +270,9 @@ private:
     std::unique_ptr<NewSessionPanel> newSessionPanel;
     std::unique_ptr<RecoveryPanel> recoveryPanel;
     std::string workspaceSession;
+    // L1's borrowed facts cache can be republished by other readers before the
+    // UI is rebound. Editing must validate the displayed version, not that cache.
+    uint64_t workspaceRevision = 0;
     juce::Label recoveryIndicator;
     bool programDraft = false;
     int programPublishedIndex = -1;

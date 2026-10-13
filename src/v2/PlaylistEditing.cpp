@@ -258,17 +258,26 @@ void Commands::registerPlaylistCommands(Json& r)
         p["media_fingerprint"] = string;
         required.push_back("track");
         required.push_back("media_fingerprint");
-        r.push_back({{"id", cmd},
-                     {"schema",
-                      {{"type", "object"}, {"properties", p}, {"required", required}, {"additionalProperties", false}}},
-                     {"risk", "low"},
-                     {"permission", "edit"},
-                     {"reversible", true},
-                     {"live", false},
-                     {"tool_visibility", "local_gui"},
-                     {"units", {{"range", "session samples at 48000 Hz"}}},
-                     {"test", "P1-PLAYLIST-01"}});
+        r.push_back(
+            {{"id", cmd},
+             {"schema",
+              {{"type", "object"}, {"properties", p}, {"required", required}, {"additionalProperties", false}}},
+             {"risk", "low"},
+             {"permission", "edit"},
+             {"reversible", true},
+             {"live", false},
+             {"tool_visibility", "local_gui"},
+             {"units", {{"range", "session samples at 48000 Hz"}}},
+             {"test", std::string(cmd).starts_with("playlist.crossfade") ? "P1-CROSSFADE-01" : "P1-PLAYLIST-01"}});
     };
+    add("playlist.crossfade",
+        {{"left", string},
+         {"right", string},
+         {"start_samples", integer},
+         {"end_samples", integer},
+         {"curve", {{"type", "string"}, {"enum", {"linear", "equal_power"}}}}},
+        {"left", "right", "start_samples", "end_samples", "curve"});
+    add("playlist.crossfade.remove", {{"left", string}, {"right", string}}, {"left", "right"});
     for (auto cmd : {"playlist.select", "playlist.target"})
         add(cmd, {{"playlist", string}}, {"playlist"});
     add("playlist.rename", {{"playlist", string}, {"name", string}}, {"playlist", "name"});
@@ -492,6 +501,12 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
             }
             continue;
         }
+        if (cmd == "playlist.crossfade" || cmd == "playlist.crossfade.remove")
+        {
+            require(ops.size() == 1 && !edit->getTransport().isPlaying(), "Crossfade is a stopped standalone edit");
+            diff.push_back(crossfadeChange(a, cmd == "playlist.crossfade.remove"));
+            continue;
+        }
         require(ops.size() == 1, "Playlist edits are standalone transactions");
         require(!edit->getTransport().isPlaying(), "stop playback before Playlist edits");
         auto* t = track(a["track"]);
@@ -658,6 +673,12 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
 }
 void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, Json& objects)
 {
+    if (cmd == "playlist.crossfade" || cmd == "playlist.crossfade.remove")
+    {
+        executeCrossfade(a, cmd == "playlist.crossfade.remove", objects);
+        return;
+    }
+
     auto& t = *track(a["track"]);
     auto lists = ensurePlaylists(t);
     auto& um = edit->getUndoManager();

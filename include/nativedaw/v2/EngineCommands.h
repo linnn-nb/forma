@@ -32,6 +32,9 @@ public:
     ~Commands();
     Json query() const;
     Json queryPlaylists(const std::string& trackID) const;
+    Json crossfades(const std::string& trackID) const;
+    Json crossfadeTarget(const std::string& trackID, int64_t at) const;
+    Json crossfadePairs(const Json&) const;
     const Json& queryFacts() const;
     struct RealtimeState
     {
@@ -400,6 +403,11 @@ private:
     void executePlaylistOperation(const std::string&, const Json&, Json&);
     bool activePlaylistLocked(te::AudioTrack&, bool moving = false) const;
     void refreshLinkedCompLayouts(const Json&);
+    Json crossfadeChange(const Json&, bool remove) const;
+    std::string crossfadeMediaFingerprint(const Json&) const;
+    void executeCrossfade(const Json&, bool remove, Json&);
+    void refreshCrossfadeRecords(const Json&);
+    Json crossfadeMaintenancePreview(const Json&) const;
     std::pair<juce::ValueTree, Json> preparePlaylistAudition(const Json&) const;
     void stopPlaylistAudition(const std::string& reason = "cancelled", bool returnPosition = true);
     void advancePlaylistAudition();

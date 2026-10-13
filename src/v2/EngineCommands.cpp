@@ -580,6 +580,7 @@ const Json& Commands::queryFacts() const
         tracks.back().update(routingQuery(*t));
         tracks.back()["input"] = recordingQuery(*t);
         tracks.back()["playlists"] = playlistQuery(*t);
+        tracks.back()["crossfades"] = crossfades(t->itemID.toString().toStdString());
         tracks.back().update(hierarchyQuery(*t));
     }
     const auto historyEntry = [&](size_t index) -> Json
@@ -678,7 +679,8 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
         auto& a = op.at("args");
         if (cmd.starts_with("playlist."))
         {
-            const auto fingerprint = playlistMediaFingerprint(a);
+            const auto fingerprint =
+                cmd.starts_with("playlist.crossfade") ? crossfadeMediaFingerprint(a) : playlistMediaFingerprint(a);
             if (a.contains("media_fingerprint"))
                 require(a["media_fingerprint"] == fingerprint, "Playlist media changed since planning");
             a["media_fingerprint"] = fingerprint;
@@ -1139,6 +1141,7 @@ Json Commands::preview(const Json& plan) const
                 {"marker_changes", markerDiff},
                 {"group_changes", groupDiff},
                 {"playlist_changes", playlistDiff},
+                {"crossfade_changes", crossfadeMaintenancePreview(ops)},
                 {"legacy_imports", legacyDiff}};
     if (plan.contains("timeline_range_nudge"))
         result["timeline_range_nudge"] = plan["timeline_range_nudge"];
@@ -1395,6 +1398,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                     throw std::runtime_error("unhandled command");
             }
         }
+        refreshCrossfadeRecords(plan.at("operations"));
         refreshLinkedCompLayouts(plan.at("operations"));
         settleClipOrder(*edit);
         captureRoutingAssignments();
@@ -1874,6 +1878,7 @@ void Commands::open(const juce::File& source)
     persistentHistory->install(std::move(archive));
 }
 void validatePlaylists(te::Edit&);
+void validateCrossfades(te::Edit&);
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
     checkThread();
@@ -1887,6 +1892,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
     validatePlaylists(*candidate);
+    validateCrossfades(*candidate);
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     readEditingOptions(candidate->state.getChildWithName("NATIVEDAW"));
     readShuffleOptions(candidate->state.getChildWithName("NATIVEDAW"));

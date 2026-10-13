@@ -145,6 +145,12 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
             });
     };
     setLookAndFeel(&theme);
+    editArea.onCrossfadeOpen = [this](Json xf)
+    {
+        xf["existing"] = true;
+        invoke([&] { showCrossfade(std::move(xf)); });
+    };
+    editArea.onCrossfadePairs = [this](const Json& a) { return commands.crossfadePairs(a); };
     setWantsKeyboardFocus(true);
     clipPanel.onClose = [this]
     {

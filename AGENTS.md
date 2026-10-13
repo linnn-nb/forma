@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现音频循环与选区Punch，以v1行为测试为规格，保留连续源文件、原Playlist、短末轮与补录结果；单轨Playlist管理与区间Comp已实现并自动验证；多来源候选清单与整任务创建已接通；关联多轨候选/全组切换/恢复/解除已接通；关联 Comp 整组移动已接通现有拖动、Nudge、Spot 与编辑组及自动化跟随；来源/候选逐段试听已接通，停止回位与原历史保留；下一项交叉淡化。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
+- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现音频循环与选区Punch，以v1行为测试为规格，保留连续源文件、原Playlist、短末轮与补录结果；单轨Playlist管理与区间Comp已实现并自动验证；多来源候选清单与整任务创建已接通；关联多轨候选/全组切换/恢复/解除已接通；关联 Comp 整组移动已接通现有拖动、Nudge、Spot 与编辑组及自动化跟随；来源/候选逐段试听已接通，停止回位与原历史保留；交叉淡化 L1/原生面板/Smart、声音及原历史专项已验；11套件1291项通过，mixed_clipboard 的 Clip EQ 参数历史重复ID失败。下一项先修该失败及其状态保护，再补配对复制和 P1 跨流程，不称完整 P1 通过。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
 - 历史U/P0试用（不是当前性能构建）：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。
@@ -12,7 +12,7 @@
 - M2/M3 保持可用，不再扩充工具或分析资格；M4/M5 暂缓。AI 界面收进菜单，不占据制作主界面。
 - 视图状态在 Edit 的 UI 子树由 L1 写入并保存，不进入 Undo；工程编辑仍为一笔手势一笔事务。
 - 原生组件放 src/v2/ui；全局操作使用 JUCE ApplicationCommandManager；新代码遵守 .clang-format（120 列）。
-- GUI借用facts缓存时，子对象引用不能跨可能重建缓存的L1查询/提交；先查询，再获取引用。只读绘制借用const引用，禁止为绘制复制整轨插件参数。
+- GUI借用facts缓存时，以实际绑定的workspaceRevision保护编辑，外部查询不能推进显示版本；插入点读实时走带。子对象引用不能跨可能重建缓存的L1查询/提交；先查询，再获取引用。只读绘制借用const引用，禁止为绘制复制整轨插件参数。
 - C++20/CMake；原创 AGPLv3、Tracktion GPLv3；锁定依赖提交，保留第三方许可证。
 - te::Edit 是唯一事实来源。只有 L1 命令层能写 Edit，且只在 message thread 写；后台线程投递命令。
 - 后台和 MCP 使用 L1 CommandQueue 的不透明 Client；身份/Scope/确认仅由本地授予，文件 JSON 不冒充模型或 MCP。
