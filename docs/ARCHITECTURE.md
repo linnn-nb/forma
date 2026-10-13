@@ -1,3 +1,9 @@
+P1 时间线复制（2026-10-13）：L1 的 ClipboardBuffer 冻结源片段、配对及恢复边界；CrossfadeEditing 将完整配对投影到实际粘贴的 Clip ID、目标 Playlist 和统一样本位移。Timeline Shuffle 的共同后缀位移同时更新配对、切点与恢复锚；不完整配对只保留源坡度。全部修改在既有 Plan/UndoManager 事务内，L5 仍只查询与提交命令。
+
+NativeAudioFades 返回脱离 Edit 的快照，裁切不压缩或清空实际相交的原坡度。原生 graph builder 在非实时准备阶段读取所有 NDAW_FADE_ORIGIN，继承包络与当前 native fade 相乘；显式 fade 重设移除所有继承层。仍是同一 Tracktion Engine、13份完整 diff 审计补丁，无新增服务或 IPC 等待。旧构建只读取首层，新多层工程的旧版回开兼容防护仍未实现。
+
+整份 Playlist 和时间线/局部复制的受测范围已资格，真实测试与限制见 evidence/P1/summary.md；完整 P1 制作链路尚未验收。以下保留历史架构记录。
+
 P1 Playlist 复制（2026-10-13）：L1的playlist.create建立旧/新Clip ID映射，CrossfadeEditing复制所属列表的配对元数据与边界快照，重建过渡及成员引用；新增节点与新列表共用原UndoManager事务。源记录先离线复制再添加，避免遍历期间改动同一原生子树。预览声明新身份策略，回执包含真实新过渡ID。没有新引擎或实时修改；仅整份Playlist复制已资格，时间线/部分选区复制仍缺配对。
 
 P1 视图绑定修复（2026-10-13）：TrackHeader 布局由当前能力和行高决定；定位框通过 PanelTextEditor 的 onEscape 关闭草稿；检查器标题使用原生 Label，与参数选择共享已复制的 owner/processor 快照，仅身份变化时重绘检查器区域。无新 Edit 写入、音频引擎或实时路径修改。

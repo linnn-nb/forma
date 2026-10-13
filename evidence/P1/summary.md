@@ -1,3 +1,19 @@
+# P1 时间线交叉淡化 Copy/Paste（2026-10-13）
+
+结论：时间线与局部复制的配对迁移、真实音频和持久 Undo/Redo 已通过；完整 P1 制作链路仍未验收。
+
+- GUI、默认 Command C/V、Undo/Redo 均复用现有 L1。完整过渡复制得到新 Clip/过渡 ID、目标 Playlist 和恢复边界；截断过渡只保留实际源包络，明确不建立不完整配对。源快照冻结后改变原曲线不会改变剪贴板。
+- `NativeAudioFades.h` 保留裁切时的源坡度相位；新过渡和继承包络可以叠加，显式 fade 编辑清除全部继承层。`tracktion-render-bus-only.patch` 扩展原生图准备，仍为13份完整 diff 审计补丁，不添加引擎、实时分配、锁、I/O 或 IPC。
+- 最终受影响10套件1029项、0 JUCE assertion：crossfade_clipboard73、crossfade101、clipboard49、mixed_clipboard95、mixed_shuffle153、playlist_editing227、playlist_audition98、loop_recording51、punch_recording124、clip58。分批最终结果为 `build-v2-tracktion/p1-crossfade-clipboard-current-results.json`；不是全仓一次全绿或性能资格。
+- 新专项最终11.900秒/120秒，12份真实 Tracktion WAV；完整复制、坡度内切片及叠加包络的双声道 PCM 最大差均1.1920928955078125e-7，固定2e-7预算不变；源媒体哈希不变。普通粘贴与9片段替换的大范围原生预览、单次异步接受、保存重开和原 Undo/Redo 均执行。
+- 混合 Shuffle 最终52.948秒/120秒，8192个实际自动化迭代器探点最大误差0；四种公共位移的 PCM 最大差1.1920928955078125e-7。首次失败来自外改夹具带旧历史校验，随后 GUI 准备选区未显式绑定；夹具去掉无效旧 journal、确认真实打开并绑定实际界面后通过，生产历史校验与事件/数值断言未放宽。确认按钮改为真实 `triggerClick`，等待上限2秒。独立修复提交 `0231f85`。
+- 实体 Forma 已重启：原混合工程 Source 1/4OSC、Source 0/空轨道插入绑定正确；三个定位字段确实改成123456再 Esc，窗口关闭且r24不变。轨头控件边界已有自动测试；当前 CUA 截图下半部为空白，不能称已完成整屏视觉复验或 PNG 归档。
+- 实机新流程：源轨0–2秒→Command C→目标12秒→Command V，r19；Undo/Redo为r20/r21；另存后重开r22，原Undo/Redo为r23/r24。保存文件新配对1041绑定Clip1039/1040、目标 `main:1017`，范围621600–626400、切点624000、equal_power；源2片段保持，目标由10变12片段。工程文件 `build-v2-tracktion/P1-Crossfade-Clipboard/Crossfade-Clipboard-physical-1013.tracktionedit`（107701字节、SHA256 `7ec49d184fd98bad6899662ee6e7dff47f95b755d6db86229f1ad2a2583a45c7`）。这是自有恒定 PCM 验证夹具，未进行实体听评，不作为音乐样例。
+- 唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，Release/固定本地身份 deep/strict 验签通过；二进制 SHA256 `18207986baf07b75c8cb0b58d0b2e4a86af91b81888e36cbfdd6a7ad4af91973`。无新 DMG、公证或 Windows 资格。
+- 尚未资格：部分速度淡化、特殊 Warp/Clip FX 过渡、恢复原坡度超出裁后核心的复制、旧构建读取多层包络的新工程、实体声音和完整 P1 录音→Comp→交叉淡化制作链路。性能A及旧180秒自动化矩阵继续保留未通过。
+
+以下为历史增量证据。
+
 # P1 Playlist 交叉淡化复制（2026-10-13）
 
 结论：整份Playlist副本的可编辑配对、声音、恢复与原历史已自动验证；时间线/局部复制和完整P1未通过。

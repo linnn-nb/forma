@@ -1,5 +1,6 @@
 #include "SampleMidiMap.h"
 #include <nativedaw/v2/EngineCommands.h>
+#include "NativeAudioFades.h"
 #include "NativePluginStates.h"
 namespace ndaw::v2
 {
@@ -132,14 +133,17 @@ Json Commands::timelineClipFragment(te::Clip& clip, int64_t low, int64_t high) c
     require(low >= first && high <= last && high > low, "audio fragment outside source clip");
     const auto start = low == first ? p.getStart() : time(low), finish = high == last ? p.getEnd() : time(high);
     f["source_offset_seconds"] = (p.getOffset() + (start - p.getStart())).inSeconds();
+    f["source_offset_samples"] = std::llround(f["source_offset_seconds"].get<double>() * rate);
     f["start_samples"] = low;
     f["length_samples"] = high - low;
     f["start_seconds"] = start.inSeconds();
     f["end_seconds"] = finish.inSeconds();
     f["start_beat"] = edit->tempoSequence.toBeats(start).inBeats();
     f["length_beats"] = edit->tempoSequence.toBeats(finish).inBeats() - f["start_beat"].get<double>();
-    f["fade_in_samples"] = low == first ? std::min(f["fade_in_samples"].get<int64_t>(), high - low) : 0;
-    f["fade_out_samples"] = high == last ? std::min(f["fade_out_samples"].get<int64_t>(), high - low) : 0;
+    const auto native = native_fades::fragment(clip.state, start.inSeconds(), finish.inSeconds());
+    f["fade_in_samples"] = std::llround(double(native["fadeIn"]) * rate);
+    f["fade_out_samples"] = std::llround(double(native["fadeOut"]) * rate);
+    f["inherited_fades"] = native.getChildWithName("NDAW_FADE_ORIGIN").isValid();
     return f;
 }
 Json Commands::prepareTimelineClipClipboard(const Json& clips, const std::string& session, uint64_t rev)
@@ -259,6 +263,13 @@ Json Commands::captureTimelineClipClipboard(const Json& clips, const Json& range
         firstBeat = std::min(firstBeat, f["start_beat"].get<double>());
         lastBeat = std::max(lastBeat, f["start_beat"].get<double>() + f["length_beats"].get<double>());
         auto state = te::ClipCopy::fromClip(*c).getState().createCopy();
+        if (dynamic_cast<te::WaveAudioClip*>(c))
+        {
+            state = native_fades::fragment(state, f["start_seconds"], f["end_seconds"]);
+            f["fade_in_samples"] = std::llround(double(state["fadeIn"]) * rate);
+            f["fade_out_samples"] = std::llround(double(state["fadeOut"]) * rate);
+            f["inherited_fades"] = state.getChildWithName("NDAW_FADE_ORIGIN").isValid();
+        }
         juce::MemoryOutputStream out;
         state.writeToStream(out);
         bytes += out.getDataSize();
@@ -314,6 +325,7 @@ Json Commands::captureTimelineClipClipboard(const Json& clips, const Json& range
     buffer.manifest["start_beat"] = firstBeat;
     buffer.manifest["end_beat"] = lastBeat;
     captureClipboardAutomation(buffer, bytes);
+    captureClipboardCrossfades(buffer, bytes);
     if (!midiOnly || std::any_of(buffer.manifest["tracks"].begin(), buffer.manifest["tracks"].end(),
                                  [&](const Json& id) { return automationEditBasis(id.get<std::string>()) != "auto"; }))
     {
@@ -402,6 +414,13 @@ Json Commands::prepareTimelineFromAudioClipboard(const std::string& id, const st
         buffer.manifest["entries"].push_back({{"token", token}, {"clip", item["clip"]}, {"track", item["track"]}});
     }
     buffer.automation = original->automation; // Frozen original samples, never recapture current curves.
+    for (auto record : original->crossfadeRecords)
+    {
+        buffer.crossfadeRecords.push_back(record.createCopy());
+        juce::MemoryOutputStream out;
+        record.writeToStream(out);
+        bytes += out.getDataSize();
+    }
     for (const auto& [owner, lanes] : buffer.automation)
         for (const auto& lane : lanes)
         {
@@ -974,6 +993,23 @@ void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, J
         }
         else
             c = timelineClip(item["clip"]);
+        if (dynamic_cast<te::WaveAudioClip*>(c) && !frozen)
+        {
+            const auto& source = states.at(item["clip"]);
+            const double first =
+                double(source["start"]) + (after["source_offset_seconds"].get<double>() - double(source["offset"]));
+            const auto last = std::llround(first * rate) + after["length_samples"].get<int64_t>() ==
+                                      std::llround((double(source["start"]) + double(source["length"])) * rate)
+                                  ? double(source["start"]) + double(source["length"])
+                                  : first + after["length_samples"].get<int64_t>() / rate;
+            const auto native = native_fades::fragment(source, first, last);
+            for (int i = c->state.getNumChildren(); --i >= 0;)
+                if (c->state.getChild(i).hasType("NDAW_FADE_ORIGIN"))
+                    c->state.removeChild(i, &undo);
+            for (auto origin : native)
+                if (origin.hasType("NDAW_FADE_ORIGIN"))
+                    c->state.addChild(origin.createCopy(), -1, &undo);
+        }
         c->setPosition({{tracktion::TimePosition::fromSeconds(after["start_seconds"]),
                          tracktion::TimePosition::fromSeconds(after["end_seconds"])},
                         tracktion::TimeDuration::fromSeconds(after["source_offset_seconds"])});

@@ -1142,7 +1142,7 @@ Json Commands::preview(const Json& plan) const
                 {"marker_changes", markerDiff},
                 {"group_changes", groupDiff},
                 {"playlist_changes", playlistDiff},
-                {"crossfade_changes", crossfadeMaintenancePreview(ops)},
+                {"crossfade_changes", crossfadeMaintenancePreview(ops, timelineDiff)},
                 {"legacy_imports", legacyDiff}};
     if (plan.contains("timeline_range_nudge"))
         result["timeline_range_nudge"] = plan["timeline_range_nudge"];
@@ -1242,6 +1242,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     Json objects = Json::array();
     try
     {
+        preservePasteBoundaryFades(plan);
         for (const auto& op : plan.at("operations"))
         {
             const auto cmd = op.at("command").get<std::string>();
@@ -1402,6 +1403,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             }
         }
         refreshCrossfadeRecords(plan.at("operations"));
+        copyClipboardCrossfades(reviewed["crossfade_changes"], aliases, objects);
         refreshLinkedCompLayouts(plan.at("operations"));
         settleClipOrder(*edit);
         captureRoutingAssignments();

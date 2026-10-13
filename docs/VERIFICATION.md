@@ -1,3 +1,9 @@
+P1-XFADE-CLIPBOARD-01（2026-10-13）：Release/固定本地 deep-strict 验签通过；最终受影响10套件1029项、0 JUCE assertion，分批结果为 build-v2-tracktion/p1-crossfade-clipboard-current-results.json。新 CrossfadeClipboardTests 73项/11.900秒/120秒、12份真实 WAV，完整/部分/叠加复制双声道最大差均1.1920928955078125e-7，固定2e-7容差不变；真实坡度、配对、ID、原历史和媒体哈希通过。MixedShuffleTests 修正外改夹具历史与界面绑定后153项/52.948秒/120秒通过，原事件/数值要求未降低。
+
+本轮 Mac 实体键鼠：默认 Copy/Paste、原 Undo/Redo、另存、重开、原事务再次 Undo/Redo，版本r19→r24；保存文件过渡1041/成员1039、1040/目标 main:1017/621600–626400/equal_power 核对。检查器 Source 1/4OSC 与 Source 0/空插入切换一致；三个定位输入实际改为123456后 Esc 均关闭且r24不变。CUA 原生管道曾中断，恢复后上述流程完成；整屏视觉/PNG归档与实体声音未验。应用及自有工程路径、SHA、所有边界和失败记录见 evidence/P1/summary.md。完整 P1、性能A及原180秒自动化矩阵仍未通过。
+
+以下为历史测试记录，旧差距以本轮实际修复范围替代。
+
 P1-CROSSFADE-COPY-01（2026-10-13）：最终Release及固定本地身份验签通过。5套件601项、0JUCE assertion：crossfade101（8.927秒）、playlist_editing227（15.576秒）、playlist_audition98（7.977秒）、loop_recording51（7.638秒）、punch_recording124（19.006秒），均在原120秒限内。实际Tracktion双声道WAV复制PCM最大差0；活动/非活动来源复制、稳定新ID、幂等、跨重开Undo/Redo、移除副本恢复与源保护、共享中段的双边恢复，以及原生复制/播放按钮和全局Undo/Redo验证通过。录音套件使用测试输入，不替代本轮实体设备录音；桌面锁定，实体键鼠/试听未执行。原时间线复制配对、完整P1链路和性能旧缺口未完成。
 
 P1 界面绑定修复（2026-10-13）：Release 构建及固定本地身份 deep/strict 验签通过。11 套件1242项、无 JUCE assertion：ui_navigation73、presentation312、edit_views46、midi_dock34、clip_fx_workspace30、clip_time57、music_events96、roll_playback197、crossfade75、playlist227、mixed_clipboard95。导航新增24项验证增益/声像布局、真实选轨/改名/重开后检查器同步和3个定位输入 Esc 无工程/历史变更。初跑两处夹具失败后修正：改键先移除旧所有者；外改 XML 的旧工程夹具去掉现代历史哈希；生产校验未放宽。所有复测使用原截止时间。桌面锁定，最新构建实体GUI未执行。性能A未通过、旧自动化矩阵180秒超时、配对复制及完整P1仍保留。详细证据见 evidence/P1/summary.md。

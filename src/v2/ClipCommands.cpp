@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "NativeAudioFades.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -94,6 +95,33 @@ struct Model
     }
 };
 } // namespace
+void Commands::preservePasteBoundaryFades(const Json& plan)
+{
+    if (!plan.contains("clipboard_paste"))
+        return;
+    auto& um = edit->getUndoManager();
+    std::set<std::string> done;
+    for (const auto& op : plan["operations"])
+        if (op["command"] == "clip.trim" || op["command"] == "clip.split")
+        {
+            const std::string id = op["args"]["clip"];
+            if (done.insert(id).second)
+                if (auto* c = audioClip(id))
+                {
+                    const auto p = c->getPosition();
+                    const auto frozen =
+                        native_fades::fragment(c->state, p.getStart().inSeconds(), p.getEnd().inSeconds(), true);
+                    for (int i = c->state.getNumChildren(); --i >= 0;)
+                        if (c->state.getChild(i).hasType("NDAW_FADE_ORIGIN"))
+                            c->state.removeChild(i, &um);
+                    for (auto origin : frozen)
+                        if (origin.hasType("NDAW_FADE_ORIGIN"))
+                            c->state.addChild(origin.createCopy(), -1, &um);
+                    c->setFadeIn(tracktion::TimeDuration::fromSeconds(0));
+                    c->setFadeOut(tracktion::TimeDuration::fromSeconds(0));
+                }
+        }
+}
 te::WaveAudioClip* Commands::audioClip(const std::string& id) const
 {
     for (auto* t : te::getAudioTracks(*edit))
@@ -580,7 +608,9 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
     {
         // Explicit fade editing replaces the inherited envelope. Structural
         // trim/split keeps it anchored to the original source samples.
-        c->state.removeChild(c->state.getChildWithName("NDAW_FADE_ORIGIN"), &um);
+        for (int i = c->state.getNumChildren(); --i >= 0;)
+            if (c->state.getChild(i).hasType("NDAW_FADE_ORIGIN"))
+                c->state.removeChild(i, &um);
         fades(*c, a["in_samples"], a["out_samples"], a["in_curve"], a["out_curve"]);
     }
     else if (cmd == "clip.lock")

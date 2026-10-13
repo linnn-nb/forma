@@ -407,7 +407,9 @@ private:
     std::string crossfadeMediaFingerprint(const Json&) const;
     void executeCrossfade(const Json&, bool remove, Json&);
     void refreshCrossfadeRecords(const Json&);
-    Json crossfadeMaintenancePreview(const Json&) const;
+    Json crossfadeMaintenancePreview(const Json&, const Json& timelineChanges) const;
+    Json clipboardCrossfadeCopies(const Json&, const Json& timelineChanges) const;
+    void copyClipboardCrossfades(const Json& changes, const std::map<std::string, std::string>& aliases, Json& objects);
     Json playlistCrossfadeCopies(te::AudioTrack&, const std::string& source) const;
     void copyPlaylistCrossfades(te::AudioTrack&, const std::string& source, juce::ValueTree destination,
                                 const std::map<std::string, std::string>& clipIDs, Json& objects);
@@ -484,11 +486,14 @@ private:
         std::optional<tracktion::tempo::Sequence> tempoSnapshot;
         std::map<std::string, ClipboardEntry> entries;
         std::map<std::string, std::vector<Lane>> automation;
+        std::vector<juce::ValueTree> crossfadeRecords;
     };
     std::optional<ClipboardBuffer> activeClipboard, stagedClipboard;
     const ClipboardEntry* clipboardEntry(const std::string&) const;
     const ClipboardBuffer* clipboardBuffer(const std::string&) const;
     void captureClipboardAutomation(ClipboardBuffer&, size_t& bytes) const;
+    void captureClipboardCrossfades(ClipboardBuffer&, size_t& bytes) const;
+    void preservePasteBoundaryFades(const Json& plan);
     Json automationClipboardChanges(const Json&) const;
     void executeAutomationClipboard(const Json&, Json&);
     static void registerClipCommands(Json&);

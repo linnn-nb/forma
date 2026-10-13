@@ -1,5 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativePluginStates.h"
+#include "NativeAudioFades.h"
 namespace ndaw::v2
 {
 namespace
@@ -104,15 +105,15 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         facts["source_offset_seconds"] = offset;
         facts["source_offset_samples"] = sample(offset);
         facts["source_length_samples"] = sample(c->getSourceLength().inSeconds());
-        // New cut edges have no fade; preserve fades on retained original edges.
-        facts["fade_in_samples"] =
-            first == originalStart ? std::min(facts["fade_in_samples"].get<int64_t>(), last - first) : 0;
-        facts["fade_out_samples"] =
-            last == originalEnd ? std::min(facts["fade_out_samples"].get<int64_t>(), last - first) : 0;
         facts["fx_types"] = Json::array();
         for (auto* plugin : *c->getPluginList())
             facts["fx_types"].push_back(plugin->getPluginType().toStdString());
-        auto state = te::ClipCopy::fromClip(*c).getState().createCopy();
+        auto state = native_fades::fragment(te::ClipCopy::fromClip(*c).getState(),
+                                            first == originalStart ? position.getStart().inSeconds() : first / rate,
+                                            last == originalEnd ? position.getEnd().inSeconds() : last / rate);
+        facts["fade_in_samples"] = sample(double(state["fadeIn"]));
+        facts["fade_out_samples"] = sample(double(state["fadeOut"]));
+        facts["inherited_fades"] = state.getChildWithName("NDAW_FADE_ORIGIN").isValid();
         state.setProperty(te::IDs::start, first / rate, nullptr);
         state.setProperty(te::IDs::length, (last - first) / rate, nullptr);
         state.setProperty(te::IDs::offset, offset, nullptr);
@@ -128,6 +129,7 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
             {{"token", token}, {"clip", id}, {"track", owner}, {"start_samples", first}, {"end_samples", last}});
     }
     captureClipboardAutomation(buffer, bytes);
+    captureClipboardCrossfades(buffer, bytes);
     require(revision == expectedRevision, "project changed while flushing clipboard state");
     stagedClipboard = std::move(buffer);
     return stagedClipboard->manifest;

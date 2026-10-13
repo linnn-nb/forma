@@ -147,6 +147,202 @@ void Commands::copyPlaylistCrossfades(te::AudioTrack& t, const std::string& sour
                            {"right", text(copy, "right")}});
     }
 }
+void Commands::captureClipboardCrossfades(ClipboardBuffer& buffer, size_t& bytes) const
+{
+    buffer.manifest["crossfades"] = Json::array();
+    buffer.manifest["unpaired_crossfades"] = Json::array();
+    std::map<std::string, const ClipboardEntry*> clips;
+    for (const auto& [token, entry] : buffer.entries)
+        clips.emplace(entry.facts.at("clip"), &entry);
+    for (auto* t : te::getAudioTracks(*edit))
+        for (auto n : records(*t))
+        {
+            if (text(n, "playlist") != text(playlist_links::active(*t), "id"))
+                continue;
+            auto l = clips.find(text(n, "left")), r = clips.find(text(n, "right"));
+            if (l == clips.end() && r == clips.end())
+                continue;
+            const int64_t first = juce::int64(n["start"]), last = juce::int64(n["end"]);
+            const bool complete =
+                l != clips.end() && r != clips.end() &&
+                l->second->facts["start_samples"].get<int64_t>() + l->second->facts["length_samples"].get<int64_t>() ==
+                    last &&
+                r->second->facts["start_samples"] == first && l->second->facts["fade_out_samples"] == last - first &&
+                r->second->facts["fade_in_samples"] == last - first;
+            if (!complete)
+            {
+                buffer.manifest["unpaired_crossfades"].push_back(
+                    {{"source_crossfade", text(n, "id")}, {"policy", "retained source envelopes; incomplete pair"}});
+                continue;
+            }
+            auto copy = n.createCopy();
+            copy.setProperty("source_track", t->itemID.toString(), nullptr);
+            juce::MemoryOutputStream out;
+            copy.writeToStream(out);
+            bytes += out.getDataSize();
+            require(bytes <= 8 * 1024 * 1024, "Clipboard fades exceed 8 MiB; previous clipboard retained");
+            buffer.crossfadeRecords.push_back(copy);
+            buffer.manifest["crossfades"].push_back({{"source_crossfade", text(n, "id")},
+                                                     {"track", text(copy, "source_track")},
+                                                     {"left", text(n, "left")},
+                                                     {"right", text(n, "right")},
+                                                     {"start_samples", first},
+                                                     {"end_samples", last},
+                                                     {"curve", text(n, "curve")}});
+        }
+}
+Json Commands::clipboardCrossfadeCopies(const Json& ops, const Json& timelineChanges) const
+{
+    Json placements = Json::array(), result = Json::array();
+    for (const auto& op : ops)
+        if (op["command"] == "clip.copy")
+            if (const auto* entry = clipboardEntry(op["args"]["clip"]))
+                placements.push_back({{"token", op["args"]["clip"]},
+                                      {"track", op["args"]["track"]},
+                                      {"clip", op["args"]["ref"]},
+                                      {"start", op["args"]["position_samples"]}});
+    for (const auto& change : timelineChanges)
+        for (const auto& item : change["clips"])
+            if (!item["after"].is_null() && item["after"].contains("clipboard_token"))
+                placements.push_back({{"token", item["after"]["clipboard_token"]},
+                                      {"track", item["after"]["track"]},
+                                      {"clip", item["clip"]},
+                                      {"start", item["after"]["start_samples"]}});
+    for (const auto* optional : {&activeClipboard, &stagedClipboard})
+        if (*optional)
+        {
+            const auto& buffer = **optional;
+            for (auto n : buffer.crossfadeRecords)
+            {
+                std::string leftToken, rightToken;
+                for (const auto& [token, entry] : buffer.entries)
+                {
+                    if (entry.facts["clip"] == text(n, "left"))
+                        leftToken = token;
+                    if (entry.facts["clip"] == text(n, "right"))
+                        rightToken = token;
+                }
+                require(!leftToken.empty() && !rightToken.empty(), "Frozen crossfade members missing");
+                const auto& left = buffer.entries.at(leftToken).facts;
+                const auto& right = buffer.entries.at(rightToken).facts;
+                for (const auto& l : placements)
+                    if (l["token"] == leftToken)
+                    {
+                        const int64_t delta = l["start"].get<int64_t>() - left["start_samples"].get<int64_t>();
+                        Json match = nullptr;
+                        for (const auto& r : placements)
+                            if (r["token"] == rightToken && r["track"] == l["track"] &&
+                                r["start"].get<int64_t>() - right["start_samples"].get<int64_t>() == delta)
+                            {
+                                require(match.is_null(), "Ambiguous copied crossfade members");
+                                match = r;
+                            }
+                        if (match.is_null())
+                            continue;
+                        const auto le = n.getChildWithName("LEFT"), re = n.getChildWithName("RIGHT");
+                        const double leftCore =
+                            double(le["start"]) + double(le["length"]) - left["start_samples"].get<int64_t>() / 48000.;
+                        const double rightEnd =
+                            (right["start_samples"].get<int64_t>() + right["length_samples"].get<int64_t>()) / 48000.;
+                        const double rightCore = rightEnd - double(re["start"]);
+                        require(leftCore > 0 && rightCore > 0 && double(le["fadeOut"]) <= leftCore &&
+                                    double(re["fadeIn"]) <= rightCore,
+                                "Copied transition's original restoration fades exceed its retained core");
+                        result.push_back(
+                            {{"state", "copied"},
+                             {"clipboard", buffer.manifest["id"]},
+                             {"source_crossfade", text(n, "id")},
+                             {"track", l["track"]},
+                             {"left", l["clip"]},
+                             {"right", match["clip"]},
+                             {"left_token", leftToken},
+                             {"right_token", rightToken},
+                             {"left_start_samples", l["start"]},
+                             {"right_start_samples", match["start"]},
+                             {"delta_samples", delta},
+                             {"start_samples", int64_t(juce::int64(n["start"])) + delta},
+                             {"end_samples", int64_t(juce::int64(n["end"])) + delta},
+                             {"curve", text(n, "curve")},
+                             {"identity_policy", "new pair bound to actual copied clips and destination Playlist"}});
+                    }
+            }
+        }
+    return result;
+}
+void Commands::copyClipboardCrossfades(const Json& changes, const std::map<std::string, std::string>& aliases,
+                                       Json& objects)
+{
+    auto& um = edit->getUndoManager();
+    for (const auto& change : changes)
+        if (change["state"] == "copied")
+        {
+            const auto* buffer = clipboardBuffer(change["clipboard"]);
+            require(buffer != nullptr, "Frozen crossfade clipboard expired");
+            juce::ValueTree source;
+            for (auto n : buffer->crossfadeRecords)
+                if (text(n, "id") == change["source_crossfade"].get<std::string>())
+                    source = n;
+            require(source.isValid(), "Frozen crossfade record unavailable");
+            auto target = change["track"].get<std::string>();
+            if (aliases.contains(target))
+                target = aliases.at(target);
+            auto findMember = [&](const char* side)
+            {
+                te::WaveAudioClip* found = nullptr;
+                for (const auto& object : objects)
+                    if (object.value("clipboard_token", std::string{}) ==
+                        change[std::string(side) + "_token"].get<std::string>())
+                        if (auto* c = audioClip(object["id"]))
+                            if (c->getTrack()->itemID.toString().toStdString() == target &&
+                                frame(c->getPosition().getStart().inSeconds()) ==
+                                    change[std::string(side) + "_start_samples"])
+                            {
+                                require(!found, "Copied crossfade member is ambiguous");
+                                found = c;
+                            }
+                require(found != nullptr, "Copied crossfade member no longer matches its preview");
+                return found;
+            };
+            auto* l = findMember("left");
+            auto* r = findMember("right");
+            auto& t = *track(target);
+            auto n = source.createCopy();
+            n.removeProperty("source_track", nullptr);
+            n.setProperty("id", edit->createNewItemID().toString(), nullptr);
+            n.setProperty("left", juce::String(id(*l)), nullptr);
+            n.setProperty("right", juce::String(id(*r)), nullptr);
+            n.setProperty("playlist", ensurePlaylists(t)["active"], nullptr);
+            const int64_t delta = change["delta_samples"];
+            for (const char* key : {"start", "end", "join"})
+                n.setProperty(key, juce::int64(n[key]) + delta, nullptr);
+            n.setProperty("left_live_start", l->getPosition().getStart().inSeconds(), nullptr);
+            auto le = n.getChildWithName("LEFT"), re = n.getChildWithName("RIGHT");
+            const double restoredEnd = double(le["start"]) + double(le["length"]) + delta / 48000.;
+            const double restoredStart = double(re["start"]) + delta / 48000.;
+            le.setProperty("start", l->getPosition().getStart().inSeconds(), nullptr);
+            le.setProperty("length", restoredEnd - double(le["start"]), nullptr);
+            le.setProperty("offset", l->getPosition().getOffset().inSeconds(), nullptr);
+            re.setProperty("start", restoredStart, nullptr);
+            re.setProperty("length", r->getPosition().getEnd().inSeconds() - restoredStart, nullptr);
+            re.setProperty("offset",
+                           r->getPosition().getOffset().inSeconds() + restoredStart -
+                               r->getPosition().getStart().inSeconds(),
+                           nullptr);
+            require(frame(l->getPosition().getEnd().inSeconds()) == change["end_samples"] &&
+                        frame(r->getPosition().getStart().inSeconds()) == change["start_samples"] &&
+                        frame(l->getFadeOut().inSeconds()) ==
+                            change["end_samples"].get<int64_t>() - change["start_samples"].get<int64_t>() &&
+                        frame(r->getFadeIn().inSeconds()) == frame(l->getFadeOut().inSeconds()),
+                    "Copied native fades disagree with their paired preview");
+            t.state.getOrCreateChildWithName("NDAW_CROSSFADES", &um).addChild(n, -1, &um);
+            objects.push_back({{"id", text(n, "id")},
+                               {"kind", "crossfade"},
+                               {"track", target},
+                               {"playlist", text(n, "playlist")},
+                               {"left", id(*l)},
+                               {"right", id(*r)}});
+        }
+}
 Json Commands::crossfadeTarget(const std::string& trackID, int64_t at) const
 {
     checkThread();
@@ -381,13 +577,14 @@ void Commands::executeCrossfade(const Json& a, bool remove, Json& objects)
                 t.state.getOrCreateChildWithName("NDAW_CROSSFADES", &um).addChild(n, -1, &um);
             }
             for (auto* clip : {&l, &r})
-                if (auto origin = clip->state.getChildWithName("NDAW_FADE_ORIGIN"); origin.isValid())
-                {
-                    if (!origin.hasProperty("in_curve"))
-                        origin.setProperty("in_curve", int(clip->getFadeInType()), &um);
-                    if (!origin.hasProperty("out_curve"))
-                        origin.setProperty("out_curve", int(clip->getFadeOutType()), &um);
-                }
+                for (auto origin : clip->state)
+                    if (origin.hasType("NDAW_FADE_ORIGIN"))
+                    {
+                        if (!origin.hasProperty("in_curve"))
+                            origin.setProperty("in_curve", int(clip->getFadeInType()), &um);
+                        if (!origin.hasProperty("out_curve"))
+                            origin.setProperty("out_curve", int(clip->getFadeOutType()), &um);
+                    }
             const int64_t first = a["start_samples"], last = a["end_samples"];
             const auto lp = l.getPosition(), rp = r.getPosition();
             l.setFadeOut(tracktion::TimeDuration::fromSeconds(0));
@@ -421,9 +618,9 @@ void Commands::executeCrossfade(const Json& a, bool remove, Json& objects)
                            {"right", pair["right"]}});
     }
 }
-Json Commands::crossfadeMaintenancePreview(const Json& ops) const
+Json Commands::crossfadeMaintenancePreview(const Json& ops, const Json& timelineChanges) const
 {
-    Json result = Json::array();
+    Json result = clipboardCrossfadeCopies(ops, timelineChanges);
     std::map<std::string, int64_t> moves;
     std::set<std::string> destructive;
     for (const auto& op : ops)
@@ -435,6 +632,19 @@ Json Commands::crossfadeMaintenancePreview(const Json& ops) const
             else if (cmd == "clip.trim" || cmd == "clip.fade" || cmd == "clip.delete" || cmd == "clip.split")
                 destructive.insert(id);
         }
+    for (const auto& change : timelineChanges)
+        for (const auto& item : change["clips"])
+            if (!item["before"].is_null() && !item["clone"].get<bool>())
+            {
+                const std::string id = item["clip"];
+                const auto& before = item["before"];
+                const auto& after = item["after"];
+                if (after.is_null() || before["length_samples"] != after["length_samples"] ||
+                    before["source_offset_seconds"] != after["source_offset_seconds"])
+                    destructive.insert(id);
+                else if (before["start_samples"] != after["start_samples"])
+                    moves[id] = after["start_samples"];
+            }
     if (moves.empty() && destructive.empty())
         return result;
     for (auto* t : te::getAudioTracks(*edit))
@@ -500,11 +710,25 @@ void Commands::refreshCrossfadeRecords(const Json& ops)
                     auto* left = audioClip(l);
                     auto* right = audioClip(r);
                     const int64_t first = juce::int64(n["start"]), last = juce::int64(n["end"]);
-                    if (!left || !right || frame(left->getPosition().getEnd().inSeconds()) != last ||
-                        frame(right->getPosition().getStart().inSeconds()) != first ||
+                    const auto delta =
+                        left ? frame(left->getPosition().getStart().inSeconds()) - frame(double(n["left_live_start"]))
+                             : 0;
+                    if (!left || !right || frame(left->getPosition().getEnd().inSeconds()) != last + delta ||
+                        frame(right->getPosition().getStart().inSeconds()) != first + delta ||
                         frame(left->getFadeOut().inSeconds()) != last - first ||
                         frame(right->getFadeIn().inSeconds()) != last - first)
                         list.removeChild(n, &um);
+                    else if (delta != 0)
+                    {
+                        for (const char* k : {"start", "end", "join"})
+                            n.setProperty(k, juce::int64(n[k]) + delta, &um);
+                        n.setProperty("left_live_start", left->getPosition().getStart().inSeconds(), &um);
+                        for (const char* side : {"LEFT", "RIGHT"})
+                        {
+                            auto e = n.getChildWithName(side);
+                            e.setProperty("start", double(e["start"]) + delta / 48000., &um);
+                        }
+                    }
                 }
                 continue;
             }

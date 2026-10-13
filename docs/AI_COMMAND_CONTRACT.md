@@ -1,3 +1,5 @@
+P1-XFADE-CLIPBOARD-01（2026-10-13）：既有音频/时间线复制包冻结 `crossfades` 与 `unpaired_crossfades`，原始源快照、完整配对及恢复边界计入8MiB预算。原命令的 `crossfade_changes` 预览声明实际目标、成员、样本位移、曲线和新身份策略；完整提交回执返回真实新过渡ID。一个 Plan 一笔 Undo；重试不重复对象，保存重开保留原历史。完整过渡才重建配对，坡度内切片声明仅保留实际源包络；未知速度淡化或恢复范围不满足资格时拒绝。GUI/可改键复用既有 Copy/Paste 入口；MCP/Agent 授权不扩展。代码 CrossfadeEditing.cpp、ClipboardCommands.cpp、MidiClipClipboard.cpp、ClipCommands.cpp；测试 CrossfadeClipboardTests.cpp，证据 evidence/P1/summary.md。
+
 P1-CROSSFADE-COPY-01（2026-10-13）：现有human playlist.create预览新增crossfade_copies，列出源配对/成员/区间/曲线和新身份策略；提交返回新Playlist及crossfade对象。一个Plan一笔事务，重试复用回执；新Clip/过渡ID和边界快照随保存历史恢复。可改键516/523和GUI复用同一L1，不新增Agent权限。代码CrossfadeEditing.cpp/PlaylistEditing.cpp，验证CrossfadeTests.cpp及evidence/P1/summary.md。
 
 P1 视图修复（2026-10-13）：定位输入框 Esc 只取消未提交草稿，不生成 Plan、revision 或 Undo；检查器名称和插件来源绑定同一工程快照；轨头布局不修改音频事实。L1 命令、权限及 AI 工具范围不变，M2/M3 不扩充。
