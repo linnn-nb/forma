@@ -327,8 +327,21 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                                                            &clipPanel,
                                                            &commandButton,
                                                            &audioSettingsButton,
-                                                           &rangeButton})
+                                                           &rangeButton,
+                                                           &inspectorCategory,
+                                                           &inspectorName})
         addAndMakeVisible(c);
+    inspectorCategory.setComponentID("inspector.category");
+    inspectorName.setComponentID("inspector.owner");
+    inspectorCategory.setFont(juce::FontOptions(11));
+    inspectorCategory.setColour(juce::Label::textColourId, juce::Colour(0xffb7c7d8));
+    inspectorName.setFont(juce::FontOptions(17, juce::Font::bold));
+    inspectorName.setColour(juce::Label::textColourId, juce::Colours::white);
+    for (auto* label : {&inspectorCategory, &inspectorName})
+    {
+        label->setBorderSize(juce::BorderSize<int>(0));
+        label->setInterceptsMouseClicks(false, false);
+    }
     editView.setViewedComponent(&editSurface, false);
     mixView.setViewedComponent(&mixArea, false);
     parameterView.setViewedComponent(&parameters, false);

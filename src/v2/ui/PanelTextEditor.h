@@ -6,12 +6,18 @@ namespace ndaw::desktop
 class PanelTextEditor final : public juce::TextEditor
 {
 public:
+    std::function<void()> onEscape;
     void connect(juce::ApplicationCommandManager& owner)
     {
         manager = &owner;
     }
     bool keyPressed(const juce::KeyPress& key) override
     {
+        if (key == juce::KeyPress::escapeKey && onEscape)
+        {
+            onEscape();
+            return true;
+        }
         if (manager)
         {
             const auto command =

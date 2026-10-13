@@ -183,6 +183,8 @@ int main(int argc, char** argv)
         auto* keys = w.uiCommands().getKeyMappings();
         const juce::KeyPress customSubmit('k', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
         keys->clearAllKeyPresses(275);
+        // Native key reassignment removes the old owner before claiming its key.
+        keys->removeKeyPress(customSubmit);
         keys->addKeyPress(275, customSubmit);
         run(c, Json::array(
                    {operation("tempo.set", {{"position_samples", 96000}, {"bpm", 60}}),

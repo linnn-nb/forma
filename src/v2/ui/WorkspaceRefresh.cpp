@@ -308,6 +308,21 @@ void Workspace::refreshInspector()
     // A slot click changes selection while the actual plugin IDs stay the same.
     pluginChoice.setSelectedId(pluginSelection + 1, juce::dontSendNotification);
     auto p = selectedProcessor();
+    const auto category = text(clipFXInspector ? "CLIP FX / 片段效果" : "INSPECTOR / 轨道检查器");
+    const auto name = owner.is_null() ? text("未选择轨道") : text(owner["name"].get<std::string>());
+    inspectorCategory.setText(category, juce::dontSendNotification);
+    inspectorName.setText(name, juce::dontSendNotification);
+    inspectorName.setTooltip(name);
+    Json presentation{{"category", category.toStdString()},
+                      {"name", name.toStdString()},
+                      {"owner", owner.is_null() ? Json(nullptr) : owner["id"]},
+                      {"processor", p.is_null() ? Json(nullptr) : p["id"]}};
+    if (presentation != lastInspectorPresentation)
+    {
+        lastInspectorPresentation = std::move(presentation);
+        const int right = getWidth() - inspectorWidth();
+        repaint(right, 168, inspectorWidth(), 286);
+    }
     const bool playing = facts.value("playing", false) ||
                          (facts["audio_configuration"].is_object() &&
                           facts["audio_configuration"].value("state", std::string{}) == "preparing"),

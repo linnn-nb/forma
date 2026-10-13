@@ -474,7 +474,11 @@ public:
             outputSlot.setBounds(12, compact ? 264 : 294, getWidth() - 24, 22);
             comments.setBounds(12, getHeight() - 31, getWidth() - 24, 24);
         }
-        const bool hasPan = pan.isVisible();
+        // Bounds may change before update(), or after a short row hid the pan.
+        // Derive this row's layout from its current capability and height.
+        const bool hasPan = facts.is_object() && facts.contains("capabilities") &&
+                            facts["capabilities"].value("pan", false) && (strip || !shortRow);
+        pan.setVisible(hasPan);
         const int faderTop = strip && hasPan ? (compact ? 363 : 407) : 292;
         gain.setBounds(strip ? 22 : 10, strip ? faderTop : 82,
                        strip    ? getWidth() - 44

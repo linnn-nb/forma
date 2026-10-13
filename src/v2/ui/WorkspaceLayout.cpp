@@ -421,23 +421,13 @@ void Workspace::paint(juce::Graphics& g)
     const int sideWidth = getWidth() - right;
     g.setColour(juce::Colour(0xff202a34));
     g.fillRect(right, 168, sideWidth, getHeight() - 197);
-    g.setColour(juce::Colour(0xffb7c7d8));
-    g.setFont(juce::FontOptions(11));
-    g.drawText(text(clipFXInspector ? "CLIP FX / 片段效果" : "INSPECTOR / 轨道检查器"), right + 16, 175, 298, 25,
-               juce::Justification::left);
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(17, juce::Font::bold));
-    const auto& t = clipFXInspector ? selectedAudioClip() : selectedTrack();
-    g.drawText(t.is_null() ? text("未选择轨道") : text(t["name"].get<std::string>()), right + 16, 206, 298, 28,
-               juce::Justification::left);
     g.setFont(juce::FontOptions(11));
     g.setColour(juce::Colour(0xff91a3b7));
     const auto& p = selectedProcessor();
     if (p.is_null() && !routingInspector && !groupInspector && !autoInspector && !recordInspector)
     {
         g.setFont(juce::FontOptions(13));
-        g.drawText(text("选择效果器并插入\n参数取自真实 Tracktion 实例"), right + 24, 382, 284, 70,
-                   juce::Justification::centred);
+        g.drawText(text("选择效果器并插入"), right + 24, 382, 284, 70, juce::Justification::centred);
     }
     double peak = deviceFacts.value("output_peak", 0.);
     double db = peak > 0 ? 20 * std::log10(peak) : -100;
@@ -546,6 +536,10 @@ void Workspace::resized()
                          : 0;
     const int sideWidth = inspectorWidth();
     int right = getWidth() - sideWidth, areaHeight = getHeight() - 191;
+    inspectorCategory.setBounds(right + 16, 175, std::max(0, sideWidth - 32), 25);
+    inspectorName.setBounds(right + 16, 206, std::max(0, sideWidth - 32), 28);
+    inspectorCategory.setVisible(sideWidth > 0);
+    inspectorName.setVisible(sideWidth > 0);
     inspectorDivider.setBounds(right - 6, 162, 6, areaHeight);
     inspectorDivider.setWidth(sideWidth);
     trackListDivider.setBounds(left - 6, 162, 6, areaHeight);

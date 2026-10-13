@@ -1,3 +1,5 @@
+P1 界面绑定修复（2026-10-13）：Release 构建及固定本地身份 deep/strict 验签通过。11 套件1242项、无 JUCE assertion：ui_navigation73、presentation312、edit_views46、midi_dock34、clip_fx_workspace30、clip_time57、music_events96、roll_playback197、crossfade75、playlist227、mixed_clipboard95。导航新增24项验证增益/声像布局、真实选轨/改名/重开后检查器同步和3个定位输入 Esc 无工程/历史变更。初跑两处夹具失败后修正：改键先移除旧所有者；外改 XML 的旧工程夹具去掉现代历史哈希；生产校验未放宽。所有复测使用原截止时间。桌面锁定，最新构建实体GUI未执行。性能A未通过、旧自动化矩阵180秒超时、配对复制及完整P1仍保留。详细证据见 evidence/P1/summary.md。
+
 P1 混合粘贴修复（2026-10-13）：Release/固定本地签名通过；15受影响套件、1,316项全部通过，无JUCE断言。Mixed95、History86（19项历史故障/恢复新增）、参数51；原生桌面预览/接受、撤销/重做、保存/重开原历史已验。截图暴露的数值叠印、定位Escape及检查器选择同步待修；完整P1/旧性能A/180秒自动化矩阵保留。见 [P1证据](../evidence/P1/summary.md)。
 
 P1 上轮交叉淡化结论（2026-10-13）：Release/固定本地 deep-strict 签名通过；12 套件中 11 套、1,291 项通过，混合剪贴板 PARAMETER_BASES 重复 ID 失败，未通过完整 P1。最终构建原生桌面长度编辑/Undo/Redo/移除已验；实听、硬件与全流程未验。版本绑定与实时插入点修复、新夹具及全部失败记录见 [P1证据](../evidence/P1/summary.md)。

@@ -66,6 +66,77 @@ juce::Component* find(juce::Component& p, const juce::String& id)
     return nullptr;
 }
 } // namespace
+namespace
+{
+void bindingChecks(const juce::File& folder)
+{
+    using namespace ndaw::desktop;
+    Workspace w(false, std::make_unique<Storage>(folder.getChildFile("binding-prefs")));
+    w.setSize(1440, 900);
+    w.setVisible(true);
+    auto& c = AudioDeviceTestAccess::owner(w);
+    c.commit(c.makePlan(
+        "human", Json::array({operation("track.create", {{"name", "Audio Owner"}, {"ref", "$a"}}),
+                              operation("plugin.insert", {{"track", "$a"}, {"type", te::EqualiserPlugin::xmlTypeName}}),
+                              operation("track.create",
+                                        {{"name", "Instrument Owner"}, {"type", "instrument"}, {"ref", "$b"}})})));
+    pump();
+    const auto tracks = c.query()["tracks"];
+    for (const auto& t : tracks)
+    {
+        const auto id = t["id"].get<std::string>();
+        TrackHeader header(
+            id, false, [&](const auto& cmd, auto args)
+            { c.commit(c.makePlan("human", Json::array({operation(cmd, args)}))); }, [](auto) {});
+        header.setVisible(true);
+        header.update(t, false); // Initial zero-size/short-row layout precedes the real bounds.
+        for (int width : {244, 300})
+            for (int height : {144, 64, 144, 200})
+            {
+                header.setSize(width, height);
+                auto* gain = dynamic_cast<juce::Slider*>(find(header, "track.gain:" + text(id)));
+                auto* pan = dynamic_cast<juce::Slider*>(find(header, "track.pan:" + text(id)));
+                if (height >= 140)
+                    check(gain && pan && !gain->getBounds().intersects(pan->getBounds()) &&
+                              header.getLocalBounds().contains(gain->getBounds()) &&
+                              header.getLocalBounds().contains(pan->getBounds()),
+                          "native gain and pan remain readable after initial and short-to-normal row layout");
+            }
+        auto* button = dynamic_cast<juce::Button*>(find(w, "track.select:" + text(id)));
+        check(button != nullptr, "production track selection exists for inspector binding");
+        button->triggerClick();
+        pump();
+        auto* name = dynamic_cast<juce::Label*>(find(w, "inspector.owner"));
+        auto* choice = dynamic_cast<juce::ComboBox*>(find(w, "plugin.choice"));
+        check(name && name->getText() == text(t["name"].get<std::string>()) && choice &&
+                  choice->getText() == text(t["plugins"][0]["name"].get<std::string>()),
+              "inspector title and actual plugin choice refer to the same selected owner");
+    }
+    const auto b = tracks[1]["id"].get<std::string>();
+    c.commit(c.makePlan("human", Json::array({operation("track.rename", {{"track", b}, {"name", "Renamed 音源"}})})));
+    pump();
+    check(dynamic_cast<juce::Label*>(find(w, "inspector.owner"))->getText() == text("Renamed 音源"),
+          "inspector title updates after a rename with unchanged layout and owner ID");
+    const auto saved = folder.getChildFile("binding.tracktionedit");
+    c.save(saved);
+    w.openSession(saved);
+    pump();
+    check(dynamic_cast<juce::Label*>(find(w, "inspector.owner"))->getText() == text("Renamed 音源"),
+          "inspector owner label restores with its plugin choice after actual reopen");
+    for (const auto* id : {"timeline.range.start", "timeline.range.end", "timeline.position"})
+    {
+        w.showTimelineRange();
+        auto* panel = find(w, "timeline.range.panel");
+        auto* input = dynamic_cast<juce::TextEditor*>(find(w, id));
+        check(panel && input, "production locator text field is present");
+        const auto before = c.query();
+        input->setText("123456", false);
+        check(input->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)) && !panel->isVisible() &&
+                  c.query() == before,
+              "Escape from a focused locator field cancels the draft without project or history changes");
+    }
+}
+} // namespace
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -74,6 +145,7 @@ int main(int argc, char** argv)
     folder.createDirectory();
     try
     {
+        bindingChecks(folder);
         Commands c(false, std::make_unique<Storage>(folder.getChildFile("core")));
         auto initial = c.query();
         auto token = c.sessionToken();
@@ -235,11 +307,17 @@ int main(int argc, char** argv)
         pump();
         w.openLocalFile(media);
         pump();
+        auto* import = dynamic_cast<juce::Button*>(find(w, "audio.import.apply"));
+        check(import && w.query()["tracks"].empty(), "local audio ingress opens actual import settings before editing");
+        import->triggerClick();
+        const auto importDeadline = juce::Time::getMillisecondCounterHiRes() + 2000;
+        while (find(w, "audio.import.panel") && juce::Time::getMillisecondCounterHiRes() < importDeadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
         auto imported = w.query()["tracks"];
         check(imported.size() == 1 && imported[0]["clips"].size() == 1 &&
                   imported[0]["clips"][0]["start_samples"] == 12345 &&
                   std::abs(imported[0]["gain_db"].get<double>()) < .002 && !find(w, "plan.accept"),
-              "human import commits real PCM at cursor immediately without changing gain or asking for preview");
+              "accepting native import settings commits real PCM at cursor without changing gain or AI preview");
         w.uiCommands().invokeDirectly(6, false);
         pump();
         check(w.query()["tracks"].empty(), "single global Undo removes imported track and clip together");

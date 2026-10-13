@@ -28,7 +28,11 @@ public:
         last.setComponentID("timeline.range.end");
         position.setComponentID("timeline.position");
         for (auto* e : {&first, &last, &position})
+        {
             e->setInputRestrictions(24, "0123456789.");
+            e->onEscape = [this] { this->close(); };
+        }
+        detail.onEscape = [this] { this->close(); };
         detail.setMultiLine(true);
         detail.setReadOnly(true);
         detail.setFont(juce::FontOptions(14));
@@ -207,7 +211,7 @@ private:
     bool current = false;
     juce::Rectangle<int> card;
     juce::Label title, firstLabel, lastLabel, positionLabel, result;
-    juce::TextEditor first, last, position, detail;
+    PanelTextEditor first, last, position, detail;
     juce::ComboBox unit;
     juce::TextButton applyButton{text("应用时间选区")}, clearButton{text("清除选区")}, seekButton{text("定位")},
         exportButton{text("导出选区 WAV…")}, refreshButton{text("重新读取工程")}, closeButton{text("关闭")};

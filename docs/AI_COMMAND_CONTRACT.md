@@ -1,3 +1,5 @@
+P1 视图修复（2026-10-13）：定位输入框 Esc 只取消未提交草稿，不生成 Plan、revision 或 Undo；检查器名称和插件来源绑定同一工程快照；轨头布局不修改音频事实。L1 命令、权限及 AI 工具范围不变，M2/M3 不扩充。
+
 P1 失败回执（2026-10-13）：共享L1历史收集/编码失败时回滚工程及原Undo/Redo，保持revision/session，不发布committed回执；同Plan可重试，实际成功后幂等。queryFacts快速路径同步parameter_failure，不能把缓存中的旧null误作无错误。未扩工具、权限或MCP资格；故障范围和测试见VERIFICATION。
 
 P1 交叉淡化契约（2026-10-13）：`playlist.crossfade {track,left,right,start_samples,end_samples,curve}`，curve=linear/equal_power；`playlist.crossfade.remove {track,left,right}`。media_fingerprint 由 L1 封闭并在预检/提交重验，local_gui/human、停止状态、单操作 Plan；MCP/Agent 权限不扩展。最多32对/64片段，所有启用 Edit 组和活动关联 Comp 成员先整体解析，源余量/锁定/相同切点/两采样下限/工程边界/三重重叠任一失败整笔拒绝。预览有全部配对的前后位置、源偏移、淡化，Scope 覆盖全部受影响轨，回执返回真实稳定对象 ID；幂等重试不复制。

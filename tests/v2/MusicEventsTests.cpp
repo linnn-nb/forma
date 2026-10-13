@@ -328,6 +328,8 @@ int main(int argc, char** argv)
         const auto duplicate = dir.getChildFile("LegacyDuplicate.tracktionedit");
         auto xml = juce::parseXML(file);
         check(xml != nullptr, "actual saved native XML parses for controlled fault injection");
+        // A deliberate legacy XML derivative cannot retain modern history hashes.
+        xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         juce::String firstID;
         std::function<void(juce::XmlElement&)> corrupt = [&](juce::XmlElement& e)
         {
@@ -356,6 +358,7 @@ int main(int argc, char** argv)
         }
         // Imported curve and click subdivision survive editing existing events; new meter uses declared defaults.
         auto imported = juce::parseXML(file);
+        imported->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         std::function<void(juce::XmlElement&)> decorate = [&](juce::XmlElement& e)
         {
             if (e.hasTagName("TIMESIG"))

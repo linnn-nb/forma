@@ -1,3 +1,18 @@
+# P1 界面绑定修复（2026-10-13）
+
+结论：三处界面问题已修并自动验证，最新构建实体GUI待测；完整P1未通过。
+
+- TrackHeader 不再以旧 pan 可见性分配增益宽度；初始零高度、短行恢复、244/300像素宽度均检查控件边界。
+- 定位/选区输入内 Esc 取消草稿，不修改工程、revision或历史；检查器原生标题与真实插件同源，改名和保存重开同步。
+- Release/固定身份 deep/strict验签通过，二进制 SHA256：`608164b807b191f2f87d7277c913669d20d52e61ad93ba033474b9501924915e`。
+- 11套件1242项通过，0 JUCE assertion；ui_navigation73、presentation312、edit_views46、midi_dock34、clip_fx_workspace30、clip_time57、music_events96、roll_playback197、crossfade75、playlist227、mixed_clipboard95。各套件3.357–16.836秒，原60/90/120/180秒期限未调整。
+- 初跑ClipTime/MusicEvents夹具失败：Control+Option+K已有所有者，测试改键需先移除；旧外改XML夹具不能携带现代历史哈希。修正夹具后复测通过，生产历史一致性校验保持。
+- 最新输出：`build-v2-tracktion/p1-ui-final-results.json`；初跑与复测明细分别在`p1-ui-release-results.json`、`p1-ui-repair-results.json`，构建日志`p1-ui-release-build.log`。
+- 原生桌面检查工具返回Mac已锁定；最新二进制未重启/实体键鼠未执行，没有本轮截图或试听通过声明。
+- 产物沿用`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；无新增DMG。下一项配对交叉淡化复制与完整P1制作链路；性能A及旧自动化矩阵180秒超时保持未通过。
+
+以下为历史增量证据。
+
 # P1：混合粘贴与历史登记失败恢复（2026-10-13）
 
 结论：此前 mixed_clipboard 重复 PARAMETER_BASES 阻断已修复；Release/固定本地 deep-strict 签名通过。15 个受影响套件、1,316 项全部通过，0 JUCE 断言；最终子套件累计209.019秒，不是性能测试或全仓回归。当前原生桌面已实点复制→目标定位→预览→接受→Undo/Redo→另存→重开→原 Undo/Redo。完整 P1、旧性能 A 和180秒自动化矩阵仍未通过。

@@ -137,6 +137,8 @@ private:
     // must be constructed first and destroyed after every such component.
     juce::ApplicationCommandManager commandManager;
     Json lastLayoutState = nullptr;
+    Json lastInspectorPresentation = nullptr;
+    juce::Label inspectorCategory, inspectorName;
     void updateRealtime();
     juce::VBlankAttachment frameClock;
     bool frameActive = false;
