@@ -8,8 +8,8 @@ class PlaylistPanel final : public juce::Component
 {
 public:
     using Submit = std::function<Json(const std::string&, Json, uint64_t, const std::string&)>;
-    PlaylistPanel(Submit submit, std::function<void()> close)
-        : submit(std::move(submit)), close(std::move(close)), canvas(*this), draftModel(*this)
+    PlaylistPanel(Submit submit, std::function<void()> close, std::function<Json(const std::string&)> query)
+        : submit(std::move(submit)), close(std::move(close)), query(std::move(query)), canvas(*this), draftModel(*this)
     {
         setComponentID("playlist.panel");
         addAndMakeVisible(title);
@@ -18,6 +18,29 @@ public:
         addAndMakeVisible(view);
         addAndMakeVisible(scroll);
         addAndMakeVisible(zoom);
+        addAndMakeVisible(trackChoice);
+        trackChoice.setComponentID("playlist.source.track");
+        trackChoice.setTooltip(text("切换来源轨道；Shift 点波形沿用共同选区，再加入候选"));
+        trackChoice.onChange = [this]
+        {
+            const int index = trackChoice.getSelectedId() - 1;
+            if (data.is_null() || index < 0 || index >= int(data["tracks"].size()))
+                return;
+            try
+            {
+                const std::string next = data["tracks"][index]["id"];
+                auto state = this->query(next);
+                track = next;
+                source.clear();
+                sourceClip.clear();
+                bind(std::move(state));
+                updateName();
+            }
+            catch (const std::exception& error)
+            {
+                status.setText(text(error.what()), juce::dontSendNotification);
+            }
+        };
         addAndMakeVisible(candidateName);
         addAndMakeVisible(draftList);
         candidateName.setComponentID("playlist.candidate.name");
@@ -53,7 +76,10 @@ public:
                                                                          {525, "加入候选"},
                                                                          {526, "移除所选段"},
                                                                          {527, "创建候选"},
-                                                                         {528, "清空候选"}})
+                                                                         {528, "清空候选"},
+                                                                         {529, "恢复整组原播放"},
+                                                                         {530, "解除 Comp 关联"},
+                                                                         {531, "下一来源轨"}})
         {
             auto button = std::make_unique<juce::TextButton>(text(label));
             addAndMakeVisible(*button);
@@ -80,12 +106,21 @@ public:
             if (!draft.empty())
                 draftNotice = text("工程版本已变化，未提交的候选清单已清空；请重新选段。");
             draft = Json::array();
+            draftLabels.clear();
             draftList.updateContent();
             sourceClip.clear();
             begin = end = 0;
             canvas.dragging = false;
         }
         data = std::move(next);
+        trackChoice.clear(juce::dontSendNotification);
+        int index = 0;
+        for (const auto& t : data["tracks"])
+        {
+            trackChoice.addItem(text(t["name"].get<std::string>()), ++index);
+            if (t["id"] == track)
+                trackChoice.setSelectedId(index, juce::dontSendNotification);
+        }
         bool found = false;
         for (const auto& list : data["items"])
             if (list["id"] == source)
@@ -118,6 +153,7 @@ public:
         source.clear();
         data = nullptr;
         draft = Json::array();
+        draftLabels.clear();
         draftNotice.clear();
     }
     bool canExecute(int id) const
@@ -126,6 +162,10 @@ public:
             return true;
         if (data.is_null() || source.empty())
             return false;
+        if (id == 529 || id == 530)
+            return !selectedList().value("linked_set", std::string{}).empty();
+        if (id == 531)
+            return data["tracks"].size() > 1;
         if (id == 519)
             return !sourceClip.empty() && end > begin && data["target"] != source;
         if (id == 521)
@@ -149,13 +189,25 @@ public:
             return;
         try
         {
+            if (id == 531)
+            {
+                trackChoice.setSelectedId(trackChoice.getSelectedId() % int(data["tracks"].size()) + 1,
+                                          juce::sendNotificationSync);
+                return;
+            }
             if (id == 525)
             {
                 for (const auto& segment : draft)
-                    if (segment["start_samples"].get<int64_t>() < end && segment["end_samples"].get<int64_t>() > begin)
+                    if (segment["track"] == track && segment["start_samples"].get<int64_t>() < end &&
+                        segment["end_samples"].get<int64_t>() > begin)
                         throw std::runtime_error("候选片段有重叠，请先移除旧选段或缩短选区");
-                draft.push_back(
-                    {{"source", source}, {"clip", sourceClip}, {"start_samples", begin}, {"end_samples", end}});
+                draft.push_back({{"track", track},
+                                 {"source", source},
+                                 {"clip", sourceClip},
+                                 {"start_samples", begin},
+                                 {"end_samples", end}});
+                draftLabels[track + ":" + source] =
+                    data["track_name"].get<std::string>() + " / " + selectedList()["name"].get<std::string>();
                 draftNotice.clear();
                 draftList.updateContent();
                 draftList.selectRow(int(draft.size()) - 1);
@@ -168,6 +220,17 @@ public:
                     draft.erase(draft.begin() + draftList.getSelectedRow());
                 else
                     draft = Json::array();
+                std::erase_if(draftLabels,
+                              [this](const auto& entry)
+                              {
+                                  return std::none_of(draft.begin(), draft.end(),
+                                                      [&](const Json& s)
+                                                      {
+                                                          return s["track"].get<std::string>() + ":" +
+                                                                     s["source"].get<std::string>() ==
+                                                                 entry.first;
+                                                      });
+                              });
                 draftNotice.clear();
                 draftList.updateContent();
                 refreshStatus();
@@ -177,9 +240,21 @@ public:
             std::string cmd;
             if (id == 527)
             {
-                cmd = "playlist.comp.create";
+                std::set<std::string> members;
+                for (const auto& s : draft)
+                    members.insert(s["track"].get<std::string>());
+                cmd = members.size() > 1 ? "playlist.comp.linked.create" : "playlist.comp.create";
+                a["track"] = draft[0]["track"];
                 a["name"] = candidateName.getText().toStdString();
                 a["segments"] = draft;
+                if (members.size() == 1)
+                    for (auto& s : a["segments"])
+                        s.erase("track");
+            }
+            if (id == 529 || id == 530)
+            {
+                cmd = id == 529 ? "playlist.comp.restore" : "playlist.comp.detach";
+                a["playlist"] = source;
             }
             if (id == 515 || id == 516 || id == 520)
             {
@@ -224,11 +299,12 @@ public:
             }
             const auto receipt = submit(cmd, a, data["revision"], data["session_token"]);
             for (const auto& object : receipt.value("objects", Json::array()))
-                if (object["kind"] == "playlist")
+                if (object["kind"] == "playlist" && object.value("track", track) == track)
                 {
                     source = object["id"];
                     updateName();
                 }
+            refreshStatus();
             status.setText(text("已提交 · 可 Undo / Redo。点列表名称选择，拖选波形后提升到 TARGET。"),
                            juce::dontSendNotification);
             if (id == 527)
@@ -236,6 +312,9 @@ public:
                 draftNotice.clear();
                 status.setText(text("候选已创建 · 原播放和目标保留 · 整份候选一次 Undo。"), juce::dontSendNotification);
             }
+            if (id == 529 || id == 530)
+                status.setText(text(id == 529 ? "整组已恢复原播放 · 可一次撤销" : "整组关联已解除 · 音频不变 · 可撤销"),
+                               juce::dontSendNotification);
             canvas.repaint();
         }
         catch (const std::exception& e)
@@ -250,7 +329,10 @@ public:
     void resized() override
     {
         auto r = getLocalBounds().reduced(14);
-        title.setBounds(r.removeFromTop(32));
+        auto header = r.removeFromTop(32);
+        buttons.at(531)->setBounds(header.removeFromRight(104).reduced(2));
+        trackChoice.setBounds(header.removeFromRight(220).reduced(2));
+        title.setBounds(header);
         auto tools = r.removeFromTop(34);
         name.setBounds(tools.removeFromLeft(170).reduced(2));
         for (int id : {515, 516, 517, 520, 521, 524})
@@ -258,6 +340,8 @@ public:
         auto actions = r.removeFromTop(34);
         for (int id : {523, 518, 519, 522})
             buttons.at(id)->setBounds(actions.removeFromLeft(118).reduced(2));
+        for (int id : {529, 530})
+            buttons.at(id)->setBounds(actions.removeFromLeft(128).reduced(2));
         zoom.setBounds(actions.removeFromLeft(160).reduced(3));
         status.setBounds(r.removeFromBottom(34));
         auto candidate = r.removeFromBottom(112);
@@ -287,10 +371,9 @@ private:
             if (row < 0 || row >= int(owner.draft.size()))
                 return {};
             const auto& s = owner.draft[row];
-            std::string label = s["source"];
-            for (const auto& list : owner.data["items"])
-                if (list["id"] == s["source"])
-                    label = list["name"];
+            const auto key = s["track"].get<std::string>() + ":" + s["source"].get<std::string>();
+            const auto found = owner.draftLabels.find(key);
+            const std::string label = found == owner.draftLabels.end() ? key : found->second;
             return juce::String(row + 1) + "  " + text(label) + "    " +
                    juce::String(s["start_samples"].get<int64_t>() / 48000., 6) + " – " +
                    juce::String(s["end_samples"].get<int64_t>() / 48000., 6) + text(" 秒 · 原工程位置");
@@ -355,6 +438,8 @@ private:
                 std::string flags = list["active"].get<bool>() ? "PLAY  " : "";
                 if (list["id"] == owner.data["target"])
                     flags += "TARGET  ";
+                if (!list.value("linked_set", std::string{}).empty())
+                    flags += "LINK  ";
                 if (list["locked"].get<bool>())
                     flags += "LOCK";
                 g.setColour(accent());
@@ -401,6 +486,7 @@ private:
             const auto& list = owner.data["items"][row];
             owner.source = list["id"];
             owner.sourceClip.clear();
+            const auto retainedBegin = owner.begin, retainedEnd = owner.end;
             owner.begin = owner.end = 0;
             dragging = false;
             owner.updateName();
@@ -415,6 +501,13 @@ private:
                         anchor = at(e.position.x);
                         owner.begin = first;
                         owner.end = last;
+                        if (e.mods.isShiftDown() && retainedEnd > retainedBegin && retainedBegin >= first &&
+                            retainedEnd <= last)
+                        {
+                            owner.begin = retainedBegin;
+                            owner.end = retainedEnd;
+                            break;
+                        }
                         dragging = true;
                         break;
                     }
@@ -442,6 +535,13 @@ private:
             repaint();
         }
     };
+    const Json& selectedList() const
+    {
+        for (const auto& list : data["items"])
+            if (list["id"] == source)
+                return list;
+        throw std::runtime_error("所选 Playlist 已不存在");
+    }
     void updateName()
     {
         for (const auto& list : data["items"])
@@ -460,6 +560,10 @@ private:
                                       ? juce::String{}
                                       : text(" · 未提交候选 ") + juce::String(int(draft.size())) + text(" 段")),
                        juce::dontSendNotification);
+        std::set<std::string> members;
+        for (const auto& s : draft)
+            members.insert(s["track"].get<std::string>());
+        buttons.at(527)->setButtonText(text(members.size() > 1 ? "创建关联 Comp" : "创建候选"));
         for (auto& [id, b] : buttons)
             b->setEnabled(canExecute(id));
     }
@@ -488,7 +592,7 @@ private:
                                     : key == juce::KeyPress::returnKey
                                         ? enterCommand
                                         : manager->getKeyMappings()->findCommandForKeyPress(key);
-                if (command >= 515 && command <= 528)
+                if (command >= 515 && command <= 531)
                 {
                     manager->invokeDirectly(command, false);
                     return true;
@@ -503,6 +607,9 @@ private:
     };
     Submit submit;
     std::function<void()> close;
+    std::function<Json(const std::string&)> query;
+    juce::ComboBox trackChoice;
+    std::map<std::string, std::string> draftLabels;
     std::string track, source, sourceClip;
     Json data = nullptr;
     int64_t begin = 0, end = 0, duration = 480000;

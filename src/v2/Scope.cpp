@@ -284,6 +284,20 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 impacts.push_back({{"command", cmd}, {"object", a.value("note", id)}, {"clip", id}});
             }
         }
+        else if (cmd.starts_with("playlist."))
+        {
+            std::set<std::string> targets{a.at("track").get<std::string>()};
+            for (const auto& change : preview.at("playlist_changes"))
+                if (change.contains("linked_tracks"))
+                    for (const auto& id : change["linked_tracks"])
+                        targets.insert(id.get<std::string>());
+            for (const auto& id : targets)
+            {
+                object(id, domainTrack(id));
+                full();
+                impacts.push_back({{"command", cmd}, {"object", id}, {"extent", "whole_track"}});
+            }
+        }
         else if (a.contains("track") && !cmd.starts_with("clip.") && !cmd.starts_with("send.") &&
                  cmd != "track.create" && cmd != "track.output" && cmd != "track.parent" && cmd != "track.delete" &&
                  cmd != "track.order" && cmd != "track.solo" && cmd != "track.solo_safe" && cmd != "track.input" &&

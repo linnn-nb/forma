@@ -238,6 +238,12 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {528, "清空 Comp 候选清单", "Playlist", '4',
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {529, "恢复关联 Comp 原播放", "Playlist", '5',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {530, "解除 Comp 关联", "Playlist", '6',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {531, "下一来源轨道", "Playlist", '7',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {513, "切换 Punch 补录", "录音", 'p', juce::ModifierKeys::altModifier},
         {511, "上一个 Playlist / Take", "录音", '[', juce::ModifierKeys::altModifier},
         {512, "下一个 Playlist / Take", "录音", ']', juce::ModifierKeys::altModifier},
@@ -909,7 +915,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     if (t["id"] == selected && t.value("type", std::string{}) == "audio")
                         active = !facts.value("playing", false);
             }
-            if (id >= 515 && id <= 528)
+            if (id >= 515 && id <= 531)
                 active = playlistPanel && playlistPanel->isVisible() && playlistPanel->canExecute(id) &&
                          (id == 524 || !facts.value("playing", false));
             if (id == 513)
@@ -1190,7 +1196,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
         invoke([&] { showPlaylists(); });
         return true;
     }
-    if (id >= 515 && id <= 528 && playlistPanel && playlistPanel->isVisible())
+    if (id >= 515 && id <= 531 && playlistPanel && playlistPanel->isVisible())
     {
         playlistPanel->execute(id);
         commandManager.commandStatusChanged();

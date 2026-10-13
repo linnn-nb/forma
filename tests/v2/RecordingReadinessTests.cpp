@@ -35,6 +35,15 @@ juce::Component* find(juce::Component& p,const juce::String& id){if(!p.isVisible
 void click(juce::Component& p,const char* id){auto* b=dynamic_cast<juce::Button*>(find(p,id));check(b&&b->isEnabled(),"native production button is available");b->triggerClick();settle();}
 juce::ComboBox& combo(juce::Component& p,const char* id){auto* c=dynamic_cast<juce::ComboBox*>(find(p,id));if(!c||!c->isEnabled())throw std::runtime_error(std::string("combo unavailable: ")+id);return *c;}
 bool blocked(const Json& q,const char* code){for(const auto& b:q["recording_readiness"]["blockers"])if(b["code"]==code)return true;return false;}
+void waitForRecordingControls(juce::Component& workspace)
+{
+    const auto deadline = juce::Time::getMillisecondCounterHiRes() + 5000.;
+    while ((!find(workspace, "track.arm") || !find(workspace, "recording.monitor")) &&
+           juce::Time::getMillisecondCounterHiRes() < deadline)
+        settle(5);
+    check(find(workspace, "track.arm") && find(workspace, "recording.monitor"),
+          "asynchronous record-tab command exposes actual controls within five seconds");
+}
 struct Feed {
     explicit Feed(te::HostedAudioDeviceInterface& h):thread([this,&h]{juce::AudioBuffer<float> b(2,256);juce::MidiBuffer midi;int64_t position=0;
         while(!done){if(paused){parked=true;juce::Thread::sleep(1);continue;}parked=false;
@@ -60,7 +69,7 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
     auto q=c.query();const std::string a=q["tracks"][0]["id"],b=q["tracks"][1]["id"];
     check(q["recording_readiness"]["ready"]&&q["recording_readiness"]["available_armed_tracks"]==2,"all native armed inputs qualify before Record");
     check(c.querySummary()["recording_readiness"]==q["recording_readiness"],"Agent summary and full GUI query share readiness facts");
-    RecordingTestAccess::select(w,b);settle();check(find(w,"transport.record")->isEnabled(),"native GUI enables Record for all ready inputs");
+    RecordingTestAccess::select(w,b);waitForRecordingControls(w);settle();check(find(w,"transport.record")->isEnabled(),"native GUI enables Record for all ready inputs");
     RecordingTestAccess::disableInput(c,right,true);settle(200);q=c.query();
     check(blocked(q,"input_unavailable")&&!q["recording_readiness"]["ready"].get<bool>()&&q["recording_readiness"]["available_armed_tracks"]==1,"one good input cannot hide a second unavailable armed input");
     check(q["tracks"][1]["input"]["armed"]&&q["tracks"][1]["input"]["monitor"]=="on"&&!q["tracks"][1]["input"]["monitoring"].get<bool>(),"unavailable input retains requested state but actual monitoring is false");
@@ -82,7 +91,7 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
     RecordingTestAccess::disableInput(c,left,false);settle(150);c.undo(extra["plan_id"]);settle();check(c.query()["tracks"].size()==2&&c.query()["recording_readiness"]["ready"],"removing the additional actual tracks restores the original qualified workload");
     auto saved=directory.getChildFile("missing-input.tracktionedit");c.save(saved);
     {
-        ndaw::desktop::Workspace missing(false, std::make_unique<Storage>(directory.getChildFile("missing-prefs")));missing.setVisible(true);missing.setSize(1440,1000);auto& offline=RecordingTestAccess::commands(missing);offline.open(saved);RecordingTestAccess::select(missing,a);settle();
+        ndaw::desktop::Workspace missing(false, std::make_unique<Storage>(directory.getChildFile("missing-prefs")));missing.setVisible(true);missing.setSize(1440,1000);auto& offline=RecordingTestAccess::commands(missing);offline.open(saved);RecordingTestAccess::select(missing,a);waitForRecordingControls(missing);settle();
         const auto opened=offline.query();check(opened["tracks"][0]["input"]["device"]==left&&opened["tracks"][0]["input"]["armed"]&&opened["tracks"][0]["input"]["monitor"]=="auto","reopening without devices preserves original references and requested state");
         check(!opened["tracks"][0]["input"]["monitoring"].get<bool>()&&!find(missing,"transport.record")->isEnabled(),"missing-device reopen does not activate monitoring or recording");
         check(find(missing,"track.arm")->isEnabled()&&find(missing,"recording.monitor")->isEnabled(),"missing-device reopen remains recoverable in production GUI");

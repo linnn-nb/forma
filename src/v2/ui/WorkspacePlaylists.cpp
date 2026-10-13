@@ -26,7 +26,8 @@ void Workspace::showPlaylists()
                 playlistPanel->setVisible(false);
                 if (isShowing())
                     grabKeyboardFocus();
-            });
+            },
+            [this](const std::string& id) { return commands.queryPlaylists(id); });
         addChildComponent(*playlistPanel);
         playlistPanel->connect(commandManager);
     }

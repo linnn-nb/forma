@@ -1,3 +1,5 @@
+P1 关联 Comp（2026-10-13）：新增 human/local_gui、停止状态、独立 Plan 命令 `playlist.comp.linked.create`（track、name、segments；每段显式 track/source/clip/start_samples/end_samples，48k工程采样，所有成员区间相同，整笔最多64段），`playlist.comp.restore`、`playlist.comp.detach`（track、playlist）。`media_fingerprint` 由 makePlan 封闭，提交再验；版本、所有来源、锁定及 Scope 任一不满足则整笔拒绝。创建不切换播放/target。既有 `playlist.select` 对关联成员执行全组切换，离开时恢复原组，交叠组涉及的第三轨也纳入预览与权限。每笔命令一份可撤销历史；重试不复制、跨重开历史沿用既有机制。来源是显式人工选择，不声称估计多麦相位或自动选优；AI/MCP 权限维持既有范围。
+
 # 多来源 Comp 候选契约（2026-10-13）
 
 `playlist.comp.create {track,name,segments:[{source,clip,start_samples,end_samples}]}`：human/local_gui、停止状态、单操作Plan/native Undo；范围为48k工程采样。一次1–64段；所有对象/范围/媒体指纹先校验，嵌套未知字段、整数溢出、越界和重叠整笔拒绝。预览逐段列出来源/区间、gaps=silence，明确playback_changed=false/target_changed=false。成功回执返回真实Playlist与Clip ID，重试不重复；保存重开可整笔Undo/Redo。GUI暂存清单不是工程事实，不产生历史；版本变化丢弃草稿并显示原因。MCP/Agent权限未扩展。

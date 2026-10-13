@@ -80,7 +80,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         for (int id = 230; id <= 235; ++id)
             addMenuCommand(p, id);
         juce::PopupMenu playlists;
-        for (int id = 514; id <= 528; ++id)
+        for (int id = 514; id <= 531; ++id)
             addMenuCommand(playlists, id);
         p.addSubMenu(text("Playlists / Comp"), playlists);
         addMenuCommand(p, 513);

@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现音频循环与选区Punch，以v1行为测试为规格，保留连续源文件、原Playlist、短末轮与补录结果；单轨Playlist管理与区间Comp已实现并自动验证；多来源候选清单与整任务创建已接通；下一项v1关联多轨Comp、逐段区间试听，再做交叉淡化。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
+- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现音频循环与选区Punch，以v1行为测试为规格，保留连续源文件、原Playlist、短末轮与补录结果；单轨Playlist管理与区间Comp已实现并自动验证；多来源候选清单与整任务创建已接通；关联多轨候选/全组切换/恢复/解除已接通；下一项整组移动与编辑组协同、逐段区间试听，再做交叉淡化。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
 - 历史U/P0试用（不是当前性能构建）：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。

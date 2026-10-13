@@ -160,6 +160,7 @@ public:
     }
 };
 } // namespace
+#include "LinkedPlaylistChecks.h"
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -494,6 +495,7 @@ int main(int argc, char** argv)
         check(Commands::mediaHash(a) == hashA && Commands::mediaHash(b) == hashB,
               "all edits preserve original media hashes");
         c.save(root.getChildFile("Demo.tracktionedit"));
+        testLinkedPlaylists(root);
         Json summary{
             {"result", "passed"},
             {"checks", checks},

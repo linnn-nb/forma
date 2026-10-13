@@ -1,3 +1,7 @@
+P1 关联 Comp（2026-10-13）：L1 `PlaylistEditing/PlaylistCommands/PlaylistLinks` 在原生 PLAYLIST 上保存 linked_schema=1、set ID、完整成员ID、原播放列表和原生时间/源映射；没有第二工程或音频图。显式各轨来源与共同区间先整体校验，再作为一个 UndoManager 事务创建。单成员播放选择会解析完整关联组及交叠旧组的恢复范围；Scope 和媒体指纹覆盖所有受影响轨。解除关联只删关联元数据，保留声音与来源。活动关联列表保护独立片段编辑/录音，删除成员及父文件夹预拒绝；整组移动尚待接入。打开工程先校验完整成员、几何和全组活动一致性。
+
+原生 Playlist 面板只读查询来源轨；候选清单跨轨暂存但不写 Edit，Shift 点选来源复用共同范围。提交、恢复、解除均经 L1；revision/session 变化清空过期草稿。依赖与实时线程不变，M2/M3 不扩充。
+
 # 多来源候选（2026-10-13）
 
 L1 `PlaylistEditing.cpp` 新增一次创建非活动Comp的原生事务，先验证整个选择集再写入；源列表不变，原生片段复制保留源时间/gain/fade/Take ID与媒体哈希。GUI `PlaylistPanel` 暂存只读选择清单，实际接受经原命令层；revision/session变化清空草稿，不另建音频图或数据事实。新命令和可改键525–528见AI_COMMAND_CONTRACT；真实PCM/历史/GUI组件资格见evidence/P1。关联多轨及逐段区间试听继续实现。

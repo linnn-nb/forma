@@ -1,3 +1,36 @@
+# P1：关联多轨 Comp（2026-10-13）
+
+结论：Release构建与固定本地deep/strict验签通过；受影响8组605项检查最终通过，0失败/0JUCE断言，各组最终执行合计121.629秒。关联候选从不同轨的明确来源、共同区间创建；保持原播放/target。选择一个成员即可切换全组，恢复原播放、解除关联、Undo/Redo与显式保存重开均接L1。完整P1尚未完成。
+
+亲手试：选音频轨、Option+L打开Playlists，拖选来源→「加入候选」；右上方切换来源轨，Shift点下一轨波形沿用共同选区→再次加入。清单显示真实轨名/列表/区间，多轨时显示「创建关联 Comp」。创建后「用于播放」切换整组；「恢复整组原播放」和「解除 Comp 关联」分别对应Ctrl+Shift+Option+5/6，下一来源轨为7；加入/移除/创建/清空仍为1/2/3/4。均可改键，工程编辑一笔Undo。未提交草稿不保存，不伪装成工程对象；版本变化明确清空。
+
+代码：`PlaylistEditing.cpp`新增`playlist.comp.linked.create/restore/detach`，`PlaylistLinks.h`解析全组及交叠旧组的恢复路径，`PlaylistCommands.cpp`验证保存的schema1成员/源时间几何/活动一致性；`Scope.cpp`检查所有实际影响轨。`PlaylistPanel.h`与`WorkspacePlaylists/Commands/Layout`只产出Plan和查询。候选保存原生source、Take、gain/fade及来源哈希；没有模型推断相位、自动选优、新SDK补丁或RT改动。v1 `LinkedCompTests.h`作为行为规格，其中整组移动和交叉淡化仍待移植。
+
+| 程序 | 检查数 | 秒 | 结果 |
+|---|---:|---:|---|
+| ndaw_loop_recording_tests | 51 | 8.697 | 通过 |
+| ndaw_punch_recording_tests | 124 | 20.850 | 通过 |
+| ndaw_persistent_history_tests | 65 | 44.745 | 通过 |
+| ndaw_clip_tests | 58 | 11.588 | 通过 |
+| ndaw_recording_readiness_tests | 45 | 6.939 | 通过 |
+| ndaw_scope_tests | 38 | 3.312 | 通过 |
+| ndaw_hierarchy_tests | 51 | 13.376 | 通过 |
+| ndaw_playlist_editing_tests | 173 | 12.122 | 通过 |
+
+真实PCM：两个已标识合成的相反极性源，各3秒/144000帧，48kHz/PCM24，经实际Tracktion渲染。分别验证非零原始参考、每个选段与原source offset/gain/fade一致、未选择区间静音、双轨跨剪辑边界抵消和解除关联后的声音保持；最大误差1.1920928955078125e-7，既定2e-6容差/每次渲染10秒预算不变。原媒体SHA256不变。不据此声明实体多麦/PDC或听感通过。
+
+事务与GUI：单笔创建全成员、重复回执不复制、缺失/锁定/异步版本和不相同范围拒绝、整组切换/恢复/解除、跨重开历史、原生轨道选择/Shift波形/清单提交/快捷键与按钮即时状态通过。交叠A/B→B/C以及从非活动A选A/B时，旧组额外成员也恢复并进入Scope；三轨保存重开通过。活动关联列表保护独立片段编辑与录音，成员/父文件夹删除需先解除；解除不移动或改写音频。
+
+实机：本轮开发app实际打开双轨Linked-Demo工程，Option+L展示真实波形/新控件，点「下一来源轨」从Mic A切到Mic B且工程revision不变。Retina坐标拖动返回成功但未改变选区，因此不计实机拖选/整套Comp操作/听感验收；不是桌面锁定。最终按钮刷新修复由原生组件测试验证。没有另复制Preview.app或打包DMG。
+
+实际失败与修复：首编译因构造参数query遮蔽成员导致lambda错误，显式this->query后通过；缺失媒体注入的测试初版误把真实media_available变化当工程变化，改比较缺失期间完整状态，恢复后再次核对原状态。回归录音就绪测试曾在25项后SIGSEGV，系统崩溃栈为main→Component::isEnabled()，未等待异步录音标签控件出现；改为5秒上限的实际控件回执等待后45项通过，未修改生产录音实现或降低原检测/RMS预算。原失败日志保留，不能把首轮写成全绿。
+
+输出：`build-v2-tracktion/p1-linked-final-regression-results.json`记录每组最终值；`p1-linked-final-ndaw_playlist_editing_tests.json`、`p1-linked-final-ndaw_recording_readiness_tests.json`及同名前缀日志；此前4组通过输出为`p1-linked-ndaw_*.log/.json`。最终主程序build为`p1-linked-final-rebuild.log`。仅原有重复静态库链接警告，未全仓回归。
+
+主程序SHA256：`3d1326180aba4c7838f9c71c814601b9f1a8c2456e805774608c1aa6277889e6`。应用仍是`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。下一项整组移动/编辑组协同、区间试听，再做交叉淡化；64段事务预算、普通速度/绝对时间/gain-fade资格、性能A、实体多输入/其他硬件/耐久和完整P1差距继续保留。
+
+## 历史：多来源单轨候选
+
 # P1：多来源 Comp 候选（2026-10-13）
 
 结论：Release主程序与固定本地签名通过；6组446项检查通过、0失败/0JUCE断言，串行总计87.987秒。不同Playlist的选择可暂存为候选清单，移除或清空后一次创建独立Comp；源Take、活动播放和target不变。未提交清单不写Edit/历史；提交后整份候选一次Undo/Redo，显式保存重开仍保持。

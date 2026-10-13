@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
+#include "PlaylistLinks.h"
 
 namespace ndaw::v2
 {
@@ -42,6 +43,46 @@ void validatePlaylists(te::Edit& edit)
         require(ids.contains(value(lists, "active")) && ids.contains(value(lists, "target")),
                 "missing active or target Playlist");
     }
+    std::set<std::string> checked;
+    for (auto* t : te::getAudioTracks(edit))
+        for (auto list : t->state.getChildWithName("NDAW_PLAYLISTS"))
+        {
+            const auto set = value(list, "linked_set");
+            if (set.empty() || !checked.insert(set).second)
+                continue;
+            auto members = playlist_links::members(edit, list);
+            require(members.size() >= 2 && members.size() <= 64, "invalid linked Comp member count");
+            std::set<te::AudioTrack*> tracks;
+            Json memberIDs = Json::array();
+            for (auto [member, candidate] : members)
+                memberIDs.push_back(member->itemID.toString().toStdString());
+            std::sort(memberIDs.begin(), memberIDs.end());
+            Json ranges;
+            int active = 0;
+            for (auto [member, candidate] : members)
+            {
+                require(tracks.insert(member).second, "duplicate linked Comp member track");
+                require(int(candidate.getProperty("linked_schema")) == 1 &&
+                            Json::parse(value(candidate, "linked_members")) == memberIDs,
+                        "unsupported linked Comp schema or missing member");
+                auto lists = member->state.getChildWithName("NDAW_PLAYLISTS");
+                auto original = findList(lists, value(candidate, "restore_playlist"));
+                require(original.isValid() && original != candidate && value(original, "linked_set").empty(),
+                        "linked Comp original Playlist is missing or linked");
+                auto geometry = playlist_links::layout(*member, candidate);
+                require(Json::parse(value(candidate, "linked_layout")) == geometry,
+                        "linked Comp timing/source mapping was changed outside its transaction");
+                active += playlist_links::active(*member) == candidate;
+                Json actual = Json::array();
+                for (auto clip : geometry)
+                    actual.push_back({clip["start"], clip["length"]});
+                std::sort(actual.begin(), actual.end());
+                if (ranges.is_null())
+                    ranges = actual;
+                require(ranges == actual, "linked Comp member ranges disagree");
+            }
+            require(active == 0 || active == int(members.size()), "partially active linked Comp");
+        }
 }
 Json Commands::playlistQuery(te::AudioTrack& track) const
 {
