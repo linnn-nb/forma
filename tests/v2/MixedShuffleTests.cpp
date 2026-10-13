@@ -25,9 +25,14 @@ public:
     static void confirm(Workspace& w, bool yes)
     {
         if (yes)
-            w.acceptButton.onClick();
+            w.acceptButton.triggerClick();
         else
-            w.rejectButton.onClick();
+            w.rejectButton.triggerClick();
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 2000;
+        while (!w.pending.is_null() && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        if (!w.pending.is_null())
+            throw std::runtime_error("native confirmation button notification exceeded 2 seconds");
     }
     static juce::String preview(Workspace& w)
     {
@@ -36,6 +41,10 @@ public:
     static void select(Workspace& w, const std::string& id)
     {
         w.select(id);
+    }
+    static void bind(Workspace& w)
+    {
+        w.refresh();
     }
 };
 } // namespace ndaw::v2
@@ -294,13 +303,21 @@ int main(int argc, char** argv)
                                      .createXml()
                                      .release());
         }
+        // This owned foreign-Edit fixture injects SDK events outside L1. Its
+        // former journal describes the unmodified Edit and is no longer valid.
+        // Import without that journal; every later Save still tests real history.
+        if (auto* info = xml->getChildByName("NATIVEDAW"))
+            if (auto* history = info->getChildByName("PERSISTENT_HISTORY"))
+                info->removeChildElement(history, true);
         const auto fixture = dir.getChildFile("Fixture.tracktionedit");
         check(xml->writeTo(fixture), "owned native event fixture written");
         const auto fixtureHash = juce::SHA256(fixture).toHexString();
         auto open = [&]
         {
+            const auto previousSession = c.sessionToken();
             w.openSession(fixture);
             pump();
+            check(c.sessionToken() != previousSession, "owned foreign Edit fixture actually opens");
         };
         auto copy = [&]
         {
@@ -486,6 +503,7 @@ int main(int argc, char** argv)
                             operation("session.insertion.set", {{"position_samples", 9 * 48000}})}));
         AudioDeviceTestAccess::select(w, target[0]);
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", target}}, c.sessionToken());
+        AudioDeviceTestAccess::bind(w); // Bind external fixture selection before the GUI command.
         pump();
         auto* keys = w.uiCommands().getKeyMappings();
         const juce::KeyPress custom(
@@ -527,6 +545,7 @@ int main(int argc, char** argv)
             Json::array({operation("session.range.set", {{"start_samples", 9 * 48000}, {"end_samples", 10 * 48000}})}));
         AudioDeviceTestAccess::select(w, target[0]);
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", target}}, c.sessionToken());
+        AudioDeviceTestAccess::bind(w);
         pump();
         const auto deleteBefore = persistentTracks(c);
         check(w.keyPressed(juce::KeyPress(juce::KeyPress::backspaceKey)),
@@ -550,6 +569,7 @@ int main(int argc, char** argv)
             Json::array({operation("session.range.set", {{"start_samples", 9 * 48000}, {"end_samples", 10 * 48000}})}));
         AudioDeviceTestAccess::select(w, target[0]);
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", target}}, c.sessionToken());
+        AudioDeviceTestAccess::bind(w);
         pump();
         const auto guiCutBefore = persistentTracks(c);
         key(w, 'x');
@@ -575,6 +595,7 @@ int main(int argc, char** argv)
         run(c,
             Json::array({operation("session.range.set", {{"start_samples", 2 * 48000}, {"end_samples", 3 * 48000}})}));
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", source}}, c.sessionToken());
+        AudioDeviceTestAccess::bind(w);
         pump();
         const auto demo = dir.getChildFile("MixedShuffleReady.tracktionedit");
         c.save(demo);
