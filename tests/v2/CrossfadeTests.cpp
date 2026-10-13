@@ -24,7 +24,7 @@ public:
 namespace
 {
 int checks = 0, renders = 0;
-double linearError = 0, powerError = 0;
+double linearError = 0, powerError = 0, copyError = 0;
 void check(bool ok, const char* why)
 {
     if (!ok)
@@ -210,15 +210,63 @@ void basic(const juce::File& root, const juce::File& file)
     reject([&] { c.open(broken); }, "saved transition/native geometry mismatch rejects before Edit adoption");
     check(pieces(c, t) == state && c.crossfades(t) == xf, "rejected corrupted crossfade preserves current project");
     const std::string main = c.queryPlaylists(t)["active"];
-    auto copy =
-        run(c, "playlist.create", {{"track", t}, {"source", main}, {"name", "Standalone fade copy"}, {"role", "main"}});
+    const auto copyPlan = c.makePlan(
+        "human",
+        Json::array({op("playlist.create",
+                        {{"track", t}, {"source", main}, {"name", "Standalone fade copy"}, {"role", "main"}})}));
+    const auto copyPreview = c.preview(copyPlan);
+    check(copyPreview["playlist_changes"][0]["crossfade_copies"].size() == 1 &&
+              copyPreview["playlist_changes"][0]["crossfade_copies"][0]["source_crossfade"] == xf[0]["id"] &&
+              c.crossfades(t) == xf && pieces(c, t) == state,
+          "Playlist copy preview declares independent fade identity without modifying original clips");
+    auto copy = c.commit(copyPlan);
+    check(copy["objects"].size() == 2 && copy["objects"][1]["kind"] == "crossfade" &&
+              c.commit(copyPlan)["replayed"] == true,
+          "one copy receipt includes its new transition and idempotent retry creates nothing twice");
     run(c, "playlist.select", {{"track", t}, {"playlist", copy["objects"][0]["id"]}});
-    check(c.crossfades(t).empty(),
-          "copied Playlist retains native clip fades without falsely reusing another pair identity");
+    auto copied = c.crossfades(t), copyClips = pieces(c, t);
+    check(copied.size() == 1 && copied[0]["id"] != xf[0]["id"] && copied[0]["left"] == copyClips[0]["id"] &&
+              copied[0]["right"] == copyClips[1]["id"] && copied[0]["left"] != l && copied[0]["right"] != r &&
+              copied[0]["start_samples"] == xf[0]["start_samples"] && copied[0]["curve"] == "equal_power",
+          "copied Playlist owns an editable fade pair with new transition and actual new clip IDs");
+    auto copyPcm = render(c, root);
+    for (int ch = 0; ch < 2; ++ch)
+        for (int n = 0; n < 96000; ++n)
+            copyError = std::max(copyError, std::abs(double(copyPcm.getSample(ch, n)) - pcm.getSample(ch, n)));
+    check(copyError < 2e-7, "copied Playlist actual PCM matches its source on both channels");
     c.save(root.getChildFile("Inactive-Crossfade.tracktionedit"));
     {
         Commands opened(false, std::make_unique<Storage>(root.getChildFile("inactive-prefs")));
         opened.open(root.getChildFile("Inactive-Crossfade.tracktionedit"));
+        check(opened.crossfades(t) == copied && pieces(opened, t) == copyClips,
+              "copy's native edge snapshots and stable transition identity survive save/reopen");
+        opened.undo();
+        check(opened.crossfades(t) == xf, "reopened Undo selection returns to unchanged source fade pair");
+        opened.undo();
+        check(opened.queryPlaylists(t)["items"].size() == 1 && opened.crossfades(t) == xf,
+              "reopened one Undo removes copied Playlist, clips and its transition together");
+        opened.redo();
+        opened.redo();
+        check(opened.crossfades(t) == copied && pieces(opened, t) == copyClips,
+              "reopened Redo restores all copied identities without altering source");
+        run(opened, "playlist.crossfade.remove",
+            {{"track", t}, {"left", copied[0]["left"]}, {"right", copied[0]["right"]}});
+        auto removed = pieces(opened, t);
+        check(opened.crossfades(t).empty() && removed[0]["start_samples"] == before[0]["start_samples"] &&
+                  removed[0]["length_samples"] == before[0]["length_samples"] &&
+                  removed[1]["start_samples"] == before[1]["start_samples"] &&
+                  removed[1]["source_offset_samples"] == before[1]["source_offset_samples"] &&
+                  removed[0]["fade_out_samples"] == 0 && removed[1]["fade_in_samples"] == 0,
+              "removing copied transition restores its own original hard-cut edges and source mapping");
+        opened.undo();
+        check(opened.crossfades(t) == copied && pieces(opened, t) == copyClips,
+              "Undo copied-transition removal restores the independent pair");
+        auto inactiveCopy = run(opened, "playlist.create",
+                                {{"track", t}, {"source", main}, {"name", "Inactive source copy"}, {"role", "main"}});
+        run(opened, "playlist.select", {{"track", t}, {"playlist", inactiveCopy["objects"][0]["id"]}});
+        check(opened.crossfades(t).size() == 1 && opened.crossfades(t)[0]["id"] != copied[0]["id"] &&
+                  opened.crossfades(t)[0]["id"] != xf[0]["id"],
+              "inactive source Playlist also creates its own editable transition identity");
         run(opened, "playlist.select", {{"track", t}, {"playlist", main}});
         check(opened.crossfades(t) == xf,
               "inactive transition retains stable references and becomes editable again after reopen/select");
@@ -496,6 +544,38 @@ void boundaries(const juce::File& root, const juce::File& media)
     apply(clip, middle, 32000);
     apply(middle, right, 64000);
     check(d.crossfades(owner).size() == 2, "middle Comp clip supports independent incoming and outgoing transitions");
+    const auto shared = root.getChildFile("Three-Cuts-Copy-Ready.tracktionedit");
+    const auto originalPairs = d.crossfades(owner);
+    d.save(shared);
+    {
+        Commands copied(false, std::make_unique<Storage>(root.getChildFile("shared-copy-prefs")));
+        copied.open(shared);
+        const auto main = copied.queryPlaylists(owner)["active"];
+        auto clone = run(copied, "playlist.create",
+                         {{"track", owner}, {"source", main}, {"name", "Both edges copy"}, {"role", "main"}});
+        run(copied, "playlist.select", {{"track", owner}, {"playlist", clone["objects"][0]["id"]}});
+        const auto cs = pieces(copied, owner), pairs = copied.crossfades(owner);
+        check(pairs.size() == 2 && pairs[0]["right"] == cs[1]["id"] && pairs[1]["left"] == cs[1]["id"] &&
+                  pairs[0]["id"] != originalPairs[0]["id"] && pairs[1]["id"] != originalPairs[1]["id"],
+              "copied middle clip owns independent incoming and outgoing transition identities");
+        run(copied, "playlist.crossfade.remove", {{"track", owner}, {"left", cs[0]["id"]}, {"right", cs[1]["id"]}});
+        check(copied.crossfades(owner).size() == 1 && pieces(copied, owner)[1]["start_samples"] == 32000 &&
+                  pieces(copied, owner)[1]["length_samples"] == 33200,
+              "removing incoming copied transition preserves its other actual edge");
+        run(copied, "playlist.crossfade.remove", {{"track", owner}, {"left", cs[1]["id"]}, {"right", cs[2]["id"]}});
+        check(copied.crossfades(owner).empty() && pieces(copied, owner)[1]["start_samples"] == 32000 &&
+                  pieces(copied, owner)[1]["length_samples"] == 32000,
+              "both copied restoration snapshots recover the original middle core independently");
+        copied.save(root.getChildFile("Three-Cuts-Copied.tracktionedit"));
+        Commands reopened(false, std::make_unique<Storage>(root.getChildFile("shared-copy-reopen")));
+        reopened.open(root.getChildFile("Three-Cuts-Copied.tracktionedit"));
+        reopened.undo();
+        check(reopened.crossfades(owner).size() == 1 && reopened.crossfades(owner)[0]["id"] == pairs[1]["id"],
+              "reopened Undo restores copied outgoing transition with its stable identity");
+        run(reopened, "playlist.select", {{"track", owner}, {"playlist", main}});
+        check(reopened.crossfades(owner) == originalPairs,
+              "editing both copied edges leaves every source transition untouched after reopen");
+    }
     run(d, "playlist.crossfade.remove", {{"track", owner}, {"left", clip}, {"right", middle}});
     check(d.crossfades(owner).size() == 1 && pieces(d, owner)[1]["start_samples"] == 32000 &&
               pieces(d, owner)[1]["length_samples"] == 33200,
@@ -512,6 +592,61 @@ void boundaries(const juce::File& root, const juce::File& media)
     reject([&] { apply(clip, middle, 32000); }, "actual third clip in the transition rejects triple overlap");
 }
 
+void copyInteraction(const juce::File& root, const juce::File& media)
+{
+    Workspace w(false, std::make_unique<Storage>(root.getChildFile("copy-ui-prefs")));
+    w.setSize(1280, 900);
+    w.setVisible(true);
+    auto& c = AudioDeviceTestAccess::owner(w);
+    c.commit(c.makePlan("human", Json::array({op("track.create", {{"name", "Playlist copy UI"}, {"ref", "$t"}}),
+                                              op("clip.import", {{"track", "$t"},
+                                                                 {"path", media.getFullPathName().toStdString()},
+                                                                 {"position_samples", 0}})})));
+    const std::string t = c.query()["tracks"][0]["id"], l = pieces(c, t)[0]["id"];
+    run(c, "clip.split", {{"clip", l}, {"position_samples", 48000}, {"ref", "$r"}});
+    run(c, "playlist.crossfade", request(c, t, 45600, 50400));
+    const auto original = pieces(c, t), sourceFade = c.crossfades(t);
+    const auto main = c.queryPlaylists(t)["active"];
+    AudioDeviceTestAccess::select(w, t, l);
+    check(w.uiCommands().invokeDirectly(514, false), "registered Option+L opens the real Playlist panel");
+    pump();
+    auto* button = dynamic_cast<juce::Button*>(find(w, "ui.command:516"));
+    check(button && button->isEnabled(), "native copy Playlist button is available");
+    const auto before = c.query()["revision"];
+    button->triggerClick();
+    const auto deadline = juce::Time::getMillisecondCounterHiRes() + 3000;
+    while (c.query()["revision"] == before && juce::Time::getMillisecondCounterHiRes() < deadline)
+        pump();
+    check(c.queryPlaylists(t)["items"].size() == 2 && c.queryPlaylists(t)["active"] == main &&
+              pieces(c, t) == original && c.crossfades(t) == sourceFade &&
+              c.query()["revision"].get<uint64_t>() == before.get<uint64_t>() + 1,
+          "one actual button click copies all paired edges while preserving current playback and source");
+    check(w.uiCommands().getKeyMappings()->getKeyPressesAssignedToCommand(516).contains(
+              juce::KeyPress('d', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0)),
+          "paired Playlist copy reuses the remappable Control+Option+D command");
+    auto* play = dynamic_cast<juce::Button*>(find(w, "ui.command:523"));
+    check(play && play->isEnabled(), "native copied Playlist playback button is enabled");
+    play->triggerClick();
+    const auto selectDeadline = juce::Time::getMillisecondCounterHiRes() + 3000;
+    while (c.queryPlaylists(t)["active"] == main && juce::Time::getMillisecondCounterHiRes() < selectDeadline)
+        pump();
+    auto copied = c.crossfades(t);
+    check(c.queryPlaylists(t)["active"] != main && copied.size() == 1 && copied[0]["id"] != sourceFade[0]["id"],
+          "native Use for Playback selects a genuinely independent editable transition");
+    w.uiCommands().invokeDirectly(6, false);
+    pump();
+    check(c.crossfades(t) == sourceFade && pieces(c, t) == original,
+          "global GUI Undo restores original Playlist playback");
+    w.uiCommands().invokeDirectly(6, false);
+    pump();
+    check(c.queryPlaylists(t)["items"].size() == 1 && c.crossfades(t) == sourceFade,
+          "next GUI Undo removes copied Playlist and paired metadata together");
+    w.uiCommands().invokeDirectly(7, false);
+    w.uiCommands().invokeDirectly(7, false);
+    pump();
+    check(c.crossfades(t) == copied, "global GUI Redo restores copied transition with stable identity");
+    c.save(root.getChildFile("Playlist-Copy-UI.tracktionedit"));
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -527,6 +662,7 @@ int main(int argc, char** argv)
         linked(root, a, b);
         boundaries(root, a);
         editGroups(root, a);
+        copyInteraction(root, a);
         check(Commands::mediaHash(a) == ha && Commands::mediaHash(b) == hb, "all original media hashes unchanged");
         Json report = {
             {"result", "passed"},
@@ -534,6 +670,7 @@ int main(int argc, char** argv)
             {"renders", renders},
             {"linear_pcm_error", linearError},
             {"power_pcm_error", powerError},
+            {"playlist_copy_pcm_error", copyError},
             {"fixture", root.getFullPathName().toStdString()},
             {"scope",
              "native Tracktion clips/Undo/DSP/WAV and native component commands; physical UI and listening separate"}};

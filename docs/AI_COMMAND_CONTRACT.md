@@ -1,3 +1,5 @@
+P1-CROSSFADE-COPY-01（2026-10-13）：现有human playlist.create预览新增crossfade_copies，列出源配对/成员/区间/曲线和新身份策略；提交返回新Playlist及crossfade对象。一个Plan一笔事务，重试复用回执；新Clip/过渡ID和边界快照随保存历史恢复。可改键516/523和GUI复用同一L1，不新增Agent权限。代码CrossfadeEditing.cpp/PlaylistEditing.cpp，验证CrossfadeTests.cpp及evidence/P1/summary.md。
+
 P1 视图修复（2026-10-13）：定位输入框 Esc 只取消未提交草稿，不生成 Plan、revision 或 Undo；检查器名称和插件来源绑定同一工程快照；轨头布局不修改音频事实。L1 命令、权限及 AI 工具范围不变，M2/M3 不扩充。
 
 P1 失败回执（2026-10-13）：共享L1历史收集/编码失败时回滚工程及原Undo/Redo，保持revision/session，不发布committed回执；同Plan可重试，实际成功后幂等。queryFacts快速路径同步parameter_failure，不能把缓存中的旧null误作无错误。未扩工具、权限或MCP资格；故障范围和测试见VERIFICATION。

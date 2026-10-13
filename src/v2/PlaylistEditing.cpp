@@ -667,7 +667,12 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
             }
         }
         if (cmd != "playlist.promote" && cmd != "playlist.comp.create")
-            diff.push_back({{"command", cmd}, {"change", a}, {"playback_changed", cmd == "playlist.select"}});
+        {
+            Json change{{"command", cmd}, {"change", a}, {"playback_changed", cmd == "playlist.select"}};
+            if (cmd == "playlist.create" && a.contains("source"))
+                change["crossfade_copies"] = playlistCrossfadeCopies(*t, a["source"]);
+            diff.push_back(std::move(change));
+        }
     }
     return diff;
 }
@@ -778,6 +783,7 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
     }
     if (cmd == "playlist.create" || cmd == "playlist.take.register")
     {
+        std::map<std::string, std::string> clipIDs;
         juce::ValueTree list("PLAYLIST");
         list.setProperty("id", juce::Uuid().toString(), nullptr);
         list.setProperty("name", juce::String(a["name"].get<std::string>()), nullptr);
@@ -789,6 +795,7 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                 if (cmd == "playlist.take.register" && str(c, "id") != a["clip"].get<std::string>())
                     continue;
                 auto newClip = copy(c);
+                clipIDs.emplace(str(c, "id"), str(newClip, "id"));
                 if (cmd == "playlist.take.register")
                 {
                     const auto take = juce::Uuid().toString();
@@ -809,6 +816,8 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
             }
         lists.addChild(list, -1, &um);
         objects.push_back({{"id", str(list, "id")}, {"kind", "playlist"}, {"track", a["track"]}});
+        if (cmd == "playlist.create" && a.contains("source"))
+            copyPlaylistCrossfades(t, a["source"], list, clipIDs, objects);
         return;
     }
     if (cmd == "playlist.promote")

@@ -104,6 +104,49 @@ Json Commands::crossfades(const std::string& trackID) const
                               {"curve", text(n, "curve")}});
     return result;
 }
+Json Commands::playlistCrossfadeCopies(te::AudioTrack& t, const std::string& source) const
+{
+    checkThread();
+    Json result = Json::array();
+    for (auto n : records(t))
+        if (text(n, "playlist") == source)
+            result.push_back({{"source_crossfade", text(n, "id")},
+                              {"left", text(n, "left")},
+                              {"right", text(n, "right")},
+                              {"start_samples", int64_t(juce::int64(n["start"]))},
+                              {"end_samples", int64_t(juce::int64(n["end"]))},
+                              {"curve", text(n, "curve")},
+                              {"identity_policy", "new transition and clip IDs; independent Playlist"}});
+    return result;
+}
+void Commands::copyPlaylistCrossfades(te::AudioTrack& t, const std::string& source, juce::ValueTree destination,
+                                      const std::map<std::string, std::string>& clipIDs, Json& objects)
+{
+    // Freeze the source records before adding children to the same native tree.
+    std::vector<juce::ValueTree> copies;
+    for (auto n : records(t))
+        if (text(n, "playlist") == source)
+        {
+            const auto left = clipIDs.find(text(n, "left")), right = clipIDs.find(text(n, "right"));
+            require(left != clipIDs.end() && right != clipIDs.end(), "Copied Playlist is missing crossfade members");
+            auto copy = n.createCopy();
+            copy.setProperty("id", edit->createNewItemID().toString(), nullptr);
+            copy.setProperty("playlist", destination["id"], nullptr);
+            copy.setProperty("left", juce::String(left->second), nullptr);
+            copy.setProperty("right", juce::String(right->second), nullptr);
+            copies.push_back(copy);
+        }
+    for (auto copy : copies)
+    {
+        records(t).addChild(copy, -1, &edit->getUndoManager());
+        objects.push_back({{"id", text(copy, "id")},
+                           {"kind", "crossfade"},
+                           {"track", t.itemID.toString().toStdString()},
+                           {"playlist", text(destination, "id")},
+                           {"left", text(copy, "left")},
+                           {"right", text(copy, "right")}});
+    }
+}
 Json Commands::crossfadeTarget(const std::string& trackID, int64_t at) const
 {
     checkThread();

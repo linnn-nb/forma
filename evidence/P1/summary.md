@@ -1,3 +1,16 @@
+# P1 Playlist 交叉淡化复制（2026-10-13）
+
+结论：整份Playlist副本的可编辑配对、声音、恢复与原历史已自动验证；时间线/局部复制和完整P1未通过。
+
+- 演示：Option+L→复制，或Control+Option+D→用于播放；副本可改曲线或移除，Command+Z逐笔撤销；保存重开保留原历史。两项命令沿用可改键516/523。
+- L1建立原/新Clip ID映射，创建独立过渡ID、所属Playlist与完整LEFT/RIGHT边界快照；原列表和媒体保留。Plan预览声明配对复制，幂等回执包含新对象。
+- 5套件601项/0JUCE assertion：crossfade101/8.927秒，playlist_editing227/15.576秒，playlist_audition98/7.977秒，loop_recording51/7.638秒，punch_recording124/19.006秒；原120秒限不变。
+- 5份实际Tracktion渲染WAV；副本双声道PCM最大差0，原线性误差1.1920928955078125e-7、等功率误差1.1695968088476505e-7。不是实体听感结论。活动/非活动来源、新身份、跨重开Undo/Redo、移除恢复、同中段双边淡化和源保护均实测。
+- 原生生产组件的复制/用于播放按钮及全局Undo/Redo通过，单次异步点击等待有界回执；最终新增组件测试已重新编译执行，结果在`build-v2-tracktion/p1-playlist-fade-copy-final-results.json`和各suite输出，构建日志`p1-playlist-fade-copy-release-build.log`。
+- 原生桌面锁定，本轮实体GUI/听感未执行；录音自动化套件输入为测试信号，不算新增硬件实录证据。
+- 唯一产物`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，Release/固定本地身份deep/strict验签通过；二进制SHA256 `d6e421e30e608f8cd0eb07649c01489f791ad74d7d7b786a97ed0e92097ee413`。无新DMG或发布公证。
+- 下一项时间线Copy/Paste的冻结配对和相对位置迁移；随后完整P1制作链路。性能A和旧自动化矩阵180秒超时保持未通过。
+
 # P1 界面绑定修复（2026-10-13）
 
 结论：三处界面问题已修并自动验证，最新构建实体GUI待测；完整P1未通过。

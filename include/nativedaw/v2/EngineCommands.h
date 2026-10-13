@@ -408,6 +408,9 @@ private:
     void executeCrossfade(const Json&, bool remove, Json&);
     void refreshCrossfadeRecords(const Json&);
     Json crossfadeMaintenancePreview(const Json&) const;
+    Json playlistCrossfadeCopies(te::AudioTrack&, const std::string& source) const;
+    void copyPlaylistCrossfades(te::AudioTrack&, const std::string& source, juce::ValueTree destination,
+                                const std::map<std::string, std::string>& clipIDs, Json& objects);
     std::pair<juce::ValueTree, Json> preparePlaylistAudition(const Json&) const;
     void stopPlaylistAudition(const std::string& reason = "cancelled", bool returnPosition = true);
     void advancePlaylistAudition();

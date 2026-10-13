@@ -1,3 +1,5 @@
+P1-CROSSFADE-COPY-01（2026-10-13）：最终Release及固定本地身份验签通过。5套件601项、0JUCE assertion：crossfade101（8.927秒）、playlist_editing227（15.576秒）、playlist_audition98（7.977秒）、loop_recording51（7.638秒）、punch_recording124（19.006秒），均在原120秒限内。实际Tracktion双声道WAV复制PCM最大差0；活动/非活动来源复制、稳定新ID、幂等、跨重开Undo/Redo、移除副本恢复与源保护、共享中段的双边恢复，以及原生复制/播放按钮和全局Undo/Redo验证通过。录音套件使用测试输入，不替代本轮实体设备录音；桌面锁定，实体键鼠/试听未执行。原时间线复制配对、完整P1链路和性能旧缺口未完成。
+
 P1 界面绑定修复（2026-10-13）：Release 构建及固定本地身份 deep/strict 验签通过。11 套件1242项、无 JUCE assertion：ui_navigation73、presentation312、edit_views46、midi_dock34、clip_fx_workspace30、clip_time57、music_events96、roll_playback197、crossfade75、playlist227、mixed_clipboard95。导航新增24项验证增益/声像布局、真实选轨/改名/重开后检查器同步和3个定位输入 Esc 无工程/历史变更。初跑两处夹具失败后修正：改键先移除旧所有者；外改 XML 的旧工程夹具去掉现代历史哈希；生产校验未放宽。所有复测使用原截止时间。桌面锁定，最新构建实体GUI未执行。性能A未通过、旧自动化矩阵180秒超时、配对复制及完整P1仍保留。详细证据见 evidence/P1/summary.md。
 
 P1 混合粘贴修复（2026-10-13）：Release/固定本地签名通过；15受影响套件、1,316项全部通过，无JUCE断言。Mixed95、History86（19项历史故障/恢复新增）、参数51；原生桌面预览/接受、撤销/重做、保存/重开原历史已验。截图暴露的数值叠印、定位Escape及检查器选择同步待修；完整P1/旧性能A/180秒自动化矩阵保留。见 [P1证据](../evidence/P1/summary.md)。
