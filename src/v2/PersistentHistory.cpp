@@ -156,7 +156,13 @@ juce::ValueTree PersistentHistory::capture()
     Commands::ParameterWriteGuard guard(owner);
     auto copy = withoutHistory(owner.edit->state);
     juce::ValueTree values("PARAMETER_BASES");
+    // The pinned SDK enumerates ClipTrack plugins, then audio clip plugins
+    // again. Only repeated references to the same native instance are aliases.
+    std::set<te::Plugin*> captured;
     for (auto* plugin : te::getAllPlugins(*owner.edit, true))
+    {
+        if (!captured.insert(plugin).second)
+            continue;
         for (auto* parameter : plugin->getAutomatableParameters())
         {
             juce::ValueTree value("BASE");
@@ -165,6 +171,7 @@ juce::ValueTree PersistentHistory::capture()
             value.setProperty("value", double(parameter->getCurrentExplicitValue()), nullptr);
             values.addChild(value, -1, nullptr);
         }
+    }
     auto info = copy.getChildWithName("NATIVEDAW");
     info.removeChild(info.getChildWithName("PARAMETER_BASES"), nullptr);
     info.addChild(values, -1, nullptr);
@@ -357,7 +364,7 @@ void PersistentHistory::refreshBases()
     }
     dirtyPlugins.clear();
 }
-juce::ValueTree PersistentHistory::collect()
+juce::ValueTree PersistentHistory::collect(bool publish)
 {
     refreshBases();
     juce::ValueTree result("DELTA");
@@ -395,7 +402,7 @@ juce::ValueTree PersistentHistory::collect()
         for (auto change : delta)
             result.addChild(change.createCopy(), -1, nullptr);
     }
-    if (result.getNumChildren())
+    if (publish && result.getNumChildren())
         history_delta::apply(mirror, result, true);
     return result;
 }
@@ -477,9 +484,34 @@ void PersistentHistory::appended()
 {
     require(owner.historyCursor > 0 && owner.historyCursor <= owner.history.size(),
             "persistent history cursor missing");
+    // Prepare and encode before publishing the journal or discarding Redo.
+    // Failure must leave the prior mirror and step handles available for rollback.
+    steps.reserve(owner.historyCursor);
+    auto delta = collect(false);
+    auto step = encode(delta);
+    history_delta::apply(mirror, delta, true);
     steps.resize(owner.historyCursor - 1);
-    steps.push_back(encode(collect()));
+    steps.push_back(std::move(step));
     trim();
+}
+void PersistentHistory::aborted()
+{
+    juce::ScopedValueSetter<bool> guard(replaying, true);
+    bases = mirror.getChildWithName("NATIVEDAW").getChildWithName("PARAMETER_BASES").createCopy();
+    baseNodes.clear();
+    for (auto base : bases)
+        baseNodes[identity(base)] = base;
+    auto live = owner.metadata.getChildWithName("PARAMETER_BASES");
+    owner.metadata.removeChild(live, nullptr);
+    owner.metadata.addChild(bases.createCopy(), -1, nullptr);
+    dirty.clear();
+    dirtyPlugins.clear();
+    nodes.clear();
+    index(observed);
+    applyBases(mirror);
+    pruneBlocks();
+    rebuildUndo();
+    journalApplied = false;
 }
 void PersistentHistory::pruneBlocks()
 {

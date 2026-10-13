@@ -1,3 +1,45 @@
+# P1：混合粘贴与历史登记失败恢复（2026-10-13）
+
+结论：此前 mixed_clipboard 重复 PARAMETER_BASES 阻断已修复；Release/固定本地 deep-strict 签名通过。15 个受影响套件、1,316 项全部通过，0 JUCE 断言；最终子套件累计209.019秒，不是性能测试或全仓回归。当前原生桌面已实点复制→目标定位→预览→接受→Undo/Redo→另存→重开→原 Undo/Redo。完整 P1、旧性能 A 和180秒自动化矩阵仍未通过。
+
+亲手试：当前 Forma.app 已打开 MixedClipboard-physical-1013.tracktionedit，Command Z/Shift Command Z 可撤销/恢复整笔音频+MIDI粘贴。原 Ready 工程保留 Source 0–3 的混合选区：Command C；选择 Destination 0、清除选区并定位6秒；本演示保存的自定义粘贴键是 Control Option Shift J（普通工程默认 Command V），查看6–8秒及四轨影响后接受。原 Clip EQ、MIDI CC/SysEx、两种时间基准、选区空白/空轨和四轨自动化由同一 Plan 操作；已有来源保持。
+
+代码：PersistentHistory.cpp/h 捕获参数基础值时只过滤同一个原生插件指针的重复枚举，独立插件与参数身份校验保持。锁定 SDK 的 ClipTrack::getAllPlugins 已含 Clip 插件，EditUtilities::getAllPlugins 又枚举音频 Clip 插件；诊断确认相同 ID 的重复项是同一指针，参数本身无重复。未改 SDK、依赖、处理图或实时路径（仍13份审计补丁）。
+
+EngineCommands 的历史登记纳入命令失败回滚；PersistentHistory 先收集/编码增量，再发布镜像和丢弃 Redo。失败恢复原工程、参数基础值、历史游标及原生 Undo 栈，成功后才递增 revision、发布回执。每次仅保留有界历史 ID 列表，未恢复“每条命令复制整工程”的旧路径。PersistentHistoryTests 在最终基础值收集处注入实际异常，验证保留原 Redo/完整 Undo、同 Plan 重试、幂等、保存后校验及重开原历史（19项新增）。未声称覆盖进程崩溃、OOM、任意第三方插件异常或发布后故障。
+
+另修查询缓存：NaN 参数被正确拒绝且原数据不变，但快速 facts 缓存漏更新 parameter_failure；现同步真实失败回执，原 ParameterTests 51 项通过，数值/权限断言未放宽。混合 GUI 夹具在直接准备 UI 状态后显式绑定，适配已取消全量轮询的界面；正常生产 GUI 仍经 L1。
+
+| 套件 | 检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| m0 | 32 | 4.26 | 通过 |
+| scope | 38 | 3.035 | 通过 |
+| queue | 89 | 3.522 | 通过 |
+| clip_fx | 85 | 54.841 | 通过 |
+| audio_clipboard | 49 | 7.362 | 通过 |
+| midi_clipboard | 133 | 10.219 | 通过 |
+| crossfade | 75 | 6.589 | 通过 |
+| editor | 83 | 10.703 | 通过 |
+| playlist | 227 | 15.133 | 通过 |
+| playlist_audition | 98 | 7.926 | 通过 |
+| loop_recording | 51 | 7.462 | 通过 |
+| punch_recording | 124 | 19.145 | 通过 |
+| parameter | 51 | 6.829 | 通过 |
+| mixed_clipboard | 95 | 17.13 | 通过 |
+| persistent_history | 86 | 34.863 | 通过 |
+
+声音：混合粘贴 PCM最大误差2.384185791015625e-7；8192个原生迭代器探点的自动化最大误差1.1920928955078125e-7，在原1e-7跨度＋两float ULP预算内；静音尾段peak0。44.1k立体声源、原生FourOsc、Clip EQ参数与新实例ID、源帧/Tempo/CC/SysEx和不覆盖原媒体均由实际渲染/保存文件核对。不是实体听感、PDC、麦克风或耐久资格。
+
+失败记录：p1-mixed-diagnostic.log 记录相同 Clip EQ 实例被两次枚举，旧异常在历史 appended/collect 发生且已有新实例；修复后核心完成，初次 GUI Cmd C 因旧夹具未刷新绑定失败，适配后95项通过。parameter 初测 failure=null、diff=[]，实际参数句柄一致；补快速缓存字段后51项通过。诊断堆栈代码与临时参数日志均已移除，严校验保留。Mixed 初测17.318秒、最终17.130秒均低于原120秒专项预算；最终包装器使用原 CMake180秒时限，未以较长时限掩盖超时；完整自动化矩阵没有重跑。
+
+桌面：最终构建正常退出旧进程后启动；真实预览列出 Destination 0–3、6–8秒。粘贴r17，Undo r18，Redo r19；另存新文件后重开、原 Undo/Redo r21/r22均有实际回执。重开显示r20，未宣称revision逐位不变。自有文件：/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_mixed_clipboard_tests/mixed-f61f86d014a346c29efc98ccc1c5e45c/MixedClipboard-physical-1013.tracktionedit（934939字节，SHA256 c4c45f2d5b1c184aab38fd17ec160c1151533e10d05c6c86f01c6d153294a96e）。未覆盖用户文件或保存原Ready夹具；未播放实听。CUA截图在本线程展示，PNG归档仍未完成。
+
+GUI仍需修：实际截图有轨头gain/pan数字叠印；定位文本框内Escape未关闭面板（关闭按钮可用）；重开后检查器标头与所示插件选择疑似不同，待核对绑定。下轮先修/复验这些实际交互，再补交叉淡化配对复制与 P1 完整制作链路；不据自动套件全绿宣称完整产品。
+
+产物：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，SHA256 `1aa4c735218d1584d81a26c1696500f40b62bce25af43c305cbe8a850761fa44`；本地签名不等于 Apple 公证。没有新预览包、DMG或模型/网关扩充。机器输出：p1-mixed-current-results.json、p1-mixed-release-build.log、p1-mixed-final-build.log、p1-mixed-atomic-*.json/log、p1-mixed-release-*.json/log、p1-mixed-parameter-fixed.json/log。旧限制继续保留。
+
+以下为此前证据，失败结论以本节修复后的实测为准。
+
 # P1：真实交叉淡化与过期界面保护（2026-10-13）
 
 结论：Release 主程序构建及固定本地 deep/strict 验签通过；12 个受影响套件中 11 个通过，共 1,291 项，0 JUCE 断言；mixed_clipboard 在 3.760 秒失败，完整 P1 未验收。最终子套件累计 170.387 秒，不是性能指标或全仓回归；各时限和数值容差没有放宽。

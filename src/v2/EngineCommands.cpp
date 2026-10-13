@@ -509,6 +509,7 @@ const Json& Commands::queryFacts() const
         factCache["last_recording"] = lastRecording;
         factCache["last_automation_capture"] = lastCapture;
         factCache["last_parameter_capture"] = lastParameterCapture;
+        factCache["parameter_failure"] = parameterFailure;
         factCache["transport_settings"] = transportSettingsQuery();
         // MCP's live values retain their documented meaning during automation.
         for (auto& t : factCache["tracks"])
@@ -1230,6 +1231,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         }
     releaseMidiKeys();
     checkpointHistory();
+    const auto previousHistory = history;
+    const auto previousCursor = historyCursor;
     te::Edit::UndoTransactionInhibitor inhibitor(*edit);
     auto& um = edit->getUndoManager();
     um.beginNewTransaction(
@@ -1412,22 +1415,27 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         transaction.setProperty("commands", juce::String(commandIDs.dump()), nullptr);
         transaction.setProperty("idempotency_key", juce::String(key), nullptr);
         metadata.addChild(transaction, -1, &um);
+        closePluginEditors();
+        if (nativeStates)
+            nativeStates->sync(true);
+        recordHistory(plan.at("plan_id"));
     }
     catch (...)
     {
         um.undoCurrentTransactionOnly();
         restoreTransportSettings();
         restoreRoutingAssignments();
+        history = previousHistory;
+        historyCursor = previousCursor;
+        if (persistentHistory)
+            persistentHistory->aborted();
+        invalidateFacts();
         um.beginNewTransaction();
         throw;
     }
     // Keep SDK-derived asynchronous updates in this Plan until the next command.
     // The persistent inhibitor prevents Tracktion's 350 ms timer splitting it.
     bumpRevision();
-    closePluginEditors();
-    if (nativeStates)
-        nativeStates->sync(true);
-    recordHistory(plan.at("plan_id"));
     Json result{
         {"plan_id", plan.at("plan_id")}, {"actor", plan.at("actor")}, {"revision", revision},   {"objects", objects},
         {"state", "committed"},          {"replayed", false},         {"audio_verified", false}};

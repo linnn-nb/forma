@@ -26,6 +26,10 @@ public:
     {
         return c.nativePluginEditorOpen(id);
     }
+    static juce::ValueTree historyBases(Commands& c)
+    {
+        return c.persistentHistory->bases;
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -186,6 +190,85 @@ Json volumePoints(Commands& c, const std::string& track)
         if (lane["parameter"] == "volume")
             return lane["points"];
     throw std::runtime_error("native volume parameter missing");
+}
+class HistoryAppendFailure final : private juce::ValueTree::Listener
+{
+public:
+    explicit HistoryAppendFailure(Commands& c) : source(PerformanceTestAccess::historyBases(c))
+    {
+        source.addListener(this);
+    }
+    ~HistoryAppendFailure() override
+    {
+        source.removeListener(this);
+    }
+    bool fired = false;
+
+private:
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override
+    {
+        if (!fired)
+        {
+            fired = true;
+            throw std::runtime_error("injected history base collection failure");
+        }
+    }
+    juce::ValueTree source;
+};
+void appendFailure(const juce::File& dir)
+{
+    for (bool retry : {false, true})
+    {
+        Commands c(false);
+        run(c, Json::array({op("track.create", {{"name", "Retained A"}, {"ref", "$a"}})}));
+        const auto a = c.query()["tracks"];
+        auto b = run(c, Json::array({op("track.create", {{"name", "Retained B"}, {"ref", "$b"}})}));
+        const auto both = c.query()["tracks"];
+        c.undo(b["plan_id"]);
+        const auto before = c.query();
+        const auto token = c.sessionToken();
+        const auto plan =
+            c.makePlan("human", Json::array({op("track.create", {{"name", "Recoverable attempt"}, {"ref", "$new"}})}));
+        HistoryAppendFailure fault(c);
+        fails([&] { c.commit(plan); }, "history collection fault is reported as an unsuccessful edit");
+        check(fault.fired, "fault actually reached final history collection after native track creation");
+        check(c.query() == before && c.sessionToken() == token,
+              "history failure restores facts revision session and both history boundaries");
+        check(c.transactionStatus(plan["plan_id"])["state"] != "committed",
+              "failed history registration does not publish a committed receipt");
+        if (retry)
+        {
+            const auto receipt = c.commit(plan);
+            const auto once = c.query();
+            check(receipt["state"] == "committed" && once["tracks"].size() == 2 && !once["can_redo"].get<bool>(),
+                  "same failed Plan can retry once and replaces Redo only after real commit");
+            check(c.commit(plan)["replayed"] && c.query() == once,
+                  "retry receipt is idempotent after successful recovery");
+            c.undo(receipt["plan_id"]);
+            check(c.query()["tracks"] == a, "retried native track creation remains one complete Undo");
+            c.redo();
+            check(c.query()["tracks"] == once["tracks"], "retried edit remains one complete Redo");
+        }
+        else
+        {
+            c.redo();
+            check(c.query()["tracks"] == both, "pre-existing Redo remains executable after failed branch creation");
+            c.undo();
+            c.undo();
+            check(c.query()["tracks"].empty(),
+                  "original Undo stack remains executable after history collection failure");
+            c.redo();
+            check(c.query()["tracks"] == a, "original first transaction can Redo after complete rollback");
+        }
+        auto saved = dir.getChildFile(retry ? "append-retry.tracktionedit" : "append-failure.tracktionedit");
+        const auto current = c.query()["tracks"];
+        c.save(saved);
+        c.open(saved);
+        check(c.query()["tracks"] == current, "recovered journal passes actual saved history integrity validation");
+        c.undo();
+        c.redo();
+        check(c.query()["tracks"] == current, "recovered journal Undo and Redo remain executable after reopening");
+    }
 }
 void flow(const juce::File& dir)
 {
@@ -576,6 +659,7 @@ int main(int argc, char** argv)
                        .getChildFile("forma-persisted-" + juce::Uuid().toString());
         dir.createDirectory();
         deltaCodec();
+        appendFailure(dir);
         flow(dir);
         gainAudio(dir);
         retention(dir);

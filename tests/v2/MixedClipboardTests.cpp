@@ -12,6 +12,23 @@ public:
     {
         return w.commands;
     }
+    static Json pluginInventory(Commands& c)
+    {
+        Json result = Json::array();
+        for (auto* p : te::getAllPlugins(*c.edit, true))
+        {
+            Json duplicates = Json::array();
+            std::set<std::string> parameters;
+            for (auto* a : p->getAutomatableParameters())
+                if (!parameters.insert(a->paramID.toStdString()).second)
+                    duplicates.push_back(a->paramID.toStdString());
+            result.push_back({{"id", p->itemID.toString().toStdString()},
+                              {"name", p->getName().toStdString()},
+                              {"pointer", reinterpret_cast<uintptr_t>(p)},
+                              {"duplicate_parameters", duplicates}});
+        }
+        return result;
+    }
     static float value(Commands& c, const std::string& track, double seconds)
     {
         te::AutomationIterator iterator(*c.automationParameter(track, "volume"));
@@ -36,6 +53,19 @@ public:
     static void select(Workspace& w, const std::string& id)
     {
         w.select(id);
+    }
+    static void refresh(Workspace& w)
+    {
+        w.refresh();
+    }
+    static bool uniqueBases(Commands& c)
+    {
+        std::set<std::pair<std::string, std::string>> keys;
+        for (auto base : c.metadata.getChildWithName("PARAMETER_BASES"))
+            if (!keys.emplace(base["plugin"].toString().toStdString(), base["parameter"].toString().toStdString())
+                     .second)
+                return false;
+        return true;
     }
 };
 } // namespace ndaw::v2
@@ -290,6 +320,8 @@ int main(int argc, char** argv)
         const auto fixtureHash = juce::SHA256(fixture).toHexString();
         w.openSession(fixture);
         pump();
+        check(AudioDeviceTestAccess::uniqueBases(c),
+              "opened Clip EQ stores one base value per actual instance parameter");
         const auto before = persistentTracks(c);
         auto buffer = c.prepareTimelineRangeClipboard(sourceTracks, 96000, 144000, c.sessionToken(),
                                                       c.querySummary()["revision"]);
@@ -329,7 +361,16 @@ int main(int argc, char** argv)
                 const double src = t % 2 == 0 ? std::min(2. + at - 6., 3. - 1. / 48000) : 2. + (at - 6.) / 2.;
                 expected[t].push_back(AudioDeviceTestAccess::value(c, sourceTracks[t], src));
             }
-        const auto receipt = c.commit(plan);
+        Json receipt;
+        try
+        {
+            receipt = c.commit(plan);
+        }
+        catch (const std::exception&)
+        {
+            std::cout << "PASTE_PLUGIN_INVENTORY " << AudioDeviceTestAccess::pluginInventory(c).dump() << std::endl;
+            throw;
+        }
         const auto copies = pasted(receipt);
         check(copies.size() == 2 && c.commit(plan)["replayed"] == true,
               "mixed paste inserts once and retry is idempotent");
@@ -506,6 +547,7 @@ int main(int argc, char** argv)
               "owned source bytes restored after injected fault");
         run(c, Json::array({operation("session.range.set", {{"start_samples", 96000}, {"end_samples", 144000}})}));
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", sourceTracks}}, c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
         pump();
         key(w, 'c');
         check(c.clipboard()["kind"] == "timeline_clips" && c.clipboard()["tracks"].size() == 4,
@@ -531,6 +573,7 @@ int main(int argc, char** argv)
         c.undo();
         pump();
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", sourceTracks}}, c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
         pump();
         key(w, 'v', true);
         if (!AudioDeviceTestAccess::pending(w).is_null())
@@ -551,6 +594,7 @@ int main(int argc, char** argv)
         pump();
         run(c, Json::array({operation("session.range.set", {{"start_samples", 288000}, {"end_samples", 384000}})}));
         c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", destTracks}}, c.sessionToken());
+        AudioDeviceTestAccess::refresh(w);
         AudioDeviceTestAccess::select(w, destTracks[0]);
         pump();
         check(w.keyPressed(custom), "custom mixed Paste key dispatches production command");

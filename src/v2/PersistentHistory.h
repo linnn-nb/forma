@@ -24,6 +24,7 @@ public:
     ~PersistentHistory();
     void checkpoint();
     void appended();
+    void aborted(); // called after native transaction rollback; retains the prior journal and Redo
     void moved(bool forward);
     void parameterTouched(te::AutomatableParameter&);
     Json status() const;
@@ -32,6 +33,7 @@ public:
     void install(Archive);
 
 private:
+    friend class PerformanceTestAccess;
     struct Action;
     struct Step
     {
@@ -47,7 +49,7 @@ private:
     };
     juce::ValueTree capture();
     juce::ValueTree normalise(juce::ValueTree);
-    juce::ValueTree collect();
+    juce::ValueTree collect(bool publish = true);
     void refreshBases();
     void restore(const juce::ValueTree&, bool);
     void applyBases(const juce::ValueTree&, bool changedExternal = false);

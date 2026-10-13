@@ -1,4 +1,6 @@
-P1 本轮结论（2026-10-13）：Release/固定本地 deep-strict 签名通过；12 套件中 11 套、1,291 项通过，混合剪贴板 PARAMETER_BASES 重复 ID 失败，未通过完整 P1。最终构建原生桌面长度编辑/Undo/Redo/移除已验；实听、硬件与全流程未验。版本绑定与实时插入点修复、新夹具及全部失败记录见 [P1证据](../evidence/P1/summary.md)。
+P1 混合粘贴修复（2026-10-13）：Release/固定本地签名通过；15受影响套件、1,316项全部通过，无JUCE断言。Mixed95、History86（19项历史故障/恢复新增）、参数51；原生桌面预览/接受、撤销/重做、保存/重开原历史已验。截图暴露的数值叠印、定位Escape及检查器选择同步待修；完整P1/旧性能A/180秒自动化矩阵保留。见 [P1证据](../evidence/P1/summary.md)。
+
+P1 上轮交叉淡化结论（2026-10-13）：Release/固定本地 deep-strict 签名通过；12 套件中 11 套、1,291 项通过，混合剪贴板 PARAMETER_BASES 重复 ID 失败，未通过完整 P1。最终构建原生桌面长度编辑/Undo/Redo/移除已验；实听、硬件与全流程未验。版本绑定与实时插入点修复、新夹具及全部失败记录见 [P1证据](../evidence/P1/summary.md)。
 
 P1-CROSSFADE-01（2026-10-13）：CrossfadeEditing.cpp、CrossfadePanel.h、EditWindow.h；测试 CrossfadeTests.cpp，受影响 Clip/GroupTransform/PlaylistEditing/Punch/EditorInteraction/PersistentHistory/PlaylistAudition。测试真实 PCM/WAV、线性/等功率曲线、源 envelope 相乘、多麦极性抵消、同一事务/幂等/Scope/锁定/不足余量/三重重叠、双端过渡、保存/重开/原历史、坏配对拒绝、原生异步按钮/Smart拖动/Command F/取消/改键。预算：每次渲染10秒，线性及状态恢复误差2e-6、曲线2e-4（沿用原 Native fade 测试），新套件120秒。没有实体试听、PDC、耐久或性能 A 新结论；实际输出见 evidence/P1/summary.md。
 
