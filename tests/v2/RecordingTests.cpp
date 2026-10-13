@@ -14,6 +14,13 @@ public:
 };
 }
 namespace {
+class Storage final : public te::PropertyStorage {
+    juce::File folder;
+public:
+    explicit Storage(juce::File f) : PropertyStorage("Forma recording tests"), folder(f) {}
+    juce::File getAppPrefsFolder() override { folder.createDirectory(); return folder; }
+};
+
 int checks=0;
 void check(bool b,const char* s){if(!b)throw std::runtime_error(s);++checks;std::cout<<"PASS "<<s<<std::endl;}
 void settle(int ms=90){juce::MessageManager::getInstance()->runDispatchLoopUntil(ms);}
@@ -27,7 +34,7 @@ struct Feed {
 juce::AudioBuffer<float> audio(const juce::File& f){juce::WavAudioFormat w;std::unique_ptr<juce::AudioFormatReader> r(w.createReaderFor(new juce::FileInputStream(f),true));check(r!=nullptr,"recorded WAV reader valid");juce::AudioBuffer<float> b(r->numChannels,int(r->lengthInSamples));check(r->read(&b,0,b.getNumSamples(),0,true,true),"recorded PCM readable");return b;}
 }
 int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
-    auto dir=juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("ndaw-record-"+juce::Uuid().toString());dir.createDirectory();Commands c(false);auto& hosted=RecordingTestAccess::host(c);Feed feed(hosted);settle();auto inputs=c.deviceStatus()["inputs"];check(inputs.size()==2,"SDK exposes two real hosted input channels for deterministic test only");
+    auto dir=juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("ndaw-record-"+juce::Uuid().toString());dir.createDirectory();Commands c(false, std::make_unique<Storage>(dir.getChildFile("prefs")));auto& hosted=RecordingTestAccess::host(c);Feed feed(hosted);settle();auto inputs=c.deviceStatus()["inputs"];check(inputs.size()==2,"SDK exposes two real hosted input channels for deterministic test only");
     std::string left=inputs[0]["id"],right=inputs[1]["id"];auto create=run(c,Json::array({op("track.create",{{"name","Mic A"},{"type","audio"},{"ref","$a"}}),op("track.create",{{"name","Mic B"},{"type","audio"},{"ref","$b"}}),op("track.input",{{"track","$a"},{"device",left}}),op("track.arm",{{"track","$a"},{"enabled",true}}),op("track.input",{{"track","$b"},{"device",right}}),op("track.arm",{{"track","$b"},{"enabled",true}})}));settle();auto tracks=c.query()["tracks"];std::string a=tracks[0]["id"],b=tracks[1]["id"];
     check(tracks[0]["input"]["armed"]&&tracks[1]["input"]["armed"]&&tracks[0]["input"]["available"],"two tracks armed through one native Plan");check(!tracks[0]["input"]["monitoring"].get<bool>(),"input monitoring defaults off");
     auto monitor=run(c,Json::array({op("track.input",{{"track",b},{"device",left}}),op("track.monitor",{{"track",a},{"mode","auto"}}),op("track.monitor",{{"track",b},{"mode","off"}})}));settle();check(c.query()["tracks"][0]["input"]["monitoring"]&&!c.query()["tracks"][1]["input"]["monitoring"].get<bool>(),"shared input has independent native monitoring per destination");check(c.deviceStatus()["output_peak"].get<double>()>.09,"Auto monitoring sends actual input PCM to the output");c.undo(monitor["plan_id"]);settle();check(c.query()["tracks"][1]["input"]["device"]==right&&!c.query()["tracks"][0]["input"]["monitoring"].get<bool>(),"I/O Undo restores assignments and monitor modes");check(c.deviceStatus()["output_peak"].get<double>()<1e-6,"Off monitoring actually silences the input output path");c.redo();settle();check(c.query()["tracks"][1]["input"]["device"]==left,"I/O Redo restores shared assignment");c.undo();settle();
@@ -50,7 +57,7 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
     auto saved = dir.getChildFile("record.tracktionedit");
     c.save(saved);
     {
-        Commands reopened(false);
+        Commands reopened(false, std::make_unique<Storage>(dir.getChildFile("reopen-prefs")));
         reopened.open(saved);
         auto q = reopened.query();
         check(q["tracks"][0]["clips"] == tracks[0]["clips"] && q["tracks"][0]["input"]["device"] == left,

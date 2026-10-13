@@ -4,7 +4,7 @@
 
 当前开发版可以导入和播放真实音频，编辑片段和 MIDI、加载 AU/VST3、插入 EQ/压缩/混响/延迟、设置发送与路由、录写自动化，并导出 WAV。工程恢复、离线测量和导出复核保留在菜单中。具体边界见 [验证记录](docs/VERIFICATION.md)。
 
-**正在重构原生 Edit / Mix 界面，尚未达到日常制作完整验收。** 当前依次推进 U＋P0（界面与基础编辑）、P1（录音/Comp）、P2（混音交付）、P3（Warp/MIDI CC）。AI 功能暂停扩充；既有 MCP 和分析入口保留。每级完成后由用户亲手试用。
+**仍是开发版，尚未达到日常制作完整验收。** 当前已按用户决定进入 P1（录音/Comp）；U＋P0 与性能验收的保留差距继续追踪，后续是 P2（混音交付）、P3（Warp/MIDI CC）。AI 功能暂停扩充；既有 MCP 和分析入口保留。每级完成后由用户亲手试用。
 
 ![Forma 原生 Edit 窗口](.github/assets/forma-edit.png)
 
@@ -22,7 +22,9 @@ cmake --build --preset release --target NativeDAW
 open build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app
 ```
 
-使用「文件→导入音频」，直接在光标处创建轨道和片段，一次 Undo 撤销；空格播放/停止，T/R 水平缩放，Option＋方向键滚动，Cmd+= 切换 Edit/Mix。「键位…」可以即时编辑和导入导出快捷键，视图与键位随 `.tracktionedit` 保存。Edit 中可选择 Shuffle/Slip/Spot/Grid、选择/移动/修剪工具。Cmd+7 开音频 Smart Tool：上半部选区、下半部移动、边缘修剪、顶部圆点拖淡入淡出；松手一笔 Undo，淡化随工程保存。Grid 跟随 Tempo Map；Command 拖动临时取消吸附。逗号/句号或数字区 ± 执行 Nudge，Tab/Option+Tab 跳片段边界，Cmd+E 在光标拆分音频。选中音频 Clip 或轨道时间选区后，可用 Cmd+C/X/V/D 复制、剪切、粘贴、复制片段，Option+Cmd+V 粘回源位置；都能在「键位…」重映射。粘贴会替换目的区间，复制片段会保留重叠的现有内容；剪切保留原始媒体。剪贴板当前只存于本次打开的会话，工程重开后已提交的编辑仍保留，剪贴板需重新复制。MIDI/自动化剪贴板、MIDI 整片移动/修剪尚未接通；当前 Undo 历史只在本次打开期间保留。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
+使用「文件→导入音频」，直接在光标处创建轨道和片段，一次 Undo 撤销；空格播放/停止，T/R 水平缩放，Option＋方向键滚动，Cmd+= 切换 Edit/Mix。「键位…」可以即时编辑和导入导出快捷键，视图与键位随 `.tracktionedit` 保存。Edit 中可选择 Shuffle/Slip/Spot/Grid、选择/移动/修剪工具。Cmd+7 开音频 Smart Tool：上半部选区、下半部移动、边缘修剪、顶部圆点拖淡入淡出；松手一笔 Undo，淡化随工程保存。Grid 跟随 Tempo Map；Command 拖动临时取消吸附。逗号/句号或数字区 ± 执行 Nudge，Tab/Option+Tab 跳片段边界，Cmd+E 在光标拆分音频。选中音频 Clip 或轨道时间选区后，可用 Cmd+C/X/V/D 复制、剪切、粘贴、复制片段，Option+Cmd+V 粘回源位置；都能在「键位…」重映射。粘贴会替换目的区间，复制片段会保留重叠的现有内容；剪切保留原始媒体。剪贴板当前只存于本次打开的会话，工程重开后已提交的编辑仍保留，剪贴板需重新复制。MIDI 与自动化编辑的具体映射边界见验证记录。显式保存的工程可恢复最多 200 步或 32 MiB 的持久 Undo 历史；媒体原件始终保留。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
+
+循环音频录音：在时间线选择至少 2 秒范围，按 L 开循环，在所选轨道的「录音」检查器选择输入、待命和录音目录后开始录音。停止后从 Playlist/Take 下拉框切换试听；Option+[ / Option+] 切换前后 Take，可改键。原 Playlist 与连续录音 WAV 保留，短末轮不丢弃，一次 ⌘Z 撤销整次录音，⌘⇧Z 重做；保存重开仍可继续切换。当前为音频循环增量，硬件循环实录未验；Punch、完整 Comp 与交叉淡化尚待后续。
 
 选区播放：CommandShiftK打开预卷/后卷设置（48k工程采样），CommandK切换；主标尺旗标拖动或双击，一笔Undo，保存重开并可改快捷键。关闭roll时仍按选区播放，Loop模式优先；录音预后卷尚未接通。波形输出在最近设备采样截止；走带/光标停止与外部MIDI仍经消息线程，实体多输出/第三方PDC/听感未完成验证。
 
@@ -84,6 +86,6 @@ Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine
 
 ## 当前边界
 
-Forma 仍是开发版。U＋P0 尚未完成：Clip/时间选区与三种工具、Slip/Grid、基础 Nudge、边界导航和真实音频 Clip 剪贴板已接通；剪贴板仅支持音频、会话内有效，MIDI/自动化联动未接通。音频Shuffle/Spot/Smart淡化、节拍器/预备拍/循环、Marker与独立MIDI成组编辑已有专项增量；停靠与统一音符选择、Groups/Edit Views和七种标尺已有增量；每轨高度/颜色入口与五个水平缩放预设已有增量；自动化轨道视图、完整Zoom Toggle及其余差距仍待补齐；Undo 跨工程重开恢复也尚未实现。P1–P3 按用户验收顺序推进。麦克风授权跨构建、外部 MIDI、Windows 和发行签名公证尚未验证或完成。
+Forma 仍是开发版。P1 当前仅交付音频循环录音与基础 Take/Playlist 切换；Punch、完整 Playlist 管理/Comp、交叉淡化、MIDI 循环录音仍未完成。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
 
 既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。

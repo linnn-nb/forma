@@ -1,3 +1,9 @@
+# P1 录音与 Playlist 契约补充（2026-10-13）
+
+`playlist.select {track, playlist}` 是当前注册表的本地 human 命令，停止状态、单操作 Plan、稳定目标 ID、revision 校验、一笔原生 UndoManager 事务；尚未开放为外部 Agent 工具。GUI 下拉框和可改键命令 511/512 共用这一入口。活动 Playlist 的实际原生片段是唯一可编辑事实，非活动内容按原生状态保存在 Edit 内。
+
+真实录音回执新增 mode、loop_range、takes（track/playlist/take/clip ID、pass、源文件及 SHA256、complete）。`start_samples/length_samples/source_offset_samples` 均为 48000 Hz 工程时间单位；WAV 的真实采样率/PCM 位深/帧数在 files 中独立记录。循环设置复用 `transport.loop.set`；开始、结束录音仍是已有本地控制 API，不伪装成可重试的纯编辑。附件成为一笔可撤销事务；Undo 只撤销 Edit 附件，绝不删除源文件。写盘故障回执为 failed，原 Playlist 恢复、实际部分文件保留。整段录音的回执不等于实体设备资格。
+
 # 当前历史契约（2026-10-13）
 
 Plan / actor / revision / 幂等 / Scope / 确认规则不变。schema 2 持久 Undo 只记录真实工程增量，不恢复外部客户端的活动权限或把旧审计记录当作成功回执。原生实时 Undo 与重开后的 DeltaAction 分别推进同一镜像，SDK 延迟写入并入相邻事务边界，不能生成重复事务。

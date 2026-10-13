@@ -1,3 +1,9 @@
+# P1 循环录音架构补充（2026-10-13）
+
+循环走带、采集与写盘仍由 Tracktion 执行；L1 仅在开始/停止时操作 Edit。`RecordingCommands.cpp` 以一笔原生事务捕获多轨，`PlaylistCommands.cpp` 将每轮表示为连续 WAV 的源区间。现有 `tracktion-recording-status.patch` 新增停止策略：Edit 的临时 `preserveLoopRecordingSource` 为 true 时跳过 SDK 循环文件分割/截短，正常和异常停止均保留原始连续文件；标志随后还原，不改变实时线程。
+
+`AudioTrack/NDAW_PLAYLISTS` schema 1 保存稳定的 Playlist/Take ID、active/target 及采集来源。活动列表的片段只存在于原生 AudioTrack；非活动列表持有原生片段 ValueTree，选择通过 UndoManager 在两处移动，避免两份活动内容失同步。保存、增量历史和重开使用同一 Edit；损坏的活动/目标引用在采用新 Edit 前拒绝。采集后选择最后完整一轮；严格超过半轮的末轮也可成为活动 Take，其余短末轮保留且不替换先前内容。该版本尚无 Comp 编辑器。
+
 # 当前架构补充：增量历史（2026-10-13）
 
 B 使用 `HistoryDelta.h` / `PersistentHistory` 的 schema 2 日志：L1 在 message thread 观察 Edit，记录属性、子树及顺序的变化；一个 Plan 仍对应一笔原生 UndoManager 事务。仅保留一个当前镜像，参数按变动 owner 收集，较大状态块以 SHA256 共享；撤销只回放涉及的插件、曲线与基础值。SCENES 等原生根单例保持节点身份，GUI 命令管理器先构造、最后销毁。

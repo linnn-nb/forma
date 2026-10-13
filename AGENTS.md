@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 当前独立性能专项：按 CODEX_PROMPT_PERF.md 做阶段0/A/B，不进入P1。B增量历史/保存/迁移/200步与32MiB限制完成，Release受影响11套件892检查、ASAN65检查及压力CTest通过；具体资格见 evidence/perf/summary.md。保留A主线程15.84%超15%预算、屏幕present与完整交互未测，以及旧压力schema1转换约252秒。按用户要求暂停，等用户亲手试用，不恢复原目标。当前应用 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；迁移试用副本 build-v2-tracktion/perf-scratch/Neon-Tide-schema2-trial.tracktionedit，原歌曲/媒体不覆盖。
+- 用户于2026-10-13明确授权进入P1，替代此前暂停与“不进入P1”规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项接L1、Undo/Redo、保存重开、可改键。当前实现循环音频录音，以v1行为测试为规格，保留连续源文件、原Playlist及短末轮。性能A未通过和实体交互未测项继续保留，见evidence/perf/summary.md；本轮不追加性能优化。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
 - 历史U/P0试用（不是当前性能构建）：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。

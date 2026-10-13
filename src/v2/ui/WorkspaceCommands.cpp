@@ -97,7 +97,7 @@ const std::vector<Entry>& entries()
         {editCommand::remove, "删除选区 / 所选对象", "编辑", juce::KeyPress::backspaceKey},
         {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
         {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
-        {113, "切换循环播放", "走带", 'l'},
+        {113, "循环播放 / 音频循环录音", "走带", 'l'},
         {130, "在播放位置添加 Marker", "走带", 'm'},
         {131, "跳到上一个 Marker", "走带", juce::KeyPress::leftKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
@@ -215,6 +215,8 @@ const std::vector<Entry>& entries()
         {233, "所选轨道监听 Auto（待命时）", "录音"},
         {234, "所选轨道监听 On", "录音"},
         {235, "轨道录音与输入设置…", "录音", 'r', cmd | juce::ModifierKeys::altModifier},
+        {511, "上一个 Playlist / Take", "录音", '[', juce::ModifierKeys::altModifier},
+        {512, "下一个 Playlist / Take", "录音", ']', juce::ModifierKeys::altModifier},
         {218, "Pencil 自动化绘制", "编辑", juce::KeyPress::F10Key, cmd},
         {220, "轨道片段 / 波形视图", "轨道"},
         {221, "轨道音量自动化视图", "轨道"},
@@ -876,6 +878,13 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     info.setTicked(std::all_of(targets.begin(), targets.end(),
                                                [](const auto& t) { return t["input"]["armed"].template get<bool>(); }));
             }
+            if (id == 511 || id == 512)
+            {
+                active = false;
+                for (const auto& track : arrayField(facts, "tracks"))
+                    if (track["id"] == selected && track.contains("playlists"))
+                        active = !facts.value("playing", false) && track["playlists"]["items"].size() > 1;
+            }
             info.setActive(active && (!(audioImportPanel && audioImportPanel->isVisible()) || id == 275 || id == 277));
             return;
         }
@@ -1135,6 +1144,22 @@ bool Workspace::perform(const InvocationInfo& invocation)
     {
         executeRecordingCommand(id);
         return true;
+    }
+    if (id == 511 || id == 512)
+    {
+        for (const auto& track : arrayField(facts, "tracks"))
+            if (track["id"] == selected && track.contains("playlists"))
+            {
+                const auto& items = track["playlists"]["items"];
+                for (size_t n = 0; n < items.size(); ++n)
+                    if (items[n]["active"].get<bool>())
+                    {
+                        const auto next = (n + items.size() + (id == 511 ? -1 : 1)) % items.size();
+                        write("playlist.select", {{"track", selected}, {"playlist", items[next]["id"]}});
+                        return true;
+                    }
+            }
+        return false;
     }
     if (id == 218 || (id >= 220 && id <= 226))
     {

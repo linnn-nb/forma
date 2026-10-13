@@ -1,3 +1,5 @@
+> 2026-10-13：用户已授权进入 P1。本表仍仅作交互/工作流参考。循环音频录音已接 Tracktion 连续写盘与每轮 Take，原 Playlist 保留；2 秒最小范围与 v1 的 1 秒有差距。GUI/MIDI 硬件、Punch、完整 Comp 与交叉淡化未验/未完成，真实执行结果见 `evidence/P1/summary.md`。下方历史“不进入 P1”不再是当前执行约束。
+
 > 本文件为交互与工作流参考清单，不是全量产品验收门槛。
 
 U-P0-MUSICAL-CURVES-01（2026-10-10）：只按交互参考推进，不新增 Pro Tools 实机等价资格。MIDI整片段与范围的原生曲线已按实际源/目的 Tempo、Meter、ramp 映射，标准菜单/可改键、可读预览、Undo/Redo、保存重开与真实PCM通过专项。代码 MusicalCurveMap/AutomationClipboard/MidiClipClipboard/MusicCommands 与 WorkspaceMidiClipClipboard；测试 MusicalClipboardTests，证据见VERIFICATION。状态：所测48k路径自动已验证；实体GUI待实测，完整工作流部分实现。混合媒体/时间基准、Shuffle、部分循环及SDK模型getter差异仍在差距表，无新增外部授权依赖。

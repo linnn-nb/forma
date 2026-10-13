@@ -48,6 +48,9 @@ void Commands::registerRecordingCommands(Json& r)
     add("track.input", {{"track", string}, {"device", string}});
     add("track.arm", {{"track", string}, {"enabled", {{"type", "boolean"}}}});
     add("track.monitor", {{"track", string}, {"mode", {{"type", "string"}, {"enum", {"off", "auto", "on"}}}}});
+    add("playlist.select", {{"track", string}, {"playlist", string}});
+    r.back()["tool_visibility"] = "local_gui";
+    r.back()["test"] = "P1-LOOP-01";
 }
 std::string Commands::inputAvailability(const te::InputDevice* input) const
 {
@@ -132,8 +135,12 @@ Json Commands::recordingReadiness() const
     const bool running = clock && clock->isOpen() && clock->isPlaying();
     if (!running)
         block("clock_unavailable", "Audio device must be open and running");
-    if (edit->getTransport().looping || edit->recordingPunchInOut)
-        block("linear_only", "Punch/Loop recording is not yet qualified");
+    const bool loop = edit->getTransport().looping;
+    if (edit->recordingPunchInOut)
+        block("punch_pending", "Punch recording is not yet qualified");
+    if (loop && (!metadata.getProperty("loop_range_configured", false) ||
+                 edit->getTransport().getLoopRange().getLength().inSeconds() < 2.0))
+        block("loop_range", "Loop recording requires a saved range of at least two seconds");
     for (auto* target : te::getAllTracks(*edit))
     {
         if (target->automationMode != te::AutomationMode::read)
@@ -144,6 +151,8 @@ Json Commands::recordingReadiness() const
         ++armed;
         const auto q = recordingQuery(*t);
         const auto type = trackType(*t);
+        if (loop && type != "audio")
+            block("loop_midi_pending", "Loop MIDI recording is not yet qualified", t);
         auto* input = engine.getDeviceManager().findInputDeviceForID(juce::String(q["device"].get<std::string>()));
         const bool compatible = input && (type == "audio" ? input->getDeviceType() == te::InputDevice::waveDevice
                                                           : (type == "midi" || type == "instrument") &&
@@ -339,8 +348,10 @@ Json Commands::record(const juce::File& directory)
         }
     }
     require(!targets.empty(), "no armed tracks");
-    require(!edit->getTransport().looping && !edit->recordingPunchInOut,
-            "linear recording only; Punch/Loop qualification is M6");
+    const bool loop = edit->getTransport().looping;
+    require(!edit->recordingPunchInOut, "Punch recording is not yet qualified");
+    if (loop)
+        edit->getTransport().setPosition(edit->getTransport().getLoopRange().getStart());
     checkpointHistory();
     recordingDirectory = directory;
     recordingError.clear();
@@ -352,6 +363,11 @@ Json Commands::record(const juce::File& directory)
                         {"existing_clips", existing},
                         {"start_samples", std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
                         {"directory", directory.getFullPathName().toStdString()}};
+    recordingCapture["mode"] = loop ? "loop" : "normal";
+    recordingCapture["loop_range"] = loop ? transportSettingsQuery()["loop_range"] : Json(nullptr);
+    loopSourcePrevious = edit->state.getProperty("preserveLoopRecordingSource");
+    if (loop)
+        edit->state.setProperty("preserveLoopRecordingSource", true, nullptr);
     auto& um = edit->getUndoManager();
     um.beginNewTransaction(juce::String("human:" + plan));
     // Fixed non-destructive capture policy. Device preferences are restored after
@@ -363,6 +379,14 @@ Json Commands::record(const juce::File& directory)
         auto* t = track(target);
         auto q = recordingQuery(*t);
         std::string device = q["device"];
+        if (q["kind"] == "audio" && configured.insert(device).second)
+        {
+            auto* wave = dynamic_cast<te::WaveInputDevice*>(
+                engine.getDeviceManager().findInputDeviceForID(juce::String(device)));
+            require(wave != nullptr, "audio input disappeared");
+            waveRecordModes.emplace_back(device, wave->getMergeMode());
+            wave->setMergeMode(te::WaveInputDevice::getMergeModes()[0]);
+        }
         if (q["kind"] == "midi" && configured.insert(device).second)
         {
             auto d = engine.getDeviceManager().findMidiInputDeviceForID(juce::String(device));
@@ -473,6 +497,8 @@ void Commands::finishRecordingCapture(bool unexpected)
         receipt["end_samples"] = std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate);
     receipt["files"] = Json::array();
     receipt["clips"] = Json::array();
+    receipt["takes"] = Json::array();
+    std::vector<std::pair<te::AudioTrack*, te::WaveAudioClip::Ptr>> loopClips;
     auto& undo = edit->getUndoManager();
     initialiseMusicIDs(&undo);
     receipt["target_results"] = Json::array();
@@ -504,6 +530,8 @@ void Commands::finishRecordingCapture(bool unexpected)
                                                     {"path", f.getFullPathName().toStdString()}});
                         ++count;
                         c->state.setProperty("ndaw_origin", "recording", &undo);
+                        if (receipt.value("mode", std::string{}) == "loop")
+                            loopClips.emplace_back(t, wave);
                     }
                     catch (const std::exception& e)
                     {
@@ -535,6 +563,53 @@ void Commands::finishRecordingCapture(bool unexpected)
         if (!midi && count != 1 && recordingError.empty())
             recordingError = "Armed audio track did not produce one valid file";
     }
+    if (receipt.value("mode", std::string{}) == "loop" && recordingError.empty())
+        try
+        {
+            for (const auto& [target, clip] : loopClips)
+                makeLoopPlaylists(*target, *clip, receipt);
+            receipt["clips"] = Json::array();
+            for (const auto& take : receipt["takes"])
+                receipt["clips"].push_back({{"id", take["clip"]},
+                                            {"track", take["track"]},
+                                            {"kind", "audio"},
+                                            {"path", take["path"]},
+                                            {"playlist", take["playlist"]}});
+            for (auto& result : receipt["target_results"])
+            {
+                result["clips"] = std::count_if(receipt["takes"].begin(), receipt["takes"].end(),
+                                                [&](const auto& take) { return take["track"] == result["track"]; });
+                result["active_playlist"] = playlistQuery(*track(result["track"]))["active"];
+            }
+        }
+        catch (const std::exception& e)
+        {
+            recordingError = e.what();
+        }
+    if (loopSourcePrevious.isVoid())
+        edit->state.removeProperty("preserveLoopRecordingSource", nullptr);
+    else
+        edit->state.setProperty("preserveLoopRecordingSource", loopSourcePrevious, nullptr);
+    for (const auto& [device, mode] : waveRecordModes)
+        if (auto* wave = dynamic_cast<te::WaveInputDevice*>(
+                engine.getDeviceManager().findInputDeviceForID(juce::String(device))))
+            wave->setMergeMode(mode);
+    waveRecordModes.clear();
+    if (receipt.value("mode", std::string{}) == "loop" && !recordingError.empty())
+    {
+        // Failed loop capture keeps its source files, but never replaces the
+        // original Playlist or presents a partial group as a successful take.
+        undo.undoCurrentTransactionOnly();
+        undo.beginNewTransaction();
+        receipt["clips"] = Json::array();
+        receipt["takes"] = Json::array();
+        for (auto& result : receipt["target_results"])
+        {
+            result["clips"] = 0;
+            result["state"] = "failed";
+            result.erase("active_playlist");
+        }
+    }
     for (auto& settings : midiRecordSettings)
     {
         settings.device->mergeRecordings = settings.merge;
@@ -547,7 +622,7 @@ void Commands::finishRecordingCapture(bool unexpected)
     receipt["outcome"] = recordingError.empty() ? (empty ? "no_events" : "success") : "failed";
     receipt["state"] = recordingError.empty() ? (empty ? "no_events" : "committed") : "failed";
     receipt["error"] = recordingError;
-    receipt["undo_scope"] = "Edit clips only; recorded audio files are retained";
+    receipt["undo_scope"] = "Edit clips and Playlists only; recorded audio files are retained";
     auto& um = edit->getUndoManager();
     if (!receipt["clips"].empty())
     {

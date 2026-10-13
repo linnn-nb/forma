@@ -297,9 +297,11 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     nativeStates->sync();
     edit->state.addListener(this);
     persistentHistory = std::make_unique<PersistentHistory>(*this);
+    engine.getDeviceManager().addChangeListener(this);
 }
 Commands::~Commands()
 {
+    engine.getDeviceManager().removeChangeListener(this);
     edit->state.removeListener(this);
     removeAllChangeListeners();
     masterAnalysis.reset();
@@ -421,6 +423,12 @@ Json Commands::query() const
 {
     Performance::Span measured("query_call");
     return queryFacts();
+}
+void Commands::changeListenerCallback(juce::ChangeBroadcaster* source)
+{
+    checkThread();
+    if (source == &engine.getDeviceManager())
+        invalidateFacts(); // Input availability is external to Edit's ValueTree.
 }
 void Commands::invalidateFacts()
 {
@@ -570,6 +578,7 @@ const Json& Commands::queryFacts() const
              {"plugins", processorQuery(*t)}});
         tracks.back().update(routingQuery(*t));
         tracks.back()["input"] = recordingQuery(*t);
+        tracks.back()["playlists"] = playlistQuery(*t);
         tracks.back().update(hierarchyQuery(*t));
     }
     const auto historyEntry = [&](size_t index) -> Json
@@ -886,6 +895,8 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
                     "clipboard snapshot expired or unavailable to this actor");
         auto reg = registry();
+        if (cmd == "playlist.select")
+            require(actor == "human", "Playlist selection is a local GUI command");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
@@ -1015,7 +1026,7 @@ Json Commands::preview(const Json& plan) const
         {
             // Whole-Plan clip preflight below tracks source mapping, locks and local IDs.
         }
-        else if (cmd == "track.input" || cmd == "track.arm" || cmd == "track.monitor")
+        else if (cmd == "track.input" || cmd == "track.arm" || cmd == "track.monitor" || cmd == "playlist.select")
         {
             // Whole-Plan input validation below.
         }
@@ -1093,6 +1104,7 @@ Json Commands::preview(const Json& plan) const
     const auto panDiff = validatePanPlan(ops);
     const auto clipDiff = validateClipPlan(ops);
     validateRecordingPlan(ops);
+    validatePlaylistPlan(ops);
     const auto automationDiff = validateAutomationPlan(ops);
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
@@ -1191,7 +1203,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.create" || op.at("command") == "track.parent" ||
             op.at("command") == "track.order" || op.at("command") == "track.delete" ||
             op.at("command") == "track.input" || op.at("command") == "track.arm" ||
-            op.at("command") == "track.monitor" ||
+            op.at("command") == "track.monitor" || op.at("command") == "playlist.select" ||
             (op.at("command").get<std::string>().starts_with("midi.") &&
              !op.at("command").get<std::string>().starts_with("midi.note.")) ||
             op.at("command").get<std::string>().starts_with("timeline.clips.") ||
@@ -1280,6 +1292,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                 }
                 executeClipOperation(cmd, resolved, objects, musicAliases);
             }
+            else if (cmd == "playlist.select")
+                selectPlaylist(*track(a.at("track")), a.at("playlist"));
             else if (cmd == "track.input" || cmd == "track.arm" || cmd == "track.monitor")
             {
                 auto resolved = a;
@@ -1842,6 +1856,7 @@ void Commands::open(const juce::File& source)
     edit->state.removeChild(reserve, nullptr);
     persistentHistory->install(std::move(archive));
 }
+void validatePlaylists(te::Edit&);
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
     checkThread();
@@ -1853,6 +1868,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // not reuse IDs held by Undo or the native plugin cache (including Clip FX).
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
+    validatePlaylists(*candidate);
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     readEditingOptions(candidate->state.getChildWithName("NATIVEDAW"));
     readShuffleOptions(candidate->state.getChildWithName("NATIVEDAW"));

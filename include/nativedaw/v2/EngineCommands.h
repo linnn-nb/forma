@@ -23,7 +23,8 @@ struct SelectionOutputGateState;
 class Commands : public juce::ChangeBroadcaster,
                  private juce::Timer,
                  private te::ParameterChangeHandler::UserChangeListener,
-                 private juce::ValueTree::Listener
+                 private juce::ValueTree::Listener,
+                 private juce::ChangeListener
 {
 public:
     explicit Commands(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
@@ -170,6 +171,7 @@ public:
 
 private:
     void invalidateFacts();
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void stateChanged(juce::ValueTree);
     void valueTreePropertyChanged(juce::ValueTree& n, const juce::Identifier&) override
     {
@@ -387,6 +389,10 @@ private:
     Json recordingQuery(te::AudioTrack&) const;
     std::string inputAvailability(const te::InputDevice*) const;
     Json recordingReadiness() const;
+    Json playlistQuery(te::AudioTrack&) const;
+    void validatePlaylistPlan(const Json&) const;
+    void selectPlaylist(te::AudioTrack&, const std::string&);
+    void makeLoopPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
     void restoreInputAssignments();
     void finishRecordingCapture(bool unexpected = false);
     static void registerAudioDeviceCommands(Json&);
@@ -426,6 +432,8 @@ private:
     uint64_t recordingProgressFrames = 0;
     juce::File recordingDirectory;
     std::string recordingError;
+    std::vector<std::pair<std::string, juce::String>> waveRecordModes;
+    juce::var loopSourcePrevious;
     te::WaveAudioClip* audioClip(const std::string&) const;
     struct ClipboardEntry
     {

@@ -18,6 +18,13 @@ public:
 };
 }
 namespace {
+class Storage final : public te::PropertyStorage {
+    juce::File folder;
+public:
+    explicit Storage(juce::File f) : PropertyStorage("Forma recording tests"), folder(f) {}
+    juce::File getAppPrefsFolder() override { folder.createDirectory(); return folder; }
+};
+
 int checks=0;
 void check(bool b,const char* s){if(!b)throw std::runtime_error(s);++checks;std::cout<<"PASS "<<s<<std::endl;}
 void settle(int ms=90){juce::MessageManager::getInstance()->runDispatchLoopUntil(ms);}
@@ -44,7 +51,7 @@ struct Feed {
 int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
     const auto started=juce::Time::getMillisecondCounterHiRes();
     auto directory=juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("forma-record-ready-"+juce::Uuid().toString());check(directory.createDirectory().wasOk(),"test recording destination is real");
-    ndaw::desktop::Workspace w(false);w.setVisible(true);w.setSize(1440,1000);auto& c=RecordingTestAccess::commands(w);
+    ndaw::desktop::Workspace w(false, std::make_unique<Storage>(directory.getChildFile("prefs")));w.setVisible(true);w.setSize(1440,1000);auto& c=RecordingTestAccess::commands(w);
     check(blocked(c.query(),"clock_unavailable")&&blocked(c.query(),"no_armed_tracks"),"offline session exposes truthful recording blockers");
     auto& h=RecordingTestAccess::host(w,directory);Feed feed(h);settle();auto inputs=c.deviceStatus()["inputs"];const std::string left=inputs[0]["id"],right=inputs[1]["id"];
     run(c,Json::array({op("track.create",{{"name","Mic A"},{"type","audio"},{"ref","$a"}}),op("track.create",{{"name","Mic B"},{"type","audio"},{"ref","$b"}}),
@@ -75,7 +82,7 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
     RecordingTestAccess::disableInput(c,left,false);settle(150);c.undo(extra["plan_id"]);settle();check(c.query()["tracks"].size()==2&&c.query()["recording_readiness"]["ready"],"removing the additional actual tracks restores the original qualified workload");
     auto saved=directory.getChildFile("missing-input.tracktionedit");c.save(saved);
     {
-        ndaw::desktop::Workspace missing(false);missing.setVisible(true);missing.setSize(1440,1000);auto& offline=RecordingTestAccess::commands(missing);offline.open(saved);RecordingTestAccess::select(missing,a);settle();
+        ndaw::desktop::Workspace missing(false, std::make_unique<Storage>(directory.getChildFile("missing-prefs")));missing.setVisible(true);missing.setSize(1440,1000);auto& offline=RecordingTestAccess::commands(missing);offline.open(saved);RecordingTestAccess::select(missing,a);settle();
         const auto opened=offline.query();check(opened["tracks"][0]["input"]["device"]==left&&opened["tracks"][0]["input"]["armed"]&&opened["tracks"][0]["input"]["monitor"]=="auto","reopening without devices preserves original references and requested state");
         check(!opened["tracks"][0]["input"]["monitoring"].get<bool>()&&!find(missing,"transport.record")->isEnabled(),"missing-device reopen does not activate monitoring or recording");
         check(find(missing,"track.arm")->isEnabled()&&find(missing,"recording.monitor")->isEnabled(),"missing-device reopen remains recoverable in production GUI");

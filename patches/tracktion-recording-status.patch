@@ -27,7 +27,7 @@ index c0675a3..315ed4c 100644
                                       id == IDs::targetID);
  }
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
-index 55cefed..5baa7da 100644
+index 55cefed..1e92da7 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 @@ -39,7 +39,10 @@ public:
@@ -42,7 +42,19 @@ index 55cefed..5baa7da 100644
          engine.getUIBehaviour().showWarningMessage (TRANS("Recording error - disk space is getting dangerously low!"));
      }
  
-@@ -2065,6 +2068,9 @@ void WaveInputRecordingThread::run()
+@@ -788,7 +791,10 @@ public:
+         // Never loop or punch record to slots
+         const bool isClipSlot = dynamic_cast<ClipSlot*> (clipOwner) != nullptr;
+         const bool wasPunchRecording = isClipSlot ? false : edit.recordingPunchInOut;
+-        const bool wasLoopRecording = isClipSlot ? false : isLooping;
++        // Hosts which build non-destructive Playlists from source intervals need
++        // the continuous file, including when the transport stops after a fault.
++        const bool preserveLoopSource = edit.state.getProperty ("preserveLoopRecordingSource", false);
++        const bool wasLoopRecording = isClipSlot || preserveLoopSource ? false : isLooping;
+ 
+         return applyLastRecording (*rc, recordedFile, *clipOwner,
+                                    { rc->punchTimes.getStart(), unloopedEndTime },
+@@ -2065,6 +2071,9 @@ void WaveInputRecordingThread::run()
  void WaveInputRecordingThread::timerCallback()
  {
      stopTimer();

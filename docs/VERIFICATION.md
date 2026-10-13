@@ -1,3 +1,9 @@
+# P1 首个增量：循环音频录音（2026-10-13）
+
+Release 构建、固定本地 deep/strict 验签通过；受影响6组共282项检查、64.571秒、0失败/0JUCE断言。新增51项真实Tracktion录音/PCM/文件/GUI命令检查，包括每轮Take、原Playlist保留、完整Undo/Redo、重开、改键、源哈希及真实写盘故障恢复。回归发现的设备停用后就绪缓存未失效问题已修复并通过复测。
+
+桌面锁定，实体麦克风循环录音、点击与试听未执行；hosted已知PCM不能替代该验收。循环录音下限2秒，与v1的1秒有差距；MIDI循环、Punch、完整Comp与交叉淡化仍未完成。应用为 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，无新DMG。测试代码、条件、失败修复过程、输出及产物哈希见 [P1记录](../evidence/P1/summary.md)。用户已授权P1，下方旧暂停语句不再适用，旧性能缺口仍保留。
+
 ## 2026-10-13 B 增量历史最终检查点
 
 结论：schema2增量/选择性回放/历史上限及原生单次保存实现完成，Release受影响11套件892检查通过（753既有GUI/命令/MCP/自动化/Clip/展示/录音/走带＋76持久化＋63真实AU/VST3音频），0失败。最新ASAN65检查通过，地址检测无错误，leak检测关闭；历史早期SceneList重复释放和按钮UAF失败未抹去。Release应用及固定本地deep/strict验签通过；实现源码633f832已推送。
