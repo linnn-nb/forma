@@ -39,18 +39,18 @@ public:
         juce::File file;
         double start = 0, end = 0, offset = 0, fileRate = 0;
         int64_t cacheFirst = 0;
-        double fadeIn = 0, fadeOut = 0;
+        double fadeIn = 0, fadeOut = 0, fadeStart = 0, fadeEnd = 0;
         te::AudioFadeCurve::Type inCurve = te::AudioFadeCurve::linear, outCurve = te::AudioFadeCurve::linear;
         float leftGain = 1, rightGain = 1, gain = 1;
         float gainAt(double seconds) const noexcept
         {
             float gain = 1;
-            if (fadeIn > 0 && seconds < start + fadeIn)
-                gain *= te::AudioFadeCurve::alphaToGainForType(inCurve,
-                                                               float(std::clamp((seconds - start) / fadeIn, 0., 1.)));
-            if (fadeOut > 0 && seconds > end - fadeOut)
-                gain *= te::AudioFadeCurve::alphaToGainForType(outCurve,
-                                                               float(std::clamp((end - seconds) / fadeOut, 0., 1.)));
+            if (fadeIn > 0 && seconds < fadeStart + fadeIn)
+                gain *= te::AudioFadeCurve::alphaToGainForType(
+                    inCurve, float(std::clamp((seconds - fadeStart) / fadeIn, 0., 1.)));
+            if (fadeOut > 0 && seconds > fadeEnd - fadeOut)
+                gain *= te::AudioFadeCurve::alphaToGainForType(
+                    outCurve, float(std::clamp((fadeEnd - seconds) / fadeOut, 0., 1.)));
             return gain;
         }
     };
@@ -180,6 +180,19 @@ void captureWindow(const std::vector<te::AudioTrack*>& targets, ScrubPlayback& s
             segment.file = clip->getOriginalFile();
             segment.fadeIn = clip->getFadeIn().inSeconds();
             segment.fadeOut = clip->getFadeOut().inSeconds();
+            segment.fadeStart = start;
+            segment.fadeEnd = end;
+            if (auto inherited = clip->state.getChildWithName("NDAW_FADE_ORIGIN"); inherited.isValid())
+            {
+                const auto sourceStart = pos.getStartOfSource().inSeconds();
+                segment.fadeStart = sourceStart + double(inherited["in_origin"]);
+                segment.fadeEnd = sourceStart + double(inherited["out_origin"]);
+                segment.fadeIn = double(inherited["in_length"]);
+                segment.fadeOut = double(inherited["out_length"]);
+            }
+            require(std::isfinite(segment.fadeStart) && std::isfinite(segment.fadeEnd) &&
+                        segment.fadeEnd > segment.fadeStart,
+                    "invalid inherited scrub fade position");
             segment.inCurve = clip->getFadeInType();
             segment.outCurve = clip->getFadeOutType();
             require(std::isfinite(segment.fadeIn) && std::isfinite(segment.fadeOut) && segment.fadeIn >= 0 &&

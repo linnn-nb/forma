@@ -217,7 +217,25 @@ void PersistentHistory::mark(juce::ValueTree node, bool recursive)
 {
     if (replaying || excluded(node) || !node.isValid())
         return;
-    auto path = history_delta::address(node);
+    history_delta::Path path;
+    for (;;)
+    {
+        try
+        {
+            path = history_delta::address(node);
+            break;
+        }
+        catch (const history_delta::DuplicateIdentity&)
+        {
+            // Native insertion (notably TimeSig) clones the previous ID before
+            // L1 assigns the new ID. Track its stable ancestor during that
+            // synchronous notification; final snapshots still reject duplicates.
+            node = node.getParent();
+            recursive = true;
+            if (!node.isValid())
+                throw;
+        }
+    }
     for (auto it = dirty.begin(); it != dirty.end();)
     {
         const auto& [old, deep] = it->second;

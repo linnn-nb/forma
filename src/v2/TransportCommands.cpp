@@ -88,6 +88,19 @@ void Commands::registerTransportCommands(Json& registry)
                             {"test", "U-P0-ROLL-01"},
                             {"units", {{"time", "48000 Hz session samples"}}}});
 
+    registry.push_back({{"id", "transport.punch.set"},
+                        {"schema",
+                         {{"type", "object"},
+                          {"properties", {{"enabled", enabled}}},
+                          {"required", {"enabled"}},
+                          {"additionalProperties", false}}},
+                        {"permission", "edit"},
+                        {"risk", "low"},
+                        {"reversible", true},
+                        {"live", false},
+                        {"tool_visibility", "local_gui"},
+                        {"test", "P1-PUNCH-01"}});
+
     Json clickSchema{{"type", "object"},
                      {"properties", {{"enabled", enabled}}},
                      {"required", {"enabled"}},
@@ -149,6 +162,8 @@ Json Commands::transportSettingsQuery() const
             {"count_in_beats", encodeCountIn(mode) == "unsupported" ? 0 : edit->getNumCountInBeats()},
             {"count_in_source", "session_metadata"},
             {"loop_enabled", edit->getTransport().looping.get()},
+            {"punch_enabled", edit->recordingPunchInOut.get()},
+            {"punch_range", punchRange()},
             {"loop_range", loopRange},
             {"roll", readRollState(metadata)},
             {"roll_playback", rollPlayback},
@@ -159,6 +174,7 @@ Json Commands::validateTransportPlan(const Json& operations) const
 {
     bool metronome = edit->clickTrackEnabled.get();
     bool loopEnabled = edit->getTransport().looping.get();
+    bool punchEnabled = edit->recordingPunchInOut.get();
     auto mode = int(metadata.getProperty("count_in_mode", int(te::Edit::CountIn::none)));
     auto selection = timelineRange();
     auto loopRange = transportSettingsQuery().value("loop_range", Json(nullptr));
@@ -193,6 +209,20 @@ Json Commands::validateTransportPlan(const Json& operations) const
         {
             selection = nullptr;
         }
+        else if (command == "transport.punch.set")
+        {
+            const bool enabled = args["enabled"];
+            if (enabled && selection.is_null())
+                throw std::runtime_error("select a time range before enabling Punch");
+            diff.push_back({{"command", command},
+                            {"before", punchEnabled},
+                            {"after", enabled},
+                            {"selection", selection},
+                            {"loop_disabled", enabled && loopEnabled}});
+            if (enabled)
+                loopEnabled = false;
+            punchEnabled = enabled;
+        }
         else if (command == "transport.metronome.set")
         {
             const auto next = args.at("enabled").get<bool>();
@@ -214,7 +244,10 @@ Json Commands::validateTransportPlan(const Json& operations) const
                             {"before", loopEnabled},
                             {"after", next},
                             {"before_range", previousRange},
-                            {"after_range", loopRange}});
+                            {"after_range", loopRange},
+                            {"punch_disabled", next && punchEnabled}});
+            if (next)
+                punchEnabled = false;
             loopEnabled = next;
         }
         else if (command == "transport.count_in.set")
@@ -238,6 +271,14 @@ void Commands::executeTransportOperation(const std::string& command, const Json&
             state.setProperty(key, args.at(key).get<bool>(), &undo);
         for (auto key : {"pre_samples", "post_samples"})
             state.setProperty(key, juce::int64(args.at(key).get<int64_t>()), &undo);
+        return;
+    }
+    if (command == "transport.punch.set")
+    {
+        const bool enabled = args["enabled"];
+        edit->getTransport().state.setProperty(te::IDs::recordPunchInOut, enabled, &undo);
+        if (enabled)
+            edit->getTransport().state.setProperty(te::IDs::looping, false, &undo);
         return;
     }
     if (command == "transport.metronome.set")
@@ -275,6 +316,8 @@ void Commands::executeTransportOperation(const std::string& command, const Json&
                 throw std::runtime_error("select a time range before enabling loop playback");
         }
         transport.state.setProperty(te::IDs::looping, enabled, &undo);
+        if (enabled)
+            transport.state.setProperty(te::IDs::recordPunchInOut, false, &undo);
         return;
     }
     throw std::runtime_error("unknown transport operation");

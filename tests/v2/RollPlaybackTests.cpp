@@ -352,7 +352,10 @@ int main(int argc, char** argv)
         const auto view = c.uiState();
         edit->mouseDown(event(*edit, point));
         edit->mouseDrag(event(*edit, destination));
-        c.updateUiState({{"span_samples", 240000}}, c.sessionToken());
+        // Exercise the production zoom command (which publishes the view).
+        // Raw saved UI metadata is intentionally excluded from project facts.
+        invoke(w, 101);
+        check(c.uiState()["span_samples"] != view["span_samples"], "production zoom actually changes coordinates");
         pump();
         const auto zoomed = c.query();
         edit->mouseUp(event(*edit, destination));

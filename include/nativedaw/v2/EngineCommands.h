@@ -393,6 +393,11 @@ private:
     void validatePlaylistPlan(const Json&) const;
     void selectPlaylist(te::AudioTrack&, const std::string&);
     void makeLoopPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
+    juce::ValueTree ensurePlaylists(te::AudioTrack&);
+    Json punchRange() const;
+    void validatePunchCapture() const;
+    void preparePunchGraph(const Json&);
+    void makePunchPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
     void restoreInputAssignments();
     void finishRecordingCapture(bool unexpected = false);
     static void registerAudioDeviceCommands(Json&);

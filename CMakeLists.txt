@@ -81,7 +81,7 @@ add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePlugi
     src/v2/MidiClipMove.cpp src/v2/MidiClipTrim.cpp src/v2/EngineCommands.cpp src/v2/PersistentHistory.cpp src/v2/TransportCommands.cpp src/v2/MixCommands.cpp src/v2/RoutingCommands.cpp src/v2/MusicCommands.cpp src/v2/HierarchyCommands.cpp src/v2/AutomationCommands.cpp src/v2/RecordingCommands.cpp src/v2/MidiDeviceCommands.cpp src/v2/Analysis.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupCommands.cpp src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/MarkerCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PunchCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -1017,3 +1017,9 @@ target_sources(ndaw_loop_recording_tests PRIVATE tests/v2/LoopRecordingTests.cpp
 target_link_libraries(ndaw_loop_recording_tests PRIVATE ndaw_ui)
 add_test(NAME forma_loop_recording COMMAND ndaw_loop_recording_tests "${CMAKE_BINARY_DIR}/p1-loop-recording-tests.json")
 set_tests_properties(forma_loop_recording PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_punch_recording_tests PRODUCT_NAME "ndaw_punch_recording_tests")
+target_sources(ndaw_punch_recording_tests PRIVATE tests/v2/PunchRecordingTests.cpp)
+target_link_libraries(ndaw_punch_recording_tests PRIVATE ndaw_ui)
+add_test(NAME forma_punch_recording COMMAND ndaw_punch_recording_tests "${CMAKE_BINARY_DIR}/p1-punch-tests.json")
+set_tests_properties(forma_punch_recording PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

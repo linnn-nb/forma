@@ -636,7 +636,9 @@ void Workspace::refresh()
     returnButton.setEnabled(!audioPending && !parameterEditing && facts["automation_capture"].is_null() &&
                             facts["recording_capture"].is_null());
     recordButton.setEnabled(facts["recording_readiness"]["ready"].get<bool>() && recordDirectory.isDirectory());
-    recordButton.setButtonText(text(facts["transport_settings"].value("loop_enabled", false) ? "循环录音" : "录音"));
+    recordButton.setButtonText(text(facts["transport_settings"].value("punch_enabled", false)  ? "Punch 录音"
+                                    : facts["transport_settings"].value("loop_enabled", false) ? "循环录音"
+                                                                                               : "录音"));
     recordButton.setTooltip(recordDirectory.isDirectory() ? recordingReadinessText(facts["recording_readiness"])
                                                           : text("先选择录音目录"));
     recordButton.setToggleState(facts["recording"], juce::dontSendNotification);

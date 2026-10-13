@@ -7,22 +7,25 @@ inline juce::String recordingReadinessText(const Json& ready)
         return text("录音就绪 · 所有待命输入可用\n目录可写和空间将在开始时检查");
     const auto& first = ready["blockers"][0];
     const auto code = first["code"].get<std::string>();
-    const std::map<std::string, const char*> labels = {{"transport_active", "先停止当前播放或录音"},
-                                                       {"audio_preparing", "等待音频设备准备"},
-                                                       {"midi_preparing", "等待 MIDI 端口配置"},
-                                                       {"parameter_gesture", "先结束参数手势"},
-                                                       {"native_state", "先处理插件状态回执"},
-                                                       {"clock_unavailable", "音频设备尚未打开或运行"},
-                                                       {"punch_pending", "Punch 录音尚未接通"},
-                                                       {"loop_range", "循环录音需要至少两秒的循环范围"},
-                                                       {"loop_midi_pending", "MIDI 循环录音尚未接通"},
-                                                       {"automation_mode", "录音轨道需使用 Read 自动化"},
-                                                       {"input_unavailable", "待命输入缺失、停用或声道未启用"},
-                                                       {"input_incompatible", "待命输入与轨道类型不兼容"},
-                                                       {"midi_recording_disabled", "待命端口的 MIDI 录制已停用"},
-                                                       {"no_armed_tracks", "先选择输入并待命轨道"}};
+    const std::map<std::string, const char*> labels = {
+        {"transport_active", "先停止当前播放或录音"},
+        {"audio_preparing", "等待音频设备准备"},
+        {"midi_preparing", "等待 MIDI 端口配置"},
+        {"parameter_gesture", "先结束参数手势"},
+        {"native_state", "先处理插件状态回执"},
+        {"clock_unavailable", "音频设备尚未打开或运行"},
+        {"punch_setup", "Punch 范围或片段不可录入（详细原因见录音回执）"},
+        {"loop_range", "循环录音需要至少两秒的循环范围"},
+        {"loop_midi_pending", "MIDI 循环录音尚未接通"},
+        {"automation_mode", "录音轨道需使用 Read 自动化"},
+        {"input_unavailable", "待命输入缺失、停用或声道未启用"},
+        {"input_incompatible", "待命输入与轨道类型不兼容"},
+        {"midi_recording_disabled", "待命端口的 MIDI 录制已停用"},
+        {"no_armed_tracks", "先选择输入并待命轨道"}};
     auto found = labels.find(code);
     auto message = found == labels.end() ? text(first["message"].get<std::string>()) : text(found->second);
+    if (code == "punch_setup")
+        message = text("Punch：") + text(first["message"].get<std::string>());
     if (!first["name"].get<std::string>().empty())
         message += text("：") + text(first["name"].get<std::string>());
     if (ready["blockers_total"].get<size_t>() > 1)
@@ -42,7 +45,7 @@ public:
     {
         for (auto* c : std::initializer_list<juce::Component*>{
                  &deviceLabel, &direction, &hardware, &enable, &inputLabel, &input, &arm, &monitorLabel, &monitor,
-                 &keyLabel, &keys, &folder, &path, &detail, &readiness, &loopMode, &playlist})
+                 &keyLabel, &keys, &folder, &path, &detail, &readiness, &loopMode, &punchMode, &playlist})
             addAndMakeVisible(c);
         inputLabel.setText(text("TRACK INPUT · 轨道输入"), juce::dontSendNotification);
         monitorLabel.setText(text("MONITOR · 每轨监听"), juce::dontSendNotification);
@@ -62,6 +65,11 @@ public:
         readiness.setComponentID("recording.readiness");
         loopMode.setComponentID("recording.loop");
         playlist.setComponentID("recording.playlist");
+        punchMode.setComponentID("recording.punch");
+        punchMode.setClickingTogglesState(true);
+        punchMode.setTooltip(
+            text("Punch 使用当前时间选区，前后卷沿用走带设置；保留原 Playlist 和连续源文件。Option+P"));
+        punchMode.onClick = [this] { this->write("transport.punch.set", {{"enabled", punchMode.getToggleState()}}); };
         playlist.setTextWhenNothingSelected(text("Playlist / Take"));
         loopMode.setClickingTogglesState(true);
         loopMode.setTooltip(text("使用循环标尺范围（至少两秒）；每轮成为独立 Take，连续原录音保留。快捷键 L"));
@@ -233,7 +241,12 @@ public:
         readiness.setText(recordingReadinessText(session["recording_readiness"]), juce::dontSendNotification);
         const auto settings = session.value("transport_settings", Json::object());
         const bool looping = settings.value("loop_enabled", false);
+        const bool punching = settings.value("punch_enabled", false);
         loopMode.setVisible(!midi);
+        punchMode.setVisible(!midi);
+        punchMode.setToggleState(settings.value("punch_enabled", false), juce::dontSendNotification);
+        punchMode.setEnabled(!playing && !pending &&
+                             (settings.value("punch_enabled", false) || !session["time_selection"].is_null()));
         playlist.setVisible(!midi);
         loopMode.setToggleState(looping, juce::dontSendNotification);
         loopMode.setEnabled(!playing && !pending &&
@@ -269,9 +282,10 @@ public:
             info = text("MIDI 配置失败：") + text(device["midi_configuration"]["error"].get<std::string>());
         else if (!session["recording_capture"].is_null())
         {
-            info = text(midi      ? "● 正在录音 · 原生 MIDI 事件捕获\n停止后生成新片段，不合并原片段"
-                        : looping ? "● 循环录音 · 连续写盘\n停止后每轮生成独立 Take\n"
-                                  : "● 正在录音 · 正在写入文件\n");
+            info = text(midi       ? "● 正在录音 · 原生 MIDI 事件捕获\n停止后生成新片段，不合并原片段"
+                        : punching ? "● Punch 补录 · 连续写盘\n区间外原片段与前后卷源音频保留\n"
+                        : looping  ? "● 循环录音 · 连续写盘\n停止后每轮生成独立 Take\n"
+                                   : "● 正在录音 · 正在写入文件\n");
             if (!midi && !facts.is_null())
                 info += text(facts["input"]["recording_file"].get<std::string>());
         }
@@ -325,9 +339,10 @@ public:
         monitor.setBounds(10, 264, w, 29);
         keyLabel.setBounds(10, 306, w, 22);
         keys.setBounds(10, 334, w, 68);
-        loopMode.setBounds(10, 306, 110, 29);
-        playlist.setBounds(126, 306, w - 116, 29);
-        int offset = midi ? 97 : 30;
+        loopMode.setBounds(10, 306, (w - 6) / 2, 29);
+        punchMode.setBounds(16 + (w - 6) / 2, 306, (w - 6) / 2, 29);
+        playlist.setBounds(10, 341, w, 29);
+        int offset = midi ? 97 : 65;
         folder.setBounds(10, 327 + offset, w, 29);
         path.setBounds(10, 362 + offset, w, 50);
         readiness.setBounds(10, 425 + offset, w, 62);
@@ -373,7 +388,7 @@ private:
     juce::Label deviceLabel, inputLabel, monitorLabel, path, detail, keyLabel, readiness;
     juce::ComboBox hardware, input, monitor, direction;
     juce::ComboBox playlist;
-    juce::TextButton loopMode{text("循环录音")};
+    juce::TextButton loopMode{text("循环录音")}, punchMode{text("Punch 补录")};
     juce::TextButton enable{text("启用输入设备")}, arm{text("录音待命 · R")}, folder{text("选择录音目录…")};
     juce::MidiKeyboardState keyState;
     juce::MidiKeyboardComponent keys;

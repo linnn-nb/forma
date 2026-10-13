@@ -1,8 +1,8 @@
 # P1 当前结论（2026-10-13）
 
-无新增授权或源码依赖阻塞；用户已授权进入 P1，覆盖下方历史暂停语句。保持现有 Tracktion/JUCE pin、13 份补丁和固定本地签名；仅扩展现有录音状态补丁以保留循环源文件，CMake 继续校验完整 vendor diff。
+无新增授权或源码依赖阻塞。Tracktion/JUCE pin、13份补丁、固定本地签名保持；Punch 扩展已有 recording-status 与 render-bus-only 两份补丁，仍受 CMake 全量 diff 校验。没有新引擎、IPC、模型或上传。
 
-当前限制：Tracktion 循环录音下限 2 秒，与 v1 的 1 秒下限有明确差距；本增量只支持音频循环，MIDI 循环、Punch、完整 Playlist/Comp 和交叉淡化待后续。桌面锁定，实体点击/麦克风循环录音验收未执行，自动化 hosted PCM 不替代硬件实录。性能 A 超预算、旧 schema 1 迁移耗时、Windows/公证与耐久差距保持，见历史记录与 `evidence/perf/summary.md`。
+音频循环与选区 Punch 已通过当前自动化范围，见P1证据；完整 Playlist/Comp、交叉淡化与 MIDI循环/Punch 待后续。循环下限2秒；Punch 对相交 Clip FX、速度淡化及伸缩/音乐基准音频明确拒绝，设备/插件 PDC、不同采样率组合待测。Mac锁定，实体鼠标/键盘、麦克风实录及试听未验，hosted PCM 不替代硬件证据。既有 SDK 录音队列锁/动态分配与长期可靠性缺口保留。性能A、旧schema1迁移耗时、Windows/公证差距见旧记录；不因此扩展本轮性能专项。
 
 # 当前结论（2026-10-13）
 

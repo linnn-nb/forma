@@ -1,4 +1,9 @@
-> 2026-10-13：用户已授权进入 P1。本表仍仅作交互/工作流参考。循环音频录音已接 Tracktion 连续写盘与每轮 Take，原 Playlist 保留；2 秒最小范围与 v1 的 1 秒有差距。GUI/MIDI 硬件、Punch、完整 Comp 与交叉淡化未验/未完成，真实执行结果见 `evidence/P1/summary.md`。下方历史“不进入 P1”不再是当前执行约束。
+> 2026-10-13：用户已授权P1，本表只作交互/工作流参考。Tracktion音频循环与选区Punch部分实现；连续源/原Playlist保留，循环下限2秒。Punch不等于QuickPunch/TrackPunch/DestructivePunch。实体录音、设备PDC、完整Comp及交叉淡化未验/未完成。下方v1实现与旧暂停只作行为规格和追溯，不代表v2资格。
+
+| 当前v2项 | 代码/测试证据 | 验收/差距 | 状态 |
+|---|---|---|---|
+| 选区Punch与前后卷 | src/v2/PunchCommands.cpp、RecordingCommands.cpp、PunchSignalGate.h；tests/v2/PunchRecordingTests.cpp；evidence/P1/summary.md | 124项原生链路检查通过；选区→Option+P→录音→自动停止→Undo/重开；实体录音/试听未验，特殊Clip处理拒绝，MIDI和设备PDC待测，无新增外部依赖 | 部分实现 |
+
 
 > 本文件为交互与工作流参考清单，不是全量产品验收门槛。
 

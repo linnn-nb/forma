@@ -1,36 +1,42 @@
-# P1：循环音频录音，首个增量（2026-10-13）
+# P1：循环音频与选区 Punch（2026-10-13）
 
-结论：Release 构建与固定本地签名 deep/strict 校验通过；6 组 282 项检查通过，串行测试累计 64.571 秒。不是 P1 完整验收。桌面锁定，实体鼠标/键盘、麦克风循环录音及试听未执行；hosted PCM 自动化测试不等于硬件实录。没有打包 DMG、上传音频或运行性能专项。
+结论：Release构建与固定本地deep/strict验签通过；受影响10组1202项检查通过，最终子套件累计138.404秒，0失败/0JUCE断言。这是P1第二个可运行增量，完整Playlist管理/Comp和交叉淡化未完成。Mac锁定，实体操作、麦克风录音及试听未执行。无DMG、音频上传或新性能对照。
 
-## 可以亲手试
+## 亲手试用
 
-打开 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。创建音频轨，在时间线选择至少 2 秒范围，按 L 开启循环；录音检查器选择可用输入、录音目录并待命轨道。录两轮以上后停止，用 Playlist/Take 下拉框或 Option+[ / Option+] 切换并播放。Main 保留录音前内容，短末轮单独保留并标示「部分」；不超过半轮不挤掉上一个完整 Take。新录音始终保留连续 WAV，一次 ⌘Z 撤销整次多轨录音附件，⌘⇧Z 重做；显式另存、重开后仍可切换及 Undo/Redo。键位可从应用快捷键编辑器更改并保存。
+打开 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，导入音频，在录音检查器选择输入、目录、待命和Auto监听。拖出补录选区，Option+P开启Punch，前后卷沿用走带设置，按录音。后卷结束自动停止，只替换实际录到的交集；原列表、全源Punch Take及Punch结果分别保留。Playlist下拉或Option+[ / Option+]切换。⌘Z整笔撤销，⌘⇧Z重做；显式保存重开仍可撤销/切换。Option+P可改键，Punch模式也可撤销和保存。
+
+循环录音：选至少2秒范围、L开循环、录两轮后停止；每轮独立Take，同一连续WAV，短末轮保留。v1的1秒循环下限尚未恢复，Punch不套用循环下限。
 
 ## 实际结果
 
-| 测试程序 | 检查数 | 秒 | 退出 / 断言 |
+| 程序 | 检查数 | 秒 | 退出 / JUCE断言 |
 |---|---:|---:|---|
-| ndaw_loop_recording_tests | 51 | 9.322 | 0 / 无断言 |
-| ndaw_recording_tests | 40 | 5.549 | 0 / 无断言 |
-| ndaw_recording_readiness_tests | 43 | 6.920 | 0 / 无断言 |
-| ndaw_midi_recording_tests | 60 | 5.856 | 0 / 无断言 |
-| ndaw_loop_playback_tests | 23 | 2.832 | 0 / 无断言 |
-| ndaw_persistent_history_tests | 65 | 34.092 | 0 / 无断言 |
+| ndaw_roll_playback_tests | 195 | 10.568 | 0 / 无 |
+| ndaw_persistent_history_tests | 65 | 33.864 | 0 / 无 |
+| ndaw_scrub_tests | 543 | 28.998 | 0 / 无 |
+| ndaw_loop_recording_tests | 51 | 8.759 | 0 / 无 |
+| ndaw_recording_tests | 40 | 6.148 | 0 / 无 |
+| ndaw_recording_readiness_tests | 43 | 6.948 | 0 / 无 |
+| ndaw_midi_recording_tests | 60 | 5.885 | 0 / 无 |
+| ndaw_loop_playback_tests | 23 | 2.976 | 0 / 无 |
+| ndaw_punch_recording_tests | 124 | 22.443 | 0 / 无 |
+| ndaw_clip_tests | 58 | 11.815 | 0 / 无 |
 
-全部程序由当前 Release 目标构建后直接运行，原始输出与 JSON 在 `build-v2-tracktion/p1-ndaw_*.log/json`，汇总 `p1-regression-results.json`。新增 CTest 名称 `forma_loop_recording`；本轮结果表是逐一执行实际测试程序，不冒充 CTest 全仓回归。
+各次修复按影响范围执行Release子套件；最后的预览字段修改仅复测Punch和Clip，不是单次全仓CTest。原始输出/JSON在 `build-v2-tracktion/p1-punch-final-*.log/.json`，汇总 `p1-punch-final-regression-results.json`；新CTest入口 `forma_punch_recording`。上一循环增量6组282检查与源码17b57c7可追溯。
 
-P1-LOOP-01：真实 Tracktion HostedAudioDevice → 录音图 → 原生磁盘 writer，48kHz / 256帧 / 双路独立 mono / PCM24；输入 997Hz 和 431Hz 的已知 0.1 幅值正弦。循环起点37、长度96037工程采样，实际跨两次边界及短末轮。解码验证源长度超过两轮、连续正弦二阶残差 <5e-7、RMS 容差3e-4；两轨共6个 Take，只写两份连续录音 WAV；活动片段源偏移严格96037采样。实际测试了短/长部分轮、保留原 Playlist、稳定对象ID、保存重开、持久历史撤销/重做、Tracktion 离线渲染非零PCM、原始/录音文件哈希不变、过期Plan/不存在目标/损坏活动引用拒绝。
+P1-PUNCH-01使用真实Tracktion HostedAudioDevice→录音图→writer→WAV解码→原生渲染；48kHz/256帧/双独立mono/PCM24。测试输入为标识清楚的常量0.0125/0.005，原片段为已知正弦，不替代实体麦克风或听感。替换范围[48037,96119)，前卷12053/后卷8227，连续源精确68362帧；采集逐样本误差<2e-7。Off/Auto/On各验证68106个实际输出样本（排除起播首块淡入，覆盖两端精确边界），Off/Auto最大误差1.211e-7，On为0，容差1e-6。区间外离线PCM与原包络差为0，区间内只有新录输入。
 
-生产界面组件的实际 ComboBox 通知、注册命令511/512、L1持久键位与重开均已测；没有将合成通知称为实体点击。原生录音故障使用进程 RLIMIT_FSIZE=32768 注入真实写盘失败，恢复限制后确认 failed 回执、原多轨 Playlist 保持、实际部分源文件保留。普通录音、设备停用/处理停滞、MIDI录音、循环播放与既有 schema2 历史也通过上述回归。
+已验证：Main/全源Take/结果分离、稳定ID、实时及持久Undo/Redo、再次补录、单采样源、前卷钳零、入点前停止不替换、提前停止只替换实录交集、锁定片段预拒绝、RLIMIT_FSIZE=32768真实写盘失败回滚/failed回执、原媒体哈希不变、停止后待命监听恢复。继承淡化片段再次split保持声音；显式fade预览显示取消继承包络，Undo恢复。Scrub通过保存的继承包络数据夹具，验证正反向实际PCM。GUI使用真实组件和注册命令分发，未冒称实体点击。
 
-构建产物 SHA256（主 executable）：`23f463ec475f397e9b07eac052c909f1dfe7c4ea66df4500cb9e8ca91601a3af`。签名仍是 Forma Local Development，不是发行公证。Tracktion/JUCE pin 不变，CMake 已核验现有13份补丁与完整 vendor diff；录音状态补丁只增加非实时停止时保留连续源文件的分支。
+## 修复与边界
 
-## 修复过程与明确边界
+- 首测源文件多写末尾音频块，已在原writer入队处按有限源帧数截断。
+- 原生新录片段默认音乐基准阻止再次Punch，L1录音附件改为采样基准；再次录入及重开通过。
+- 自动结束曾留下输出门，现停止后解除并恢复待命监听，真实输出通过。
+- 原生拍号插入短暂重复ID曾被历史监听误拒绝；改捕获稳定父节点，最终状态仍严格校验，Roll与持久历史通过。
+- Roll旧测试直接改保存视图未发布界面，改走真实缩放命令并保留状态不变断言；组件setView也校验标尺草稿。Scrub旧基线早于新设备通知，现先完成通知；人为改造的原生故障夹具去掉不匹配的旧历史，没有放松产品历史校验。
+- MIDI循环/Punch、完整Playlist/Comp、交叉淡化、QuickPunch等模式、相交Clip FX/速度淡化/伸缩或音乐基准音频、硬件多输入/其他采样率/往返延迟/PDC/耐久尚未完成或资格。音频门控到精确边界，transport由message thread停止，不称整个走带采样级停止。
+- Tracktion/JUCE pin与13份补丁数量保持，仅扩展现有recording-status和render-bus-only；CMake全量vendor diff审计通过。新增门控不分配、等待或I/O；原SDK录音队列锁/分配问题未宣称解决。性能A与schema1迁移缺口保持。
 
-- 初测发现 SDK 要求循环录音至少2秒，应用预检/提示已统一；没有绕过此原生限制。v1 的1秒下限仍是差距，P0短循环播放不受影响。
-- 回归首次在「输入停用后仍显示就绪」失败：facts缓存没有观察设备变更。L1现订阅原生 DeviceManager 的异步变更通知，使事实失效；复测43项录音就绪/故障检查通过，没有引入周期性全工程查询。
-- 测试脚本早期另存重用了文件名、键位等待条件过宽，已改为新文件及核对512命令的实际映射后再保存；最终51项专项通过。录音回归均改用独立临时偏好目录。
-- 本增量只资格音频循环；MIDI循环、Punch、完整Playlist管理/Comp、交叉淡化、实体多通道/44.1–192kHz/设备往返延迟/PDC/耐久尚未验证。当前Take切换须停止；自定义键位保存已测，实体快捷键未测。
-- 单次最多4096轮，超限明确失败、撤销附件、保留源文件；没有以未测循环录音取代长期可靠性验证。性能A与旧schema1迁移缺口原样保留，见 `evidence/perf/summary.md`。
-
-下一项：以 v1 `tests/PunchRecordingTests.h` 为行为规格接通非破坏 Punch，复用当前连续采集/事务/文件回执；后续完整 Playlist/Comp 和交叉淡化。
+主程序SHA256：`0af35f8044ffd0c721c8d2d161a1ec939e6a792814a108aeb780ece4fb35b3d2`。Forma Local Development签名不是发行公证。下一项：完整Playlist管理及选区Comp，再做交叉淡化。

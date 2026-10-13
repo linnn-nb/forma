@@ -895,7 +895,7 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
                     "clipboard snapshot expired or unavailable to this actor");
         auto reg = registry();
-        if (cmd == "playlist.select")
+        if (cmd == "playlist.select" || cmd == "transport.punch.set")
             require(actor == "human", "Playlist selection is a local GUI command");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
         require(entry != reg.end() && a.is_object(), "unknown command");

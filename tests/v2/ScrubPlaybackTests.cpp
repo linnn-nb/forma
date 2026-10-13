@@ -278,6 +278,9 @@ double verify(Commands& c, te::test_utilities::EnginePlayer& player, const juce:
               double rate, double gain, double sourceRate = 48000, double outputRate = 48000, int64_t start = 48000,
               int64_t sourceOrigin = 0)
 {
+    // EnginePlayer swaps in the hosted device immediately; its DeviceManager
+    // change notification is queued. Capture the baseline after that receipt.
+    pump();
     const auto before = c.query();
     const auto view = c.uiState();
     startScrub(c, beginArgs(c, start));
@@ -345,6 +348,7 @@ double sampleAt(const juce::AudioBuffer<float>& source, int channel, double fram
 void verifyTimeline(Commands& c, te::test_utilities::EnginePlayer& player, int64_t start, double speed,
                     const std::function<double(int, double)>& expected, const char* label, double outputRate = 48000)
 {
+    pump(); // Settle the newly attached EnginePlayer's device notification before the baseline.
     const auto before = c.query();
     const auto preparedAt = juce::Time::getMillisecondCounterHiRes();
     startScrub(c, beginArgs(c, start));
@@ -906,9 +910,42 @@ int main(int argc, char** argv)
                     { return sampleAt(reference, ch, position) * fadeGain("s_curve", position / 48000.); },
                     "reopened source graph actually applies saved reverse fade");
             }
+            // Owned native data fixture for a sliced Punch remainder. It has
+            // no persisted history because its state is intentionally authored below.
+            auto inherited = juce::ValueTree::fromXml(*juce::XmlDocument::parse(saved));
+            auto info = inherited.getChildWithName("NATIVEDAW");
+            info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);
+            auto remainder = inherited.getChildWithName("TRACK").getChildWithName("AUDIOCLIP");
+            remainder.setProperty("start", 6000. / 48000, nullptr);
+            remainder.setProperty("offset", 6000. / 48000, nullptr);
+            remainder.setProperty("length", 18000. / 48000, nullptr);
+            remainder.setProperty("fadeIn", 0., nullptr);
+            remainder.setProperty("fadeOut", 0., nullptr);
+            juce::ValueTree envelope("NDAW_FADE_ORIGIN");
+            envelope.setProperty("in_origin", 0., nullptr);
+            envelope.setProperty("out_origin", 4., nullptr);
+            envelope.setProperty("in_length", 1., nullptr);
+            envelope.setProperty("out_length", 1., nullptr);
+            remainder.addChild(envelope, -1, nullptr);
+            auto inheritedFile = folder.getChildFile("inherited-fade.tracktionedit");
+            check(inherited.createXml()->writeTo(inheritedFile), "source-anchored native fade fixture writes");
+            {
+                Commands punched(false, std::make_unique<Storage>(folder.getChildFile("inherited-prefs")));
+                punched.open(inheritedFile);
+                check(punched.query()["tracks"][0]["clips"][0]["inherited_fades"],
+                      "inherited envelope is a real saved clip fact");
+                te::test_utilities::EnginePlayer p(TransportTestAccess::engine(punched), device());
+                for (auto speed : {1., -1.})
+                    verifyTimeline(
+                        punched, p, 14000, speed, [&](int ch, double position)
+                        { return sampleAt(reference, ch, position) * fadeGain("s_curve", position / 48000.); },
+                        "Punch remainder scrub retains the source-anchored envelope in both directions");
+            }
             // This isolated native-file fault fixture is data, not an Edit-side writer.
             auto xml = juce::XmlDocument::parse(saved);
             auto fixture = juce::ValueTree::fromXml(*xml);
+            auto faultInfo = fixture.getChildWithName("NATIVEDAW");
+            faultInfo.removeChild(faultInfo.getChildWithName("PERSISTENT_HISTORY"), nullptr);
             auto nativeClip = fixture.getChildWithName("TRACK").getChildWithName("AUDIOCLIP");
             check(nativeClip.isValid(), "saved native fault fixture contains the actual source clip");
             nativeClip.setProperty("fadeInBehaviour", 1, nullptr);

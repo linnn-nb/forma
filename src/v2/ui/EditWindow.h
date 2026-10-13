@@ -316,6 +316,9 @@ public:
                     zoomGesture.cancel();
         view = value;
         resized();
+        // View-only refreshes need not rebuild facts. They must still invalidate
+        // a range-roll gesture whose original coordinate mapping changed.
+        rollRuler.update(facts, view, coordinates());
         repaint();
     }
     void setModels(const EditingModel& tools, const SelectionModel& selectedObjects)

@@ -5,6 +5,10 @@
 namespace ndaw::v2::history_delta
 {
 using Path = Json;
+struct DuplicateIdentity : std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
 inline void require(bool ok, const char* reason)
 {
     if (!ok)
@@ -34,8 +38,8 @@ inline std::vector<Path> locators(juce::ValueTree parent)
     {
         const auto type = child.getType().toString().toStdString(), key = identity(child);
         if (!key.empty() && !keys.insert(key).second)
-            throw std::runtime_error("duplicate persistent node identity in " +
-                                     parent.getType().toString().toStdString() + ": " + key);
+            throw DuplicateIdentity("duplicate persistent node identity in " +
+                                    parent.getType().toString().toStdString() + ": " + key);
         result.push_back({{"type", type}, {"key", key}, {"ordinal", key.empty() ? ordinals[type]++ : 0}});
     }
     return result;

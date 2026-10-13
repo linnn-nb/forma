@@ -24,7 +24,9 @@ open build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app
 
 使用「文件→导入音频」，直接在光标处创建轨道和片段，一次 Undo 撤销；空格播放/停止，T/R 水平缩放，Option＋方向键滚动，Cmd+= 切换 Edit/Mix。「键位…」可以即时编辑和导入导出快捷键，视图与键位随 `.tracktionedit` 保存。Edit 中可选择 Shuffle/Slip/Spot/Grid、选择/移动/修剪工具。Cmd+7 开音频 Smart Tool：上半部选区、下半部移动、边缘修剪、顶部圆点拖淡入淡出；松手一笔 Undo，淡化随工程保存。Grid 跟随 Tempo Map；Command 拖动临时取消吸附。逗号/句号或数字区 ± 执行 Nudge，Tab/Option+Tab 跳片段边界，Cmd+E 在光标拆分音频。选中音频 Clip 或轨道时间选区后，可用 Cmd+C/X/V/D 复制、剪切、粘贴、复制片段，Option+Cmd+V 粘回源位置；都能在「键位…」重映射。粘贴会替换目的区间，复制片段会保留重叠的现有内容；剪切保留原始媒体。剪贴板当前只存于本次打开的会话，工程重开后已提交的编辑仍保留，剪贴板需重新复制。MIDI 与自动化编辑的具体映射边界见验证记录。显式保存的工程可恢复最多 200 步或 32 MiB 的持久 Undo 历史；媒体原件始终保留。[当前计划](docs/UI_REBUILD_PLAN.md) / [下一步](docs/NEXT_STEPS.md)。
 
-循环音频录音：在时间线选择至少 2 秒范围，按 L 开循环，在所选轨道的「录音」检查器选择输入、待命和录音目录后开始录音。停止后从 Playlist/Take 下拉框切换试听；Option+[ / Option+] 切换前后 Take，可改键。原 Playlist 与连续录音 WAV 保留，短末轮不丢弃，一次 ⌘Z 撤销整次录音，⌘⇧Z 重做；保存重开仍可继续切换。当前为音频循环增量，硬件循环实录未验；Punch、完整 Comp 与交叉淡化尚待后续。
+循环音频录音：在时间线选择至少 2 秒范围，按 L 开循环，在所选轨道的「录音」检查器选择输入、待命和录音目录后开始录音。停止后从 Playlist/Take 下拉框切换试听；Option+[ / Option+] 切换前后 Take，可改键。原 Playlist 与连续录音 WAV 保留，短末轮不丢弃，一次 ⌘Z 撤销整次录音，⌘⇧Z 重做；保存重开仍可继续切换。硬件循环实录仍未验。
+
+选区 Punch：选择补录时间范围，按 Option+P（或录音检查器「Punch 补录」），使用既有前后卷并开始录音。到后卷终点自动停止，只替换实际录到的交集；原 Playlist、完整 Take 和补录结果分别保留。Auto 在区间内听输入，区间外听原片段；On 全程听输入，Off 区间内静音。整次多轨补录一笔 Undo/Redo，可保存重开，快捷键可改。自动化已测，实体录音/试听未验；相交 Clip FX、速度淡化与伸缩/音乐基准片段目前明确拒绝。
 
 选区播放：CommandShiftK打开预卷/后卷设置（48k工程采样），CommandK切换；主标尺旗标拖动或双击，一笔Undo，保存重开并可改快捷键。关闭roll时仍按选区播放，Loop模式优先；录音预后卷尚未接通。波形输出在最近设备采样截止；走带/光标停止与外部MIDI仍经消息线程，实体多输出/第三方PDC/听感未完成验证。
 
@@ -86,6 +88,6 @@ Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine
 
 ## 当前边界
 
-Forma 仍是开发版。P1 当前仅交付音频循环录音与基础 Take/Playlist 切换；Punch、完整 Playlist 管理/Comp、交叉淡化、MIDI 循环录音仍未完成。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
+Forma 仍是开发版。P1 当前已接通音频循环、选区 Punch 与基础 Take/Playlist 切换；完整 Playlist 管理/Comp、交叉淡化、MIDI 循环/Punch 仍未完成。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
 
 既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。

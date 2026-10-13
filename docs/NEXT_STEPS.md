@@ -1,7 +1,7 @@
 # 下一步（2026-10-13）
 
-P1首个音频循环录音增量已构建并通过6组282项自动化检查，提交后可试用；详情见 `evidence/P1/summary.md`。桌面锁定导致实体循环麦克风与试听未验，下次桌面可用时补验，不因此重复跑大量CLI。
+P1音频循环与选区Punch已实现。Punch 使用时间选区和前后卷，保留原Playlist、完整源Take及独立补录结果，一次Undo/Redo、保存重开与Option+P入口；实际结果统一见 `evidence/P1/summary.md`。Mac锁定，实体录音和试听未验，桌面可用后补验一次。
 
-下一项：阅读v1 `tests/PunchRecordingTests.h`，接通基于Tracktion的非破坏选区Punch；明确录入区间与连续源区间、前后录处理，保留原Playlist，一次Undo/Redo、保存重开和可改键。之后依序完整Take/Playlist/Comp、交叉淡化。当前循环最短2秒；MIDI循环、硬件延迟/PDC与长期可靠性单独保留，不宣称全P1完成。
+下一项：以v1 Playlist/Comp实现与测试为规格，接通新建/复制/重命名Playlist、目标列表、从Take选区提升至Comp的真实面板交互；保留原Take，L1一笔事务、Undo/Redo、保存重开、可改键。之后再做交叉淡化编辑，不进入P2/P3。
 
-旧性能A主线程超预算/实体交互未测、schema1迁移慢及其他未验项仍在 `evidence/perf/summary.md`；本轮不追加性能优化，不扩展M2/M3或进入P2/P3。每个可构建步骤提交Git，完成当前P级才全量回归和打包DMG。
+循环2秒下限、MIDI循环/Punch、相交Clip FX/速度淡化/伸缩及设备PDC仍是明确缺口；性能A和schema1迁移限制继续保留，不追加无关性能工作。每个可构建增量提交Git，完整P1验收才全量回归和打包DMG。

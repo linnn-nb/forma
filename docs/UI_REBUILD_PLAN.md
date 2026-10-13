@@ -1,3 +1,5 @@
+> 2026-10-13：用户已授权P1，替代下方旧暂停/级别门槛。音频循环与选区Punch已接通；下一项完整Playlist/Comp，再做交叉淡化。验收见 `evidence/P1/summary.md` 和 `docs/NEXT_STEPS.md`。
+
 U-P0-RANGE-NUDGE-01（2026-10-10）：范围 Nudge 的 MIDI/音频、静音自动化、编辑组、预览/接受与改键已接通；实际桌面完成 MIDI 选区 Nudge→Undo→Redo→保存副本→重开→首个自定义键→Undo。GUI 时间线仅订阅真实 Edit，预览显示轨/片段名与时间变化，不倾倒 JSON；播放后已停止，旧用户窗口保留。
 U＋P0 未完成：接着做 MIDI 范围 Separate 和主游标 Split，随后核对部分选区显式分离后移动。首开第一次 ⌘O 无响应尚待定位（菜单和后续 ⌘O 可用），需独立复现；完整级别亲手验收后才进入 P1。M2/M3 冻结、M4/M5 暂缓。
 

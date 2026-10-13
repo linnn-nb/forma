@@ -63,7 +63,7 @@ struct Model
 {
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
-    bool locked = false, editable = true;
+    bool locked = false, editable = true, inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
     Json fxTypes = Json::array();
     std::vector<std::string> fxIDs;
@@ -74,6 +74,7 @@ struct Model
                 {"length_samples", length},
                 {"source_offset_samples", offset},
                 {"gain_db", gain},
+                {"inherited_fades", inheritedFades},
                 {"fade_in_samples", fadeIn},
                 {"fade_out_samples", fadeOut},
                 {"fade_in_curve", inCurve},
@@ -118,6 +119,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
                                              !c.getIsReversed() && std::isfinite(c.getSpeedRatio()) &&
                                              c.getSpeedRatio() > 0},
             {"gain_db", c.getGainDB()},
+            {"inherited_fades", c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid()},
             {"fade_in_samples", sample(c.getFadeIn().inSeconds())},
             {"fade_out_samples", sample(c.getFadeOut().inSeconds())},
             {"fade_in_curve", curveName(c.getFadeInType())},
@@ -247,6 +249,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.source = sample(c->getSourceLength().inSeconds());
                 m.path = q["path"];
                 m.gain = q["gain_db"];
+                m.inheritedFades = q["inherited_fades"];
                 m.fadeIn = q["fade_in_samples"];
                 m.fadeOut = q["fade_out_samples"];
                 m.locked = q["locked"];
@@ -358,6 +361,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                         "clipboard source media changed after planning");
                 frozen.hash = q["media_hash"];
                 frozen.gain = q["gain_db"];
+                frozen.inheritedFades = q.value("inherited_fades", false);
                 frozen.fadeIn = q["fade_in_samples"];
                 frozen.fadeOut = q["fade_out_samples"];
                 frozen.inCurve = q["fade_in_curve"];
@@ -403,6 +407,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                     "fade lengths exceed clip; explicit lengths required");
             curveType(a["in_curve"]);
             curveType(a["out_curve"]);
+            m.inheritedFades = false;
             m.fadeIn = in;
             m.fadeOut = out;
             m.inCurve = a["in_curve"];
@@ -560,7 +565,12 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
                            {"owner_clip", c->itemID.toString().toStdString()}});
     }
     else if (cmd == "clip.fade")
+    {
+        // Explicit fade editing replaces the inherited envelope. Structural
+        // trim/split keeps it anchored to the original source samples.
+        c->state.removeChild(c->state.getChildWithName("NDAW_FADE_ORIGIN"), &um);
         fades(*c, a["in_samples"], a["out_samples"], a["in_curve"], a["out_curve"]);
+    }
     else if (cmd == "clip.lock")
         c->state.setProperty("ndaw_locked", a.at("locked").get<bool>(), &um);
     else if (cmd == "clip.delete")

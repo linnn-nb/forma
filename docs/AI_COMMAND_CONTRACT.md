@@ -1,3 +1,9 @@
+# P1 Punch 命令补充（2026-10-13）
+
+`transport.punch.set {enabled}`：human/local_gui、停止状态、版本校验、一笔 Undo；启用须有当前时间选区，并在同笔事务关闭 Loop，反向启用 Loop 也关闭 Punch。变更预览列出连带模式变化。GUI 检查器和可改键命令513（默认 Option+P）共用此入口，未扩充 MCP/Agent 权限。
+
+录音回执 `mode=punch`、`punch_range` 分别记录替换与连续采集范围，单位为 48000 Hz 工程采样；`files` 记录实际 WAV 帧数、采样率、位深和哈希；`takes` 记录源 Take、结果/原 Playlist ID、采集起点与实际替换区间。入点前停止时替换区间长度为零，没有替换片段；不可将该空区间解释为源中可播放的片段。自动停止带 automatic_stop，原生图/写盘回执失败时不创建成功附件。Undo/Redo 只操作 Edit，原文件始终保留。禁止在录音过程中移动选区或提交工程编辑。
+
 # P1 录音与 Playlist 契约补充（2026-10-13）
 
 `playlist.select {track, playlist}` 是当前注册表的本地 human 命令，停止状态、单操作 Plan、稳定目标 ID、revision 校验、一笔原生 UndoManager 事务；尚未开放为外部 Agent 工具。GUI 下拉框和可改键命令 511/512 共用这一入口。活动 Playlist 的实际原生片段是唯一可编辑事实，非活动内容按原生状态保存在 Edit 内。

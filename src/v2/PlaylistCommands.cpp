@@ -103,17 +103,8 @@ void Commands::selectPlaylist(te::AudioTrack& track, const std::string& id)
     lists.setProperty("active", juce::String(id), &undo);
     track.flushPendingClipOrder();
 }
-void Commands::makeLoopPlaylists(te::AudioTrack& track, te::WaveAudioClip& recording, Json& receipt)
+juce::ValueTree Commands::ensurePlaylists(te::AudioTrack& track)
 {
-    const int64_t start = receipt["loop_range"]["start_samples"], end = receipt["loop_range"]["end_samples"];
-    const auto length = end - start;
-    const auto position = recording.getPosition();
-    const auto sourcePath = recording.getOriginalFile().getFullPathName().toStdString();
-    const auto sourceOffset = int64_t(std::llround(position.getOffset().inSeconds() * timelineRate));
-    const auto total = int64_t(std::llround(position.getLength().inSeconds() * timelineRate));
-    require(length >= 2 * timelineRate && total > 0, "invalid recorded loop extent");
-    const auto passes = (total + length - 1) / length;
-    require(passes <= 4096, "recording exceeds 4096-pass Playlist budget; continuous file retained");
     auto& undo = edit->getUndoManager();
     auto lists = track.state.getChildWithName("NDAW_PLAYLISTS");
     if (!lists.isValid())
@@ -130,6 +121,21 @@ void Commands::makeLoopPlaylists(te::AudioTrack& track, te::WaveAudioClip& recor
         lists.addChild(main, -1, nullptr);
         track.state.addChild(lists, -1, &undo);
     }
+    return lists;
+}
+void Commands::makeLoopPlaylists(te::AudioTrack& track, te::WaveAudioClip& recording, Json& receipt)
+{
+    const int64_t start = receipt["loop_range"]["start_samples"], end = receipt["loop_range"]["end_samples"];
+    const auto length = end - start;
+    const auto position = recording.getPosition();
+    const auto sourcePath = recording.getOriginalFile().getFullPathName().toStdString();
+    const auto sourceOffset = int64_t(std::llround(position.getOffset().inSeconds() * timelineRate));
+    const auto total = int64_t(std::llround(position.getLength().inSeconds() * timelineRate));
+    require(length >= 2 * timelineRate && total > 0, "invalid recorded loop extent");
+    const auto passes = (total + length - 1) / length;
+    require(passes <= 4096, "recording exceeds 4096-pass Playlist budget; continuous file retained");
+    auto& undo = edit->getUndoManager();
+    auto lists = ensurePlaylists(track);
     std::string hash;
     for (const auto& file : receipt["files"])
         if (file["path"] == sourcePath)

@@ -1,6 +1,7 @@
 #include "MasterAnalysis.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "OutputProbe.h"
+#include "SelectionOutputGate.h"
 #include "NativePluginStates.h"
 namespace ndaw::v2
 {
@@ -137,7 +138,14 @@ Json Commands::recordingReadiness() const
         block("clock_unavailable", "Audio device must be open and running");
     const bool loop = edit->getTransport().looping;
     if (edit->recordingPunchInOut)
-        block("punch_pending", "Punch recording is not yet qualified");
+        try
+        {
+            validatePunchCapture();
+        }
+        catch (const std::exception& error)
+        {
+            block("punch_setup", error.what());
+        }
     if (loop && (!metadata.getProperty("loop_range_configured", false) ||
                  edit->getTransport().getLoopRange().getLength().inSeconds() < 2.0))
         block("loop_range", "Loop recording requires a saved range of at least two seconds");
@@ -349,7 +357,11 @@ Json Commands::record(const juce::File& directory)
     }
     require(!targets.empty(), "no armed tracks");
     const bool loop = edit->getTransport().looping;
-    require(!edit->recordingPunchInOut, "Punch recording is not yet qualified");
+    const bool punch = edit->recordingPunchInOut;
+    const auto punchSettings = punch ? punchRange() : Json(nullptr);
+    if (punch)
+        edit->getTransport().setPosition(
+            tracktion::TimePosition::fromSeconds(punchSettings["capture_start_samples"].get<double>() / 48000.));
     if (loop)
         edit->getTransport().setPosition(edit->getTransport().getLoopRange().getStart());
     checkpointHistory();
@@ -363,13 +375,24 @@ Json Commands::record(const juce::File& directory)
                         {"existing_clips", existing},
                         {"start_samples", std::llround(edit->getTransport().getPosition().inSeconds() * timelineRate)},
                         {"directory", directory.getFullPathName().toStdString()}};
-    recordingCapture["mode"] = loop ? "loop" : "normal";
+    recordingCapture["mode"] = punch ? "punch" : loop ? "loop" : "normal";
+    recordingCapture["punch_range"] = punchSettings;
     recordingCapture["loop_range"] = loop ? transportSettingsQuery()["loop_range"] : Json(nullptr);
     loopSourcePrevious = edit->state.getProperty("preserveLoopRecordingSource");
     if (loop)
         edit->state.setProperty("preserveLoopRecordingSource", true, nullptr);
     auto& um = edit->getUndoManager();
     um.beginNewTransaction(juce::String("human:" + plan));
+    if (punch)
+    {
+        auto range = edit->state.getOrCreateChildWithName("NDAW_CAPTURE_RANGE", nullptr);
+        range.setProperty("start", punchSettings["capture_start_samples"].get<double>() / 48000., nullptr);
+        range.setProperty("end", punchSettings["capture_end_samples"].get<double>() / 48000., nullptr);
+        edit->getTransport().state.setProperty(te::IDs::loopPoint1,
+                                               punchSettings["start_samples"].get<double>() / 48000., &um);
+        edit->getTransport().state.setProperty(te::IDs::loopPoint2, punchSettings["end_samples"].get<double>() / 48000.,
+                                               &um);
+    }
     // Fixed non-destructive capture policy. Device preferences are restored after
     // Stop; no native merge, replace, quantisation or expression conversion may
     // silently edit an existing MIDI clip.
@@ -403,6 +426,8 @@ Json Commands::record(const juce::File& directory)
         masterAnalysis->prioritizePlayback(true);
     try
     {
+        if (punch)
+            preparePunchGraph(punchSettings);
         edit->getTransport().record(false, false);
     }
     catch (const std::exception& e)
@@ -444,6 +469,13 @@ void Commands::timerCallback()
     finishMidiConfiguration();
     if (recordingCapture.is_null())
         return;
+    if (recordingCapture.value("mode", std::string{}) == "punch" && rollGate &&
+        rollGate->reached.load(std::memory_order_acquire))
+    {
+        recordingCapture["automatic_stop"] = true;
+        stopTransport(true);
+        return;
+    }
     if (!edit->getTransport().isRecording())
     {
         finishRecordingCapture(true);
@@ -530,7 +562,9 @@ void Commands::finishRecordingCapture(bool unexpected)
                                                     {"path", f.getFullPathName().toStdString()}});
                         ++count;
                         c->state.setProperty("ndaw_origin", "recording", &undo);
-                        if (receipt.value("mode", std::string{}) == "loop")
+                        wave->setSyncType(te::Clip::syncAbsolute);
+                        if (receipt.value("mode", std::string{}) == "loop" ||
+                            receipt.value("mode", std::string{}) == "punch")
                             loopClips.emplace_back(t, wave);
                     }
                     catch (const std::exception& e)
@@ -563,11 +597,15 @@ void Commands::finishRecordingCapture(bool unexpected)
         if (!midi && count != 1 && recordingError.empty())
             recordingError = "Armed audio track did not produce one valid file";
     }
-    if (receipt.value("mode", std::string{}) == "loop" && recordingError.empty())
+    if ((receipt.value("mode", std::string{}) == "loop" || receipt.value("mode", std::string{}) == "punch") &&
+        recordingError.empty())
         try
         {
             for (const auto& [target, clip] : loopClips)
-                makeLoopPlaylists(*target, *clip, receipt);
+                if (receipt["mode"] == "punch")
+                    makePunchPlaylists(*target, *clip, receipt);
+                else
+                    makeLoopPlaylists(*target, *clip, receipt);
             receipt["clips"] = Json::array();
             for (const auto& take : receipt["takes"])
                 receipt["clips"].push_back({{"id", take["clip"]},
@@ -586,6 +624,16 @@ void Commands::finishRecordingCapture(bool unexpected)
         {
             recordingError = e.what();
         }
+    if (receipt.value("mode", std::string{}) == "punch")
+    {
+        edit->state.removeChild(edit->state.getChildWithName("NDAW_CAPTURE_RANGE"), nullptr);
+        if (auto* context = edit->getTransport().getCurrentPlaybackContext())
+            context->setAuditionGraphCallback({});
+        // Native transport is stopped; return to the requested idle monitor
+        // policy instead of leaving the finite output gate muting live input.
+        releaseRollGraph();
+        edit->restartPlayback();
+    }
     if (loopSourcePrevious.isVoid())
         edit->state.removeProperty("preserveLoopRecordingSource", nullptr);
     else
@@ -595,7 +643,8 @@ void Commands::finishRecordingCapture(bool unexpected)
                 engine.getDeviceManager().findInputDeviceForID(juce::String(device))))
             wave->setMergeMode(mode);
     waveRecordModes.clear();
-    if (receipt.value("mode", std::string{}) == "loop" && !recordingError.empty())
+    if ((receipt.value("mode", std::string{}) == "loop" || receipt.value("mode", std::string{}) == "punch") &&
+        !recordingError.empty())
     {
         // Failed loop capture keeps its source files, but never replaces the
         // original Playlist or presents a partial group as a successful take.

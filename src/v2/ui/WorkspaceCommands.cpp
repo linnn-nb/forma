@@ -215,6 +215,7 @@ const std::vector<Entry>& entries()
         {233, "所选轨道监听 Auto（待命时）", "录音"},
         {234, "所选轨道监听 On", "录音"},
         {235, "轨道录音与输入设置…", "录音", 'r', cmd | juce::ModifierKeys::altModifier},
+        {513, "切换 Punch 补录", "录音", 'p', juce::ModifierKeys::altModifier},
         {511, "上一个 Playlist / Take", "录音", '[', juce::ModifierKeys::altModifier},
         {512, "下一个 Playlist / Take", "录音", ']', juce::ModifierKeys::altModifier},
         {218, "Pencil 自动化绘制", "编辑", juce::KeyPress::F10Key, cmd},
@@ -878,6 +879,12 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     info.setTicked(std::all_of(targets.begin(), targets.end(),
                                                [](const auto& t) { return t["input"]["armed"].template get<bool>(); }));
             }
+            if (id == 513)
+            {
+                info.setTicked(facts["transport_settings"].value("punch_enabled", false));
+                active = !facts.value("playing", false) && (facts["transport_settings"].value("punch_enabled", false) ||
+                                                            !facts["time_selection"].is_null());
+            }
             if (id == 511 || id == 512)
             {
                 active = false;
@@ -1143,6 +1150,11 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id >= 230 && id <= 235)
     {
         executeRecordingCommand(id);
+        return true;
+    }
+    if (id == 513)
+    {
+        write("transport.punch.set", {{"enabled", !facts["transport_settings"].value("punch_enabled", false)}});
         return true;
     }
     if (id == 511 || id == 512)

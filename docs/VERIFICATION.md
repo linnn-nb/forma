@@ -1,8 +1,8 @@
-# P1 首个增量：循环音频录音（2026-10-13）
+# P1 第二增量：选区 Punch（2026-10-13）
 
-Release 构建、固定本地 deep/strict 验签通过；受影响6组共282项检查、64.571秒、0失败/0JUCE断言。新增51项真实Tracktion录音/PCM/文件/GUI命令检查，包括每轮Take、原Playlist保留、完整Undo/Redo、重开、改键、源哈希及真实写盘故障恢复。回归发现的设备停用后就绪缓存未失效问题已修复并通过复测。
+Release构建与固定本地deep/strict验签通过；受影响10组1202项检查通过，最终子套件累计138.404秒，0失败/0JUCE断言。Punch124项覆盖实际连续WAV、多轨原列表保留、前后卷、提前停止、Off/Auto/On输出、单采样源、继承包络、实时/持久Undo及重开、真实写盘失败、可改键命令。Scrub543、Roll195、循环51、普通录音40、就绪43、MIDI60、循环播放23、持久历史65、Clip58均通过。每次修复按影响范围复测，不是单次全仓CTest。
 
-桌面锁定，实体麦克风循环录音、点击与试听未执行；hosted已知PCM不能替代该验收。循环录音下限2秒，与v1的1秒有差距；MIDI循环、Punch、完整Comp与交叉淡化仍未完成。应用为 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，无新DMG。测试代码、条件、失败修复过程、输出及产物哈希见 [P1记录](../evidence/P1/summary.md)。用户已授权P1，下方旧暂停语句不再适用，旧性能缺口仍保留。
+Mac锁定，实体GUI、麦克风和试听未执行，hosted PCM不替代实机。完整Playlist/Comp、交叉淡化、MIDI循环/Punch、特殊Clip处理与硬件PDC/耐久仍未完成；性能旧缺口保持。当前产物 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，无新DMG。代码入口、条件、初次失败与修复、哈希和手动步骤见 [P1记录](../evidence/P1/summary.md)。用户已授权P1，以下旧暂停不约束当前顺序。
 
 ## 2026-10-13 B 增量历史最终检查点
 

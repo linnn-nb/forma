@@ -1,3 +1,15 @@
+# P1 Punch 架构补充（2026-10-13）
+
+选区 Punch 复用 Tracktion 输入、录音图、writer 和渲染；L1 `PunchCommands.cpp` / `RecordingCommands.cpp` 在 message thread 配置并结束一次多轨事务。选区是替换范围，前后卷扩展为连续采集范围；录音生成完整源 Take 和独立补录 Playlist，原列表保留。提前停止仅替换实录交集，尚未到入点时只保留 Take。正常音频录音附件统一为采样时间基准，避免新录片段不能再次补录。
+
+`NDAW_CAPTURE_RANGE` 是本次采集的临时 Edit 子树，结束前移除。现有录音补丁读取范围后，保留连续源而不走 SDK 默认 Punch 裁短逻辑；writer 入队计数在最后一个设备块截到真实源长度，普通录音维持无界终点。源文件时间戳/实际帧数与工程 48k 位置分别保留；插件 PDC、设备时钟及手动输入偏移的硬件组合尚未资格。
+
+现有图构建补丁添加 `transformTrackSignal`：在轨道插件之前分别包装片段与 live input。`PunchSignalGate` 按实际设备采样位置切换：Off 区间内静音，Auto 区间内监听输入，On 全采集范围监听输入；区间外 Off/Auto 播原片段。最终设备输出复用 SelectionOutputGate，到后卷端点置原子完成标记，message thread 自动停止。结束清除构图回调、解除输出门并恢复待命监听。新增门控节点只做有界缓冲操作；不声称已有 SDK 录音队列的锁/分配已通过实时资格。
+
+原片段裁出补录区间时，以源时间保存 `NDAW_FADE_ORIGIN`；渲染保持原淡化曲线而不把它重新拉伸到短片段。再次 split/trim 保留源锚，显式 `clip.fade` 才替换继承包络；query 与变更预览标记 inherited_fades。Scrub 的冻结片段窗口也读取同一源锚，正向/反向试听均保留实际包络。带 Clip FX、速度淡化、伸缩/音乐时间的相交片段目前在录音前明确拒绝。交叉淡化编辑器仍属于后续 P1。
+
+回归修复：SDK 拍号插入的瞬态重复 ID 只使增量历史改为观察稳定父节点，最终快照仍拒绝重复 ID；视图独立刷新时同步撤销坐标已过期的前后卷标尺草稿。
+
 # P1 循环录音架构补充（2026-10-13）
 
 循环走带、采集与写盘仍由 Tracktion 执行；L1 仅在开始/停止时操作 Edit。`RecordingCommands.cpp` 以一笔原生事务捕获多轨，`PlaylistCommands.cpp` 将每轮表示为连续 WAV 的源区间。现有 `tracktion-recording-status.patch` 新增停止策略：Edit 的临时 `preserveLoopRecordingSource` 为 true 时跳过 SDK 循环文件分割/截短，正常和异常停止均保留原始连续文件；标志随后还原，不改变实时线程。

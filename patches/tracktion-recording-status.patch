@@ -27,7 +27,7 @@ index c0675a3..315ed4c 100644
                                       id == IDs::targetID);
  }
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
-index 55cefed..1e92da7 100644
+index 55cefed..a4e75be 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 @@ -39,7 +39,10 @@ public:
@@ -42,11 +42,68 @@ index 55cefed..1e92da7 100644
          engine.getUIBehaviour().showWarningMessage (TRANS("Recording error - disk space is getting dangerously low!"));
      }
  
-@@ -788,7 +791,10 @@ public:
+@@ -381,6 +384,10 @@ public:
+             if (! res)
+                 return tl::unexpected (res.error());
+ 
++            const auto captureRange = edit.state.getChildWithName ("NDAW_CAPTURE_RANGE");
++            if (captureRange.isValid())
++                punchRange = { TimePosition::fromSeconds (double (captureRange["start"])),
++                               TimePosition::fromSeconds (double (captureRange["end"])) };
+             auto recordedFile = res.value();
+             auto rc = std::make_unique<WaveRecordingContext> (context, targetID, recordedFile);
+             rc->sampleRate = edit.engine.getDeviceManager().getSampleRate();
+@@ -412,7 +419,7 @@ public:
+ 
+                 rc->adjustDurationAtStart = TimeDuration::fromSamples (rc->adjustSamples, rc->sampleRate);
+ 
+-                if (edit.recordingPunchInOut)
++                if (edit.recordingPunchInOut && ! captureRange.isValid())
+                 {
+                     rc->recordingWithPunch = true;
+ 
+@@ -430,7 +437,11 @@ public:
+                 }
+ 
+                 rc->punchTimes = punchRange;
+-                rc->recordingBlockRange = rc->punchTimes.withEnd (rc->punchTimes.getEnd() + adjustSeconds);
++                rc->recordingBlockRange = rc->punchTimes.withEnd (rc->punchTimes.getEnd()
++                    + (captureRange.isValid() ? rc->adjustDurationAtStart : adjustSeconds));
++                if (captureRange.isValid())
++                    rc->maximumCapturedSamples = tracktion::toSamples (punchRange.getEnd(), rc->sampleRate)
++                                               - tracktion::toSamples (punchRange.getStart(), rc->sampleRate);
+                 rc->hasHitThreshold = (wi.recordTriggerDb <= -50.0f);
+ 
+                 if (edit.engine.getUIBehaviour().shouldGenerateLiveWaveformsWhenRecording())
+@@ -698,6 +709,7 @@ public:
+         std::atomic<bool> hasHitThreshold { false }, isWaitingToClose { false };
+         bool firstRecCallback = false, recordingWithPunch = false;
+         int adjustSamples = 0;
++        int64_t maximumCapturedSamples = std::numeric_limits<int64_t>::max(), capturedSamples = 0;
+         std::atomic<bool> muteTargetNow { false };
+         const bool muteTrackContentsWhilstRecording = engine.getEngineBehaviour().muteTrackContentsWhilstRecording();
+ 
+@@ -717,6 +729,12 @@ public:
+             if (isWaitingToClose.load (std::memory_order_acquire))
+                 return;
+ 
++            // The finite Forma capture retains handles but never the remainder
++            // of the device block beyond its immutable capture endpoint.
++            numSamples = (int) std::min<int64_t> (numSamples, maximumCapturedSamples - capturedSamples);
++            if (numSamples <= 0)
++                return;
++            capturedSamples += numSamples;
+             std::scoped_lock sl (fileWriterLock);
+ 
+             if (fileWriter != nullptr)
+@@ -787,8 +805,12 @@ public:
+ 
          // Never loop or punch record to slots
          const bool isClipSlot = dynamic_cast<ClipSlot*> (clipOwner) != nullptr;
-         const bool wasPunchRecording = isClipSlot ? false : edit.recordingPunchInOut;
+-        const bool wasPunchRecording = isClipSlot ? false : edit.recordingPunchInOut;
 -        const bool wasLoopRecording = isClipSlot ? false : isLooping;
++        const bool wasPunchRecording = isClipSlot || edit.state.getChildWithName ("NDAW_CAPTURE_RANGE").isValid()
++                                         ? false : edit.recordingPunchInOut;
 +        // Hosts which build non-destructive Playlists from source intervals need
 +        // the continuous file, including when the transport stops after a fault.
 +        const bool preserveLoopSource = edit.state.getProperty ("preserveLoopRecordingSource", false);
@@ -54,7 +111,24 @@ index 55cefed..1e92da7 100644
  
          return applyLastRecording (*rc, recordedFile, *clipOwner,
                                     { rc->punchTimes.getStart(), unloopedEndTime },
-@@ -2065,6 +2071,9 @@ void WaveInputRecordingThread::run()
+@@ -807,13 +829,14 @@ public:
+ 
+         auto recordedFileLength = TimeDuration::fromSeconds (recordedFile.getLength());
+ 
+-        if (recordedFileLength <= 1ms)
++        const bool preserveShortSource = edit.state.getChildWithName ("NDAW_CAPTURE_RANGE").isValid();
++        if (recordedFileLength <= (preserveShortSource ? 0s : 1ms))
+             return {};
+ 
+         auto newClipLen = std::min (recordedFileLength,
+                                     recordedRange.getLength());
+ 
+-        if (newClipLen <= 0.01s)
++        if (newClipLen <= (preserveShortSource ? 0s : 0.01s))
+         {
+             CRASH_TRACER
+             juce::String s;
+@@ -2065,6 +2088,9 @@ void WaveInputRecordingThread::run()
  void WaveInputRecordingThread::timerCallback()
  {
      stopTimer();

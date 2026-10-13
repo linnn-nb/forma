@@ -79,6 +79,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         p.addSeparator();
         for (int id = 230; id <= 235; ++id)
             addMenuCommand(p, id);
+        addMenuCommand(p, 513);
         addMenuCommand(p, 511);
         addMenuCommand(p, 512);
         p.addSeparator();
