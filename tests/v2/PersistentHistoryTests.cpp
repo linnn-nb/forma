@@ -105,6 +105,31 @@ void deltaCodec()
     check(juce::ValueTree::fromXml(*preciseEditXml(live))
               .isEquivalentTo(juce::ValueTree::fromXml(*preciseEditXml(original))),
           "serialized mixed delta reverses with stable note identities");
+    juce::ValueTree moveBefore("EDIT"), left("TRACK"), right("TRACK"), audio("AUDIOCLIP");
+    left.setProperty("id", "20", nullptr);
+    right.setProperty("id", "21", nullptr);
+    audio.setProperty("id", "22", nullptr);
+    left.addChild(audio, -1, nullptr);
+    moveBefore.addChild(left, -1, nullptr);
+    moveBefore.addChild(right, -1, nullptr);
+    auto moveAfter = moveBefore.createCopy();
+    auto moved = moveAfter.getChild(0).getChild(0);
+    moveAfter.getChild(0).removeChild(moved, nullptr);
+    moveAfter.getChild(1).addChild(moved, -1, nullptr);
+    auto movedDelta = history_delta::difference(moveBefore, moveAfter);
+    // Force destination addition before source removal, as inverse Playlist
+    // switching can require while preserving sequential async journal order.
+    movedDelta.moveChild(0, 1, nullptr);
+    auto liveMove = moveBefore.createCopy();
+    const auto stableClip = liveMove.getChild(0).getChild(0);
+    auto reuse = [stableClip](juce::ValueTree, const juce::ValueTree& desired)
+    { return desired["id"] == stableClip["id"] ? stableClip : desired.createCopy(); };
+    history_delta::apply(liveMove, movedDelta, true, reuse);
+    check(liveMove.isEquivalentTo(moveAfter) && liveMove.getChild(1).getChild(0) == stableClip,
+          "cross-parent forward delta records early native identity transfer");
+    history_delta::apply(liveMove, movedDelta, false, reuse);
+    check(liveMove.isEquivalentTo(moveBefore) && liveMove.getChild(0).getChild(0) == stableClip,
+          "cross-parent inverse delta restores stable native identity without double removal");
 }
 class Storage final : public te::PropertyStorage
 {

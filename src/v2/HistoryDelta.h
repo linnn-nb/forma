@@ -220,6 +220,12 @@ inline juce::ValueTree inverse(const juce::ValueTree& delta)
 inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forward, Reconcile reconcile = {})
 {
     require(delta.hasType("DELTA"), "invalid history delta");
+    struct Transfer
+    {
+        juce::ValueTree parent;
+        Path locator;
+    };
+    std::vector<Transfer> transfers;
     for (int step = 0; step < delta.getNumChildren(); ++step)
     {
         const auto change = delta.getChild(forward ? step : delta.getNumChildren() - step - 1);
@@ -245,9 +251,20 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
         for (int i = change.getNumChildren(); --i >= 0;)
             if (auto child = change.getChild(i); child.hasType(removeType))
             {
-                const auto at = find(target, Json::parse(child["locator"].toString().toStdString()));
-                require(at >= 0, "persistent removed child unavailable");
-                target.removeChild(at, nullptr);
+                const auto locator = Json::parse(child["locator"].toString().toStdString());
+                const auto at = find(target, locator);
+                if (at >= 0)
+                    target.removeChild(at, nullptr);
+                else
+                {
+                    // Native reconciliation can transfer this same stable node
+                    // to its new parent before the delta reaches its old-parent
+                    // removal. Only that exact recorded transfer consumes it.
+                    auto moved = std::find_if(transfers.begin(), transfers.end(), [&](const Transfer& t)
+                                              { return t.parent == target && t.locator == locator; });
+                    require(moved != transfers.end(), "persistent removed child unavailable");
+                    transfers.erase(moved);
+                }
             }
         for (auto child : change)
             if (child.hasType(addType))
@@ -255,7 +272,11 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
                 require(child.getNumChildren() == 1, "persistent child image missing");
                 auto value = reconcile ? reconcile(target, child.getChild(0)) : child.getChild(0).createCopy();
                 if (auto parent = value.getParent(); parent.isValid())
+                {
+                    const auto locations = locators(parent);
+                    transfers.push_back({parent, locations[size_t(parent.indexOf(value))]});
                     parent.removeChild(value, nullptr);
+                }
                 target.addChild(value, int(child["index"]), nullptr);
             }
         if (change.hasProperty("order_before"))

@@ -17,6 +17,15 @@ public:
     {
         return c.engine;
     }
+    static bool stopBeforeNativeAcknowledgement(Commands& c)
+    {
+        auto& transport = c.edit->getTransport();
+        transport.stop(false, false);
+        const auto* context = transport.getCurrentPlaybackContext();
+        const bool pending = context && context->isPlaying();
+        c.advanceRollPlayback();
+        return pending;
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -445,12 +454,29 @@ int main(int argc, char** argv)
             check(!c.query()["playing"].get<bool>() &&
                       c.query()["transport_settings"]["roll_playback"]["state"] == "stopped",
                   "native section stop produces observed L1 stop receipt");
+            if (c.query()["transport_settings"]["roll_playback"]["actual_stop_samples"] != actualStop)
+                std::cout << "TRACE stop receipt=" << c.query()["transport_settings"]["roll_playback"].dump()
+                          << " actual=" << actualStop << std::endl;
             check(c.query()["transport_settings"]["roll_playback"]["actual_stop_samples"] == actualStop,
                   "range stop receipt reports actual native endpoint rather than planned value");
             check(std::abs(prePeak - .05) < .002 && std::abs(postPeak - .2) < .002,
                   "actual device output contains declared pre-roll and post-roll source zones");
             check(actualStop >= 96000 && actualStop < 106000,
                   "hosted native timed stop overshoot measured within explicit 10000-session-sample budget");
+            c.seek(0);
+            c.play();
+            pump(5);
+            player.process(256);
+            const bool nativeStopPending = AudioDeviceTestAccess::stopBeforeNativeAcknowledgement(c);
+            const auto immediateStopState = c.query()["transport_settings"]["roll_playback"]["state"];
+            check(immediateStopState != "stopped" &&
+                      (nativeStopPending ? (immediateStopState == "playing" || immediateStopState == "requested")
+                                         : immediateStopState == "interrupted"),
+                  "early Stop receipt respects actual native acknowledgement rather than assuming it is deferred");
+            std::cout << "NATIVE_STOP_DEFERRED " << nativeStopPending << std::endl;
+            pump(100);
+            check(c.query()["transport_settings"]["roll_playback"]["state"] == "interrupted",
+                  "actual early native stop is reported as interrupted rather than completed");
             c.seek(0);
             c.play();
             pump(10);

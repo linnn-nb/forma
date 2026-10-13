@@ -244,6 +244,18 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {531, "下一来源轨道", "Playlist", '7',
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {532, "试听来源选区", "Playlist", '8',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {533, "试听候选选段", "Playlist", '9',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {534, "试听上一候选段", "Playlist", ',',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {535, "试听下一候选段", "Playlist", '.',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {536, "停止 Playlist 试听并返回", "Playlist", '0',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {537, "试听所选 Playlist", "Playlist", juce::KeyPress::returnKey,
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {513, "切换 Punch 补录", "录音", 'p', juce::ModifierKeys::altModifier},
         {511, "上一个 Playlist / Take", "录音", '[', juce::ModifierKeys::altModifier},
         {512, "下一个 Playlist / Take", "录音", ']', juce::ModifierKeys::altModifier},
@@ -917,9 +929,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     if (t["id"] == selected && t.value("type", std::string{}) == "audio")
                         active = !facts.value("playing", false);
             }
-            if (id >= 515 && id <= 531)
+            if (id >= 515 && id <= 537)
                 active = playlistPanel && playlistPanel->isVisible() && playlistPanel->canExecute(id) &&
-                         (id == 524 || !facts.value("playing", false));
+                         (id == 524 || id >= 532 || !facts.value("playing", false));
             if (id == 513)
             {
                 info.setTicked(facts["transport_settings"].value("punch_enabled", false));
@@ -1198,7 +1210,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
         invoke([&] { showPlaylists(); });
         return true;
     }
-    if (id >= 515 && id <= 531 && playlistPanel && playlistPanel->isVisible())
+    if (id >= 515 && id <= 537 && playlistPanel && playlistPanel->isVisible())
     {
         playlistPanel->execute(id);
         commandManager.commandStatusChanged();
@@ -1394,6 +1406,16 @@ bool Workspace::perform(const InvocationInfo& invocation)
                 }
                 setView(patch);
             });
+        return true;
+    }
+    if (id == 80 && playlistPanel && playlistPanel->isVisible())
+    {
+        const auto status = commands.playlistAuditionStatus();
+        if (status.value("active", false))
+            playlistPanel->execute(536);
+        else
+            playlistPanel->execute(playlistPanel->playbackCommand());
+        commandManager.commandStatusChanged();
         return true;
     }
     if (id == 80)

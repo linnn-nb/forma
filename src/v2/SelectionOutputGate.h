@@ -12,10 +12,14 @@ namespace ndaw::v2
 struct SelectionOutputGateState
 {
     double startSeconds = 0, endSeconds = 0;
-    std::atomic<bool> enabled{true}, reached{false};
+    std::atomic<bool> enabled{true}, reached{false}, muted{false};
     std::atomic<uint64_t> processedBlocks{0};
+    // Actual audible device-clock boundary, independent of GUI transport lag.
+    std::atomic<int64_t> outputEndSample{0};
+    double deviceSampleRate = 0;
 };
-static_assert(std::atomic<bool>::is_always_lock_free && std::atomic<uint64_t>::is_always_lock_free);
+static_assert(std::atomic<bool>::is_always_lock_free && std::atomic<uint64_t>::is_always_lock_free &&
+              std::atomic<int64_t>::is_always_lock_free);
 
 // Per-wave-output, after native track/master processing AND the click track.
 // It gates output, not source clips: reverberation and every routed wave output
@@ -48,12 +52,18 @@ public:
     }
     void prepareToPlay(const tracktion::graph::PlaybackInitialisationInfo& info) override
     {
+        state->deviceSampleRate = info.sampleRate;
         first = std::llround(state->startSeconds * info.sampleRate);
         last = std::llround(state->endSeconds * info.sampleRate);
         latency = input->getNodeProperties().latencyNumSamples;
     }
     void process(ProcessContext& pc) override
     {
+        if (state->muted.load(std::memory_order_acquire))
+        {
+            pc.buffers.audio.clear();
+            return;
+        }
         const auto source = input->getProcessedOutput().audio;
         if (!state->enabled.load(std::memory_order_acquire))
         {
@@ -73,7 +83,8 @@ public:
             pc.buffers.audio.fromFrame(choc::buffer::FrameCount(end)).clear();
         if (getPlayHead().isPlaying())
         {
-            state->processedBlocks.fetch_add(1, std::memory_order_relaxed);
+            state->outputEndSample.store(timeline.getEnd() - latency, std::memory_order_relaxed);
+            state->processedBlocks.fetch_add(1, std::memory_order_release);
             if (timeline.getEnd() - latency >= last)
                 state->reached.store(true, std::memory_order_release);
         }

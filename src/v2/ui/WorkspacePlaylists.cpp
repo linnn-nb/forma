@@ -27,7 +27,14 @@ void Workspace::showPlaylists()
                 if (isShowing())
                     grabKeyboardFocus();
             },
-            [this](const std::string& id) { return commands.queryPlaylists(id); });
+            [this](const std::string& id) { return commands.queryPlaylists(id); },
+            [this](const std::string& action, const Json& request)
+            {
+                auto receipt = commands.playlistAudition(action, request);
+                refresh();
+                commandManager.commandStatusChanged();
+                return receipt;
+            });
         addChildComponent(*playlistPanel);
         playlistPanel->connect(commandManager);
     }

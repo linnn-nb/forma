@@ -262,6 +262,10 @@ int main(int argc, char** argv)
             const auto b = add(c, mono, "Mono");
             add(c, stereo, "Unselected source must stay silent");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             auto before = c.query();
             c.scrub("begin", request(c, Json::array({a, b})));
             ready(c);
@@ -273,9 +277,16 @@ int main(int argc, char** argv)
             pump();
             verify(c, player, stereo, &mono, -1);
             c.scrub("end");
-            check(!c.scrubStatus().value("busy", false) && c.query()["tracks"] == before["tracks"] &&
-                      c.query()["position_samples"] == before["position_samples"] &&
-                      player.process(1024).getMagnitude(0, 1024) == 0,
+            const auto ended = c.query();
+            const auto stoppedMagnitude = player.process(1024).getMagnitude(0, 1024);
+            if (c.scrubStatus().value("busy", false) || ended["tracks"] != before["tracks"] ||
+                ended["position_samples"] != before["position_samples"] || stoppedMagnitude != 0)
+                std::cout << "TRACE end busy=" << c.scrubStatus().value("busy", false)
+                          << " position=" << ended["position_samples"] << " expected=" << before["position_samples"]
+                          << " magnitude=" << stoppedMagnitude
+                          << " trackdiff=" << Json::diff(before["tracks"], ended["tracks"]).dump() << std::endl;
+            check(!c.scrubStatus().value("busy", false) && ended["tracks"] == before["tracks"] &&
+                      ended["position_samples"] == before["position_samples"] && stoppedMagnitude == 0,
                   "two-track end restores insertion and has no leftover dry source");
             auto clipB = c.query()["tracks"][1]["clips"][0]["id"];
             run(c, Json::array({op("clip.gain", {{"clip", clipB}, {"db", -6}})}));
@@ -318,6 +329,10 @@ int main(int argc, char** argv)
             auto a = add(c, longA, "Stereo diagnostic");
             auto b = add(c, longB, "Mono diagnostic");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             const auto before = c.query();
             c.scrub("begin", request(c, Json::array({a, b}), 24000));
             ready(c);
@@ -400,6 +415,10 @@ int main(int argc, char** argv)
             Commands c(false, std::make_unique<Storage>(folder.getChildFile(juce::Uuid().toString())));
             const auto a = add(c, eight, "Eight independent channels");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device(8));
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             auto& dm = TransportTestAccess::engine(c).getDeviceManager();
             dm.setAllWaveOutputsToNumChannels(8);
             dm.dispatchPendingUpdates();
@@ -420,6 +439,10 @@ int main(int argc, char** argv)
             Commands c(false, std::make_unique<Storage>(folder.getChildFile("six-plus-two-prefs")));
             const auto a = add(c, six, "Six actual channels"), b = add(c, stereo, "Two actual channels");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device(8));
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             auto& dm = TransportTestAccess::engine(c).getDeviceManager();
             dm.setAllWaveOutputsToNumChannels(8);
             dm.dispatchPendingUpdates();
@@ -484,6 +507,10 @@ int main(int argc, char** argv)
             Commands c(false, std::make_unique<Storage>(folder.getChildFile("reduced-output-prefs")));
             const auto a = add(c, eight, "Actual eight-channel source with stereo output");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             c.scrub("begin", request(c, Json::array({a})));
             ready(c);
             check(
@@ -498,6 +525,10 @@ int main(int argc, char** argv)
             const auto a = add(c, six, "Six A");
             const auto b = add(c, six, "Six B");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             const auto before = c.query();
             c.scrub("begin", request(c, Json::array({a, b})));
             failed(c);
@@ -514,6 +545,10 @@ int main(int argc, char** argv)
             auto b = add(c, mono, "Second");
             auto third = add(c, stereo, "Third");
             te::test_utilities::EnginePlayer player(TransportTestAccess::engine(c), device());
+            // Resolve native hosted output aliases before taking the project
+            // baseline; (default audio output) becomes Output 1 + 2 on allocation.
+            TransportTestAccess::rebuild(c);
+            pump();
             c.updateUiState({{"edit_tool", "scrubber"}, {"span_samples", 192000}}, c.sessionToken());
             AudioDeviceTestAccess::refresh(w);
             auto* e = dynamic_cast<EditWindow*>(find(w, "edit.timeline"));

@@ -49,7 +49,6 @@ void Commands::registerRecordingCommands(Json& r)
     add("track.input", {{"track", string}, {"device", string}});
     add("track.arm", {{"track", string}, {"enabled", {{"type", "boolean"}}}});
     add("track.monitor", {{"track", string}, {"mode", {{"type", "string"}, {"enum", {"off", "auto", "on"}}}}});
-
 }
 std::string Commands::inputAvailability(const te::InputDevice* input) const
 {
@@ -463,6 +462,7 @@ Json Commands::record(const juce::File& directory)
 }
 void Commands::timerCallback()
 {
+    advancePlaylistAudition();
     advanceRollPlayback();
     finishAudioConfiguration();
     captureNativeStates();

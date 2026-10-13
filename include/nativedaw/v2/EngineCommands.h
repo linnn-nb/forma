@@ -11,6 +11,7 @@ using Json = nlohmann::json;
 // L1 owns all mutable Edit access. Callers receive facts, never mutable objects.
 class OutputProbe;
 class RecordingTestAccess;
+struct PlaylistAuditionState;
 class TransportTestAccess;
 class AudioDeviceTestAccess;
 class PluginEditorWindows;
@@ -121,6 +122,8 @@ public:
     // Local audition; optional selection edits use the same human Plan/Undo path.
     Json scrub(const std::string& action, const Json& args = Json::object());
     Json scrubStatus() const;
+    Json playlistAudition(const std::string& action, const Json& args = Json::object());
+    Json playlistAuditionStatus() const;
     Json scrubPreferences() const;
     Json setScrubPreferences(const Json&);
     Json deviceStatus() const;
@@ -397,6 +400,11 @@ private:
     void executePlaylistOperation(const std::string&, const Json&, Json&);
     bool activePlaylistLocked(te::AudioTrack&, bool moving = false) const;
     void refreshLinkedCompLayouts(const Json&);
+    std::pair<juce::ValueTree, Json> preparePlaylistAudition(const Json&) const;
+    void stopPlaylistAudition(const std::string& reason = "cancelled", bool returnPosition = true);
+    void advancePlaylistAudition();
+    std::shared_ptr<PlaylistAuditionState> playlistAuditionState;
+    Json lastPlaylistAudition = {{"active", false}};
     void selectPlaylist(te::AudioTrack&, const std::string&);
     void makeLoopPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
     juce::ValueTree ensurePlaylists(te::AudioTrack&);

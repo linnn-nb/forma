@@ -1,3 +1,5 @@
+P1-PLAYLIST-AUDITION-01（2026-10-13）：代码 src/v2/PlaylistAudition.cpp、PlaylistEditing.cpp、SelectionOutputGate.h、ui/PlaylistPanel.h；测试 tests/v2/PlaylistAuditionTests.cpp 与 PersistentHistoryTests.cpp。核验非活动 Take、活动来源、未提交单/多轨段、轨道增益/Read 曲线、来源/路由排除、精确输出边界、完成/取消回位与停止静音、普通播放恢复、循环/节拍器设置保留、缺失媒体/旧版本/重叠拒绝、原生按钮/两段前后切换/空格和可改键、保存重开 Undo/Redo。数值窗口按实际音频回调采样边界，不能使用有滞后的 GUI 走带时间；音频容差 2e-6 不变。实际结果及失败复测见 evidence/P1/summary.md；没有宣称实机听感/PDC或完整 P1 通过。
+
 # P1 关联 Comp 整组移动（2026-10-13）
 
 Release/固定本地 deep-strict 签名通过；8 个完整受影响套件与 GUI 局部检查共 16,050 项通过，无 JUCE 断言。关联全组、Edit 组、自动化、Nudge/Spot/草稿拖动、一笔 Undo/Redo 与重开保存均在实际 Tracktion 对象/PCM范围验证；Comp PCM 最大误差 1.1920928955078125e-7，既定 2e-6 / 10 秒渲染预算不变。[完整范围及失败记录](../evidence/P1/summary.md)。

@@ -1,3 +1,33 @@
+# P1：来源与候选逐段试听（2026-10-13）
+
+结论：Release 构建、固定本地签名 deep/strict 通过；7 个受影响套件共 862 项通过，停止专项额外 197 项复测通过，0 JUCE 断言。来源选区/所选列表、未创建候选的单/多轨分段、上一段/下一段、空格启动/停止回位可用，532–537 均可改键。试听不改变活动/目标列表或编辑历史。完整 P1 仍缺交叉淡化，实体听感与旧未通过项保留。
+
+亲手试：打开当前 Forma.app，选音频轨并 Option+L；拖选来源波形→「试听来源选区」，或「试听所选列表」。加入两个不同范围的候选后点「试听候选选段」，用「上一段/下一段」比较；空格或「停止试听/返回」结束并回到原光标。候选尚未创建会明确显示草稿；「创建候选」沿用一次 Undo/Redo、保存重开。来源试听 Ctrl+Shift+Option+8，候选为9，停止为0；前后段为逗号/句号，整个列表为 Return，可在键位面板修改。
+
+代码：PlaylistAudition.cpp/PlaylistEditing.cpp 准备真实片段快照；同一 Tracktion Engine 的原生 clip 节点进入原轨道路由、插入、发送、Master 与 Read 自动化。只保留所选来源及路由，抑制实时输入/节拍器；临时 forRendering Edit 无独立设备和事实存储。SelectionOutputGate 按实际设备采样边界静音/结束，先原子静音，再在 message thread clearNodes 后回收。请求绑定 revision/session/设备代次，2 秒无图进展失败；requested 不显示已播放。64 源段/路由轨、16 MiB 快照预算与未资格格式/路由明确拒绝。已有 render-bus-only SDK 补丁增加原生 clip factory，CMake 仍审计完整 13 份补丁，无新依赖或播放器。
+
+| 套件 | 检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| playlist_audition | 98 | 8.4 | 通过 |
+| playlist_editing | 227 | 15.701 | 通过 |
+| persistent_history | 67 | 36.263 | 通过 |
+| roll_playback | 197 | 9.276 | 通过 |
+| multi_scrub | 126 | 未独立计时 | 通过 |
+| loop_playback | 23 | 2.948 | 通过 |
+| punch_recording | 124 | 19.64 | 通过 |
+
+真实音频：48 kHz/PCM24 自有媒体，经原生图和 hosted 设备回调读取 PCM；Clip gain、轨道 fader、Read 曲线、多轨草稿加和、无关来源排除、停止静音和普通播放恢复均按预定 2e-6 容差核验。最大误差 1.2247592440228772e-08。源/无关媒体 SHA256 保持；循环区间/开关和 metronome 偏好、原曲线/Playlist/revision 保存。不是实体设备、PDC、插件听感或耐久资格。
+
+修复与失败记录：音频窗口原用 GUI 走带时间，端点滞后造成边界静音被算作误差；改用实际回调设备采样边界，数值容差不变。重开时原生基础值初始化插入未登记事务/清掉 Redo，改为最后安装保存的堆栈。Playlist 切换跨父复用会早于旧父移除，HistoryDelta 记相同父/locator 的真实内部转移；其他缺失仍拒绝。尝试全局重排 delta 会破坏多个顺序 CHANGE 的历史，已撤回，保留顺序及完整损坏文件校验，67 项历史通过。Scrub 初始输出别名在首次原生图分配时由 default 变为 Output 1+2，夹具先完成实际 hosted 初始化再取基线；126 项通过，声音/位置断言没有放宽。区间停止回执曾早于原生最终端点，现等待实际 stop 确认并冻结真实 audible endpoint；197 项两次通过，早停报告 interrupted。此次 SDK Stop 测试走同步确认路径（日志 NATIVE_STOP_DEFERRED），不声称单独注入异步分支。
+
+桌面：旧进程正常退出，当前应用启动和本地文件选择/加载尝试已执行；CUA 在窗口切换后反复 timeout/noWindowsAvailable，未完成来源/候选实体按钮试听或新截图，不标实体验收通过。未复制 Preview、未制作 DMG。应用路径 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；主程序 SHA256 8669e47105e1dbf6ebb6b12303691f8388e1761f57f110e38e7661543d8c1880。
+
+输出：build-v2-tracktion/p1-playlist-audition-summary.json 指向各实际报告/日志；当前主构建 p1-playlist-audition-stop-qualified-build.log；全部初始失败及修复复测在 p1-playlist-audition-* 保留，不混写为全仓全绿。当前唯一应用包仍在原路径。
+
+下一项交叉淡化。完整自动化矩阵既定 180 秒超时、性能 A、实体多输入/其他采样率/PDC/耐久、MIDI循环/Punch、硬件/rack/sidechain/Clip FX 试听等继续保留，未进入 P2/P3。
+
+## 历史：关联 Comp 整组移动
+
 # P1：关联 Comp 整组移动（2026-10-13）
 
 结论：Release、固定本地签名 deep/strict 校验通过。关联 Comp 通过现有 Grabber/Smart 移动区、Nudge、F3 Spot 和可收起检查器接入；全部成员/片段及启用 Edit 组共享位移与一次 Undo/Redo，保存重开保持原生历史。8 个完整受影响套件与 GUI 局部检查合计 16,050 项通过，无 JUCE 断言；完整自动化矩阵超过既定 180 秒，未通过，完整 P1 仍未完成。

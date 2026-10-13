@@ -145,6 +145,110 @@ juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
     return copy;
 }
 } // namespace
+std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& args) const
+{
+    checkThread();
+    require(args.is_object(), "invalid Playlist audition request");
+    for (const auto& [key, _] : args.items())
+        require(key == "track" || key == "playlist" || key == "segments" || key == "start_samples" ||
+                    key == "end_samples" || key == "base_revision" || key == "session_token",
+                "unknown Playlist audition field");
+    require(args.at("base_revision") == revision && args.at("session_token") == sessionToken(),
+            "Playlist audition request is stale");
+    for (const auto* key : {"start_samples", "end_samples"})
+        require(args.at(key).is_number_integer() && args.at(key).get<double>() >= 0 &&
+                    args.at(key).get<double>() <= te::Edit::maximumLength * 48000.,
+                "audition range requires bounded integer session samples");
+    const int64_t first = args.at("start_samples"), last = args.at("end_samples");
+    require(last > first, "empty Playlist audition range");
+    juce::ValueTree snapshot("EDIT");
+    snapshot.copyPropertiesFrom(edit->state, nullptr);
+    for (auto child : edit->state)
+        if (child.hasType("TEMPOSEQUENCE") || child.hasType("PITCHSEQUENCE"))
+            snapshot.addChild(child.createCopy(), -1, nullptr);
+    std::map<std::string, juce::ValueTree> tracks;
+    std::map<std::string, std::string> hashes;
+    Json sources = Json::array();
+    auto append = [&](te::AudioTrack& owner, const std::string& list, juce::ValueTree clip, int64_t begin, int64_t end)
+    {
+        qualifySlice(*edit, clip);
+        const auto path = media(*edit, clip).getFullPathName().toStdString();
+        if (!hashes.contains(path))
+            hashes[path] = mediaHash(media(*edit, clip));
+        begin = std::max(begin, first);
+        end = std::min(end, last);
+        if (end <= begin)
+            return;
+        require(sources.size() < 64, "Playlist audition exceeds 64 source-piece preparation budget");
+        const auto id = owner.itemID.toString().toStdString();
+        if (!tracks.contains(id))
+        {
+            juce::ValueTree trackState("TRACK");
+            trackState.copyPropertiesFrom(owner.state, nullptr);
+            snapshot.addChild(trackState, -1, nullptr);
+            tracks[id] = trackState;
+        }
+        auto piece = sliced(clip, begin, end);
+        // The allocator is runtime-only. Preview nodes never reuse a live graph
+        // ID, never become project clips and never enter the editing history.
+        piece.setProperty(te::IDs::id, edit->createNewItemID().toVar(), nullptr);
+        piece.setProperty(te::IDs::source, juce::String(path), nullptr);
+        tracks.at(id).addChild(piece, -1, nullptr);
+        sources.push_back({{"track", id},
+                           {"playlist", list},
+                           {"clip", str(clip, "id")},
+                           {"start_samples", begin},
+                           {"end_samples", end},
+                           {"media_hash", hashes.at(path)}});
+    };
+    if (args.contains("segments"))
+    {
+        require(!args.contains("playlist"), "draft and stored Playlist auditions are distinct");
+        std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> ranges;
+        for (const auto& segment : candidateSegments(args, true))
+        {
+            auto* owner = track(segment.at("track"));
+            require(owner && trackType(*owner) == "audio", "audition source track is missing");
+            const int64_t begin = segment.at("start_samples"), end = segment.at("end_samples");
+            for (const auto& prior : ranges[segment.at("track").get<std::string>()])
+                require(end <= prior.first || begin >= prior.second, "draft audition has overlapping pieces");
+            ranges[segment.at("track").get<std::string>()].emplace_back(begin, end);
+            bool found = false;
+            for (auto clip : clipsFor(*owner, segment.at("source")))
+                if (str(clip, "id") == segment.at("clip").get<std::string>())
+                {
+                    require(begin >= frame(clip, "start") && end <= frame(clip, "start") + frame(clip, "length"),
+                            "audition segment exceeds its actual source clip");
+                    append(*owner, segment.at("source"), clip, begin, end);
+                    found = true;
+                }
+            require(found, "audition source Playlist/clip is missing");
+        }
+    }
+    else
+    {
+        auto* owner = track(args.at("track"));
+        require(owner && trackType(*owner) == "audio", "audition requires an actual audio track");
+        auto list = listFor(*owner, args.at("playlist"));
+        require(list.isValid(), "audition Playlist is missing");
+        auto members = playlist_links::members(*edit, list);
+        if (members.empty())
+            members.emplace_back(owner, list);
+        for (auto [member, item] : members)
+            for (auto clip : clipsFor(*member, str(item, "id")))
+                if (frame(clip, "start") < last && frame(clip, "start") + frame(clip, "length") > first)
+                    append(*member, str(item, "id"), clip, frame(clip, "start"),
+                           frame(clip, "start") + frame(clip, "length"));
+    }
+    require(!sources.empty(), "no actual audio in the requested Playlist audition range");
+    require(snapshot.createXml()->toString().getNumBytesAsUTF8() <= 16 * 1024 * 1024,
+            "Playlist audition snapshot exceeds 16 MiB preparation budget");
+    return {snapshot,
+            {{"sources", sources},
+             {"start_samples", first},
+             {"end_samples", last},
+             {"mode", args.contains("segments") ? "draft" : "playlist"}}};
+}
 void Commands::registerPlaylistCommands(Json& r)
 {
     const Json string{{"type", "string"}}, integer{{"type", "integer"}, {"minimum", 0}};

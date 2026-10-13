@@ -691,6 +691,8 @@ void Workspace::refresh()
     }
     if (audioSettings && audioSettings->isVisible())
         audioSettings->updateRuntime(commands.audioDevices());
+    if (playlistPanel && playlistPanel->isVisible())
+        playlistPanel->updateAudition(commands.playlistAuditionStatus());
     const auto& music = facts["music"];
     musicPosition.setText(juce::String(music["bar"].get<int>()) + " | " + juce::String(music["beat"].get<double>(), 2) +
                               text("  小节 / 拍"),

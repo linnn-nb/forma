@@ -1,3 +1,7 @@
+P1 逐段试听（2026-10-13）：L1 PlaylistAudition/PlaylistEditing 准备临时原生片段快照（同一 Engine、forRendering Edit，无独立设备或事实存储），经已审计 Tracktion createNodeForAuditionClips 建立原生源节点。唯一活动 Edit 提供原路由、插件和 Read 自动化；原生输出后的 SelectionOutputGate 使用实际设备采样边界静音与结束。message thread 发布/回收图，停止前原子静音，clearNodes 后释放快照；回调无新增分配/锁/I/O。版本、会话、设备代次和两秒无进展监测返回明确失败。现有 render-bus SDK 补丁扩展，仍为 13 份审计补丁。
+
+历史恢复修复：参数基础值初始化完成后才安装 UndoManager 堆栈，保留已存 Redo 分支；HistoryDelta 维持原顺序，对原生节点提前跨父转移记内部回执，后续移除只消费相同父节点/locator 的实际转移，未知缺失仍拒绝。没有改变工程格式或降低校验。
+
 P1 关联 Comp 整组移动（2026-10-13）：L1 的 EditGroupCommands 以活动关联集与每段实际启用 Edit 组解析全部移动成员；MixGroupCommands 保持无组快速路径，但关联 Comp 不依赖用户创建的组。PlaylistEditing 验证完整共同位移并在 EngineCommands 的事务收尾更新所有 linked_layout，几何元数据与片段/自动化共同 Undo、Redo 和持久保存。GUI 共享此只读成员查询，GroupedClipDraft 预览不写 Edit；move_locked 与独立编辑保护分离。没有新引擎、SDK 补丁、实时路径或后台服务。
 
 P1 关联 Comp（2026-10-13）：L1 `PlaylistEditing/PlaylistCommands/PlaylistLinks` 在原生 PLAYLIST 上保存 linked_schema=1、set ID、完整成员ID、原播放列表和原生时间/源映射；没有第二工程或音频图。显式各轨来源与共同区间先整体校验，再作为一个 UndoManager 事务创建。单成员播放选择会解析完整关联组及交叠旧组的恢复范围；Scope 和媒体指纹覆盖所有受影响轨。解除关联只删关联元数据，保留声音与来源。活动关联列表保护独立片段编辑/录音，删除成员及父文件夹预拒绝；整组移动尚待接入。打开工程先校验完整成员、几何和全组活动一致性。

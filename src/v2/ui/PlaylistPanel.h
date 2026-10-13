@@ -7,9 +7,12 @@ namespace ndaw::desktop
 class PlaylistPanel final : public juce::Component
 {
 public:
+    using Audition = std::function<Json(const std::string&, const Json&)>;
     using Submit = std::function<Json(const std::string&, Json, uint64_t, const std::string&)>;
-    PlaylistPanel(Submit submit, std::function<void()> close, std::function<Json(const std::string&)> query)
-        : submit(std::move(submit)), close(std::move(close)), query(std::move(query)), canvas(*this), draftModel(*this)
+    PlaylistPanel(Submit submit, std::function<void()> close, std::function<Json(const std::string&)> query,
+                  Audition audition)
+        : submit(std::move(submit)), close(std::move(close)), query(std::move(query)), audition(std::move(audition)),
+          canvas(*this), draftModel(*this)
     {
         setComponentID("playlist.panel");
         addAndMakeVisible(title);
@@ -28,6 +31,8 @@ public:
                 return;
             try
             {
+                if (auditionStatus.value("active", false))
+                    updateAudition(this->audition("stop", Json::object()));
                 const std::string next = data["tracks"][index]["id"];
                 auto state = this->query(next);
                 track = next;
@@ -63,23 +68,19 @@ public:
         zoom.setTooltip(text("Playlist 水平缩放；下方滚动条移动时间窗口"));
         zoom.onValueChange = [this] { layoutTime(); };
         scroll.addListener(&canvas);
-        for (auto [id, label] : std::vector<std::pair<int, const char*>>{{515, "新建"},
-                                                                         {516, "复制"},
-                                                                         {517, "重命名"},
-                                                                         {518, "设为目标"},
-                                                                         {519, "提升选区 ↑"},
-                                                                         {520, "新建 Comp"},
-                                                                         {521, "登记 Take"},
-                                                                         {522, "锁定 / 解锁"},
-                                                                         {523, "用于播放"},
-                                                                         {524, "关闭"},
-                                                                         {525, "加入候选"},
-                                                                         {526, "移除所选段"},
-                                                                         {527, "创建候选"},
-                                                                         {528, "清空候选"},
-                                                                         {529, "恢复整组原播放"},
-                                                                         {530, "解除 Comp 关联"},
-                                                                         {531, "下一来源轨"}})
+        for (auto [id, label] :
+             std::vector<std::pair<int, const char*>>{{515, "新建"},           {516, "复制"},
+                                                      {517, "重命名"},         {518, "设为目标"},
+                                                      {519, "提升选区 ↑"},     {520, "新建 Comp"},
+                                                      {521, "登记 Take"},      {522, "锁定 / 解锁"},
+                                                      {523, "用于播放"},       {524, "关闭"},
+                                                      {525, "加入候选"},       {526, "移除所选段"},
+                                                      {527, "创建候选"},       {528, "清空候选"},
+                                                      {529, "恢复整组原播放"}, {530, "解除 Comp 关联"},
+                                                      {531, "下一来源轨"},     {532, "试听来源选区"},
+                                                      {533, "试听候选选段"},   {534, "上一段"},
+                                                      {535, "下一段"},         {536, "停止试听 / 返回"},
+                                                      {537, "试听所选列表"}})
         {
             auto button = std::make_unique<juce::TextButton>(text(label));
             addAndMakeVisible(*button);
@@ -147,6 +148,18 @@ public:
     {
         return track;
     }
+    void updateAudition(Json next)
+    {
+        auditionStatus = std::move(next);
+        refreshStatus();
+    }
+    int playbackCommand() const
+    {
+        auto* focus = juce::Component::getCurrentlyFocusedComponent();
+        if (focus && (focus == &draftList || draftList.isParentOf(focus)) && canExecute(533))
+            return 533;
+        return canExecute(532) ? 532 : 537;
+    }
     void setTrack(std::string id)
     {
         track = std::move(id);
@@ -160,7 +173,19 @@ public:
     {
         if (id == 524)
             return true;
+        if (id == 536)
+            return auditionStatus.value("active", false);
         if (data.is_null() || source.empty())
+            return false;
+        if (id == 532)
+            return !sourceClip.empty() && end > begin;
+        if (id == 533)
+            return draftList.getSelectedRow() >= 0 && draftList.getSelectedRow() < int(draft.size());
+        if (id == 534 || id == 535)
+            return !draft.empty();
+        if (id == 537)
+            return !selectedList()["clips"].empty();
+        if (auditionStatus.value("active", false))
             return false;
         if (id == 529 || id == 530)
             return !selectedList().value("linked_set", std::string{}).empty();
@@ -182,6 +207,8 @@ public:
     {
         if (id == 524)
         {
+            if (auditionStatus.value("active", false))
+                audition("stop", Json::object());
             close();
             return;
         }
@@ -189,6 +216,51 @@ public:
             return;
         try
         {
+            if (id >= 532 && id <= 537)
+            {
+                if (id == 536)
+                {
+                    updateAudition(audition("stop", Json::object()));
+                    return;
+                }
+                Json request{
+                    {"track", track}, {"base_revision", data["revision"]}, {"session_token", data["session_token"]}};
+                if (id == 534 || id == 535)
+                {
+                    const int count = int(draft.size());
+                    int row = draftList.getSelectedRow();
+                    row = row < 0 ? 0 : (row + (id == 534 ? count - 1 : 1)) % count;
+                    draftList.selectRow(row);
+                    id = 533;
+                }
+                if (id == 533)
+                {
+                    const auto& selected = draft[size_t(draftList.getSelectedRow())];
+                    request["start_samples"] = selected["start_samples"];
+                    request["end_samples"] = selected["end_samples"];
+                    request["segments"] = draft;
+                }
+                else
+                {
+                    request["playlist"] = source;
+                    int64_t first = begin, last = end;
+                    if (id == 537)
+                    {
+                        first = std::numeric_limits<int64_t>::max();
+                        last = 0;
+                        for (const auto& clip : selectedList()["clips"])
+                        {
+                            first = std::min(first, clip["start_samples"].get<int64_t>());
+                            last = std::max(last, clip["start_samples"].get<int64_t>() +
+                                                      clip["length_samples"].get<int64_t>());
+                        }
+                    }
+                    request["start_samples"] = first;
+                    request["end_samples"] = last;
+                }
+                updateAudition(audition("start", request));
+                return;
+            }
             if (id == 531)
             {
                 trackChoice.setSelectedId(trackChoice.getSelectedId() % int(data["tracks"].size()) + 1,
@@ -343,6 +415,9 @@ public:
         for (int id : {529, 530})
             buttons.at(id)->setBounds(actions.removeFromLeft(128).reduced(2));
         zoom.setBounds(actions.removeFromLeft(160).reduced(3));
+        auto listen = r.removeFromTop(34);
+        for (int id : {532, 533, 534, 535, 536, 537})
+            buttons.at(id)->setBounds(listen.removeFromLeft(id == 534 || id == 535 ? 90 : 148).reduced(2));
         status.setBounds(r.removeFromBottom(34));
         auto candidate = r.removeFromBottom(112);
         auto candidateTools = candidate.removeFromTop(32);
@@ -478,6 +553,8 @@ private:
         {
             if (owner.data.is_null())
                 return;
+            if (owner.auditionStatus.value("active", false))
+                owner.updateAudition(owner.audition("stop", Json::object()));
             if (isShowing())
                 grabKeyboardFocus();
             const int row = (e.y - 26) / 106;
@@ -560,6 +637,16 @@ private:
                                       ? juce::String{}
                                       : text(" · 未提交候选 ") + juce::String(int(draft.size())) + text(" 段")),
                        juce::dontSendNotification);
+        if (auditionStatus.value("active", false))
+            status.setText(
+                text(auditionStatus.value("state", std::string{}) == "requested" ? "等待实际音频回调 · "
+                                                                                 : "正在试听 · ") +
+                    text(auditionStatus.value("mode", std::string{}) == "draft" ? "候选草稿（未创建）" : "来源列表") +
+                    text(" · 仅所选来源及其路由/处理 · 输入/节拍器关闭 · 停止后返回原光标"),
+                juce::dontSendNotification);
+        else if (auditionStatus.value("state", std::string{}) == "failed")
+            status.setText(text("试听失败：") + text(auditionStatus.value("reason", std::string{})),
+                           juce::dontSendNotification);
         std::set<std::string> members;
         for (const auto& s : draft)
             members.insert(s["track"].get<std::string>());
@@ -592,7 +679,7 @@ private:
                                     : key == juce::KeyPress::returnKey
                                         ? enterCommand
                                         : manager->getKeyMappings()->findCommandForKeyPress(key);
-                if (command >= 515 && command <= 531)
+                if (command >= 515 && command <= 537)
                 {
                     manager->invokeDirectly(command, false);
                     return true;
@@ -606,6 +693,8 @@ private:
         int enterCommand = 517;
     };
     Submit submit;
+    Audition audition;
+    Json auditionStatus = {{"active", false}};
     std::function<void()> close;
     std::function<Json(const std::string&)> query;
     juce::ComboBox trackChoice;

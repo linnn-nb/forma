@@ -978,7 +978,6 @@ void PersistentHistory::install(Archive archive)
     dirtyPlugins.clear();
     nodes.clear();
     index(observed);
-    rebuildUndo();
     applyBases(mirror);
     owner.synchroniseExternalParameters();
     if (owner.nativeStates)
@@ -986,6 +985,10 @@ void PersistentHistory::install(Archive archive)
     trim();
     dirty.clear();
     dirtyPlugins.clear();
+    // Restoring native parameter bases may use the SDK UndoManager. Install
+    // the saved stack last so those owned initialization writes cannot append
+    // an unnamed transaction or discard a saved Redo branch.
+    rebuildUndo();
 }
 void Commands::checkpointHistory()
 {

@@ -413,6 +413,14 @@ void Commands::advanceRollPlayback()
     }
     else
     {
+        // The SDK stop flag changes before its queued performStop/playhead
+        // update. Do not publish a final receipt while native audio still runs.
+        if (context && context->isPlaying())
+            return;
+        // Freeze the actual audible native endpoint, not the lagging GUI value
+        // or the planned range end; later SDK timer readback must agree.
+        if (context)
+            edit->getTransport().setPosition(context->getPosition());
         const auto position = std::llround(edit->getTransport().getPosition().inSeconds() * 48000.);
         rollPlayback["actual_stop_samples"] = position;
         rollPlayback["overshoot_samples"] = std::max(int64_t(0), position - rollPlayback["end_samples"].get<int64_t>());

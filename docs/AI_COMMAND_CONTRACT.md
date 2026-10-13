@@ -1,3 +1,5 @@
+P1 试听控制（2026-10-13）：本地 L1 playlistAudition(start/stop/status)，不增加 MCP 权限或工具。start 必须绑定 session_token、base_revision、track、48k 工程 start_samples/end_samples，选择 playlist 或显式 segments 二者之一；草稿每段指定真实 track/source/clip/范围，最多 64 段且同轨不重叠。回执包含原对象、源媒体 SHA256、mode、处理块数、实际设备采样边界/采样率和失败原因。requested 不代表已经发声；实际输出回调后才 playing，输出边界 reached 后 completed。编辑、录音及高风险未资格路由不混入试听；停止/完成恢复光标与循环设置，不写编辑历史。接受候选仍须既有 Plan/权限/提交/Undo 入口。
+
 P1-LINKED-COMP-MOVE-01（2026-10-13）：复用 clip.move，不新增 MCP 工具。L1 在 makePlan/preview 两处展开活动关联 Comp 的全部片段及每段相交的启用 Edit 组；可传递到另一关联集，去重且保持同一采样位移。每个成员使用自己的媒体哈希，Scope 覆盖全部原/目标区间；64 原语预算包含自动化，缺失、锁定、越界、过期或不同位移整笔拒绝。没有普通 Edit 组也必须展开 Comp。完整提交后在同一 UndoManager 事务更新全部 linked_layout；保存重开继续校验源映射、共同区间和持久 Undo/Redo。
 
 只读事实 locked 保留独立编辑保护，move_locked 表示真实片段/Playlist 锁，linked_comp 标识组合编辑。GUI 拖动只绘制共同草稿，松手后提交；Nudge/Spot 使用原有可改键入口。独立修剪、分割、删除和录音仍须先解除 Comp。范围 Nudge 要求全部关联及编辑组片段完整落在选区内，不能悄悄移动选区外内容；跟随自动化覆盖间接成员轨上的完整选区。命令层之外没有 Edit 写入。

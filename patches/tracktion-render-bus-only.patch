@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-index e37d1e4..a9a0ab8 100644
+index e37d1e4..978f7c7 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 @@ -367,6 +367,13 @@ std::unique_ptr<tracktion::graph::Node> createFadeNodeForClip (AudioClipBase& cl
@@ -154,8 +154,31 @@ index e37d1e4..a9a0ab8 100644
      }
  
      auto sumNode = std::make_unique<SummingNode> (std::move (trackNodes));
+@@ -2200,6 +2239,22 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+     return node;
+ }
+ 
++std::unique_ptr<tracktion::graph::Node> createNodeForAuditionClips (const juce::Array<Clip*>& clips,
++                                                                   const CreateNodeParams& params)
++{
++    std::vector<std::unique_ptr<Node>> nodes;
++    for (auto* clip : clips)
++        if (clip != nullptr && ! clip->disabled)
++            if (auto* audio = dynamic_cast<AudioClipBase*> (clip))
++                if (auto node = createNodeForAudioClip (*audio, false, params, ClipRole::arranger))
++                    nodes.push_back (std::move (node));
++    if (nodes.empty())
++        return {};
++    if (nodes.size() == 1)
++        return std::move (nodes.front());
++    return std::make_unique<SummingNode> (std::move (nodes));
++}
++
+ std::unique_ptr<tracktion::graph::Node> createGeneratorPluginNode (const Plugin::Ptr& plugin,
+                                                                    const CreateNodeParams& params,
+                                                                    std::unique_ptr<tracktion::graph::Node> output)
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
-index ebd27f6..1caffda 100644
+index ebd27f6..8c56ea3 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
 +++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
 @@ -35,6 +35,17 @@ struct CreateNodeParams
@@ -176,3 +199,14 @@ index ebd27f6..1caffda 100644
      /** If set, this will be called for each output device to give an opportunity to add an
          additional final Node. Unlike EditNodeBuilder::insertOptionalLastStageNode this is
          carried per graph build (set via EditPlaybackContext) so different Edits can each have
+@@ -60,6 +71,10 @@ struct EditNodeBuilder
+ /** Creates a Node to play back an Edit with live inputs and outputs. */
+ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&, std::atomic<double>& audibleTimeToUpdate, const CreateNodeParams&);
+ 
++/** Builds native arranger audio-clip nodes for a transient source snapshot.
++    The caller owns the clips until the graph is retired; no Edit is modified. */
++std::unique_ptr<tracktion::graph::Node> createNodeForAuditionClips (const juce::Array<Clip*>&, const CreateNodeParams&);
++
+ /** Creates a Node to render an Edit. */
+ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit&, const CreateNodeParams&);
+ 

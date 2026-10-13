@@ -790,6 +790,7 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
 Json Commands::preview(const Json& plan) const
 {
     checkThread();
+    require(!playlistAuditionState, "stop Playlist audition before editing");
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
     bool removing = plan.at("actor") == "human" && !plan.at("operations").empty() &&
@@ -1449,6 +1450,7 @@ Json Commands::undo(const std::string& expected)
 {
     Performance::Span measured("undo");
     checkThread();
+    stopPlaylistAudition();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
@@ -1498,6 +1500,7 @@ Json Commands::redo()
 {
     Performance::Span measured("redo");
     checkThread();
+    stopPlaylistAudition();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
@@ -1544,6 +1547,7 @@ Json Commands::redo()
 void Commands::play()
 {
     checkThread();
+    stopPlaylistAudition();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(midiConfiguration.is_null() || midiConfiguration.value("state", std::string{}) != "requested",
@@ -1577,6 +1581,7 @@ void Commands::stop()
 void Commands::stopTransport(bool preserveRollBoundary)
 {
     checkThread();
+    stopPlaylistAudition();
     stopScrub();
     if (!rollPlayback.is_null() && (rollPlayback["state"] == "playing" || rollPlayback["state"] == "requested"))
     {
@@ -1619,6 +1624,7 @@ void Commands::stopTransport(bool preserveRollBoundary)
 void Commands::seek(int64_t sample)
 {
     checkThread();
+    stopPlaylistAudition("cancelled", false);
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(parameterCapture.is_null(), "finish native parameter gesture before seeking");
@@ -1791,6 +1797,7 @@ Json Commands::save(const juce::File& destination)
 {
     Performance::Span measured("save");
     checkThread();
+    stopPlaylistAudition();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
@@ -1870,6 +1877,7 @@ void validatePlaylists(te::Edit&);
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
     checkThread();
+    stopPlaylistAudition();
     stopScrub();
     require(candidate != nullptr, "invalid Edit replacement");
     lastScrubStatus = {{"active", false}};
