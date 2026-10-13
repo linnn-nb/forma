@@ -1,5 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <nativedaw/v2/ClipGroupTransform.h>
+#include "PlaylistLinks.h"
 namespace ndaw::v2
 {
 Json Commands::editGroupTracks(const Json& seeds) const
@@ -40,9 +41,46 @@ Json Commands::editGroupTracks(const Json& seeds) const
     }
     return result;
 }
-Json Commands::editGroupClipSelection(const std::string& id) const
+Json Commands::editGroupClipSelection(const std::string& id, bool wholeLinkedComp) const
 {
     checkThread();
+    if (wholeLinkedComp)
+    {
+        auto result = editGroupClipSelection(id);
+        std::set<std::string> selected, sets;
+        for (const auto& object : result)
+            selected.insert(object.at("id"));
+        auto append = [&](const Json& object)
+        {
+            if (selected.insert(object.at("id")).second)
+            {
+                if (result.size() >= 64)
+                    throw std::runtime_error("linked Comp and Edit groups exceed 64-clip move budget");
+                result.push_back(object);
+            }
+        };
+        // Each reached Comp expands all of its pieces, then the enabled Edit groups
+        // at each piece. Process newly reached sets too; never widen ordinary groups
+        // recursively merely because an overlapping unlinked clip is longer.
+        for (size_t i = 0; i < result.size(); ++i)
+            if (auto* clip = audioClip(result[i].at("id")))
+                if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
+                {
+                    const auto list = playlist_links::active(*owner);
+                    const auto set = playlist_links::value(list, "linked_set");
+                    if (set.empty() || !sets.insert(set).second)
+                        continue;
+                    for (auto [member, candidate] : playlist_links::members(*edit, list))
+                    {
+                        if (playlist_links::active(*member) != candidate)
+                            throw std::runtime_error("linked Comp is only partly active; move refused");
+                        for (auto* piece : member->getClips())
+                            for (const auto& peer : editGroupClipSelection(piece->itemID.toString().toStdString()))
+                                append(peer);
+                    }
+                }
+        return result;
+    }
     const auto facts = query();
     Json anchor = nullptr;
     std::string owner;
@@ -103,7 +141,7 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
             // part of a clip. Never turn a default Nudge into an implicit cut of the user's source arrangement.
             if (action == "move" && (begin < first || end > last))
                 continue;
-            if (c.value("locked", false) ||
+            if (c.value(action == "move" ? "move_locked" : "locked", c.value("locked", false)) ||
                 !((c["kind"] == "audio" && c.value("editable_audio", false) &&
                    !c.value("offline_clip_effects", false)) ||
                   (action == "move" && c["kind"] == "midi" && c.value("sample_mapping_available", false))))
@@ -112,7 +150,7 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
             {
                 // Move existing identities, not disposable copies. Whole-clip group expansion must not reach
                 // any partially selected peer: separate the range explicitly first in that ambiguous case.
-                for (const auto& peer : editGroupClipSelection(c["id"]))
+                for (const auto& peer : editGroupClipSelection(c["id"], true))
                     for (const auto& owner : facts["tracks"])
                         for (const auto& other : owner["clips"])
                             if (other["id"] == peer["id"] &&
@@ -167,8 +205,22 @@ Json Commands::rangeNudgeOperations(const Json& request) const
     // Group expansion seals native MIDI/PCM identities and deduplicates the common delta.
     auto moves = expandEditGroupEdits(audioRangeOperations("move", request.at("tracks"), first, last, delta));
     Json operations = Json::array();
+    auto owners = editGroupTracks(request.at("tracks"));
+    for (const auto& move : moves)
+    {
+        const std::string id = move.at("args").at("clip");
+        te::Clip* clip = audioClip(id);
+        if (!clip)
+            clip = midiClip(id);
+        if (clip && clip->getTrack())
+        {
+            const auto owner = clip->getTrack()->itemID.toString().toStdString();
+            if (std::find(owners.begin(), owners.end(), owner) == owners.end())
+                owners.push_back(owner);
+        }
+    }
     if (editingOptions().at("automation_follows_edit").get<bool>())
-        for (const auto& owner : editGroupTracks(request.at("tracks")))
+        for (const auto& owner : owners)
         {
             bool hasCurve = false;
             for (auto* plugin : domainTrack(owner)->pluginList)
@@ -382,7 +434,7 @@ Json Commands::expandEditGroupEdits(const Json& ops) const
                 throw std::runtime_error("move requires an existing clip");
             const int64_t delta =
                 op.at("args").at("position_samples").get<int64_t>() - clips.at(id).at("start_samples").get<int64_t>();
-            for (const auto& target : editGroupClipSelection(id))
+            for (const auto& target : editGroupClipSelection(id, true))
             {
                 const auto peerID = target.at("id").get<std::string>();
                 const auto position = clips.at(peerID).at("start_samples").get<int64_t>() + delta;

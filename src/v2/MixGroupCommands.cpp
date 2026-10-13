@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "PlaylistLinks.h"
 namespace ndaw::v2
 {
 namespace
@@ -193,7 +194,16 @@ Json Commands::expandMixGroupFlags(const Json& ops) const
 {
     const auto groups = mixGroupsQuery();
     if (groups.empty())
+    {
+        // Comp links exist independently of user-created Edit/Mix groups.
+        for (const auto& op : ops)
+            if (op.at("command") == "clip.move")
+                if (auto* clip = audioClip(op.at("args").at("clip")))
+                    if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
+                        if (!playlist_links::value(playlist_links::active(*owner), "linked_set").empty())
+                            return expandEditGroupEdits(ops);
         return ops;
+    }
     Json expanded = Json::array();
     std::map<std::string, bool> last;
     for (const auto& op : ops)

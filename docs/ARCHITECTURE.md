@@ -1,3 +1,5 @@
+P1 关联 Comp 整组移动（2026-10-13）：L1 的 EditGroupCommands 以活动关联集与每段实际启用 Edit 组解析全部移动成员；MixGroupCommands 保持无组快速路径，但关联 Comp 不依赖用户创建的组。PlaylistEditing 验证完整共同位移并在 EngineCommands 的事务收尾更新所有 linked_layout，几何元数据与片段/自动化共同 Undo、Redo 和持久保存。GUI 共享此只读成员查询，GroupedClipDraft 预览不写 Edit；move_locked 与独立编辑保护分离。没有新引擎、SDK 补丁、实时路径或后台服务。
+
 P1 关联 Comp（2026-10-13）：L1 `PlaylistEditing/PlaylistCommands/PlaylistLinks` 在原生 PLAYLIST 上保存 linked_schema=1、set ID、完整成员ID、原播放列表和原生时间/源映射；没有第二工程或音频图。显式各轨来源与共同区间先整体校验，再作为一个 UndoManager 事务创建。单成员播放选择会解析完整关联组及交叠旧组的恢复范围；Scope 和媒体指纹覆盖所有受影响轨。解除关联只删关联元数据，保留声音与来源。活动关联列表保护独立片段编辑/录音，删除成员及父文件夹预拒绝；整组移动尚待接入。打开工程先校验完整成员、几何和全组活动一致性。
 
 原生 Playlist 面板只读查询来源轨；候选清单跨轨暂存但不写 Edit，Shift 点选来源复用共同范围。提交、恢复、解除均经 L1；revision/session 变化清空过期草稿。依赖与实时线程不变，M2/M3 不扩充。

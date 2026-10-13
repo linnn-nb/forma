@@ -1,4 +1,5 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "PlaylistLinks.h"
 namespace ndaw::v2
 {
 namespace
@@ -63,7 +64,7 @@ struct Model
 {
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
-    bool locked = false, editable = true, inheritedFades = false;
+    bool locked = false, moveLocked = false, editable = true, inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
     Json fxTypes = Json::array();
     std::vector<std::string> fxIDs;
@@ -109,33 +110,40 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
     auto p = c.getPosition();
     const bool editable = !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
                           !c.getWarpTime() && !c.getIsReversed() && std::abs(c.getSpeedRatio() - 1) < 1e-9;
-    return {{"path", f.getFullPathName().toStdString()},
-            {"source_sample_rate", info.sampleRate},
-            {"source_frames", int64_t(info.lengthInSamples)},
-            {"source_offset_samples", sample(p.getOffset().inSeconds())},
-            {"source_offset_seconds", p.getOffset().inSeconds() * c.getSpeedRatio()},
-            {"speed_ratio", c.getSpeedRatio()},
-            {"source_mapping_available", !c.isLooping() && !c.getAutoTempo() && !c.getWarpTime() &&
-                                             !c.getIsReversed() && std::isfinite(c.getSpeedRatio()) &&
-                                             c.getSpeedRatio() > 0},
-            {"gain_db", c.getGainDB()},
-            {"inherited_fades", c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid()},
-            {"fade_in_samples", sample(c.getFadeIn().inSeconds())},
-            {"fade_out_samples", sample(c.getFadeOut().inSeconds())},
-            {"fade_in_curve", curveName(c.getFadeInType())},
-            {"fade_out_curve", curveName(c.getFadeOutType())},
-            {"locked", bool(c.state.getProperty("ndaw_locked", false)) ||
-                           (dynamic_cast<te::AudioTrack*>(c.getTrack()) &&
-                            activePlaylistLocked(*static_cast<te::AudioTrack*>(c.getTrack())))},
-            {"plugins", processorQuery(*c.getPluginList())},
-            {"clip_fx_count", c.getPluginList()->size()},
-            {"offline_clip_effects", c.effectsEnabled()},
-            {"legacy_media_available", bool(c.state.getProperty("ndaw_legacy_media_available", true))},
-            {"legacy_id", c.state.getProperty("ndaw_legacy_id").toString().toStdString()},
-            {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
-            {"editable_audio", editable},
-            {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},
-            {"origin", c.state.getProperty("ndaw_origin", "import").toString().toStdString()}};
+    return {
+        {"path", f.getFullPathName().toStdString()},
+        {"source_sample_rate", info.sampleRate},
+        {"source_frames", int64_t(info.lengthInSamples)},
+        {"source_offset_samples", sample(p.getOffset().inSeconds())},
+        {"source_offset_seconds", p.getOffset().inSeconds() * c.getSpeedRatio()},
+        {"speed_ratio", c.getSpeedRatio()},
+        {"source_mapping_available", !c.isLooping() && !c.getAutoTempo() && !c.getWarpTime() && !c.getIsReversed() &&
+                                         std::isfinite(c.getSpeedRatio()) && c.getSpeedRatio() > 0},
+        {"gain_db", c.getGainDB()},
+        {"inherited_fades", c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid()},
+        {"fade_in_samples", sample(c.getFadeIn().inSeconds())},
+        {"fade_out_samples", sample(c.getFadeOut().inSeconds())},
+        {"fade_in_curve", curveName(c.getFadeInType())},
+        {"fade_out_curve", curveName(c.getFadeOutType())},
+        {"locked", bool(c.state.getProperty("ndaw_locked", false)) ||
+                       (dynamic_cast<te::AudioTrack*>(c.getTrack()) &&
+                        activePlaylistLocked(*static_cast<te::AudioTrack*>(c.getTrack())))},
+        {"linked_comp",
+         dynamic_cast<te::AudioTrack*>(c.getTrack()) &&
+             !playlist_links::value(playlist_links::active(*static_cast<te::AudioTrack*>(c.getTrack())), "linked_set")
+                  .empty()},
+        {"move_locked", bool(c.state.getProperty("ndaw_locked", false)) ||
+                            (dynamic_cast<te::AudioTrack*>(c.getTrack()) &&
+                             activePlaylistLocked(*static_cast<te::AudioTrack*>(c.getTrack()), true))},
+        {"plugins", processorQuery(*c.getPluginList())},
+        {"clip_fx_count", c.getPluginList()->size()},
+        {"offline_clip_effects", c.effectsEnabled()},
+        {"legacy_media_available", bool(c.state.getProperty("ndaw_legacy_media_available", true))},
+        {"legacy_id", c.state.getProperty("ndaw_legacy_id").toString().toStdString()},
+        {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
+        {"editable_audio", editable},
+        {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},
+        {"origin", c.state.getProperty("ndaw_origin", "import").toString().toStdString()}};
 }
 void Commands::registerClipCommands(Json& r)
 {
@@ -255,6 +263,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.fadeIn = q["fade_in_samples"];
                 m.fadeOut = q["fade_out_samples"];
                 m.locked = q["locked"];
+                m.moveLocked = q["move_locked"];
                 m.editable = q["editable_audio"];
                 m.inCurve = q["fade_in_curve"];
                 m.outCurve = q["fade_out_curve"];
@@ -368,7 +377,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 frozen.fadeOut = q["fade_out_samples"];
                 frozen.inCurve = q["fade_in_curve"];
                 frozen.outCurve = q["fade_out_curve"];
-                frozen.locked = q["locked"];
+                frozen.moveLocked = frozen.locked = q["locked"];
                 frozen.fxTypes = q["fx_types"];
                 clips[id] = std::move(frozen);
             }
@@ -382,7 +391,8 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.hash = hashes.at(m.path);
         }
         require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
-        require(!m.locked || cmd == "clip.lock" || cmd == "clip.copy", "clip is locked");
+        require(!(cmd == "clip.move" ? m.moveLocked : m.locked) || cmd == "clip.lock" || cmd == "clip.copy",
+                "clip is locked");
         auto before = m.facts();
         std::string created;
         if (cmd == "clip.move")
@@ -416,7 +426,7 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.outCurve = a["out_curve"];
         }
         else if (cmd == "clip.lock")
-            m.locked = a["locked"];
+            m.moveLocked = m.locked = a["locked"];
         else if (cmd == "clip.fx.insert")
         {
             require(m.fxTypes.size() < size_t(engine.getEngineBehaviour().getEditLimits().maxPluginsOnClip),

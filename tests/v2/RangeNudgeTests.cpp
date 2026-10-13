@@ -1,5 +1,6 @@
 #include "SampleMidiMap.h"
 #include "ui/Workspace.h"
+#include "OwnedEditFixture.h"
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
@@ -307,6 +308,7 @@ int main(int argc, char** argv)
             for (auto* event : seq->getChildIterator())
                 event->setAttribute("opaque_range_test", "retain");
         }
+        discardDerivedFixtureHistory(*xml);
         const auto fixture = folder.getChildFile("Step.tracktionedit");
         check(xml->writeTo(fixture), "actual note CC SysEx fixture saved");
         auto rampXml = juce::XmlDocument::parse(fixture);

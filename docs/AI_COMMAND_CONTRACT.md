@@ -1,3 +1,7 @@
+P1-LINKED-COMP-MOVE-01（2026-10-13）：复用 clip.move，不新增 MCP 工具。L1 在 makePlan/preview 两处展开活动关联 Comp 的全部片段及每段相交的启用 Edit 组；可传递到另一关联集，去重且保持同一采样位移。每个成员使用自己的媒体哈希，Scope 覆盖全部原/目标区间；64 原语预算包含自动化，缺失、锁定、越界、过期或不同位移整笔拒绝。没有普通 Edit 组也必须展开 Comp。完整提交后在同一 UndoManager 事务更新全部 linked_layout；保存重开继续校验源映射、共同区间和持久 Undo/Redo。
+
+只读事实 locked 保留独立编辑保护，move_locked 表示真实片段/Playlist 锁，linked_comp 标识组合编辑。GUI 拖动只绘制共同草稿，松手后提交；Nudge/Spot 使用原有可改键入口。独立修剪、分割、删除和录音仍须先解除 Comp。范围 Nudge 要求全部关联及编辑组片段完整落在选区内，不能悄悄移动选区外内容；跟随自动化覆盖间接成员轨上的完整选区。命令层之外没有 Edit 写入。
+
 P1 关联 Comp（2026-10-13）：新增 human/local_gui、停止状态、独立 Plan 命令 `playlist.comp.linked.create`（track、name、segments；每段显式 track/source/clip/start_samples/end_samples，48k工程采样，所有成员区间相同，整笔最多64段），`playlist.comp.restore`、`playlist.comp.detach`（track、playlist）。`media_fingerprint` 由 makePlan 封闭，提交再验；版本、所有来源、锁定及 Scope 任一不满足则整笔拒绝。创建不切换播放/target。既有 `playlist.select` 对关联成员执行全组切换，离开时恢复原组，交叠组涉及的第三轨也纳入预览与权限。每笔命令一份可撤销历史；重试不复制、跨重开历史沿用既有机制。来源是显式人工选择，不声称估计多麦相位或自动选优；AI/MCP 权限维持既有范围。
 
 # 多来源 Comp 候选契约（2026-10-13）

@@ -1,4 +1,5 @@
 #include "Workspace.h"
+#include "OwnedEditFixture.h"
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
@@ -191,14 +192,27 @@ juce::AudioBuffer<float> reference(Commands& c, const std::string& track, const 
                                         if (sample >= 0 && sample <= 288000)
                                             referenceSamples.insert(sample);
                             }
-                    for (int64_t sample : referenceSamples)
+                    auto* parameter = AudioDeviceTestAccess::parameter(c, track, id);
+                    if (!parameter)
+                        throw std::runtime_error("reference native parameter unavailable");
+                    te::AutomationIterator reader(*parameter);
+                    auto at = [&](int64_t sample)
                     {
-                        double expected = value(c, track, id, sample);
+                        reader.setPosition(tracktion::TimePosition::fromSeconds(sample / 48000.));
+                        return reader.getCurrentValue();
+                    };
+                    // JUCE XML appends walk a singly linked child list. Build
+                    // the same ascending reference at the front in reverse order
+                    // to avoid quadratic setup at the unchanged 16-sample density.
+                    for (auto sampleIt = referenceSamples.rbegin(); sampleIt != referenceSamples.rend(); ++sampleIt)
+                    {
+                        const auto sample = *sampleIt;
+                        double expected = at(sample);
                         bool pasted = false;
                         for (const auto& span : spans)
                             if (sample >= span.destination && sample < span.destination + span.last - span.first)
                             {
-                                expected = value(c, track, id, sample - span.destination + span.first);
+                                expected = at(sample - span.destination + span.first);
                                 pasted = true;
                                 break;
                             }
@@ -206,18 +220,20 @@ juce::AudioBuffer<float> reference(Commands& c, const std::string& track, const 
                             for (const auto& span : spans)
                                 if (sample >= span.first && sample < span.last)
                                 {
-                                    const double a = value(c, track, id, span.first),
-                                                 b = value(c, track, id, span.last);
+                                    const double a = at(span.first), b = at(span.last);
                                     expected =
                                         a + (b - a) * double(sample - span.first) / double(span.last - span.first);
                                 }
-                        auto* p = curve->createNewChildElement("POINT");
+                        auto point = std::make_unique<juce::XmlElement>("POINT");
+                        auto* p = point.get();
                         p->setAttribute("t", sample / 48000.);
                         p->setAttribute("v", expected);
                         p->setAttribute("c", 0.);
                         p->setAttribute("ndaw_id", juce::Uuid().toString());
+                        curve->insertChildElement(point.release(), 0);
                     }
                 }
+    discardDerivedFixtureHistory(*xml);
     const auto edit = file.withFileExtension("tracktionedit");
     check(xml->writeTo(edit), "independent manual edited fixture saved");
     Commands expected(false, std::make_unique<Storage>(file.getParentDirectory().getChildFile("ReferencePrefs")));
@@ -256,7 +272,8 @@ int main(int argc, char** argv)
     const auto dir = parent.getChildFile("move-" + juce::Uuid().toString());
     dir.createDirectory();
     double maxCurve = 0, maxPCM = 0;
-    juce::File demo;
+    const bool guiOnly = argc > 4 && std::string(argv[3]) == "--gui-only";
+    juce::File demo = guiOnly ? juce::File(juce::String::fromUTF8(argv[4])) : juce::File{};
     try
     {
         const auto media = dir.getChildFile("ActualStereo.wav");
@@ -293,6 +310,8 @@ int main(int argc, char** argv)
         }
         for (double shape : {.75, -.75, 0., .5, -.5, 1., -1.})
         {
+            if (guiOnly)
+                break;
             Commands c(false, std::make_unique<Storage>(dir.getChildFile("ShapePrefs")));
             run(c, Json::array({op("track.create", {{"name", "Vocal move"}, {"ref", "$t"}}),
                                 op("clip.import", {{"track", "$t"},
@@ -591,16 +610,28 @@ int main(int argc, char** argv)
             check(area != nullptr, "actual timeline located");
             // JUCE MouseEvent exposes integer x: choose an integral sample-per-pixel
             // scale so the exact .5 s test displacement is representable.
-            c.updateUiState({{"start_samples", 0}, {"span_samples", int64_t(area->coordinates().width) * 480}},
-                            c.sessionToken());
-            pump();
+            const auto span = int64_t(area->coordinates().width) * 480;
+            const auto axis = area->coordinates();
+            area->mouseMagnify(event(*area, float(axis.left), area->rulerHeight()), float(double(axis.span) / span));
+            const auto viewDeadline = juce::Time::getMillisecondCounterHiRes() + 5000;
+            while (area->coordinates().span != span && juce::Time::getMillisecondCounterHiRes() < viewDeadline)
+                pump();
+            check(area->coordinates().span == span, "actual timeline acknowledges exact sample-per-pixel view");
             auto rect = area->clipRect(clips[1], 0);
             const auto delta = area->coordinates().pixelAt(72000) - area->coordinates().pixelAt(48000);
-            const int y = rect.getY() + 55;
+            const int y = rect.getCentreY();
             area->mouseDown(event(*area, float(rect.getCentreX()), y));
             area->mouseDrag(event(*area, float(rect.getCentreX() + delta), y, true));
             area->mouseUp(event(*area, float(rect.getCentreX() + delta), y, true));
             pump();
+            if (actualClip(c, clips[1]["id"])["start_samples"] != 72000)
+            {
+                std::cout << "TRACE drag position=" << actualClip(c, clips[1]["id"])["start_samples"]
+                          << " rect=" << rect.toString() << " delta=" << delta << " ui=" << c.uiState().dump();
+                if (auto* status = dynamic_cast<juce::Label*>(find(w, "workspace.status")))
+                    std::cout << " status=" << status->getText();
+                std::cout << std::endl;
+            }
             check(actualClip(c, clips[1]["id"])["start_samples"] == 72000 && persistent(c, t) != before,
                   "production Grabber drag commits actual automation follow");
             w.uiCommands().invokeDirectly(6, false);
@@ -676,13 +707,14 @@ int main(int argc, char** argv)
                 "raw internal automation move rejected");
         }
         check(Commands::mediaHash(media) == hash, "all moves preserve original media SHA256");
-        Json report{{"test", "U-P0-AUTOMATION-CLIPS-MOVE-01"},
+        Json report{{"test", guiOnly ? "U-P0-AUTOMATION-CLIPS-MOVE-GUI-01" : "U-P0-AUTOMATION-CLIPS-MOVE-01"},
+                    {"matrix_executed", !guiOnly},
                     {"result", "passed"},
                     {"checks", checks},
                     {"curve_budget", 4e-7},
-                    {"curve_max_normalized_error", maxCurve},
+                    {"curve_max_normalized_error", guiOnly ? Json(nullptr) : Json(maxCurve)},
                     {"pcm_budget", 2e-5},
-                    {"pcm_max_error", maxPCM},
+                    {"pcm_max_error", guiOnly ? Json(nullptr) : Json(maxPCM)},
                     {"demo", demo.getFullPathName().toStdString()}};
         if (argc > 1)
         {

@@ -1394,6 +1394,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
                     throw std::runtime_error("unhandled command");
             }
         }
+        refreshLinkedCompLayouts(plan.at("operations"));
         settleClipOrder(*edit);
         captureRoutingAssignments();
         restoreRoutingAssignments();

@@ -194,9 +194,16 @@ public:
             b->setEnabled(editable);
         for (auto* field : {&start, &end, &moveTo, &gain, &fadeIn, &fadeOut})
             field->setEnabled(editable);
+        const bool movable = !facts.is_null() && facts.value("editable_audio", false) && !playing &&
+                             !facts.value("move_locked", facts.value("locked", false));
+        move.setEnabled(movable);
+        moveTo.setEnabled(movable);
+        move.setButtonText(!facts.is_null() && facts.value("linked_comp", false) ? text("移动关联 Comp")
+                                                                                 : text("应用移动"));
         inCurve.setEnabled(editable);
         outCurve.setEnabled(editable);
-        lock.setEnabled(!facts.is_null() && !playing && facts.value("editable_audio", false));
+        lock.setEnabled(!facts.is_null() && !playing && facts.value("editable_audio", false) &&
+                        !facts.value("linked_comp", false));
         lock.setButtonText(!facts.is_null() && facts.value("locked", false) ? text("解锁") : text("锁定"));
         close.onClick = [this]
         {

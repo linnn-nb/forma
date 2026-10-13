@@ -93,7 +93,15 @@ void Workspace::executeEditCommand(int id)
             if (clips.size() == 1)
                 showSpotPlacement(clips[0]["id"].get<std::string>());
             else
-                message(text("Spot 模式已启用 · 选择一个音频或 MIDI 片段后按 F3 打开置入对话框"));
+            {
+                const auto anchor =
+                    std::find_if(clips.begin(), clips.end(), [&](const Json& clip)
+                                 { return clip["id"] == selectedClip && clip.value("linked_comp", false); });
+                if (anchor != clips.end())
+                    showSpotPlacement(selectedClip);
+                else
+                    message(text("Spot 模式已启用 · 选择一个音频或 MIDI 片段后按 F3 打开置入对话框"));
+            }
         }
         else
             message(text(id == editCommand::shuffle ? "Shuffle 涟漪编辑已启用 · 删除选中片段会推进后续片段"
@@ -342,7 +350,7 @@ void Workspace::executeEditCommand(int id)
                                                                         : 4800);
                 for (const auto& c : clips)
                 {
-                    if (c.value("locked", false) ||
+                    if (c.value("move_locked", c.value("locked", false)) ||
                         !((c["kind"] == "audio" && c.value("editable_audio", false)) ||
                           (c["kind"] == "midi" && c.value("sample_mapping_available", false))))
                         throw std::runtime_error(

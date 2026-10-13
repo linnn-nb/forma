@@ -1,3 +1,5 @@
+> P1-LINKED-COMP-MOVE-01（2026-10-13）：v1 关联 Comp 整组移动行为已迁到 Tracktion；原命令层 clip.move 展开完整集合，GUI Grabber/Smart、Nudge、Spot 共用。代码 EditGroupCommands/PlaylistEditing/EngineCommands/ui，测试 LinkedCompMoveChecks/PlaylistEditingTests 与受影响回归，证据 evidence/P1/summary.md。真实 PCM、持久 Undo 和原生组件已测；Mac 锁定，实体鼠标、Pro Tools 实机对照、PDC、区间试听及交叉淡化仍未验收。状态：部分实现；无新增外部依赖，此表仍是参考清单。
+
 > P1进度（2026-10-13）：关联多轨候选、整组播放/恢复/解除已接入L1；v1 LinkedCompTests作为行为规格。整组移动、交叉淡化/PDC组合及完整实体操作仍未完成；此表仍是工作流参考，不是全量对齐声明。
 
 > 2026-10-13多来源候选：继续作为工作流参考，不是全量对齐验收。v1 COMP-02中的多来源选段、非活动候选、整任务Undo和媒体保持已迁到Tracktion；代码PlaylistEditing/PlaylistPanel，105专项与341相关检查通过，证据evidence/P1。状态：部分实现；关联多轨、逐段区间试听/实体拖选和Agent候选资格尚缺，无新外部依赖，不宣称Pro Tools实机等价。

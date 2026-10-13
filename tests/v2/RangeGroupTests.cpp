@@ -1,4 +1,5 @@
 #include "Workspace.h"
+#include "OwnedEditFixture.h"
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
@@ -225,6 +226,7 @@ int main(int argc, char** argv)
                 fractional(*child);
         };
         fractional(*xml);
+        discardDerivedFixtureHistory(*xml);
         check(found, "owned 44.1k source receives fractional project-sample offset");
         auto fractionalFile = folder.getChildFile("Fractional.tracktionedit");
         check(xml->writeTo(fractionalFile), "fractional fixture written to a separate file");

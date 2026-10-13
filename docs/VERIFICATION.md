@@ -1,3 +1,9 @@
+# P1 关联 Comp 整组移动（2026-10-13）
+
+Release/固定本地 deep-strict 签名通过；8 个完整受影响套件与 GUI 局部检查共 16,050 项通过，无 JUCE 断言。关联全组、Edit 组、自动化、Nudge/Spot/草稿拖动、一笔 Undo/Redo 与重开保存均在实际 Tracktion 对象/PCM范围验证；Comp PCM 最大误差 1.1920928955078125e-7，既定 2e-6 / 10 秒渲染预算不变。[完整范围及失败记录](../evidence/P1/summary.md)。
+
+完整 automation.move 矩阵在原 180 秒预算下超时，未通过；单独 GUI-only 26 项不替代它。Mac 锁定，实体当前构建未验；完整 P1、性能 A、硬件/PDC/耐久保留。此结果不是全仓回归或 Pro Tools 实机等价声明。
+
 # P1 关联多轨 Comp（2026-10-13）
 
 Release/固定本地deep-strict签名通过；8组605项最终通过，121.629秒（各最终子套件合计，非全仓回归）。Playlist173、录音就绪45、Loop51、Punch124、History65、Clip58、Scope38、Hierarchy51。真实相反极性PCM经选段/静音区间/解除关联最大误差1.1920928955078125e-7，容差2e-6不变；单成员选择整组、交叠组恢复第三轨及Scope、保存重开与持久Undo通过。详见[P1证据](../evidence/P1/summary.md)。

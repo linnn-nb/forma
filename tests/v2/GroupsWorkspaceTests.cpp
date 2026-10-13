@@ -1,4 +1,5 @@
 #include "Workspace.h"
+#include "OwnedEditFixture.h"
 #include <nativedaw/v2/McpSession.h>
 #include <fstream>
 #include <iostream>
@@ -536,6 +537,7 @@ int main(int argc, char** argv)
                 downgrade(*child);
         };
         downgrade(*legacyXML);
+        discardDerivedFixtureHistory(*legacyXML);
         check(legacyXML->writeTo(legacy), "owned schema1 fixture written without touching original session");
         {
             Workspace restored(false, std::make_unique<Storage>(dir.getChildFile("legacy-reopen")));
@@ -577,6 +579,7 @@ int main(int argc, char** argv)
                     corrupt(*child);
             };
             corrupt(*migratedXML);
+            discardDerivedFixtureHistory(*migratedXML);
             check(migratedXML->writeTo(bad), "owned malformed group fixture written");
             const auto beforeBad = owner.query();
             fails([&] { owner.open(bad); }, "malformed group state rejected before adopting session");

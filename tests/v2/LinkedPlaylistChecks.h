@@ -137,8 +137,9 @@ void testLinkedPlaylists(const juce::File& root)
     run(c, "track.mute", {{"track", tb}, {"enabled", false}});
     const auto playingA = lists(c, ta), playingB = lists(c, tb);
     const auto memberClip = item(c, ta, ids[ta])["clips"][0]["id"];
-    rejects([&] { run(c, "clip.move", {{"clip", memberClip}, {"position_samples", 13000}}); },
-            "individual timing edit cannot break linked phase");
+    testLinkedCompMoves(w, root, ta, tb, ids, reference);
+    rejects([&] { run(c, "clip.trim", {{"clip", memberClip}, {"start_samples", 13000}, {"end_samples", 60000}}); },
+            "individual timing edit still requires explicit detach");
     rejects([&] { run(c, "track.delete", {{"track", tb}, {"connections", "disconnect"}}); },
             "linked member cannot be silently deleted");
     check(lists(c, ta) == playingA && lists(c, tb) == playingB, "rejected member edits preserve complete set");

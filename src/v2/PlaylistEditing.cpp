@@ -213,11 +213,30 @@ void Commands::registerPlaylistCommands(Json& r)
     for (auto cmd : {"playlist.comp.restore", "playlist.comp.detach"})
         add(cmd, {{"playlist", string}}, {"playlist"});
 }
-bool Commands::activePlaylistLocked(te::AudioTrack& t) const
+bool Commands::activePlaylistLocked(te::AudioTrack& t, bool moving) const
 {
     auto lists = t.state.getChildWithName("NDAW_PLAYLISTS");
     auto list = lists.getChildWithProperty("id", lists.getProperty("active"));
-    return bool(list.getProperty("locked", false)) || !str(list, "linked_set").empty();
+    return bool(list.getProperty("locked", false)) || (!moving && !str(list, "linked_set").empty());
+}
+// Commit calls this only after the complete sealed move Plan has passed validation
+// and all pieces moved. The manifest belongs to the same native Undo transaction.
+void Commands::refreshLinkedCompLayouts(const Json& ops)
+{
+    std::set<std::string> sets;
+    for (const auto& op : ops)
+        if (op.at("command") == "clip.move")
+            if (auto* clip = audioClip(op.at("args").at("clip")))
+                if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
+                {
+                    const auto list = playlist_links::active(*owner);
+                    const auto set = str(list, "linked_set");
+                    if (!set.empty() && sets.insert(set).second)
+                        for (auto [member, candidate] : playlist_links::members(*edit, list))
+                            candidate.setProperty("linked_layout",
+                                                  juce::String(playlist_links::layout(*member, candidate).dump()),
+                                                  &edit->getUndoManager());
+                }
 }
 Json Commands::queryPlaylists(const std::string& id) const
 {
@@ -307,6 +326,41 @@ std::string Commands::playlistMediaFingerprint(const Json& a) const
 Json Commands::validatePlaylistPlan(const Json& ops) const
 {
     Json diff = Json::array();
+    std::map<std::string, int64_t> moves;
+    std::set<std::string> movedSets;
+    for (const auto& op : ops)
+        if (op.at("command") == "clip.move")
+            if (auto* clip = audioClip(op.at("args").at("clip")))
+                if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
+                    if (!str(playlist_links::active(*owner), "linked_set").empty())
+                        require(moves.emplace(op.at("args").at("clip"), op.at("args").at("position_samples")).second,
+                                "duplicate linked Comp move in one transaction");
+    for (const auto& [id, position] : moves)
+        if (auto* clip = audioClip(id))
+            if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
+            {
+                const auto list = playlist_links::active(*owner);
+                const auto set = str(list, "linked_set");
+                if (set.empty() || !movedSets.insert(set).second)
+                    continue;
+                const auto delta = position - std::llround(clip->getPosition().getStart().inSeconds() * 48000.);
+                for (auto [member, candidate] : playlist_links::members(*edit, list))
+                {
+                    require(playlist_links::active(*member) == candidate && !activePlaylistLocked(*member, true),
+                            "linked Comp member is inactive or locked");
+                    require(Json::parse(str(candidate, "linked_layout")) == playlist_links::layout(*member, candidate),
+                            "linked Comp geometry changed outside its transaction");
+                    for (auto* piece : member->getClips())
+                    {
+                        const auto peer = piece->itemID.toString().toStdString();
+                        require(moves.contains(peer) &&
+                                    moves.at(peer) -
+                                            std::llround(piece->getPosition().getStart().inSeconds() * 48000.) ==
+                                        delta,
+                                "move must include every linked Comp piece with the same sample offset");
+                    }
+                }
+            }
     if (std::any_of(ops.begin(), ops.end(), [](const Json& op) { return op.at("command") == "track.delete"; }))
         for (const auto& change : validateHierarchyPlan(ops))
             if (change["command"] == "track.delete")
@@ -330,7 +384,7 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                 if (a.contains("clip") && cmd != "clip.copy")
                     if (auto* c = audioClip(a["clip"]))
                         if (auto* t = dynamic_cast<te::AudioTrack*>(c->getTrack()))
-                            require(!activePlaylistLocked(*t), "active Playlist is locked");
+                            require(!activePlaylistLocked(*t, cmd == "clip.move"), "active Playlist is locked");
             }
             continue;
         }

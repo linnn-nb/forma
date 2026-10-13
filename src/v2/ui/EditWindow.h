@@ -773,8 +773,10 @@ public:
                     else if (gesture == EditingModel::Gesture::select)
                         cursor = juce::MouseCursor::IBeamCursor;
                     else if (gesture == EditingModel::Gesture::move &&
-                             (audio || (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
-                                        !clip.value("locked", false))))
+                             ((clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                               !clip.value("move_locked", clip.value("locked", false))) ||
+                              (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
+                               !clip.value("locked", false))))
                         cursor = juce::MouseCursor::DraggingHandCursor;
                     else if ((audio ||
                               (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
@@ -1011,6 +1013,9 @@ public:
                             selectClip(c["id"]);
                     }
                     if ((audio ||
+                         (c["kind"] == "audio" && c.value("editable_audio", false) &&
+                          !c.value("move_locked", c.value("locked", false)) &&
+                          toolGesture == EditingModel::Gesture::move) ||
                          (c["kind"] == "midi" && c.value("sample_mapping_available", false) &&
                           !c.value("locked", false) &&
                           (toolGesture == EditingModel::Gesture::move || toolGesture == EditingModel::Gesture::left ||

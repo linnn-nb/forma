@@ -204,7 +204,7 @@ void Workspace::showSpotPlacement(const std::string& clipID)
                 for (const auto& candidate : track["clips"])
                     if (candidate.value("id", std::string{}) == clipID)
                         clip = candidate;
-            if (clip.is_null() || clip.value("locked", false) ||
+            if (clip.is_null() || clip.value("move_locked", clip.value("locked", false)) ||
                 !((clip.value("kind", std::string{}) == "audio" && clip.value("editable_audio", false)) ||
                   (clip.value("kind", std::string{}) == "midi" && clip.value("sample_mapping_available", false))))
                 throw std::runtime_error("Spot requires one unlocked, supported audio or MIDI clip");

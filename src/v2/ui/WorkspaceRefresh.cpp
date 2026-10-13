@@ -46,7 +46,7 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
     Json linked;
     try
     {
-        linked = commands.editGroupClipSelection(id);
+        linked = commands.editGroupClipSelection(id, true);
     }
     catch (const std::exception& e)
     {

@@ -796,12 +796,12 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     {
         try
         {
-            const auto linked = commands.editGroupClipSelection(id);
+            const auto linked = commands.editGroupClipSelection(id, mode == "move");
             for (const auto& object : linked)
                 for (const auto& track : facts["tracks"])
                     for (const auto& clip : track["clips"])
                         if (clip["id"] == object["id"] &&
-                            (clip.value("locked", false) ||
+                            (clip.value(mode == "move" ? "move_locked" : "locked", clip.value("locked", false)) ||
                              !((clip["kind"] == "audio" && clip.value("editable_audio", false) &&
                                 clip.value("source_frames", int64_t(0)) > 0 &&
                                 clip.value("source_sample_rate", 0.) > 0) ||

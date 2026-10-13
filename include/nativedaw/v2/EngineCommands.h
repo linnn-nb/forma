@@ -147,7 +147,7 @@ public:
     Json nativeStateControl(const std::string&, const Json&);
 
     Json editGroupTracks(const Json& seeds) const;
-    Json editGroupClipSelection(const std::string& clip) const;
+    Json editGroupClipSelection(const std::string& clip, bool wholeLinkedComp = false) const;
     Json midiClipTrimExtent(const std::string&, int64_t, int64_t, const std::string&, uint64_t) const;
     Json midiClipMoveExtent(const std::string&, int64_t, const std::string&, uint64_t) const;
     // Read-only planner: precise range edits resolve current Edit groups before producing ordinary Plan operations.
@@ -395,7 +395,8 @@ private:
     static void registerPlaylistCommands(Json&);
     std::string playlistMediaFingerprint(const Json&) const;
     void executePlaylistOperation(const std::string&, const Json&, Json&);
-    bool activePlaylistLocked(te::AudioTrack&) const;
+    bool activePlaylistLocked(te::AudioTrack&, bool moving = false) const;
+    void refreshLinkedCompLayouts(const Json&);
     void selectPlaylist(te::AudioTrack&, const std::string&);
     void makeLoopPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
     juce::ValueTree ensurePlaylists(te::AudioTrack&);

@@ -1,3 +1,38 @@
+# P1：关联 Comp 整组移动（2026-10-13）
+
+结论：Release、固定本地签名 deep/strict 校验通过。关联 Comp 通过现有 Grabber/Smart 移动区、Nudge、F3 Spot 和可收起检查器接入；全部成员/片段及启用 Edit 组共享位移与一次 Undo/Redo，保存重开保持原生历史。8 个完整受影响套件与 GUI 局部检查合计 16,050 项通过，无 JUCE 断言；完整自动化矩阵超过既定 180 秒，未通过，完整 P1 仍未完成。
+
+亲手试：重启当前 Forma.app，打开本轮 fixture/Linked-Playing.tracktionedit（路径见下方报告）；主时间线拖动一个关联片段或按逗号/句号，全部段共同移动。F3 输入小节/拍后置入，Command Z / Shift Command Z 撤销与重做；保存副本后重开再撤销。Option L 的解除关联使独立修剪重新可用。快捷键沿用现有命令注册表并可改键。
+
+代码：EditGroupCommands::editGroupClipSelection 的移动查询展开完整关联集及每段实际 Edit 组；MixGroupCommands 在没有普通组时仍展开 Comp。ClipCommands 暴露 move_locked/linked_comp，保留独立编辑保护；PlaylistEditing 在提交前核对全部成员相同位移、真实锁与原几何，EngineCommands 在同一事务更新 linked_layout。GUI GroupedClipDraft 只绘制草稿，现有拖动/Nudge/Spot/检查器只提交 Plan。范围 Nudge 不移动选区外关联段，并包含间接成员轨完整选区的真实自动化。没有新引擎、依赖、SDK 补丁或 RT 改动。
+
+| 套件 | 检查数 | 秒 | 结果 |
+|---|---:|---:|---|
+| ndaw_playlist_editing_tests | 227 | 15.448 | 通过 |
+| ndaw_group_transform_tests | 99 | 未单独计时 | 通过 |
+| ndaw_groups_tests | 128 | 10.622 | 通过 |
+| ndaw_range_group_tests | 72 | 6.913 | 通过 |
+| ndaw_range_nudge_tests | 15337 | 70.237 | 通过 |
+| ndaw_clip_tests | 58 | 11.747 | 通过 |
+| ndaw_scope_tests | 38 | 3.294 | 通过 |
+| ndaw_persistent_history_tests | 65 | 34.955 | 通过 |
+| automation GUI-only（非完整矩阵） | 26 | 13.813 | 通过 |
+| 完整 automation.move 矩阵 | 未完成 | 180.006 / 180 秒上限 | 超时，未通过 |
+
+真实声音：48 kHz/PCM24 相反极性源，每个关联成员有两个离散段；整体 +1000 采样后仍相消，单轨实际渲染等于原非零参考按选段移位，空白保持静音，继承 gain/fade/source offset 不变。最大误差 1.1920928955078125e-7，既定 2e-6 容差与每次渲染 10 秒预算保持。所有源 SHA256 不变。第三编辑组轨及三轨曲线、范围 Nudge、Scope、幂等、篡改/不一致位移/锁定/越界拒绝、保存重开一笔 Undo/Redo，以及原生拖动/按键/Spot 实际回执通过；不据此宣称硬件相位/PDC或听感通过。
+
+失败与修复：首编译早于新测试头文件写入完成而失败，文件完整后重建通过；无普通 Edit 组时旧快速路径跳过 Comp 展开，已修。自动化断言曾要求 SDK float 转回 dB 恰为 -6，改核对原生值与稳定点 ID，不放宽音频容差。旧 GroupTransform/Groups 测试手改 XML 后保留失效持久历史，正确被 saved Edit and history disagree 拒绝；测试派生文件显式去掉旧历史，原文件与生产校验不变，另检查被拒绝的文件不替换当前 Edit。相同处理用于旧范围/独立参考夹具。
+
+完整自动化旧矩阵首次执行 291.875 秒后在 GUI 拖动检查失败；原 180 秒预算没有放宽。GUI 旧测试直接写后端 UI 状态而未走刷新入口，改用真实 mouseMagnify 手势并等待视图回执，再按实际片段中心拖动，单独 26 项通过。GUI-only 报告明确 matrix_executed=false、未测音频误差为 null，不代替数值矩阵。参考求值先复用 SDK 迭代器，随后改为线性构造同密度 XML；两轮原预算执行分别在 180.009 / 180.006 秒超时；停止本轮优化并进 BACKLOG，不能标为全矩阵通过。全部曲线形状/目的地/16 采样参考密度和容差保留，未静默降低负载。
+
+Mac 锁定，当前构建重启、实体鼠标/听感未执行；旧应用进程仍可能运行，试用需重启。无新 Preview.app 或 DMG。
+
+证据：build-v2-tracktion/p1-linked-move-regression-results.json 明确 full_regression_passed=false；各子套件 p1-linked-move-*.json/.log；主构建 p1-linked-move-regression-build.log、签名 p1-linked-move-sign.log。原失败、超时及后续 GUI-only 输出分别保留，不混写成全绿。
+
+主程序 SHA256：56119e95374ab0cc66e36e6da90b226f543e9af8f40efb3223c6ed331ea2514a。当前应用仍为 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app。下一项逐段区间试听、交叉淡化；本次矩阵超时、性能 A、实体多输入/其他采样率/PDC/耐久、MIDI循环/Punch与完整 P1 差距继续保留。
+
+## 历史：关联候选与切换
+
 # P1：关联多轨 Comp（2026-10-13）
 
 结论：Release构建与固定本地deep/strict验签通过；受影响8组605项检查最终通过，0失败/0JUCE断言，各组最终执行合计121.629秒。关联候选从不同轨的明确来源、共同区间创建；保持原播放/target。选择一个成员即可切换全组，恢复原播放、解除关联、Undo/Redo与显式保存重开均接L1。完整P1尚未完成。

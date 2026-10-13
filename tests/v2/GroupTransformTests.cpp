@@ -506,7 +506,27 @@ int main(int argc, char** argv)
         check(found, "actual audio clip source offset located");
         auto fractionalFile = dir.getChildFile("Fractional.tracktionedit");
         check(xml->writeTo(fractionalFile), "separate fractional fixture saved without original overwrite");
-        opened.open(fractionalFile);
+        const auto intact = opened.query()["tracks"];
+        bool historyRefused = false;
+        try
+        {
+            opened.open(fractionalFile);
+        }
+        catch (const std::exception& error)
+        {
+            historyRefused = std::string(error.what()) == "saved Edit and history disagree";
+        }
+        check(historyRefused && opened.query()["tracks"] == intact,
+              "hand-edited timing with stale persistent history is rejected without replacing the live Edit");
+        // This is a new test-only media-time fixture, not an edit of the saved history.
+        // Derive an explicitly history-free file instead of weakening production validation.
+        auto* metadata = xml->getChildByName("NATIVEDAW");
+        auto* history = metadata ? metadata->getChildByName("PERSISTENT_HISTORY") : nullptr;
+        check(history != nullptr, "owned fractional fixture's stale history located");
+        metadata->removeChildElement(history, true);
+        const auto freshFractional = dir.getChildFile("Fractional-NoHistory.tracktionedit");
+        check(xml->writeTo(freshFractional), "new fractional fixture saved with no fabricated history");
+        opened.open(freshFractional);
         const auto previous = clip(opened, 1)["source_offset_seconds"].get<double>();
         run(opened, "clip.trim", {{"clip", aID}, {"start_samples", 33600}, {"end_samples", 163200}});
         check(std::abs(clip(opened, 1)["source_offset_seconds"].get<double>() - previous - .1) <= 1e-12,

@@ -17,6 +17,11 @@ public:
         w.refresh();
         w.select(id);
     }
+    static void selectClip(ndaw::desktop::Workspace& w, const std::string& id)
+    {
+        w.refresh();
+        w.selectAudioClip(id);
+    }
     static void refresh(ndaw::desktop::Workspace& w)
     {
         w.refresh();
@@ -160,6 +165,7 @@ public:
     }
 };
 } // namespace
+#include "LinkedCompMoveChecks.h"
 #include "LinkedPlaylistChecks.h"
 int main(int argc, char** argv)
 {
