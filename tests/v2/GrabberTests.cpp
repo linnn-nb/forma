@@ -383,7 +383,8 @@ int main(int argc, char** argv)
             run(c, "track.collapsed", {{"track", folder}, {"enabled", true}});
             RecordingTestAccess::refresh(w);
             choose(w, a);
-            choose(w, m, true);
+            check(w.queryView()["object_selection"].size() == 3,
+                  "clicking an existing grouped anchor retains the already selected MIDI peer");
             const auto grouped = all(c);
             d = begin(w, a, -500);
             finish(w, d);
