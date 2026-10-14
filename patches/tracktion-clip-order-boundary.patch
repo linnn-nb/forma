@@ -41,3 +41,33 @@ index 74ec1e9..0d813e1 100644
  protected:
      /** Must be called once from the subclass constructor to init the clip owner. */
      void initialiseClipOwner (Edit&, juce::ValueTree clipParentState);
+diff --git a/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.cpp b/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.cpp
+index 8d08a57..1da635b 100644
+--- a/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.cpp
++++ b/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.cpp
+@@ -229,7 +229,10 @@ void TrackList::newObjectAdded (Track* t)
+         }
+     }
+ 
+-    triggerAsyncUpdate();
++    // Undo restores the recorded order. Re-queuing a derived sort would append
++    // an unnamed transaction later and discard the restored Redo branch.
++    if (! edit.getUndoManager().isPerformingUndoRedo())
++        triggerAsyncUpdate();
+     t->refreshCurrentAutoParam();
+ 
+     if (auto tl = t->getSubTrackList())
+diff --git a/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.h b/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.h
+index 28d4e02..6911db6 100644
+--- a/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.h
++++ b/modules/tracktion_engine/model/tracks/tracktion_TrackUtils.h
+@@ -123,6 +123,9 @@ struct TrackList    : public ValueTreeObjectList<Track>,
+     /** Sorts a list of tracks by their type, placing global tracks at the top. */
+     static void sortTracksByType (juce::ValueTree& editState, juce::UndoManager*);
+ 
++    /** Message-thread hosts call this before closing an explicit editing transaction. */
++    void flushPendingOrder() { handleUpdateNowIfNeeded(); }
++
+     //==============================================================================
+     /** @internal */
+     bool isSuitableType (const juce::ValueTree&) const override;

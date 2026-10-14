@@ -813,7 +813,7 @@ public:
                     else if (gesture == EditingModel::Gesture::select)
                         cursor = juce::MouseCursor::IBeamCursor;
                     else if (gesture == EditingModel::Gesture::move &&
-                             ((clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                             ((clip["kind"] == "audio" && clip.value("movable_audio", false) &&
                                !clip.value("move_locked", clip.value("locked", false))) ||
                               (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
                                !clip.value("locked", false))))
@@ -1090,7 +1090,7 @@ public:
                             selectClip(c["id"]);
                     }
                     if ((audio ||
-                         (c["kind"] == "audio" && c.value("editable_audio", false) &&
+                         (c["kind"] == "audio" && c.value("movable_audio", false) &&
                           !c.value("move_locked", c.value("locked", false)) &&
                           toolGesture == EditingModel::Gesture::move) ||
                          (c["kind"] == "midi" && c.value("sample_mapping_available", false) &&

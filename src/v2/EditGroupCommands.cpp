@@ -142,7 +142,7 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
             if (action == "move" && (begin < first || end > last))
                 continue;
             if (c.value(action == "move" ? "move_locked" : "locked", c.value("locked", false)) ||
-                !((c["kind"] == "audio" && c.value("editable_audio", false) &&
+                !((c["kind"] == "audio" && c.value(action == "move" ? "movable_audio" : "editable_audio", false) &&
                    !c.value("offline_clip_effects", false)) ||
                   (action == "move" && c["kind"] == "midi" && c.value("sample_mapping_available", false))))
                 throw std::runtime_error("entire range edit refused: overlapping clip is locked or unsupported");

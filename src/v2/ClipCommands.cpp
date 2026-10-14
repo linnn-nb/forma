@@ -68,7 +68,8 @@ struct Model
 {
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
-    bool locked = false, moveLocked = false, editable = true, envelopeEditable = false, inheritedFades = false;
+    bool locked = false, moveLocked = false, editable = true, movable = true, envelopeEditable = false,
+         inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
     Json fxTypes = Json::array();
     std::vector<std::string> fxIDs;
@@ -143,6 +144,13 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
     const bool editable = !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
                           !c.getWarpTime() && !clip_fx_window::exists(c.state) && !c.getIsReversed() &&
                           c.getPitchChange() == 0 && std::abs(c.getSpeedRatio() - 1) < 1e-9;
+    const bool processed = (c.getWarpTime() && warp.value("available", false)) ||
+                           elastic_state::descriptor(c.state).isValid() || clip_fx_window::exists(c.state);
+    const bool movable =
+        editable || (processed && !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
+                     !c.getIsReversed() && c.getSyncType() == te::Clip::syncAbsolute && !c.effectsEnabled() &&
+                     c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                     c.getFadeOutBehaviour() == te::AudioClipBase::gainFade);
     return {
         {"path", f.getFullPathName().toStdString()},
         {"warp", warp},
@@ -186,6 +194,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_id", c.state.getProperty("ndaw_legacy_id").toString().toStdString()},
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
+        {"movable_audio", movable},
         {"clip_fx", clip_fx_window::facts(c.state)},
         {"editable_envelope",
          editable || clip_fx_window::exists(c.state) ||
@@ -343,6 +352,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.locked = q["locked"];
                 m.moveLocked = q["move_locked"];
                 m.editable = q["editable_audio"];
+                m.movable = q["movable_audio"];
                 m.envelopeEditable = q["editable_envelope"];
                 m.inCurve = q["fade_in_curve"];
                 m.outCurve = q["fade_out_curve"];
@@ -476,7 +486,7 @@ Json Commands::validateClipPlan(const Json& ops) const
         auto& m = clips.at(id);
         const bool envelopeOnly =
             cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock" || cmd == "clip.fx.insert";
-        require(m.editable || (envelopeOnly && m.envelopeEditable),
+        require(m.editable || (cmd == "clip.move" && m.movable) || (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
         if (m.hash.empty())
         {
@@ -485,6 +495,23 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.hash = hashes.at(m.path);
         }
         require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
+        if (cmd == "clip.move")
+            if (auto* source = audioClip(id))
+            {
+                require(a["position_samples"].get<int64_t>() / 48000. + source->getPosition().getLength().inSeconds() <=
+                            te::Edit::maximumLength,
+                        "move exceeds actual native duration boundary");
+                if (!m.editable)
+                {
+                    warp_state::validate(source->state);
+                    elastic_state::validate(source->state);
+                    clip_fx_window::validate(source->state);
+                    for (const char* node : {"NDAW_WARP", "NDAW_ELASTIC_PROXY", "NDAW_CLIPFX_WINDOW"})
+                        if (auto provenance = source->state.getChildWithName(node); provenance.isValid())
+                            require(provenance["media_hash"].toString().toStdString() == m.hash,
+                                    "processed move source media changed");
+                }
+            }
         require(!(cmd == "clip.move" ? m.moveLocked : m.locked) || cmd == "clip.lock" || cmd == "clip.copy",
                 "clip is locked");
         auto before = m.facts();
@@ -645,9 +672,9 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
     };
     if (cmd == "clip.move")
     {
-        int64_t length = sample(p.getLength().inSeconds());
-        auto start = pos(a["position_samples"]);
-        c->setPosition({{start, start + dur(length)}, p.getOffset()});
+        // Clip::clipStart is a native CachedValue bound to this property. Move
+        // only that field; setPosition would recompute/round the stored duration.
+        c->state.setProperty(te::IDs::start, pos(a["position_samples"]).inSeconds(), &um);
     }
     else if (cmd == "clip.trim")
     {

@@ -22,10 +22,14 @@ namespace ndaw::v2
 static_assert(OutputProbe::capacity == te::DeviceManager::maxNumChannelsPerDevice);
 namespace
 {
-// Drain only the SDK's pending chronological clip sort, never the message queue.
+// Drain only native derived ordering, never the message queue.
 // Sorting must belong to the originating Plan before JUCE Undo/Redo closes it.
 void settleClipOrder(te::Edit& edit)
 {
+    edit.getTrackList().flushPendingOrder();
+    for (auto* track : te::getAllTracks(edit))
+        if (auto* children = track->getSubTrackList())
+            children->flushPendingOrder();
     const auto settle = [](auto&& self, te::ClipOwner& owner) -> void
     {
         owner.flushPendingClipOrder();

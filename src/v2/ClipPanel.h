@@ -194,7 +194,7 @@ public:
             b->setEnabled(editable);
         for (auto* field : {&start, &end, &moveTo, &gain, &fadeIn, &fadeOut})
             field->setEnabled(editable);
-        const bool movable = !facts.is_null() && facts.value("editable_audio", false) && !playing &&
+        const bool movable = !facts.is_null() && facts.value("movable_audio", false) && !playing &&
                              !facts.value("move_locked", facts.value("locked", false));
         move.setEnabled(movable);
         moveTo.setEnabled(movable);

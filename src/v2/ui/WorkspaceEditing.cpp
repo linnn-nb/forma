@@ -353,7 +353,7 @@ void Workspace::executeEditCommand(int id)
                 for (const auto& c : clips)
                 {
                     if (c.value("move_locked", c.value("locked", false)) ||
-                        !((c["kind"] == "audio" && c.value("editable_audio", false)) ||
+                        !((c["kind"] == "audio" && c.value("movable_audio", false)) ||
                           (c["kind"] == "midi" && c.value("sample_mapping_available", false))))
                         throw std::runtime_error(
                             "entire nudge refused: selected clip is locked or its edit type is not yet supported");
