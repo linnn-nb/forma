@@ -1,3 +1,37 @@
+# P2 原生主流程资格收尾（2026-10-14）
+
+结论：Release与固定本地deep/strict签名通过；9套1251项在185.68秒内通过，随后偏好真实焦点快捷键修复专项44项3.76秒通过。不是全仓回归、全部P2组合、听评/耐久或发行通过。源码1ca46a5/c1d9225/8684509；当前唯一二进制SHA256 `7fba1a51c592adcae67e7ff819889269511eb01a2c995b77f610d220107cddbf`。无新DMG/预览包。
+
+| 套件 | 检查 | 秒 |
+| --- | ---: | ---: |
+| persistent_native_history | 86 | 38.29 |
+| native_ui_navigation | 73 | 4.47 |
+| native_scrub | 543 | 29.50 |
+| native_multi_scrub | 126 | 10.38 |
+| native_scrub_selection | 85 | 2.82 |
+| native_keyboard_settings | 81 | 1.51 |
+| production_chain | 91 | 12.73 |
+| stems | 123 | 82.72 |
+| preferences（后续修复前） | 43 | 3.26 |
+
+后续只修改偏好面板的键盘分发/只读目录AX与专项：44项3.76秒。原预算及PCM容差保持。上表来自已保存的同一批回归，未把后续单测冒充全批重跑。14份SDK补丁/27文件fresh apply、逐字节比对和reverse通过。
+
+实际原生Stems：Cmd O启用Open并载入自有受控工程r28→Cmd Shift Option B→四轨/含Master、1000ms尾音、新批次Physical-Stems-1014-1856→真实WAV预览→Cmd Return发布r29→Cmd Z r30/Redo r31，文件保留；Cmd S保存新副本→Cmd O重开r32→原Undo r33/Redo r34。每份双声道48k/PCM24、144000帧，SHA256匹配manifest；独立Master PCM差0，三Stem重建差2.384185791015625e-7，固定预算2e-6。交付响度不达标保持“需复核”，不是假通过。
+
+偏好实体：Cmd逗号，Scrub跟随/216px/半拍应用→独立Undo/Redo，工程r34保持；Cmd Q退出整个进程，重启空Edit采用半拍默认，原设置历史仍可撤销回off/144/四分之一拍。最后最新构建发现焦点在选择目录按钮时Cmd Return被JUCE按普通Return处理，误开选择器；增加仅面板动作的子控件KeyListener，在真实native peer和物理键盘上再次通过，目录文字AX也已能读。新验证中的原设置已还原。
+
+锁屏之后的真实缺陷：解锁后Keyboard81项通过，但ScrubSelection仍失败。facts缓存命中遗漏运行时scrub状态，导致bind取消刚开始手势；补每次只刷新Scrub状态，保持Edit revision。释放后的事务还需重新绑定Workspace，修后实际指针/设备PCM/保存重开/原UndoRedo85项通过。取消回调只排队弱引用refresh，避免bind内递归。未把失败全部归因锁屏。额外CUA拖动未得到可辨认释放回执，不计作物理Scrub通过；这一部分证据为实际组件/peer与真实DSP回归。
+
+可亲手试的Stems工程：`build-v2-tracktion/P2-Stems-3ca7d5a43f3d416286b469f0525f632c/Stems-Physical-1014-1858.tracktionedit`；同目录实际批次WAV、physical-stems-validation.json与physical-p2-actions.json。最新构建另经原生Cmd O打开P1-Production-Chain-347ab4e897db4959bd8a41e1b9804a7b/P1-Production-Chain.tracktionedit，Space走带、显式Stop恢复编辑。原测试输入设备引用缺失，录音明确禁用；需亲自选当前实体输入才可继续录音。不是新增真人演奏、主观听評或模型音频。
+
+日志：`p2-qualified-final-regression.log`、`p2-preferences-native-key-final-build.log`、`p2-preferences-native-key-regression.log`、`p2-qualified-sdk-replay.json`和各套JSON均在build-v2-tracktion。保留p2-unlocked-gui-regression、p2-scrub-cache-regression的失败，以及p2-scrub-release-regression的修复回执。首次新增焦点测试误用JUCE私有getKeyListeners未编译，已改为真实窗口焦点与公开native peer路径，不使用私调回调。实体Stems首次用旧ee9b7…构建；最新偏好/打开/播放验证用上述完整SHA，音频backend未改。
+
+设备：Stems为MacBook Pro扬声器48k/512，随后重启和最新复验为外置耳机48k/512；未由工具更改设备，不当作相同条件性能对照。截图已通过CUA实际查看，没有PNG文件归档声明；音频始终本地。
+
+下一项P3：非线性SoundTouch Warp及MIDI CC曲线。已查锁定SDK Warp源渲染，发现失败时复制原文件并返回成功的原生实现；必须先修正并故障测试再接L1，当前尚无Warp功能。Stems/偏好基础路径可用；第三方/长源/并发压力/多声道、P1听评与耐久、旧性能A/自动化180秒、Windows、公证/SBOM和完整产品仍未完成。
+
+以下为历史记录。
+
 # P2 偏好设置首版（2026-10-14，锁屏期间部分资格）
 
 结论：Release和固定本地deep/strict签名通过；偏好43项/3.08秒、Stems123项/53.63秒通过。受影响测试分批10套1411项通过，另有KeyboardSettings前台焦点和ScrubSelection后段指针资格未通过，不称全量/P2验收。代码4cbdbe9/a049253；唯一应用二进制SHA256 `ee9b7b0a23ac7b742e7f52f814b5b675312244d226d941756f91e1cd43d8b086`。

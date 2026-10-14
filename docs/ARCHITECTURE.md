@@ -1,3 +1,5 @@
+2026-10-14：缓存facts命中时单独刷新Scrub运行时状态，不推进工程revision；GUI释放实际Scrub事务后刷新绑定，取消在message thread排队弱引用刷新以避免bind递归。偏好子控件只优先分发275/277/571/572面板动作，普通文本编辑/Return保持本地；只有L1保存设置。SDK14补丁保持，未改实时图。
+
 2026-10-14：AppPreferences为L1本地应用控制，不是第二工程。只在message thread读写有界配置、独立版本与64步状态历史；非阻塞进程锁+旧文件哈希+校验暂存原子替换，成功后才发布内存。损坏保留/显示不可写，核心DAW仍启动；旧Scrub布尔迁为默认值。只有L1写新Edit的UI默认，打开旧Edit保留自己的UI；GUI面板只提交类型化配置。录音/导入/WAV/Stems默认目录实际消费，MCP权限不扩，RT路径不变。资格及未通过GUI见PREFERENCES_WORKFLOW。
 
 # P2 Stems 架构增量（2026-10-14）

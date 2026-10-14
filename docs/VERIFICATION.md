@@ -1,3 +1,5 @@
+2026-10-14更新：桌面恢复可操作。9套1251项185.68秒通过，后续偏好焦点专项44项3.76秒；实体Stems发布/持久UndoRedo/四WAV核验与偏好全进程重启通过。ScrubSelection不是仅锁屏故障，缓存状态及释放后绑定修复后85项通过；额外CUA拖动未有回执，不计物理成功。准确构建/批次/时限和失败见evidence/P2/summary.md。
+
 2026-10-14：偏好专项43/3.08秒通过；10受影响套件1411项分批通过，另外KeyboardSettings焦点和ScrubSelection后段指针未通过，Mac明确锁定，实机未执行。Recovery控件按实际启用/单次通知等待后31项通过；Scrub持久Undo/Redo核心检查已验，但不以部分检查冒充整套通过。Release/本地签名、14 SDK补丁审计通过；源码4cbdbe9/a049253，日志和完整数字见evidence/P2/summary.md。
 
 2026-10-14：Stems首版最终Release/固定签名通过；10个受影响套件分两批786项/189.80秒、0断言，Stems123/45.74秒，实际合并PCM差2.384185791015625e-7、Master差0。Mute/Solo/PRE共享返回/旁链/非零选区、真实文件再解码/篡改、取消/OS写盘错误/目录竞争、原生准备/Cmd Return/上下文Esc/改键、跨重开Undo/Redo通过。一次印刻10秒预算失败保留，Utility磁盘调度修复后复测通过，时限/容差未放宽。最新实体工程打开尚无载入回执，取消后桌面接口持续超时，Stems最终键鼠验收未完成；不以自动组件替代。源码37d0a8e/966fc14/00ebdce；SDK14补丁27文件fresh apply/比对/reverse通过。完整结果见 evidence/P2/summary.md 和 STEMS_WORKFLOW.md，其他旧缺口保持。

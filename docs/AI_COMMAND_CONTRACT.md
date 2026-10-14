@@ -1,3 +1,5 @@
+2026-10-14：偏好面板子控件焦点也优先通过已注册275/277/571/572命令，实际native peer与物理Cmd Return验证；不新增Agent权限。Scrub运行时查询在缓存命中仍更新，释放事务后绑定实际Undo状态。Stems外部文件在Undo后保留的回执已实体核验。
+
 2026-10-14：应用偏好使用本地L1 preferences/configurePreferences/preferenceHistory控制（message thread）；参数为完整校验的6个字段及独立偏好revision，不纳入Edit Plan/Undo/revision，不对冻结MCP/Agent开放。UI草稿过期/原文件并发修改/写盘失败均不发布成功。Cmd逗号/Return与设置历史571/572可改键；64步历史跨软件重启，工程Undo不改变偏好。P2-PREFERENCES-01，见PREFERENCES_WORKFLOW。
 
 2026-10-14：`export.stems.publish {batch_id:string}` 为 human/local_gui、停止态、独立 Plan、medium 风险的本地外部文件操作。`prepareStemExport` 仅准备已授予本地路径的草稿，绑定 session/revision/媒体和处理链哈希；状态没有真实整批文件核验时不得提交。preview 给出之前工程记录、每个真实 WAV、范围/尾音、Mute/Solo、测量和最终路径。commit 原子独占发布新批次目录＋manifest，并原位更新 STEM_EXPORT 工程单例；一笔原生 Undo/Redo 仅恢复工程记录，外部文件保留。配置随保存重开；历史引用不会伪装成新音频核验。取消、幂等、版本/文件/目录冲突有明确回执。MCP/Agent权限不扩，测试P2-STEMS-01，见 STEMS_WORKFLOW.md。
