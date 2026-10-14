@@ -1,3 +1,5 @@
+2026-10-14：P1 制作主链路（Loop→Punch→Take/Comp→交叉淡化→导出）已实机验证，原媒体保留、事务 Undo/Redo 与重开历史可用。新增 F12 录音默认键；所有入口可改键。弹力音频菜单 Cmd Option T 接通 SoundTouch 常速伸缩/独立变调；后台准备、未就绪拒绝、Cmd Return/Undo/Redo/保存已验。Warp、带淡化/Clip FX/关联 Comp 的伸缩尚未实现；完整 P1/最终产品发布不因此完成。证据见 evidence/P1/summary.md。
+
 P1-XFADE-CLIPBOARD-01（2026-10-13）：普通时间线 Copy/Paste 保留完整过渡的可编辑配对，在目标轨创建独立 Clip/过渡身份；原曲线后续改变不影响冻结剪贴板。外边界裁切保留坡度原相位，切在过渡内时保留真实声音并明确不建立完整配对。默认 Command C/V、Command Z/Shift Command Z 均可改键；一笔粘贴和配对迁移共同撤销，保存重开保留原历史。普通及大范围预览、实际音频已测试；实机复制/粘贴/原历史恢复通过。代码与验收见 AI_COMMAND_CONTRACT、VERIFICATION、evidence/P1/summary.md。完整 P1 制作链路、实体声音及特殊速度/Warp/Clip FX 资格仍未完成。
 
 以下为历史规格与增量记录，以最新受测范围为准。

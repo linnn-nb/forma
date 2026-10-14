@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 用户于2026-10-13授权P1，替代旧暂停规则。顺序：循环录音→Punch→Take/Playlist/Comp→交叉淡化；每项须L1、Undo/Redo、保存重开、可改键。整份Playlist及时间线/局部配对复制已验，下一项完整P1制作链路；真实范围见evidence/P1/summary.md。桌面锁定只记录一次，不以组件/恒定PCM夹具代替实体听评。性能A、旧自动化超时与新多层工程旧版兼容缺口保留，不称完整P1通过。
+- 2026-10-14：P1 Loop→Punch→Take/Comp→交叉淡化→导出主链路已实机和自动通过，9套件908项；最新唯一Forma.app与本地制作工程见evidence/P1/summary.md。SoundTouch首版经L1/native后台proxy接通常速伸缩与独立变调；未就绪不得录放/导出。下一项P1窗口组合/听评收口，再P2 Sidechain；Warp和特殊映射仍未完成。M2/M3冻结，性能A/旧自动化超时/多层旧版缺口保留，不以测试输入冒充真人音乐或完整产品。
 
 - 线程目标：按 Pro Tools 的界面与交互逻辑，把 Forma 做成音乐创作者日常可用的完整 DAW（macOS）。
 - 历史U/P0试用（不是当前性能构建）：FeedbackPreview.app；完整制作工程 UP0-demo-media/UP0-current-1010-verified.tracktionedit，实录工程 count-in-native-1011/Count-in-1012-verified.tracktionedit。原生8步主流程、跨重开Undo/Redo与一小节预备拍麦克风实录已验；声学时序及新8张截图归档未完成。录音快速Redo与插件回收后曲线绑定缺陷已修。提交后暂停等试用。

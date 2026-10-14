@@ -1,3 +1,5 @@
+2026-10-14 增量：P1 主链路复用 te::Edit/录音器/Renderer，并在同一工程贯通验证。clip.elastic 仍只有 L1 改原生 Clip；SoundTouch 使用 Tracktion 后台 proxy 作业，实时图读取缓存 WaveNode。playbackPreparation 按实际缓存文件状态预检 Play/Record/Render，禁止未就绪成功回执；参数与源映射/provenance 在同一 Undo 事务。没有第二引擎或新服务。长媒体进度/失败/取消和 Warp 另列缺口，见 ELASTIC_AUDIO.md。
+
 P1 时间线复制（2026-10-13）：L1 的 ClipboardBuffer 冻结源片段、配对及恢复边界；CrossfadeEditing 将完整配对投影到实际粘贴的 Clip ID、目标 Playlist 和统一样本位移。Timeline Shuffle 的共同后缀位移同时更新配对、切点与恢复锚；不完整配对只保留源坡度。全部修改在既有 Plan/UndoManager 事务内，L5 仍只查询与提交命令。
 
 NativeAudioFades 返回脱离 Edit 的快照，裁切不压缩或清空实际相交的原坡度。原生 graph builder 在非实时准备阶段读取所有 NDAW_FADE_ORIGIN，继承包络与当前 native fade 相乘；显式 fade 重设移除所有继承层。仍是同一 Tracktion Engine、13份完整 diff 审计补丁，无新增服务或 IPC 等待。旧构建只读取首层，新多层工程的旧版回开兼容防护仍未实现。

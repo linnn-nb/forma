@@ -1,3 +1,5 @@
+2026-10-14：clip.elastic {clip,length_samples,pitch_semitones,media_hash}，单操作、human/local_gui、停止状态；单位为 48 kHz 工程采样和半音。L1 校验源哈希、锁、原始源跨度、0.5–2 倍原速与 ±12 半音；实际 float 音高精度在预览体现。参数设置/provenance 一笔 Undo，保存重开保留。设置回执不等于缓存或音频已验证；缓存未可读时录放/导出明确失败。MCP/Agent 权限范围未扩展。P1 一处转场一笔事务，多选段 Comp 一笔事务；交错的人类混音不能被过期 Undo 擦除。测试 ProductionChainTests/ElasticTests，证据见 evidence/P1/summary.md。
+
 P1-XFADE-CLIPBOARD-01（2026-10-13）：既有音频/时间线复制包冻结 `crossfades` 与 `unpaired_crossfades`，原始源快照、完整配对及恢复边界计入8MiB预算。原命令的 `crossfade_changes` 预览声明实际目标、成员、样本位移、曲线和新身份策略；完整提交回执返回真实新过渡ID。一个 Plan 一笔 Undo；重试不重复对象，保存重开保留原历史。完整过渡才重建配对，坡度内切片声明仅保留实际源包络；未知速度淡化或恢复范围不满足资格时拒绝。GUI/可改键复用既有 Copy/Paste 入口；MCP/Agent 授权不扩展。代码 CrossfadeEditing.cpp、ClipboardCommands.cpp、MidiClipClipboard.cpp、ClipCommands.cpp；测试 CrossfadeClipboardTests.cpp，证据 evidence/P1/summary.md。
 
 P1-CROSSFADE-COPY-01（2026-10-13）：现有human playlist.create预览新增crossfade_copies，列出源配对/成员/区间/曲线和新身份策略；提交返回新Playlist及crossfade对象。一个Plan一笔事务，重试复用回执；新Clip/过渡ID和边界快照随保存历史恢复。可改键516/523和GUI复用同一L1，不新增Agent权限。代码CrossfadeEditing.cpp/PlaylistEditing.cpp，验证CrossfadeTests.cpp及evidence/P1/summary.md。

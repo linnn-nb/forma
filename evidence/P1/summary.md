@@ -1,3 +1,17 @@
+## 2026-10-14 最终结果：P1 制作主链路与首版伸缩
+
+- 最新 Release 构建与固定本地签名 deep/strict 验证通过；9 个受影响套件共 908 项、0 JUCE assertion。8 套主批次 92.06 s（每套原 120 s 预算），clip 58 项另跑 10.53 s。保留示例路径后 production_chain 再跑通过，91 项；没有全仓回归或耐久通过声明。输出索引 `build-v2-tracktion/p1-chain-current-results.json`，原始测试日志 `p1-final-test.log` / `p1-clip-final-test.log` / `p1-retained-demo-test.log`。
+- **真实实体麦克风**：MacBook Pro 麦克风 → Input 1、48 kHz、512 帧、外置耳机输出、监听 Off。Loop 连续源 630741 帧，6 个完整两秒 Take + 54741 帧尾段；默认选尾段（超过半圈），Option [ 选 Take 6。Loop 整次 Cmd Z/Redo 已验。随后 0.5–1.5 s Punch 自动停止、整笔 Undo/Redo；再以 200 ms 前后卷补录供淡化使用。新 Comp 复制三片段 Punch 并保持原 Playlist，选择用于播放；两处 50 ms 转场（0.5 s 等功率、1.5 s 线性）分别以 Ctrl Cmd F / Cmd Return 提交，最后一处撤销、重做。
+- 实体 Cmd S 保存、Cmd O 重开、原最后交叉淡化再次 Cmd Z/Redo、Cmd Option B 二次导出。两份 WAV 均为 96000 帧、48 kHz、24-bit、双声道，解码 PCM 逐字节一致；PCM SHA256 `3c8fc81c512a903436f62d9413cc59ac7c7c36bc2ed470b3760e9cd4a9879151`。工程过渡 1040/1041、成员 1037/1038/1039 和 Comp 身份一致。实体 Space 已驱动实际设备走带；环境录音不是音乐听评。
+- 实体工程 `build-v2-tracktion/P1-Microphone-Chain/P1-Microphone-Chain-1014.tracktionedit`；导出 `P1-Microphone-Final-1014.wav` / `P1-Microphone-Reopened-1014.wav`；校验 `physical-validation.json`、重新打开后的只读实际查询 `reopened-physical-query.json` 位于同目录。没有上传音频。
+- **可试听的受控音乐示例**：`build-v2-tracktion/P1-Production-Chain-347ab4e897db4959bd8a41e1b9804a7b/P1-Production-Chain.tracktionedit`、`04-final.wav`。ProductionChainTests 将两路带包络的旋律/节奏信号送入生产录音器，完成 Loop → 双轨 Punch → 三个来源选段 Comp → 两处等功率转场 → 导出 → 保存/重开/快捷键 Undo/Redo/再导出，PCM 最大差 0，全部源哈希保持。它是明确标注的测试输入，不冒充真人演奏或模型作品。
+- **SoundTouch**：ElasticTests 85 项；实际原生渲染的 2 s → 1/3/4 s 保音高、独立 +7/-5 半音均在固定 1 Hz 预算内，立体声比例/相关度、非零源偏移、源哈希、预览、native 按钮、快捷键和跨重开 Undo/Redo/PCM 通过。初次差异缺轨道被提交拒绝；随后同步导出阻塞后台 proxy 导致原 10 s 超时，修为原生后台 proxy + 真实 readiness 预检，预算未降低。详见 docs/ELASTIC_AUDIO.md。
+- 最新正式窗口已实际打开上述音乐工程，用 Cmd Option T 将无淡化 Take 1 从 4 s 改成 6 s、Cmd Return 提交；Cmd Z 重开面板显示 4000 ms，Redo 显示 6000 ms/0 半音。另存 `build-v2-tracktion/P1-Production-Chain-347ab4e897db4959bd8a41e1b9804a7b/P1-Music-Elastic-Demo.tracktionedit`，实际导出 `P1-Music-Stretched-6s.wav`：288000 帧、-24.30 LUFS-I。已查看完整 Edit 实体截图：轨头、增益/声像、真实波形、时间线与检查器可见；此前白屏截图未据此归因为产品错误。PNG 文件归档与完整窗口组合视觉/人工听评仍未完成。
+- 唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，当前二进制 SHA256 `431c5c04c97a3beb4f7444bfa015c348fcf7746f1329aeab38458022f61f3263`。本轮未生成 DMG 或新预览包。固定本地签名不是 Developer ID 公证。
+- P1 主链路已跑通；完整 P1 发布验收仍有实体多输入、听评/完整视觉/耐久等缺口。伸缩目前限定常速采样基准、无淡化/来源包络/Clip FX/关联 Comp，Warp 未实现；短源准备测试不是长源实时资源预算通过。旧性能 A（主线程 15.84% >15%）、180 s 自动化矩阵超时、多层工程旧版兼容缺口保留。
+
+以下为历史记录，以本轮实际受测范围为准。
+
 ## 2026-10-14 连续制作链路
 
 - `forma_production_chain`：91 项检查通过，12.12 s / 120 s 固定预算。两路受控音乐信号进入原生录音写盘，连续 Loop 两整轮与尾段 → 同工程双轨 Punch → 三选段、多来源候选 Comp → 两处 50 ms 等功率交叉淡化 → 4 s 立体声 WAV → 保存重开 → 键盘 Undo/Redo → 再导出。两次完整 PCM 最大误差 0，原录音哈希不变。

@@ -1,3 +1,5 @@
+2026-10-14：P1 主链路已在真实麦克风与受控双轨音乐输入跑通；9 套件 908 项、0 JUCE assertion。实体 Loop/Punch Undo/Redo、Comp 转场、快捷键、保存重开及二次导出 PCM 一致；首版 SoundTouch 85 项及真实窗口 4→6 s/Undo/Redo/导出已验。Release/固定签名通过。完整 P1 发布、Warp、听评/窗口组合、旧性能及自动化超时仍未通过。路径、测量、预算、失败修复见 evidence/P1/summary.md、docs/ELASTIC_AUDIO.md。
+
 P1-XFADE-CLIPBOARD-01（2026-10-13）：Release/固定本地 deep-strict 验签通过；最终受影响10套件1029项、0 JUCE assertion，分批结果为 build-v2-tracktion/p1-crossfade-clipboard-current-results.json。新 CrossfadeClipboardTests 73项/11.900秒/120秒、12份真实 WAV，完整/部分/叠加复制双声道最大差均1.1920928955078125e-7，固定2e-7容差不变；真实坡度、配对、ID、原历史和媒体哈希通过。MixedShuffleTests 修正外改夹具历史与界面绑定后153项/52.948秒/120秒通过，原事件/数值要求未降低。
 
 本轮 Mac 实体键鼠：默认 Copy/Paste、原 Undo/Redo、另存、重开、原事务再次 Undo/Redo，版本r19→r24；保存文件过渡1041/成员1039、1040/目标 main:1017/621600–626400/equal_power 核对。检查器 Source 1/4OSC 与 Source 0/空插入切换一致；三个定位输入实际改为123456后 Esc 均关闭且r24不变。CUA 原生管道曾中断，恢复后上述流程完成；整屏视觉/PNG归档与实体声音未验。应用及自有工程路径、SHA、所有边界和失败记录见 evidence/P1/summary.md。完整 P1、性能A及原180秒自动化矩阵仍未通过。
