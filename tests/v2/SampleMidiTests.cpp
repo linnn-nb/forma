@@ -202,7 +202,11 @@ void samePlayback(Commands& c, const std::string& id, const Json& expected)
               "actual native playback timestamps retain declared 1 ns budget");
     }
 }
-int renderOnset(Commands& c, const juce::File& file, int64_t start, int64_t end)
+struct RenderOnset
+{
+    int firstNonzero = -1, thresholdCrossing = -1;
+};
+RenderOnset renderOnset(Commands& c, const juce::File& file, int64_t start, int64_t end)
 {
     auto receipt = c.render(file, start, end);
     juce::AudioFormatManager formats;
@@ -213,10 +217,21 @@ int renderOnset(Commands& c, const juce::File& file, int64_t start, int64_t end)
           "native FourOsc WAV independently decoded and length checked");
     juce::AudioBuffer<float> pcm(2, int(end - start));
     check(reader->read(&pcm, 0, pcm.getNumSamples(), 0, true, true), "actual native WAV samples read");
+    RenderOnset onset;
     for (int i = 0; i < pcm.getNumSamples(); ++i)
-        if (std::abs(pcm.getSample(0, i)) > 3e-6)
-            return i;
-    throw std::runtime_error("actual instrument render silent");
+    {
+        const auto sample = pcm.getSample(0, i);
+        if (sample != 0 && onset.firstNonzero < 0)
+            onset.firstNonzero = i;
+        if (std::abs(sample) > 3e-6)
+        {
+            onset.thresholdCrossing = i;
+            break;
+        }
+    }
+    check(onset.firstNonzero >= 0 && onset.thresholdCrossing >= onset.firstNonzero,
+          "actual rendered PCM has nonzero support and separately measured significant signal");
+    return onset;
 }
 } // namespace
 int main(int argc, char** argv)
@@ -576,17 +591,28 @@ int main(int argc, char** argv)
             c.makePlan("human", Json::array({op("midi.clip.timebase.set", {{"clip", src}, {"basis", "beats"}})}));
         run(c, Json::array({op("track.gain", {{"track", owner}, {"db", -6.}})}));
         rejects([&] { c.commit(stale); }, "human edit rejects stale timebase Plan");
+        const auto finalPlayback = playback(c, src);
         auto first = renderOnset(c, dir.getChildFile("BeforeTempo.wav"), 0, 8 * 48000);
         run(c, Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 75.}})}));
+        samePlayback(c, src, finalPlayback); // Exact native scheduling is independent of oscillator phase.
         auto second = renderOnset(c, dir.getChildFile("AfterTempo.wav"), 0, 8 * 48000);
-        check(first == second, "actual native instrument onset sample unchanged by Tempo edit");
+        check(first.firstNonzero == second.firstNonzero,
+              "actual PCM first nonzero sample unchanged by Tempo edit; threshold crossing is phase dependent");
         check(juce::SHA256(fixture).toHexString() == inputHash, "original native input bytes unchanged");
         Json report{{"state", "passed"},
                     {"checks", checks},
                     {"mapping_cases", cases},
                     {"native_event_time_budget_seconds", 1e-9},
                     {"demo", demo.getFullPathName().toStdString()},
-                    {"render_onset_sample", first},
+                    {"render_onset_sample", first.firstNonzero},
+                    {"render_onsets",
+                     {{"before_first_nonzero", first.firstNonzero},
+                      {"after_first_nonzero", second.firstNonzero},
+                      {"before_threshold_crossing", first.thresholdCrossing},
+                      {"after_threshold_crossing", second.thresholdCrossing},
+                      {"threshold", 3e-6},
+                      {"definition",
+                       "channel 0 decoded PCM support; random-phase amplitude threshold reported independently"}}},
                     {"limits", "nonlooped MIDI without native quantisation/groove or nested expression; original "
                                "sequence provenance retained; Mac physical GUI/listening unexecuted"}};
         if (argc > 1)
