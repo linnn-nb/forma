@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "PlaylistLinks.h"
 #include "WarpState.h"
+#include "NativeAudioFades.h"
 namespace ndaw::v2
 {
 namespace
@@ -134,24 +135,17 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
 // Preserve source-anchored fades, using the same native graph support as Punch.
 juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
 {
-    auto copy = c.createCopy();
     const auto start = frame(c, "start"), stop = start + frame(c, "length");
     if (begin == start && end == stop)
-        return copy;
-    if (!copy.getChildWithName("NDAW_FADE_ORIGIN").isValid() &&
-        (double(c.getProperty("fadeIn")) > 0 || double(c.getProperty("fadeOut")) > 0))
-    {
-        juce::ValueTree envelope("NDAW_FADE_ORIGIN");
-        envelope.setProperty("in_origin", c.getProperty("offset"), nullptr);
-        envelope.setProperty("out_origin", double(c.getProperty("offset")) + double(c.getProperty("length")), nullptr);
-        envelope.setProperty("in_length", c.getProperty("fadeIn"), nullptr);
-        envelope.setProperty("out_length", c.getProperty("fadeOut"), nullptr);
-        copy.addChild(envelope, -1, nullptr);
-    }
-    copy.setProperty("fadeIn", 0., nullptr);
-    copy.setProperty("fadeOut", 0., nullptr);
+        return c.createCopy();
+    auto copy = native_fades::fragment(c, begin / 48000., end / 48000.);
     if (bool(copy[te::IDs::warpTime]))
+    {
+        for (auto n : copy)
+            if (n.hasType("NDAW_FADE_ORIGIN"))
+                n.setProperty("coordinate_space", "prepared-warp-output-seconds", nullptr);
         warp_state::slice(copy, begin, end);
+    }
     else
     {
         copy.setProperty("start", begin / 48000., nullptr);

@@ -44,7 +44,7 @@ inline Json fullAnchors(juce::ValueTree clip)
 }
 inline bool isWindow(juce::ValueTree clip)
 {
-    return int(clip.getChildWithName("NDAW_WARP")["schema"]) == 2;
+    return bool(clip[te::IDs::warpTime]) && int(clip.getChildWithName("NDAW_WARP")["schema"]) == 2;
 }
 inline int64_t windowStart(juce::ValueTree clip)
 {
@@ -53,6 +53,14 @@ inline int64_t windowStart(juce::ValueTree clip)
 inline int64_t windowLength(juce::ValueTree clip)
 {
     return std::llround(double(clip[te::IDs::length]) * rate);
+}
+inline bool outputEnvelopeOrigins(juce::ValueTree clip)
+{
+    for (auto n : clip)
+        if (n.hasType("NDAW_FADE_ORIGIN") &&
+            (!isWindow(clip) || n["coordinate_space"].toString() != "prepared-warp-output-seconds"))
+            return false;
+    return true;
 }
 inline double sourceAt(const Json& anchors, int64_t sample)
 {
@@ -166,6 +174,7 @@ inline void remapIDs(juce::ValueTree copy, const std::string& oldID)
         return;
     const auto old = "warp:" + oldID + ":", replacement = prefix(copy);
     auto provenance = copy.getChildWithName("NDAW_WARP");
+    provenance.setProperty("parent_clip", juce::String(oldID), nullptr);
     if (!provenance.hasProperty("origin_clip"))
         provenance.setProperty("origin_clip", juce::String(oldID), nullptr);
     for (auto m : copy.getChildWithName(te::IDs::WARPTIME).getChildWithName(te::IDs::WARPMARKERS))
@@ -197,5 +206,22 @@ inline void slice(juce::ValueTree copy, int64_t first, int64_t last)
     copy.setProperty(te::IDs::start, first / rate, nullptr);
     copy.setProperty(te::IDs::length, (last - first) / rate, nullptr);
     validate(copy);
+}
+// Live mutation is only called by L1 on the message thread, inside its existing Undo transaction.
+inline void setWindowPosition(te::WaveAudioClip& clip, int64_t start, int64_t end, int64_t begin)
+{
+    require(juce::MessageManager::getInstance()->isThisTheMessageThread(), "Warp窗口只在message thread编辑");
+    validate(clip.state);
+    require(isWindow(clip.state), "只有继承来源的Warp窗口具备原Take句柄");
+    const int64_t full = fullAnchors(clip.state).back()["clip_time_samples"];
+    require(start >= 0 && end > start && begin >= 0 && end - start <= full - begin, "Warp交叉淡化越出真实来源Take句柄");
+    auto p = clip.state.getChildWithName("NDAW_WARP");
+    auto& um = clip.edit.getUndoManager();
+    p.setProperty("window_start_samples", juce::int64(begin), &um);
+    p.setProperty("window_length_samples", juce::int64(end - start), &um);
+    clip.setPosition(
+        {{tracktion::TimePosition::fromSeconds(start / rate), tracktion::TimePosition::fromSeconds(end / rate)},
+         tracktion::TimeDuration::fromSeconds(double(p["source_start_seconds"]) + begin / rate)});
+    validate(clip.state);
 }
 } // namespace ndaw::v2::warp_state

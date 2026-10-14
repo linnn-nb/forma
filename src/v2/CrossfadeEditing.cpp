@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
 #include "PlaylistLinks.h"
+#include "WarpState.h"
 namespace ndaw::v2
 {
 namespace
@@ -25,6 +26,27 @@ std::string text(juce::ValueTree n, const char* key)
 juce::ValueTree records(te::AudioTrack& t)
 {
     return t.state.getChildWithName("NDAW_CROSSFADES");
+}
+std::set<std::string> promotedClips(te::Edit& edit, const Json& op)
+{
+    std::set<std::string> result;
+    if (op["command"] != "playlist.promote")
+        return result;
+    const auto& a = op["args"];
+    for (auto* t : te::getAudioTracks(edit))
+        if (t->itemID.toString().toStdString() == a["track"].get<std::string>())
+        {
+            auto lists = t->state.getChildWithName("NDAW_PLAYLISTS");
+            auto target = (!lists.isValid() && a["target"] == "main:" + a["track"].get<std::string>()) ||
+                                  text(lists, "active") == a["target"].get<std::string>()
+                              ? t->state
+                              : lists.getChildWithProperty("id", juce::String(a["target"].get<std::string>()));
+            for (auto c : target)
+                if (c.hasType(te::IDs::AUDIOCLIP) && frame(double(c["start"])) < a["end_samples"].get<int64_t>() &&
+                    frame(double(c["start"]) + double(c["length"])) > a["start_samples"].get<int64_t>())
+                    result.insert(text(c, "id"));
+        }
+    return result;
 }
 juce::ValueTree xfRecord(te::AudioTrack& t, const std::string& left, const std::string& right)
 {
@@ -51,7 +73,7 @@ void qualify(te::WaveAudioClip& c)
                 c.getSpeedRatio() == 1. && c.getSyncType() == te::Clip::syncAbsolute,
             "Crossfade requires absolute audio; loop/pitch/group is not qualified");
     require(!c.getWarpTime() || (!c.effectsEnabled() && c.state.getChildWithName("NDAW_WARP").isValid() &&
-                                 !c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid()),
+                                 warp_state::outputEnvelopeOrigins(c.state)),
             "Warp crossfade requires explicit native mapping without inherited source envelopes");
     require(c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                 c.getFadeOutBehaviour() == te::AudioClipBase::gainFade,
@@ -72,7 +94,15 @@ juce::ValueTree edge(te::WaveAudioClip& c, bool left)
 void restoreEdge(te::WaveAudioClip& c, juce::ValueTree before, bool left, juce::UndoManager& um)
 {
     const auto p = c.getPosition();
-    if (left)
+    if (c.getWarpTime() && warp_state::isWindow(c.state))
+    {
+        const int64_t start = left ? frame(p.getStart().inSeconds()) : frame(double(before["start"]));
+        const int64_t end =
+            left ? frame(double(before["start"]) + double(before["length"])) : frame(p.getEnd().inSeconds());
+        warp_state::setWindowPosition(c, start, end,
+                                      warp_state::windowStart(c.state) + start - frame(p.getStart().inSeconds()));
+    }
+    else if (left)
         c.setPosition(
             {{p.getStart(), tracktion::TimePosition::fromSeconds(double(before["start"]) + double(before["length"]))},
              p.getOffset()});
@@ -369,17 +399,18 @@ Json Commands::crossfadeTarget(const std::string& trackID, int64_t at) const
                     if (d >= distance)
                         continue;
                     distance = d;
+                    const bool existingOnly = (l->getWarpTime() && !warp_state::isWindow(l->state)) ||
+                                              (r->getWarpTime() && !warp_state::isWindow(r->state));
                     best = {{"track", trackID},
                             {"left", id(*l)},
                             {"right", id(*r)},
                             {"join_samples", join},
-                            {"start_samples", existing.isValid()
-                                                  ? int64_t(juce::int64(existing["start"]))
-                                                  : (l->getWarpTime() || r->getWarpTime() ? rs : join - 120)},
-                            {"end_samples", existing.isValid()
-                                                ? int64_t(juce::int64(existing["end"]))
-                                                : (l->getWarpTime() || r->getWarpTime() ? le : join + 120)},
-                            {"existing_overlap_only", l->getWarpTime() || r->getWarpTime()},
+                            {"start_samples", existing.isValid() ? int64_t(juce::int64(existing["start"]))
+                                                                 : (existingOnly ? rs : join - 120)},
+                            {"end_samples", existing.isValid() ? int64_t(juce::int64(existing["end"]))
+                                                               : (existingOnly ? le : join + 120)},
+                            {"existing_overlap_only", existingOnly},
+                            {"warp_source_handles", warp_state::isWindow(l->state) || warp_state::isWindow(r->state)},
                             {"curve", existing.isValid() ? text(existing, "curve") : "linear"},
                             {"existing", existing.isValid()}};
                 }
@@ -490,11 +521,12 @@ Json Commands::crossfadeChange(const Json& a, bool remove) const
             afterRight["source_offset_samples"] = frame(double(right["offset"]));
             afterLeft["fade_out_samples"] = frame(double(left["fadeOut"]));
             afterRight["fade_in_samples"] = frame(double(right["fadeIn"]));
-            require(
-                (!l.getWarpTime() || afterLeft["end_samples"] == geometry(l)["end_samples"]) &&
-                    (!r.getWarpTime() || (afterRight["start_samples"] == geometry(r)["start_samples"] &&
-                                          afterRight["source_offset_samples"] == geometry(r)["source_offset_samples"])),
-                "移除交叉淡化会改变Warp源映射，请先还原Warp");
+            require((!l.getWarpTime() || warp_state::isWindow(l.state) ||
+                     afterLeft["end_samples"] == geometry(l)["end_samples"]) &&
+                        (!r.getWarpTime() || warp_state::isWindow(r.state) ||
+                         (afterRight["start_samples"] == geometry(r)["start_samples"] &&
+                          afterRight["source_offset_samples"] == geometry(r)["source_offset_samples"])),
+                    "移除交叉淡化会改变Warp源映射，请先还原Warp");
         }
         else
         {
@@ -510,13 +542,30 @@ Json Commands::crossfadeChange(const Json& a, bool remove) const
             require(first <= join && last >= join && first >= afterLeft["start_samples"] &&
                         last <= afterRight["end_samples"],
                     "Crossfade must span the cut within both outer clip edges");
-            const bool warped = l.getWarpTime() || r.getWarpTime();
-            require(!warped || (first == frame(rp.getStart().inSeconds()) && last == frame(lp.getEnd().inSeconds())),
+            const bool leftWindow = l.getWarpTime() && warp_state::isWindow(l.state),
+                       rightWindow = r.getWarpTime() && warp_state::isWindow(r.state);
+            const bool existingOnly = (l.getWarpTime() && !leftWindow) || (r.getWarpTime() && !rightWindow);
+            require(!existingOnly ||
+                        (first == frame(rp.getStart().inSeconds()) && last == frame(lp.getEnd().inSeconds())),
                     "Warp交叉淡化使用已有真实重叠区；不能推测额外源句柄");
             const auto lo = frame(lp.getOffset().inSeconds()) + last - frame(lp.getStart().inSeconds());
             const auto ro = frame(rp.getOffset().inSeconds()) + first - frame(rp.getStart().inSeconds());
             te::AudioFile lf(edit->engine, l.getOriginalFile()), rf(edit->engine, r.getOriginalFile());
-            require(lf.isValid() && rf.isValid() && (warped || (lo <= frame(lf.getLength()) && ro >= 0)),
+            const int64_t leftBegin = warp_state::windowStart(l.state),
+                          rightBegin = warp_state::windowStart(r.state) + first - frame(rp.getStart().inSeconds());
+            const bool leftHandle =
+                leftWindow
+                    ? leftBegin >= 0 &&
+                          last - frame(lp.getStart().inSeconds()) <=
+                              warp_state::fullAnchors(l.state).back()["clip_time_samples"].get<int64_t>() - leftBegin
+                    : l.getWarpTime() || lo <= frame(lf.getLength());
+            const bool rightHandle =
+                rightWindow
+                    ? rightBegin >= 0 &&
+                          frame(rp.getEnd().inSeconds()) - first <=
+                              warp_state::fullAnchors(r.state).back()["clip_time_samples"].get<int64_t>() - rightBegin
+                    : r.getWarpTime() || ro >= 0;
+            require(lf.isValid() && rf.isValid() && leftHandle && rightHandle,
                     "Insufficient actual source handles for the entire crossfade");
             require(frame(l.getFadeIn().inSeconds()) + last - first <= last - frame(lp.getStart().inSeconds()) &&
                         frame(r.getFadeOut().inSeconds()) + last - first <= frame(rp.getEnd().inSeconds()) - first,
@@ -606,10 +655,17 @@ void Commands::executeCrossfade(const Json& a, bool remove, Json& objects)
             r.setFadeIn(tracktion::TimeDuration::fromSeconds(0));
             l.setAutoCrossfade(false);
             r.setAutoCrossfade(false);
-            if (!l.getWarpTime())
+            if (l.getWarpTime() && warp_state::isWindow(l.state))
+                warp_state::setWindowPosition(l, frame(lp.getStart().inSeconds()), last,
+                                              warp_state::windowStart(l.state));
+            else if (!l.getWarpTime())
                 l.setPosition({{lp.getStart(), tracktion::TimePosition::fromSeconds(last / 48000.)}, lp.getOffset()});
             const auto nextStart = tracktion::TimePosition::fromSeconds(first / 48000.);
-            if (!r.getWarpTime())
+            if (r.getWarpTime() && warp_state::isWindow(r.state))
+                warp_state::setWindowPosition(r, first, frame(rp.getEnd().inSeconds()),
+                                              warp_state::windowStart(r.state) + first -
+                                                  frame(rp.getStart().inSeconds()));
+            else if (!r.getWarpTime())
                 r.setPosition({{nextStart, rp.getEnd()}, rp.getOffset() + (nextStart - rp.getStart())});
             const auto curve = a["curve"] == "linear" ? te::AudioFadeCurve::linear : te::AudioFadeCurve::convex;
             l.setFadeOutBehaviour(te::AudioClipBase::gainFade);
@@ -640,6 +696,9 @@ Json Commands::crossfadeMaintenancePreview(const Json& ops, const Json& timeline
     Json result = clipboardCrossfadeCopies(ops, timelineChanges);
     std::map<std::string, int64_t> moves;
     std::set<std::string> destructive;
+    for (const auto& op : ops)
+        for (const auto& clip : promotedClips(*edit, op))
+            destructive.insert(clip);
     for (const auto& op : ops)
         if (op["args"].contains("clip"))
         {

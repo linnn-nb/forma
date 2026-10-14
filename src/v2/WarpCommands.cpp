@@ -100,6 +100,7 @@ Json Commands::warpFacts(te::WaveAudioClip& c) const
             result["source_start_seconds"] = result["anchors"].front()["source_time_seconds"];
             result["source_end_seconds"] = result["anchors"].back()["source_time_seconds"];
             result["origin_clip"] = provenance["origin_clip"].toString().toStdString();
+            result["parent_clip"] = provenance["parent_clip"].toString().toStdString();
         }
         result["original_media_hash"] = provenance["media_hash"].toString().toStdString();
         result["render_hash"] = provenance["render_hash"].toString().toStdString();

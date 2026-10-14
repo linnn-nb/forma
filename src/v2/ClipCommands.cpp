@@ -1,5 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativeAudioFades.h"
+#include "WarpState.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -183,7 +184,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
          editable || (c.getWarpTime() && warp.value("available", false) && !c.isLooping() && !c.isGrouped() &&
                       !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() && c.getSpeedRatio() == 1. &&
                       c.getPitchChange() == 0 && c.getSyncType() == te::Clip::syncAbsolute &&
-                      !c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid() && c.getPluginList()->size() == 0 &&
+                      warp_state::outputEnvelopeOrigins(c.state) && c.getPluginList()->size() == 0 &&
                       !c.effectsEnabled() && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                       c.getFadeOutBehaviour() == te::AudioClipBase::gainFade)},
         {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},

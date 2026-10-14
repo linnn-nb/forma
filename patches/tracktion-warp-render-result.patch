@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-index 5cd2c92..bc20ec9 100644
+index 5cd2c92..bcec384 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 @@ -1292,6 +1292,11 @@ void AudioClipBase::setTimeStretchMode (TimeStretcher::Mode mode)
@@ -30,7 +30,19 @@ index 5cd2c92..bc20ec9 100644
  
  void AudioClipBase::timerCallback()
  {
-@@ -2573,6 +2587,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
+@@ -2544,7 +2558,10 @@ void AudioClipBase::timerCallback()
+     }
+ 
+     // Proxy file exists — restart playback to use it
+-    if (! proxyChanged)
++    // Source renders are immutable, hash-addressed files shared by native Warp windows.
++    // An unchanged source is not a newly completed proxy: flushing it here can unmap
++    // another window's playing reader. Writers/file-change detection own real invalidation.
++    if (! proxyChanged && newProxy != originalFile)
+         edit.engine.getAudioFileManager().releaseFile (newProxy);
+ 
+     Selectable::changed();
+@@ -2573,6 +2590,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
  
                  if (! getWarpTime())
                  {
