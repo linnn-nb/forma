@@ -53,6 +53,12 @@ void check(bool ok, const char* message)
     ++checks;
     std::cout << "PASS " << message << '\n';
 }
+void legacyFixture(juce::XmlElement& xml)
+{
+    if (auto* meta = xml.getChildByName("NATIVEDAW"))
+        if (auto* history = meta->getChildByName("PERSISTENT_HISTORY"))
+            meta->removeChildElement(history, true);
+}
 void pump()
 {
     juce::MessageManager::getInstance()->runDispatchLoopUntil(70);
@@ -306,6 +312,18 @@ int main(int argc, char** argv)
         auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        // Check the production integrity gate before deriving a legacy import fixture.
+        auto damagedModern = std::make_unique<juce::XmlElement>(*xml);
+        byID(*damagedModern, src)->setAttribute("offset", .5);
+        const auto damagedFile = dir.getChildFile("RejectedModern.tracktionedit");
+        check(damagedModern->writeTo(damagedFile), "owned modern history corruption fixture writes");
+        const auto beforeDamaged = c.query();
+        const auto beforeDamagedSession = c.sessionToken();
+        w.openSession(damagedFile);
+        pump();
+        check(c.sessionToken() == beforeDamagedSession && c.query() == beforeDamaged,
+              "GUI rejected modern file retains previous Edit rather than publishing false load");
+        legacyFixture(*xml); // Explicit older import; modern round trips below keep their history.
         auto* native = byID(*xml, src);
         native->setAttribute("offset", .5);
         auto* sequence = native->getChildByName("SEQUENCE");
@@ -332,8 +350,11 @@ int main(int argc, char** argv)
         const auto inputHash = juce::SHA256(fixture).toHexString();
         auto open = [&](const juce::File& file)
         {
+            const auto session = c.sessionToken();
             w.openSession(file);
             pump();
+            check(c.sessionToken() != session,
+                  "native file open actually replaces session; rejected import cannot reuse old Edit");
         };
 
         int cases = 0;
@@ -343,12 +364,17 @@ int main(int argc, char** argv)
                          {108000, 312000}, {72000, 384000}, {228000, 480000}, {96000, 96001}})
                 {
                     open(file);
+                    check(AudioDeviceTestAccess::clip(c, src).getPosition().getOffset().inSeconds() == .5 &&
+                              AudioDeviceTestAccess::clip(c, src).getSequence().getNumControllerEvents() == 1 &&
+                              AudioDeviceTestAccess::clip(c, src).getSequence().getNumSysExEvents() == 1,
+                          "actual trim fixture has imported source offset and real CC/SysEx");
                     run(c, Json::array({op("midi.clip.timebase.set", {{"clip", src}, {"basis", basis}})}));
                     const auto before = AudioDeviceTestAccess::clip(c, src).state.createCopy();
                     const auto rawHash = treeHash(AudioDeviceTestAccess::clip(c, src).getSequence().state);
                     const auto originHash = treeHash(before.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN"));
                     const auto initial = timing(c, src);
                     const auto suffixHash = treeHash(AudioDeviceTestAccess::clip(c, suffix).state);
+
                     auto extent = c.midiClipTrimExtent(src, bounds.first, bounds.second, c.sessionToken(),
                                                        c.querySummary()["revision"]);
                     check(!extent.contains("state_hash"), "readonly trim draft has no stale source checksum");
@@ -531,6 +557,7 @@ int main(int argc, char** argv)
               "source bound refusal is atomic and PCM remains unchanged");
         {
             auto locked = juce::XmlDocument::parse(groupFile);
+            legacyFixture(*locked);
             byID(*locked, src)->setAttribute("ndaw_locked", 1);
             const auto file = dir.getChildFile("LockedMixedGroup.tracktionedit");
             check(locked->writeTo(file), "owned locked mixed trim fixture written");

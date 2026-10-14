@@ -34,7 +34,8 @@ public:
     }
     static void select(Workspace& w, const std::string& id)
     {
-        w.select(id);
+        w.refresh();
+        w.selectAudioClip(id);
     }
     static juce::ValueTree state(Commands& c)
     {
@@ -51,6 +52,12 @@ void check(bool ok, const char* message)
         throw std::runtime_error(message);
     ++checks;
     std::cout << "PASS " << message << '\n';
+}
+void legacyFixture(juce::XmlElement& xml)
+{
+    if (auto* meta = xml.getChildByName("NATIVEDAW"))
+        if (auto* history = meta->getChildByName("PERSISTENT_HISTORY"))
+            meta->removeChildElement(history, true);
 }
 void pump()
 {
@@ -157,6 +164,9 @@ void origin(Commands& c, const std::string& id, const std::string& expected)
     const auto& state = AudioDeviceTestAccess::clip(c, id).state;
     sample_midi::validateOrigin(state);
     const auto provenance = state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN");
+    if (provenance["source_hash"].toString().toStdString() != expected)
+        std::cerr << "ORIGIN expected=" << expected << " actual=" << provenance["source_hash"].toString()
+                  << " source_clip=" << provenance["source_clip"].toString() << std::endl;
     check(provenance.isValid() && provenance["source_hash"].toString().toStdString() == expected,
           "immutable original native sequence hash retained");
 }
@@ -275,6 +285,18 @@ int main(int argc, char** argv)
         auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        // Check the production integrity gate before deriving a legacy import fixture.
+        auto damagedModern = std::make_unique<juce::XmlElement>(*xml);
+        byID(*damagedModern, src)->setAttribute("offset", .5);
+        const auto damagedFile = dir.getChildFile("RejectedModern.tracktionedit");
+        check(damagedModern->writeTo(damagedFile), "owned modern history corruption fixture writes");
+        const auto beforeDamaged = c.query();
+        const auto beforeDamagedSession = c.sessionToken();
+        w.openSession(damagedFile);
+        pump();
+        check(c.sessionToken() == beforeDamagedSession && c.query() == beforeDamaged,
+              "GUI rejected modern file retains previous Edit rather than publishing false load");
+        legacyFixture(*xml); // Explicit older import; modern round trips below keep their history.
         auto* native = byID(*xml, src);
         native->setAttribute("offset", .5);
         auto* sequence = native->getChildByName("SEQUENCE");
@@ -301,8 +323,11 @@ int main(int argc, char** argv)
         const auto inputHash = juce::SHA256(fixture).toHexString();
         auto open = [&](const juce::File& file)
         {
+            const auto session = c.sessionToken();
             w.openSession(file);
             pump();
+            check(c.sessionToken() != session,
+                  "native file open actually replaces session; rejected import cannot reuse old Edit");
         };
         auto samples = [&]
         {
@@ -313,10 +338,15 @@ int main(int argc, char** argv)
         for (const auto& file : {fixture, ramp})
         {
             open(file);
+            check(AudioDeviceTestAccess::clip(c, src).getPosition().getOffset().inSeconds() == .5 &&
+                      AudioDeviceTestAccess::clip(c, src).getSequence().getNumControllerEvents() == 1 &&
+                      AudioDeviceTestAccess::clip(c, src).getSequence().getNumSysExEvents() == 1,
+                  "actual imported offset and CC/SysEx fixture are present before measuring");
             samples();
             const auto initial = timing(c, src), tail = timing(c, suffix);
             const auto sourceHash = treeHash(AudioDeviceTestAccess::clip(c, src).getSequence().state);
             const auto initialPlayback = playback(c, src);
+
             const auto before = AudioDeviceTestAccess::state(c);
             auto change = run(c, Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 95.}})}));
             sameTimes(c, src, initial, 0);
@@ -463,6 +493,7 @@ int main(int argc, char** argv)
         for (bool corruptTimes : {false, true})
         {
             auto bad = juce::XmlDocument::parse(projectedFile);
+            legacyFixture(*bad); // Exercise provenance validation independently of outer history checksum.
             auto* provenance = byID(*bad, src)->getChildByName("NDAW_SAMPLE_MIDI_ORIGIN");
             check(provenance != nullptr, "saved native project contains original MIDI provenance");
             provenance->setAttribute(corruptTimes ? "source_times" : "source_hash",
@@ -507,10 +538,7 @@ int main(int argc, char** argv)
         basisScope.end = std::numeric_limits<int64_t>::max();
         check(!c.review(basisPlan, basisScope)["permission"]["automatic_allowed"].get<bool>(),
               "timebase change requires explicit local confirmation under scoped API");
-        AudioDeviceTestAccess::select(w, owner);
-        pump();
-        c.updateUiState({{"object_selection", Json::array({{{"id", src}, {"track", owner}, {"kind", "clip"}}})}},
-                        c.sessionToken());
+        AudioDeviceTestAccess::select(w, src);
         pump();
         auto* keys = w.uiCommands().getKeyMappings();
         const juce::KeyPress sampleKey(juce::KeyPress::F8Key,
