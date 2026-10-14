@@ -1,3 +1,5 @@
+2026-10-14：Freeze/原地Bounce首版可操作，含真实预渲染、文件校验、预览、原Clip/Playlist/插件保留、独立还原、改键和持久Undo。音频轨首批资格已验；乐器/Aux/发送/旁链综合、长工程/取消/故障、缓存重定位继续补齐，之后Stems/偏好。没有完整P2/发布声明。见 PRINT_WORKFLOW.md。
+
 2026-10-14：P2 首个可演示增量为轨道效果器原生旁链，含预览、连接/断开、删除源保护、可改快捷键、保存重开与 Undo/Redo。内置压缩器实际检测路径已测；第三方格式和硬件PDC仍待实测。P1连续制作主链路保持通过，完整产品与P2的Freeze/原地Bounce、Stems和偏好未完成。入口见 `SIDECHAIN_WORKFLOW.md`。
 
 2026-10-14：P1 制作主链路（Loop→Punch→Take/Comp→交叉淡化→导出）已实机验证，原媒体保留、事务 Undo/Redo 与重开历史可用。新增 F12 录音默认键；所有入口可改键。弹力音频菜单 Cmd Option T 接通 SoundTouch 常速伸缩/独立变调；后台准备、未就绪拒绝、Cmd Return/Undo/Redo/保存已验。Warp、带淡化/Clip FX/关联 Comp 的伸缩尚未实现；完整 P1/最终产品发布不因此完成。证据见 evidence/P1/summary.md。

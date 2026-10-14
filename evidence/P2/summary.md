@@ -1,3 +1,36 @@
+# P2 Freeze / 原地 Bounce 首版（2026-10-14）
+
+Release/固定本地deep-strict签名通过；最终8个受影响套件504项分批通过，0JUCE assertion。Print74项/27.39秒/180秒固定预算；不是一次全仓回归、完整P2或发布验收。源码445c397、473f92e；唯一二进制SHA256 `263a1c36591d4ecd9d43f8a2450cab0e94a6bf62d62a0b0ef1b8dac62f52ca19`。
+
+亲手试：选轨，轨头「⋮」菜单或Cmd Ctrl Option F冻结/解冻、Cmd Ctrl B原地Bounce、Cmd Ctrl Shift B还原。实际背景渲染/文件校验→预览→Cmd Return提交，Esc取消；原Clip/Playlist/插件保留，可改键和保存重开Undo/Redo。派生文件保留，不伪称文件创建能完全Undo。详见 docs/PRINT_WORKFLOW.md。
+
+| 套件 | 检查 | 秒 | 固定秒预算 |
+| --- | ---: | ---: | ---: |
+| processor | 40 | 9.89 | 60 |
+| routing | 41 | 15.13 | 60 |
+| music | 44 | 7.23 | 90 |
+| hierarchy | 51 | 12.39 | 90 |
+| production_chain | 91 | 11.47 | 120 |
+| elastic | 87 | 7.22 | 120 |
+| sidechain | 76 | 5.17 | 120 |
+| print | 74 | 27.39 | 180 |
+
+原8套批次78.07秒，其中前7套430项通过、Print缺失原源缓存检查失败；修正后Print最终单独27.40秒（含CTest开销）通过，未将失败批次写成全绿。最新索引 `build-v2-tracktion/p2-print-current-results.json`，原始日志 `p2-print-regression.log`、`p2-print-cache-layout-regression.log`、`p2-print-utf8-regression.log`，专项JSON `p2-print-tests.json`。各次build/configure日志均为p2-print前缀。
+
+实际2秒48k双声道220Hz源，EQ+6dB/推子-6dB，3秒原生混音。Freeze和Bounce PCM最大差均0（2e-6容差），冻结后推子再降6dB比0.501187205（1e-5）。独立新引擎在原媒体暂时移走后仍读冻结缓存；主输出/原Clip/插件状态保留，Bounce真实Wave Clip/新Playlist不重复套用EQ，独立还原、幂等、源哈希、过期产物拒绝、实际native按钮/键盘、持久Undo/Redo通过。每个实际render和prepare测试10秒预算保持。输入是明确标注的受控PCM，不冒充音乐听评或实体录音。
+
+最新可重开的自动工程：`build-v2-tracktion/P2-Print-f61d55ade26a4a4da82dc078c197a2fa/Frozen.tracktionedit`、`Bounce.tracktionedit`、`GUI-Frozen.tracktionedit`，原媒体与不可变缓存位于同目录及Forma-Print-*子目录。实际导出mix-*.wav也保留。
+
+实体旧构建已完成：保存冻结工程打开r7→解冻8→Undo冻结9→Cmd Ctrl B / tail0 /真实3秒文件预览→Cmd Return Bounce10→Undo11/Redo12→独立还原13；再Undo还原/Undo Bounce，退出旧进程。设备为MacBook Pro扬声器48k/512帧，截图实际显示真实预览、禁用前缀和新片段。新片段名字出现UTF-8乱码，现场定位修复并加断言。Mac随后锁定，最终实体保存重开/播放与PNG文件归档未执行；记录 `build-v2-tracktion/p2-print-physical-actions.json`。没有上传音频、DMG或预览复制包。
+
+实现：L1 TrackPrint的独立快照/单背景worker/版本、源和文件hash；PrintCommands的独立事务/稳定引用/真实FreezePoint与WaveNode；原地Bounce通过原生图的显式printed_bypass跳过已印刻DSP，原生可编辑Playlist保存产物，保留原实例。14份锁定SDK补丁：持久缓存路径/历史生命周期与缺失原源时的缓存声道布局，既有render-bus补丁增补印刻/冻结图。L5只显示和提交。无第二引擎、IPC或新的依赖。
+
+失败修复：编译期间修正SDK Options.role/editFileRetriever、不完整Job类型构造和UTF-8字串API；连续第二次印刻10秒超时，按SDK正确登记ScopedThreadExitStatus和释放状态后通过，未放宽预算。独立缓存检查实际静音，定位原媒体缺失使getChannelConfiguration为零，改为验证缓存的双声道布局后通过；不是只看文件存在。失败输出保留，不计通过。
+
+剩余：乐器/Aux/常规PRE/POST发送/旁链的Freeze/Bounce组合、缺失缓存/取消/写盘错误、长源哈希/暂停/超时响应、缓存重定位/迁移/清理、其它采样率/多声道/外部插件、实体声音和性能待资格；效果器中间tap发送与关联Comp整组印刻未完成。先补本功能综合资格，再Stems/偏好。P1听评/耐久、Warp、旧性能A/自动化180秒矩阵、多输入/Windows/公证/SBOM差距保持。完整目标仍未完成。
+
+以下是此前旁链增量记录。
+
 # P2 原生旁链首版（2026-10-14）
 
 Release 构建与固定本地签名 deep/strict 验证通过；受影响6套件386项、0JUCE断言。原生Compressor旁链、停止态L1事务、持久Undo/Redo、改键、缺失引用和反馈防护已验证。完整P2、第三方旁链/PDC与听感未通过。源码提交8382312、02734ee；未新增依赖或SDK补丁。

@@ -1,3 +1,5 @@
+2026-10-14：L1 TrackPrint单背景渲染器准备独立Edit快照和真实推子前产物；PrintCommands是Freeze/Bounce/还原唯一写入口，原生FreezePoint/WaveNode与编辑Playlist复用L0。一个Plan一个Undo，源/处理链哈希、版本冲突、取消、派生文件和事实/测量分离；L5仅显示并提交。14份锁定补丁含持久缓存生命周期和印刻图，未并存引擎或增加IPC。资格/不足见 PRINT_WORKFLOW.md。
+
 2026-10-14：旁链复用 L0 原生 Send/Return 节点与插件实际针脚；L1 `plugin.sidechain.set` 独立停止态事务、反馈预检、稳定源引用、删除源显式断开与持久 Undo。L5 `SidechainPanel` 只提交 Plan，未改来源不能创建事务；Play/Record/Render/非片段分析预检缺失引用。代码 `SidechainCommands.cpp` / `SidechainGraph.h`，资格与剩余边界见 `SIDECHAIN_WORKFLOW.md`、`../evidence/P2/summary.md`。无第二引擎、SDK补丁或固定IPC延迟。
 
 2026-10-14 增量：P1 主链路复用 te::Edit/录音器/Renderer，并在同一工程贯通验证。clip.elastic 仍只有 L1 改原生 Clip；SoundTouch 使用 Tracktion 后台 proxy 作业，实时图读取缓存 WaveNode。playbackPreparation 按实际缓存文件状态预检 Play/Record/Render，禁止未就绪成功回执；参数与源映射/provenance 在同一 Undo 事务。没有第二引擎或新服务。长媒体进度/失败/取消和 Warp 另列缺口，见 ELASTIC_AUDIO.md。

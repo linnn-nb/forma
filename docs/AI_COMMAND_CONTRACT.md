@@ -1,3 +1,5 @@
+2026-10-14：track.freeze {track,render_id}、track.unfreeze {track}、track.bounce.in_place {track,render_id}、track.bounce.restore {track} 为human/local_gui停止态独立事务。render_id只能来自L1实际校验的TrackPrint；准备产物不是提交成功，print_changes预览真实前后状态/插件/文件和不可完全撤销的副作用。旧session/revision或源哈希改变拒绝，重试不重复；Undo保留派生文件，持久历史不重新印刻。未扩Agent权限。测试P2-PRINT-01，见PRINT_WORKFLOW.md。
+
 2026-10-14：`plugin.sidechain.set {plugin,source}`（稳定轨道ID或`none`），human/local_gui、停止态、独立 Plan，参数/源资格和路由反馈均预检。`sidechain_changes` 返回实际原/新引用、针脚、检测器状态和主输出保持声明；设置回执不冒充音频测量。一个UndoManager事务保存 source/wires/原生检测器，删除引用源须显式disconnect，持久历史可恢复。旧计划/草稿拒绝；原/新源计入Scope。MCP/Agent许可未扩展。测试 P2-SIDECHAIN-01；见 SIDECHAIN_WORKFLOW.md。
 
 2026-10-14：clip.elastic {clip,length_samples,pitch_semitones,media_hash}，单操作、human/local_gui、停止状态；单位为 48 kHz 工程采样和半音。L1 校验源哈希、锁、原始源跨度、0.5–2 倍原速与 ±12 半音；实际 float 音高精度在预览体现。参数设置/provenance 一笔 Undo，保存重开保留。设置回执不等于缓存或音频已验证；缓存未可读时录放/导出明确失败。MCP/Agent 权限范围未扩展。P1 一处转场一笔事务，多选段 Comp 一笔事务；交错的人类混音不能被过期 Undo 擦除。测试 ProductionChainTests/ElasticTests，证据见 evidence/P1/summary.md。

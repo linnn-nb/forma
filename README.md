@@ -20,6 +20,10 @@
 
 在接收轨插入 Compressor，检查器「旁链…」选择触发轨；Cmd Option S 打开，Cmd Return 连接，Esc 取消。主输出保持，触发轨可输出 None；支持一笔 Undo/Redo、改键和保存重开。内置处理器的真实压缩响应与实体窗口已验，第三方旁链/PDC仍待测。[操作与边界](docs/SIDECHAIN_WORKFLOW.md)。
 
+## Freeze 与原地 Bounce 首版
+
+选轨后 Cmd+Ctrl+Option+F 冻结/解冻，Cmd+Ctrl+B 原地 Bounce；也可从轨头「⋮」打开。后台渲染校验后预览，Cmd+Return提交，Esc取消。原Clip、Playlist和插件状态保留；Bounce产物是同轨可编辑的真实片段，Cmd+Ctrl+Shift+B还原原列表。工程一笔Undo/Redo，保存副本重开保持；派生文件保留供Redo。音频轨主流程已验，乐器/Aux/发送/旁链组合、长源和故障测试继续补齐。[实际操作与边界](docs/PRINT_WORKFLOW.md)。
+
 ## 首版弹力音频
 
 选中无淡化/片段效果的音频 Clip，Cmd+Option+T 打开 SoundTouch 伸缩面板；设置目标毫秒与独立半音，Cmd+Return 提交、Esc 取消。原媒体/源跨度保留，Undo/Redo 和保存重开可用。音频在后台准备，未准备好时录放/导出明确拒绝。已实测原速 0.5–2 倍、±12 半音范围内的代表性信号；Warp、带 Comp/交叉淡化/Clip FX 的伸缩及长媒体体验尚未完成。[选型、源码许可证和实测边界](docs/ELASTIC_AUDIO.md)。
@@ -102,6 +106,6 @@ Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine
 
 ## 当前边界
 
-Forma 仍是开发版。P1 音频 Loop→Punch→Take/Comp→交叉淡化→导出主链路已通过；完整发布听评、多输入/耐久与 MIDI Loop/Punch 仍未完成。P2 当前已接通原生旁链首版，Freeze/原地 Bounce、Stems 和偏好设置继续推进。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
+Forma 仍是开发版。P1 音频 Loop→Punch→Take/Comp→交叉淡化→导出主链路已通过；完整发布听评、多输入/耐久与 MIDI Loop/Punch 仍未完成。P2 当前已接通原生旁链首版，Freeze/原地 Bounce首版已接通并继续综合资格，Stems和偏好设置尚未完成。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
 
 既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。

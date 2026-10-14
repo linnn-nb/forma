@@ -1,3 +1,5 @@
+2026-10-14：P2 Print74项最终27.39s/180s、0 JUCE assertion，实际Freeze/Bounce PCM最大差0（预算2e-6），推子比0.501187205（1e-5）；独立引擎/缺失原源仍读缓存，持久Undo/Redo、原生面板及版本冲突已验。加受影响原7套430项，共8套504项最终分批通过；首批Print失败和修复保留。最终Release与固定本地验签通过。部分实体解冻/Bounce/还原已验，Mac随后锁定，最终实体保存重开/播放未执行。不是全仓/大工程/听感/硬件或完整P2通过。见 ../evidence/P2/summary.md。
+
 2026-10-14：P2 旁链首版 Release / 固定本地 deep-strict 验签通过；受影响六套件386项、无JUCE assertion（重复production_chain不重复计数）。Sidechain76项/5.27s、Elastic87项/7.34s、Production91项/12.41s，最终三套批次25.03s；另Processor40、Routing41、Hierarchy51通过。原120s套件/10s渲染预算不变。实体自定义键、连接/断开、跨重开Undo/Redo、空提交禁止、真实设备走带和完整Mix截图已验，所有源保持。第三方旁链、硬件PDC、mute/solo及听感未通过；完整产品未完成。输出与失败记录见 ../evidence/P2/summary.md。
 
 2026-10-14：P1 主链路已在真实麦克风与受控双轨音乐输入跑通；9 套件 908 项、0 JUCE assertion。实体 Loop/Punch Undo/Redo、Comp 转场、快捷键、保存重开及二次导出 PCM 一致；首版 SoundTouch 85 项及真实窗口 4→6 s/Undo/Redo/导出已验。Release/固定签名通过。完整 P1 发布、Warp、听评/窗口组合、旧性能及自动化超时仍未通过。路径、测量、预算、失败修复见 evidence/P1/summary.md、docs/ELASTIC_AUDIO.md。
