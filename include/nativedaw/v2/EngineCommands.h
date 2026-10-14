@@ -193,6 +193,7 @@ public:
     Json legacyReports() const;
 
 private:
+    void normaliseClipDeletion(Json&) const;
     void invalidateFacts();
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void stateChanged(juce::ValueTree);

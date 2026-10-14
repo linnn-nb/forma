@@ -5,6 +5,7 @@
 #include "ClipFxWindows.h"
 #include "ProcessedClipTrim.h"
 #include "AudioClipboardState.h"
+#include "ClipReferenceState.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -75,7 +76,8 @@ struct Model
          fxWindow = false;
     bool locked = false, moveLocked = false, editable = true, movable = true, envelopeEditable = false,
          inheritedFades = false;
-    std::string track, path, hash, inCurve = "linear", outCurve = "linear";
+    std::string track, path, hash, referenceHash, inCurve = "linear", outCurve = "linear";
+    bool sourcePresent = true;
     Json fxTypes = Json::array();
     std::vector<std::string> fxIDs;
     Json facts() const
@@ -188,6 +190,8 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
                                                           1e-7)))};
     return {
         {"path", f.getFullPathName().toStdString()},
+        {"source_reference", c.state[te::IDs::source].toString().toStdString()},
+        {"source_present", f.existsAsFile()},
         {"warp", warp},
         {"elastic", elastic_state::facts(c.state)},
         {"source_sample_rate", info.sampleRate},
@@ -230,7 +234,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
         {"movable_audio", movable},
-        {"deletable_audio", editable || movable},
+        {"deletable_audio", !c.isGrouped()},
         {"copyable_audio", trimmable && c.getSyncType() == te::Clip::syncAbsolute},
         {"trimmable_audio", trimmable},
         {"splittable_audio", trimmable && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
@@ -253,6 +257,34 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
               c.getFadeOutBehaviour() == te::AudioClipBase::gainFade)},
         {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},
         {"origin", c.state.getProperty("ndaw_origin", "import").toString().toStdString()}};
+}
+void Commands::normaliseClipDeletion(Json& args) const
+{
+    checkThread();
+    auto* clip = audioClip(args.at("clip"));
+    require(clip != nullptr, "delete target disappeared");
+    const auto source = clip->getOriginalFile();
+    const bool present = source.existsAsFile();
+    const auto hash = clip_reference::fingerprint(*clip);
+    require(!args.contains("source_present") || args.at("source_present") == present,
+            "source file presence changed since deletion preview");
+    require(!args.contains("source_reference_hash") || args.at("source_reference_hash") == hash,
+            "source reference changed since deletion preview");
+    if (cachedFactsEpoch == factsEpoch && factCache.contains("tracks"))
+        for (const auto& owner : factCache["tracks"])
+            for (const auto& cached : owner["clips"])
+                if (cached["id"] == args.at("clip") && cached.value("source_present", present) != present)
+                    const_cast<Commands*>(this)->invalidateFacts(); // External presence is not an Edit transaction.
+    args["source_present"] = present;
+    args["source_reference_hash"] = hash;
+    if (present)
+    {
+        const auto actual = mediaHash(source);
+        require(!args.contains("media_hash") || args.at("media_hash") == actual, "supplied clip media hash is stale");
+        args["media_hash"] = actual;
+    }
+    else
+        require(!args.contains("media_hash"), "missing media cannot claim a content hash");
 }
 void Commands::registerClipCommands(Json& r)
 {
@@ -282,7 +314,13 @@ void Commands::registerClipCommands(Json& r)
     add("clip.split", {{"position_samples", integer}, {"ref", id}}, Json::array({"position_samples", "ref"}));
     add("clip.copy", {{"position_samples", integer}, {"track", id}, {"ref", id}},
         Json::array({"position_samples", "track", "ref"}));
-    add("clip.delete", Json::object(), Json::array());
+    add("clip.delete", {{"source_reference_hash", id}, {"source_present", {{"type", "boolean"}}}}, Json::array());
+    // Existing targets bind their project reference and live presence. Local
+    // aliases use the source hash already sealed by an earlier Plan operation.
+    r.back()["schema"]["required"] = Json::array({"clip"});
+    r.back()["test"] = "P3-MISSING-MEDIA-DELETE-01";
+    r.back()["units"]["source_reference_hash"] = "SHA256 of native object/owner/source/extent; not media bytes";
+    r.back()["units"]["source_present"] = "observed original regular-file presence; rechecked before commit";
     add("clip.gain", {{"db", num}}, Json::array({"db"}));
     add("clip.fade", {{"in_samples", integer}, {"out_samples", integer}, {"in_curve", id}, {"out_curve", id}},
         Json::array({"in_samples", "out_samples", "in_curve", "out_curve"}));
@@ -399,6 +437,8 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.trimmable = q["trimmable_audio"];
                 m.splittable = q["splittable_audio"];
                 m.deletable = q["deletable_audio"];
+                m.referenceHash = clip_reference::fingerprint(*c);
+                m.sourcePresent = c->getOriginalFile().existsAsFile();
                 m.copyable = q["copyable_audio"];
                 m.processedTrim = q["trim_preserves_processing"];
                 m.fxWindow = q["clip_fx"].value("full_input_window", false);
@@ -547,13 +587,24 @@ Json Commands::validateClipPlan(const Json& ops) const
                                         : m.editable) ||
                     (cmd == "clip.move" && m.movable) || (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
-        if (m.hash.empty())
+        const bool existingDelete = cmd == "clip.delete" && audioClip(id) != nullptr;
+        if (existingDelete)
         {
-            if (!hashes.contains(m.path))
-                hashes[m.path] = mediaHash(juce::File(juce::String{m.path}));
-            m.hash = hashes.at(m.path);
+            require(a.contains("source_reference_hash") && a.at("source_reference_hash") == m.referenceHash &&
+                        a.contains("source_present") && a.at("source_present") == m.sourcePresent,
+                    "clip source reference or file presence changed; preview deletion again");
+            require(m.sourcePresent || !a.contains("media_hash"), "missing media cannot claim a content hash");
         }
-        require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
+        if (!existingDelete || m.sourcePresent)
+        {
+            if (m.hash.empty())
+            {
+                if (!hashes.contains(m.path))
+                    hashes[m.path] = mediaHash(juce::File(juce::String{m.path}));
+                m.hash = hashes.at(m.path);
+            }
+            require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
+        }
         if (cmd == "clip.move" ||
             ((cmd == "clip.trim" || cmd == "clip.split" || cmd == "clip.copy") && m.processedTrim))
             if (auto* source = audioClip(id))
@@ -686,7 +737,7 @@ Json Commands::validateClipPlan(const Json& ops) const
         }
         else if (cmd != "clip.delete")
             throw std::runtime_error("unknown clip command");
-        if (m.editable && !m.processedTrim)
+        if (cmd != "clip.delete" && m.editable && !m.processedTrim)
             bounds(m);
         else
             require(m.start >= 0 && m.length > 0 && m.start <= sample(te::Edit::maximumLength) - m.length,
@@ -704,7 +755,12 @@ Json Commands::validateClipPlan(const Json& ops) const
                                                         : "source retained; copy clip/plugins new IDs"},
                 {"source_envelope", "original phase retained on each output window"}};
         if (cmd == "clip.delete")
+        {
+            diff.back()["media"] = {{"source_present", m.sourcePresent},
+                                    {"source_path", m.path},
+                                    {"policy", "remove project object only; retain media and native state in Undo"}};
             clips.erase(id);
+        }
     }
     return diff;
 }
@@ -826,7 +882,11 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
     else if (cmd == "clip.lock")
         c->state.setProperty("ndaw_locked", a.at("locked").get<bool>(), &um);
     else if (cmd == "clip.delete")
+    {
+        require(!a.contains("source_present") || a.at("source_present") == c->getOriginalFile().existsAsFile(),
+                "source file presence changed before project deletion");
         c->removeFromParent();
+    }
     else if (cmd == "clip.copy")
     {
         auto* t = track(a["track"]);

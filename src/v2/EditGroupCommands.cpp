@@ -141,6 +141,7 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
             // part of a clip. Never turn a default Nudge into an implicit cut of the user's source arrangement.
             if (action == "move" && (begin < first || end > last))
                 continue;
+            const bool wholeDelete = action == "delete" && first <= begin && last >= end;
             if (c.value(action == "move" ? "move_locked" : "locked", c.value("locked", false)) ||
                 !((c["kind"] == "audio" &&
                    c.value(action == "move"       ? "movable_audio"
@@ -148,7 +149,7 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
                            : action == "delete"   ? "deletable_audio"
                                                   : "editable_audio",
                            false) &&
-                   !c.value("offline_clip_effects", false)) ||
+                   (wholeDelete || !c.value("offline_clip_effects", false))) ||
                   (action == "move" && c["kind"] == "midi" && c.value("sample_mapping_available", false))))
                 throw std::runtime_error("entire range edit refused: overlapping clip is locked or unsupported");
             if (action == "move")
@@ -280,6 +281,11 @@ Json Commands::audioClearRangeOperations(const Json& request) const
     {
         auto& args = op["args"];
         const std::string id = args.at("clip");
+        if (op["command"] == "clip.delete" && audioClip(id))
+        {
+            normaliseClipDeletion(args);
+            continue;
+        }
         if (!hashes.contains(id))
         {
             auto* clip = audioClip(id);

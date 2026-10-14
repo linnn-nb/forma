@@ -1,5 +1,6 @@
 #include "MasterAnalysis.h"
 #include "NativePluginStates.h"
+#include "ClipReferenceState.h"
 #include <nativedaw/v2/AudioAnalysis.h>
 #include <nativedaw/v2/DeliveryCheck.h>
 #include <nativedaw/v2/ExportVerification.h>
@@ -1236,6 +1237,7 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
     p.bitDepth = 32;
     p.sampleRateForAudio = 48000;
     p.canRenderInMono = false;
+    p.checkNodesForAudio = !exporting || clip_reference::hasArrangementClips(*work->snapshot);
     p.useMasterPlugins = !trackTap && !clipTap;
     p.tracksToDo = te::toBitSet(te::getAllTracks(*work->snapshot));
     p.time = {tracktion::TimePosition::fromSeconds(start / 48000.),

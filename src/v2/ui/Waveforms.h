@@ -107,6 +107,12 @@ public:
     void draw(juce::Graphics& g, const Json& clip, juce::Rectangle<int> area, double seconds, double elapsed = 0,
               double displayScale = 1.)
     {
+        if (!clip.value("source_present", true))
+        {
+            g.setColour(juce::Colour(0xffe2c17b));
+            g.drawText(text("媒体离线"), area, juce::Justification::centred, false);
+            return;
+        }
         auto id = clip["id"].get<std::string>();
         if (thumbs.contains(id))
         {

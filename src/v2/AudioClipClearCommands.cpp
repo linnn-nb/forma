@@ -39,12 +39,17 @@ Json Commands::audioClipClearOperations(const Json& request) const
     auto clipOperation = [&](const char* command, const Json& clip, Json args)
     {
         auto* native = audioClip(clip.at("id"));
-        require(native && native->canUseProxy() && clip.at("kind") == "audio" &&
+        require(native && (std::string(command) == "clip.delete" || native->canUseProxy()) &&
+                    clip.at("kind") == "audio" &&
                     clip.value(std::string(command) == "clip.delete" ? "deletable_audio" : "movable_audio", false) &&
-                    !clip.value("locked", false) && !clip.value("offline_clip_effects", false),
+                    !clip.value("locked", false) &&
+                    (std::string(command) == "clip.delete" || !clip.value("offline_clip_effects", false)),
                 "entire clip clear refused: locked/unsupported audio or unqualified reader");
         args["clip"] = clip.at("id");
-        args["media_hash"] = mediaHash(native->getOriginalFile());
+        if (std::string(command) == "clip.delete")
+            normaliseClipDeletion(args);
+        else
+            args["media_hash"] = mediaHash(native->getOriginalFile());
         return Json{{"command", command}, {"args", std::move(args)}};
     };
     for (const auto& t : facts["tracks"])

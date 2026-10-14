@@ -1,5 +1,6 @@
 #include <nativedaw/v2/Performance.h>
 #include "SampleMidiMap.h"
+#include "ClipReferenceState.h"
 #include "NativeEditXml.h"
 #include "MasterAnalysis.h"
 #include "StemExport.h"
@@ -752,6 +753,8 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
         {
             a["state_hash"] = midiClipClipboardChange(cmd, a, 0)["state_hash"];
         }
+        else if (cmd == "clip.delete" && audioClip(a.at("clip")))
+            normaliseClipDeletion(a);
         else if (cmd.starts_with("clip."))
         {
             std::string id = a.at("clip");
@@ -1867,6 +1870,9 @@ Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
         p.tracksToDo = te::toBitSet(te::getAllTracks(*edit));
         p.useMasterPlugins = true;
         p.canRenderInMono = false;
+        // An empty active arrangement can still render a requested interval.
+        // Preserve the existing node checks when any arranged clip remains.
+        p.checkNodesForAudio = clip_reference::hasArrangementClips(*edit);
         require(te::Renderer::renderToFile("NativeDAW M0 render", p).existsAsFile(), "Tracktion render failed");
         synchroniseExternalParameters();
         if (nativeStates)
