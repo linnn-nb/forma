@@ -13,6 +13,8 @@ public:
         explicit Curve(MidiControllerPanel& p) : owner(p)
         {
             setComponentID("midi.cc.curve");
+            setTitle(text("MIDI CC 事件曲线"));
+            setDescription(text("Tab进入；Home/End选择首尾点，左右键选择相邻点，上下键调整值，Delete移除"));
             setWantsKeyboardFocus(true);
         }
         void paint(juce::Graphics& g) override
@@ -53,7 +55,7 @@ public:
                 g.drawLine(previousX, previousY, float(getWidth() - 12), previousY, 1.5f);
             }
             g.setColour(juce::Colours::lightgrey);
-            g.drawText("CLIP BEATS · " + juce::String(owner.start - owner.content, 3) + " … " +
+            g.drawText(text("CLIP BEATS · ") + juce::String(owner.start - owner.content, 3) + " … " +
                            juce::String(owner.end - owner.content, 3),
                        44, getHeight() - 18, getWidth() - 60, 16, juce::Justification::left);
         }
@@ -107,6 +109,33 @@ public:
         }
         bool keyPressed(const juce::KeyPress& key) override
         {
+            if (key == juce::KeyPress::homeKey || key == juce::KeyPress::endKey || key == juce::KeyPress::leftKey ||
+                key == juce::KeyPress::rightKey)
+            {
+                std::vector<int> visible;
+                for (size_t i = 0; i < owner.points.size(); ++i)
+                {
+                    const double beat = owner.points[i]["source_beat"].get<double>() + owner.content;
+                    if (beat >= owner.start && beat < owner.end)
+                        visible.push_back(int(i));
+                }
+                if (visible.empty())
+                    return true;
+                auto at = std::find(visible.begin(), visible.end(), owner.selected);
+                if (key == juce::KeyPress::homeKey)
+                    owner.selected = visible.front();
+                else if (key == juce::KeyPress::endKey)
+                    owner.selected = visible.back();
+                else if (at == visible.end())
+                    owner.selected = visible.front();
+                else if (key == juce::KeyPress::leftKey && at != visible.begin())
+                    owner.selected = *std::prev(at);
+                else if (key == juce::KeyPress::rightKey && std::next(at) != visible.end())
+                    owner.selected = *std::next(at);
+                owner.refreshFields();
+                repaint();
+                return true;
+            }
             if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
             {
                 owner.deletePoint();

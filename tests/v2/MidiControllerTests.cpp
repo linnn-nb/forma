@@ -238,6 +238,23 @@ int main(int argc, char** argv)
         auto* canvas = dynamic_cast<MidiControllerPanel::Curve*>(find(w, "midi.cc.curve"));
         check(panel && canvas && canvas->getWidth() > 100, "actual controller event canvas has usable geometry");
         const auto draftBefore = clip(c);
+        check(canvas->keyPressed(juce::KeyPress(juce::KeyPress::homeKey)),
+              "CC keyboard Home selects first visible event");
+        auto* sourceField = dynamic_cast<juce::TextEditor*>(find(w, "midi.cc.source_beat"));
+        auto* valueField = dynamic_cast<juce::TextEditor*>(find(w, "midi.cc.value"));
+        check(sourceField->isEnabled() && sourceField->getText().getDoubleValue() == 0 && valueField->getText() == "0",
+              "keyboard selection exposes actual first source beat and value");
+        check(canvas->keyPressed(juce::KeyPress(juce::KeyPress::endKey)) &&
+                  sourceField->getText().getDoubleValue() == 3 && valueField->getText() == "127",
+              "CC keyboard End selects last actual event");
+        check(canvas->keyPressed(juce::KeyPress(juce::KeyPress::leftKey)) &&
+                  sourceField->getText().getDoubleValue() == 0,
+              "left key navigates to prior CC without moving its source time");
+        check(canvas->keyPressed(juce::KeyPress(juce::KeyPress::rightKey)) &&
+                  sourceField->getText().getDoubleValue() == 3,
+              "right key navigates to next actual CC event");
+        check(clip(c) == draftBefore, "keyboard point navigation creates no Edit write or transaction");
+
         canvas->mouseDown(mouse(*canvas, {canvas->x(0), canvas->y(0)}));
         canvas->mouseUp(mouse(*canvas, {canvas->x(0), canvas->y(0)}));
         auto* ramp = dynamic_cast<juce::Button*>(find(w, "midi.cc.ramp"));
