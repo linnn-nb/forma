@@ -62,6 +62,16 @@ struct GroupedClipDraft
         const auto mode = drag["mode"].get<std::string>();
         const int64_t maximum = std::llround(te::Edit::maximumLength * 48000.);
         int64_t lower = -maximum, upper = maximum, delta = 0;
+        // Linked members may be on hidden tracks. Their captured extents must
+        // constrain the same draft even when the Edit view cannot draw them.
+        if (mode == "move")
+            for (const auto& member : drag["linked"])
+                if (member.contains("start_samples") && member.contains("length_samples"))
+                {
+                    const int64_t s = member["start_samples"], n = member["length_samples"];
+                    lower = std::max(lower, -s);
+                    upper = std::min(upper, maximum - s - n);
+                }
         for (const auto& track : facts["tracks"])
             for (const auto& c : track["clips"])
                 if (includes(drag, c["id"]))

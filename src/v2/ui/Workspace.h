@@ -236,7 +236,9 @@ private:
     static juce::String legacyReportText(const Json& r, bool preview);
     friend class ndaw::v2::RecordingTestAccess;
     ClipWriter clipWriter();
-    void selectAudioClip(const std::string& id, bool additive = false);
+    void selectAudioClip(const std::string& id, bool additive = false, bool preserveSelection = false);
+    Json clipGestureTargets(const std::string& id, const std::string& mode);
+    void moveClipSelection(const Json& targets, int64_t delta, uint64_t revision, const std::string& session);
     void executeEditCommand(int id);
     void executeDeleteCommand();
     juce::String shufflePreviewText(const Json& preview) const;

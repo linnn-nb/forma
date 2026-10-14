@@ -576,7 +576,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 add_library(ndaw_ui STATIC
   src/v2/ui/KeyboardSettings.cpp src/v2/ui/WorkspacePlaylists.cpp src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
-  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceStems.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
+  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspaceGrabber.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceStems.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
 target_link_libraries(ndaw_ui PUBLIC ndaw_engine)
 target_sources(ndaw_ui PRIVATE src/v2/ui/WorkspacePreferences.cpp src/v2/ui/WorkspaceWarp.cpp src/v2/ui/WorkspaceControllers.cpp)

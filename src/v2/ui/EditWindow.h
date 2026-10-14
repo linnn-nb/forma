@@ -229,7 +229,7 @@ public:
                     b->onClick = [this, id, owner = t["id"].get<std::string>()]
                     {
                         if (onClipSelection)
-                            onClipSelection(id, juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown());
+                            onClipSelection(id, juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown(), false);
                         else
                         {
                             select(owner);
@@ -384,8 +384,9 @@ public:
     }
     std::function<void(Json)> onViewChange;
     std::function<int64_t(int64_t, double)> onSnap;
-    std::function<void(std::string, bool)> onClipSelection;
+    std::function<void(std::string, bool, bool)> onClipSelection;
     std::function<Json(const std::string&, const std::string&)> onLinkedClips;
+    std::function<void(const Json&, int64_t, uint64_t, const std::string&)> onMoveSelection;
     std::function<Json(const std::string&, int64_t, const std::string&, uint64_t)> onMidiMoveExtent;
     std::function<Json(const std::string&, int64_t, int64_t, const std::string&, uint64_t)> onMidiTrimExtent;
     std::function<void(const std::string&)> onMarkerClick;
@@ -710,6 +711,16 @@ public:
         for (auto& lane : automationLanes)
             lane->cancel();
         updateAutomation();
+        repaint();
+        return true;
+    }
+    bool cancelClipGesture()
+    {
+        if (drag.is_null() || !drag.contains("clip"))
+            return false;
+        drag = nullptr;
+        dragged = false;
+        resized();
         repaint();
         return true;
     }
@@ -1085,7 +1096,7 @@ public:
                         return;
                     }
                     if (onClipSelection)
-                        onClipSelection(c["id"], e.mods.isShiftDown());
+                        onClipSelection(c["id"], e.mods.isShiftDown(), toolGesture == EditingModel::Gesture::move);
                     else
                     {
                         select(trackIDs[row]);
@@ -1401,8 +1412,14 @@ public:
             dragEnd == original["start_samples"].get<int64_t>() + original["length_samples"].get<int64_t>())
             return;
         if (mode == "move")
-            clipWrite(original["kind"] == "midi" ? "midi.clip.move" : "clip.move",
-                      {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);
+        {
+            if (onMoveSelection && captured.contains("linked"))
+                onMoveSelection(captured["linked"], dragStart - original["start_samples"].get<int64_t>(),
+                                captured["revision"], captured["session"]);
+            else
+                clipWrite(original["kind"] == "midi" ? "midi.clip.move" : "clip.move",
+                          {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);
+        }
         else
             clipWrite(original["kind"] == "midi" ? "midi.clip.trim" : "clip.trim",
                       {{"clip", original["id"]}, {"start_samples", dragStart}, {"end_samples", dragEnd}},

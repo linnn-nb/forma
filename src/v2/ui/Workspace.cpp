@@ -804,7 +804,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     editingControls.connect(commandManager);
     editingControls.onSettings = [this](Json patch) { setView(std::move(patch)); };
     editArea.onSnap = [this](int64_t sample, double division) { return commands.snapToGrid(sample, division); };
-    editArea.onClipSelection = [this](std::string id, bool additive) { selectAudioClip(id, additive); };
+    editArea.onClipSelection = [this](std::string id, bool additive, bool preserve)
+    { selectAudioClip(id, additive, preserve); };
     editArea.onMidiTrimExtent =
         [this](const std::string& id, int64_t first, int64_t last, const std::string& session, uint64_t revision)
     { return commands.midiClipTrimExtent(id, first, last, session, revision); };
@@ -812,33 +813,9 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         [this](const std::string& id, int64_t target, const std::string& session, uint64_t revision)
     { return commands.midiClipMoveExtent(id, target, session, revision); };
     editArea.onLinkedClips = [this](const std::string& id, const std::string& mode)
-    {
-        try
-        {
-            const auto linked = commands.editGroupClipSelection(id, mode == "move");
-            for (const auto& object : linked)
-                for (const auto& track : facts["tracks"])
-                    for (const auto& clip : track["clips"])
-                        if (clip["id"] == object["id"] &&
-                            (clip.value(mode == "move" ? "move_locked" : "locked", clip.value("locked", false)) ||
-                             !((clip["kind"] == "audio" &&
-                                clip.value(mode == "move"                        ? "movable_audio"
-                                           : (mode == "left" || mode == "right") ? "trimmable_audio"
-                                                                                 : "editable_audio",
-                                           false) &&
-                                clip.value("source_frames", int64_t(0)) > 0 &&
-                                clip.value("source_sample_rate", 0.) > 0) ||
-                               ((mode == "move" || mode == "left" || mode == "right") && clip["kind"] == "midi" &&
-                                clip.value("sample_mapping_available", false)))))
-                            throw std::runtime_error("整组编辑不可用：成员已锁定、媒体缺失或编辑类型尚未支持");
-            return linked;
-        }
-        catch (const std::exception& e)
-        {
-            message(text(e.what()));
-            return Json::array();
-        }
-    };
+    { return clipGestureTargets(id, mode); };
+    editArea.onMoveSelection = [this](const Json& targets, int64_t delta, uint64_t revision, const std::string& session)
+    { moveClipSelection(targets, delta, revision, session); };
     editArea.onContext = [this](std::string id)
     {
         if (!id.empty() && !selection.contains(id) && selection.range.is_null())

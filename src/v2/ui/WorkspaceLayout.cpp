@@ -421,6 +421,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return true;
     if (key == juce::KeyPress::escapeKey && editArea.cancelTimeSelection())
         return true;
+    if (key == juce::KeyPress::escapeKey && editArea.cancelClipGesture())
+        return true;
     return commandManager.getKeyMappings()->keyPressed(key, this);
 }
 

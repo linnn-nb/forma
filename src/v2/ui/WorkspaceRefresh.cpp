@@ -38,7 +38,7 @@ ClipWriter Workspace::clipWriter()
     };
 }
 
-void Workspace::selectAudioClip(const std::string& id, bool additive)
+void Workspace::selectAudioClip(const std::string& id, bool additive, bool preserveSelection)
 {
     midiCommandContext = false;
     // This L1 query may publish a rebuilt facts cache. Acquire references only
@@ -58,7 +58,7 @@ void Workspace::selectAudioClip(const std::string& id, bool additive)
             if (c["id"] == id)
             {
                 const bool remove = additive && selection.contains(id);
-                if (!additive)
+                if (!additive && !(preserveSelection && selection.contains(id)))
                     selection.objects.clear();
                 for (const auto& object : linked)
                 {
