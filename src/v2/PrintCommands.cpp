@@ -32,13 +32,19 @@ int boundary(te::AudioTrack& t)
 void Commands::registerPrintCommands(Json& r)
 {
     const Json string = {{"type", "string"}};
-    for (const char* name : {"track.freeze", "track.unfreeze", "track.bounce.in_place", "track.bounce.restore"})
+    for (const char* name :
+         {"track.freeze", "track.unfreeze", "track.freeze.relink", "track.bounce.in_place", "track.bounce.restore"})
     {
         Json fields = {{"track", string}}, required = {"track"};
         if (std::string(name) == "track.freeze" || std::string(name) == "track.bounce.in_place")
         {
             fields["render_id"] = string;
             required.push_back("render_id");
+        }
+        if (std::string(name) == "track.freeze.relink")
+        {
+            fields["path"] = string;
+            required.push_back("path");
         }
         r.push_back(
             {{"id", name},
@@ -80,6 +86,29 @@ Json Commands::printChange(const std::string& cmd, const Json& a) const
                    {"main_output_route", "preserved"},
                    {"original_media", "retained"},
                    {"external_file_creation_undo", "retained derived media"}};
+    if (cmd == "track.freeze.relink")
+    {
+        require(t->isFrozen(te::Track::individualFreeze), "仅可重定位冻结轨道的缓存");
+        const auto path = juce::String(a.at("path").get<std::string>());
+        require(juce::File::isAbsolutePath(path), "缓存路径必须是绝对路径");
+        const juce::File replacement(path);
+        const auto before = printQuery(*t);
+        require(replacement.existsAsFile(), "所选缓存文件不存在");
+        require(replacement.getFullPathName().toStdString() != before["file"].get<std::string>(), "缓存路径未变化");
+        const auto expected = before["media_hash"].get<std::string>();
+        require(expected.size() == 64 && mediaHash(replacement) == expected, "缓存与原记录的媒体哈希不一致，未改工程");
+        juce::WavAudioFormat format;
+        std::unique_ptr<juce::AudioFormatReader> reader(
+            format.createReaderFor(new juce::FileInputStream(replacement), true));
+        require(reader && reader->sampleRate == 48000 && reader->numChannels == 2 &&
+                    reader->lengthInSamples == before["frames"].get<int64_t>(),
+                "缓存格式、声道或帧数不匹配");
+        result["after"] = before;
+        result["after"]["file"] = replacement.getFullPathName().toStdString();
+        result["after"]["file_available"] = true;
+        result["external_file_creation_undo"] = "no file creation, move or overwrite";
+        return result;
+    }
     if (cmd == "track.unfreeze")
     {
         require(t->isFrozen(te::Track::individualFreeze), "轨道未冻结");
@@ -95,7 +124,13 @@ Json Commands::printChange(const std::string& cmd, const Json& a) const
             "原Playlist缺失");
         const auto original = Json::parse(b["plugins"].toString().toStdString());
         for (const auto& pid : original)
-            require(processor(pid.get<std::string>()), "原插件已移除；请先撤销该移除操作");
+        {
+            // AuxReturn and other native routing processors are hidden from the effect API.
+            bool found = false;
+            for (auto* p : t->pluginList)
+                found = found || p->itemID.toString().toStdString() == pid.get<std::string>();
+            require(found, "原插件已移除；请先撤销该移除操作");
+        }
         result["after"] = {{"bounce_active", false},
                            {"active_playlist", b["original_playlist"].toString().toStdString()},
                            {"current_printed_edits", "retained in inactive Playlist"}};
@@ -134,6 +169,24 @@ void Commands::executePrint(const std::string& cmd, const Json& a, Json& objects
     require(t, "印刻目标失效");
     closePluginEditors(true);
     auto& um = edit->getUndoManager();
+    if (cmd == "track.freeze.relink")
+    {
+        const auto change = printChange(cmd, a);
+        auto origin = Json::parse(t->state["ndaw_freeze_origin"].toString().toStdString());
+        if (!origin.contains("cache_relocations"))
+            origin["cache_relocations"] = Json::array();
+        origin["cache_relocations"].push_back({{"from", change["before"]["file"]},
+                                               {"to", change["after"]["file"]},
+                                               {"media_hash", change["after"]["media_hash"]}});
+        origin["path"] = change["after"]["file"];
+        t->state.setProperty("ndaw_freeze_file", juce::String(origin["path"].get<std::string>()), &um);
+        t->state.setProperty("ndaw_freeze_origin", juce::String(origin.dump()), &um);
+        objects.push_back({{"kind", "freeze_cache_relocation"},
+                           {"track", a["track"]},
+                           {"path", origin["path"]},
+                           {"media_hash", change["after"]["media_hash"]}});
+        return;
+    }
     auto unfreeze = [&]
     {
         t->state.setProperty(te::IDs::frozenIndividually, false, &um);
@@ -282,10 +335,11 @@ void Commands::validateFrozenEditing(const Json& ops) const
             require(false, "该插件已印刻且状态保留，先还原原地Bounce再编辑");
         if (!owner || !owner->isFrozen(te::Track::anyFreeze))
             continue;
-        bool allowed = cmd == "track.unfreeze" || cmd == "track.bounce.in_place" || cmd == "track.gain" ||
-                       cmd == "track.pan" || cmd == "track.pan_law" || cmd == "track.mute" || cmd == "track.solo" ||
-                       cmd == "track.solo_safe" || cmd == "track.output" || cmd == "track.rename" ||
-                       cmd == "track.colour" || cmd == "track.order" || cmd == "track.comment" || cmd == "track.delete";
+        bool allowed = cmd == "track.unfreeze" || cmd == "track.freeze.relink" || cmd == "track.bounce.in_place" ||
+                       cmd == "track.gain" || cmd == "track.pan" || cmd == "track.pan_law" || cmd == "track.mute" ||
+                       cmd == "track.solo" || cmd == "track.solo_safe" || cmd == "track.output" ||
+                       cmd == "track.rename" || cmd == "track.colour" || cmd == "track.order" ||
+                       cmd == "track.comment" || cmd == "track.delete";
         if (cmd == "automation.mode")
             allowed = true;
         if (cmd == "track.arm" && a["enabled"] == false)

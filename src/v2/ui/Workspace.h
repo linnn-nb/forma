@@ -175,6 +175,7 @@ private:
     void showElastic();
     void showSidechain();
     void showPrint(const std::string&);
+    void showFreezeRelink();
     std::unique_ptr<FadesPanel> fadesPanel;
     std::unique_ptr<CrossfadePanel> crossfadePanel;
     std::unique_ptr<ElasticPanel> elasticPanel;

@@ -197,6 +197,7 @@ const std::vector<Entry>& entries()
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {563, "所选轨道原地 Bounce…", "轨道", 'b', cmd | juce::ModifierKeys::ctrlModifier},
         {564, "还原原地 Bounce", "轨道", 'b', cmd | shift | juce::ModifierKeys::ctrlModifier},
+        {565, "重定位冻结缓存…", "轨道", 'r', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
@@ -875,12 +876,14 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) && !selected.empty();
             if (id == 560)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
-            if (id >= 562 && id <= 564)
+            if (id >= 562 && id <= 565)
             {
                 const auto& t = selectedTrack();
                 active = !t.is_null() && !facts.value("playing", false) && t.contains("print");
                 if (active && id == 564)
                     active = t["print"]["bounce_active"].get<bool>();
+                if (active && id == 565)
+                    active = t["print"]["frozen"].get<bool>();
                 if (active && id == 562 && t["print"]["frozen"].get<bool>())
                     info.shortName = text("解冻所选轨道");
             }
@@ -1146,7 +1149,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
         invoke([&] { showCrossfade(); });
         return true;
     }
-    if (id >= 562 && id <= 564)
+    if (id >= 562 && id <= 565)
     {
         invoke(
             [&]
@@ -1154,7 +1157,9 @@ bool Workspace::perform(const InvocationInfo& invocation)
                 const auto t = selectedTrack();
                 if (t.is_null())
                     throw std::runtime_error("请选择轨道");
-                if (id == 564)
+                if (id == 565)
+                    showFreezeRelink();
+                else if (id == 564)
                     write("track.bounce.restore", {{"track", t["id"]}});
                 else if (id == 562 && t["print"]["frozen"].get<bool>())
                     write("track.unfreeze", {{"track", t["id"]}});

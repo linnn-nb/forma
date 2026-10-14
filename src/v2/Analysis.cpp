@@ -1,8 +1,9 @@
 #include <nativedaw/v2/EngineCommands.h>
+#include "CheckedMedia.h"
 #include <ebur128.h>
 namespace ndaw::v2
 {
-Json Commands::analyse(const juce::File& source)
+Json Commands::analyse(const juce::File& source, const std::function<void()>& checkpoint)
 {
     juce::AudioFormatManager fm;
     fm.registerBasicFormats();
@@ -26,6 +27,8 @@ Json Commands::analyse(const juce::File& source)
     double peak = 0, sum = 0;
     for (int64_t offset = 0; offset < r->lengthInSamples; offset += 4096)
     {
+        if (checkpoint)
+            checkpoint();
         const int n = static_cast<int>(std::min<int64_t>(4096, r->lengthInSamples - offset));
         if (!r->read(&block, 0, n, offset, true, true))
             throw std::runtime_error("PCM read failed");
@@ -59,7 +62,7 @@ Json Commands::analyse(const juce::File& source)
         return 20 * std::log10(value);
     };
     return {{"path", source.getFullPathName().toStdString()},
-            {"media_hash", mediaHash(source)},
+            {"media_hash", checkedMediaHash(source, checkpoint)},
             {"frames", r->lengthInSamples},
             {"channels", r->numChannels},
             {"sample_rate", r->sampleRate},

@@ -1142,7 +1142,7 @@ Json Commands::preview(const Json& plan) const
     const auto markerDiff = validateMarkerPlan(ops);
     Json printDiff = Json::array();
     for (const auto& op : ops)
-        if (op["command"] == "track.freeze" || op["command"] == "track.unfreeze" ||
+        if (op["command"].get<std::string>().starts_with("track.freeze") || op["command"] == "track.unfreeze" ||
             op["command"].get<std::string>().starts_with("track.bounce."))
             printDiff.push_back(printChange(op["command"], op["args"]));
     Json sidechainDiff = Json::array();
@@ -1274,7 +1274,7 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd == "track.freeze" || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
+            if (cmd.starts_with("track.freeze") || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
             {
                 executePrint(cmd, a, objects);
             }

@@ -180,6 +180,8 @@ int main(int argc, char** argv)
         w.setSize(1500, 900);
         w.setVisible(true);
         auto& c = AudioDeviceTestAccess::commands(w);
+        const auto relinkKeys = w.uiCommands().getKeyMappings()->getKeyPressesAssignedToCommand(565);
+        check(!relinkKeys.isEmpty(), "cache relocation has a real customizable registered shortcut");
         c.commit(
             c.makePlan("human", Json::array({op("track.create", {{"name", "Print source"}, {"ref", "$s"}}),
                                              op("clip.import", {{"track", "$s"},

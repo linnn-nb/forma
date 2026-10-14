@@ -10,6 +10,32 @@ void require(bool ok, const char* why)
         throw std::runtime_error(why);
 }
 } // namespace
+void Workspace::showFreezeRelink()
+{
+    const auto t = selectedTrack();
+    const auto session = commands.sessionToken();
+    const auto revision = workspaceRevision;
+    require(!t.is_null() && t.contains("print") && t["print"]["frozen"].get<bool>() &&
+                commands.querySummary()["revision"] == revision,
+            "先停止并选择冻结轨道");
+    const auto target = t["id"];
+    choose(
+        false,
+        [safe = juce::Component::SafePointer<Workspace>(this), target, session, revision](const juce::File& f)
+        {
+            if (safe)
+                safe->invoke(
+                    [&]
+                    {
+                        require(safe->commands.sessionToken() == session &&
+                                    safe->commands.querySummary()["revision"] == revision,
+                                "选择文件期间工程已变化，未重定位");
+                        safe->write("track.freeze.relink",
+                                    {{"track", target}, {"path", f.getFullPathName().toStdString()}});
+                    });
+        },
+        "*.wav");
+}
 void Workspace::showPrint(const std::string& action)
 {
     const auto track = selectedTrack();

@@ -175,7 +175,7 @@ public:
     int64_t parseRollDuration(const std::string& input, int64_t anchor, bool pre, const std::string& unit,
                               int fps) const;
     Json musicalGrid(int64_t start, int64_t end, double division = 1) const;
-    static Json analyse(const juce::File&);
+    static Json analyse(const juce::File&, const std::function<void()>& checkpoint = {});
     static std::string mediaHash(const juce::File&);
     Json analysisControl(const std::string&, const Json&, const std::string& actor = "human");
     Json analysisStatus();

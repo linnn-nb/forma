@@ -2,6 +2,8 @@
 #include "TrackPrint.h"
 #include "MasterAnalysis.h"
 #include "NativePluginStates.h"
+#include "CheckedMedia.h"
+#include "SidechainGraph.h"
 #include <filesystem>
 #include <juce_cryptography/juce_cryptography.h>
 #if JUCE_MAC
@@ -25,14 +27,15 @@ Json sources(te::Edit& edit)
     std::map<std::string, juce::File> files;
     for (auto* t : te::getAudioTracks(edit))
     {
-        for (auto* c : t->getClips())
-            if (auto* wave = dynamic_cast<te::WaveAudioClip*>(c))
-                files[wave->getOriginalFile().getFullPathName().toStdString()] = wave->getOriginalFile();
         if (t->isFrozen(te::Track::individualFreeze))
         {
             auto f = te::TemporaryFileManager::getFreezeFileForTrack(*t);
             files[f.getFullPathName().toStdString()] = f;
         }
+        else
+            for (auto* c : t->getClips())
+                if (auto* wave = dynamic_cast<te::WaveAudioClip*>(c))
+                    files[wave->getOriginalFile().getFullPathName().toStdString()] = wave->getOriginalFile();
     }
     Json result = Json::array();
     for (const auto& [path, f] : files)
@@ -43,7 +46,7 @@ Json sources(te::Edit& edit)
     }
     return result;
 }
-Json hashSources(Json sources)
+Json hashSources(Json sources, const std::function<void()>& checkpoint = {})
 {
     for (auto& item : sources)
     {
@@ -51,7 +54,7 @@ Json hashSources(Json sources)
         require(f.existsAsFile() && f.getSize() == item["bytes"].get<int64_t>() &&
                     f.getLastModificationTime().toMilliseconds() == item["modified_ms"].get<int64_t>(),
                 "印刻期间源文件发生变化");
-        item["sha256"] = Commands::mediaHash(f);
+        item["sha256"] = checkedMediaHash(f, checkpoint);
     }
     return sources;
 }
@@ -151,18 +154,24 @@ struct TrackPrint::Job
 #endif
                 try
                 {
-                    const auto first = hashSources(binding["sources"]);
+                    const auto checkpoint = [this]
+                    {
+                        while (pause && !cancel && !expired())
+                            juce::Thread::sleep(5);
+                        require(!cancel && !expired(), "印刻取消或超过60秒预算");
+                    };
+                    const auto first = hashSources(binding["sources"], checkpoint);
                     stageIndex = 1;
                     while (task->runJob() == juce::ThreadPoolJob::jobNeedsRunningAgain)
                         require(!cancel && !expired(), "印刻取消或超过60秒预算");
                     require(!cancel && !expired() && stage.existsAsFile(), "印刻未完成，未产生可提交文件");
                     require(task->errorMessage.isEmpty(), task->errorMessage.toRawUTF8());
                     stageIndex = 2;
-                    const auto measured = Commands::analyse(stage);
+                    const auto measured = Commands::analyse(stage, checkpoint);
                     require(measured["frames"] == binding["frames"] && measured["sample_rate"] == 48000 &&
                                 measured["channels"] == 2,
                             "印刻文件格式或时长校验失败");
-                    require(first == hashSources(binding["sources"]), "印刻期间源媒体哈希改变");
+                    require(first == hashSources(binding["sources"], checkpoint), "印刻期间源媒体哈希改变");
                     stageIndex = 3;
                     std::filesystem::create_hard_link(stage.getFullPathName().toStdString(),
                                                       file.getFullPathName().toStdString());
@@ -171,7 +180,7 @@ struct TrackPrint::Job
                     result["state"] = "ready";
                     result["sources"] = first;
                     result["path"] = file.getFullPathName().toStdString();
-                    result["media_hash"] = Commands::mediaHash(file);
+                    result["media_hash"] = checkedMediaHash(file, checkpoint);
                     result["measurement"] = measured;
                     result["elapsed_ms"] = juce::Time::getMillisecondCounterHiRes() - began;
                     result["audio_verified"] = true;
@@ -280,7 +289,30 @@ Json TrackPrint::prepare(const Json& args)
             "先解除录音待命并关闭输入监听");
     const int64_t end = args["end_samples"];
     require(end > 0, "印刻结束必须大于零");
-    const int64_t nativeEnd = std::llround(target->getLengthIncludingInputTracks().inSeconds() * 48000.);
+    // Native getInputTracks covers direct outputs; include actual Aux-send dependencies too.
+    const auto edges = sidechain_graph::nativeEdges(*owner.edit, true);
+    std::set<std::string> upstream{id(*target)};
+    bool added = true;
+    while (added)
+    {
+        added = false;
+        for (const auto& [source, destinations] : edges)
+            if (!upstream.contains(source))
+                for (const auto& dest : destinations)
+                    if (upstream.contains(dest))
+                    {
+                        upstream.insert(source);
+                        added = true;
+                        break;
+                    }
+    }
+    int64_t nativeEnd = 0;
+    for (const auto& key : upstream)
+        if (auto* t = owner.track(key))
+            nativeEnd = std::max(nativeEnd,
+                                 t->isFrozen(te::Track::individualFreeze)
+                                     ? int64_t(t->state.getProperty("ndaw_freeze_frames", juce::int64(0)))
+                                     : int64_t(std::llround(t->getLengthIncludingInputTracks().inSeconds() * 48000.)));
     require(nativeEnd > 0 && end >= nativeEnd, "印刻必须覆盖整个目标轨道；尾音可延长");
     require(!target->state.getChildWithName("NDAW_BOUNCE").isValid(), "先还原当前原地Bounce再制作下一份");
     // Source playlists may include crossfades. Linked multi-track Comp requires a grouped print transaction.
