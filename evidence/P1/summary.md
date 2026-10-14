@@ -1,3 +1,10 @@
+## 2026-10-14 连续制作链路
+
+- `forma_production_chain`：91 项检查通过，12.12 s / 120 s 固定预算。两路受控音乐信号进入原生录音写盘，连续 Loop 两整轮与尾段 → 同工程双轨 Punch → 三选段、多来源候选 Comp → 两处 50 ms 等功率交叉淡化 → 4 s 立体声 WAV → 保存重开 → 键盘 Undo/Redo → 再导出。两次完整 PCM 最大误差 0，原录音哈希不变。
+- 键盘实际通过 KeyPressMappingSet 分发：L、F12、Option P、Option [ / ]、Cmd Z / Shift Cmd Z；Punch 自定义键保存重开保留。Comp/Crossfade/导出可改键；它们的实体窗口与文件选择仍须本轮实机验证。F12 是新增的录音默认键。
+- 一处交叉淡化是一个事务，两处对应两次 Undo；初次集成测试误把两处交叉淡化塞进仅支持 standalone 的命令，被正确拒绝，夹具已按真实产品手势修正。未放宽生产校验/PCM 容差。
+- 输出：`build-v2-tracktion/p1-production-chain-tests.json`；临时制作工程与 WAV 路径由该回执给出。测试输入不是实体麦克风或人工听评，不能据此宣称 P1 全部验收完成。实体麦克风链路继续核验中。
+
 # P1 时间线交叉淡化 Copy/Paste（2026-10-13）
 
 结论：时间线与局部复制的配对迁移、真实音频和持久 Undo/Redo 已通过；完整 P1 制作链路仍未验收。

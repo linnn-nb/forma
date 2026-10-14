@@ -39,7 +39,7 @@ const std::vector<Entry>& entries()
         {80, "播放 / 停止", "走带", juce::KeyPress::spaceKey},
         {81, "停止", "走带"},
         {82, "返回工程开头", "走带", juce::KeyPress::returnKey},
-        {83, "录音", "走带"},
+        {83, "录音", "走带", juce::KeyPress::F12Key},
         {84, "新建所选类型轨道", "轨道"},
         {100, "切换 Edit / Mix", "窗口", '=', cmd},
         {101, "水平放大", "视图", 't'},

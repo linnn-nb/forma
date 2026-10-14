@@ -1048,3 +1048,9 @@ target_sources(ndaw_crossfade_clipboard_tests PRIVATE tests/v2/CrossfadeClipboar
 target_link_libraries(ndaw_crossfade_clipboard_tests PRIVATE ndaw_ui)
 add_test(NAME forma_crossfade_clipboard COMMAND ndaw_crossfade_clipboard_tests "${CMAKE_BINARY_DIR}/crossfade-clipboard-tests.json")
 set_tests_properties(forma_crossfade_clipboard PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_production_chain_tests PRODUCT_NAME "ndaw_production_chain_tests")
+target_sources(ndaw_production_chain_tests PRIVATE tests/v2/ProductionChainTests.cpp)
+target_link_libraries(ndaw_production_chain_tests PRIVATE ndaw_ui)
+add_test(NAME forma_production_chain COMMAND ndaw_production_chain_tests "${CMAKE_BINARY_DIR}/p1-production-chain-tests.json")
+set_tests_properties(forma_production_chain PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
