@@ -474,6 +474,8 @@ void Workspace::refresh()
             sidechainPanel->setVisible(false);
         if (printPanel)
             printPanel->close();
+        if (stemsPanel)
+            stemsPanel->close();
         if (rollPanel)
             rollPanel->setVisible(false);
         if (musicEventPanel)

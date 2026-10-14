@@ -980,6 +980,8 @@ juce::String Workspace::historyLabel(const Json& entry)
         const auto id = commands[0].get<std::string>();
         if (id == "track.gain")
             return text("轨道音量");
+        if (id == "export.stems.publish")
+            return text("Stems 导出记录 · 文件保留");
         if (id == "track.pan")
             return text("轨道声像");
         if (id == "track.create")

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "StemExport.h"
+#include <set>
 namespace ndaw::v2
 {
 namespace
@@ -23,6 +24,33 @@ Json saved(juce::ValueTree meta)
                 r.at("batch_id") == node["batch_id"].toString().toStdString() && r.at("files").is_array() &&
                 r.at("configuration").is_object(),
             "保存的Stems引用损坏");
+    const auto& c = r.at("configuration");
+    require(c.size() == 10 && c.at("targets").is_array() && c.at("targets").size() <= 64 &&
+                c.at("include_master").is_boolean() && (c.at("mode") == "session" || c.at("mode") == "selection") &&
+                c.at("start_samples").is_number_integer() && c.at("end_samples").is_number_integer() &&
+                c.at("tail_samples").is_number_integer() && c.at("directory").is_string() &&
+                c.at("batch_name").is_string() && c.at("session_token").is_string() &&
+                c.at("base_revision").is_number_integer() && r.at("directory").is_string() &&
+                r.at("files").size() > 0 && r.at("files").size() <= 65,
+            "保存的Stems配置字段损坏");
+    for (const auto& target : c.at("targets"))
+        require(target.is_string(), "保存的Stems轨道引用损坏");
+    const auto directoryPath = juce::String(r.at("directory").get<std::string>());
+    require(juce::File::isAbsolutePath(directoryPath), "保存的Stems目录引用损坏");
+    const juce::File directory(directoryPath);
+    std::set<std::string> paths;
+    for (const auto& file : r.at("files"))
+    {
+        require(file.is_object() && file.at("path").is_string() && file.at("filename").is_string() &&
+                    file.at("name").is_string() && file.at("measurement").is_object(),
+                "保存的Stems文件引用损坏");
+        const auto path = file.at("path").get<std::string>();
+        const auto name = juce::String(file.at("filename").get<std::string>());
+        require(juce::File::isAbsolutePath(juce::String(path)) && name.isNotEmpty() && !name.containsAnyOf("/\\:") &&
+                    name != "." && name != ".." &&
+                    directory.getChildFile(name).getFullPathName().toStdString() == path && paths.insert(path).second,
+                "保存的Stems路径或重复引用损坏");
+    }
     return r;
 }
 } // namespace
@@ -39,7 +67,8 @@ void Commands::registerStemCommands(Json& r)
                    {"properties", {{"batch_id", {{"type", "string"}}}}},
                    {"additionalProperties", false}}},
                  {"permission", "edit"},
-                 {"risk", "external_write"},
+                 {"risk", "medium"},
+                 {"side_effects", "local external file publication"},
                  {"live", false},
                  {"reversible", true},
                  {"undo_effect", "project configuration and export record only; generated files retained"},
@@ -78,14 +107,17 @@ void Commands::executeStemExport(const Json& a, Json& objects)
     const auto text = record.dump();
     require(text.size() <= 4 * 1024 * 1024, "Stems工程记录超过4MiB预算；已发布文件保留");
     auto& um = edit->getUndoManager();
-    const auto old = metadata.getChildWithName("STEM_EXPORT");
-    if (old.isValid())
-        metadata.removeChild(old, &um);
-    juce::ValueTree node("STEM_EXPORT");
-    node.setProperty("schema", 1, nullptr);
-    node.setProperty("batch_id", juce::String(record["batch_id"].get<std::string>()), nullptr);
-    node.setProperty("record", juce::String(text), nullptr);
-    metadata.addChild(node, -1, &um);
+    auto node = metadata.getChildWithName("STEM_EXPORT");
+    if (!node.isValid())
+    {
+        node = juce::ValueTree("STEM_EXPORT");
+        metadata.addChild(node, -1, &um);
+    }
+    // Retain the singleton's identity and parent order. Replacing its record is
+    // a property edit, not a remove/reinsert that reorders unrelated UI/audit nodes.
+    node.setProperty("schema", 1, &um);
+    node.setProperty("batch_id", juce::String(record["batch_id"].get<std::string>()), &um);
+    node.setProperty("record", juce::String(text), &um);
     objects.push_back({{"kind", "stem_export"},
                        {"batch_id", record["batch_id"]},
                        {"directory", record["directory"]},

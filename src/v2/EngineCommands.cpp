@@ -1626,6 +1626,8 @@ void Commands::play()
     validateExternalRuntime();
     if (masterAnalysis)
         masterAnalysis->prioritizePlayback(true);
+    if (stemExport)
+        stemExport->prioritizePlayback(true);
     beginAutomationCapture();
     try
     {
@@ -1808,6 +1810,7 @@ uint64_t Commands::audioDeviceGeneration() const
 Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
 {
     checkThread();
+    require(!stemExportStatus()["busy"].get<bool>(), "先等待或取消Stems任务，再开始另一份导出");
     validateSidechainRuntime();
     validateFreezeRuntime();
     require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后导出；尚未生成文件");

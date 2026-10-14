@@ -27,6 +27,7 @@
 #include "ElasticPanel.h"
 #include "SidechainPanel.h"
 #include "PrintPanel.h"
+#include "StemsPanel.h"
 #include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -176,6 +177,8 @@ private:
     void showSidechain();
     void showPrint(const std::string&);
     void showFreezeRelink();
+    void showStems();
+    std::unique_ptr<StemsPanel> stemsPanel;
     std::unique_ptr<FadesPanel> fadesPanel;
     std::unique_ptr<CrossfadePanel> crossfadePanel;
     std::unique_ptr<ElasticPanel> elasticPanel;

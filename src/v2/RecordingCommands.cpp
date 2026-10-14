@@ -1,4 +1,5 @@
 #include "MasterAnalysis.h"
+#include "StemExport.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "OutputProbe.h"
 #include "SelectionOutputGate.h"
@@ -426,6 +427,8 @@ Json Commands::record(const juce::File& directory)
     }
     if (masterAnalysis)
         masterAnalysis->prioritizePlayback(true);
+    if (stemExport)
+        stemExport->prioritizePlayback(true);
     try
     {
         if (punch)

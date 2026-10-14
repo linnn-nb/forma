@@ -101,6 +101,12 @@ void captureOutput(te::Edit& edit, const std::string& targetID)
         }
     }
     require(target, "Stems轨道失效");
+    // Native Aux sends intentionally keep feeding returns when their source is
+    // muted. A stem represents the audible main output, not that send branch.
+    // Capture audibility before removing device routes (destination mute/solo
+    // inheritance is part of the original session's output policy).
+    edit.updateMuteSoloStatuses();
+    const bool audible = target->shouldBePlayed();
     int bus = 0;
     while (used.contains(bus))
     {
@@ -112,6 +118,7 @@ void captureOutput(te::Edit& edit, const std::string& targetID)
     auto capture = edit.insertNewAudioTrack(te::TrackInsertPoint::getEndOfTracks(edit), nullptr, false);
     require(capture, "Stems捕获轨创建失败");
     capture->setSoloIsolate(true);
+    capture->setMute(!audible);
     auto ret = edit.getPluginCache().createNewPlugin(te::AuxReturnPlugin::xmlTypeName, {});
     auto sent = edit.getPluginCache().createNewPlugin(te::AuxSendPlugin::xmlTypeName, {});
     require(ret && sent, "Stems捕获节点创建失败");
@@ -173,13 +180,11 @@ struct StemExport::Job
     std::unique_ptr<te::Edit::ScopedRenderStatus> renderStatus;
     std::unique_ptr<te::Renderer::RenderTask> task;
     juce::WavAudioFormat wav;
-    std::thread worker;
-    std::optional<te::ScopedThreadExitStatusEnabler> exitEnabler;
     std::atomic<bool> cancel{false}, pause{false}, done{false};
     std::atomic<float> progress{0};
     std::atomic<int> phase{0};
     juce::File raw, encoded;
-    Json sourceRefs, result;
+    Json sourceRefs, result, inputs = Json::array();
     int64_t start = 0, frames = 0;
     double began = juce::Time::getMillisecondCounterHiRes();
     bool expired() const
@@ -188,66 +193,102 @@ struct StemExport::Job
     }
     ~Job()
     {
-        cancel = true;
-        if (worker.joinable())
-        {
-            te::signalThreadShouldExit(worker.get_id());
-            worker.join();
-        }
         task.reset();
         renderStatus.reset();
         edit.reset();
         raw.deleteFile();
     }
-    void launch()
+    void run()
+    {
+        try
+        {
+            const auto checkpoint = [this]
+            {
+                while (pause && !cancel && !expired())
+                    juce::Thread::sleep(5);
+                require(!cancel && !expired(), "Stems取消或单文件超过60秒预算");
+            };
+            const auto before = hashes(sourceRefs, checkpoint);
+            phase = 1;
+            while (task->runJob() == juce::ThreadPoolJob::jobNeedsRunningAgain)
+                checkpoint();
+            checkpoint();
+            require(task->errorMessage.isEmpty(), task->errorMessage.toRawUTF8());
+            phase = 2;
+            analysis::Control control;
+            control.cancelled = [this] { return cancel.load() || expired(); };
+            control.yield = checkpoint;
+            auto measured = analysis::stageVerifiedWav(raw, encoded, start, frames, control,
+                                                       delivery::normaliseProfile(Json::object()));
+            phase = 3;
+            require(before == hashes(sourceRefs, checkpoint), "Stems源媒体哈希在渲染中改变");
+            result = {{"state", "verified"},
+                      {"measurement", compact(std::move(measured))},
+                      {"sources", before},
+                      {"elapsed_ms", juce::Time::getMillisecondCounterHiRes() - began}};
+        }
+        catch (const std::exception& e)
+        {
+            result = {{"state", cancel.load() ? "cancelled" : "failed"}, {"error", e.what()}};
+        }
+    }
+};
+struct StemExport::Worker
+{
+    std::thread thread;
+    std::optional<te::ScopedThreadExitStatusEnabler> exitEnabler;
+    juce::WaitableEvent available;
+    std::atomic<Job*> pending{nullptr};
+    std::atomic<bool> exiting{false};
+    Worker()
     {
         auto gate = std::make_shared<juce::WaitableEvent>();
-        worker = std::thread(
+        thread = std::thread(
             [this, gate]
             {
                 gate->wait();
 #if JUCE_MAC
-                pthread_set_qos_class_self_np(QOS_CLASS_BACKGROUND, 0);
+                // Utility work remains below interactive/audio priorities without macOS's
+                // background disk throttling on every source/verification read.
+                pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
 #endif
-                try
+                while (!exiting.load())
                 {
-                    const auto checkpoint = [this]
+                    available.wait();
+                    if (exiting.load())
+                        break;
+                    if (auto* current = pending.load(std::memory_order_acquire))
                     {
-                        while (pause && !cancel && !expired())
-                            juce::Thread::sleep(5);
-                        require(!cancel && !expired(), "Stems取消或单文件超过60秒预算");
-                    };
-                    const auto before = hashes(sourceRefs, checkpoint);
-                    phase = 1;
-                    while (task->runJob() == juce::ThreadPoolJob::jobNeedsRunningAgain)
-                        checkpoint();
-                    checkpoint();
-                    require(task->errorMessage.isEmpty(), task->errorMessage.toRawUTF8());
-                    phase = 2;
-                    analysis::Control control;
-                    control.cancelled = [this] { return cancel.load() || expired(); };
-                    control.yield = checkpoint;
-                    auto measured = analysis::stageVerifiedWav(raw, encoded, start, frames, control,
-                                                               delivery::normaliseProfile(Json::object()));
-                    phase = 3;
-                    require(before == hashes(sourceRefs, checkpoint), "Stems源媒体哈希在渲染中改变");
-                    result = {
-                        {"state", "verified"}, {"measurement", compact(std::move(measured))}, {"sources", before}};
+                        current->run();
+                        pending.store(nullptr, std::memory_order_release);
+                        current->done.store(true, std::memory_order_release);
+                    }
                 }
-                catch (const std::exception& e)
-                {
-                    result = {{"state", cancel.load() ? "cancelled" : "failed"}, {"error", e.what()}};
-                }
-                done.store(true, std::memory_order_release);
             });
-        exitEnabler.emplace(worker.get_id());
+        exitEnabler.emplace(thread.get_id());
         gate->signal();
+    }
+    void submit(Job* task)
+    {
+        require(!pending.load(), "已有Stems工作任务");
+        pending.store(task, std::memory_order_release);
+        available.signal();
+    }
+    ~Worker()
+    {
+        if (auto* current = pending.load())
+            current->cancel = true;
+        exiting = true;
+        te::signalThreadShouldExit(thread.get_id());
+        available.signal();
+        thread.join();
     }
 };
 StemExport::StemExport(Commands& c) : owner(c) {}
 StemExport::~StemExport()
 {
     stopTimer();
+    worker.reset();
     job.reset();
     batch.reset();
 }
@@ -377,9 +418,22 @@ void StemExport::beginNext()
                     "副本外部插件未实际载入");
     }
     next->sourceRefs = sourceFiles(*next->edit);
+    for (auto* t : te::getAudioTracks(*next->edit))
+        for (auto* clip : t->getClips())
+            if (auto* wave = dynamic_cast<te::WaveAudioClip*>(clip); wave && next->inputs.size() < 64)
+            {
+                const auto playback = wave->getPlaybackFile();
+                next->inputs.push_back({{"clip", wave->itemID.toString().toStdString()},
+                                        {"playback_file", playback.getFile().getFullPathName().toStdString()},
+                                        {"exists", playback.getFile().existsAsFile()},
+                                        {"valid", playback.isValid()},
+                                        {"rate", playback.getInfo().sampleRate},
+                                        {"proxy", wave->usesTimeStretchedProxy()}});
+            }
     if (!item["track"].is_null())
         captureOutput(*next->edit, item["track"]);
-    next->raw = batch->stage.getChildFile(".render-float.wav");
+
+    next->raw = batch->stage.getChildFile(".render-" + juce::String(int(index)) + "-float.wav");
     next->encoded = batch->stage.getChildFile(juce::String(item["filename"].get<std::string>()));
     const auto& config = batch->binding["configuration"];
     next->start = config["start_samples"];
@@ -405,7 +459,9 @@ void StemExport::beginNext()
             return flag->cancel || flag->expired();
         });
     job = std::move(next);
-    job->launch();
+    if (!worker)
+        worker = std::make_unique<Worker>();
+    worker->submit(job.get());
 }
 void StemExport::poll()
 {
@@ -443,7 +499,11 @@ void StemExport::poll()
     }
     auto file = batch->items[batch->files.size()];
     file["measurement"] = result["measurement"];
+    file["preparation_ms"] = result["elapsed_ms"];
     file["measurement"]["file_verification"]["tap_point"] = file["tap_point"];
+    file["measurement"]["file_verification"]["publication"] = "pending exclusive atomic batch directory rename";
+    file["measurement"]["float_encoding_risk"]["meaning"] = "Actual floating tap frames exceeding full scale before "
+                                                            "PCM24 encoding; integer peaks cannot reveal saturation.";
     file["measurement"]["continuation"]["tap_point"] = file["tap_point"];
     batch->files.push_back(file);
     try
@@ -460,6 +520,12 @@ void StemExport::poll()
 void StemExport::timerCallback()
 {
     poll();
+}
+void StemExport::prioritizePlayback(bool playing)
+{
+    owner.checkThread();
+    if (job)
+        job->pause = playing;
 }
 Json StemExport::status()
 {
@@ -482,6 +548,7 @@ Json StemExport::status()
             {"completed_files", batch ? batch->files.size() : 0},
             {"total_files", batch ? batch->items.size() : 0},
             {"file_progress", job ? job->progress.load() : 0},
+            {"render_inputs", job ? job->inputs : Json(nullptr)},
             {"phase", job ? Json(std::array<const char*, 4>{"source_hash", "render", "measure",
                                                             "validate"}[size_t(job->phase.load())])
                           : Json(nullptr)},
@@ -551,8 +618,11 @@ Json StemExport::publish(const std::string& key)
     if (!batch->published)
     {
         const auto manifest = batch->stage.getChildFile("manifest.json");
-        require(!manifest.exists(), "批次manifest冲突");
-        require(manifest.replaceWithText(juce::String(record.dump(2))), "批次manifest写盘失败");
+        const auto text = juce::String(record.dump(2));
+        if (manifest.exists())
+            require(manifest.loadFileAsString() == text, "批次manifest已改变，未覆盖");
+        else
+            require(manifest.replaceWithText(text), "批次manifest写盘失败");
         exclusiveRename(batch->stage, batch->destination);
         batch->published = true;
     }

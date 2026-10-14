@@ -18,6 +18,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(p, 2);
         addMenuCommand(p, 3);
         addMenuCommand(p, 4);
+        addMenuCommand(p, 566);
         addMenuCommand(p, 44);
         addMenuCommand(p, 45);
         addMenuCommand(p, 40);
@@ -308,6 +309,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return keyboardSettings->keyPressed(key);
     if (printPanel && printPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
+    if (stemsPanel && stemsPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (sidechainPanel && sidechainPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
     if (elasticPanel && elasticPanel->isVisible() && key == juce::KeyPress::escapeKey)
@@ -469,6 +472,8 @@ void Workspace::resized()
         sidechainPanel->setBounds(getLocalBounds());
     if (printPanel)
         printPanel->setBounds(getLocalBounds());
+    if (stemsPanel)
+        stemsPanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)

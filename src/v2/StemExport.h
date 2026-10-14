@@ -15,13 +15,16 @@ public:
     Json cancel();
     Json ready(const std::string&) const;
     Json publish(const std::string&);
+    void prioritizePlayback(bool);
 
 private:
     struct Batch;
     struct Job;
+    struct Worker;
     Commands& owner;
     std::unique_ptr<Batch> batch;
     std::unique_ptr<Job> job;
+    std::unique_ptr<Worker> worker;
     Json terminal = nullptr;
     void beginNext();
     void poll();

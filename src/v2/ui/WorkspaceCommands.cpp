@@ -198,6 +198,7 @@ const std::vector<Entry>& entries()
         {563, "所选轨道原地 Bounce…", "轨道", 'b', cmd | juce::ModifierKeys::ctrlModifier},
         {564, "还原原地 Bounce", "轨道", 'b', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {565, "重定位冻结缓存…", "轨道", 'r', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {566, "Stems · 批量导出…", "文件", 'b', cmd | shift | juce::ModifierKeys::altModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
@@ -876,6 +877,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) && !selected.empty();
             if (id == 560)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
+            if (id == 566)
+                active = !facts.value("playing", false) && pending.is_null() &&
+                         facts.value("length_samples", int64_t(0)) > 0;
             if (id >= 562 && id <= 565)
             {
                 const auto& t = selectedTrack();
@@ -916,6 +920,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
                     (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
+                    (id != 276 && stemsPanel && stemsPanel->isVisible() && (id == 277 || stemsPanel->canApply())) ||
                     (id != 276 && sidechainPanel && sidechainPanel->isVisible() &&
                      (id == 277 || sidechainPanel->canApply())) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
@@ -1147,6 +1152,19 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 538)
     {
         invoke([&] { showCrossfade(); });
+        return true;
+    }
+    if (id == 566)
+    {
+        invoke([&] { showStems(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && stemsPanel && stemsPanel->isVisible())
+    {
+        if (id == 275)
+            stemsPanel->execute();
+        else
+            stemsPanel->close();
         return true;
     }
     if (id >= 562 && id <= 565)

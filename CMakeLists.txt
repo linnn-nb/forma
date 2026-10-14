@@ -575,7 +575,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 add_library(ndaw_ui STATIC
   src/v2/ui/KeyboardSettings.cpp src/v2/ui/WorkspacePlaylists.cpp src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
-  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
+  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceStems.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
 target_link_libraries(ndaw_ui PUBLIC ndaw_engine)
 target_link_libraries(NativeDAW PRIVATE ndaw_ui)
@@ -1086,3 +1086,9 @@ target_sources(ndaw_print_graph_tests PRIVATE tests/v2/PrintGraphTests.cpp)
 target_link_libraries(ndaw_print_graph_tests PRIVATE ndaw_engine)
 add_test(NAME forma_print_graph COMMAND ndaw_print_graph_tests "${CMAKE_BINARY_DIR}/p2-print-graph-tests.json")
 set_tests_properties(forma_print_graph PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_stems_tests PRODUCT_NAME "ndaw_stems_tests")
+target_sources(ndaw_stems_tests PRIVATE tests/v2/StemsTests.cpp)
+target_link_libraries(ndaw_stems_tests PRIVATE ndaw_ui)
+add_test(NAME forma_stems COMMAND ndaw_stems_tests "${CMAKE_BINARY_DIR}/p2-stems-tests.json")
+set_tests_properties(forma_stems PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
