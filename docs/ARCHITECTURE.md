@@ -1,4 +1,4 @@
-2026-10-14：L1 TrackPrint单背景渲染器准备独立Edit快照和真实推子前产物；PrintCommands是Freeze/Bounce/还原唯一写入口，原生FreezePoint/WaveNode与编辑Playlist复用L0。一个Plan一个Undo，源/处理链哈希、版本冲突、取消、派生文件和事实/测量分离；L5仅显示并提交。14份锁定补丁含持久缓存生命周期和印刻图，未并存引擎或增加IPC。资格/不足见 PRINT_WORKFLOW.md。
+2026-10-14：L1统一计算原生工程长度与冻结缓存长度，query/exportRequest共用，避免全工程导出截掉缓存尾音。原生图准备保留印刻接收总线上游仍服务其他发送/旁链的分支，作为sink而不重复混入缓存；普通图不改变。L1 track.freeze.relink校验实际文件哈希/布局，以同一Undo事务更新原生引用和来源记录，L5只选文件、核验session/revision并提交。TrackPrint后台哈希/测量逐块检查取消与播放优先。14份完整SDK补丁仍受CMake审计；未增加引擎、IPC或服务。资格见 PRINT_WORKFLOW/VERIFICATION。
 
 2026-10-14：旁链复用 L0 原生 Send/Return 节点与插件实际针脚；L1 `plugin.sidechain.set` 独立停止态事务、反馈预检、稳定源引用、删除源显式断开与持久 Undo。L5 `SidechainPanel` 只提交 Plan，未改来源不能创建事务；Play/Record/Render/非片段分析预检缺失引用。代码 `SidechainCommands.cpp` / `SidechainGraph.h`，资格与剩余边界见 `SIDECHAIN_WORKFLOW.md`、`../evidence/P2/summary.md`。无第二引擎、SDK补丁或固定IPC延迟。
 

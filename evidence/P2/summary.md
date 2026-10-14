@@ -1,3 +1,33 @@
+# P2 印刻综合资格与尾音导出（2026-10-14）
+
+结论：最终Release、固定本地deep/strict签名和9个受影响套件655项通过；同一批178.08秒、0 JUCE assertion。原生乐器/Aux/PRE/POST/旁链Freeze/Bounce、取消/OS写盘错误、缓存缺失/重定位、持久历史和尾音全工程导出已验。不是全仓回归、第三方生态、性能/听感/耐久或完整P2通过。源码08c709e/9bf5f35；唯一二进制SHA256 `cf5ffa4d7c81d7ad616bba20e693b1980cc4039116b11258ae8027f18486a75a`。
+
+亲手试：现有P1制作工程仍可打开 Loop→Punch→Take/Comp→交叉淡化→导出，Cmd Z/Shift Cmd Z撤销重做；弹力音频Cmd Option T仍为SoundTouch常速伸缩/独立变调，Warp未完成。选轨Cmd Ctrl Option F冻结/解冻、Cmd Ctrl B原地Bounce、Cmd Ctrl Shift B还原；实际渲染并预览后Cmd Return提交。搬动缓存后，Cmd Ctrl Option R选回哈希相同的WAV，一次Undo恢复旧引用。全部可改键、保存重开保持历史。
+
+| 套件 | 检查 | 秒 | 原固定预算秒 |
+| --- | ---: | ---: | ---: |
+| processor | 40 | 10.44 | 60 |
+| routing | 41 | 15.03 | 60 |
+| music | 44 | 7.22 | 90 |
+| hierarchy | 51 | 12.31 | 90 |
+| production_chain | 91 | 11.48 | 120 |
+| elastic | 87 | 7.73 | 120 |
+| sidechain | 76 | 5.21 | 120 |
+| print | 77 | 27.56 | 180 |
+| print_graph | 148 | 81.08 | 180 |
+
+prepare/render单次10秒、PCM2e-6保持；实际原生FourOsc/MIDI、直连Bus、发送Reverb Aux、PRE/POST和内置压缩旁链的印刻/还原/重定位比较最大差0。原生混响2–3秒尾段RMS `0.002412658`，全工程绑定导出包含该非零尾音。原源哈希保持；乐器使用真实打印文件作比较，恢复后检查实际MIDI发声，不声称独立随机振荡器渲染逐位一致。取消、实际OS文件大小限制造成的写盘失败、后续恢复、缺失缓存拒绝、错文件拒绝/幂等、重定位预览/跨重开原Undo/Redo通过；文件大小错误不等于磁盘满/任意故障通过。
+
+最终日志/索引：`build-v2-tracktion/p2-print-tail-final-regression.log`、`p2-print-tail-last-test.log`、`p2-print-graph-current-results.json`；Print/Graph JSON保留actual receipt及自有工程路径。最新图工程目录 `P2-Print-Graph-161292b99796434e993d03170e3f5156`，内有MIDI-Frozen/Routed-Frozen/Relocated-Frozen和真实WAV。Relocated-Frozen故意保留已搬回的旧测试引用，须选其Forma-Print-*下的printed.wav重定位；不可把该预设缺失条件当正常demo播放。
+
+实体工程与验证目录：`build-v2-tracktion/P2-Print-Graph-b04f5037df7943129718bcdef1fe2f58/Freeze-Relink-physical-1014.tracktionedit`。MacBook Pro扬声器48k/512：打开缺失缓存r4→Space明确失败→Cmd Ctrl Option R选实际WAV、L1提交r5→Cmd S副本→Cmd O重开r6→Cmd Z旧缺失路径r7/Space拒绝→Cmd Shift Z可用路径r8→Space实际CoreAudio走带；Mix峰值保持-20.0/-26.0dBFS。最终构建再重开、Undo/Redo、Cmd Option B导出 `Freeze-Relink-Tail-fixed-1014.wav`：144000帧、48k、双声道24-bit、界面真实-23.28LUFS-I；独立与32-bit缓存PCM最大差2.0954e-14。`physical-actions.json`/`physical-tail-validation.json`在同目录；已查看真实Edit/Mix截图，PNG未归档，未进行新增音乐听评或实体录音。
+
+本轮失败与修复保留：首次新增Graph35.14秒失败，接收Aux冻结后上游仍服务其他PRE/POST发送的分支未进入图，实际PCM差0.017952；原生图准备以sink保留这些分支且不重复叠入缓存，随后130项78.87秒通过。补重定位后5套476项132.77秒、再加4核心套件176项通过。实体导出发现默认范围只96000帧，会截冻结尾音；统一L1工程长度，新增非零混响尾音的完整绑定导出检查后，最终9套655项通过。新CMake目标首次需要显式重新配置，未降低测试预算或音频容差。
+
+下一项Stems批量导出/偏好。第三方插件/PDC、多声道/其他采样率、长素材同步校验和录放优先压力、中间发送/关联Comp整组印刻、跨工程缓存迁移/垃圾回收进入BACKLOG；P1听评/耐久、Warp、旧性能A和自动化180秒矩阵、Windows/公证/SBOM继续保留。没有新DMG/预览包，没有上传音频；完整线程目标仍未完成。
+
+以下为历史记录，以本节实际受测范围为准。
+
 # P2 Freeze / 原地 Bounce 首版（2026-10-14）
 
 Release/固定本地deep-strict签名通过；最终8个受影响套件504项分批通过，0JUCE assertion。Print74项/27.39秒/180秒固定预算；不是一次全仓回归、完整P2或发布验收。源码445c397、473f92e；唯一二进制SHA256 `263a1c36591d4ecd9d43f8a2450cab0e94a6bf62d62a0b0ef1b8dac62f52ca19`。

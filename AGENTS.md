@@ -1,6 +1,6 @@
 # Forma Studio 工程规则
 
-- 2026-10-14：P2 Freeze/原地Bounce首版已构建，8个受影响套件504项最终分批通过；Print74项、真实PCM差0、持久历史和部分实体键鼠已验。Tracktion14份审计补丁，主源码445c397/473f92e。Mac后来锁定，最终实体保存重开/播放未验。下一项先补乐器/Aux/发送/旁链、取消/故障与缓存重定位资格，再Stems；不将单音频轨资格包装成完整P2。见 PRINT_WORKFLOW/evidence/P2。
+- 2026-10-14：P2 Freeze/Bounce综合资格已通过9套655项和实体快捷键/重定位/保存重开/原Undo/Redo/播放/导出；原生乐器、Aux/PRE/POST/旁链、取消/OS写盘错误、缓存缺失/重定位、尾音纳入全工程范围已验。源码08c709e/9bf5f35，14份审计补丁。下一项Stems批量导出；两轮边界收口，第三方/多声道/长源资源/中间发送/关联Comp与缓存清理移BACKLOG，不再无限扩印刻矩阵。详见PRINT_WORKFLOW/evidence/P2。
 
 - 2026-10-14：P2 原生旁链首版已提交并经六套件386项及实体窗口验证；native Compressor 数值、路由反馈/缺失源防护、持久历史和改键已验。唯一应用不变。下一项 Freeze / 原地 Bounce；第三方旁链、mute/solo与硬件PDC另测，P1听评/耐久和旧缺口保留。证据 evidence/P2/summary.md；不扩M2/M3权限。
 

@@ -1,4 +1,4 @@
-2026-10-14：P2 Print74项最终27.39s/180s、0 JUCE assertion，实际Freeze/Bounce PCM最大差0（预算2e-6），推子比0.501187205（1e-5）；独立引擎/缺失原源仍读缓存，持久Undo/Redo、原生面板及版本冲突已验。加受影响原7套430项，共8套504项最终分批通过；首批Print失败和修复保留。最终Release与固定本地验签通过。部分实体解冻/Bounce/还原已验，Mac随后锁定，最终实体保存重开/播放未执行。不是全仓/大工程/听感/硬件或完整P2通过。见 ../evidence/P2/summary.md。
+2026-10-14：最终Release/固定本地deep-strict验签通过；9受影响套件655项、0 JUCE assertion，一批178.08秒（每套原预算保持）。Print77项27.56秒/180秒、PrintGraph148项81.08秒/180秒；实际FourOsc/MIDI、Aux/PRE/POST/旁链Freeze/Bounce与重定位的PCM最大差0（2e-6）。原生混响在2–3秒尾段RMS约0.002413，全工程绑定导出保留该尾段。实际取消、OS文件大小限制引起的写盘失败、缺失缓存/原源、持久历史已验；不是磁盘满/设备容量/听感/耐久结论。实体新快捷键、另存重开、原Undo/Redo与CoreAudio播放通过；最终实体WAV144000帧、48k双声道24-bit，与32-bit缓存PCM最大差2.0954e-14。源码08c709e/9bf5f35；索引build-v2-tracktion/p2-print-graph-current-results.json，见 ../evidence/P2/summary.md。
 
 2026-10-14：P2 旁链首版 Release / 固定本地 deep-strict 验签通过；受影响六套件386项、无JUCE assertion（重复production_chain不重复计数）。Sidechain76项/5.27s、Elastic87项/7.34s、Production91项/12.41s，最终三套批次25.03s；另Processor40、Routing41、Hierarchy51通过。原120s套件/10s渲染预算不变。实体自定义键、连接/断开、跨重开Undo/Redo、空提交禁止、真实设备走带和完整Mix截图已验，所有源保持。第三方旁链、硬件PDC、mute/solo及听感未通过；完整产品未完成。输出与失败记录见 ../evidence/P2/summary.md。
 

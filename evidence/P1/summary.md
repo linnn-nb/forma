@@ -1,3 +1,5 @@
+2026-10-14追加回归：最终印刻/导出修复构建中 production_chain91项11.48秒、elastic87项7.73秒再次通过，原120秒预算保持；P1完整制作/实体麦克风证据如下，未新做音乐听评或耐久。SoundTouch仍为已锁定首版，Warp未完成；完整原生Edit截图本轮再次查看。
+
 ## 2026-10-14 最终结果：P1 制作主链路与首版伸缩
 
 - 最新 Release 构建与固定本地签名 deep/strict 验证通过；9 个受影响套件共 908 项、0 JUCE assertion。8 套主批次 92.06 s（每套原 120 s 预算），clip 58 项另跑 10.53 s。保留示例路径后 production_chain 再跑通过，91 项；没有全仓回归或耐久通过声明。输出索引 `build-v2-tracktion/p1-chain-current-results.json`，原始测试日志 `p1-final-test.log` / `p1-clip-final-test.log` / `p1-retained-demo-test.log`。
