@@ -254,6 +254,8 @@ int main(int argc, char** argv)
         check(bounced["print"]["bounce_active"] && bounced["clips"].size() == 1 &&
                   bounced["plugins"][0]["printed_bypass"],
               "Bounce creates real editable clip and keeps original native plugin with explicit printed bypass");
+        check(bounced["clips"][0]["name"] == std::string("Bounce · Print source"),
+              "printed clip names preserve UTF-8 exactly");
         check(bounced["playlists"]["items"].size() == 2 && bounced["output"] == original["output"],
               "Bounce retains original Playlist and output on same track");
         const auto bouncePCM = render(c, root, "editable in-place Bounce");

@@ -190,14 +190,14 @@ void Commands::executePrint(const std::string& cmd, const Json& a, Json& objects
     const auto playlistID = juce::Uuid().toString();
     juce::ValueTree printed("PLAYLIST");
     printed.setProperty("id", playlistID, nullptr);
-    printed.setProperty("name", "Bounce · " + t->getName(), nullptr);
+    printed.setProperty("name", juce::String::fromUTF8("Bounce · ") + t->getName(), nullptr);
     printed.setProperty("role", "bounce", nullptr);
     printed.setProperty("origin", juce::String(prepared.dump()), nullptr);
     lists.addChild(printed, -1, &um);
     selectPlaylist(*t, playlistID.toStdString());
     juce::File media(juce::String(prepared["path"].get<std::string>()));
     auto clip =
-        t->insertWaveClip("Bounce · " + t->getName(), media,
+        t->insertWaveClip(juce::String::fromUTF8("Bounce · ") + t->getName(), media,
                           {{tracktion::TimePosition{},
                             tracktion::TimePosition::fromSeconds(prepared["frames"].get<int64_t>() / timelineRate)},
                            {}},
