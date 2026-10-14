@@ -144,7 +144,10 @@ private:
             status.setText(
                 text("影响 ") + juce::String(int(count)) + text(" 对片段 · ") + juce::String(first) + text(" – ") +
                     juce::String(last) +
-                    text(" 采样\n真实源余量在提交前校验；原 Take、媒体、增益及源淡化保持。⌘Return 提交，Esc 取消。"),
+                    text(selection.value("existing_overlap_only", false)
+                             ? " 采样\nWarp使用已有真实重叠区，保留锚点；不推测额外源句柄。⌘Return提交，Esc取消。"
+                             : " 采样\n真实源余量在提交前校验；原 Take、媒体、增益及源淡化保持。⌘Return 提交，Esc "
+                               "取消。"),
                 juce::dontSendNotification);
         }
         catch (const std::exception& e)

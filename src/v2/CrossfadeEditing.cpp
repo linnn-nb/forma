@@ -46,10 +46,13 @@ Json geometry(te::WaveAudioClip& c)
 void qualify(te::WaveAudioClip& c)
 {
     require(!bool(c.state.getProperty("ndaw_locked", false)), "Crossfade clip is locked");
-    require(!c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() && !c.getWarpTime() &&
-                !c.getIsReversed() && c.getPitchChange() == 0 && c.getTransposeSemiTones(false) == 0 &&
-                !c.getAutoCrossfade() && c.getSpeedRatio() == 1. && c.getSyncType() == te::Clip::syncAbsolute,
-            "Crossfade requires ordinary-speed absolute audio; loop/Warp/pitch/group is not qualified");
+    require(!c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() &&
+                c.getPitchChange() == 0 && c.getTransposeSemiTones(false) == 0 && !c.getAutoCrossfade() &&
+                c.getSpeedRatio() == 1. && c.getSyncType() == te::Clip::syncAbsolute,
+            "Crossfade requires absolute audio; loop/pitch/group is not qualified");
+    require(!c.getWarpTime() || (!c.effectsEnabled() && c.state.getChildWithName("NDAW_WARP").isValid() &&
+                                 !c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid()),
+            "Warp crossfade requires explicit native mapping without inherited source envelopes");
     require(c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                 c.getFadeOutBehaviour() == te::AudioClipBase::gainFade,
             "Crossfade of speed fades is not qualified");
@@ -366,15 +369,19 @@ Json Commands::crossfadeTarget(const std::string& trackID, int64_t at) const
                     if (d >= distance)
                         continue;
                     distance = d;
-                    best = {
-                        {"track", trackID},
-                        {"left", id(*l)},
-                        {"right", id(*r)},
-                        {"join_samples", join},
-                        {"start_samples", existing.isValid() ? int64_t(juce::int64(existing["start"])) : join - 120},
-                        {"end_samples", existing.isValid() ? int64_t(juce::int64(existing["end"])) : join + 120},
-                        {"curve", existing.isValid() ? text(existing, "curve") : "linear"},
-                        {"existing", existing.isValid()}};
+                    best = {{"track", trackID},
+                            {"left", id(*l)},
+                            {"right", id(*r)},
+                            {"join_samples", join},
+                            {"start_samples", existing.isValid()
+                                                  ? int64_t(juce::int64(existing["start"]))
+                                                  : (l->getWarpTime() || r->getWarpTime() ? rs : join - 120)},
+                            {"end_samples", existing.isValid()
+                                                ? int64_t(juce::int64(existing["end"]))
+                                                : (l->getWarpTime() || r->getWarpTime() ? le : join + 120)},
+                            {"existing_overlap_only", l->getWarpTime() || r->getWarpTime()},
+                            {"curve", existing.isValid() ? text(existing, "curve") : "linear"},
+                            {"existing", existing.isValid()}};
                 }
     require(!best.is_null(), "Choose adjacent or overlapping audio clips; gaps cannot be crossfaded");
     return best;
@@ -483,6 +490,11 @@ Json Commands::crossfadeChange(const Json& a, bool remove) const
             afterRight["source_offset_samples"] = frame(double(right["offset"]));
             afterLeft["fade_out_samples"] = frame(double(left["fadeOut"]));
             afterRight["fade_in_samples"] = frame(double(right["fadeIn"]));
+            require(
+                (!l.getWarpTime() || afterLeft["end_samples"] == geometry(l)["end_samples"]) &&
+                    (!r.getWarpTime() || (afterRight["start_samples"] == geometry(r)["start_samples"] &&
+                                          afterRight["source_offset_samples"] == geometry(r)["source_offset_samples"])),
+                "移除交叉淡化会改变Warp源映射，请先还原Warp");
         }
         else
         {
@@ -498,10 +510,13 @@ Json Commands::crossfadeChange(const Json& a, bool remove) const
             require(first <= join && last >= join && first >= afterLeft["start_samples"] &&
                         last <= afterRight["end_samples"],
                     "Crossfade must span the cut within both outer clip edges");
+            const bool warped = l.getWarpTime() || r.getWarpTime();
+            require(!warped || (first == frame(rp.getStart().inSeconds()) && last == frame(lp.getEnd().inSeconds())),
+                    "Warp交叉淡化使用已有真实重叠区；不能推测额外源句柄");
             const auto lo = frame(lp.getOffset().inSeconds()) + last - frame(lp.getStart().inSeconds());
             const auto ro = frame(rp.getOffset().inSeconds()) + first - frame(rp.getStart().inSeconds());
             te::AudioFile lf(edit->engine, l.getOriginalFile()), rf(edit->engine, r.getOriginalFile());
-            require(lf.isValid() && rf.isValid() && lo <= frame(lf.getLength()) && ro >= 0,
+            require(lf.isValid() && rf.isValid() && (warped || (lo <= frame(lf.getLength()) && ro >= 0)),
                     "Insufficient actual source handles for the entire crossfade");
             require(frame(l.getFadeIn().inSeconds()) + last - first <= last - frame(lp.getStart().inSeconds()) &&
                         frame(r.getFadeOut().inSeconds()) + last - first <= frame(rp.getEnd().inSeconds()) - first,
@@ -591,9 +606,11 @@ void Commands::executeCrossfade(const Json& a, bool remove, Json& objects)
             r.setFadeIn(tracktion::TimeDuration::fromSeconds(0));
             l.setAutoCrossfade(false);
             r.setAutoCrossfade(false);
-            l.setPosition({{lp.getStart(), tracktion::TimePosition::fromSeconds(last / 48000.)}, lp.getOffset()});
+            if (!l.getWarpTime())
+                l.setPosition({{lp.getStart(), tracktion::TimePosition::fromSeconds(last / 48000.)}, lp.getOffset()});
             const auto nextStart = tracktion::TimePosition::fromSeconds(first / 48000.);
-            r.setPosition({{nextStart, rp.getEnd()}, rp.getOffset() + (nextStart - rp.getStart())});
+            if (!r.getWarpTime())
+                r.setPosition({{nextStart, rp.getEnd()}, rp.getOffset() + (nextStart - rp.getStart())});
             const auto curve = a["curve"] == "linear" ? te::AudioFadeCurve::linear : te::AudioFadeCurve::convex;
             l.setFadeOutBehaviour(te::AudioClipBase::gainFade);
             r.setFadeInBehaviour(te::AudioClipBase::gainFade);

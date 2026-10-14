@@ -201,9 +201,11 @@ Json Commands::warpChange(const Json& a) const
     require(!c->isLooping() && !c->isGrouped() && !c->getAutoTempo() && !c->getAutoPitch() && !c->getIsReversed() &&
                 c->getSyncType() == te::Clip::syncAbsolute,
             "Warp当前支持采样基准音频；循环、分组、反转和音乐速度映射须先还原");
-    require(!q["inherited_fades"].get<bool>() && q["fade_in_samples"] == 0 && q["fade_out_samples"] == 0 &&
-                c->getPluginList()->size() == 0 && !c->effectsEnabled(),
-            "Warp与来源淡化、Clip FX的联合映射尚未资格");
+    require(!q["inherited_fades"].get<bool>() && c->getPluginList()->size() == 0 && !c->effectsEnabled(),
+            "Warp与来源包络、Clip FX的联合映射尚未资格");
+    require(c->getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                c->getFadeOutBehaviour() == te::AudioClipBase::gainFade,
+            "Warp支持输出时间上的增益淡化；速度淡化尚未资格");
     require(edit->canRenderProxies() && c->canUseProxy() &&
                 te::TimeStretcher::canProcessFor(te::TimeStretcher::soundtouchBetter),
             "当前工程不能准备SoundTouch离线Warp");
@@ -285,12 +287,20 @@ Json Commands::warpChange(const Json& a) const
             Json::array({point(prefix(*c) + "start", facts["source_start_seconds"], 0),
                          point(prefix(*c) + "end", facts["source_end_seconds"], after["length_samples"])});
     }
+    require(after["fade_in_samples"].get<int64_t>() + after["fade_out_samples"].get<int64_t>() <=
+                after["length_samples"].get<int64_t>(),
+            "Warp新长度不能容纳已有淡化，请先明确调整淡化");
+    for (const auto& pair : crossfades(q["track"]))
+        if (pair["left"] == a["clip"] || pair["right"] == a["clip"])
+            require(after["length_samples"] == q["length_samples"],
+                    "配对交叉淡化期间Warp保持片段长度；先移除交叉淡化再改长度");
     return {{"command", "clip.warp"},
             {"clip", a["clip"]},
             {"before", q},
             {"after", after},
             {"original_media", "preserved"},
             {"automation", "project-time unchanged"},
+            {"fades", "output-time lengths and curves preserved"},
             {"audio_verified", false}};
 }
 void Commands::executeWarp(const Json& a)

@@ -65,7 +65,7 @@ struct Model
 {
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
-    bool locked = false, moveLocked = false, editable = true, inheritedFades = false;
+    bool locked = false, moveLocked = false, editable = true, envelopeEditable = false, inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
     Json fxTypes = Json::array();
     std::vector<std::string> fxIDs;
@@ -174,6 +174,13 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_id", c.state.getProperty("ndaw_legacy_id").toString().toStdString()},
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
+        {"editable_envelope",
+         editable || (c.getWarpTime() && warpFacts(c).value("available", false) && !c.isLooping() && !c.isGrouped() &&
+                      !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() && c.getSpeedRatio() == 1. &&
+                      c.getPitchChange() == 0 && c.getSyncType() == te::Clip::syncAbsolute &&
+                      !c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid() && c.getPluginList()->size() == 0 &&
+                      !c.effectsEnabled() && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                      c.getFadeOutBehaviour() == te::AudioClipBase::gainFade)},
         {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},
         {"origin", c.state.getProperty("ndaw_origin", "import").toString().toStdString()}};
 }
@@ -318,6 +325,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.locked = q["locked"];
                 m.moveLocked = q["move_locked"];
                 m.editable = q["editable_audio"];
+                m.envelopeEditable = q["editable_envelope"];
                 m.inCurve = q["fade_in_curve"];
                 m.outCurve = q["fade_out_curve"];
                 const auto id = c->itemID.toString().toStdString();
@@ -448,7 +456,9 @@ Json Commands::validateClipPlan(const Json& ops) const
             }
         require(clips.contains(id), "audio clip not found or deleted earlier in Plan");
         auto& m = clips.at(id);
-        require(m.editable, "editing looped, grouped, reversed, warped or stretched audio is not qualified yet");
+        const bool envelopeOnly = cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock";
+        require(m.editable || (envelopeOnly && m.envelopeEditable),
+                "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
         if (m.hash.empty())
         {
             if (!hashes.contains(m.path))
@@ -531,7 +541,11 @@ Json Commands::validateClipPlan(const Json& ops) const
         }
         else if (cmd != "clip.delete")
             throw std::runtime_error("unknown clip command");
-        bounds(m);
+        if (m.editable)
+            bounds(m);
+        else
+            require(m.start >= 0 && m.length > 0 && m.start <= sample(te::Edit::maximumLength) - m.length,
+                    "clip outside supported timeline");
         diff.push_back({{"command", cmd},
                         {"clip", id},
                         {"before", before},

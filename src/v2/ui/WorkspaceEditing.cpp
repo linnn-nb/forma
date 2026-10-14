@@ -672,6 +672,8 @@ void Workspace::showElastic()
 }
 void Workspace::showCrossfade(Json target)
 {
+    if (warpPanel)
+        warpPanel->setVisible(false);
     if (sidechainPanel)
         sidechainPanel->setVisible(false);
     if (elasticPanel)
@@ -734,6 +736,8 @@ void Workspace::showCrossfade(Json target)
 }
 void Workspace::showFades()
 {
+    if (warpPanel)
+        warpPanel->setVisible(false);
     if (sidechainPanel)
         sidechainPanel->setVisible(false);
     if (elasticPanel)
@@ -765,7 +769,7 @@ void Workspace::showFades()
         for (const auto& candidate : track["clips"])
             if (candidate["id"] == selectedClip && candidate["kind"] == "audio")
                 clip = candidate;
-    if (clip.is_null() || !clip.value("editable_audio", false) || clip.value("locked", false))
+    if (clip.is_null() || !clip.value("editable_envelope", false) || clip.value("locked", false))
         throw std::runtime_error("请选择可编辑的音频片段");
     if (rollPanel)
         rollPanel->setVisible(false);
