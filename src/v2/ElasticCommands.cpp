@@ -24,6 +24,9 @@ Json Commands::playbackPreparation() const
                 bool pending = c->usesTimeStretchedProxy() && !c->getPlaybackFile().isValid();
                 if (c->getWarpTime())
                 {
+                    const auto provenance = c->state.getChildWithName("NDAW_WARP");
+                    if (provenance.isValid() && !failed)
+                        failed |= provenance["media_hash"].toString().toStdString() != mediaHash(c->getOriginalFile());
                     const auto expected = te::RenderManager::getAudioFileForHash(
                         edit->engine, edit->getTempDirectory(false), c->getHash());
                     failed |= c->hasSourceRenderFailed() || !c->state.getChildWithName("NDAW_WARP").isValid();

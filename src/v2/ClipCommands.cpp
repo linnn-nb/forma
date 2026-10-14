@@ -216,7 +216,16 @@ void Commands::registerClipCommands(Json& r)
     r.back()["test"] = "P3-ELASTIC-01";
     r.back()["units"]["length_samples"] = "output duration at session 48000 Hz, source span preserved";
     r.back()["units"]["pitch_semitones"] = "semitones, -12..12; independent of duration";
-    add("clip.warp", {{"enabled", {{"type", "boolean"}}}, {"anchors", {{"type", "array"}, {"maxItems", 128}}}},
+    add("clip.warp",
+        {{"enabled", {{"type", "boolean"}}},
+         {"anchors",
+          {{"type", "array"},
+           {"maxItems", 128},
+           {"items",
+            {{"type", "object"},
+             {"required", {"id", "source_time_seconds", "clip_time_samples"}},
+             {"properties", {{"id", id}, {"source_time_seconds", num}, {"clip_time_samples", integer}}},
+             {"additionalProperties", false}}}}}},
         Json::array({"enabled"}));
     r.back()["tool_visibility"] = "local_gui";
     r.back()["test"] = "P3-WARP-01";

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
+#include <juce_cryptography/juce_cryptography.h>
 namespace ndaw::v2
 {
 namespace
@@ -43,6 +44,7 @@ Json Commands::warpFacts(te::WaveAudioClip& c) const
                     point(marker["ndaw_id"].toString().toStdString(), double(marker[te::IDs::sourceTime]),
                           std::llround((double(marker[te::IDs::warpTime]) - sourceStart) * rate)));
         result["original_media_hash"] = provenance["media_hash"].toString().toStdString();
+        result["render_hash"] = provenance["render_hash"].toString().toStdString();
     }
     else
         result["anchors"] = Json::array({point(prefix(c) + "start", sourceStart, 0),
@@ -146,7 +148,16 @@ Json Commands::warpChange(const Json& a) const
         after["speed_ratio"] = double(original["original_speed_ratio"]);
         after["pitch_semitones"] = double(original["original_pitch"]);
         after["source_offset_samples"] = std::llround(double(original["original_offset_seconds"]) * rate);
+        after["source_offset_seconds"] =
+            double(original["original_offset_seconds"]) * after["speed_ratio"].get<double>();
+        after["source_mapping_available"] = true;
+        after["editable_audio"] = after["speed_ratio"] == 1. && after["pitch_semitones"] == 0.;
+        after["warp"] = facts;
         after["warp"]["enabled"] = false;
+        after["warp"]["length_samples"] = after["length_samples"];
+        after["warp"]["anchors"] =
+            Json::array({point(prefix(*c) + "start", facts["source_start_seconds"], 0),
+                         point(prefix(*c) + "end", facts["source_end_seconds"], after["length_samples"])});
     }
     return {{"command", "clip.warp"},
             {"clip", a["clip"]},
@@ -193,6 +204,15 @@ void Commands::executeWarp(const Json& a)
             c.state.addChild(provenance, -1, &um);
         }
         auto& manager = c.getWarpTimeManager();
+        Json mapping = Json::array();
+        for (const auto& anchor : a["anchors"])
+            mapping.push_back(Json::array({anchor["source_time_seconds"], anchor["clip_time_samples"]}));
+        const auto descriptor = Json{
+            {"algorithm", "SoundTouch 2.1pre / Better / Warp float32 v1"},
+            {"media_hash", a["media_hash"]},
+            {"mapping", mapping}}.dump();
+        const auto hash = juce::SHA256(descriptor.data(), descriptor.size()).toHexString();
+        provenance.setProperty("render_hash", hash, &um);
         auto markers = manager.state.getChildWithName(te::IDs::WARPMARKERS);
         markers.removeAllChildren(&um);
         const double start = facts["source_start_seconds"], end = facts["source_end_seconds"];

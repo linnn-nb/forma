@@ -9,7 +9,7 @@ void require(bool condition, const char* error)
     if (!condition)
         throw std::runtime_error(error);
 }
-}
+} // namespace
 void Workspace::showWarp()
 {
     const auto clip = selectedAudioClip();

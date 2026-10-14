@@ -930,6 +930,8 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human" && ops.size() == 1, "Stems发布仅通过本地独立事务和目录授权");
         if (cmd == "plugin.sidechain.set")
             require(actor == "human", "Sidechain editing is local human only during P2");
+        if (cmd == "clip.warp")
+            require(actor == "human" && ops.size() == 1, "Warp editing is a local human standalone Plan during P3");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
@@ -990,10 +992,12 @@ Json Commands::preview(const Json& plan) const
                         require(itemSchema.at("properties").contains(field.key()), "unknown array object field");
                         const auto& rule = itemSchema.at("properties").at(field.key());
                         require((rule.at("type") == "string" && field->is_string()) ||
-                                    (rule.at("type") == "integer" && field->is_number_integer()),
+                                    (rule.at("type") == "integer" && field->is_number_integer()) ||
+                                    (rule.at("type") == "number" && field->is_number()),
                                 "array object field type mismatch");
                         if (field->is_number())
                         {
+                            require(std::isfinite(field->get<double>()), "array number must be finite");
                             require(!field->is_number_unsigned() ||
                                         field->get<uint64_t>() <= uint64_t(std::numeric_limits<int64_t>::max()),
                                     "array integer exceeds representation");
@@ -1616,7 +1620,9 @@ void Commands::play()
     checkThread();
     validateSidechainRuntime();
     validateFreezeRuntime();
-    require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后播放");
+    const auto preparation = playbackPreparation();
+    if (preparation["busy"].get<bool>())
+        throw std::runtime_error("弹力音频未就绪，播放未开始：" + preparation["items"].dump());
     stopPlaylistAudition();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -1818,7 +1824,9 @@ Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
     require(!stemExportStatus()["busy"].get<bool>(), "先等待或取消Stems任务，再开始另一份导出");
     validateSidechainRuntime();
     validateFreezeRuntime();
-    require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后导出；尚未生成文件");
+    const auto preparation = playbackPreparation();
+    if (preparation["busy"].get<bool>())
+        throw std::runtime_error("弹力音频未就绪，尚未导出文件：" + preparation["items"].dump());
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(!masterAnalysis || !masterAnalysis->status()["busy"].get<bool>(),
             "wait for or cancel the current analysis/export job before rendering");

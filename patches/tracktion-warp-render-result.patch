@@ -15,7 +15,7 @@ index 45733ad..4a11f7a 100644
      /** Sets the gain of the clip in dB. */
      void setGainDB (float dB);
 diff --git a/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h b/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
-index 956e6cc..f0ff4d7 100644
+index 956e6cc..083f993 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
 +++ b/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
 @@ -31,7 +31,8 @@ public:
@@ -28,7 +28,14 @@ index 956e6cc..f0ff4d7 100644
      }
  
      bool renderNextBlock() override
-@@ -54,17 +55,12 @@ protected:
+@@ -48,23 +49,18 @@ protected:
+ 
+             AudioFileWriter writer (proxy, engine.getAudioFileFormatManager().getWavFormat(),
+                                     sourceInfo.numChannels, sourceInfo.sampleRate,
+-                                    juce::jmax (16, sourceInfo.bitsPerSample),
++                                    32, // Intermediate processing cache, never re-quantise to the source PCM depth.
+                                     sourceInfo.metadata, 0);
+ 
              success = writer.isOpen() && proxyInfo->render (engine, source, writer, this, progress);
          }
  
@@ -58,3 +65,15 @@ index 956e6cc..f0ff4d7 100644
          proxyInfo->clipTime          = { {}, clip.getWarpTimeManager().getWarpEndMarkerTime() };
          proxyInfo->speedRatio        = 1.0;
          proxyInfo->mode              = (tm != TimeStretcher::disabled && tm != TimeStretcher::ara)
+diff --git a/modules/tracktion_engine/model/clips/tracktion_WaveAudioClip.cpp b/modules/tracktion_engine/model/clips/tracktion_WaveAudioClip.cpp
+index 90077f6..fab7904 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_WaveAudioClip.cpp
++++ b/modules/tracktion_engine/model/clips/tracktion_WaveAudioClip.cpp
+@@ -103,6 +103,7 @@ HashCode WaveAudioClip::getHash() const
+ {
+     return AudioFile (edit.engine, getOriginalFile()).getHash()
+              ^ static_cast<HashCode> (getWarpTime() ? getWarpTimeManager().getHash() : 0)
++             ^ (getWarpTime() ? state.getChildWithName ("NDAW_WARP").getProperty ("render_hash").toString().hashCode64() : 0)
+              ^ static_cast<HashCode> (getIsReversed() * 768)
+              ^ static_cast<HashCode> ((clipEffects == nullptr || ! canHaveEffects())  ? 0 : clipEffects->getHash());
+ }

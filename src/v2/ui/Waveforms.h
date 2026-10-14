@@ -110,6 +110,29 @@ public:
         auto id = clip["id"].get<std::string>();
         if (thumbs.contains(id))
         {
+            // A warped clip displays its actual original-media map, never a fabricated linear waveform.
+            // This thumbnail is a source display, not a claim to have measured the processed signal.
+            if (clip.contains("warp") && clip["warp"].value("enabled", false))
+            {
+                const auto& anchors = clip["warp"]["anchors"];
+                const float gain = float(std::pow(10., clip.value("gain_db", 0.) / 20.) * displayScale);
+                for (size_t i = 1; i < anchors.size(); ++i)
+                {
+                    const double begin = anchors[i - 1]["clip_time_samples"].get<double>() / 48000.;
+                    const double end = anchors[i]["clip_time_samples"].get<double>() / 48000.;
+                    const double first = std::max(begin, elapsed), last = std::min(end, elapsed + seconds);
+                    if (first >= last || begin >= end || seconds <= 0)
+                        continue;
+                    const double source = anchors[i - 1]["source_time_seconds"];
+                    const double speed = (anchors[i]["source_time_seconds"].get<double>() - source) / (end - begin);
+                    const int x = area.getX() + int(std::floor((first - elapsed) / seconds * area.getWidth()));
+                    const int right = area.getX() + int(std::ceil((last - elapsed) / seconds * area.getWidth()));
+                    thumbs.at(id)->drawChannels(g, {x, area.getY(), right - x, area.getHeight()},
+                                                source + (first - begin) * speed, source + (last - begin) * speed,
+                                                gain);
+                }
+                return;
+            }
             double offset = clip.value("source_offset_seconds", 0.), speed = clip.value("speed_ratio", 1.),
                    gain = std::pow(10., clip.value("gain_db", 0.) / 20);
             thumbs.at(id)->drawChannels(g, area, offset + elapsed * speed, offset + (elapsed + seconds) * speed,

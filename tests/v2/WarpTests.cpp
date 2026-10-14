@@ -2,6 +2,7 @@
 #include "Workspace.h"
 #include "ui/WorkspaceWindow.h"
 #include <iostream>
+#include <fstream>
 #include <csignal>
 #if JUCE_MAC || JUCE_LINUX
 #include <sys/resource.h>
@@ -365,7 +366,12 @@ int main(int argc, char** argv)
                     {"scope", "native SoundTouch nonlinear audio, source/clip mapping, real WAV, history, native peer "
                               "and OS fault; subjective listening separate"}};
         if (argc > 1)
-            juce::File(argv[1]).replaceWithText(result.dump(2));
+        {
+            std::ofstream output(argv[1]);
+            output << result.dump(2);
+            if (!output)
+                throw std::runtime_error("test result output failed");
+        }
         std::cout << result.dump(2) << std::endl;
         return 0;
     }
@@ -373,11 +379,11 @@ int main(int argc, char** argv)
     {
         std::cerr << "FAIL after " << checks << " checks: " << e.what() << std::endl;
         if (argc > 1)
-            juce::File(argv[1]).replaceWithText(Json{{"result", "failed"},
-                                                     {"checks", checks},
-                                                     {"error", e.what()},
-                                                     {"fixture", root.getFullPathName().toStdString()}}
-                                                    .dump(2));
+            std::ofstream(argv[1]) << Json{{"result", "failed"},
+                                           {"checks", checks},
+                                           {"error", e.what()},
+                                           {"fixture", root.getFullPathName().toStdString()}}
+                                          .dump(2);
         return 1;
     }
 }
