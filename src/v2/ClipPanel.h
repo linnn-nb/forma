@@ -196,6 +196,11 @@ public:
             field->setEnabled(editable);
         const bool movable = !facts.is_null() && facts.value("movable_audio", false) && !playing &&
                              !facts.value("move_locked", facts.value("locked", false));
+        const bool trimmable =
+            !facts.is_null() && facts.value("trimmable_audio", false) && !playing && !facts.value("locked", false);
+        trim.setEnabled(trimmable);
+        start.setEnabled(trimmable);
+        end.setEnabled(trimmable);
         move.setEnabled(movable);
         moveTo.setEnabled(movable);
         move.setButtonText(!facts.is_null() && facts.value("linked_comp", false) ? text("移动关联 Comp")

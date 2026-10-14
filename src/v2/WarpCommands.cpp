@@ -129,6 +129,7 @@ Json Commands::warpFacts(te::WaveAudioClip& c) const
     if (enabled)
     {
         result["anchors"] = warp_state::visibleAnchors(c.state);
+        result["full_anchors"] = warp_state::fullAnchors(c.state);
         if (warp_state::isWindow(c.state))
         {
             result["inherited_window"] = true;

@@ -3,6 +3,7 @@
 #include "WarpState.h"
 #include "ElasticState.h"
 #include "ClipFxWindows.h"
+#include "ProcessedClipTrim.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -68,6 +69,8 @@ struct Model
 {
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
+    int64_t trimBefore = 0, trimAfter = 0;
+    bool trimmable = true, processedTrim = false, fxWindow = false;
     bool locked = false, moveLocked = false, editable = true, movable = true, envelopeEditable = false,
          inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
@@ -151,6 +154,33 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
                      !c.getIsReversed() && c.getSyncType() == te::Clip::syncAbsolute && !c.effectsEnabled() &&
                      c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                      c.getFadeOutBehaviour() == te::AudioClipBase::gainFade);
+    const bool preserveInput = processed_trim::preservesInput(c.state);
+    bool trimmable = editable || movable;
+    if (preserveInput)
+    {
+        trimmable = trimmable && !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
+                    !c.getIsReversed() && c.getSyncType() == te::Clip::syncAbsolute && !c.effectsEnabled() &&
+                    c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                    c.getFadeOutBehaviour() == te::AudioClipBase::gainFade &&
+                    (!c.getWarpTime() || warp_state::outputEnvelopeOrigins(c.state));
+        try
+        {
+            clip_fx_window::qualify(c.state);
+        }
+        catch (const std::exception&)
+        {
+            trimmable = false;
+        }
+    }
+    const auto handles =
+        preserveInput && trimmable
+            ? processed_trim::handles(c.state)
+            : std::pair<int64_t, int64_t>{
+                  std::max(int64_t(0), int64_t(std::floor(p.getOffset().inSeconds() * rate + 1e-7))),
+                  std::max(int64_t(0), int64_t(std::floor((c.getSourceLength().inSeconds() - p.getOffset().inSeconds() -
+                                                           p.getLength().inSeconds()) *
+                                                              rate +
+                                                          1e-7)))};
     return {
         {"path", f.getFullPathName().toStdString()},
         {"warp", warp},
@@ -195,6 +225,10 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
         {"movable_audio", movable},
+        {"trimmable_audio", trimmable},
+        {"trim_preserves_processing", preserveInput},
+        {"trim_handles_before_samples", handles.first},
+        {"trim_handles_after_samples", handles.second},
         {"clip_fx", clip_fx_window::facts(c.state)},
         {"editable_envelope",
          editable || clip_fx_window::exists(c.state) ||
@@ -353,6 +387,11 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.moveLocked = q["move_locked"];
                 m.editable = q["editable_audio"];
                 m.movable = q["movable_audio"];
+                m.trimmable = q["trimmable_audio"];
+                m.processedTrim = q["trim_preserves_processing"];
+                m.fxWindow = q["clip_fx"].value("full_input_window", false);
+                m.trimBefore = q["trim_handles_before_samples"];
+                m.trimAfter = q["trim_handles_after_samples"];
                 m.envelopeEditable = q["editable_envelope"];
                 m.inCurve = q["fade_in_curve"];
                 m.outCurve = q["fade_out_curve"];
@@ -486,7 +525,8 @@ Json Commands::validateClipPlan(const Json& ops) const
         auto& m = clips.at(id);
         const bool envelopeOnly =
             cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock" || cmd == "clip.fx.insert";
-        require(m.editable || (cmd == "clip.move" && m.movable) || (envelopeOnly && m.envelopeEditable),
+        require(((cmd == "clip.trim") ? m.trimmable : m.editable) || (cmd == "clip.move" && m.movable) ||
+                    (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
         if (m.hash.empty())
         {
@@ -495,13 +535,15 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.hash = hashes.at(m.path);
         }
         require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
-        if (cmd == "clip.move")
+        if (cmd == "clip.move" || (cmd == "clip.trim" && m.processedTrim))
             if (auto* source = audioClip(id))
             {
-                require(a["position_samples"].get<int64_t>() / 48000. + source->getPosition().getLength().inSeconds() <=
-                            te::Edit::maximumLength,
-                        "move exceeds actual native duration boundary");
-                if (!m.editable)
+                if (cmd == "clip.move")
+                    require(a["position_samples"].get<int64_t>() / 48000. +
+                                    source->getPosition().getLength().inSeconds() <=
+                                te::Edit::maximumLength,
+                            "move exceeds actual native duration boundary");
+                if (!m.editable || m.processedTrim)
                 {
                     warp_state::validate(source->state);
                     elastic_state::validate(source->state);
@@ -509,7 +551,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                     for (const char* node : {"NDAW_WARP", "NDAW_ELASTIC_PROXY", "NDAW_CLIPFX_WINDOW"})
                         if (auto provenance = source->state.getChildWithName(node); provenance.isValid())
                             require(provenance["media_hash"].toString().toStdString() == m.hash,
-                                    "processed move source media changed");
+                                    "processed clip source media changed");
                 }
             }
         require(!(cmd == "clip.move" ? m.moveLocked : m.locked) || cmd == "clip.lock" || cmd == "clip.copy",
@@ -522,10 +564,22 @@ Json Commands::validateClipPlan(const Json& ops) const
         {
             int64_t start = a["start_samples"], end = a["end_samples"];
             require(end > start, "empty or inverted clip trim");
-            m.offset += start - m.start;
+            const auto left = start - m.start, right = end - m.start - m.length;
+            if (m.processedTrim)
+            {
+                require(left >= -m.trimBefore && right <= m.trimAfter, "trim exceeds complete processed input handles");
+                m.trimBefore += left;
+                m.trimAfter -= right;
+                m.inheritedFades =
+                    m.inheritedFades || (m.fadeIn > 0 && start < m.start + m.fadeIn && end > m.start) ||
+                    (m.fadeOut > 0 && end > m.start + m.length - m.fadeOut && start < m.start + m.length);
+                m.fadeIn = m.fadeOut = 0;
+            }
+            m.offset += left;
             m.start = start;
             m.length = end - start;
-            m.fitFades();
+            if (!m.processedTrim)
+                m.fitFades();
         }
         else if (cmd == "clip.gain")
         {
@@ -554,6 +608,9 @@ Json Commands::validateClipPlan(const Json& ops) const
                     "clip processor resource limit reached");
             require(!a.value("wet_only", false) || a["type"] == te::ReverbPlugin::xmlTypeName,
                     "wet_only requires Reverb");
+            if (!m.fxWindow && m.fxTypes.empty())
+                m.trimBefore = m.trimAfter = 0;
+            m.processedTrim = true;
             m.fxTypes.push_back(a["type"]);
             m.fxIDs.push_back("#planned-clip-fx-" + std::to_string(diff.size()));
         }
@@ -587,7 +644,7 @@ Json Commands::validateClipPlan(const Json& ops) const
         }
         else if (cmd != "clip.delete")
             throw std::runtime_error("unknown clip command");
-        if (m.editable)
+        if (m.editable && !m.processedTrim)
             bounds(m);
         else
             require(m.start >= 0 && m.length > 0 && m.start <= sample(te::Edit::maximumLength) - m.length,
@@ -676,6 +733,8 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
         // only that field; setPosition would recompute/round the stored duration.
         c->state.setProperty(te::IDs::start, pos(a["position_samples"]).inSeconds(), &um);
     }
+    else if (cmd == "clip.trim" && processed_trim::preservesInput(c->state))
+        processed_trim::apply(*c, processed_trim::prepare(*edit, c->state, a["start_samples"], a["end_samples"]));
     else if (cmd == "clip.trim")
     {
         int64_t start = a["start_samples"], end = a["end_samples"], in = sample(c->getFadeIn().inSeconds()),

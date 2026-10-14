@@ -641,7 +641,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                              pendingClipboardPlan.empty() && !clips.empty();
                     for (const auto& clip : clips)
                         active = active && !clip.value("locked", false) &&
-                                 ((clip["kind"] == "audio" && clip.value("editable_audio", false)) ||
+                                 ((clip["kind"] == "audio" && clip.value("trimmable_audio", false)) ||
                                   (clip["kind"] == "midi" && clip.value("sample_mapping_available", false)));
                 }
                 if (midiKeyboardFocus() &&

@@ -819,6 +819,9 @@ public:
                                !clip.value("locked", false))))
                         cursor = juce::MouseCursor::DraggingHandCursor;
                     else if ((audio ||
+                              (clip["kind"] == "audio" && clip.value("trimmable_audio", false) &&
+                               !clip.value("locked", false) &&
+                               (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right)) ||
                               (clip["kind"] == "midi" && clip.value("sample_mapping_available", false) &&
                                !clip.value("locked", false) &&
                                (gesture == EditingModel::Gesture::left || gesture == EditingModel::Gesture::right))) &&
@@ -1090,6 +1093,9 @@ public:
                             selectClip(c["id"]);
                     }
                     if ((audio ||
+                         (c["kind"] == "audio" && c.value("trimmable_audio", false) && !c.value("locked", false) &&
+                          (toolGesture == EditingModel::Gesture::left ||
+                           toolGesture == EditingModel::Gesture::right)) ||
                          (c["kind"] == "audio" && c.value("movable_audio", false) &&
                           !c.value("move_locked", c.value("locked", false)) &&
                           toolGesture == EditingModel::Gesture::move) ||
@@ -1232,16 +1238,20 @@ public:
         else if (mode == "left")
         {
             dragStart = std::clamp(snapped(raw, e.mods),
-                                   c["kind"] == "midi" ? c["minimum_start_samples"].get<int64_t>()
-                                                       : std::max(int64_t(0), start - offset),
+                                   c["kind"] == "midi"
+                                       ? c["minimum_start_samples"].get<int64_t>()
+                                       : std::max(int64_t(0), start - c.value("trim_handles_before_samples", offset)),
                                    start + length - 1);
             dragEnd = start + length;
         }
         else
         {
             dragStart = start;
-            dragEnd =
-                std::clamp(snapped(raw, e.mods), start + 1, c["kind"] == "midi" ? maximum : start + source - offset);
+            dragEnd = std::clamp(snapped(raw, e.mods), start + 1,
+                                 c["kind"] == "midi" ? maximum
+                                                     : std::min(maximum, start + length +
+                                                                             c.value("trim_handles_after_samples",
+                                                                                     source - offset - length)));
         }
         GroupedClipDraft::constrain(facts, drag, dragStart, dragEnd);
         if (mode == "move")

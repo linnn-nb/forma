@@ -169,7 +169,7 @@ void Workspace::executeEditCommand(int id)
                 for (const auto& clip : clips)
                 {
                     require(!clip.value("locked", false) &&
-                                ((clip["kind"] == "audio" && clip.value("editable_audio", false)) ||
+                                ((clip["kind"] == "audio" && clip.value("trimmable_audio", false)) ||
                                  (clip["kind"] == "midi" && clip.value("sample_mapping_available", false))),
                             "entire boundary Nudge refused: unsupported or locked clip");
                     const int64_t edge =

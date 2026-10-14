@@ -33,8 +33,11 @@ inline Json relative(const std::string& command, const Json& args, const Json& a
         const bool midi = peer.value("kind", std::string{}) == "midi";
         const double source =
             midi ? maximum / 48000. : peer["source_frames"].get<double>() / peer["source_sample_rate"].get<double>();
-        if (peerStart + left < 0 || nextLength <= 0 || peerStart + peerLength + right > maximum || offset < -1e-12 ||
-            (!midi && nextLength / 48000. > source - offset + 1e-12))
+        const bool window = !midi && peer.value("trim_preserves_processing", false);
+        if (peerStart + left < 0 || nextLength <= 0 || peerStart + peerLength + right > maximum ||
+            (window ? (left < -peer.at("trim_handles_before_samples").get<int64_t>() ||
+                       right > peer.at("trim_handles_after_samples").get<int64_t>())
+                    : (offset < -1e-12 || (!midi && nextLength / 48000. > source - offset + 1e-12))))
             throw std::runtime_error("entire group trim exceeds a member's timeline or original source");
         result["start_samples"] = peerStart + left;
         result["end_samples"] = peerStart + peerLength + right;
@@ -81,6 +84,74 @@ inline Json preview(const Json& peer, const std::string& command, const Json& ar
             left / 48000.;
         if (peer.value("kind", std::string{}) == "midi")
             return result;
+        if (peer.value("trim_preserves_processing", false))
+        {
+            result["trim_handles_before_samples"] = peer["trim_handles_before_samples"].get<int64_t>() + left;
+            result["trim_handles_after_samples"] = peer["trim_handles_after_samples"].get<int64_t>() +
+                                                   peer["length_samples"].get<int64_t>() - left - length;
+            result["fade_in_samples"] = 0;
+            result["fade_out_samples"] = 0;
+            result["inherited_fades"] =
+                peer.value("inherited_fades", false) ||
+                (peer["fade_in_samples"].get<int64_t>() > 0 && left < peer["fade_in_samples"].get<int64_t>() &&
+                 left + length > 0) ||
+                (peer["fade_out_samples"].get<int64_t>() > 0 &&
+                 left + length > peer["length_samples"].get<int64_t>() - peer["fade_out_samples"].get<int64_t>() &&
+                 left < peer["length_samples"].get<int64_t>());
+            result["playback_offset_seconds"] = peer.value("playback_offset_seconds", 0.) + left / 48000.;
+            if (peer.contains("elastic") && peer["elastic"].contains("window_start_samples"))
+            {
+                const auto first = peer["elastic"]["window_start_samples"].get<int64_t>() + left;
+                result["elastic"]["window_start_samples"] = first;
+                result["elastic"]["inherited_window"] = true;
+                result["playback_offset_seconds"] = first / 48000.;
+            }
+            if (peer.contains("warp") && peer["warp"].value("enabled", false))
+            {
+                const auto& all = peer["warp"].at("full_anchors");
+                const int64_t first = peer["warp"].value("window_start_samples", int64_t(0)) + left;
+                auto sourceAt = [&](int64_t sample)
+                {
+                    for (size_t i = 1; i < all.size(); ++i)
+                    {
+                        const int64_t a = all[i - 1]["clip_time_samples"], b = all[i]["clip_time_samples"];
+                        if (sample >= a && sample <= b)
+                        {
+                            const double x = all[i - 1]["source_time_seconds"], y = all[i]["source_time_seconds"];
+                            return sample == a ? x : sample == b ? y : x + (y - x) * double(sample - a) / (b - a);
+                        }
+                    }
+                    throw std::runtime_error("Warp trim preview outside complete output mapping");
+                };
+                const auto begin = sourceAt(first), end = sourceAt(first + length);
+                Json anchors = Json::array();
+                const auto prefix = "warp:" + peer["id"].get<std::string>() + ":";
+                anchors.push_back(
+                    {{"id", prefix + "window-start"}, {"source_time_seconds", begin}, {"clip_time_samples", 0}});
+                for (auto a : all)
+                {
+                    const int64_t at = a["clip_time_samples"];
+                    if (at > first && at < first + length)
+                    {
+                        a["clip_time_samples"] = at - first;
+                        anchors.push_back(a);
+                    }
+                }
+                anchors.push_back(
+                    {{"id", prefix + "window-end"}, {"source_time_seconds", end}, {"clip_time_samples", length}});
+                result["source_offset_seconds"] = begin;
+                result["warp"]["anchors"] = anchors;
+                result["warp"]["window_start_samples"] = first;
+                result["warp"]["source_start_seconds"] = begin;
+                result["warp"]["source_end_seconds"] = end;
+                result["warp"]["length_samples"] = length;
+                result["warp"]["inherited_window"] = true;
+            }
+            else
+                result["source_offset_seconds"] =
+                    result["source_offset_samples"].get<int64_t>() / 48000. * peer.value("speed_ratio", 1.);
+            return result;
+        }
         int64_t in = peer["fade_in_samples"], out = peer["fade_out_samples"];
         if (in + out > length)
         {

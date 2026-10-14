@@ -1147,3 +1147,10 @@ target_sources(ndaw_processed_move_tests PRIVATE tests/v2/ProcessedMoveTests.cpp
 target_link_libraries(ndaw_processed_move_tests PRIVATE ndaw_ui)
 add_test(NAME forma_processed_move COMMAND ndaw_processed_move_tests "${CMAKE_BINARY_DIR}/p3-processed-move-tests.json")
 set_tests_properties(forma_processed_move PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Output-window trim keeps native full DSP input, source fades and original Undo.
+juce_add_console_app(ndaw_processed_trim_tests PRODUCT_NAME "ndaw_processed_trim_tests")
+target_sources(ndaw_processed_trim_tests PRIVATE tests/v2/ProcessedTrimTests.cpp)
+target_link_libraries(ndaw_processed_trim_tests PRIVATE ndaw_ui)
+add_test(NAME forma_processed_trim COMMAND ndaw_processed_trim_tests "${CMAKE_BINARY_DIR}/p3-processed-trim-tests.json")
+set_tests_properties(forma_processed_trim PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

@@ -79,9 +79,11 @@ struct GroupedClipDraft
                     {
                         const auto available =
                             c.value("source_offset_seconds", c.value("source_offset_samples", int64_t(0)) / 48000.);
-                        lower = std::max(lower, c["kind"] == "midi"
-                                                    ? c["minimum_start_samples"].get<int64_t>() - s
-                                                    : std::max(-s, int64_t(std::ceil(-available * 48000. - 1e-7))));
+                        lower = std::max(lower,
+                                         c["kind"] == "midi"
+                                             ? c["minimum_start_samples"].get<int64_t>() - s
+                                             : std::max(-s, -c.value("trim_handles_before_samples",
+                                                                     int64_t(std::floor(available * 48000. + 1e-7)))));
                         upper = std::min(upper, n - 1);
                         delta = start - anchor["start_samples"].get<int64_t>();
                     }
@@ -94,10 +96,12 @@ struct GroupedClipDraft
                             c.value("source_offset_seconds", c.value("source_offset_samples", int64_t(0)) / 48000.) -
                             n / 48000.;
                         lower = std::max(lower, 1 - n);
-                        upper = std::min(
-                            upper, c["kind"] == "midi"
-                                       ? maximum - s - n
-                                       : std::min(maximum - s - n, int64_t(std::floor(available * 48000. + 1e-7))));
+                        upper =
+                            std::min(upper, c["kind"] == "midi"
+                                                ? maximum - s - n
+                                                : std::min(maximum - s - n,
+                                                           c.value("trim_handles_after_samples",
+                                                                   int64_t(std::floor(available * 48000. + 1e-7)))));
                         delta = end - anchor["start_samples"].get<int64_t>() - anchor["length_samples"].get<int64_t>();
                     }
                     else
