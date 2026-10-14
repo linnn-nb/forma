@@ -122,3 +122,4 @@ evidence/U/*
 # New run outputs remain local; milestone summaries carry qualification.
 evidence/U/midi-dock-tests.json
 evidence/U/midi-clipboard-tests.json
+evidence/U/boundary-nudge-tests.json

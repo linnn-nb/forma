@@ -1,3 +1,21 @@
+# P3 当前增量：处理后片段非破坏性修剪（2026-10-15）
+
+**当前21/22套、18420项数值与状态检查分两批通过；1套原生焦点未通过，不写22套全绿。** 首批19/22、408.01秒；Boundary255项/16.73秒、Range15342项/70.92秒修正后两套87.65秒通过。源码721c808，测试修正7584677。正常Release构建exit0，固定本地deep-strict验签通过；唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `1da1acf9a917477972148dd96dbeb566a9f5712a2d2f1e18d7e4eaedf31f781d`。本地签名不是发行公证，无新DMG/应用副本，完整P1/P3/产品未完成。
+
+新增Trim552项/45.43秒通过。六组为普通／SoundTouch／Warp × 无效果／四原生EQ、压缩、Delay、Reverb；普通无处理零淡化为既有Trim对照，不外推所有普通坡度行为。已处理的完整来源及Comp在同一clip.trim下保留完整DSP输入、原生映射、源包络、插件状态/ID、原Take与媒体SHA；实际WAV裁切、重新拉出句柄、单次UndoRedo、保存重开原UndoRedo、锁定/过期Plan/超出实际来源拒绝、合成F6拖边和实际改键后的键盘路由/边界Nudge通过。Comp独立修剪明确解除配对，一笔Undo恢复原配对与声音。
+
+PCM最大差 `1.9073486328125e-6`，固定2e-6容差不变；来源5秒/每WAV10秒/新套件180秒预算不变。GUI草稿以完整Warp逆映射核对实际源时间，原1ps几何预算保持。当前552含六组预览/真WAV与冷重开；先前538项/46.34秒及双专项78.19秒不重复累计。
+
+首批三失败均保留。Boundary夹具绕过原生Nudge控件直接写保存UI，缓存显示仍用上一档；改为真实ComboBox通知，经生产setView重绑后所有方向、单位、曲线、媒体和历史断言通过。Range原先把随机FourOsc的3e-6幅度越过当作调度时间；独立解码失败WAV表明首个非零PCM是96000/100800，幅度越过96000/100801。现单独保留原3e-6测量、严格PCM起点和1ns原生事件检查，未改原幅度阈值、采样或事件预算。本次复测PCM96000/100800、幅度96000/100800/Undo96000；不宣称随机相位逐位一致。
+
+KeyboardSettings在4000ms内未取得实际native key-capture焦点；本次CUA明确Mac锁定，未跳过断言、未计旧44项JSON成功，也不反复CLI代替解锁验收。新实体键鼠/听评未执行。自动ClipWorkspace70项中真实CoreAudio播放/停止静音回调通过，不代表声学回路延迟、听感或零XRUN。
+
+21套最新通过：Folder/VCA51、Clip58、History86、ClipWorkspace70、Editor83、GroupTransform99、ClipTime57、Boundary255、Range15342、Loop51、Punch124、Playlist227、Audition98、Crossfade101、CrossfadeClipboard73、Production91、WarpComp62、ElasticComp261、ClipFxComp265、ProcessedMove414、ProcessedTrim552。只计每套最新通过的一份输出；失败的KeyboardSettings不读旧成功JSON。
+
+无新增依赖/SDK/DSP/RT路径；17份SDK补丁/38文件未改，核对原审计pin、17补丁SHA及修改路径数，沿用此前重放结果，不冒充本轮重放。L1在脱离Edit的树上准备完整输入与源淡化，只在原Undo事务应用窗口/几何，不替换PLUGIN实例。未改端点保留原double。M2/M3权限未扩展，M4/M5暂缓。
+
+日志/JUnit两批状态、真实结果JSON及SHA、六组工程、旧失败WAV独立探针和签名产物索引：`build-v2-tracktion/p3-processed-trim-current-results.json`。大媒体与运行输出留本地；操作[PROCESSED_CLIP_TRIM.md](../../docs/PROCESSED_CLIP_TRIM.md)。下一项：处理窗口内拆分。键位设置焦点待解锁复测，复杂Tempo/自动化/多轨、自由复制、多选统一拖动、旧读者/长源/多声道/听评、旧性能A/分析10秒偶发超时、Windows/视频/发行继续保留。以下是历史记录。
+
 # P3 当前增量：处理后片段整体移动（2026-10-15）
 
 **18/18受影响套件一次通过，17538项数值/状态检查，342.38秒。** 其中范围Nudge15337项、新移动专项414项/29.76秒；此前独立专项414项/29.38秒不重复计数。源码ea10462/a5e199b；正常Release构建exit0，固定本地deep-strict验签通过。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `89ae7e367576753848b90d7290fbb72653b76e52156ceafc1ff65a2d64e353a3`；本地签名非发行公证，无新DMG/应用副本，完整P1/P3/产品未完成。

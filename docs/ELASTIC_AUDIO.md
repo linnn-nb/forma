@@ -1,4 +1,4 @@
-2026-10-15 补充：Elastic/Warp及带原生Clip FX的Comp整体位置移动已有414项专项，使用同一L1 clip.move/Grabber/Nudge，保留原生时长、完整来源和插件；操作[PROCESSED_CLIP_MOVE.md](PROCESSED_CLIP_MOVE.md)。仍非自由结构编辑资格，修剪/复制/复杂关联、旧读者/长源/听评和完整Elastic Audio继续保留。
+2026-10-15 补充：SoundTouch/Warp及原生Clip FX的完整片段和Comp已接非破坏性输出窗口修剪，保留完整处理输入、原映射/插件和源淡化；552专项通过，操作[PROCESSED_CLIP_TRIM.md](PROCESSED_CLIP_TRIM.md)。已有整体移动保持。没有新增算法或RT伸缩；自由拆分/复制、复杂关联/旧读者/长源/听评及完整Elastic Audio仍未完成。
 
 # 弹力音频（2026-10-14）
 

@@ -1,5 +1,7 @@
 # 处理后片段移动（2026-10-15）
 
+后续非破坏性修剪已单独接通，见[PROCESSED_CLIP_TRIM.md](PROCESSED_CLIP_TRIM.md)；下文移动增量的历史限制不代表它已放行全部结构编辑。
+
 本增量将普通、Elastic／Warp 及 Clip FX 来源 Comp 的整体位置移动接回同一 L1 `clip.move`、Grabber 和 Nudge。`movable_audio` 与自由结构编辑 `editable_audio` 分离；修剪、拆分、复制粘贴没有随移动权限一并放行。专项414项/29.38秒通过，最终回归以 P3 证据为准，完整产品尚未验收。
 
 选择片段，用工具栏 Grabber 或 Smart 下半部拖动；逗号／句号或数字键盘减／加执行 Nudge。Shift 多选后 Nudge 使用共同采样位移；所有入口仍可改键。对两侧配对片段提交共同位移（如多选 Nudge）会同时移动交叉淡化；独立移动其中一侧沿用原有解除配对规则，预览显示影响。Cmd Z／Cmd Shift Z 撤销重做，Cmd S 保存，重开保留原事务。鼠标拖动本身的像素位移按捕获的时间轴比例舍入为采样位移，不把两次独立坐标舍入的差当作拖动位移。

@@ -1,4 +1,4 @@
-2026-10-15 当前：普通/Elastic/Warp×有无四原生FX的Comp整体移动、原生Grabber单片段/多选Nudge/配对共同移动及持久原历史已有414项资格，见PROCESSED_CLIP_MOVE.md。TrackList异步排序越过Undo边界的实际故障已修；原失败保留。自由修剪/拆分/复制粘贴、多选统一Grabber拖动、复杂Tempo/自动化/多轨关联、旧读者/长源/听评等保持；旧“处理窗口全部不能移动”仅由本轮具体范围替代。完整产品未完成。
+2026-10-15 当前：Elastic/Warp及四原生FX来源与Comp的非破坏性Trim已有552项专项，另含普通零淡化对照；F6边缘与自定义键边界Nudge、句柄恢复、真实WAV和原历史见PROCESSED_CLIP_TRIM.md。旧“所有处理窗口不能修剪”仅由本轮具体范围替代。键位设置原生焦点专项待桌面解锁复测；下一项窗口内拆分，再复制/粘贴；多选统一Grabber、复杂Tempo/自动化/多轨关联、旧读者/长源/听评、旧性能A与分析超时保持。完整P1/P3/产品未完成。
 
 2026-10-15 当前：Warp源Take的候选Comp/区间提升、继承输出包络和原映射内crossfade句柄已接通，见WARP_SOURCE_COMP_WORKFLOW.md。其实体快捷键/试听仍未执行（桌面工具明确Mac锁定）；线性elastic proxy窗口、复杂关联多轨/Clip FX、旧版本读取inactive schema2的保护和长源/听评保留。以下旧“Warp源直接Comp未做”由本轮具体资格替代，不据此扩大范围。
 

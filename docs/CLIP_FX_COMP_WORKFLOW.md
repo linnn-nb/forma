@@ -1,5 +1,7 @@
 # 带 Clip FX 的 Take／Comp（2026-10-15）
 
+后续：处理输出窗口的非破坏性修剪见[PROCESSED_CLIP_TRIM.md](PROCESSED_CLIP_TRIM.md)；拆分/复制及复杂联动仍未完成。
+
 2026-10-15 更新：本页的处理窗口整体移动限制已由[PROCESSED_CLIP_MOVE.md](PROCESSED_CLIP_MOVE.md)的414项资格部分补齐；自由修剪/拆分/复制及复杂联动仍保留。
 
 普通音频、SoundTouch 伸缩／独立变调、Warp 来源可带原生 EQ、压缩、延迟、混响创建 Comp。完整来源输入经过真实效果器，再按选段输出；切点不会把效果输入重新裁成互不相干的小片段。源码 `f83a269`，最终15套1722项/384.32秒全绿（含265专项/35.69秒），见 `evidence/P3/summary.md`；完整 P1/P3 和产品仍未验收。

@@ -1,4 +1,4 @@
-2026-10-15 当前制作增量：普通/Elastic/Warp及原生Clip FX来源Comp可按完整片段移动，Grabber单片段拖动、Shift多选Nudge和配对共同移位共享L1命令；原生时长/偏移/处理描述/插件保持，Undo/Redo/保存重开已有414项专项。修复原生轨道排序在历史回放后追加未登记事务。操作PROCESSED_CLIP_MOVE.md。自由修剪/拆分/复制、多选统一拖动、复杂自动化/多轨关联、旧读者/长源/听评与完整产品仍未完成。
+2026-10-15 当前制作增量：SoundTouch/Warp及四原生Clip FX的完整来源与Comp可非破坏性修剪输出窗口（普通未处理Trim沿用既有行为）；完整输入、源淡化、插件状态与ID保持。F6/Smart边缘、边界Nudge、可改键入口共享clip.trim；专项552项已验原UndoRedo/保存重开/真实WAV与原Take、媒体SHA。代码721c808，操作PROCESSED_CLIP_TRIM.md。配对独立修剪会明确解除，Undo恢复；自由拆分/复制、复杂关联/旧读者/长源/听评与完整产品未完成。
 
 2026-10-15 制作联动增量：已准备的原生Warp Take可切为候选Comp/提升区间，原媒体、完整映射及处理链保留；配对交叉淡化只能揭示原Take实际输出句柄。可撤销/持久原历史/真实导出资格见WARP_SOURCE_COMP_WORKFLOW.md。独立线性伸缩/变调源Comp和全部Elastic Audio未完成，实体本增量仍待验。
 

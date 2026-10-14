@@ -1,4 +1,4 @@
-2026-10-15 clip.move Schema/actor/revision/Scope/权限/幂等不变；新增只读movable_audio能力，允许已验证处理来源整体移位，不授予trim/split/copy权限。移动前核验媒体SHA/处理描述/锁定及真实原生时长边界，预览沿用交叉淡化共同移动/解除配对记录。L1只改变start，源坐标/原生duration/插件不量化。派生bar/beat随新工程位置更新；原Undo、保存历史和版本冲突规则保持。快捷键/原生入口及414专项见PROCESSED_CLIP_MOVE.md，不扩M2/M3工具权限。
+2026-10-15 clip.trim沿用既有Schema/actor/revision/Scope/媒体hash/权限/幂等及原Undo；新增只读trimmable_audio、trim_preserves_processing、trim_handles_before_samples/trim_handles_after_samples。句柄单位是48k工程输出采样，不能代作原媒体帧。Warp full_anchors供未提交预览逆映射；保留完整输入、源淡化/实际FX参数与ID，独立修剪解除配对并在diff说明。越界/锁定/过期目标拒绝，不扩M2/M3工具权限；代码721c808，测试552项与边界见PROCESSED_CLIP_TRIM.md。
 
 2026-10-15 Warp Comp查询单位：source_offset_seconds为逆非线性映射得到的原媒体时间；playback_offset_seconds与source_offset_samples_space=prepared-warp-output为实际缓存播放坐标。Warp inherited_window带window_start_samples、完整处理链hash、origin_clip及直接parent_clip。已有playlist.comp.create/promote与crossfade命令沿用原actor/local_gui/版本/Scope/权限与一Plan原生Undo，不增加Agent权限；GUI/AI不可绕过L1编辑树。资格及拒绝范围见WARP_SOURCE_COMP_WORKFLOW.md。
 

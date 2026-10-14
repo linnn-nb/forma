@@ -1,4 +1,4 @@
-2026-10-15 处理后片段移动：L1查询新增movable_audio，与editable_audio自由结构权限分开；clip.move只写原生start，保留duration/offset/完整Warp/Elastic/FX描述及插件。GUI Grabber/Nudge/整组范围移动消费同一能力位并提交Plan。定位到TrackList.sortTracksByType的异步未命名Undo写入：新增原生flushPendingOrder供L1边界收束，历史恢复不重新排队排序，保留未知事务保护。17 SDK patch/38文件可重放，临时JUCE诊断逐字恢复；无新引擎/DSP/服务/RT工作。资格及边界PROCESSED_CLIP_MOVE.md。
+2026-10-15 非破坏性处理窗口Trim：新增只读trimmable_audio、trim_preserves_processing和前后输出句柄，保持与movable_audio/自由editable_audio分离。ProcessedClipTrim在脱离Edit的树上准备完整输入、源包络与播放窗口，仅L1在同一原生Undo事务修改几何/描述，不替换PLUGIN。完整Warp查询full_anchors供GUI草稿逆映射，原映射与渲染指纹不变；未改端点保留原double。无新依赖/SDK/DSP/RT工作，17份/38文件补丁沿用前轮审计。代码721c808；资格PROCESSED_CLIP_TRIM.md。
 
 2026-10-15 Warp源Comp：L1 WarpState保留完整源/输出非线性映射，schema2仅记录播放窗口；候选新Clip/锚点ID与源渲染指纹分开。输出源包络显式标坐标，区间提升复用native_fades.fragment保留多层坡度；crossfade只在完整原Take句柄内扩窗，单原生Undo事务。活动/非活动描述符均校验，查询区分原媒体逆映射与缓存播放时间。试听快照绑定同一Engine已准备float32源，原Take不改。既有SDK Warp补丁修正定时器无变化源缓存失效，不改实时回调；15份/32文件审计不变。线性elastic proxy窗口/旧版兼容/Clip FX/关联多轨保持差距，资格见WARP_SOURCE_COMP_WORKFLOW.md。
 
