@@ -1,9 +1,10 @@
 # 下一步（2026-10-15）
 
-非活动 Warp／SoundTouch／独立变调 Take 缺少完整缓存时，已有异步准备、真实进度、立即取消、30秒截止和版本/共享任务保护；99项专项通过。接受候选、原Undo/Redo、保存重开与导出继续复用既有命令层。操作见 SOURCE_PREPARATION_WORKFLOW.md，实际本轮回归见 ../evidence/P3/summary.md。完整 P1/P3/产品未完成。
+带原生 EQ、压缩、延迟、混响的普通／SoundTouch／Warp来源已接通单轨Comp、完整输入历史、选段输出、来源句柄crossfade和持久原Undo/Redo，真实参数可继续修改。代码f83a269；最终回归见../evidence/P3/summary.md，操作CLIP_FX_COMP_WORKFLOW.md。完整P1/P3和产品未完成。
 
-1. 桌面可操作后，退出旧进程、启动唯一新构建，实体走完 Loop→Punch→Take拖选→候选试听→Comp→交叉淡化→Undo/Redo→保存重开→WAV。旧实体证据不代替本轮；桌面锁定时继续下一项开发，不重复CLI凑验收。
-2. 下一项工程任务：检查处理源带 Clip FX 的 Comp 组合，明确分析/处理 tap、来源及处理链失效规则；从真实原生输出对照开始，只放行实测范围。不另建引擎、不扩M2/M3、不先加空接口。
-3. 保留 Warp Master 分析偶发10秒超时的原失败及原预算复测；再次出现时依据实际栈/资源状态定位，不能因一次通过宣称根因已修复。
+1. 桌面恢复后退出旧进程，打开唯一新构建，以新测试的cases[].session检查Clip FX检查器、实际拖选/快捷键、试听、保存重开和WAV；再补本轮Loop→Punch→Take/Comp→crossfade整链路实体操作。当前工具再次明确Mac锁定，不重复CLI凑GUI验收。
+2. 下一项工程任务：把处理后Comp片段的整体移动接回时间线Grabber／Nudge，保留完整Warp/Elastic/FX输入坐标、来源包络、插件实例和持久Undo。以同一来源的移位音频对照验证，不能简单移除editable_audio保护。
+3. 随后补处理窗口内的修剪/拆分/复制粘贴与旧构建读取保护；普通Clip FX的额外尾音句柄、FX自动化/离线ClipEffects/第三方Clip插件及复杂关联继续留在BACKLOG，不能用当前单轨资格外推。
+4. 保留Warp Master分析偶发10秒超时的原失败和原预算复测；再次出现时根据实际栈/资源状态定位。本批通过不等于旧根因已修复。
 
-媒体哈希/描述预检仍同步，长源首响应/取消预算未资格；复杂关联、旧版读取新窗口保护、异采样率/听评、旧性能A、多输入/PDC、耐久、Windows/视频/环绕与发行继续保留。M2/M3冻结，M4/M5暂缓。只使用 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，不制作新DMG。
+长源同步SHA/首响应、密集FX窗口负载、多声道/异采样率/听评、旧性能A、多输入/PDC、耐久、Windows/视频/环绕与发行仍未完成。M2/M3冻结，M4/M5暂缓。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG/源码包/应用副本。

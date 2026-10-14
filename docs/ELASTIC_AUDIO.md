@@ -1,4 +1,4 @@
-2026-10-15 补充：线性SoundTouch/独立变调来源的单轨Comp、提升与原处理输出句柄crossfade已接通；非活动Warp/Elastic来源缺缓存时异步准备、真实进度、立即取消与30秒截止已有99项资格，见[SOURCE_PREPARATION_WORKFLOW.md](SOURCE_PREPARATION_WORKFLOW.md)。沿用锁定SDK的SoundTouch，不新增算法。媒体哈希预检首响应、Clip FX/复杂关联、长源/异采样率/听评和完整Elastic Audio仍未完成。
+2026-10-15 补充：SoundTouch／Warp来源可在完整Take上插入原生EQ、压缩、延迟、混响后创建单轨Comp，保持真实插件、完整处理输入和选段包络；与先前缓存准备共用L1/原生图，见[CLIP_FX_COMP_WORKFLOW.md](CLIP_FX_COMP_WORKFLOW.md)。没有新算法或烘焙替代。窗口结构编辑/FX尾音/复杂关联、长源/异采样率/听评及完整Elastic Audio仍未完成。
 
 # 弹力音频（2026-10-14）
 

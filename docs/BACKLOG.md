@@ -1,4 +1,4 @@
-2026-10-15 当前：非活动Take缺完整Warp/Elastic缓存的异步准备、进度、取消、30秒截止和共享任务保护已有99项资格，旧“未做自动预热”仅由该范围替代。长源同步SHA/首响应、复杂关联/Clip FX、旧读者保护、异采样率/听评未资格；实体新流程受桌面锁定影响未验。旧Warp Master分析10秒偶发超时根因未定，旧性能A/Windows/发行保留。完整产品未完成，下一项见NEXT_STEPS。
+2026-10-15 当前：四类原生Clip FX的普通／SoundTouch／Warp单轨来源Comp、原生独立实例、完整输入/选段输出、交叉淡化与持久原历史已有专项资格。旧“Clip FX与Comp全部未做”仅由CLIP_FX_COMP_WORKFLOW.md范围替代。普通FX额外尾音句柄、FX自动化/离线ClipEffects/第三方Clip插件、处理窗口自由移动/剪裁/复制、复杂关联/多声道/异采样率/长源/旧读者与实体听评仍保留；旧性能/偶发分析超时及完整产品未完成。
 
 2026-10-15 当前：Warp源Take的候选Comp/区间提升、继承输出包络和原映射内crossfade句柄已接通，见WARP_SOURCE_COMP_WORKFLOW.md。其实体快捷键/试听仍未执行（桌面工具明确Mac锁定）；线性elastic proxy窗口、复杂关联多轨/Clip FX、旧版本读取inactive schema2的保护和长源/听评保留。以下旧“Warp源直接Comp未做”由本轮具体资格替代，不据此扩大范围。
 

@@ -1,4 +1,4 @@
-2026-10-15 Playlist试听沿用原L1入口，不扩展Agent权限。start可能返回preparing（processed_blocks=0、走带停止），preparation记录真实来源状态/进度；声明preparation_timeout_ms=30000、max_owned_concurrency=2。文件核验和最终revision/session/设备检查通过才requested/playing；超时或处理失败分别source_preparation_timeout/source_preparation_failed，无成功回执。stop取消自有任务、共享任务保留，cleanup_pending表示后台退场；人工提交先取消准备，不产生额外Undo。既有Comp/交叉淡化/持久历史契约保持；99项资格见SOURCE_PREPARATION_WORKFLOW.md。
+2026-10-15 Clip FX Comp：既有playlist命令/权限/幂等/revision/Scope/原生Undo不变，不扩M2/M3权限。预览注明独立原生处理器、完整来源输入与选段输出；query的clip_fx区分full_input_window、plugin_state_hash、input_hash、processing_hash及输出范围。真实参数/顺序/源处理/增益与包络变更更新对应指纹；空容器/等价XML写法不假装声音改变。坏描述/媒体变化拒绝，原生插件不替换成假参数。500新增默认⌘⌃⌥E可改键。资格和限制见CLIP_FX_COMP_WORKFLOW.md。
 
 2026-10-15 Warp Comp查询单位：source_offset_seconds为逆非线性映射得到的原媒体时间；playback_offset_seconds与source_offset_samples_space=prepared-warp-output为实际缓存播放坐标。Warp inherited_window带window_start_samples、完整处理链hash、origin_clip及直接parent_clip。已有playlist.comp.create/promote与crossfade命令沿用原actor/local_gui/版本/Scope/权限与一Plan原生Undo，不增加Agent权限；GUI/AI不可绕过L1编辑树。资格及拒绝范围见WARP_SOURCE_COMP_WORKFLOW.md。
 

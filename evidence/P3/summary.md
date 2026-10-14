@@ -1,3 +1,21 @@
+# P3 当前增量：Clip FX 来源 Comp（2026-10-15）
+
+**15/15受影响套件、1722项、384.32秒一批全绿，含新增265项/35.69秒。** 代码f83a269，Release构建exit0，固定本地deep-strict验签通过；唯一程序SHA256 `1e59def275de9cabce5c28bcab53c272151a739aa958a6561834ae394d2db474`。本地身份不等于发行公证，无新DMG或应用副本。完整P1/P3/产品未完成。
+
+普通/伸缩变调/Warp来源串联真实EQ、压缩、Delay、Reverb→Take→两段候选Comp→来源句柄linear crossfade→真实参数编辑→Undo→保存重开原UndoRedo→WAV，及六次hosted实际回调试听均验。效果保持独立原生实例与新ID，非烘焙替代；原Take和媒体SHA保持。新输入描述损坏时拒绝打开且当前会话不替换。新⌘⌃⌥E与既有生产入口均有可改键注册，本轮没有物理按键资格。
+
+PCM最大差 `1.1920928955078125e-7`（固定2e-6），选段外0；hosted非静音且0原生缓存miss。实际改EQ后音频最大变化0.50605/0.32692/0.53258，Undo后恢复；它证明参数真实处理，不是听感评分。整体首尾256采样及hosted既有启动/结束观测窗口继续沿用，真实切点包含在对照内。来源5秒/每WAV10秒/专项180秒预算不变。
+
+本批：FX尾音13、FX后端85（103.65s/原120s）、原生FX面板30、持久历史86、Playlist227、Audition98、Crossfade101、CrossfadeClipboard73、Production91、Elastic87、Warp144、WarpComp62、ElasticComp261、SourcePreparation99、ClipFxComp265。旧Warp Master分析10秒偶发超时本次未复现，不记作根因修复；不重复计算先前262专项为另一份功能覆盖。
+
+L1保存NDAW_CLIPFX_WINDOW schema1，媒体与源处理链绑定完整输入；原生WaveNode→真实插件→来源/当前淡化和窗口。图准备选用SummingNode持续输入，防止CombiningNode切点前跳过FX；回调没有新增分配/锁/I/O，仍是同一Tracktion Engine。新语义hash保留实际float插件参数、double几何与曲线，规范化等价XML数值和无处理内容的容器；无FX普通片段直接返回，避免序列化开销。原17份SDK patch/36文件fresh apply/逐字核对/reverse通过。
+
+初跑失败：自动再配置时新target尚未进入当前Make入口；随后重开指纹检查发现原生float参数与double来源包络的XML写法不稳定（4.0/4、0.3/0.29999999999999999等）。实际原生树差异及失败日志保留，按真实SDK字段精度修复；没有舍弃状态一致性检查或放宽音频/时间预算。一次旧FX后端采样时进程已经正常结束，未生成采样文件，不推断故障。
+
+CUA按名称获取Forma明确返回Mac锁定，旧进程未重启，本轮实体GUI/键盘/听评未执行；合成控件、注册键位及hosted回调不替代物理验收。可试操作见[CLIP_FX_COMP_WORKFLOW.md](../../docs/CLIP_FX_COMP_WORKFLOW.md)，本地实际工程在当前结果JSON的clip_fx_comp.cases[].session。
+
+完整日志/JUnit/各套结果与SHA/初始失败/三个实际工程的本地索引：`build-v2-tracktion/p3-clipfx-comp-current-results.json`。媒体与大输出未进Git、未上传。普通Clip FX额外尾音句柄/自动化/离线ClipEffects/第三方Clip插件、窗口自由结构编辑、复杂关联/多声道/异采样率/长源负载、旧读者/旧性能A/硬件PDC/耐久/Windows/视频/发行保留。下一项：处理后Comp的整体Grabber/Nudge移动，保持完整输入映射与历史；以下旧“Clip FX与Comp未做”只由上述受测范围替代。
+
 # P3 当前增量：非活动 Take 缓存准备（2026-10-15）
 
 **17/17 受影响回归、1879项、398.61秒一次通过；新增来源准备专项另99项/56.31秒通过，共1978项分两批验证。** 代码 `0bc92b8`，Release实际构建exit0；固定本地deep-strict验签通过（非发行公证）。唯一程序SHA256 `fe49a412f8c375f221097d7693b0b2fb12140ae1eccc1fc6d1ec79b30f843059`，无新DMG/应用副本。完整P1/P3/产品仍未验收。
