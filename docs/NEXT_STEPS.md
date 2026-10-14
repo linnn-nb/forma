@@ -1,8 +1,9 @@
 # 下一步（2026-10-15）
 
-Warp 源 Take 直接 Comp、区间提升、完整原映射内句柄 crossfade 已通过 11 套 1095 项和 3 次专项复测。原 Take/媒体/完整锚点、继承输出包络、UndoRedo/保存重开与真 WAV 保留；修复共享 Warp 源定时器缓存失效。操作见 WARP_SOURCE_COMP_WORKFLOW.md，证据 ../evidence/P3/summary.md。
+线性SoundTouch/独立变调源的单轨Comp、提升和原Take输出句柄crossfade已接通；261专项通过，15套受影响测试分批1704项。首批Warp Master分析一次10秒超时，单独与Stems→Warp原顺序复测通过，根因未定；不能写成一次全绿。操作ELASTIC_COMP_WORKFLOW.md，证据../evidence/P3/summary.md。
 
-1. 桌面解锁后，使用当前唯一新构建与 p3-warp-comp-tests.json 的 session，验源选择→加入候选→试听→交叉淡化→快捷键UndoRedo→保存重开→导出；本轮未执行，不能沿用旧窗口计为通过。
-2. 线性 SoundTouch 伸缩/独立变调源的 Comp：先解决原生 prepared proxy 的完整来源几何/窗口与稳定hash，避免新切片重渲染改变声波或用渲染副本冒充原源。一个候选/原媒体不变/PCM试听/持久Undo/快捷键/WAV为下项验收。
+1. 实现非活动Take缺少完整来源cache时的异步预热：原生后台完整描述重建，播放前有界准备、真实进度、立即取消、版本/会话冲突保护。当前明确拒绝缺缓存试听，不能以成功预览或切换播放来掩盖。
+2. 解锁后退出旧Forma、启动唯一新构建，以p3-elastic-comp-tests.json中的session完成源拖选→候选→试听→crossfade→实体快捷键UndoRedo→保存重开→WAV。本轮未执行，不沿用旧窗口算通过。
+3. 保留并定位偶发Master分析超时，预算不变；不因一次复测通过宣称根因已修复。
 
-继承Warp窗口直接改锚点/清除目前明确拒绝，回源Take编辑再建候选；Clip FX、复杂关联多轨、inactive schema2旧版本读取保护、长源/听评仍保留。旧性能A、多输入/PDC、耐久、Windows、视频、环绕与发行不因本增量完成。M2/M3冻结、M4/M5暂缓。唯一产物build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG。
+继承Warp/Elastic窗口重新处理仍明确拒绝，回原始完整来源片段编辑并创建新Take/候选；Clip FX、复杂关联、旧版读取新窗口保护、长源/异采样率/听评仍保留。旧性能A、多输入/PDC、耐久、Windows/视频/环绕与发行未完成。M2/M3冻结、M4/M5暂缓。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG。

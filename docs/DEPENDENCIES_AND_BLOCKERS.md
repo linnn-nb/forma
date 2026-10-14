@@ -1,3 +1,5 @@
+2026-10-15 当前：无新增授权或库/版本；新增原生完整proxy窗口审计，总16份patch/35文件可重放。261专项通过，受影响15套分批1704项；首批Warp分析一次10秒超时，原预算单独及Stems→Warp复测通过，原因未定。固定本地签名有效，不是公证发行。CUA明确Mac锁定，旧进程未重启，新实体流程/听评未验。inactive冷cache自动预热/取消、Clip FX/复杂关联/旧读者保护、长源/旧性能A/Windows/视频/发行保留；详见ELASTIC_COMP_WORKFLOW.md及P3证据。
+
 2026-10-15 当前：无新增授权/依赖版本需求。Warp源Comp的11套1095项及3次专项通过，既有Warp SDK patch修正共享源失效，15份/32文件审计通过。固定本地签名通过，不等于Developer ID/公证。CUA当前明确Mac锁定，本轮实体验收未执行；用户此前反馈窗口可正常操作，不能归因为App故障。线性elastic/pitch proxy窗口、Clip FX/复杂关联、旧版inactive schema2保护、听评/长源/旧性能A/Windows/发行保留。详见WARP_SOURCE_COMP_WORKFLOW.md与../evidence/P3/summary.md。
 
 2026-10-15 P3-WARP-MIX-01：Comp→交叉淡化→非线性Warp→真实WAV已通过，新增68专项与7套618项/114.47秒回归。原生淡化按Warp输出时间保持；已有配对只允许不改长度的Warp，Warp后交叉淡化只用真实重叠区。实体CmdF/提交/UndoRedo、CmdCtrlF/配对、另存重开原两笔UndoRedo、CoreAudio走带和GUI导出均已验；实际PCM24/48k/双声道/144000帧，独立PCM误差1.1869e-7。非完整P3或DAW；源继承包络、Clip FX、关联多轨、Warp源参与Comp切片、长源/听评仍待做。代码55743bd；详见WARP_MIX_WORKFLOW.md与../evidence/P3/summary.md。

@@ -26,7 +26,7 @@
 
 ## 首版弹力音频
 
-选中无淡化/片段效果的音频 Clip，Cmd+Option+T 打开 SoundTouch 伸缩面板；设置目标毫秒与独立半音，Cmd+Return 提交、Esc 取消。原媒体/源跨度保留，Undo/Redo 和保存重开可用。音频在后台准备，未准备好时录放/导出明确拒绝。已实测原速 0.5–2 倍、±12 半音范围内的代表性信号；非线性 Warp 另有原生锚点编辑，Warp 源 Take 可用于候选 Comp 和区间提升，保留完整源映射与撤销历史；[操作及范围](docs/WARP_SOURCE_COMP_WORKFLOW.md)。独立线性伸缩/变调源的 Comp、Clip FX 和长媒体体验仍未完成。[选型、源码许可证和实测边界](docs/ELASTIC_AUDIO.md)。
+选中无淡化/片段效果的音频 Clip，Cmd+Option+T 打开 SoundTouch 伸缩面板；设置目标毫秒与独立半音，Cmd+Return 提交、Esc 取消。原媒体/源跨度保留，Undo/Redo 和保存重开可用。音频在后台准备，未准备好时录放/导出明确拒绝。已实测原速 0.5–2 倍、±12 半音范围内的代表性信号；非线性 Warp 另有原生锚点编辑，Warp 源 Take 可用于候选 Comp 和区间提升，保留完整源映射与撤销历史；[操作及范围](docs/WARP_SOURCE_COMP_WORKFLOW.md)。独立线性伸缩/变调源也已接通单轨候选、区间提升和交叉淡化，并以原生完整处理描述支持冷缓存重建；[操作及实测边界](docs/ELASTIC_COMP_WORKFLOW.md)。非活动来源缺缓存时的自动准备、Clip FX 和长媒体体验仍未完成。[选型、源码许可证和实测边界](docs/ELASTIC_AUDIO.md)。
 
 ## 快速开始
 

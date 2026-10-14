@@ -13,4 +13,4 @@
 
 L1 `WarpState.h/PlaylistEditing.cpp/CrossfadeEditing.cpp/PlaylistAudition.cpp` 验证活动和非活动来源，单原生 UndoManager 事务；L5 只选区和提交命令。试听为同一 Engine 的只读快照，绑定已经准备并实际可读的 float32 源缓存。SDK 既有 Warp 审计补丁修正未变化源缓存被片段定时器释放的问题；真正文件写入/变化仍使缓存失效。没有新增 RT 工作、IPC、依赖版本或第二引擎。
 
-**边界**：继承窗口不能直接重新编辑/清除 Warp（否则会错误扩为完整 Take）；应切回源 Take 单独编辑，再创建新候选。独立线性伸缩/变调源的 Comp 仍拒绝，其原生 proxy 绑定片段几何，需要另行解决。Clip FX、复杂多轨关联、循环/音乐基准、长源资源与听感、旧构建对 inactive schema2 的兼容防护仍未资格，不宣称全部 Elastic Audio/P1/P3 完成。
+**边界**：继承窗口不能直接重新编辑/清除 Warp（否则会错误扩为完整 Take）；应切回源 Take 单独编辑，再创建新候选。独立线性伸缩/变调源的 Comp 已有后续原生窗口增量，见 [ELASTIC_COMP_WORKFLOW.md](ELASTIC_COMP_WORKFLOW.md)；冷缓存非活动来源的自动预热仍待做。Clip FX、复杂多轨关联、循环/音乐基准、长源资源与听感、旧构建对 inactive schema2 的兼容防护仍未资格，不宣称全部 Elastic Audio/P1/P3 完成。

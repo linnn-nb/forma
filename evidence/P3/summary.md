@@ -1,3 +1,19 @@
+# P3 当前增量：伸缩／变调源 Comp（2026-10-15）
+
+**新增261项通过；15套当前分批结果共1704项**。首批14/15、348.73秒，Warp Master分析超过原10秒截止；单独Warp33.87秒通过，原Stems→Warp顺序120.78秒通过，预算/负载/容差未改。不能写成一次全绿或超时根因已修复。代码f398fa2；Release exit0、固定本地签名deep-strict通过，程序SHA `57a445888eb9e775d1e4c37eb33c0dd2024b38d0aaafc228e764614becfd2f07`。无新DMG，完整产品未验收。
+
+真实48k/双声道PCM24源，经2→3秒、独立+7半音、3秒/-5半音、2→1秒四种实际SoundTouch处理，再候选Comp→源句柄crossfade→区间提升→真实WAV。渲染最大差1.1920929e-07，hosted试听最大差1.49011612e-07，4例缓存miss均0；固定PCM2e-6、缓存5秒/render10秒/专项120秒不变。排除外侧256采样native防爆音，试听按既有启动/结束有效窗口比较；不是硬件/XRUN/听评/耐久资格。
+
+原媒体SHA、完整原Take/处理段、稳定ID、实际源/窗口时间、来源坡度相乘、原UndoRedo及冷缓存重开原历史已验。冷Edit用新偏好目录重建完整原生proxy，绝不按短切片重新伸缩；legacy historyless inactive Take缺描述时只在脱离Edit的副本编译，原Take不改。额外不可信origin路径拒绝且原会话保留。所有相关动作有可改键注册入口；本轮实体Mac锁定，未执行新GUI/键盘/听评，也未重启旧进程。
+
+回归检查：Clip58、History86、PlaylistEditing227、Audition98、Crossfade101、CrossfadeClipboard73、Production91、Elastic87、Print77、PrintGraph148、Stems123、Warp144、WarpMix68、WarpComp62、ElasticComp261。原失败与原预算复测分别保留，不拿旧成功JSON覆盖失败。测试夹具最初漏track.create.ref、误写crossfade.set，被生产Schema拒绝；修正实际注册命令。原始完整Elastic来源的输出包络权限随后接通，未放行结构编辑。没有放宽数值/历史/路径校验。
+
+SDK继续原pin；16审计patch/35文件fresh apply、字节比对及reverse通过。新原生描述仅供后台ProxyRenderingInfo/AudioSegmentList恢复；graph非RT准备窗口offset，RT读取WaveNode。统一已准备源绑定供试听/印刻/Stems/Master；定时器用真实文件变化检测替代无必要的reader失效。没有新依赖、第二引擎、RT任务或IPC。
+
+可试：先退出旧Forma再启动本轮唯一应用，打开本地结果JSON中cases[2].session（3秒/-5半音）。操作见[ELASTIC_COMP_WORKFLOW.md](../../docs/ELASTIC_COMP_WORKFLOW.md)；实际文件/SHA/失败和各次测试在忽略build-v2-tracktion/p3-elastic-comp-current-results.json。未上传媒体或包。
+
+下一项：非活动来源cache缺失时的自动准备/进度/取消与实体完整选段流程。当前未准备时明确拒绝，不报试听成功。偶发分析超时根因、Clip FX/复杂关联/旧版读取新窗口保护、长源/异采样率/听评、旧性能A/Windows/视频/发行仍保留。下面旧“线性elastic/pitch源Comp未做”由本轮具体资格替代。
+
 # P3 当前增量：Warp 源 Take → Comp（2026-10-15）
 
 **11/11 套件，1095 项，160.69 秒全绿；WarpComp 专项 62 项另连续 3 次通过（21.65 秒）**。代码 eee1ecb/fa03730，Release exit0，固定本地身份 deep-strict 通过；程序 SHA `9ca223f4c8d7e24cf5c0ef49ec0eba05d09b9cca7d72a50a9ab9d3f48a0e6bdb`。仍是增量，完整 P1/P3/产品未验收，无新 DMG。

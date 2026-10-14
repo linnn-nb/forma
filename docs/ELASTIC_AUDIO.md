@@ -1,3 +1,5 @@
+2026-10-15 补充：线性SoundTouch/独立变调来源的单轨Comp、区间提升与原处理结果内的crossfade句柄已接通；完整原生proxy描述可在冷缓存重开重建，实际资格见 [ELASTIC_COMP_WORKFLOW.md](ELASTIC_COMP_WORKFLOW.md)。原“伸缩后Comp一律拒绝”由该范围替代。非活动来源缓存未准备时的自动预热/取消、Clip FX/复杂关联、长源/听评和完整Elastic Audio仍未完成。
+
 # 弹力音频（2026-10-14）
 
 已接通 SoundTouch 的保音高时间伸缩、独立变调与非线性Warp锚点。Warp通过8套740项实际音频/事务/离线消费测试，实体提交/UndoRedo/保存已验，最后重开回执未取得；不能称完整Elastic Audio或听感通过。Warp操作与边界见 [WARP_WORKFLOW.md](WARP_WORKFLOW.md)。

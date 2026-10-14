@@ -1,3 +1,5 @@
+2026-10-15 Elastic Comp查询：elastic提供inherited_window/window_start_samples/full_length_samples、processing_hash、origin_clip/parent_clip。source_offset_seconds是原媒体时间；source_offset_samples仍按source_offset_samples_space=linear-source-playback，窗口playback_offset_seconds为完整proxy输出坐标。已有playlist/clip.fade/crossfade注册命令沿用actor/权限/版本/Scope/幂等和单原生Undo，不增加Agent权限；继承窗口不允许直接重新伸缩。内部离线来源诊断warp_sources泛化为prepared_sources并标elastic_proxy类型。缺缓存返回真实未准备，不返回完成回执；资格见ELASTIC_COMP_WORKFLOW.md。
+
 2026-10-15 Warp Comp查询单位：source_offset_seconds为逆非线性映射得到的原媒体时间；playback_offset_seconds与source_offset_samples_space=prepared-warp-output为实际缓存播放坐标。Warp inherited_window带window_start_samples、完整处理链hash、origin_clip及直接parent_clip。已有playlist.comp.create/promote与crossfade命令沿用原actor/local_gui/版本/Scope/权限与一Plan原生Undo，不增加Agent权限；GUI/AI不可绕过L1编辑树。资格及拒绝范围见WARP_SOURCE_COMP_WORKFLOW.md。
 
 2026-10-15 P3-WARP-MIX-01：现有clip.warp/fade/gain/lock及playlist.crossfade接口保持，新增派生editable_envelope查询能力不代表可结构编辑。Warp预览声明输出时间的淡化长度/曲线保持；新长度不能容纳淡化时整笔拒绝，配对几何不变。Warp配对只允许实际已存在重叠区；移除会改变Warp几何时须先还原Warp。所有修改经原L1/native Undo，版本/幂等/权限与M2/M3工具表不扩充。GUI默认280 CmdF、538 CmdCtrlF、573 Warp、275接受、277取消可改键；代码/实测WARP_MIX_WORKFLOW。
