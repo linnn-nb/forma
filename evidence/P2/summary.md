@@ -1,3 +1,38 @@
+# P2 Stems 首版（2026-10-14，实体复验未完成）
+
+结论：Release/固定本地 deep-strict 签名通过；最终相同源码分两批10套786项通过，189.80秒、0 JUCE assertion。Stems123项45.74秒；实际四文件合并PCM最大差2.384185791015625e-7（固定2e-6），独立Master与原混音差0。不是完整P2、全仓回归、第三方/听感/耐久或发行验收。源码37d0a8e/966fc14/00ebdce；唯一应用二进制SHA256 `79cf888b8b2c61a7f0479ff5928820ac4730cde0f12ab74f26e9bc782b0e500a`。
+
+亲手试：打开以下自有受控信号工程，文件菜单「Stems · 批量导出…」或Cmd Shift Option B → 选实际轨道/共享Aux/Master、工程或选区、尾音、新目录名与父目录 → 渲染并预览 → Cmd Return提交；Esc取消。Cmd Z/Shift Cmd Z撤销重做工程记录，WAV/manifest保留；保存重开原历史和自定义键位保持。不是新的麦克风录音或音乐听评。
+
+最新工程：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P2-Stems-e09c74e3b96845c59608163c2cedee3a/Stems-GUI-Verified.tracktionedit`；改键工程`Stems-Custom-Key.tracktionedit`。同目录Verified-Batch/Muted/Solo/GUI-Verified各4个144000帧WAV；Selection为非零24000–72000区间、2个48000帧WAV。均48k、双声道、PCM24，真实解码/哈希及测量有回执；零未发布暂存残留。源文件为明确标注的测试输入，原始哈希保持。
+
+| 套件 | 检查 | 秒 | 原固定预算秒 |
+| --- | ---: | ---: | ---: |
+| persistent_native_history | 86 | 34.66 | 90 |
+| permission_scope | 38 | 3.20 | 90 |
+| verified_export | 43 | 21.93 | 120 |
+| native_verified_export | 17 | 7.00 | 60 |
+| production_chain | 91 | 11.56 | 120 |
+| elastic | 87 | 7.54 | 120 |
+| sidechain | 76 | 5.28 | 120 |
+| print | 77 | 13.87 | 180 |
+| print_graph | 148 | 39.02 | 180 |
+| stems | 123 | 45.74 | 180 |
+
+单批准备20秒、原混音渲染10秒、GUI通知2秒、PCM2e-6预算保持。实际PRE共享混响/压缩旁链、Mute/Solo、非零选区、Master与重建；原生按钮异步准备、Cmd Return、上下文Esc、跨重开Undo/Redo/改键；目录竞争/路径穿越/失效对象/版本冲突/幂等/取消/OS文件大小限制/生成WAV实际篡改全部通过。发布是新批次目录exclusive rename，不是覆写现有文件；Undo只作用工程记录。历史引用明确未重新核验，响度交付不达标仍显示需复核。OS写盘限制不等于磁盘满；没有证明第三方随机插件逐位一致。
+
+失败与修复：初轮Stems每文件约5.3秒，20秒整批失败，曾尝试持久worker/唯一路径/排序诊断但未解决；Master先渲染也成功，排除仅Master故障。macOS Background磁盘调度改为Utility后整批通过；保留录放优先暂停、取消、每文件60秒。随后实际Mute捕获错误（SDK默认静音仍处理Aux发送）修为原生audibility门控；重复导出Undo报invalid history child order，工程单例改原位更新。81项通过后补Solo/选区/文件篡改/改键；第一次扩展验收误把上下文Esc当全局键位，修测试后123项通过。最终影响回归9套通过/PrintGraph一次10秒准备失败；同一磁盘调度修正应用于印刻后，Print77/Graph148/Stems123在98.64秒通过，剩余7套在91.16秒通过。没有放宽预算/音频容差，也没有隐藏旧失败。
+
+构建审计：上一份render-bus补丁遗漏头文件被CMake拒绝，本轮恢复完整CPP+H；14份已锁定SDK补丁在27个文件上fresh apply/逐字节比对/reverse恢复成功。CMake追踪补丁和实际源码变化；无新SDK版本/算法依赖，未保留重复SDK工作树。Tracktion内部图线程不计为自有单任务worker，录放并发资源资格仍待测。
+
+实体状态：已启动最新唯一Forma.app，实际CoreAudio显示MacBook Pro扬声器48k/512；Cmd O进入系统对话框并选中自有工程，但“打开”未得到启用/载入回执。取消后桌面控制接口持续timeoutReached（重建连接亦未恢复）；app进程存活，2秒sample显示正常事件循环。不能确定为锁屏或产品文件过滤问题，未做猜测性SDK/UTI修改。实际Stems面板、文件发布、保存重开与键鼠最终复验**未完成**；已查看系统对话框截图，未伪造产品截图/回执。自动原生组件测试与上述实体状态分开记。
+
+日志：`p2-stems-final-base-regression.log`、`p2-stems-print-budget-regression.log`、`p2-stems-tests.json`、`p2-stems-sdk-replay-final.json`及失败/sample输出均在忽略的build-v2-tracktion目录。首次10套9通过/1失败记录为`p2-stems-final-regression.log`。没有新DMG/预览包，没有上传音频。P1旧实体主链路证据保留在../P1/summary.md；本轮production_chain/elastic仍通过，SoundTouch官方资料重新核验。
+
+下一项先恢复桌面连接并复验原生打开工程和Stems全程，再进入P2偏好。共享Solo/SoloSafe复杂组合、第三方/冻结乐器/多声道/其他编码、长源同步哈希和录放并发压力、崩溃遗留暂存恢复待资格；P1听评/耐久、Warp/MIDI CC、旧性能A/180秒自动化矩阵、Windows、公证与SBOM仍未完成。
+
+以下为历史记录。
+
 # P2 印刻综合资格与尾音导出（2026-10-14）
 
 结论：最终Release、固定本地deep/strict签名和9个受影响套件655项通过；同一批178.08秒、0 JUCE assertion。原生乐器/Aux/PRE/POST/旁链Freeze/Bounce、取消/OS写盘错误、缓存缺失/重定位、持久历史和尾音全工程导出已验。不是全仓回归、第三方生态、性能/听感/耐久或完整P2通过。源码08c709e/9bf5f35；唯一二进制SHA256 `cf5ffa4d7c81d7ad616bba20e693b1980cc4039116b11258ae8027f18486a75a`。

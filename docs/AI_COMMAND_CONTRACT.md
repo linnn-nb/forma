@@ -1,3 +1,5 @@
+2026-10-14：`export.stems.publish {batch_id:string}` 为 human/local_gui、停止态、独立 Plan、medium 风险的本地外部文件操作。`prepareStemExport` 仅准备已授予本地路径的草稿，绑定 session/revision/媒体和处理链哈希；状态没有真实整批文件核验时不得提交。preview 给出之前工程记录、每个真实 WAV、范围/尾音、Mute/Solo、测量和最终路径。commit 原子独占发布新批次目录＋manifest，并原位更新 STEM_EXPORT 工程单例；一笔原生 Undo/Redo 仅恢复工程记录，外部文件保留。配置随保存重开；历史引用不会伪装成新音频核验。取消、幂等、版本/文件/目录冲突有明确回执。MCP/Agent权限不扩，测试P2-STEMS-01，见 STEMS_WORKFLOW.md。
+
 2026-10-14：新增 track.freeze.relink {track:string,path:absolute string}，human/local_gui、停止态、单操作Plan。必须为已冻结且未锁定对象；新文件SHA256、48k/双声道/帧数匹配原记录。preview给出前后引用；commit复验并在一个Undo事务保留重定位来源，幂等回执/版本冲突沿用L1。Undo恢复原引用（可能缺失），不伪装移动或删除文件；缓存不可用时播放/导出明确失败。Cmd Ctrl Option R可改键。冻结尾音进入统一exportRequest范围，选择区间仍保持明确边界。本轮不开放额外MCP/AI权限，P2-PRINT-GRAPH-01实测见PRINT_WORKFLOW。
 
 2026-10-14：`plugin.sidechain.set {plugin,source}`（稳定轨道ID或`none`），human/local_gui、停止态、独立 Plan，参数/源资格和路由反馈均预检。`sidechain_changes` 返回实际原/新引用、针脚、检测器状态和主输出保持声明；设置回执不冒充音频测量。一个UndoManager事务保存 source/wires/原生检测器，删除引用源须显式disconnect，持久历史可恢复。旧计划/草稿拒绝；原/新源计入Scope。MCP/Agent许可未扩展。测试 P2-SIDECHAIN-01；见 SIDECHAIN_WORKFLOW.md。

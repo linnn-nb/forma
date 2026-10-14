@@ -1,5 +1,7 @@
 # Forma Studio 工程规则
 
+- 2026-10-14：Stems首版已经L1/native准备、真实PCM24文件核验、整批exclusive发布及持久Undo/Redo/改键；10套786项影响回归通过。源码37d0a8e/966fc14/00ebdce；Utility印刻修复保持10秒预算。最新实体工程打开未收到载入回执，取消后桌面接口持续超时，不猜锁屏/不标通过；先恢复连接复验GUI打开和Stems全程，再偏好/P3。14份SDK补丁27文件fresh apply/reverse通过；详见STEMS_WORKFLOW/P2证据，旧缺口保留。
+
 - 2026-10-14：P2 Freeze/Bounce综合资格已通过9套655项和实体快捷键/重定位/保存重开/原Undo/Redo/播放/导出；原生乐器、Aux/PRE/POST/旁链、取消/OS写盘错误、缓存缺失/重定位、尾音纳入全工程范围已验。源码08c709e/9bf5f35，14份审计补丁。下一项Stems批量导出；两轮边界收口，第三方/多声道/长源资源/中间发送/关联Comp与缓存清理移BACKLOG，不再无限扩印刻矩阵。详见PRINT_WORKFLOW/evidence/P2。
 
 - 2026-10-14：P2 原生旁链首版已提交并经六套件386项及实体窗口验证；native Compressor 数值、路由反馈/缺失源防护、持久历史和改键已验。唯一应用不变。下一项 Freeze / 原地 Bounce；第三方旁链、mute/solo与硬件PDC另测，P1听评/耐久和旧缺口保留。证据 evidence/P2/summary.md；不扩M2/M3权限。

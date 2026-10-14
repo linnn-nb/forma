@@ -1,3 +1,11 @@
+# P2 Stems 架构增量（2026-10-14）
+
+Stems 是 L1 的 `StemExport/StemCommands`，不是第二引擎：message thread 创建同一 Engine 的 forRendering Edit，一份版本绑定快照、一个原生图、一个持久 Utility worker。后推子捕获保留原发送和旁链，用原生 audibility 控制捕获输出；Master 使用未改路由的原生混音。实际 float32 → PCM24 编码/解码及测量完成后，L1 单操作 Plan 以 exclusive rename 发布整批新目录并写入原位更新的 STEM_EXPORT 单例。文件副作用保留，工程记录才由 UndoManager 撤销。GUI 只读事实/草稿，所有写入经 L1；播放/录音在开始时请求后台让行，不新增 RT 处理或 IPC。
+
+原有14份SDK补丁恢复完整CPP＋头文件审计，新增独立 fresh-apply/reverse 工具核对27个源码文件；CMake监听补丁和实际源码变化，拒绝未记录SDK更改。没有更换依赖 pin 或新增算法。范围、预算和实测入口：STEMS_WORKFLOW.md、evidence/P2/summary.md。
+
+以下保留既有架构。
+
 2026-10-14：L1统一计算原生工程长度与冻结缓存长度，query/exportRequest共用，避免全工程导出截掉缓存尾音。原生图准备保留印刻接收总线上游仍服务其他发送/旁链的分支，作为sink而不重复混入缓存；普通图不改变。L1 track.freeze.relink校验实际文件哈希/布局，以同一Undo事务更新原生引用和来源记录，L5只选文件、核验session/revision并提交。TrackPrint后台哈希/测量逐块检查取消与播放优先。14份完整SDK补丁仍受CMake审计；未增加引擎、IPC或服务。资格见 PRINT_WORKFLOW/VERIFICATION。
 
 2026-10-14：旁链复用 L0 原生 Send/Return 节点与插件实际针脚；L1 `plugin.sidechain.set` 独立停止态事务、反馈预检、稳定源引用、删除源显式断开与持久 Undo。L5 `SidechainPanel` 只提交 Plan，未改来源不能创建事务；Play/Record/Render/非片段分析预检缺失引用。代码 `SidechainCommands.cpp` / `SidechainGraph.h`，资格与剩余边界见 `SIDECHAIN_WORKFLOW.md`、`../evidence/P2/summary.md`。无第二引擎、SDK补丁或固定IPC延迟。
