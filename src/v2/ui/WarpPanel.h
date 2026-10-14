@@ -318,8 +318,18 @@ private:
         selected = index;
         const bool valid = index >= 0 && index < int(anchors.size());
         choice.setSelectedId(valid ? index + 1 : 0, juce::dontSendNotification);
-        sourceTime.setEnabled(valid && index > 0 && index < int(anchors.size()) - 1);
-        outputTime.setEnabled(valid && index > 0);
+        const auto enableEditor = [](juce::TextEditor& editor, bool enabled)
+        {
+            if (editor.isEnabled() != enabled)
+            {
+                editor.setEnabled(enabled);
+                // JUCE's TextEditor creates a static-text AX role while disabled and does not
+                // rebuild it on enablementChanged. Publish the actual current editing role.
+                editor.invalidateAccessibilityHandler();
+            }
+        };
+        enableEditor(sourceTime, valid && index > 0 && index < int(anchors.size()) - 1);
+        enableEditor(outputTime, valid && index > 0);
         setPoint.setEnabled(valid && index > 0);
         remove.setEnabled(valid && index > 0 && index < int(anchors.size()) - 1);
         sourceTime.setText(valid ? juce::String(anchors[size_t(index)]["source_time_seconds"].get<double>(), 12) : "",

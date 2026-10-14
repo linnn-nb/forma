@@ -433,12 +433,17 @@ int main(int argc, char** argv)
                 auto* add = dynamic_cast<juce::Button*>(find(w, "clip.warp.add_point"));
                 check(panel && panel->isVisible() && add,
                       "actual native Warp editor exposes real wave and anchor controls");
+                auto* initialOutput = dynamic_cast<juce::TextEditor*>(find(w, "clip.warp.position_ms"));
+                check(initialOutput->getAccessibilityHandler()->getRole() == juce::AccessibilityRole::staticText,
+                      "fixed first anchor initially exposes actual read-only accessibility role");
                 add->triggerClick();
                 auto* choice = dynamic_cast<juce::ComboBox*>(find(w, "clip.warp.anchors"));
                 wait([&] { return choice->getNumItems() == 3; }, "native asynchronous add produces a draft anchor");
                 check(clip(c) == original, "interactive anchor draft does not bypass command layer");
                 auto* sourceField = dynamic_cast<juce::TextEditor*>(find(w, "clip.warp.source_seconds"));
                 auto* out = dynamic_cast<juce::TextEditor*>(find(w, "clip.warp.position_ms"));
+                check(out->getAccessibilityHandler()->getRole() == juce::AccessibilityRole::editableText,
+                      "selecting editable anchor refreshes actual native accessibility role");
                 sourceField->setText("1.5", false);
                 out->setText("700", false);
                 auto* set = dynamic_cast<juce::Button*>(find(w, "clip.warp.set_point"));
