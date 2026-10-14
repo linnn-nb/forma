@@ -3,6 +3,7 @@
 #include "PlaylistLinks.h"
 #include "WarpState.h"
 #include "ElasticState.h"
+#include "ClipFxWindows.h"
 namespace ndaw::v2
 {
 namespace
@@ -83,7 +84,10 @@ void qualify(te::WaveAudioClip& c)
     require(c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                 c.getFadeOutBehaviour() == te::AudioClipBase::gainFade,
             "Crossfade of speed fades is not qualified");
-    require(!c.getPluginList() || c.getPluginList()->getPlugins().isEmpty(), "Crossfade with Clip FX is not qualified");
+    require(!clip_fx_window::hasPlugins(c.state) || clip_fx_window::exists(c.state),
+            "Clip FX交叉淡化需要从完整来源创建的Comp窗口；普通片段尾音句柄尚未资格");
+    clip_fx_window::qualify(c.state);
+    clip_fx_window::validate(c.state);
     require(c.getOriginalFile().existsAsFile(), "Crossfade source media is missing");
 }
 juce::ValueTree edge(te::WaveAudioClip& c, bool left)
@@ -593,7 +597,9 @@ Json Commands::crossfadeChange(const Json& a, bool remove) const
                                      frame(rp.getEnd().inSeconds()) - first <=
                                          elastic_state::sample(double(epRight["full_length_seconds"])) - elasticBegin
                                : r.getWarpTime() || ro >= 0;
-            require(lf.isValid() && rf.isValid() && leftHandle && rightHandle,
+            require(lf.isValid() && rf.isValid() && leftHandle && rightHandle &&
+                        clip_fx_window::contains(l.state, frame(lp.getStart().inSeconds()), last) &&
+                        clip_fx_window::contains(r.state, first, frame(rp.getEnd().inSeconds())),
                     "Insufficient actual source handles for the entire crossfade");
             require(frame(l.getFadeIn().inSeconds()) + last - first <= last - frame(lp.getStart().inSeconds()) &&
                         frame(r.getFadeOut().inSeconds()) + last - first <= frame(rp.getEnd().inSeconds()) - first,

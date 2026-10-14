@@ -308,7 +308,13 @@ void Workspace::refreshInspector()
     // A slot click changes selection while the actual plugin IDs stay the same.
     pluginChoice.setSelectedId(pluginSelection + 1, juce::dontSendNotification);
     auto p = selectedProcessor();
-    const auto category = text(clipFXInspector ? "CLIP FX / 片段效果" : "INSPECTOR / 轨道检查器");
+    const bool fullFXInput = clipFXInspector && !owner.is_null() && owner.contains("clip_fx") &&
+                             owner["clip_fx"].value("full_input_window", false);
+    const auto category = text(fullFXInput       ? "CLIP FX / 来源效果选段"
+                               : clipFXInspector ? "CLIP FX / 片段效果"
+                                                 : "INSPECTOR / 轨道检查器");
+    inspectorCategory.setTooltip(
+        fullFXInput ? text("保留完整来源的效果输入历史；只输出当前选段。参数修改作用于此片段副本。") : juce::String{});
     const auto name = owner.is_null() ? text("未选择轨道") : text(owner["name"].get<std::string>());
     inspectorCategory.setText(category, juce::dontSendNotification);
     inspectorName.setText(name, juce::dontSendNotification);
@@ -332,7 +338,7 @@ void Workspace::refreshInspector()
     const bool unlocked = (!clipFXInspector || (!owner.is_null() && !owner.value("locked", false))) && !printed;
     insertButton.setEnabled(
         !owner.is_null() && !playing && !parameterEditing && unlocked && !trackFrozen &&
-        (clipFXInspector ? owner.value("editable_audio", false) : t["capabilities"]["audio_routing"].get<bool>()));
+        (clipFXInspector ? owner.value("editable_envelope", false) : t["capabilities"]["audio_routing"].get<bool>()));
     externalLibraryButton.setEnabled(!clipFXInspector && !t.is_null() &&
                                      t["capabilities"].value("audio_routing", false));
     pluginType.setEnabled(insertButton.isEnabled());

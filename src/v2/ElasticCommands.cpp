@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
 #include "ElasticState.h"
+#include "ClipFxWindows.h"
 namespace ndaw::v2
 {
 void validateWarpEdit(te::Edit&);
@@ -21,9 +22,13 @@ Json Commands::playbackPreparation() const
     for (auto* t : te::getAudioTracks(*edit))
         for (auto* piece : t->getClips())
             if (auto* c = dynamic_cast<te::WaveAudioClip*>(piece);
-                c && (c->getWarpTime() || c->state.getChildWithName("NDAW_ELASTIC").isValid()))
+                c && (c->getWarpTime() || c->state.getChildWithName("NDAW_ELASTIC").isValid() ||
+                      clip_fx_window::exists(c->state)))
             {
                 bool failed = !c->getOriginalFile().existsAsFile();
+                if (!failed && clip_fx_window::exists(c->state))
+                    failed = mediaHash(c->getOriginalFile()) !=
+                             clip_fx_window::descriptor(c->state)["media_hash"].toString().toStdString();
                 bool pending =
                     c->usesTimeStretchedProxy() &&
                     (!c->getPlaybackFile().getFile().existsAsFile() || !c->getPlaybackFile().isValid() ||
@@ -71,8 +76,9 @@ Json Commands::elasticChange(const Json& a) const
                 !c->getIsReversed() && c->getSyncType() == te::Clip::syncAbsolute,
             "当前弹力音频支持采样基准的线性音频；循环、分组、Warp 与自动速度映射尚未验证");
     require(!q["inherited_fades"].get<bool>() && q["fade_in_samples"] == 0 && q["fade_out_samples"] == 0 &&
-                c->getPluginList()->size() == 0 && !c->effectsEnabled(),
-            "请使用无片段效果、无淡化的音频；交叉淡化/来源包络的伸缩尚未验证");
+                !clip_fx_window::exists(c->state) && !c->effectsEnabled(),
+            "请回无淡化的完整来源编辑伸缩；继承FX窗口/离线效果/来源包络尚不支持重设");
+    clip_fx_window::qualify(c->state);
     require(te::TimeStretcher::canProcessFor(te::TimeStretcher::soundtouchBetter), "SoundTouch 不可用");
     require(edit->canRenderProxies() && c->canUseProxy(), "当前工程不能准备离线伸缩音频");
     const auto source = c->getOriginalFile();

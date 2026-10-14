@@ -3,6 +3,7 @@
 #include "PlaylistLinks.h"
 #include "WarpState.h"
 #include "ElasticState.h"
+#include "ClipFxWindows.h"
 #include "NativeAudioFades.h"
 namespace ndaw::v2
 {
@@ -127,8 +128,12 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
     require(int(c.getProperty("fadeInBehaviour")) == int(te::AudioClipBase::gainFade) &&
                 int(c.getProperty("fadeOutBehaviour")) == int(te::AudioClipBase::gainFade),
             "Comp of speed fades is not qualified");
-    for (auto child : c)
-        require(!child.hasType(te::IDs::PLUGIN) && !child.hasType("EFFECTS"), "Comp with Clip FX is not yet qualified");
+    clip_fx_window::qualify(c);
+    clip_fx_window::validate(c);
+    if (clip_fx_window::exists(c))
+        require(Commands::mediaHash(media(edit, c)) ==
+                    clip_fx_window::descriptor(c)["media_hash"].toString().toStdString(),
+                "Clip FX完整来源媒体已变化");
     te::AudioFile f(edit.engine, media(edit, c));
     require(media(edit, c).existsAsFile() && f.isValid(), "Comp source media is missing or unreadable");
     if (bool(c[te::IDs::warpTime]))
@@ -152,13 +157,13 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
                 "Comp source interval exceeds media");
 }
 // Preserve source-anchored fades, using the same native graph support as Punch.
-juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
+juce::ValueTree sliced(te::Edit& edit, juce::ValueTree c, int64_t begin, int64_t end)
 {
     require(!processedElastic(c) || elastic_state::descriptor(c).isValid(), "Elastic切片缺少完整处理来源");
     const auto start = frame(c, "start"), stop = start + frame(c, "length");
     if (begin == start && end == stop)
         return c.createCopy();
-    auto copy = native_fades::fragment(c, begin / 48000., end / 48000.);
+    auto copy = native_fades::fragment(clip_fx_window::prepared(edit, c), begin / 48000., end / 48000.);
     if (bool(copy[te::IDs::warpTime]))
     {
         for (auto n : copy)
@@ -221,10 +226,10 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
             tracks[id] = trackState;
         }
         auto ready = readyForSlice(*edit, clip);
-        auto piece = sliced(ready, begin, end);
+        auto piece = sliced(*edit, ready, begin, end);
         // The allocator is runtime-only. Preview nodes never reuse a live graph
         // ID, never become project clips and never enter the editing history.
-        piece.setProperty(te::IDs::id, edit->createNewItemID().toVar(), nullptr);
+        piece = te::ClipCopy::fromClipboardState(piece, false).withNewItemID(*edit).getState().createCopy();
         warp_state::remapIDs(piece, str(clip, "id"));
         elastic_state::remap(piece, str(clip, "id"));
         piece.setProperty(te::IDs::source, juce::String(path), nullptr);
@@ -429,6 +434,7 @@ Json Commands::queryPlaylists(const std::string& id) const
                  {"comp_origin", str(c, "ndaw_comp_origin")}});
             auto& row = item["clips"].back();
             row["elastic"] = elastic_state::facts(c);
+            row["clip_fx"] = clip_fx_window::facts(c);
             if (elastic_state::isWindow(c))
                 row["playback_offset_seconds"] =
                     elastic_state::integer(elastic_state::descriptor(c), "window_start_samples") / 48000.;
@@ -672,7 +678,9 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                             {"playback_changed", false},
                             {"target_changed", false},
                             {"gaps", "silence"},
-                            {"source_playlists", "preserved"}});
+                            {"source_playlists", "preserved"},
+                            {"clip_fx_policy", "independent native instances; complete source input, selected output "
+                                               "window; real chain preserved"}});
         }
         if (cmd == "playlist.promote" || cmd == "playlist.take.register")
         {
@@ -821,7 +829,7 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
             for (auto c : clipsFor(t, s["source"]))
                 if (str(c, "id") == s["clip"].get<std::string>())
                 {
-                    auto inserted = sliced(copy(c), s["start_samples"], s["end_samples"]);
+                    auto inserted = sliced(*edit, copy(c), s["start_samples"], s["end_samples"]);
                     inserted.setProperty("ndaw_locked", false, nullptr);
                     auto origin = s;
                     origin["source_playlist"] = origin["source"];
@@ -894,11 +902,11 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                 continue;
             parent.removeChild(c, &um);
             if (first < begin)
-                parent.addChild(sliced(readyForSlice(*edit, c), first, begin), -1, &um);
+                parent.addChild(sliced(*edit, readyForSlice(*edit, c), first, begin), -1, &um);
             if (last > end)
-                parent.addChild(sliced(readyForSlice(*edit, first < begin ? copy(c) : c), end, last), -1, &um);
+                parent.addChild(sliced(*edit, readyForSlice(*edit, first < begin ? copy(c) : c), end, last), -1, &um);
         }
-        auto inserted = sliced(copy(source), begin, end);
+        auto inserted = sliced(*edit, copy(source), begin, end);
         inserted.setProperty("ndaw_locked", false, nullptr);
         inserted.setProperty("ndaw_comp_origin",
                              juce::String(Json({{"source_playlist", a["source"]},

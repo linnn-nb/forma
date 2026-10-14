@@ -207,7 +207,7 @@ const std::vector<Entry>& entries()
         {571, "撤销偏好设置", "设置", 'z', cmd | shift | juce::ModifierKeys::altModifier},
         {572, "重做偏好设置", "设置", 'z', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
-        {500, "片段效果…", "编辑"},
+        {500, "片段效果…", "编辑", 'e', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {501, "锁定 / 解锁片段", "编辑"},
         {502, "Clip Gain +1 dB", "编辑"},
         {503, "Clip Gain −1 dB", "编辑"},

@@ -3,6 +3,7 @@
 #include <juce_cryptography/juce_cryptography.h>
 #include "WarpState.h"
 #include "ElasticState.h"
+#include "ClipFxWindows.h"
 namespace ndaw::v2
 {
 namespace
@@ -41,6 +42,7 @@ void validateWarpEdit(te::Edit& edit)
         {
             warp_state::validate(node);
             elastic_state::validate(node);
+            clip_fx_window::validate(node);
         }
         for (auto child : node)
             self(self, child);
@@ -56,6 +58,12 @@ Json bindPreparedAudioSources(te::Edit& source, te::Edit& target)
     validateWarpEdit(source);
     validateWarpEdit(target);
     Json refs = Json::array();
+    for (auto* t : te::getAudioTracks(target))
+        for (auto* c : t->getClips())
+            if (auto* wave = dynamic_cast<te::WaveAudioClip*>(c); wave && clip_fx_window::exists(wave->state))
+                require(Commands::mediaHash(wave->getOriginalFile()) ==
+                            clip_fx_window::descriptor(wave->state)["media_hash"].toString().toStdString(),
+                        "Clip FX完整来源媒体已变化");
     for (auto* t : te::getAudioTracks(target))
         for (auto* piece : t->getClips())
             if (auto* c = dynamic_cast<te::WaveAudioClip*>(piece); c && c->getWarpTime())
@@ -165,8 +173,9 @@ Json Commands::warpChange(const Json& a) const
     require(!c->isLooping() && !c->isGrouped() && !c->getAutoTempo() && !c->getAutoPitch() && !c->getIsReversed() &&
                 c->getSyncType() == te::Clip::syncAbsolute,
             "Warp当前支持采样基准音频；循环、分组、反转和音乐速度映射须先还原");
-    require(!q["inherited_fades"].get<bool>() && c->getPluginList()->size() == 0 && !c->effectsEnabled(),
-            "Warp与来源包络、Clip FX的联合映射尚未资格");
+    require(!q["inherited_fades"].get<bool>() && !clip_fx_window::exists(c->state) && !c->effectsEnabled(),
+            "请回来源Take编辑：继承FX输入窗口或来源包络不能直接重设Warp");
+    clip_fx_window::qualify(c->state);
     require(c->getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                 c->getFadeOutBehaviour() == te::AudioClipBase::gainFade,
             "Warp支持输出时间上的增益淡化；速度淡化尚未资格");

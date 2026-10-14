@@ -2,6 +2,7 @@
 #include "NativeAudioFades.h"
 #include "WarpState.h"
 #include "ElasticState.h"
+#include "ClipFxWindows.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -140,8 +141,8 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
     auto p = c.getPosition();
     const auto warp = warpFacts(c);
     const bool editable = !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
-                          !c.getWarpTime() && !c.getIsReversed() && c.getPitchChange() == 0 &&
-                          std::abs(c.getSpeedRatio() - 1) < 1e-9;
+                          !c.getWarpTime() && !clip_fx_window::exists(c.state) && !c.getIsReversed() &&
+                          c.getPitchChange() == 0 && std::abs(c.getSpeedRatio() - 1) < 1e-9;
     return {
         {"path", f.getFullPathName().toStdString()},
         {"warp", warp},
@@ -185,16 +186,17 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_id", c.state.getProperty("ndaw_legacy_id").toString().toStdString()},
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
+        {"clip_fx", clip_fx_window::facts(c.state)},
         {"editable_envelope",
-         editable ||
+         editable || clip_fx_window::exists(c.state) ||
              (elastic_state::descriptor(c.state).isValid() && !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() &&
-              !c.getAutoPitch() && !c.getIsReversed() && c.getPluginList()->size() == 0 && !c.effectsEnabled() &&
+              !c.getAutoPitch() && !c.getIsReversed() && !c.effectsEnabled() &&
               c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
               c.getFadeOutBehaviour() == te::AudioClipBase::gainFade) ||
              (c.getWarpTime() && warp.value("available", false) && !c.isLooping() && !c.isGrouped() &&
               !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() && c.getSpeedRatio() == 1. &&
               c.getPitchChange() == 0 && c.getSyncType() == te::Clip::syncAbsolute &&
-              warp_state::outputEnvelopeOrigins(c.state) && c.getPluginList()->size() == 0 && !c.effectsEnabled() &&
+              warp_state::outputEnvelopeOrigins(c.state) && !c.effectsEnabled() &&
               c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
               c.getFadeOutBehaviour() == te::AudioClipBase::gainFade)},
         {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},
@@ -472,7 +474,8 @@ Json Commands::validateClipPlan(const Json& ops) const
             }
         require(clips.contains(id), "audio clip not found or deleted earlier in Plan");
         auto& m = clips.at(id);
-        const bool envelopeOnly = cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock";
+        const bool envelopeOnly =
+            cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock" || cmd == "clip.fx.insert";
         require(m.editable || (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
         if (m.hash.empty())
