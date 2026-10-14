@@ -144,7 +144,8 @@ public:
     Json setScrubPreferences(const Json&);
     Json deviceStatus() const;
     Json outputMeters() const;
-    Json playbackPreparation() const; // Actual cached elastic audio readiness, outside the realtime callback.
+    Json playbackPreparation() const;        // Actual cached elastic audio readiness, outside the realtime callback.
+    Json warpClip(const std::string&) const; // Read-only native source/clip-time anchors; never creates a manager.
     Json outputMeterControl(const std::string&, const Json&);
     Json audioDevices(bool rescan = false) const;
     Json audioCapabilities(const Json&) const;
@@ -536,6 +537,9 @@ private:
     void validateSidechainRuntime() const;
     Json elasticChange(const Json&) const;
     void executeElastic(const Json&);
+    Json warpChange(const Json&) const;
+    void executeWarp(const Json&);
+    Json warpFacts(te::WaveAudioClip&) const;
     void executeClipOperation(const std::string&, const Json&, Json&, std::map<std::string, std::string>&);
     static void registerLegacyCommands(Json&);
     static void registerQueryCommands(Json&);

@@ -18,11 +18,24 @@ Json Commands::playbackPreparation() const
     for (auto* t : te::getAudioTracks(*edit))
         for (auto* piece : t->getClips())
             if (auto* c = dynamic_cast<te::WaveAudioClip*>(piece);
-                c && c->state.getChildWithName("NDAW_ELASTIC").isValid())
-                if (c->usesTimeStretchedProxy() && !c->getPlaybackFile().isValid())
+                c && (c->getWarpTime() || c->state.getChildWithName("NDAW_ELASTIC").isValid()))
+            {
+                bool failed = !c->getOriginalFile().existsAsFile();
+                bool pending = c->usesTimeStretchedProxy() && !c->getPlaybackFile().isValid();
+                if (c->getWarpTime())
+                {
+                    const auto expected = te::RenderManager::getAudioFileForHash(
+                        edit->engine, edit->getTempDirectory(false), c->getHash());
+                    failed |= c->hasSourceRenderFailed() || !c->state.getChildWithName("NDAW_WARP").isValid();
+                    pending |= c->isSourceRenderPending() || c->getCurrentSourceFile() != expected.getFile() ||
+                               !expected.isValid();
+                }
+                if (failed || pending)
                     items.push_back({{"clip", c->itemID.toString().toStdString()},
-                                     {"state", "preparing"},
+                                     {"state", failed ? "failed" : "preparing"},
+                                     {"progress", c->getSourceRenderProgress()},
                                      {"original_media_available", c->getOriginalFile().existsAsFile()}});
+            }
     return {{"busy", !items.empty()}, {"items", items}, {"backend", "Tracktion offline SoundTouch proxy"}};
 }
 Json Commands::elasticChange(const Json& a) const

@@ -43,7 +43,7 @@ if(NOT TE_HEAD STREQUAL "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98")
 endif()
 # Audited SDK fixes, ordered by source path for exact diff verification.
 set(TE_EXPECTED_DIFF "")
-foreach(TE_PATCH_NAME tracktion-midi-event-boundaries.patch tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-automation-readback.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch tracktion-audio-worker-priority.patch tracktion-persistent-freeze-cache.patch)
+foreach(TE_PATCH_NAME tracktion-midi-event-boundaries.patch tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-automation-readback.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch tracktion-audio-worker-priority.patch tracktion-persistent-freeze-cache.patch tracktion-warp-render-result.patch)
   set(TE_PATCH "${CMAKE_SOURCE_DIR}/patches/${TE_PATCH_NAME}")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${TE_PATCH}")
   execute_process(COMMAND "${GIT_EXECUTABLE}" apply --check "${TE_PATCH}" WORKING_DIRECTORY "${TE_SOURCE}" RESULT_VARIABLE TE_PATCH_NEEDED ERROR_QUIET)
@@ -88,7 +88,7 @@ add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePlugi
 target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupCommands.cpp src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/MarkerCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps

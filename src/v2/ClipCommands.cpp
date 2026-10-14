@@ -141,6 +141,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
                           std::abs(c.getSpeedRatio() - 1) < 1e-9;
     return {
         {"path", f.getFullPathName().toStdString()},
+        {"warp", warpFacts(c)},
         {"source_sample_rate", info.sampleRate},
         {"source_frames", int64_t(info.lengthInSamples)},
         {"source_offset_samples", sample(p.getOffset().inSeconds())},
@@ -215,6 +216,12 @@ void Commands::registerClipCommands(Json& r)
     r.back()["test"] = "P3-ELASTIC-01";
     r.back()["units"]["length_samples"] = "output duration at session 48000 Hz, source span preserved";
     r.back()["units"]["pitch_semitones"] = "semitones, -12..12; independent of duration";
+    add("clip.warp", {{"enabled", {{"type", "boolean"}}}, {"anchors", {{"type", "array"}, {"maxItems", 128}}}},
+        Json::array({"enabled"}));
+    r.back()["tool_visibility"] = "local_gui";
+    r.back()["test"] = "P3-WARP-01";
+    r.back()["units"]["anchors"] =
+        "stable clip-owned ID, absolute original-media seconds, clip-relative 48000 Hz samples";
     Json types = Json::array();
     for (const auto& p : processorCatalog())
         if (p["type"] != te::FourOscPlugin::xmlTypeName)
@@ -331,6 +338,12 @@ Json Commands::validateClipPlan(const Json& ops) const
     {
         std::string cmd = op["command"];
         const auto& a = op["args"];
+        if (cmd == "clip.warp")
+        {
+            require(ops.size() == 1, "Warp is a standalone stopped edit");
+            diff.push_back(warpChange(a));
+            continue;
+        }
         if (cmd == "clip.elastic")
         {
             require(ops.size() == 1, "Elastic audio is a standalone stopped edit");
@@ -524,6 +537,11 @@ Json Commands::validateClipPlan(const Json& ops) const
 void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json& objects,
                                     std::map<std::string, std::string>& aliases)
 {
+    if (cmd == "clip.warp")
+    {
+        executeWarp(a);
+        return;
+    }
     if (cmd == "clip.elastic")
     {
         executeElastic(a);

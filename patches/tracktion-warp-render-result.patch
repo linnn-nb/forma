@@ -1,0 +1,60 @@
+diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
+index 45733ad..4a11f7a 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
++++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
+@@ -169,6 +169,11 @@ public:
+     /** If a render is in progress, this will cancel it. */
+     void cancelCurrentRender();
+ 
++    /** Message-thread source render status; a readable partial WAV is not completion. */
++    bool isSourceRenderPending() const noexcept     { return renderJob != nullptr; }
++    bool hasSourceRenderFailed() const noexcept     { return lastRenderJobFailed; }
++    float getSourceRenderProgress() const noexcept  { return renderJob != nullptr ? renderJob->getCurrentTaskProgress() : 0.0f; }
++
+     //==============================================================================
+     /** Sets the gain of the clip in dB. */
+     void setGainDB (float dB);
+diff --git a/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h b/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
+index 956e6cc..f0ff4d7 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
++++ b/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
+@@ -31,7 +31,8 @@ public:
+ protected:
+     bool setUpRender() override
+     {
+-        return true;
++        return source.isValid() && proxyInfo != nullptr
++            && ! proxyInfo->audioSegmentList->getSegments().isEmpty();
+     }
+ 
+     bool renderNextBlock() override
+@@ -54,17 +55,12 @@ protected:
+             success = writer.isOpen() && proxyInfo->render (engine, source, writer, this, progress);
+         }
+ 
+-        if (! shouldExit() && ! success)
+-        {
+-            // if we fail here just copy the source to the destination to avoid loops
+-            source.getFile().copyFileTo (proxy.getFile());
+-            jassertfalse;
+-        }
+-
+         return true;
+     }
+ 
+-    bool completeRender() override                  { return true; }
++    // Failure/cancellation deletes the partial destination in RenderManager and reaches
++    // AudioClipBase's real failure state. Never substitute unwarped source audio.
++    bool completeRender() override                  { return success && ! shouldExit(); }
+ 
+ private:
+     WarpTimeRenderJob (AudioClipBase& clip, const juce::File& sourceFile, const AudioFile& destination)
+@@ -72,7 +68,7 @@ private:
+     {
+         auto tm = clip.getTimeStretchMode();
+         proxyInfo = std::make_unique<AudioClipBase::ProxyRenderingInfo>();
+-        proxyInfo->audioSegmentList  = AudioSegmentList::create (clip);
++        proxyInfo->audioSegmentList  = AudioSegmentList::create (clip, clip.getWarpTimeManager(), source);
+         proxyInfo->clipTime          = { {}, clip.getWarpTimeManager().getWarpEndMarkerTime() };
+         proxyInfo->speedRatio        = 1.0;
+         proxyInfo->mode              = (tm != TimeStretcher::disabled && tm != TimeStretcher::ara)
