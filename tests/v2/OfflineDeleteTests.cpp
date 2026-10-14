@@ -179,6 +179,158 @@ void moveOwned(const juce::File& from, const juce::File& to)
     check(from.existsAsFile() && !to.exists(), "owned fixture move never overwrites another file");
     check(from.moveFileTo(to), "actual fixture file presence changes on disk");
 }
+
+Json pairedCase(const juce::File& root)
+{
+    const auto folder = root.getChildFile("warp-fx-comp");
+    folder.createDirectory();
+    const auto file = folder.getChildFile("Original.wav"), parked = folder.getChildFile("Parked-original.wav");
+    source(file);
+    const auto hash = Commands::mediaHash(file);
+    Commands c(false, std::make_unique<Storage>(folder.getChildFile("prefs")));
+    run(c, "track.create", {{"name", "Offline Comp"}, {"ref", "$t"}});
+    const std::string t = c.query()["tracks"][0]["id"];
+    run(c, "track.gain", {{"track", t}, {"db", 0}});
+    run(c, "clip.import", {{"track", t}, {"path", file.getFullPathName().toStdString()}, {"position_samples", 0}});
+    const std::string id = clips(c, t)[0]["id"];
+    run(c, "clip.trim", {{"clip", id}, {"start_samples", 24000}, {"end_samples", 144000}});
+    auto anchors = c.warpClip(id)["anchors"];
+    anchors.back()["clip_time_samples"] = 144000;
+    anchors.insert(anchors.begin() + 1,
+                   Json{{"id", "warp:" + id + ":middle"}, {"source_time_seconds", 1.5}, {"clip_time_samples", 36000}});
+    run(c, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", anchors}});
+    for (const char* type : {te::EqualiserPlugin::xmlTypeName, te::CompressorPlugin::xmlTypeName,
+                             te::DelayPlugin::xmlTypeName, te::ReverbPlugin::xmlTypeName})
+        run(c, "clip.fx.insert", {{"clip", id}, {"type", type}});
+    const std::string main = lists(c, t)["active"];
+    const auto registered = run(c, "playlist.take.register",
+                                {{"track", t}, {"source", main}, {"clip", id}, {"name", "Original full source"}});
+    const std::string take = registered["objects"][0]["id"], part = list(c, t, take)["clips"][0]["id"];
+    const auto originalTake = list(c, t, take);
+    const auto comp =
+        run(c, "playlist.comp.create",
+            {{"track", t},
+             {"name", "Offline candidate"},
+             {"segments",
+              Json::array({{{"source", take}, {"clip", part}, {"start_samples", 36000}, {"end_samples", 90000}},
+                           {{"source", take}, {"clip", part}, {"start_samples", 90000}, {"end_samples", 132000}}})}});
+    run(c, "playlist.select", {{"track", t}, {"playlist", comp["objects"][0]["id"]}});
+    const auto members = clips(c, t);
+    const std::string left = members[0]["id"], right = members[1]["id"];
+    run(c, "playlist.crossfade",
+        {{"track", t},
+         {"left", left},
+         {"right", right},
+         {"start_samples", 88800},
+         {"end_samples", 91200},
+         {"curve", "linear"}});
+    const auto baseline = render(c, folder, 0, 240000);
+    const auto pairs = c.crossfades(t), before = clips(c, t);
+    moveOwned(file, parked);
+    const auto plan = c.makePlan("human", Json::array({op("clip.delete", {{"clip", left}})}));
+    check(c.preview(plan)["crossfade_changes"][0]["state"] == "detached",
+          "offline Comp delete previews actual paired transition detachment");
+    c.commit(plan);
+    check(clips(c, t).size() == 1 && clips(c, t)[0]["id"] == right && c.crossfades(t).empty(),
+          "offline deletion removes only selected Comp member and its pair metadata");
+    const auto deleted = folder.getChildFile("Offline-Comp-Deleted.tracktionedit");
+    c.save(deleted);
+    {
+        Commands cold(false, std::make_unique<Storage>(folder.getChildFile("cold")));
+        cold.open(deleted);
+        cold.undo();
+        check(cold.crossfades(t) == pairs && project(clips(cold, t)[0]) == project(
+                                                                               [&]
+                                                                               {
+                                                                                   auto q = before[0];
+                                                                                   q["source_present"] = false;
+                                                                                   return q;
+                                                                               }()),
+              "saved original Comp Undo restores exact original pair, member and processors");
+        cold.redo();
+        check(cold.crossfades(t).empty() && clips(cold, t).size() == 1,
+              "cold original Comp Redo removes intended member only");
+        cold.undo();
+        const auto restored = folder.getChildFile("Offline-Comp-Restored.tracktionedit");
+        cold.save(restored);
+    }
+    c.undo();
+    moveOwned(parked, file);
+    gated(baseline, render(c, folder, 0, 240000), 0, 240000);
+    check(list(c, t, take) == originalTake && Commands::mediaHash(file) == hash,
+          "offline Comp history preserves original Take and restored real audio bytes");
+    moveOwned(file, parked);
+    return {{"kind", "warp-fx-comp"},
+            {"deleted_session", deleted.getFullPathName().toStdString()},
+            {"restored_session",
+             folder.getChildFile("Offline-Comp-Restored.tracktionedit").getFullPathName().toStdString()},
+            {"parked_source", parked.getFullPathName().toStdString()},
+            {"source_sha256", hash}};
+}
+Json groupedCase(const juce::File& root)
+{
+    const auto folder = root.getChildFile("group");
+    folder.createDirectory();
+    const auto file = folder.getChildFile("Original.wav"), parked = folder.getChildFile("Parked-original.wav");
+    source(file);
+    const auto hash = Commands::mediaHash(file);
+    Commands c(false, std::make_unique<Storage>(folder.getChildFile("prefs")));
+    Json owners = Json::array(), ids = Json::array();
+    for (int n = 0; n < 2; ++n)
+    {
+        run(c, "track.create", {{"name", "Offline group " + std::to_string(n)}, {"ref", "$t"}});
+        const std::string t = c.query()["tracks"][n]["id"];
+        owners.push_back(t);
+        run(c, "track.gain", {{"track", t}, {"db", 0}});
+        run(c, "clip.import", {{"track", t}, {"path", file.getFullPathName().toStdString()}, {"position_samples", 0}});
+        ids.push_back(clips(c, t)[0]["id"]);
+    }
+    run(c, "group.create",
+        {{"id", "offline-linked"},
+         {"name", "Offline Edit group"},
+         {"members", owners},
+         {"enabled", true},
+         {"edit", true},
+         {"mute", false},
+         {"solo", false}});
+    const auto baseline = render(c, folder, 0, 240000);
+    moveOwned(file, parked);
+    rejects([&] { c.makeAudioClipClearPlan(Json::array({ids[0]}), false, false); },
+            "incomplete offline Edit group deletion is rejected atomically");
+    const auto plan = c.makeAudioClipClearPlan(ids, false, false);
+    Scope limited;
+    limited.targets = {owners[0].get<std::string>()};
+    rejects([&] { c.review(plan, limited); }, "offline group deletion cannot escape granted owner scope");
+    c.commit(plan);
+    for (const auto& t : owners)
+        check(clips(c, t).empty(), "complete offline group members removed in one actual transaction");
+    const auto saved = folder.getChildFile("Offline-Group-Deleted.tracktionedit");
+    c.save(saved);
+    {
+        Commands cold(false, std::make_unique<Storage>(folder.getChildFile("cold")));
+        cold.open(saved);
+        cold.undo();
+        for (size_t n = 0; n < owners.size(); ++n)
+            check(clips(cold, owners[n])[0]["id"] == ids[n] && !clips(cold, owners[n])[0]["source_present"].get<bool>(),
+                  "one original saved group Undo restores exact missing members and references");
+        cold.redo();
+        for (const auto& t : owners)
+            check(clips(cold, t).empty(), "group Redo restores whole project-only deletion");
+        cold.undo();
+        cold.save(folder.getChildFile("Offline-Group-Restored.tracktionedit"));
+    }
+    c.undo();
+    moveOwned(parked, file);
+    gated(baseline, render(c, folder, 0, 240000), 0, 240000);
+    check(Commands::mediaHash(file) == hash, "actual group round trip leaves original PCM unchanged");
+    moveOwned(file, parked);
+    return {{"kind", "edit-group"},
+            {"deleted_session", saved.getFullPathName().toStdString()},
+            {"restored_session",
+             folder.getChildFile("Offline-Group-Restored.tracktionedit").getFullPathName().toStdString()},
+            {"parked_source", parked.getFullPathName().toStdString()},
+            {"source_sha256", hash}};
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -300,6 +452,14 @@ int main(int argc, char** argv)
                 auto forged = plan;
                 forged["operations"][0]["args"]["source_reference_hash"] = std::string(64, '0');
                 rejects([&] { c.commit(forged); }, "forged source reference cannot bypass deletion preflight");
+                const auto retry = c.makePlan("human", Json::array({op("clip.delete", {{"clip", id}})}));
+                c.commit(retry);
+                check(c.commit(retry)["replayed"] && clips(c, t).empty(),
+                      "offline Delete retry returns its original receipt without a second edit");
+                c.undo();
+                check(c.commit(retry)["state"] == "undone" && clips(c, t).size() == 1,
+                      "retry after human Undo never deletes the restored reference again");
+                plan = c.makePlan("human", Json::array({op("clip.delete", {{"clip", id}})}));
                 // A real file appearance is a conflict even without a project edit.
                 moveOwned(parked, file);
                 rejects([&] { c.commit(plan); }, "file reappearance invalidates an offline deletion preview");
@@ -407,7 +567,13 @@ int main(int argc, char** argv)
                     gated(baseline, render(cold, folder, 0, 240000), 0, 240000);
                 }
                 check(list(c, t, take) == takeBefore, "original source Take survives deletion and original Undo");
+                moveOwned(file, parked); // Leave a genuinely offline, reproducible demo with original bytes preserved.
+                cases.back()["source_path"] = file.getFullPathName().toStdString();
+                cases.back()["parked_source"] = parked.getFullPathName().toStdString();
+                cases.back()["source_sha256"] = hash;
             }
+        cases.push_back(pairedCase(root));
+        cases.push_back(groupedCase(root));
         const Json result{{"result", "passed"},
                           {"checks", checks},
                           {"max_pcm_error", maxError},
