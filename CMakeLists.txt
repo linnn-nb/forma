@@ -43,7 +43,7 @@ if(NOT TE_HEAD STREQUAL "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98")
 endif()
 # Audited SDK fixes, ordered by source path for exact diff verification.
 set(TE_EXPECTED_DIFF "")
-foreach(TE_PATCH_NAME tracktion-midi-event-boundaries.patch tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-automation-readback.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch tracktion-audio-worker-priority.patch)
+foreach(TE_PATCH_NAME tracktion-midi-event-boundaries.patch tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-automation-readback.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch tracktion-audio-worker-priority.patch tracktion-persistent-freeze-cache.patch)
   set(TE_PATCH "${CMAKE_SOURCE_DIR}/patches/${TE_PATCH_NAME}")
   execute_process(COMMAND "${GIT_EXECUTABLE}" apply --check "${TE_PATCH}" WORKING_DIRECTORY "${TE_SOURCE}" RESULT_VARIABLE TE_PATCH_NEEDED ERROR_QUIET)
   if(TE_PATCH_NEEDED EQUAL 0)
@@ -83,7 +83,7 @@ target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupComma
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -569,7 +569,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 add_library(ndaw_ui STATIC
   src/v2/ui/KeyboardSettings.cpp src/v2/ui/WorkspacePlaylists.cpp src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
-  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
+  src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
 target_link_libraries(ndaw_ui PUBLIC ndaw_engine)
 target_link_libraries(NativeDAW PRIVATE ndaw_ui)
@@ -1068,3 +1068,9 @@ target_sources(ndaw_sidechain_tests PRIVATE tests/v2/SidechainTests.cpp)
 target_link_libraries(ndaw_sidechain_tests PRIVATE ndaw_ui)
 add_test(NAME forma_sidechain COMMAND ndaw_sidechain_tests "${CMAKE_BINARY_DIR}/p2-sidechain-tests.json")
 set_tests_properties(forma_sidechain PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_print_tests PRODUCT_NAME "ndaw_print_tests")
+target_sources(ndaw_print_tests PRIVATE tests/v2/PrintTests.cpp)
+target_link_libraries(ndaw_print_tests PRIVATE ndaw_ui)
+add_test(NAME forma_print COMMAND ndaw_print_tests "${CMAKE_BINARY_DIR}/p2-print-tests.json")
+set_tests_properties(forma_print PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

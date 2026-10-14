@@ -197,6 +197,8 @@ Json Commands::pluginEditorControl(const std::string& command, const Json& args)
         }
         return {{"plugin", id}, {"status", wasOpen ? "closed" : "already_closed"}, {"revision", revision}};
     }
+    require(!ext->isFrozen() && !bool(ext->state.getProperty("ndaw_print_baked", false)),
+            "Unfreeze or restore Bounce before opening its retained plugin editor");
     require(recordingCapture.is_null(), "stop recording before opening a plugin editor");
     require(parameterCapture.is_null(), "finish the current parameter gesture");
     externalDescriptor(ext->state.getProperty("ndaw_external_descriptor").toString().toStdString());

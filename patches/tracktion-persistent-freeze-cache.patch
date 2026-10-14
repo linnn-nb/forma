@@ -1,0 +1,53 @@
+diff --git a/modules/tracktion_engine/model/tracks/tracktion_AudioTrack.cpp b/modules/tracktion_engine/model/tracks/tracktion_AudioTrack.cpp
+index 308d717..7cfafd9 100644
+--- a/modules/tracktion_engine/model/tracks/tracktion_AudioTrack.cpp
++++ b/modules/tracktion_engine/model/tracks/tracktion_AudioTrack.cpp
+@@ -182,7 +182,8 @@ void AudioTrack::initialise()
+     if (! edit.isLoading())
+         getClipSlotList().ensureNumberOfSlots (edit.getSceneList().getNumScenes());
+ 
+-    if (frozenIndividually && ! getFreezeFile().existsAsFile())
++    // Forma retains missing immutable cache references so L1 can report/relink them.
++    if (frozenIndividually && ! state.hasProperty ("ndaw_freeze_file") && ! getFreezeFile().existsAsFile())
+         unfreeze (individualFreeze);
+ 
+     output->initialise();
+@@ -629,6 +630,9 @@ bool AudioTrack::canPlayMidi() const
+ //==============================================================================
+ ChannelConfiguration AudioTrack::getChannelConfiguration() const
+ {
++    // The verified Forma cache is stereo. Missing original media must not turn its bus into zero channels.
++    if (frozenIndividually && state.hasProperty ("ndaw_freeze_file"))
++        return ChannelConfiguration::stereo();
+     ChannelConfiguration result;
+     bool hasAnyClips = false;
+ 
+@@ -857,7 +861,14 @@ void AudioTrack::valueTreePropertyChanged (juce::ValueTree& v, const juce::Ident
+         {
+             frozenIndividually.forceUpdateOfCachedValue();
+ 
+-            if (frozenIndividually)
++            if (edit.state.getChildWithName ("NATIVEDAW").isValid())
++            {
++                // L1 supplies a verified immutable cache and owns the Freeze Point/Undo.
++                // Never re-render, delete the point, or overwrite audio during history replay.
++                // Plugin frozen flags are separate L1 Undo actions, not recursive writes here.
++                changed();
++            }
++            else if (frozenIndividually)
+                 freezeTrack();
+             else
+                 unFreezeTrack();
+diff --git a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
+index 2b729c5..213e8bf 100644
+--- a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
++++ b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
+@@ -339,6 +339,8 @@ juce::String TemporaryFileManager::getDeviceIDFromFreezeFile (Edit& edit, const
+ 
+ juce::File TemporaryFileManager::getFreezeFileForTrack (const AudioTrack& track)
+ {
++    if (auto path = track.state.getProperty ("ndaw_freeze_file").toString(); path.isNotEmpty())
++        return juce::File (path);
+     return track.edit.getTempDirectory (true)
+              .getChildFile (getTrackFreezePrefix() + "0_" + track.itemID.toString() + ".freeze");
+ }

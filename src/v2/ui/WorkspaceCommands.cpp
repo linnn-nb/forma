@@ -193,6 +193,10 @@ const std::vector<Entry>& entries()
         {538, "交叉淡化…", "编辑", 'f', cmd | juce::ModifierKeys::ctrlModifier},
         {560, "弹力音频 · SoundTouch…", "编辑", 't', cmd | juce::ModifierKeys::altModifier},
         {561, "所选效果器旁链…", "混音", 's', cmd | juce::ModifierKeys::altModifier},
+        {562, "冻结 / 解冻所选轨道…", "轨道", 'f',
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {563, "所选轨道原地 Bounce…", "轨道", 'b', cmd | juce::ModifierKeys::ctrlModifier},
+        {564, "还原原地 Bounce", "轨道", 'b', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
@@ -871,6 +875,15 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) && !selected.empty();
             if (id == 560)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
+            if (id >= 562 && id <= 564)
+            {
+                const auto& t = selectedTrack();
+                active = !t.is_null() && !facts.value("playing", false) && t.contains("print");
+                if (active && id == 564)
+                    active = t["print"]["bounce_active"].get<bool>();
+                if (active && id == 562 && t["print"]["frozen"].get<bool>())
+                    info.shortName = text("解冻所选轨道");
+            }
             if (id == 561)
             {
                 const auto p = selectedProcessor();
@@ -899,6 +912,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
+                    (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
                     (id != 276 && sidechainPanel && sidechainPanel->isVisible() &&
                      (id == 277 || sidechainPanel->canApply())) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
@@ -1130,6 +1144,31 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 538)
     {
         invoke([&] { showCrossfade(); });
+        return true;
+    }
+    if (id >= 562 && id <= 564)
+    {
+        invoke(
+            [&]
+            {
+                const auto t = selectedTrack();
+                if (t.is_null())
+                    throw std::runtime_error("请选择轨道");
+                if (id == 564)
+                    write("track.bounce.restore", {{"track", t["id"]}});
+                else if (id == 562 && t["print"]["frozen"].get<bool>())
+                    write("track.unfreeze", {{"track", t["id"]}});
+                else
+                    showPrint(id == 562 ? "freeze" : "bounce");
+            });
+        return true;
+    }
+    if ((id == 275 || id == 277) && printPanel && printPanel->isVisible())
+    {
+        if (id == 275)
+            printPanel->execute();
+        else
+            printPanel->close();
         return true;
     }
     if (id == 561)

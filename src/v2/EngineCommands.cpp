@@ -10,6 +10,7 @@
 #include "PersistentHistory.h"
 #include "SessionRecovery.h"
 #include "SidechainGraph.h"
+#include "TrackPrint.h"
 #include "OutputProbe.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <filesystem>
@@ -306,6 +307,7 @@ Commands::~Commands()
     edit->state.removeListener(this);
     removeAllChangeListeners();
     masterAnalysis.reset();
+    trackPrint.reset();
     recovery.reset();
     stopTimer();
     stop();
@@ -399,6 +401,7 @@ Json Commands::registry()
     registerTimelineCommands(result);
     registerMarkerCommands(result);
     registerHierarchyCommands(result);
+    registerPrintCommands(result);
     registerMixGroupCommands(result);
     registerPanCommands(result);
     registerAutomationCommands(result);
@@ -584,7 +587,12 @@ const Json& Commands::queryFacts() const
         tracks.back()["playlists"] = playlistQuery(*t);
         tracks.back()["crossfades"] = crossfades(t->itemID.toString().toStdString());
         tracks.back().update(hierarchyQuery(*t));
+        tracks.back()["print"] = printQuery(*t);
     }
+    int64_t sessionLength = std::llround(edit->getLength().inSeconds() * timelineRate);
+    for (const auto& t : tracks)
+        if (t.contains("print") && t["print"]["frozen"].get<bool>())
+            sessionLength = std::max(sessionLength, t["print"]["frames"].get<int64_t>());
     const auto historyEntry = [&](size_t index) -> Json
     {
         const auto& id = history.at(index);
@@ -643,7 +651,7 @@ const Json& Commands::queryFacts() const
         {"tracks", tracks},
         {"markers", markerQuery()},
         {"mix_groups", mixGroupsQuery()},
-        {"length_samples", std::llround(edit->getLength().inSeconds() * timelineRate)},
+        {"length_samples", sessionLength},
         {"scrub", scrubStatus()},
         {"position_samples", scrubPlayback
                                  ? scrubStatus()["position_samples"].get<int64_t>()
@@ -820,6 +828,7 @@ Json Commands::preview(const Json& plan) const
             "missing plan identity");
     const auto& ops = plan.at("operations");
     require(ops.is_array() && !ops.empty() && ops.size() <= 64, "operation limit (1..64)");
+    validateFrozenEditing(ops);
     const auto requested = plan.value("requested_operations", ops);
     require(requested.is_array() && !requested.empty() && requested.size() <= 64, "requested operation limit (1..64)");
     if (plan.contains("timeline_range_nudge"))
@@ -910,6 +919,8 @@ Json Commands::preview(const Json& plan) const
         auto reg = registry();
         if (cmd.starts_with("playlist.") || cmd == "transport.punch.set")
             require(actor == "human", "Playlist selection is a local GUI command");
+        if (cmd.starts_with("track.freeze") || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
+            require(actor == "human" && ops.size() == 1, "印刻编辑仅通过本地独立事务");
         if (cmd == "plugin.sidechain.set")
             require(actor == "human", "Sidechain editing is local human only during P2");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
@@ -1129,6 +1140,11 @@ Json Commands::preview(const Json& plan) const
             .push_back(change);
     const auto transportDiff = validateTransportPlan(ops);
     const auto markerDiff = validateMarkerPlan(ops);
+    Json printDiff = Json::array();
+    for (const auto& op : ops)
+        if (op["command"] == "track.freeze" || op["command"] == "track.unfreeze" ||
+            op["command"].get<std::string>().starts_with("track.bounce."))
+            printDiff.push_back(printChange(op["command"], op["args"]));
     Json sidechainDiff = Json::array();
     for (const auto& op : ops)
         if (op["command"] == "plugin.sidechain.set")
@@ -1148,6 +1164,7 @@ Json Commands::preview(const Json& plan) const
                 {"transport_changes", transportDiff},
                 {"marker_changes", markerDiff},
                 {"sidechain_changes", sidechainDiff},
+                {"print_changes", printDiff},
                 {"group_changes", groupDiff},
                 {"playlist_changes", playlistDiff},
                 {"crossfade_changes", crossfadeMaintenancePreview(ops, timelineDiff)},
@@ -1222,10 +1239,12 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
             op.at("command") == "track.pan_law" || op.at("command").get<std::string>().starts_with("automation.") ||
             op.at("command").get<std::string>().starts_with("plugin.") ||
             op.at("command").get<std::string>().starts_with("send.") || op.at("command") == "track.output" ||
-            op.at("command") == "track.create" || op.at("command") == "track.parent" ||
-            op.at("command") == "track.order" || op.at("command") == "track.delete" ||
-            op.at("command") == "track.input" || op.at("command") == "track.arm" ||
-            op.at("command") == "track.monitor" || op.at("command").get<std::string>().starts_with("playlist.") ||
+            op.at("command").get<std::string>().starts_with("track.freeze") || op.at("command") == "track.unfreeze" ||
+            op.at("command").get<std::string>().starts_with("track.bounce.") || op.at("command") == "track.create" ||
+            op.at("command") == "track.parent" || op.at("command") == "track.order" ||
+            op.at("command") == "track.delete" || op.at("command") == "track.input" ||
+            op.at("command") == "track.arm" || op.at("command") == "track.monitor" ||
+            op.at("command").get<std::string>().starts_with("playlist.") ||
             (op.at("command").get<std::string>().starts_with("midi.") &&
              !op.at("command").get<std::string>().starts_with("midi.note.")) ||
             op.at("command").get<std::string>().starts_with("timeline.clips.") ||
@@ -1255,7 +1274,11 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd.starts_with("group."))
+            if (cmd == "track.freeze" || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
+            {
+                executePrint(cmd, a, objects);
+            }
+            else if (cmd.starts_with("group."))
             {
                 executeMixGroupOperation(cmd, a);
             }
@@ -1570,6 +1593,7 @@ void Commands::play()
 {
     checkThread();
     validateSidechainRuntime();
+    validateFreezeRuntime();
     require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后播放");
     stopPlaylistAudition();
     stopScrub();
@@ -1768,6 +1792,7 @@ Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
 {
     checkThread();
     validateSidechainRuntime();
+    validateFreezeRuntime();
     require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后导出；尚未生成文件");
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(!masterAnalysis || !masterAnalysis->status()["busy"].get<bool>(),
@@ -1883,6 +1908,7 @@ void Commands::open(const juce::File& source)
     auto archive = PersistentHistory::read(loaded, source);
     auto info = loaded.getChildWithName("NATIVEDAW");
     info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);
+    trackPrint.reset();
     // Include all past/future native IDs while the SDK initializes its allocator.
     // A new edit after Undo must not reuse an ID retained by cached history nodes.
     juce::ValueTree reserve("HISTORY_ID_RESERVE");

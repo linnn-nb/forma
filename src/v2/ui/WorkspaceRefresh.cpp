@@ -327,9 +327,11 @@ void Workspace::refreshInspector()
                          (facts["audio_configuration"].is_object() &&
                           facts["audio_configuration"].value("state", std::string{}) == "preparing"),
                parameterEditing = !facts["parameter_capture"].is_null();
-    const bool unlocked = !clipFXInspector || (!owner.is_null() && !owner.value("locked", false));
+    const bool printed = !p.is_null() && (p.value("frozen", false) || p.value("printed_bypass", false));
+    const bool trackFrozen = !t.is_null() && t.contains("print") && t["print"]["frozen"].get<bool>();
+    const bool unlocked = (!clipFXInspector || (!owner.is_null() && !owner.value("locked", false))) && !printed;
     insertButton.setEnabled(
-        !owner.is_null() && !playing && !parameterEditing && unlocked &&
+        !owner.is_null() && !playing && !parameterEditing && unlocked && !trackFrozen &&
         (clipFXInspector ? owner.value("editable_audio", false) : t["capabilities"]["audio_routing"].get<bool>()));
     externalLibraryButton.setEnabled(!clipFXInspector && !t.is_null() &&
                                      t["capabilities"].value("audio_routing", false));
@@ -408,15 +410,16 @@ void Workspace::refreshInspector()
         for (const auto& e : commands.pluginEditorQuery())
             if (e["plugin"] == p["id"])
                 editorOpen = true;
-    editorButton.setEnabled(!p.is_null() && p.contains("external") && p["external"]["loaded"].get<bool>() &&
+    editorButton.setEnabled(!printed && !p.is_null() && p.contains("external") && p["external"]["loaded"].get<bool>() &&
                             p["external"]["has_editor"].get<bool>() && facts["recording_capture"].is_null() &&
                             (!parameterEditing || editorOpen));
     editorButton.setButtonText(editorOpen ? text("关闭窗口") : text("插件窗口"));
-    sidechainButton.setEnabled(!p.is_null() && !clipFXInspector && !playing && !parameterEditing &&
+    sidechainButton.setEnabled(!printed && !p.is_null() && !clipFXInspector && !playing && !parameterEditing &&
                                (p["sidechain"]["supported"].get<bool>() || p["sidechain"]["connected"].get<bool>()));
     sidechainButton.setTooltip(sidechainButton.isEnabled()
                                    ? text("所选实例旁链来源 · Cmd Option S，可改键")
                                    : text("请选择有实际旁链输入的轨道效果器；片段效果与未载入插件不可连接"));
+    bypassButton.setTooltip(printed ? text("已冻结 / 印刻，先解冻或还原Bounce") : text("旁通所选效果器"));
     parameters.setEnabled(unlocked);
     parameters.update(p, playing, 300, selected, !clipFXInspector && !facts["automation_capture"].is_null(),
                       t.is_null() ? "read" : t["automation_mode"].get<std::string>(),
@@ -469,6 +472,8 @@ void Workspace::refresh()
             elasticPanel->setVisible(false);
         if (sidechainPanel)
             sidechainPanel->setVisible(false);
+        if (printPanel)
+            printPanel->close();
         if (rollPanel)
             rollPanel->setVisible(false);
         if (musicEventPanel)

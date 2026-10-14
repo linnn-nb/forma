@@ -306,6 +306,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return audioImportPanel->handleKey(key);
     if (keyboardSettings && keyboardSettings->isVisible())
         return keyboardSettings->keyPressed(key);
+    if (printPanel && printPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (sidechainPanel && sidechainPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
     if (elasticPanel && elasticPanel->isVisible() && key == juce::KeyPress::escapeKey)
@@ -465,6 +467,8 @@ void Workspace::resized()
         elasticPanel->setBounds(getLocalBounds());
     if (sidechainPanel)
         sidechainPanel->setBounds(getLocalBounds());
+    if (printPanel)
+        printPanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)

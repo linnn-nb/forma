@@ -174,7 +174,8 @@ bool Commands::reconcileExternalPreparation(te::AutomatableParameter& parameter)
 void Commands::validateExternalRuntime() const
 {
     for (auto* p : te::getAllPlugins(*edit, true))
-        if (auto* ext = dynamic_cast<te::ExternalPlugin*>(p); ext && ext->isEnabled())
+        if (auto* ext = dynamic_cast<te::ExternalPlugin*>(p);
+            ext && ext->isEnabled() && !ext->isFrozen() && !bool(ext->state.getProperty("ndaw_print_baked", false)))
         {
             externalDescriptor(ext->state.getProperty("ndaw_external_descriptor").toString().toStdString());
             require(mayLoadExternal(*ext),

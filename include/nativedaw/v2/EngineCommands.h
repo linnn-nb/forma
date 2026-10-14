@@ -19,6 +19,7 @@ class NativePluginStates;
 class SessionRecovery;
 class PersistentHistory;
 class MasterAnalysis;
+class TrackPrint;
 class ScrubPlayback;
 struct SelectionOutputGateState;
 class Commands : public juce::ChangeBroadcaster,
@@ -83,6 +84,9 @@ public:
     Json undo(const std::string& expectedPlan = {});
     Json redo();
     Json render(const juce::File&, int64_t start, int64_t end);
+    Json prepareTrackPrint(const Json&);
+    Json trackPrintStatus();
+    Json cancelTrackPrint();
     Json timelineRange() const;
     Json shuffleOptions() const;
     std::string automationEditBasis(const std::string& track) const;
@@ -234,6 +238,14 @@ private:
     static void registerRecoveryCommands(Json&);
     friend class NativePluginStates;
     friend class PersistentHistory;
+    friend class TrackPrint;
+    std::unique_ptr<TrackPrint> trackPrint;
+    static void registerPrintCommands(Json&);
+    Json printQuery(te::AudioTrack&) const;
+    Json printChange(const std::string&, const Json&) const;
+    void executePrint(const std::string&, const Json&, Json&);
+    void validateFrozenEditing(const Json&) const;
+    void validateFreezeRuntime() const;
     std::unique_ptr<NativePluginStates> nativeStates;
     void captureNativeStates() const;
     void nativeStateOwned(bool);

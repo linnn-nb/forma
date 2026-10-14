@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
-index e37d1e4..3d71e0e 100644
+index e37d1e4..f04dc20 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.cpp
 @@ -365,22 +365,39 @@ std::unique_ptr<Node> createInsertReturnNode (InsertPlugin&, tracktion::graph::P
@@ -49,7 +49,56 @@ index e37d1e4..3d71e0e 100644
      }
  
      return node;
-@@ -1571,7 +1588,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+@@ -1070,12 +1087,15 @@ std::vector<std::unique_ptr<SlotControlNode>> createNodeForLauncherClips (const
+ //==============================================================================
+ std::unique_ptr<tracktion::graph::Node> createNodeForFrozenAudioTrack (AudioTrack& track, tracktion::graph::PlayHeadState& playHeadState, const CreateNodeParams& params)
+ {
+-    jassert (! params.forRendering);
++    jassert (! params.forRendering || track.state.hasProperty ("ndaw_freeze_file"));
+ 
+     const bool processMidiWhenMuted = track.state.getProperty (IDs::processMidiWhenMuted, false);
+     auto trackMuteState = std::make_unique<TrackMuteState> (track, false, processMidiWhenMuted);
++    const auto cacheFrames = (juce::int64) track.state.getProperty ("ndaw_freeze_frames", (juce::int64) 0);
++    const auto freezeLength = cacheFrames > 0 ? TimeDuration::fromSeconds ((double) cacheFrames / 48000.0)
++                                            : track.getLengthIncludingInputTracks();
+     auto node = tracktion::graph::makeNode<WaveNode> (AudioFile (track.edit.engine, TemporaryFileManager::getFreezeFileForTrack (track)),
+-                                                     TimeRange (TimePosition(), track.getLengthIncludingInputTracks()),
++                                                     TimeRange (TimePosition(), freezeLength),
+                                                      TimeDuration(), TimeRange(), LiveClipLevel(),
+                                                      1.0, track.getChannelConfiguration(), track.getChannelConfiguration(),
+                                                      params.processState,
+@@ -1415,9 +1435,14 @@ std::unique_ptr<tracktion::graph::Node> createPluginNodeForList (PluginList& lis
+ {
+     for (auto p : list)
+     {
+-        if (! params.forRendering && p->isFrozen())
++        if ((bool) p->state.getProperty ("ndaw_print_baked", false))
+             continue;
+ 
++        if (p->isFrozen())
++            if (! params.forRendering || (p->getOwnerTrack() != nullptr
++                                        && p->getOwnerTrack()->state.hasProperty ("ndaw_freeze_file")))
++                continue;
++
+         if (auto meterPlugin = dynamic_cast<LevelMeterPlugin*> (p))
+         {
+             node = makeNode<LevelMeasurerProcessingNode> (std::move (node), *meterPlugin);
+@@ -1557,10 +1582,13 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+     jassert (at.isProcessing (false));
+     auto& playHeadState = params.processState.playHeadState;
+ 
+-    if (! params.forRendering && at.isFrozen (AudioTrack::individualFreeze))
++    if (at.isFrozen (AudioTrack::individualFreeze)
++        && (! params.forRendering || at.state.hasProperty ("ndaw_freeze_file")))
+         return createNodeForFrozenAudioTrack (at, playHeadState, params);
+ 
+     auto inputTracks = getDirectInputTracks (at);
++    if ((bool) at.state.getProperty ("ndaw_bounce_active", false))
++        inputTracks.clear(); // The active editable printed clips already include upstream audio.
+     const bool processMidiWhenMuted = at.state.getProperty (IDs::processMidiWhenMuted, false);
+     auto clipsMuteState = std::make_unique<TrackMuteState> (at, true, processMidiWhenMuted);
+     auto trackMuteState = std::make_unique<TrackMuteState> (at, false, processMidiWhenMuted);
+@@ -1571,7 +1599,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
          trackMuteState->setKeepProcessingWhileMuted();
      }
  
@@ -59,7 +108,7 @@ index e37d1e4..3d71e0e 100644
      if (node)
      {
          // When recording, clips should be muted but the plugin should still be audible so use two muting Nodes
-@@ -1586,15 +1604,25 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
+@@ -1586,15 +1615,25 @@ std::unique_ptr<tracktion::graph::Node> createNodeForAudioTrack (AudioTrack& at,
                                                std::move (node), false);
          }
  
@@ -88,7 +137,7 @@ index e37d1e4..3d71e0e 100644
          node = makeNode<LiveMidiInjectingNode> (at, std::move (node));
  
      if (node == nullptr && inputTracks.isEmpty() && liveInputNode == nullptr)
-@@ -1735,6 +1763,9 @@ std::unique_ptr<tracktion::graph::Node> createNodeForSubmixTrack (FolderTrack& s
+@@ -1735,6 +1774,9 @@ std::unique_ptr<tracktion::graph::Node> createNodeForSubmixTrack (FolderTrack& s
  //==============================================================================
  std::unique_ptr<tracktion::graph::Node> createNodeForTrack (Track& track, const CreateNodeParams& params)
  {
@@ -98,7 +147,7 @@ index e37d1e4..3d71e0e 100644
      if (auto t = dynamic_cast<AudioTrack*> (&track))
      {
          if (! t->isProcessing (true))
-@@ -1968,7 +1999,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -1968,7 +2010,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
  
      for (auto t : getAllTracks (edit))
      {
@@ -108,7 +157,7 @@ index e37d1e4..3d71e0e 100644
              continue;
  
          if (auto output = getTrackOutput (*t))
-@@ -2004,7 +2036,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2004,7 +2047,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
      {
          for (auto t : getAllTracks (edit))
          {
@@ -118,7 +167,7 @@ index e37d1e4..3d71e0e 100644
                  continue;
  
              if (auto output = getTrackOutput (*t))
-@@ -2122,9 +2155,6 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2122,9 +2166,6 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
              node = createMasterFadeInOutNode (edit, std::move (node), params);
              node = EditNodeBuilder::insertOptionalLastStageNode (std::move (node));
  
@@ -128,7 +177,7 @@ index e37d1e4..3d71e0e 100644
              if (edit.getIsPreviewEdit() && node != nullptr)
                  if (auto previewMeasurer = edit.getPreviewLevelMeasurer())
                      node = makeNode<SharedLevelMeasuringNode> (std::move (previewMeasurer), std::move (node));
-@@ -2141,7 +2171,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2141,7 +2182,7 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
                                                                           ChannelMap::conversion (incomingChannels, deviceChannels));
          }
  
@@ -137,7 +186,7 @@ index e37d1e4..3d71e0e 100644
          {
              auto clickAndTracksNode = makeSummingNode ({ node.release(),
                                                           makeNode<ClickNode> (edit, getNumChannelsFromDevice (*device),
-@@ -2149,6 +2179,11 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
+@@ -2149,6 +2190,11 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&
              node = std::move (clickAndTracksNode);
          }
  
@@ -149,7 +198,7 @@ index e37d1e4..3d71e0e 100644
          if (auto outputDeviceNode = createNodeForDevice (epc, *device, playHeadState, std::move (node)))
              outputNode->addInput (std::move (outputDeviceNode));
      }
-@@ -2171,7 +2206,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2171,7 +2217,8 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
  
      for (auto t : getAllTracks (edit))
      {
@@ -159,7 +208,7 @@ index e37d1e4..3d71e0e 100644
              continue;
  
          // Skip submix children (they're built by their parent) and tracks with no TrackOutput
-@@ -2186,7 +2222,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2186,7 +2233,14 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
          }
  
          if (auto node = createNodeForTrack (*t, params))
@@ -174,7 +223,7 @@ index e37d1e4..3d71e0e 100644
      }
  
      auto sumNode = std::make_unique<SummingNode> (std::move (trackNodes));
-@@ -2200,6 +2243,22 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
+@@ -2200,6 +2254,22 @@ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit& edit, const Cre
      return node;
  }
  

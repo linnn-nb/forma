@@ -66,6 +66,9 @@ void Workspace::showTrackOptions(const std::string& id, juce::Component& compone
         menu.addSubMenu(text("Track View"), views);
     }
     menu.addSubMenu(text("Track Colour"), trackColourMenu());
+    menu.addSeparator();
+    for (int command : {562, 563, 564})
+        addMenuCommand(menu, command);
     menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(&component),
                        [safe = juce::Component::SafePointer<Workspace>(this), id, session, revision](int command)
                        {

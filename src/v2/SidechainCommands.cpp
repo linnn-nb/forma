@@ -146,7 +146,8 @@ void Commands::validateSidechainRuntime() const
 {
     sidechain_graph::validateStored(*edit);
     for (auto* p : te::getAllPlugins(*edit, true))
-        if (p->getSidechainSourceID().isValid() && !p->isMissing())
+        if (p->getSidechainSourceID().isValid() && !p->isMissing() && !p->isFrozen() &&
+            !bool(p->state.getProperty("ndaw_print_baked", false)))
             require(track(p->getSidechainSourceID().toString().toStdString()),
                     "旁链源轨道缺失；原引用已保留，请重连或断开后录放/导出");
 }

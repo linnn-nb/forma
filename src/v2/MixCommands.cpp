@@ -193,6 +193,8 @@ Json Commands::processorSummary(te::Plugin& plugin) const
                 {"parameter_count", plugin.getAutomatableParameters().size()},
                 {"detail_collection", "parameters"}};
     result["sidechain"] = sidechainQuery(plugin);
+    result["frozen"] = plugin.isFrozen();
+    result["printed_bypass"] = bool(plugin.state.getProperty("ndaw_print_baked", false));
     if (auto* ext = dynamic_cast<te::ExternalPlugin*>(&plugin))
     {
         result["external"] = {
@@ -231,6 +233,8 @@ Json Commands::processorQuery(te::PluginList& list) const
         {
             auto result = it->second;
             result["sidechain"] = sidechainQuery(*plugin);
+            result["frozen"] = plugin->isFrozen();
+            result["printed_bypass"] = bool(plugin->state.getProperty("ndaw_print_baked", false));
             plugins.push_back(std::move(result));
             continue;
         }
@@ -243,6 +247,8 @@ Json Commands::processorQuery(te::PluginList& list) const
                     {"bypassed", !plugin->isEnabled()},
                     {"parameters", parameters}};
         result["sidechain"] = sidechainQuery(*plugin);
+        result["frozen"] = plugin->isFrozen();
+        result["printed_bypass"] = bool(plugin->state.getProperty("ndaw_print_baked", false));
         if (auto* ext = dynamic_cast<te::ExternalPlugin*>(plugin))
         {
             const bool loaded = ext->getAudioPluginInstance() != nullptr, allowed = mayLoadExternal(*ext);

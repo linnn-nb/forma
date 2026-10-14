@@ -352,6 +352,8 @@ void Commands::registerMusicCommands(Json& registry)
 }
 std::string Commands::trackType(te::AudioTrack& t) const
 {
+    if (bool(t.state.getProperty("ndaw_bounce_active", false)))
+        return "audio";
     if (t.pluginList.findFirstPluginOfType<te::AuxReturnPlugin>())
         return "aux";
     if (t.pluginList.findFirstPluginOfType<te::FourOscPlugin>())
