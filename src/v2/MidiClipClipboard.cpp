@@ -1,6 +1,6 @@
 #include "SampleMidiMap.h"
 #include <nativedaw/v2/EngineCommands.h>
-#include "NativeAudioFades.h"
+#include "AudioClipboardState.h"
 #include "NativePluginStates.h"
 namespace ndaw::v2
 {
@@ -103,9 +103,9 @@ Json Commands::timelineClipFacts(te::Clip& clip) const
     auto* c = dynamic_cast<te::WaveAudioClip*>(&clip);
     require(c && !c->isGrouped(), "timeline clipboard requires an audio or MIDI clip");
     auto f = audioClipQuery(*c);
-    require(f["editable_audio"].get<bool>() && !f["offline_clip_effects"].get<bool>() &&
+    require(f["copyable_audio"].get<bool>() && !f["offline_clip_effects"].get<bool>() &&
                 c->getSyncType() == te::Clip::syncAbsolute,
-            "audio clipboard requires unwarped sample-based native media");
+            "audio clipboard requires qualified sample-based native media");
     const auto p = c->getPosition();
     f.update({{"kind", "audio"},
               {"clip", c->itemID.toString().toStdString()},
@@ -140,7 +140,9 @@ Json Commands::timelineClipFragment(te::Clip& clip, int64_t low, int64_t high) c
     f["end_seconds"] = finish.inSeconds();
     f["start_beat"] = edit->tempoSequence.toBeats(start).inBeats();
     f["length_beats"] = edit->tempoSequence.toBeats(finish).inBeats() - f["start_beat"].get<double>();
-    const auto native = native_fades::fragment(clip.state, start.inSeconds(), finish.inSeconds());
+    const auto native = audio_clipboard::fragment(*edit, clip.state, low, high);
+    f["source_offset_seconds"] = double(native[te::IDs::offset]);
+    f["source_offset_samples"] = std::llround(double(native[te::IDs::offset]) * rate);
     f["fade_in_samples"] = std::llround(double(native["fadeIn"]) * rate);
     f["fade_out_samples"] = std::llround(double(native["fadeOut"]) * rate);
     f["inherited_fades"] = native.getChildWithName("NDAW_FADE_ORIGIN").isValid();
@@ -265,7 +267,10 @@ Json Commands::captureTimelineClipClipboard(const Json& clips, const Json& range
         auto state = te::ClipCopy::fromClip(*c).getState().createCopy();
         if (dynamic_cast<te::WaveAudioClip*>(c))
         {
-            state = native_fades::fragment(state, f["start_seconds"], f["end_seconds"]);
+            state = audio_clipboard::fragment(*edit, state, f["start_samples"],
+                                              f["start_samples"].get<int64_t>() + f["length_samples"].get<int64_t>());
+            f["source_offset_seconds"] = double(state[te::IDs::offset]);
+            f["source_offset_samples"] = std::llround(double(state[te::IDs::offset]) * rate);
             f["fade_in_samples"] = std::llround(double(state["fadeIn"]) * rate);
             f["fade_out_samples"] = std::llround(double(state["fadeOut"]) * rate);
             f["inherited_fades"] = state.getChildWithName("NDAW_FADE_ORIGIN").isValid();
@@ -393,7 +398,7 @@ Json Commands::prepareTimelineFromAudioClipboard(const std::string& id, const st
     {
         const auto& entry = original->entries.at(item.at("token"));
         auto facts = entry.facts;
-        require(facts["editable_audio"].get<bool>() && facts["default_reader"].get<bool>() &&
+        require(facts["copyable_audio"].get<bool>() && facts["default_reader"].get<bool>() &&
                     !facts["offline_clip_effects"].get<bool>(),
                 "audio clipboard mapping is not qualified");
         const int64_t start = facts["start_samples"], end = start + facts["length_samples"].get<int64_t>();
@@ -985,15 +990,25 @@ void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, J
         const bool frozen = after.contains("clipboard_token");
         if (item["clone"].get<bool>())
         {
-            const auto state = frozen ? clipboardEntry(after["clipboard_token"])->state.createCopy()
-                                      : states.at(item["clip"]).createCopy();
-            c = te::insertClipCopy(*track(after["track"]),
-                                   te::ClipCopy::fromClipboardState(state, false).withNewItemID(*edit));
+            auto state = frozen ? clipboardEntry(after["clipboard_token"])->state.createCopy()
+                                : states.at(item["clip"]).createCopy();
+            if (after["kind"] == "audio")
+            {
+                const int64_t low = std::llround(
+                    (double(state["start"]) + after["source_offset_seconds"].get<double>() - double(state["offset"])) *
+                    rate);
+                state = audio_clipboard::fragment(*edit, state, low, low + after["length_samples"].get<int64_t>());
+                state = audio_clipboard::clone(*edit, state, after["start_seconds"], after["clip"]);
+                c = te::insertClipCopy(*track(after["track"]), te::ClipCopy::fromClipboardState(state, false));
+            }
+            else
+                c = te::insertClipCopy(*track(after["track"]),
+                                       te::ClipCopy::fromClipboardState(state, false).withNewItemID(*edit));
             require(c != nullptr, "native clip insertion failed");
         }
         else
             c = timelineClip(item["clip"]);
-        if (dynamic_cast<te::WaveAudioClip*>(c) && !frozen)
+        if (dynamic_cast<te::WaveAudioClip*>(c) && !frozen && !item["clone"].get<bool>())
         {
             const auto& source = states.at(item["clip"]);
             const double first =
@@ -1002,7 +1017,11 @@ void Commands::executeMidiClipClipboard(const std::string& cmd, const Json& a, J
                                       std::llround((double(source["start"]) + double(source["length"])) * rate)
                                   ? double(source["start"]) + double(source["length"])
                                   : first + after["length_samples"].get<int64_t>() / rate;
-            const auto native = native_fades::fragment(source, first, last);
+            auto native =
+                audio_clipboard::fragment(*edit, source, std::llround(first * rate), std::llround(last * rate));
+            native.setProperty(te::IDs::start, after["start_seconds"].get<double>(), nullptr);
+            if (processed_trim::preservesInput(source) && !item["clone"].get<bool>())
+                processed_trim::apply(*static_cast<te::WaveAudioClip*>(c), native);
             for (int i = c->state.getNumChildren(); --i >= 0;)
                 if (c->state.getChild(i).hasType("NDAW_FADE_ORIGIN"))
                     c->state.removeChild(i, &undo);

@@ -377,18 +377,16 @@ int main(int argc, char** argv)
                         },
                         "split at an exact outer boundary is rejected before mutation");
                 if (kind != "plain" || fx)
-                    rejects(
-                        [&]
-                        {
-                            c.makePlan(
-                                "human",
-                                Json::array(
-                                    {op("clip.split",
-                                        {{"clip", id}, {"position_samples", start + 7200}, {"ref", "$r"}}),
-                                     op("clip.copy",
-                                        {{"clip", "$r"}, {"track", t}, {"position_samples", end}, {"ref", "$copy"}})}));
-                        },
-                        "new split alias does not accidentally grant unqualified processed clipboard permission");
+                {
+                    const auto copyPlan = c.makePlan(
+                        "human",
+                        Json::array(
+                            {op("clip.split", {{"clip", id}, {"position_samples", start + 7200}, {"ref", "$r"}}),
+                             op("clip.copy",
+                                {{"clip", "$r"}, {"track", t}, {"position_samples", end}, {"ref", "$copy"}})}));
+                    check(!c.preview(copyPlan).is_null(),
+                          "processed alias has explicit Copy capability while unrestricted editing stays gated");
+                }
                 run(c, "clip.split",
                     {{"clip", id}, {"position_samples", start + (end - start) / 2}, {"ref", "$delete-right"}});
                 const auto both = c.query()["tracks"][0]["clips"];

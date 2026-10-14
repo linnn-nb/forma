@@ -93,7 +93,7 @@ void Workspace::executeClipboardCommand(int id)
                 Json captured = Json::array(), owners = Json::array();
                 for (const auto& c : slices)
                 {
-                    require(c["kind"] == "audio" && c.value("editable_audio", false) &&
+                    require(c["kind"] == "audio" && c.value("copyable_audio", false) &&
                                 (id != editCommand::cut || !c.value("locked", false)),
                             "unsupported or locked clipboard selection");
                     first = std::min(first, c["slice_start"].get<int64_t>());

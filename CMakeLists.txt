@@ -1161,3 +1161,9 @@ target_sources(ndaw_processed_split_tests PRIVATE tests/v2/ProcessedSplitTests.c
 target_link_libraries(ndaw_processed_split_tests PRIVATE ndaw_ui)
 add_test(NAME forma_processed_split COMMAND ndaw_processed_split_tests "${CMAKE_BINARY_DIR}/p3-processed-split-tests.json")
 set_tests_properties(forma_processed_split PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_processed_clipboard_tests PRODUCT_NAME "ndaw_processed_clipboard_tests")
+target_sources(ndaw_processed_clipboard_tests PRIVATE tests/v2/ProcessedClipboardTests.cpp)
+target_link_libraries(ndaw_processed_clipboard_tests PRIVATE ndaw_ui)
+add_test(NAME forma_processed_clipboard COMMAND ndaw_processed_clipboard_tests "${CMAKE_BINARY_DIR}/p3-processed-clipboard-tests.json")
+set_tests_properties(forma_processed_clipboard PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

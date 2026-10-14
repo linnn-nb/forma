@@ -83,7 +83,8 @@ Json Commands::clipboardPasteOperations(const Json& request) const
                     const int64_t begin = clip["start_samples"], end = begin + clip["length_samples"].get<int64_t>();
                     if (end <= first || (mode == "replace" && begin >= last))
                         continue;
-                    require(clip["kind"] == "audio" && clip.value("editable_audio", false) &&
+                    require(clip["kind"] == "audio" && clip.value("splittable_audio", false) &&
+                                clip.value("deletable_audio", false) && clip.value("movable_audio", false) &&
                                 !clip.value("locked", false) && !clip.value("offline_clip_effects", false),
                             "entire paste refused: affected clip is locked or unsupported");
                     auto* native = audioClip(clip["id"]);

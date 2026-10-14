@@ -36,7 +36,8 @@ inline std::pair<int64_t, int64_t> handles(juce::ValueTree c)
     return {before, after};
 }
 // All preparation is off-Edit. The live processors, IDs, media and full DSP input survive.
-inline juce::ValueTree prepare(te::Edit& edit, juce::ValueTree source, int64_t first, int64_t last)
+inline juce::ValueTree prepare(te::Edit& edit, juce::ValueTree source, int64_t first, int64_t last,
+                               bool anchorAll = true)
 {
     warp_state::validate(source);
     elastic_state::require(!bool(source[te::IDs::warpTime]) || warp_state::outputEnvelopeOrigins(source),
@@ -48,7 +49,8 @@ inline juce::ValueTree prepare(te::Edit& edit, juce::ValueTree source, int64_t f
     const auto [before, after] = handles(source);
     elastic_state::require(first >= 0 && last > first && first >= start - before && last <= start + count + after,
                            "修剪越出完整处理来源的实际句柄");
-    auto copy = native_fades::fragment(clip_fx_window::prepared(edit, source), first / 48000., last / 48000., true);
+    auto copy =
+        native_fades::fragment(clip_fx_window::prepared(edit, source), first / 48000., last / 48000., anchorAll);
     const auto delta = first - start;
     double offset = double(source[te::IDs::offset]) + delta / 48000.;
     if (bool(source[te::IDs::warpTime]))

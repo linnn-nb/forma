@@ -570,7 +570,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                             active = active && (!slices.empty() || midiRange);
                             for (const auto& item : slices)
                                 active = active &&
-                                         ((item["kind"] == "audio" && item.value("editable_audio", false) &&
+                                         ((item["kind"] == "audio" && item.value("copyable_audio", false) &&
                                            !item.value("offline_clip_effects", false)) ||
                                           (item["kind"] == "midi" && (midiRange || !selection.objects.empty()))) &&
                                          (id != editCommand::cut || !item.value("locked", false));

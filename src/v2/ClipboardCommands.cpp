@@ -1,6 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativePluginStates.h"
-#include "NativeAudioFades.h"
+#include "AudioClipboardState.h"
 namespace ndaw::v2
 {
 namespace
@@ -81,8 +81,8 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         auto* c = audioClip(id);
         require(c != nullptr, "clipboard currently requires real audio clips");
         auto facts = audioClipQuery(*c);
-        require(facts["editable_audio"] && !facts["offline_clip_effects"].get<bool>(),
-                "looped/grouped/warped or offline-processed clipboard clips are not supported");
+        require(facts["copyable_audio"] && !facts["offline_clip_effects"].get<bool>(),
+                "clipboard source mapping or offline ClipEffects is not qualified");
         auto* t = c->getTrack();
         const auto owner = t->itemID.toString().toStdString();
         require(owners.contains(owner), "clipboard owner missing from track layout");
@@ -101,24 +101,17 @@ Json Commands::prepareClipboard(const Json& clips, const Json& tracks, int64_t s
         facts["track"] = owner;
         facts["start_samples"] = first;
         facts["length_samples"] = last - first;
-        const auto offset = position.getOffset().inSeconds() + (first - originalStart) / rate;
+        const auto state = audio_clipboard::fragment(*edit, te::ClipCopy::fromClip(*c).getState(), first, last);
+        const double offset = state[te::IDs::offset];
         facts["source_offset_seconds"] = offset;
         facts["source_offset_samples"] = sample(offset);
         facts["source_length_samples"] = sample(c->getSourceLength().inSeconds());
         facts["fx_types"] = Json::array();
         for (auto* plugin : *c->getPluginList())
             facts["fx_types"].push_back(plugin->getPluginType().toStdString());
-        auto state = native_fades::fragment(te::ClipCopy::fromClip(*c).getState(),
-                                            first == originalStart ? position.getStart().inSeconds() : first / rate,
-                                            last == originalEnd ? position.getEnd().inSeconds() : last / rate);
         facts["fade_in_samples"] = sample(double(state["fadeIn"]));
         facts["fade_out_samples"] = sample(double(state["fadeOut"]));
         facts["inherited_fades"] = state.getChildWithName("NDAW_FADE_ORIGIN").isValid();
-        state.setProperty(te::IDs::start, first / rate, nullptr);
-        state.setProperty(te::IDs::length, (last - first) / rate, nullptr);
-        state.setProperty(te::IDs::offset, offset, nullptr);
-        state.setProperty(te::IDs::fadeIn, facts["fade_in_samples"].get<int64_t>() / rate, nullptr);
-        state.setProperty(te::IDs::fadeOut, facts["fade_out_samples"].get<int64_t>() / rate, nullptr);
         juce::MemoryOutputStream serialized;
         state.writeToStream(serialized);
         bytes += serialized.getDataSize();

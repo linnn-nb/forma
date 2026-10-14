@@ -4,6 +4,7 @@
 #include "ElasticState.h"
 #include "ClipFxWindows.h"
 #include "ProcessedClipTrim.h"
+#include "AudioClipboardState.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -70,7 +71,8 @@ struct Model
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
     int64_t trimBefore = 0, trimAfter = 0;
-    bool trimmable = true, splittable = true, deletable = true, processedTrim = false, fxWindow = false;
+    bool trimmable = true, splittable = true, deletable = true, copyable = true, processedTrim = false,
+         fxWindow = false;
     bool locked = false, moveLocked = false, editable = true, movable = true, envelopeEditable = false,
          inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
@@ -113,7 +115,10 @@ void Commands::preservePasteBoundaryFades(const Json& plan)
         {
             const std::string id = op["args"]["clip"];
             if (done.insert(id).second)
-                if (auto* c = audioClip(id))
+                // Processed splitting already freezes each full-input output
+                // window. Never attach output-space fades to a schema-1 Warp
+                // source before its native window has been prepared.
+                if (auto* c = audioClip(id); c && !processed_trim::preservesInput(c->state))
                 {
                     const auto p = c->getPosition();
                     const auto frozen =
@@ -226,6 +231,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"editable_audio", editable},
         {"movable_audio", movable},
         {"deletable_audio", editable || movable},
+        {"copyable_audio", trimmable && c.getSyncType() == te::Clip::syncAbsolute},
         {"trimmable_audio", trimmable},
         {"splittable_audio", trimmable && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                                  c.getFadeOutBehaviour() == te::AudioClipBase::gainFade},
@@ -393,6 +399,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.trimmable = q["trimmable_audio"];
                 m.splittable = q["splittable_audio"];
                 m.deletable = q["deletable_audio"];
+                m.copyable = q["copyable_audio"];
                 m.processedTrim = q["trim_preserves_processing"];
                 m.fxWindow = q["clip_fx"].value("full_input_window", false);
                 m.trimBefore = q["trim_handles_before_samples"];
@@ -524,6 +531,9 @@ Json Commands::validateClipPlan(const Json& ops) const
                 frozen.outCurve = q["fade_out_curve"];
                 frozen.moveLocked = frozen.locked = q["locked"];
                 frozen.fxTypes = q["fx_types"];
+                frozen.copyable = q["copyable_audio"];
+                frozen.editable = q["editable_audio"];
+                frozen.processedTrim = processed_trim::preservesInput(entry->state);
                 clips[id] = std::move(frozen);
             }
         require(clips.contains(id), "audio clip not found or deleted earlier in Plan");
@@ -533,6 +543,7 @@ Json Commands::validateClipPlan(const Json& ops) const
         require((cmd == "clip.trim"     ? m.trimmable
                  : cmd == "clip.split"  ? m.splittable
                  : cmd == "clip.delete" ? m.deletable
+                 : cmd == "clip.copy"   ? m.copyable
                                         : m.editable) ||
                     (cmd == "clip.move" && m.movable) || (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
@@ -543,7 +554,8 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.hash = hashes.at(m.path);
         }
         require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
-        if (cmd == "clip.move" || ((cmd == "clip.trim" || cmd == "clip.split") && m.processedTrim))
+        if (cmd == "clip.move" ||
+            ((cmd == "clip.trim" || cmd == "clip.split" || cmd == "clip.copy") && m.processedTrim))
             if (auto* source = audioClip(id))
             {
                 if (cmd == "clip.move")
@@ -665,7 +677,10 @@ Json Commands::validateClipPlan(const Json& ops) const
                     "audio/instrument copy target required");
             copy.start = a["position_samples"];
             copy.track = target;
-            bounds(copy);
+            if (!copy.processedTrim)
+                bounds(copy);
+            else
+                require(copy.start <= sample(te::Edit::maximumLength) - copy.length, "copy exceeds timeline");
             created = newRef(a);
             clips[created] = copy;
         }
@@ -682,10 +697,12 @@ Json Commands::validateClipPlan(const Json& ops) const
                         {"after", cmd == "clip.delete" ? Json(nullptr) : m.facts()}});
         if (!created.empty())
             diff.back()["created"] = {{"clip", created}, {"after", clips.at(created).facts()}};
-        if (cmd == "clip.split" && m.processedTrim)
-            diff.back()["processing"] = {{"full_input_preserved", true},
-                                         {"identity_policy", "left clip/plugins retained; right clip/plugins new IDs"},
-                                         {"source_envelope", "original phase retained on each output window"}};
+        if ((cmd == "clip.split" || cmd == "clip.copy") && m.processedTrim)
+            diff.back()["processing"] = {
+                {"full_input_preserved", true},
+                {"identity_policy", cmd == "clip.split" ? "left clip/plugins retained; right clip/plugins new IDs"
+                                                        : "source retained; copy clip/plugins new IDs"},
+                {"source_envelope", "original phase retained on each output window"}};
         if (cmd == "clip.delete")
             clips.erase(id);
     }
@@ -729,15 +746,11 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
         {
             auto* target = track(a["track"]);
             require(target != nullptr, "clipboard destination disappeared");
-            auto copy = te::ClipCopy::fromClipboardState(entry->state.createCopy(), false).withNewItemID(*edit);
-            auto* c = dynamic_cast<te::WaveAudioClip*>(te::insertClipCopy(*target, copy));
+            const auto copy = audio_clipboard::clone(*edit, entry->state, pos(a["position_samples"]).inSeconds(),
+                                                     entry->facts["clip"]);
+            auto* c = dynamic_cast<te::WaveAudioClip*>(
+                te::insertClipCopy(*target, te::ClipCopy::fromClipboardState(copy, false)));
             require(c != nullptr, "native clipboard insertion failed");
-            const auto start = pos(a["position_samples"]);
-            c->setSyncType(te::Clip::syncAbsolute);
-            c->setPosition({{start, start + dur(entry->facts["length_samples"])},
-                            tracktion::TimeDuration::fromSeconds(entry->facts["source_offset_seconds"].get<double>())});
-            c->state.setProperty("ndaw_parent_clip", juce::String(entry->facts["clip"].get<std::string>()), &um);
-            c->state.setProperty("ndaw_origin", "clipboard", &um);
             const auto actual = c->itemID.toString().toStdString();
             aliases[a["ref"]] = actual;
             objects.push_back({{"id", actual}, {"kind", "clip"}, {"clipboard_token", id}});
@@ -818,9 +831,16 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
     {
         auto* t = track(a["track"]);
         require(t != nullptr, "copy target disappeared");
-        auto* n = copy(*t, "copy");
-        auto start = pos(a["position_samples"]);
-        n->setPosition({{start, start + p.getLength()}, p.getOffset()});
+        const auto snapshot = audio_clipboard::fragment(*edit, c->state, sample(p.getStart().inSeconds()),
+                                                        sample(p.getEnd().inSeconds()));
+        const auto parent = c->itemID.toString().toStdString();
+        const auto state =
+            audio_clipboard::clone(*edit, snapshot, pos(a["position_samples"]).inSeconds(), parent, "copy");
+        auto* n = te::insertClipCopy(*t, te::ClipCopy::fromClipboardState(state, false));
+        require(n != nullptr, "native processed copy insertion failed");
+        const auto actual = n->itemID.toString().toStdString();
+        aliases[a["ref"]] = actual;
+        objects.push_back({{"id", actual}, {"kind", "clip"}, {"parent_clip", parent}});
     }
     else if (cmd == "clip.split" && processed_trim::preservesInput(c->state))
     {
