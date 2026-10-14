@@ -1,4 +1,4 @@
-2026-10-14：P3 CC仍是L1→te::MidiList真实事件，不是独立曲线播放引擎。GUI只建草稿，线性笔划生成实际MIDI事件列表；L1验证完整Lane与所有其它事件身份、状态SHA、版本/范围，原UndoManager一次提交。导入键只读投影，首次编辑同一事务持久化；采纳前只检查原始树键，不提前读取播放列表。portable XML源哈希避免原生var/重开字符串类型差异；RT不增加分配/锁/I/O。资格和两个未通过回归见MIDI_CC_WORKFLOW。
+2026-10-14：P3 CC仍是L1→te::MidiList真实事件，不是独立曲线播放引擎。GUI只建草稿，线性笔划生成实际MIDI事件列表；L1验证完整Lane与所有其它事件身份、状态SHA、版本/范围，原UndoManager一次提交。导入键只读投影，首次编辑同一事务持久化；采纳前只检查原始树键，不提前读取播放列表。portable XML源哈希避免原生var/重开字符串类型差异；RT不增加分配/锁/I/O。GUI载入必须核对会话回执；外改测试夹具不得保留失效历史校验，现代损坏工程继续拒绝。资格见MIDI_CC_WORKFLOW。
 
 2026-10-14 P3 Warp：L1 WarpCommands在message thread校验源/片段单位、稳定锚点、媒体/处理链SHA，单原生Undo事务写Clip树；L5 WarpPanel只编辑草稿、映射实际源缩略图。L0后台SoundTouch生成32-bit float缓存，失败/取消不复制原媒体冒充成功，退出Warp取消作业、Undo后重新附着管理器。临时forRendering Edit的shouldPlay=false会跳过Warp源生成，L1仅向播放禁用的快照绑定已验证缓存，印刻/Stems/Master分别将缓存纳入前后哈希；活动播放Edit拒绝此绑定。仍一个Engine，无新RT任务、IPC或服务。15审计SDK补丁32文件可重放；验证及边界见WARP_WORKFLOW。
 

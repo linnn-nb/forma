@@ -1,8 +1,8 @@
 # MIDI CC 曲线（2026-10-14）
 
-首版经原生MIDI消息、事务历史与存储验证。CC专项169项通过，6套主链路562项通过；采样基准MIDI原始源哈希、修剪源边界两套回归仍失败，不能称完整P3。实机已载入并用默认快捷键打开真实曲线；点编辑提交、保存重开及改键的后半流程仍待验。
+2026-10-14更新：CC曲线实体提交、原Undo/Redo、保存重开、重开后原Undo/Redo与自定义键位已通过。修复Tab被时间线命令截获，原生焦点专项178项通过；8套受影响测试分批通过4639项，不是一次全绿批次。两项MIDI旧失败来自失效外改夹具和载入失败后沿用旧Edit，已修正测试并保留现代工程损坏拒绝。随机相位的幅度阈值与PCM起音分开测量，原生事件1ns预算不变。Warp实体重开与原Undo/Redo也已补验；硬件MIDI/第三方响应、复杂联动、听评与完整P3/产品未完成。见MIDI_CC_WORKFLOW.md与../evidence/P3/summary.md。
 
-选MIDI片段，在编辑/音乐菜单打开「MIDI CC 控制器曲线…」，默认⌘⌃⌥C，可改键；钢琴卷帘也有「CC曲线…」。选择CC0–119，单击曲线添加点，拖动改源拍位置与值，Delete移除、上下键调整1个MIDI值。选点可精确输入原源拍与0–127值；「线性到下一点」生成真实离散MIDI事件，最多4096点。⌘Return提交一个L1事务，Esc取消草稿；原Undo/Redo和保存重开历史已自动验证。切换控制器会重新载入该控制器的未提交草稿。
+选MIDI片段，在编辑/音乐菜单打开「MIDI CC 控制器曲线…」，默认⌘⌃⌥C，可改键；钢琴卷帘也有「CC曲线…」。选择CC0–119，单击曲线添加点，拖动改源拍位置与值，Delete移除、上下键调整1个MIDI值。Tab进入曲线，Home/End选首尾可见事件，左右键选相邻点；导航不移动事件。选点可精确输入原源拍与0–127值；「线性到下一点」生成真实离散MIDI事件，最多4096点。⌘Return提交一个L1事务，Esc取消草稿；原Undo/Redo和保存重开历史已自动验证。切换控制器重新读取工程中的事件；当前Lane未提交的草稿会被丢弃。
 
 `midi.cc.replace {clip,controller,state_hash,points:[{id,source_beat,raw_value}]}`仅human/local_gui、停止态、单操作Plan；M2/M3工具权限不扩。source_beat是原生MIDI源拍（受SDK拍号分母定义影响），不是工程采样或音符索引；结合Clip content offset定位。raw_value是原生14-bit存储，实际MIDI CC发送`raw_value >> 7`。未修改事件保留低位精度、metadata和其它未知属性；不覆写音符、其它CC或SysEx。GUI显式改7-bit值才转换为`value << 7`。0–119包含普通CC与开关控制器，不把120–127通道模式命令当普通曲线。
 
@@ -10,4 +10,4 @@
 
 代码：MidiControllerCommands.cpp、MidiControllerPanel.h、WorkspaceControllers.cpp、MidiEditor.h、WorkspaceCommands.cpp。测试MidiControllerTests.cpp：真实原生播放序列逐个核对128个7-bit值、原生时间戳、幂等/失效/拒绝、进口低位和未知元数据、窗口native peer焦点与注册键位、真实异步按钮回执、原UndoRedo/保存重开。不是实体MIDI端口、第三方插件响应或听感验证；线性显示对应生成的离散事件，未伪装连续MIDI信号。
 
-当前阻断与原始日志见 ../evidence/P3/summary.md、BACKLOG.md。没有新增SDK、依赖、服务或实时处理；App仍是唯一Forma.app，本地签名不是发行公证。完整产品及P3保持未完成。
+当前边界与原始日志见 ../evidence/P3/summary.md、BACKLOG.md。没有新增SDK、依赖、服务或实时处理；App仍是唯一Forma.app，本地签名不是发行公证。完整产品及P3保持未完成。

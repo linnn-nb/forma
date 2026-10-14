@@ -1,35 +1,45 @@
-2026-10-14实体补验：按应用名称Forma重新绑定后，CC演示实际载入r11，默认⌘⌃⌥C打开CC11曲线且已查看真实截图；没有归档PNG。后续坐标点选被桌面工具以noWindowsAvailable拒绝，PID44026仍在运行，不推断退出/锁屏。实体点编辑提交、保存重开和改键仍待验；自动169专项/562主链路及2个未通过回归状态不变。
+# P3 当前结果（2026-10-14）
 
-CC实体主窗口为CC production／Controller performance／4OSC，r11；真实128事件曲线已显示。只确认载入/快捷键开窗和视觉，未把失败点选、未经执行的保存或听评记为通过。
+MIDI CC首版的软件与实体主链路通过；完整P3和DAW未完成。8套受影响测试**分批通过4639项**，不是一次全绿批次。Warp实体重开/原UndoRedo已补验；硬件MIDI、第三方响应、听评及复杂Warp联动继续待验。
 
-# P3 增量更新：MIDI CC（2026-10-14）
+## 可演示功能与实体回执
 
-CC曲线首版已构建，最终6套562项/59.77s主链路通过；另两套采样基准MIDI/修剪回归失败，**完整P3未通过**，先做fe6f764基线对照再修。来源代码f92b108、0222683；没有新增SDK/算法依赖或DMG，仍15份审计补丁。
+唯一应用`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`已启动。演示工程`build-v2-tracktion/CC-10ba095539f941aab2e2d0b6ab37729a/CC-Physical-1014-2340.tracktionedit`：选Controller performance片段，**⌘⌃⌥J**打开CC11（这个工程实际自定义键；一般工程默认⌘⌃⌥C）。Tab进入曲线，Home/End选首尾点，左右键选相邻点，精确输入值后「设置点」只改草稿，⌘Return提交、Esc取消，⌘Z/⌘⇧Z撤销重做。没有新DMG。
 
-L1 `midi.cc.replace`校验完整控制器Lane、源拍/原始14-bit值、所有其它Lane身份、版本/SEQ可保存表示SHA、单事务与保持状态Scope；L5原生曲线点/拖动/删除/精确输入/线性笔划只建草稿，574默认⌘⌃⌥C，275/277共享提交取消。实际消息是7-bit离散CC，原生低位与metadata/未知字段在未显式改值时保留。旧事件只读派生键，首次编辑持久化；新点UUID。未修改MCP权限、生产RT路径或原始媒体。详情docs/MIDI_CC_WORKFLOW.md。
+实体原生操作：r11首事件0→草稿10/r11不变→⌘Return r12/实际提交回执→⌘Z r13/值0→⌘⇧Z r14/值10；键位编辑C→J、独立键位Undo恢复C、Redo恢复J且实际开窗。另存上述新文件并得到保存回执，原生Open重新载入r15，自定义J和10保留；原Undo r16/0、Redo r17/10。磁盘实际CONTROL b=0/type=11/val=1280（7-bit10），保留128事件与原生历史。实体截图已查看，本轮未另存PNG。鼠标拖动未复验，不以键盘代替它的资格。
 
-| 最终套件 | 检查 | 耗时 | 结果 |
+实体发现Tab被全局“下一个片段边界”截获；仅设置焦点容器仍失败，原生焦点测试6.85s失败日志保留。面板先处理Tab/ShiftTab并设明确焦点顺序后，真实peer分发Tab/Home和实际字段焦点通过，实体也确认焦点留在曲线、工程光标和revision不变。不是私调keyPressed作为这一项通过依据。
+
+## 构建与测试
+
+Release完整构建exit0；焦点修复后定向NativeDAW/CC测试构建exit0，本地deep/strict验签通过。程序SHA256 `9ef0614b4e84757206d8af4ff64ac3c047003e6bc2e5cfae611b3e657ca59d22`；不是Developer ID/公证。源提交88e129b（夹具/真实载入）、cf99032（导航）、e36e41c（测量）、e3cd200（Tab路由）。SDK/RT/MCP权限未变，仍15审计patch/32文件；无新增依赖、服务或第二引擎。
+
+| 实际套件 | 检查 | CTest耗时 | 最终结果来源 |
 |---|---:|---:|---|
-| music_notes | 44 | 7.30s | 通过 |
-| persistent_native_history | 86 | 37.07s | 通过 |
-| mcp_protocol | 96 | 1.11s | 通过 |
-| native_midi_dock | 34 | 3.45s | 通过 |
-| native_midi_clipboard | 133 | 9.91s | 通过 |
-| midi_controllers | 169 | 0.92s | 通过 |
-| native_sample_midi | — | 2.65s | 原始源哈希保留失败 |
-| native_midi_clip_trim | 第63项后失败 | 1.84s | 源边界拒绝 |
+| tracktion_music_notes | 44 | 6.50s | 原8套批次通过 |
+| forma_persistent_native_history | 86 | 37.13s | 原8套批次通过 |
+| tracktion_mcp_protocol | 96 | 0.57s | 原8套批次通过 |
+| forma_native_midi_dock | 34 | 3.85s | 原8套批次通过 |
+| forma_native_midi_clipboard | 133 | 10.59s | 原8套批次通过 |
+| forma_native_midi_clip_trim | 2878 | 30.64s | 修正夹具后的原8套批次通过 |
+| forma_native_sample_midi | 1190 | 12.35s | 起音测量修复后单套通过 |
+| forma_midi_controllers | 178 | 2.27s | Tab路由修复后单套通过 |
 
-CC专项核对实际Tracktion生产播放序列128个CC值、0/1.5秒端点；原生异步按钮草稿/实际peer焦点/注册键盘接受、版本冲突/重复身份/另一Lane身份拒绝、幂等、跨重开原UndoRedo、进口低位/metadata/未知字段。软件预算为UI回执5s/套件120s，未改既有MIDI测试预算或断言。实体MIDI端口、第三方响应、听评未执行。
+CC核对实际Tracktion播放序列128个7-bit值及0/1.5秒端点、原始低位/metadata/未知字段、外Lane身份拒绝、幂等/失效/版本冲突、单事务持久UndoRedo；不是硬件端口或合成器参数响应验证。接口`midi.cc.replace`、单位/Scope及实现入口见docs/MIDI_CC_WORKFLOW.md。
 
-首测失败为测试夹具从临时JSON子数组取迭代器（已改持有事实快照，未改断言）；影响回归初5失败，其中3个保存重开失败来自新增哈希使用native var二进制类型，改portable XML表示后通过。余下2项在原始树身份校验后仍失败，不能据源码未动就称旧问题；失败日志及旧成功JSON不得相互替代。当前结果索引`build-v2-tracktion/p3-cc-current-results.json`；初/portable/adoption日志保留在忽略build目录。
+## 两项旧回归的原因与纠正
 
-最新唯一应用：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，Release/local deep-strict验证通过，程序SHA256 `069f8e93bddb7e9c8b48fde73fe2654fb9bc06d8a879e66a6a3d5f1a54c7ec4c`。CC可用演示文件（测试源与音符，非真人音乐）：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/CC-cb005ebd45fd4085b6f27ceb102208e5/CC-Demo.tracktionedit`。在音乐/编辑菜单或钢琴卷帘CC按钮试用；默认⌘⌃⌥C、⌘Return、原UndoRedo。
+精确fe6f764引擎差分（EngineCommands/MusicCommands/Scope）在相同SDK、编译参数、当前UI和原测试对象下复现两项失败；**不是完整旧桌面构建**。外改XML夹具仍携带旧PERSISTENT_HISTORY校验，GUI Open拒绝后测试没有核对会话，继续在旧Edit测量。现在仅显式外改导入夹具转为historyless，现代原生roundtrip保持校验；新增现代损坏工程拒绝/状态不变和实际会话切换检查。源哈希、精确源边界、1ns事件预算未放宽。修正后Sample/Trim均通过；早期编译失败后旧二进制结果没有计入新源码资格。
 
-实体补验：上一轮Warp保存工程已经重开，800ms→原Undo700ms→Redo，r22→r24，按org.forma.daw重新绑定取得真实窗口。旧实例正常退出、新应用PID44026启动；原生Open选择`CC-84114f6e37e14f1095709a73c5970acb/CC-Demo.tracktionedit`并点击可用Open后CUA再超时，**CC最终载入/面板回执未验收**。用户此前确认旧窗口正常，当前2秒采样为正常AppKit/CFRunLoop；两者均不能替代新CC实机验收。没有伪造实体成功、锁屏或截图PNG。
+原8套批次仍有一次Sample幅度阈值起音失败：随机相位FourOsc的3e-6阈值在96000/96001，而真实PCM起音均96000。现在同时记录真实PCM首次非零与原阈值交叉，精确比较PCM起音，并核对Tempo前后原生播放MIDI全部字节/1ns时间戳；本轮两端均96000。没有固定振荡器相位、换源或扩大数值容差。
 
-下一项：上述两个MIDI回归的基线对照与修复，再实体CC与改键；不继续扩高级曲线矩阵。Warp复杂联动/长源资源/听评、旧性能A/耐久/第三方/Windows/视频/发行和完整DAW目标保持未完成。
+所有原失败与最新日志/JSON/SHA索引在忽略目录`build-v2-tracktion/p3-cc-current-results.json`，其中原8套批次102.21s且1失败；它由上述两次专项修复结果替代相应项目，不能写成整批全绿。删除本轮可重建基线.a/.o/可执行文件134567144字节，来源源码/日志/夹具/summary与脚本保留；用户媒体和开发应用未删。
 
-以下为原Warp增量证据，旧“最后重开未取得回执”现由以上实体补验更新。
+## 下一项与保留差距
+
+在同一制作工程联测Take/Comp、交叉淡化、弹力音频和真实导出，优先补最影响制作的Warp兼容。CC首次持久化前的旧事件/采样基变换、硬件MIDI/第三方/拖动；Warp淡化/Clip FX/Comp/循环/音乐基准、长源资源与听评；旧性能A、多输入、耐久、Windows、视频、环绕与发行继续保留。不继续无限扩CC高级边界；M2/M3冻结、M4/M5暂缓。
+
+以下为Warp原增量证据；“最后重开待验”已由实体800ms→Undo700ms→Redo/r22→r24回执更新。
 
 # P3 增量：SoundTouch 非线性 Warp（2026-10-14）
 
