@@ -266,6 +266,7 @@ Json TrackPrint::prepare(const Json& args)
     owner.checkThread();
     poll();
     require(!job, "已有印刻任务；请等待或取消");
+    require(!owner.stemExportStatus()["busy"].get<bool>(), "已有Stems任务");
     require(args.size() == 6 && args.contains("track") && args.contains("action") && args.contains("end_samples") &&
                 args.contains("directory") && args.contains("session_token") && args.contains("base_revision"),
             "印刻参数不完整");

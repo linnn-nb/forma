@@ -303,3 +303,36 @@ index e37d1e4..2823f7f 100644
  std::unique_ptr<tracktion::graph::Node> createGeneratorPluginNode (const Plugin::Ptr& plugin,
                                                                     const CreateNodeParams& params,
                                                                     std::unique_ptr<tracktion::graph::Node> output)
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
+index ebd27f6..8c56ea3 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
++++ b/modules/tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h
+@@ -35,6 +35,17 @@ struct CreateNodeParams
+     bool allowClipSlots = true;                         /**< If true, track's clip slots will be included, set to false to disable these (which will use a slightly more efficient Node). */
+     bool readAheadTimeStretchNodes = false;             /**< TEMPORARY: If true, real-time time-stretch Nodes will use a larger buffer and background thread to reduce audio CPU use. */
+ 
++    // Per-context transient audition: replace arranger sources before native track FX,
++    // exclude unrelated tracks, and suppress physical/MIDI input. Never used in renders.
++    std::function<std::unique_ptr<graph::Node> (AudioTrack&, const CreateNodeParams&)> auditionSource = {};
++    std::function<bool (Track&)> auditionIncludesTrack = {};
++    bool auditionNoLiveInputs = false;
++    // Optional message-thread graph transform before track plugins: false = clips,
++    // true = live input. Does not run on the audio callback or change Edit state.
++    std::function<std::unique_ptr<graph::Node> (AudioTrack&, bool, const CreateNodeParams&,
++                                              std::unique_ptr<graph::Node>)> transformTrackSignal = {};
++
++
+     /** If set, this will be called for each output device to give an opportunity to add an
+         additional final Node. Unlike EditNodeBuilder::insertOptionalLastStageNode this is
+         carried per graph build (set via EditPlaybackContext) so different Edits can each have
+@@ -60,6 +71,10 @@ struct EditNodeBuilder
+ /** Creates a Node to play back an Edit with live inputs and outputs. */
+ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (EditPlaybackContext&, std::atomic<double>& audibleTimeToUpdate, const CreateNodeParams&);
+ 
++/** Builds native arranger audio-clip nodes for a transient source snapshot.
++    The caller owns the clips until the graph is retired; no Edit is modified. */
++std::unique_ptr<tracktion::graph::Node> createNodeForAuditionClips (const juce::Array<Clip*>&, const CreateNodeParams&);
++
+ /** Creates a Node to render an Edit. */
+ std::unique_ptr<tracktion::graph::Node> createNodeForEdit (Edit&, const CreateNodeParams&);
+ 

@@ -1019,6 +1019,7 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
         require(destination.hasFileExtension("wav") && destination.getParentDirectory().isDirectory(),
                 "export requires WAV in an existing local directory");
     }
+    require(!owner.stemExportStatus()["busy"].get<bool>(), "已有Stems任务");
     const auto profile = raw ? analysis::sourceProfile(args.value("profile", Json::object()))
                          : command == "delivery" || exporting
                              ? delivery::normaliseProfile(args.value("profile", Json::object()))

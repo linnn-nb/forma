@@ -20,6 +20,7 @@ class SessionRecovery;
 class PersistentHistory;
 class MasterAnalysis;
 class TrackPrint;
+class StemExport;
 class ScrubPlayback;
 struct SelectionOutputGateState;
 class Commands : public juce::ChangeBroadcaster,
@@ -87,6 +88,10 @@ public:
     Json prepareTrackPrint(const Json&);
     Json trackPrintStatus();
     Json cancelTrackPrint();
+    Json stemExportPreset() const;
+    Json prepareStemExport(const Json&);
+    Json stemExportStatus();
+    Json cancelStemExport();
     Json timelineRange() const;
     Json shuffleOptions() const;
     std::string automationEditBasis(const std::string& track) const;
@@ -239,6 +244,11 @@ private:
     friend class NativePluginStates;
     friend class PersistentHistory;
     friend class TrackPrint;
+    friend class StemExport;
+    std::unique_ptr<StemExport> stemExport;
+    static void registerStemCommands(Json&);
+    Json stemExportChange(const Json&) const;
+    void executeStemExport(const Json&, Json&);
     std::unique_ptr<TrackPrint> trackPrint;
     static void registerPrintCommands(Json&);
     Json printQuery(te::AudioTrack&) const;

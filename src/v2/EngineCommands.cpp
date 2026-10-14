@@ -2,6 +2,7 @@
 #include "SampleMidiMap.h"
 #include "NativeEditXml.h"
 #include "MasterAnalysis.h"
+#include "StemExport.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "TimelineState.h"
 #include <limits>
@@ -306,6 +307,7 @@ Commands::~Commands()
     engine.getDeviceManager().removeChangeListener(this);
     edit->state.removeListener(this);
     removeAllChangeListeners();
+    stemExport.reset();
     masterAnalysis.reset();
     trackPrint.reset();
     recovery.reset();
@@ -402,6 +404,7 @@ Json Commands::registry()
     registerMarkerCommands(result);
     registerHierarchyCommands(result);
     registerPrintCommands(result);
+    registerStemCommands(result);
     registerMixGroupCommands(result);
     registerPanCommands(result);
     registerAutomationCommands(result);
@@ -918,6 +921,8 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human", "Playlist selection is a local GUI command");
         if (cmd.starts_with("track.freeze") || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
             require(actor == "human" && ops.size() == 1, "印刻编辑仅通过本地独立事务");
+        if (cmd == "export.stems.publish")
+            require(actor == "human" && ops.size() == 1, "Stems发布仅通过本地独立事务和目录授权");
         if (cmd == "plugin.sidechain.set")
             require(actor == "human", "Sidechain editing is local human only during P2");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
@@ -1006,7 +1011,11 @@ Json Commands::preview(const Json& plan) const
                 }
             }
         }
-        if (cmd == "session.import_legacy")
+        if (cmd == "export.stems.publish")
+        {
+            (void)stemExportChange(a);
+        }
+        else if (cmd == "session.import_legacy")
         {
             require(ops.size() == 1, "legacy import must be one standalone Plan operation");
             legacyDiff.push_back(validateLegacyOperation(a));
@@ -1142,6 +1151,10 @@ Json Commands::preview(const Json& plan) const
         if (op["command"].get<std::string>().starts_with("track.freeze") || op["command"] == "track.unfreeze" ||
             op["command"].get<std::string>().starts_with("track.bounce."))
             printDiff.push_back(printChange(op["command"], op["args"]));
+    Json stemsDiff = Json::array();
+    for (const auto& op : ops)
+        if (op["command"] == "export.stems.publish")
+            stemsDiff.push_back(stemExportChange(op["args"]));
     Json sidechainDiff = Json::array();
     for (const auto& op : ops)
         if (op["command"] == "plugin.sidechain.set")
@@ -1162,6 +1175,7 @@ Json Commands::preview(const Json& plan) const
                 {"marker_changes", markerDiff},
                 {"sidechain_changes", sidechainDiff},
                 {"print_changes", printDiff},
+                {"stem_export_changes", stemsDiff},
                 {"group_changes", groupDiff},
                 {"playlist_changes", playlistDiff},
                 {"crossfade_changes", crossfadeMaintenancePreview(ops, timelineDiff)},
@@ -1271,7 +1285,11 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd.starts_with("track.freeze") || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
+            if (cmd == "export.stems.publish")
+            {
+                executeStemExport(a, objects);
+            }
+            else if (cmd.starts_with("track.freeze") || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
             {
                 executePrint(cmd, a, objects);
             }
@@ -1469,6 +1487,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     Json result{
         {"plan_id", plan.at("plan_id")}, {"actor", plan.at("actor")}, {"revision", revision},   {"objects", objects},
         {"state", "committed"},          {"replayed", false},         {"audio_verified", false}};
+    if (plan["operations"].size() == 1 && plan["operations"][0]["command"] == "export.stems.publish")
+        result["audio_verified"] = !objects.empty() && objects[0].value("audio_verified", false);
     receipts.emplace(key, Receipt{fingerprint, result});
     storeRequestAudit(plan, "committed");
     return result;
@@ -1924,6 +1944,7 @@ void Commands::open(const juce::File& source)
 }
 void validatePlaylists(te::Edit&);
 void validateCrossfades(te::Edit&);
+Json readStemExportState(juce::ValueTree);
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
     checkThread();
@@ -1949,11 +1970,14 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
         for (auto* c : t->getClips())
             sample_midi::validateOrigin(c->state);
     readRollState(candidate->state.getChildWithName("NATIVEDAW"));
+    (void)readStemExportState(candidate->state.getChildWithName("NATIVEDAW"));
     for (auto* location : candidate->getMarkerManager().getMarkers())
         if (location)
             readLocationRollTimes(location->state);
     (void)mixGroupsQuery(candidate.get());
     readUiState(candidate->state.getChildWithName("NATIVEDAW"));
+    stemExport.reset();
+    trackPrint.reset();
     if (masterAnalysis)
         masterAnalysis->reset();
     auto newInhibitor = std::make_unique<te::Edit::UndoTransactionInhibitor>(*candidate);

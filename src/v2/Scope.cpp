@@ -91,7 +91,16 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
         const auto& a = op["args"];
         require(scope.commands.empty() || scope.commands.contains(cmd), "command not granted by permission allowlist");
         automatic &= Scope::defaultCommands().contains(cmd);
-        if (cmd.starts_with("clip.") && cmd != "clip.import")
+        if (cmd == "export.stems.publish")
+        {
+            require(scope.targets.empty() && scope.mode != Permission::ScopedLowRisk,
+                    "Stems external publication requires local preview and a full project scope");
+            full();
+            impacts.push_back({{"command", cmd},
+                               {"batch_id", a["batch_id"]},
+                               {"extent", "verified local batch directory and project export record"}});
+        }
+        else if (cmd.starts_with("clip.") && cmd != "clip.import")
         {
             bool found = false;
             for (const auto& change : preview["clip_changes"])
