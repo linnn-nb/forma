@@ -1,3 +1,5 @@
+2026-10-15 P3-WARP-SOURCE-COMP-01：eee1ecb/fa03730，Release/固定本地签名通过；11套1095项/160.69秒全绿，62专项另3次通过/21.65秒。Warp源Take的原生窗口候选、提升、句柄crossfade、多层继承包络、原UndoRedo/重开历史与真实WAV已验；Comp PCM差0，其它渲染约1.19e-7，hosted试听约1.34e-7/零cache miss（固定2e-6）。修正片段定时器对未变化共享源的不必要失效；15 SDK patch/32文件重放审计通过。实体Mac锁定，本轮实体选择/键盘/听评未执行，不算GUI成功。线性elastic/独立pitch源Comp、Clip FX/复杂关联/旧版兼容/长源与完整产品仍未完成。代码tests/v2/WarpCompTests.cpp与L1 WarpState/PlaylistEditing/CrossfadeEditing；操作WARP_SOURCE_COMP_WORKFLOW.md、证据../evidence/P3/summary.md。
+
 2026-10-15 P3-WARP-MIX-01：Comp→交叉淡化→非线性Warp→真实WAV已通过，新增68专项与7套618项/114.47秒回归。原生淡化按Warp输出时间保持；已有配对只允许不改长度的Warp，Warp后交叉淡化只用真实重叠区。实体CmdF/提交/UndoRedo、CmdCtrlF/配对、另存重开原两笔UndoRedo、CoreAudio走带和GUI导出均已验；实际PCM24/48k/双声道/144000帧，独立PCM误差1.1869e-7。非完整P3或DAW；源继承包络、Clip FX、关联多轨、Warp源参与Comp切片、长源/听评仍待做。代码55743bd；详见WARP_MIX_WORKFLOW.md与../evidence/P3/summary.md。
 
 2026-10-14更新：CC曲线实体提交、原Undo/Redo、保存重开、重开后原Undo/Redo与自定义键位已通过。修复Tab被时间线命令截获，原生焦点专项178项通过；8套受影响测试分批通过4639项，不是一次全绿批次。两项MIDI旧失败来自失效外改夹具和载入失败后沿用旧Edit，已修正测试并保留现代工程损坏拒绝。随机相位的幅度阈值与PCM起音分开测量，原生事件1ns预算不变。Warp实体重开与原Undo/Redo也已补验；硬件MIDI/第三方响应、复杂联动、听评与完整P3/产品未完成。见MIDI_CC_WORKFLOW.md与../evidence/P3/summary.md。

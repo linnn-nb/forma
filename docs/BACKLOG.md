@@ -1,3 +1,5 @@
+2026-10-15 当前：Warp源Take的候选Comp/区间提升、继承输出包络和原映射内crossfade句柄已接通，见WARP_SOURCE_COMP_WORKFLOW.md。其实体快捷键/试听仍未执行（桌面工具明确Mac锁定）；线性elastic proxy窗口、复杂关联多轨/Clip FX、旧版本读取inactive schema2的保护和长源/听评保留。以下旧“Warp源直接Comp未做”由本轮具体资格替代，不据此扩大范围。
+
 # P3当前待验（2026-10-15）
 
 普通单轨Comp后Warp/native输出淡化/真实重叠交叉淡化已验；旧“所有淡化联动未验”由该具体范围替代。Warp源直接Comp/区间提升、关联多轨、源继承包络/Clip FX、循环/音乐基准、异采样率组合、长源/听评仍未完成；不以普通组合通过替代它们。

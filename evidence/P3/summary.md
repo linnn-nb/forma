@@ -1,3 +1,17 @@
+# P3 当前增量：Warp 源 Take → Comp（2026-10-15）
+
+**11/11 套件，1095 项，160.69 秒全绿；WarpComp 专项 62 项另连续 3 次通过（21.65 秒）**。代码 eee1ecb/fa03730，Release exit0，固定本地身份 deep-strict 通过；程序 SHA `9ca223f4c8d7e24cf5c0ef49ec0eba05d09b9cca7d72a50a9ab9d3f48a0e6bdb`。仍是增量，完整 P1/P3/产品未验收，无新 DMG。
+
+原生 Warp Take → 两段候选 → 原 Take 完整输出映射内句柄 crossfade → 区间提升 → 真 WAV；原媒体/完整锚点/处理链指纹与 source Take 保留，新片段身份和窗口分开。多层输出来源坡度沿用 native_fades.fragment；单 Undo/Redo、重开原历史、有效边界与拒绝扩为完整 Take 已验。原生界面沿用可改键入口；本轮 CUA 明确 Mac 锁定，实体新流程/听评未执行，旧窗口仍可操作的用户反馈不当作新构建验收。
+
+实际双声道 PCM24/48k/81600 帧选区 WAV：Comp 差 0，crossfade 与重开最大差 1.1920929e-07；hosted 原生 callback 试听差 1.34110451e-07、缓存 miss=0。固定 PCM 2e-6、缓存5s/render10s/套件120s预算不变；导出比较排除外侧256采样 native防爆音，试听比较遵守既有启动/结束窗口，不能当作往返延迟/XRUN/硬件/听评/耐久资格。
+
+回归：Clip58、持久历史86、PlaylistEditing227、Audition98、Crossfade101、CrossfadeClipboard73、ProductionChain91、Elastic87、Warp144、WarpMix68、WarpComp62。旧失败日志保留：区间提升遗漏已有 origin 上的新坡度，改复用已资格 fragment；新测试在无相交坡度处误要求 origin，改为真正切过原淡出区间且保持 PCM 预算；试听在约第97块出现512帧缺口，栈证实 AudioClipBase::timerCallback 对未变化源 cache 两次 releaseFile。SDK既有Warp补丁修正该无必要失效，真正写入/文件变化路径保留。15份/32文件 fresh apply/逐字比对/reverse通过，无新RT处理/锁/IPC/版本。
+
+可试工程：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-WarpComp-dc420dbd1aa44909b6a2c87e3a0e8460/Warp-Source-Comp.tracktionedit`（当前专项最后输出）；操作见 [WARP_SOURCE_COMP_WORKFLOW.md](../../docs/WARP_SOURCE_COMP_WORKFLOW.md)。真实输出/原失败/构建/SDK审计及SHA索引在忽略 `build-v2-tracktion/p3-warp-comp-current-results.json`，不上传媒体或大包。仅本地签名，不是发行公证。
+
+下一步：先补本轮实体源选择/试听/快捷键验收；随后为线性伸缩/独立变调的完整 prepared proxy 建立原生窗口映射和 Comp 音频资格。Clip FX/复杂关联多轨/旧构建 inactive schema2 防护/长源听评、性能A、Windows/视频/发行等差距继续保留。下面历史“Warp源直接Comp未做”由上述具体范围替代。
+
 # P3当前增量：Warp/Comp/淡化（2026-10-15）
 
 **7/7受影响套件、618项、114.47秒一次通过**；P3/完整产品仍未完成。源码55743bd；无新SDK/算法/RT/服务/MCP权限。本地Release与固定身份deep-strict验证通过，程序SHA256 `636279c0c866164715aaa43ba0c18c2d24c5ffaad64689ac9da77fad5e3ee160`，不是发行公证。当前唯一Forma已打开实体制作文件，未生成新DMG。

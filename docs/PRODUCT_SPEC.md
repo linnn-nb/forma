@@ -1,3 +1,5 @@
+2026-10-15 制作联动增量：已准备的原生Warp Take可切为候选Comp/提升区间，原媒体、完整映射及处理链保留；配对交叉淡化只能揭示原Take实际输出句柄。可撤销/持久原历史/真实导出资格见WARP_SOURCE_COMP_WORKFLOW.md。独立线性伸缩/变调源Comp和全部Elastic Audio未完成，实体本增量仍待验。
+
 2026-10-15 P3-WARP-MIX-01：Comp→交叉淡化→非线性Warp→真实WAV已通过，新增68专项与7套618项/114.47秒回归。原生淡化按Warp输出时间保持；已有配对只允许不改长度的Warp，Warp后交叉淡化只用真实重叠区。实体CmdF/提交/UndoRedo、CmdCtrlF/配对、另存重开原两笔UndoRedo、CoreAudio走带和GUI导出均已验；实际PCM24/48k/双声道/144000帧，独立PCM误差1.1869e-7。非完整P3或DAW；源继承包络、Clip FX、关联多轨、Warp源参与Comp切片、长源/听评仍待做。代码55743bd；详见WARP_MIX_WORKFLOW.md与../evidence/P3/summary.md。
 
 2026-10-14更新：CC曲线实体提交、原Undo/Redo、保存重开、重开后原Undo/Redo与自定义键位已通过。修复Tab被时间线命令截获，原生焦点专项178项通过；8套受影响测试分批通过4639项，不是一次全绿批次。两项MIDI旧失败来自失效外改夹具和载入失败后沿用旧Edit，已修正测试并保留现代工程损坏拒绝。随机相位的幅度阈值与PCM起音分开测量，原生事件1ns预算不变。Warp实体重开与原Undo/Redo也已补验；硬件MIDI/第三方响应、复杂联动、听评与完整P3/产品未完成。见MIDI_CC_WORKFLOW.md与../evidence/P3/summary.md。

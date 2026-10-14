@@ -1,3 +1,5 @@
+2026-10-15 Warp Comp查询单位：source_offset_seconds为逆非线性映射得到的原媒体时间；playback_offset_seconds与source_offset_samples_space=prepared-warp-output为实际缓存播放坐标。Warp inherited_window带window_start_samples、完整处理链hash、origin_clip及直接parent_clip。已有playlist.comp.create/promote与crossfade命令沿用原actor/local_gui/版本/Scope/权限与一Plan原生Undo，不增加Agent权限；GUI/AI不可绕过L1编辑树。资格及拒绝范围见WARP_SOURCE_COMP_WORKFLOW.md。
+
 2026-10-15 P3-WARP-MIX-01：现有clip.warp/fade/gain/lock及playlist.crossfade接口保持，新增派生editable_envelope查询能力不代表可结构编辑。Warp预览声明输出时间的淡化长度/曲线保持；新长度不能容纳淡化时整笔拒绝，配对几何不变。Warp配对只允许实际已存在重叠区；移除会改变Warp几何时须先还原Warp。所有修改经原L1/native Undo，版本/幂等/权限与M2/M3工具表不扩充。GUI默认280 CmdF、538 CmdCtrlF、573 Warp、275接受、277取消可改键；代码/实测WARP_MIX_WORKFLOW。
 
 2026-10-14 P3-MIDI-CC-01：`midi.cc.replace {clip,controller,state_hash,points:[{id,source_beat,raw_value}]}`为human/local_gui独立停止事务，0–119/4096点，实际离散MIDI输出；新稳定键及旧事件首次持久化、元数据/低位保留，原生可保存表示SHA校验，后续保持状态纳入Scope，不扩MCP权限。574默认⌘⌃⌥C，共享275提交/277取消，原UndoRedo和重开已测；两项失效测试夹具已修复并保留现代工程校验，原生1ns事件预算不变；资格见MIDI_CC_WORKFLOW/VERIFICATION。

@@ -4,7 +4,7 @@
 
 当前开发版可以导入和播放真实音频，编辑片段和 MIDI、加载 AU/VST3、插入 EQ/压缩/混响/延迟、设置发送与路由、录写自动化，并导出 WAV。工程恢复、离线测量和导出复核保留在菜单中。原生 Freeze/原地 Bounce 已接通乐器与 Aux/发送/旁链组合，保留源工程、持久撤销和实际缓存重定位；全工程导出保留冻结尾音。具体边界见 [验证记录](docs/VERIFICATION.md)。
 
-**仍是开发版，尚未达到日常制作完整验收。** 当前 P1 的 Loop→Punch→Take/Comp→交叉淡化→导出主链路已跑通；U＋P0 与性能验收的保留差距继续追踪，后续是 P2（混音交付）、P3（Warp/MIDI CC）。AI 功能暂停扩充；既有 MCP 和分析入口保留。每级完成后由用户亲手试用。
+**仍是开发版，尚未达到日常制作完整验收。** 当前 P1 的 Loop→Punch→Take/Comp→交叉淡化→导出主链路已跑通；P2/P3 的旁链、印刻、Stems、偏好、Warp 与 MIDI CC 已有受测增量，继续完善制作联动。U＋P0 与性能验收的保留差距继续追踪。AI 功能暂停扩充；既有 MCP 和分析入口保留。每级完成后由用户亲手试用。
 
 ![Forma 原生 Edit 窗口](.github/assets/forma-edit.png)
 
@@ -26,7 +26,7 @@
 
 ## 首版弹力音频
 
-选中无淡化/片段效果的音频 Clip，Cmd+Option+T 打开 SoundTouch 伸缩面板；设置目标毫秒与独立半音，Cmd+Return 提交、Esc 取消。原媒体/源跨度保留，Undo/Redo 和保存重开可用。音频在后台准备，未准备好时录放/导出明确拒绝。已实测原速 0.5–2 倍、±12 半音范围内的代表性信号；Warp、带 Comp/交叉淡化/Clip FX 的伸缩及长媒体体验尚未完成。[选型、源码许可证和实测边界](docs/ELASTIC_AUDIO.md)。
+选中无淡化/片段效果的音频 Clip，Cmd+Option+T 打开 SoundTouch 伸缩面板；设置目标毫秒与独立半音，Cmd+Return 提交、Esc 取消。原媒体/源跨度保留，Undo/Redo 和保存重开可用。音频在后台准备，未准备好时录放/导出明确拒绝。已实测原速 0.5–2 倍、±12 半音范围内的代表性信号；非线性 Warp 另有原生锚点编辑，Warp 源 Take 可用于候选 Comp 和区间提升，保留完整源映射与撤销历史；[操作及范围](docs/WARP_SOURCE_COMP_WORKFLOW.md)。独立线性伸缩/变调源的 Comp、Clip FX 和长媒体体验仍未完成。[选型、源码许可证和实测边界](docs/ELASTIC_AUDIO.md)。
 
 ## 快速开始
 

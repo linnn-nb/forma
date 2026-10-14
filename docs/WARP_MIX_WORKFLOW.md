@@ -14,4 +14,4 @@ L1：WarpCommands.cpp、ClipCommands.cpp、CrossfadeEditing.cpp；L5：Workspace
 
 实体GUI WAV独立解码：48k/双声道/PCM24/144000帧/3秒，首120ms乘淡化与已资格参考PCM最大差1.186918881235233e-07（2e-7）；GUI实际响度回执-19.45 LUFS-I。截图已查看但未另存PNG。原失败、构建与文件SHA在../evidence/P3/summary.md和忽略build结果索引；本地签名不是发行公证。
 
-继续待做：Warp/伸缩源直接作为Comp选择及区间提升、来源包络/Clip FX、关联多轨Comp、复杂曲线/异采样率组合、循环/音乐时钟、长源/听评/耐久；原性能A、Windows/视频/发行等目标不移出范围。
+后续增量：原生 Warp 源 Take 的 Comp/区间提升及原映射内句柄已经接通，见 [WARP_SOURCE_COMP_WORKFLOW.md](WARP_SOURCE_COMP_WORKFLOW.md)。独立线性伸缩/变调源、Clip FX、关联多轨Comp、复杂曲线/异采样率组合、循环/音乐时钟、长源/听评/耐久及原性能A、Windows/视频/发行仍保留。
