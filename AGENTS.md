@@ -1,7 +1,7 @@
 # Forma Studio 工程规则
 
 - 线程目标：按docs/ARCHITECTURE.md构建Tracktion开源AI-native DAW；Pro Tools作为界面和工作流参考。
-- 当前P3（10月15日）：完整来源/Comp采样拆分1207专项通过，28套19972项/663.14秒；代码085ca68/3851f2c；原坡度/独立插件/范围Separate/原Undo与冷重开/真WAV已验。含FX连续图修正起音差异，17 SDK patch/38文件重放已验，负载待测。Mac锁定/旧焦点失败/复制/缺失媒体删除/复杂关联/旧读者/长源与旧分析超时保留。下一项NEXT_STEPS。
+- 当前P3：完整处理来源复制/粘贴、替换及Comp配对已接L1，源码8865e53；资格和旧夹具失败修复见docs/PROCESSED_CLIPBOARD.md与evidence/P3/summary.md。实体Mac锁定、旧焦点/性能/分析失败保留；按NEXT_STEPS继续。
 - 按当前P级清单推进；M2/M3冻结，M4/M5暂缓，AI入口不占据制作主界面。同项两轮边界工作即收口进BACKLOG。
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。

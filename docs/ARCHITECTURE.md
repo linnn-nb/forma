@@ -1,3 +1,5 @@
+2026-10-15 剪贴板：AudioClipboardState在L1/message thread冻结完整处理输入与输出窗口，保留未截断的外侧原生淡化以重建完整过渡；原生ClipCopy分配新Clip/插件ID，Warp锚点和Elastic来源重映射。clip.copy、普通音频剪贴板、Timeline/MIDI混合路径共享此实现；copyable_audio与自由editable_audio分离。处理片段替换直接复用窗口拆分，不提前向schema1 Warp写输出包络；普通粘贴原行为保留。GUI只查询/提交，Undo仍一Plan一原生事务；无新引擎/RT/SDK改动。代码8865e53，资格PROCESSED_CLIPBOARD.md。
+
 2026-10-15 拆分：L1 clip.split复用ProcessedClipTrim离线准备两侧完整输入窗口；原生ClipCopy递归新ID并重映射Warp/Elastic，左Clip/插件保留，右Clip/插件独立。普通音频用NativeAudioFades保留原坡度相位。splittable_audio/deletable_audio与其它动作能力分离；有效来源删除仅改工程对象，修复新窗口导致局部Cut被误拒，局部引用不授予自由复制。SDK原render-bus补丁让含ClipFX的片段连续调度，修正拆分前后图布局导致的源起音约40采样差异；无新RT代码/引擎/服务/依赖。17份/38文件本轮重放/逐字比对/reverse通过；性能代价仍待验。代码085ca68/3851f2c、PROCESSED_CLIP_SPLIT.md。
 
 2026-10-15 Warp源Comp：L1 WarpState保留完整源/输出非线性映射，schema2仅记录播放窗口；候选新Clip/锚点ID与源渲染指纹分开。输出源包络显式标坐标，区间提升复用native_fades.fragment保留多层坡度；crossfade只在完整原Take句柄内扩窗，单原生Undo事务。活动/非活动描述符均校验，查询区分原媒体逆映射与缓存播放时间。试听快照绑定同一Engine已准备float32源，原Take不改。既有SDK Warp补丁修正定时器无变化源缓存失效，不改实时回调；15份/32文件审计不变。线性elastic proxy窗口/旧版兼容/Clip FX/关联多轨保持差距，资格见WARP_SOURCE_COMP_WORKFLOW.md。

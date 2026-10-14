@@ -125,3 +125,6 @@ evidence/U/midi-clipboard-tests.json
 evidence/U/boundary-nudge-tests.json
 
 evidence/U/automation-clear-tests.json
+
+# Generated test JSON stays local; tracked historical reports remain tracked.
+evidence/U/*-tests.json

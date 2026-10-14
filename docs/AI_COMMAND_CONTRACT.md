@@ -1,3 +1,5 @@
+2026-10-15 clip.copy新增只读copyable_audio能力判断，原Schema/actor/Scope/revision/媒体hash/幂等不变。处理副本预览声明完整输入与新身份；原生回执返回实际Clip ID，插件/锚点通过实际查询取新ID。ClipboardEntry内部source_offset_seconds为原生播放偏移，不能混作audioClipQuery的Warp原媒体逆映射；粘贴位置仍为48k工程采样。人类剪贴板令牌不扩大M2/M3权限，外来XML不能作为快照注入。来源独立参数、范围、原Undo与真实WAV见PROCESSED_CLIPBOARD.md。
+
 2026-10-15 clip.split沿用Schema/ref/媒体hash/actor/revision/Scope/权限/幂等及一Plan原Undo；新增只读splittable_audio/deletable_audio；clip.delete仍只移除工程片段，保留媒体hash/锁定/原Undo校验。预览processing声明full_input_preserved、原坡度相位、左实例保留/右Clip和插件新ID策略；回执给出真实右Clip ID、parent_clip，插件ID经实际query枚举。两个范围切点在同一事务通过局部引用依次解析。原生owner_clip必须指向新右片段，不作为可忽略的随机字段；不扩M2/M3权限。1207专项与边界见PROCESSED_CLIP_SPLIT.md。
 
 2026-10-15 Warp Comp查询单位：source_offset_seconds为逆非线性映射得到的原媒体时间；playback_offset_seconds与source_offset_samples_space=prepared-warp-output为实际缓存播放坐标。Warp inherited_window带window_start_samples、完整处理链hash、origin_clip及直接parent_clip。已有playlist.comp.create/promote与crossfade命令沿用原actor/local_gui/版本/Scope/权限与一Plan原生Undo，不增加Agent权限；GUI/AI不可绕过L1编辑树。资格及拒绝范围见WARP_SOURCE_COMP_WORKFLOW.md。

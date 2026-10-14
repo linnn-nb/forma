@@ -1,3 +1,5 @@
+2026-10-15 补充：处理窗口复制/粘贴已有专项资格，见[PROCESSED_CLIPBOARD.md](PROCESSED_CLIPBOARD.md)及当前P3证据；下文旧复制限制仅由受测范围替代。
+
 2026-10-15 补充：SoundTouch/Warp与原生Clip FX来源/Comp支持完整输入窗口拆分；右侧实际新Clip/插件与锚点身份独立，原映射/原Take与源淡化保留。1207专项真实WAV、冷重开原Undo与自定义键路由通过，操作[PROCESSED_CLIP_SPLIT.md](PROCESSED_CLIP_SPLIT.md)。既有移动/Trim保持；无新伸缩算法。复制/粘贴/缺失媒体删除、复杂联动、旧读者/长源/听评和完整Elastic Audio仍未完成。
 
 # 弹力音频（2026-10-14）

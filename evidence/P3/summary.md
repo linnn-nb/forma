@@ -1,3 +1,23 @@
+# P3 当前增量：完整处理来源复制粘贴（2026-10-15）
+
+**当前32受影响套件、6793项分三批通过，不是一次全绿批次。** 首批27/32、669.44秒；旧夹具复测2/5、147.26秒；绑定/身份修正后3/3、83.34秒。只计每套最新通过的一份结果，先前735专项和失败批次不重复累计。源码8865e53，Shuffle测试24e57b4，旧夹具/绑定修正39db6dd/57579e7。Release构建exit0，固定本地deep-strict验签通过；唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `1cf0c8f04d438aa95c53dc07a49636e00a2ef99ce7b503381abf7f98a5d8ec57`。本地签名不是发行公证，无新DMG/源码包/应用副本，完整产品未完成。
+
+新增777项/80.57秒通过：普通／SoundTouch／Warp × 无效果／真实EQ、压缩、Delay、Reverb，直接复制及Split局部引用复制、GUI选区Copy/Paste、自定义Paste键、原位置Replace与插入Shuffle、完整来源映射/处理输入/原坡度、实际新Clip/插件owner/参数/单位/范围/Warp锚点、版本冲突/幂等、原Undo/Redo及冷重开、原Take与媒体SHA均验。局部Comp保留完整内侧过渡的原生fade，并为实际新成员和目标Playlist生成新配对；保存重开一笔原Undo一起移除成员和配对。Copy不产生工程事务，Paste真实提交才显示回执。
+
+音频与Timeline剪贴板路径共用AudioClipboardState；原生ClipCopy分配ID后再重映射Warp/Elastic。复制快照保持原参数和几何，来源后来改增益不改快照。真实PCM24双声道WAV最大差 `1.1920928955078125e-7`，原2e-6预算保持；来源5秒、每WAV10秒、新专项180秒保持。内部切点逐采样对照，仅沿用整体首尾256采样观测窗。六组实际工程和WAV在当前结果JSON的processed_clipboard.cases中。
+
+真实Warp替换失败保留：旧粘贴流程提前给schema1完整Warp写输出包络，仅补坐标标记仍被窗口约束拒绝。最终让处理片段直接复用完整窗口准备/拆分，不执行普通片段的提前冻结流程；校验未放宽。初始两个专项分别45.94/46.07秒失败于第517项；修复后735项/71.30秒，再加Shuffle真实后缀对照得到本轮777项。原8MiB/64片段等有界快照保护及人类剪贴板权限保持。
+
+首批五旧失败全部保留。Shuffle/自动化Clipboard/整片段Clear/两套MIDI测试在外部改自有XML后保留失效历史，或忽略GUI Open失败。只有这些独立参考/事件注入夹具以无历史外来输入打开；正常保存/重开和PersistentHistory86的损坏拒绝保持。Shuffle和两份MIDI夹具Open现核对真实新会话；额外验证实际四分之一采样偏移和直接读取器设置。第二批还有3失败：保存选择未重绑实际Workspace；CC的clip-owned ID和工程拍位置被当作源payload。分别刷新真实视图、验证新CC归属/不同ID、11拍与336000采样的实际位置，再精确比较源事件/元数据；原1e-11拍、64采样MIDI起音、4e-7曲线与2e-5旧PCM预算均未改。
+
+最终修正项：Shuffle132/21.50秒、自动化Clipboard234/57.55秒、自动化ClipClear432/71.41秒、MIDI Clip78/7.11秒、MIDI Range68/4.81秒。其它通过包含Loop/Punch/Playlist/Comp/交叉淡化/真实WAV、Mixed95/MixedShuffle153、MusicalClipboard278、移动414/修剪552/拆分1207；逐套检查数/耗时/结果文件SHA见本地索引。ClipWorkspace71含实际CoreAudio停止静音回调，合成键位不替代物理输入或声学回路。
+
+无新依赖/SDK/RT处理。当前pin、17补丁SHA与38源码SHA精确匹配前轮fresh-apply/reverse审计，本轮未冒充新重放。所有初始编译、目标名错误、Warp准备和三批失败日志保留；CMake精确SDK保护未绕过。源码/测试本轮均分步提交，媒体与运行输出未上传。
+
+CUA当前明确Mac锁定，实体键鼠/听评未执行；旧KeyboardSettings焦点失败不在本批且未解除，不计旧成功JSON。完整伸缩+MIDI组合、复杂关联/Tempo/自动化、第三方/离线ClipFX、缺失媒体删除、旧读者/长源/连续FX负载/旧性能A/分析超时、多声道/异采样率/PDC/耐久、Windows/视频/发行仍待完成。
+
+操作[PROCESSED_CLIPBOARD.md](../../docs/PROCESSED_CLIPBOARD.md)：Cmd C复制片段/选区，选目标轨和位置Cmd V，Cmd Z/Shift Cmd Z恢复，再保存重开；只读Copy没有Undo。可打开的本地Warp+FX工程：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-ProcessedClipboard-09c1ba78b69d4ea5aa86f68e8f8c5c61/warp-fx/Processed-Clipboard.tracktionedit`。它使用测试信号和真实原生处理，不是音乐听评。全部批次/JUnit/当前结果与SHA/工程及签名索引：`build-v2-tracktion/p3-processed-clipboard-current-results.json`。下一项缺失媒体工程删除；以下历史资格不自动扩大。
+
 # P3 当前增量：处理后片段拆分与工程删除（2026-10-15）
 
 **最终28/28受影响套件、19972项数值/状态检查、663.14秒一次通过；新增拆分专项1207项/87.18秒。** 仅计最终每套一份结果，15342项属于范围Nudge，先前专项与失败批次不累计。源码085ca68/3851f2c；当前Release构建exit0，固定本地deep-strict验签通过。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `53818e9134abe6beaffcc8dfd4ab93dd6d47dd1ea32a42951f62502ff72cc4aa`。本地签名不是发行公证，无新DMG/源码包/应用副本，完整P1/P3/产品未完成。
