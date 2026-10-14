@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "PlaylistLinks.h"
 #include "WarpState.h"
+#include "ElasticState.h"
 namespace ndaw::v2
 {
 namespace
@@ -68,9 +69,13 @@ Json geometry(te::WaveAudioClip& c)
 void qualify(te::WaveAudioClip& c)
 {
     require(!bool(c.state.getProperty("ndaw_locked", false)), "Crossfade clip is locked");
+    const bool elastic = elastic_state::isWindow(c.state);
+    if (elastic)
+        elastic_state::validate(c.state);
     require(!c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() &&
-                c.getPitchChange() == 0 && c.getTransposeSemiTones(false) == 0 && !c.getAutoCrossfade() &&
-                c.getSpeedRatio() == 1. && c.getSyncType() == te::Clip::syncAbsolute,
+                (elastic || c.getPitchChange() == 0) && double(c.state.getProperty("transpose", 0.)) == 0 &&
+                !c.getAutoCrossfade() && (elastic || c.getSpeedRatio() == 1.) &&
+                c.getSyncType() == te::Clip::syncAbsolute,
             "Crossfade requires absolute audio; loop/pitch/group is not qualified");
     require(!c.getWarpTime() || (!c.effectsEnabled() && c.state.getChildWithName("NDAW_WARP").isValid() &&
                                  warp_state::outputEnvelopeOrigins(c.state)),
@@ -101,6 +106,16 @@ void restoreEdge(te::WaveAudioClip& c, juce::ValueTree before, bool left, juce::
             left ? frame(double(before["start"]) + double(before["length"])) : frame(p.getEnd().inSeconds());
         warp_state::setWindowPosition(c, start, end,
                                       warp_state::windowStart(c.state) + start - frame(p.getStart().inSeconds()));
+    }
+    else if (elastic_state::isWindow(c.state))
+    {
+        const auto start = left ? frame(p.getStart().inSeconds()) : frame(double(before["start"]));
+        const auto end =
+            left ? frame(double(before["start"]) + double(before["length"])) : frame(p.getEnd().inSeconds());
+        elastic_state::setWindowPosition(
+            c, start, end,
+            elastic_state::integer(elastic_state::descriptor(c.state), "window_start_samples") + start -
+                frame(p.getStart().inSeconds()));
     }
     else if (left)
         c.setPosition(
@@ -411,6 +426,8 @@ Json Commands::crossfadeTarget(const std::string& trackID, int64_t at) const
                                                                : (existingOnly ? le : join + 120)},
                             {"existing_overlap_only", existingOnly},
                             {"warp_source_handles", warp_state::isWindow(l->state) || warp_state::isWindow(r->state)},
+                            {"elastic_source_handles",
+                             elastic_state::isWindow(l->state) || elastic_state::isWindow(r->state)},
                             {"curve", existing.isValid() ? text(existing, "curve") : "linear"},
                             {"existing", existing.isValid()}};
                 }
@@ -553,18 +570,29 @@ Json Commands::crossfadeChange(const Json& a, bool remove) const
             te::AudioFile lf(edit->engine, l.getOriginalFile()), rf(edit->engine, r.getOriginalFile());
             const int64_t leftBegin = warp_state::windowStart(l.state),
                           rightBegin = warp_state::windowStart(r.state) + first - frame(rp.getStart().inSeconds());
+            const bool elasticLeft = elastic_state::isWindow(l.state), elasticRight = elastic_state::isWindow(r.state);
+            const auto epLeft = elastic_state::descriptor(l.state), epRight = elastic_state::descriptor(r.state);
+            const auto elasticBegin = elasticRight ? elastic_state::integer(epRight, "window_start_samples") + first -
+                                                         frame(rp.getStart().inSeconds())
+                                                   : 0;
             const bool leftHandle =
                 leftWindow
                     ? leftBegin >= 0 &&
                           last - frame(lp.getStart().inSeconds()) <=
                               warp_state::fullAnchors(l.state).back()["clip_time_samples"].get<int64_t>() - leftBegin
-                    : l.getWarpTime() || lo <= frame(lf.getLength());
+                : elasticLeft ? last - frame(lp.getStart().inSeconds()) <=
+                                    elastic_state::sample(double(epLeft["full_length_seconds"])) -
+                                        elastic_state::integer(epLeft, "window_start_samples")
+                              : l.getWarpTime() || lo <= frame(lf.getLength());
             const bool rightHandle =
                 rightWindow
                     ? rightBegin >= 0 &&
                           frame(rp.getEnd().inSeconds()) - first <=
                               warp_state::fullAnchors(r.state).back()["clip_time_samples"].get<int64_t>() - rightBegin
-                    : r.getWarpTime() || ro >= 0;
+                : elasticRight ? elasticBegin >= 0 &&
+                                     frame(rp.getEnd().inSeconds()) - first <=
+                                         elastic_state::sample(double(epRight["full_length_seconds"])) - elasticBegin
+                               : r.getWarpTime() || ro >= 0;
             require(lf.isValid() && rf.isValid() && leftHandle && rightHandle,
                     "Insufficient actual source handles for the entire crossfade");
             require(frame(l.getFadeIn().inSeconds()) + last - first <= last - frame(lp.getStart().inSeconds()) &&
@@ -658,6 +686,10 @@ void Commands::executeCrossfade(const Json& a, bool remove, Json& objects)
             if (l.getWarpTime() && warp_state::isWindow(l.state))
                 warp_state::setWindowPosition(l, frame(lp.getStart().inSeconds()), last,
                                               warp_state::windowStart(l.state));
+            else if (elastic_state::isWindow(l.state))
+                elastic_state::setWindowPosition(
+                    l, frame(lp.getStart().inSeconds()), last,
+                    elastic_state::integer(elastic_state::descriptor(l.state), "window_start_samples"));
             else if (!l.getWarpTime())
                 l.setPosition({{lp.getStart(), tracktion::TimePosition::fromSeconds(last / 48000.)}, lp.getOffset()});
             const auto nextStart = tracktion::TimePosition::fromSeconds(first / 48000.);
@@ -665,6 +697,11 @@ void Commands::executeCrossfade(const Json& a, bool remove, Json& objects)
                 warp_state::setWindowPosition(r, first, frame(rp.getEnd().inSeconds()),
                                               warp_state::windowStart(r.state) + first -
                                                   frame(rp.getStart().inSeconds()));
+            else if (elastic_state::isWindow(r.state))
+                elastic_state::setWindowPosition(
+                    r, first, frame(rp.getEnd().inSeconds()),
+                    elastic_state::integer(elastic_state::descriptor(r.state), "window_start_samples") + first -
+                        frame(rp.getStart().inSeconds()));
             else if (!r.getWarpTime())
                 r.setPosition({{nextStart, rp.getEnd()}, rp.getOffset() + (nextStart - rp.getStart())});
             const auto curve = a["curve"] == "linear" ? te::AudioFadeCurve::linear : te::AudioFadeCurve::convex;

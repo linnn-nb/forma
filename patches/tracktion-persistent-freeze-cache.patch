@@ -39,10 +39,28 @@ index 308d717..7cfafd9 100644
              else
                  unFreezeTrack();
 diff --git a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
-index 2b729c5..213e8bf 100644
+index 2b729c5..51376ff 100644
 --- a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
 +++ b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
-@@ -339,6 +339,8 @@ juce::String TemporaryFileManager::getDeviceIDFromFreezeFile (Edit& edit, const
+@@ -308,9 +308,17 @@ static AudioFile getCachedClipFileWithPrefix (const AudioClipBase& clip, const j
+ 
+ AudioFile TemporaryFileManager::getFileForCachedClipRender (const AudioClipBase& clip, HashCode hash)
+ {
++    const auto p = clip.state.getChildWithName ("NDAW_ELASTIC_PROXY");
++    if (bool (p["window"]))
++        return getFileForCachedClipRender (clip.edit, p["origin_clip"].toString(), hash);
+     return getCachedClipFileWithPrefix (clip, getClipProxyPrefix(), hash);
+ }
+ 
++AudioFile TemporaryFileManager::getFileForCachedClipRender (Edit& edit, const juce::String& origin, HashCode hash)
++{
++    return getCachedEditFile (edit, getClipProxyPrefix() + "0_" + origin + "_", hash);
++}
++
+ AudioFile TemporaryFileManager::getFileForCachedCompRender (const AudioClipBase& clip, HashCode takeHash)
+ {
+     return getCachedClipFileWithPrefix (clip, getCompPrefix(), takeHash);
+@@ -339,6 +347,8 @@ juce::String TemporaryFileManager::getDeviceIDFromFreezeFile (Edit& edit, const
  
  juce::File TemporaryFileManager::getFreezeFileForTrack (const AudioTrack& track)
  {
@@ -51,3 +69,12 @@ index 2b729c5..213e8bf 100644
      return track.edit.getTempDirectory (true)
               .getChildFile (getTrackFreezePrefix() + "0_" + track.itemID.toString() + ".freeze");
  }
+@@ -430,7 +440,7 @@ void TemporaryFileManager::purgeOrphanFreezeAndProxyFiles (Edit& edit)
+                     if (! acb->isUsingFile (AudioFile (edit.engine, entry.getFile())))
+                         filesToDelete.add (entry.getFile());
+                 }
+-                else if (clip == nullptr)
++                else if (clip == nullptr && ! edit.areAnyClipsUsingFile (AudioFile (edit.engine, entry.getFile())))
+                 {
+                     filesToDelete.add (entry.getFile());
+                 }

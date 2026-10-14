@@ -272,7 +272,7 @@ int main(int argc, char** argv)
                                                     {"end_samples", 129600},
                                                     {"base_revision", beforeListen},
                                                     {"session_token", c.sessionToken()}});
-        check(started["state"] == "requested" && !started["warp_sources"].empty(),
+        check(started["state"] == "requested" && !started["prepared_sources"].empty(),
               "inactive Warp audition binds actual prepared full source cache");
         auto& audioCache = RecordingTestAccess::engine(c).getAudioFileManager().cache;
         audioCache.hasCacheMissed(true);

@@ -11,7 +11,7 @@
 #endif
 namespace ndaw::v2
 {
-Json bindPreparedWarpSources(te::Edit&, te::Edit&);
+Json bindPreparedAudioSources(te::Edit&, te::Edit&);
 namespace
 {
 void require(bool b, const char* why)
@@ -351,7 +351,7 @@ Json TrackPrint::prepare(const Json& args)
     options.editFileRetriever = [editFile] { return editFile; };
     work->edit = te::Edit::createEdit(std::move(options));
     require(bool(work->edit), "印刻工程副本创建失败");
-    const auto warpSources = bindPreparedWarpSources(*owner.edit, *work->edit);
+    const auto warpSources = bindPreparedAudioSources(*owner.edit, *work->edit);
     work->binding = {{"render_id", renderID},           {"action", args["action"]},
                      {"track", args["track"]},          {"session_token", args["session_token"]},
                      {"base_revision", owner.revision}, {"frames", end},

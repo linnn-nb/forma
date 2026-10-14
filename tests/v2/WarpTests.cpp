@@ -299,8 +299,16 @@ int main(int argc, char** argv)
                                              {"start_samples", 24000},
                                              {"end_samples", 129600},
                                              {"request_key", "warp-master"}});
-                wait([&] { return !c.analysisStatus()["busy"].get<bool>(); },
-                     "actual Master analysis of Warp completes within 10 seconds", 10000);
+                try
+                {
+                    wait([&] { return !c.analysisStatus()["busy"].get<bool>(); },
+                         "actual Master analysis of Warp completes within 10 seconds", 10000);
+                }
+                catch (...)
+                {
+                    std::cerr << "TRACE actual analysis status: " << c.analysisStatus().dump() << std::endl;
+                    throw;
+                }
                 const auto analysed = c.analysisStatus()["receipt"];
                 double energy = 0;
                 for (int ch = 0; ch < 2; ++ch)

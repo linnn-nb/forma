@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "PlaylistLinks.h"
 #include "WarpState.h"
+#include "ElasticState.h"
 #include "NativeAudioFades.h"
 namespace ndaw::v2
 {
@@ -103,15 +104,26 @@ Json linkedCandidates(const Json& a)
     return result;
 }
 
+bool processedElastic(juce::ValueTree c)
+{
+    return !bool(c[te::IDs::warpTime]) && c.getChildWithName("NDAW_ELASTIC").isValid() &&
+           (double(c.getProperty("speed", 1.)) != 1. || double(c.getProperty("pitchChange")) != 0.);
+}
+juce::ValueTree readyForSlice(te::Edit& edit, juce::ValueTree c)
+{
+    return processedElastic(c) ? elastic_state::prepared(edit, c) : c;
+}
 void qualifySlice(te::Edit& edit, juce::ValueTree c)
 {
     require(c.hasType(te::IDs::AUDIOCLIP), "Comp selection requires an audio clip");
-    for (const char* key : {"loopLength", "loopLengthBeats", "autoTempo", "autoPitch", "isReversed", "transpose",
-                            "pitchChange", "groupID"})
+    const bool elastic = processedElastic(c);
+    for (const char* key :
+         {"loopLength", "loopLengthBeats", "autoTempo", "autoPitch", "isReversed", "transpose", "groupID"})
         require(double(c.getProperty(key)) == 0,
                 "Comp of stretched, pitched, looped or grouped audio is not yet qualified");
     require(int(c.getProperty("sync")) == int(te::Clip::syncAbsolute), "Comp requires absolute-time audio");
-    require(double(c.getProperty("speed", 1.)) == 1., "Comp requires normal-speed audio");
+    require(elastic || (double(c.getProperty("speed", 1.)) == 1. && double(c.getProperty("pitchChange")) == 0.),
+            "Comp requires normal-speed audio or a validated Elastic source");
     require(int(c.getProperty("fadeInBehaviour")) == int(te::AudioClipBase::gainFade) &&
                 int(c.getProperty("fadeOutBehaviour")) == int(te::AudioClipBase::gainFade),
             "Comp of speed fades is not qualified");
@@ -127,6 +139,13 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
                     c.getChildWithName("NDAW_WARP")["media_hash"].toString().toStdString(),
                 "Warp Comp原媒体已变化");
     }
+    else if (elastic)
+    {
+        const auto prepared = elastic_state::prepared(edit, c);
+        require(Commands::mediaHash(media(edit, c)) ==
+                    elastic_state::descriptor(prepared)["media_hash"].toString().toStdString(),
+                "Elastic原媒体已变化");
+    }
     else
         require(frame(c, "offset") >= 0 &&
                     frame(c, "offset") + frame(c, "length") <= std::llround(f.getLength() * 48000.),
@@ -135,6 +154,7 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
 // Preserve source-anchored fades, using the same native graph support as Punch.
 juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
 {
+    require(!processedElastic(c) || elastic_state::descriptor(c).isValid(), "Elastic切片缺少完整处理来源");
     const auto start = frame(c, "start"), stop = start + frame(c, "length");
     if (begin == start && end == stop)
         return c.createCopy();
@@ -146,6 +166,8 @@ juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
                 n.setProperty("coordinate_space", "prepared-warp-output-seconds", nullptr);
         warp_state::slice(copy, begin, end);
     }
+    else if (elastic_state::descriptor(copy).isValid())
+        elastic_state::slice(copy, begin, end);
     else
     {
         copy.setProperty("start", begin / 48000., nullptr);
@@ -198,11 +220,13 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
             snapshot.addChild(trackState, -1, nullptr);
             tracks[id] = trackState;
         }
-        auto piece = sliced(clip, begin, end);
+        auto ready = readyForSlice(*edit, clip);
+        auto piece = sliced(ready, begin, end);
         // The allocator is runtime-only. Preview nodes never reuse a live graph
         // ID, never become project clips and never enter the editing history.
         piece.setProperty(te::IDs::id, edit->createNewItemID().toVar(), nullptr);
         warp_state::remapIDs(piece, str(clip, "id"));
+        elastic_state::remap(piece, str(clip, "id"));
         piece.setProperty(te::IDs::source, juce::String(path), nullptr);
         tracks.at(id).addChild(piece, -1, nullptr);
         sources.push_back({{"track", id},
@@ -389,20 +413,25 @@ Json Commands::queryPlaylists(const std::string& id) const
         for (auto c : clipsFor(*t, item["id"]))
         {
             const auto f = media(*edit, c);
-            item["clips"].push_back({{"id", str(c, "id")},
-                                     {"name", str(c, "name")},
-                                     {"kind", c.hasType(te::IDs::AUDIOCLIP) ? "audio" : "unsupported"},
-                                     {"path", f.getFullPathName().toStdString()},
-                                     {"media_available", f.existsAsFile()},
-                                     {"start_samples", frame(c, "start")},
-                                     {"length_samples", frame(c, "length")},
-                                     {"source_offset_seconds", double(c.getProperty("offset"))},
-                                     {"speed_ratio", double(c.getProperty("speed", 1.))},
-                                     {"gain_db", double(c.getProperty("gain"))},
-                                     {"locked", bool(c.getProperty("ndaw_locked", false))},
-                                     {"take_id", str(c, "ndaw_take_id")},
-                                     {"comp_origin", str(c, "ndaw_comp_origin")}});
+            item["clips"].push_back(
+                {{"id", str(c, "id")},
+                 {"name", str(c, "name")},
+                 {"kind", c.hasType(te::IDs::AUDIOCLIP) ? "audio" : "unsupported"},
+                 {"path", f.getFullPathName().toStdString()},
+                 {"media_available", f.existsAsFile()},
+                 {"start_samples", frame(c, "start")},
+                 {"length_samples", frame(c, "length")},
+                 {"source_offset_seconds", double(c.getProperty("offset")) * double(c.getProperty("speed", 1.))},
+                 {"speed_ratio", double(c.getProperty("speed", 1.))},
+                 {"gain_db", double(c.getProperty("gain"))},
+                 {"locked", bool(c.getProperty("ndaw_locked", false))},
+                 {"take_id", str(c, "ndaw_take_id")},
+                 {"comp_origin", str(c, "ndaw_comp_origin")}});
             auto& row = item["clips"].back();
+            row["elastic"] = elastic_state::facts(c);
+            if (elastic_state::isWindow(c))
+                row["playback_offset_seconds"] =
+                    elastic_state::integer(elastic_state::descriptor(c), "window_start_samples") / 48000.;
             if (bool(c[te::IDs::warpTime]))
             {
                 warp_state::validate(c);
@@ -745,8 +774,10 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
     }
     auto copy = [&](juce::ValueTree c)
     {
-        auto result = te::ClipCopy::fromClipboardState(c, false).withNewItemID(*edit).getState().createCopy();
+        auto ready = readyForSlice(*edit, c);
+        auto result = te::ClipCopy::fromClipboardState(ready, false).withNewItemID(*edit).getState().createCopy();
         warp_state::remapIDs(result, str(c, "id"));
+        elastic_state::remap(result, str(c, "id"));
         return result;
     };
     if (cmd == "playlist.comp.linked.create")
@@ -863,9 +894,9 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                 continue;
             parent.removeChild(c, &um);
             if (first < begin)
-                parent.addChild(sliced(c, first, begin), -1, &um);
+                parent.addChild(sliced(readyForSlice(*edit, c), first, begin), -1, &um);
             if (last > end)
-                parent.addChild(sliced(first < begin ? copy(c) : c, end, last), -1, &um);
+                parent.addChild(sliced(readyForSlice(*edit, first < begin ? copy(c) : c), end, last), -1, &um);
         }
         auto inserted = sliced(copy(source), begin, end);
         inserted.setProperty("ndaw_locked", false, nullptr);

@@ -1,6 +1,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativeAudioFades.h"
 #include "WarpState.h"
+#include "ElasticState.h"
 #include "PlaylistLinks.h"
 namespace ndaw::v2
 {
@@ -144,13 +145,17 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
     return {
         {"path", f.getFullPathName().toStdString()},
         {"warp", warp},
+        {"elastic", elastic_state::facts(c.state)},
         {"source_sample_rate", info.sampleRate},
         {"source_frames", int64_t(info.lengthInSamples)},
         {"source_offset_samples", sample(p.getOffset().inSeconds())},
         {"source_offset_seconds", c.getWarpTime() && warp.value("available", false)
                                       ? warp["source_start_seconds"].get<double>()
                                       : p.getOffset().inSeconds() * c.getSpeedRatio()},
-        {"playback_offset_seconds", p.getOffset().inSeconds()},
+        {"playback_offset_seconds",
+         elastic_state::isWindow(c.state)
+             ? elastic_state::integer(elastic_state::descriptor(c.state), "window_start_samples") / 48000.
+             : p.getOffset().inSeconds()},
         {"source_offset_samples_space", c.getWarpTime() ? "prepared-warp-output" : "linear-source-playback"},
         {"speed_ratio", c.getSpeedRatio()},
         {"pitch_semitones", c.getPitchChange()},
@@ -181,12 +186,17 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
         {"editable_envelope",
-         editable || (c.getWarpTime() && warp.value("available", false) && !c.isLooping() && !c.isGrouped() &&
-                      !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() && c.getSpeedRatio() == 1. &&
-                      c.getPitchChange() == 0 && c.getSyncType() == te::Clip::syncAbsolute &&
-                      warp_state::outputEnvelopeOrigins(c.state) && c.getPluginList()->size() == 0 &&
-                      !c.effectsEnabled() && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
-                      c.getFadeOutBehaviour() == te::AudioClipBase::gainFade)},
+         editable ||
+             (elastic_state::descriptor(c.state).isValid() && !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() &&
+              !c.getAutoPitch() && !c.getIsReversed() && c.getPluginList()->size() == 0 && !c.effectsEnabled() &&
+              c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+              c.getFadeOutBehaviour() == te::AudioClipBase::gainFade) ||
+             (c.getWarpTime() && warp.value("available", false) && !c.isLooping() && !c.isGrouped() &&
+              !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() && c.getSpeedRatio() == 1. &&
+              c.getPitchChange() == 0 && c.getSyncType() == te::Clip::syncAbsolute &&
+              warp_state::outputEnvelopeOrigins(c.state) && c.getPluginList()->size() == 0 && !c.effectsEnabled() &&
+              c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+              c.getFadeOutBehaviour() == te::AudioClipBase::gainFade)},
         {"parent_clip", c.state.getProperty("ndaw_parent_clip").toString().toStdString()},
         {"origin", c.state.getProperty("ndaw_origin", "import").toString().toStdString()}};
 }

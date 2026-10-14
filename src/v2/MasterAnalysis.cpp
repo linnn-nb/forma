@@ -15,7 +15,7 @@
 
 namespace ndaw::v2
 {
-Json bindPreparedWarpSources(te::Edit&, te::Edit&);
+Json bindPreparedAudioSources(te::Edit&, te::Edit&);
 namespace
 {
 void require(bool ok, const char* why)
@@ -1186,7 +1186,7 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
     work->snapshot = te::Edit::createEdit(std::move(options));
     require(work->snapshot != nullptr, "analysis snapshot creation failed");
     if (!clipTap)
-        for (auto source : bindPreparedWarpSources(*owner.edit, *work->snapshot))
+        for (auto source : bindPreparedAudioSources(*owner.edit, *work->snapshot))
         {
             source["clip_references"] = Json::array({Json{{"clip_id", source["clip"]}}});
             source["kind"] = "prepared_warp_source";

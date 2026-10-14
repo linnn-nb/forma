@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <juce_cryptography/juce_cryptography.h>
 #include "WarpState.h"
+#include "ElasticState.h"
 namespace ndaw::v2
 {
 namespace
@@ -37,7 +38,10 @@ void validateWarpEdit(te::Edit& edit)
     auto validate = [&](auto&& self, juce::ValueTree node) -> void
     {
         if (node.hasType(te::IDs::AUDIOCLIP))
+        {
             warp_state::validate(node);
+            elastic_state::validate(node);
+        }
         for (auto child : node)
             self(self, child);
     };
@@ -46,7 +50,7 @@ void validateWarpEdit(te::Edit& edit)
 
 // Offline Edit roles disable source rendering that requires shouldPlay(). Bind the already prepared source render
 // on the message thread; keep original media references and native pitch processing intact.
-Json bindPreparedWarpSources(te::Edit& source, te::Edit& target)
+Json bindPreparedAudioSources(te::Edit& source, te::Edit& target)
 {
     require(juce::MessageManager::getInstance()->isThisTheMessageThread(), "Warp副本只在message thread准备");
     validateWarpEdit(source);
@@ -71,6 +75,30 @@ Json bindPreparedWarpSources(te::Edit& source, te::Edit& target)
                                 {"modified_ms", cached.getFile().getLastModificationTime().toMilliseconds()},
                                 {"clip", id},
                                 {"render_hash", to["render_hash"].toString().toStdString()}});
+            }
+    for (auto* t : te::getAudioTracks(target))
+        for (auto* piece : t->getClips())
+            if (auto* c = dynamic_cast<te::WaveAudioClip*>(piece); c && elastic_state::isWindow(c->state))
+            {
+                const auto p = elastic_state::descriptor(c->state);
+                require(Commands::mediaHash(c->getOriginalFile()) == p["media_hash"].toString().toStdString(),
+                        "Elastic原媒体已变化");
+                const auto f = te::TemporaryFileManager::getFileForCachedClipRender(
+                    source, p["origin_clip"].toString(), elastic_state::integer(p, "proxy_hash"));
+                require(f.getFile().existsAsFile() && f.isValid() &&
+                            f.getSampleRate() == double(p["source_sample_rate"]) &&
+                            f.getNumChannels() == int(p["channels"]) &&
+                            f.getInfo().lengthInSamples >=
+                                std::ceil(double(p["full_length_seconds"]) * f.getSampleRate()) &&
+                            !source.engine.getAudioFileManager().proxyGenerator.isProxyBeingGenerated(f),
+                        "Elastic完整来源缓存未准备好");
+                require(c->bindPreparedElasticProxy(f), "Elastic离线窗口未绑定实际完整proxy");
+                refs.push_back({{"kind", "elastic_proxy"},
+                                {"path", f.getFile().getFullPathName().toStdString()},
+                                {"bytes", f.getFile().getSize()},
+                                {"modified_ms", f.getFile().getLastModificationTime().toMilliseconds()},
+                                {"clip", c->itemID.toString().toStdString()},
+                                {"render_hash", p["processing_hash"].toString().toStdString()}});
             }
     return refs;
 }

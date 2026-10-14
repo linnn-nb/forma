@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-index 5cd2c92..bcec384 100644
+index 5cd2c92..8d132ec 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 @@ -1292,6 +1292,11 @@ void AudioClipBase::setTimeStretchMode (TimeStretcher::Mode mode)
@@ -14,7 +14,53 @@ index 5cd2c92..bcec384 100644
      if (warpTimeManager == nullptr)
      {
          CRASH_TRACER
-@@ -2487,6 +2492,15 @@ void AudioClipBase::cancelCurrentRender()
+@@ -2096,6 +2101,8 @@ AudioClipBase::ProxyRenderingInfo::~ProxyRenderingInfo() {}
+ 
+ AudioFile AudioClipBase::getProxyFileToCreate (bool renderTimestretched)
+ {
++    if (preparedElasticProxy.has_value() && bool (state.getChildWithName ("NDAW_ELASTIC_PROXY")["window"]))
++        return *preparedElasticProxy;
+     if (renderTimestretched)
+         return TemporaryFileManager::getFileForCachedClipRender (*this, getProxyHash());
+ 
+@@ -2306,6 +2313,16 @@ struct StretchSegment
+ std::unique_ptr<AudioClipBase::ProxyRenderingInfo> AudioClipBase::createProxyRenderingInfo()
+ {
+     auto p = std::make_unique<ProxyRenderingInfo>();
++    const auto prepared = state.getChildWithName ("NDAW_ELASTIC_PROXY");
++    if (bool (prepared["window"]))
++    {
++        p->audioSegmentList = AudioSegmentList::fromPreparedProxy (*this, prepared);
++        p->clipTime = { TimePosition(), TimePosition::fromSeconds (double (prepared["full_length_seconds"])) };
++        p->speedRatio = double (prepared["speed_ratio"]);
++        p->mode = static_cast<TimeStretcher::Mode> (int (prepared["mode"]));
++        p->options = TimeStretcher::ElastiqueProOptions (prepared["options"].toString());
++        return p;
++    }
+     p->audioSegmentList = AudioSegmentList::create (*this, true, true);
+     p->clipTime = getEditTimeRange();
+     p->speedRatio = getSpeedRatio();
+@@ -2363,6 +2380,9 @@ bool AudioClipBase::ProxyRenderingInfo::render (Engine& engine, const AudioFile&
+ 
+ AudioFile AudioClipBase::getPlaybackFile()
+ {
++    if (preparedElasticProxy.has_value() && bool (state.getChildWithName ("NDAW_ELASTIC_PROXY")["window"]))
++        return *preparedElasticProxy;
++
+     // this needs to return the same file right from the first call, if it's a rendered file then obviously it won't exist but we need to return it anyway
+     const AudioFile af (getAudioFile());
+ 
+@@ -2392,6 +2412,9 @@ AudioFileInfo AudioClipBase::getWaveInfo()
+ HashCode AudioClipBase::getProxyHash()
+ {
+     jassert (usesTimeStretchedProxy());
++    const auto prepared = state.getChildWithName ("NDAW_ELASTIC_PROXY");
++    if (bool (prepared["window"]))
++        return prepared["proxy_hash"].toString().getLargeIntValue();
+ 
+     auto clipPos = getPosition();
+ 
+@@ -2487,6 +2510,26 @@ void AudioClipBase::cancelCurrentRender()
      if (renderJob != nullptr)
          renderJob->cancelJob();
  }
@@ -27,22 +73,33 @@ index 5cd2c92..bcec384 100644
 +    setCurrentSourceFile (source.getFile());
 +    return true;
 +}
++
++bool AudioClipBase::bindPreparedElasticProxy (const AudioFile& file)
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (edit.shouldPlay() || ! bool (state.getChildWithName ("NDAW_ELASTIC_PROXY")["window"])
++         || file.engine != &edit.engine || ! file.isValid())
++        return false;
++    preparedElasticProxy = file;
++    stopTimer();
++    return true;
++}
  
  void AudioClipBase::timerCallback()
  {
-@@ -2544,7 +2558,10 @@ void AudioClipBase::timerCallback()
+@@ -2544,8 +2587,10 @@ void AudioClipBase::timerCallback()
      }
  
      // Proxy file exists — restart playback to use it
--    if (! proxyChanged)
-+    // Source renders are immutable, hash-addressed files shared by native Warp windows.
-+    // An unchanged source is not a newly completed proxy: flushing it here can unmap
-+    // another window's playing reader. Writers/file-change detection own real invalidation.
-+    if (! proxyChanged && newProxy != originalFile)
-         edit.engine.getAudioFileManager().releaseFile (newProxy);
++    // Windows share complete prepared files. Only a real file change invalidates
++    // a mapped reader; an unchanged timer notification must not unmap playing audio.
+     if (! proxyChanged)
+-        edit.engine.getAudioFileManager().releaseFile (newProxy);
++        edit.engine.getAudioFileManager().checkFileForChanges (newProxy);
  
      Selectable::changed();
-@@ -2573,6 +2590,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
+     edit.restartPlayback();
+@@ -2573,6 +2618,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
  
                  if (! getWarpTime())
                  {
@@ -51,10 +108,10 @@ index 5cd2c92..bcec384 100644
                          updateSourceFile();
                      else
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-index 45733ad..46ce981 100644
+index 45733ad..665d6d3 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-@@ -168,6 +168,15 @@ public:
+@@ -168,6 +168,16 @@ public:
  
      /** If a render is in progress, this will cancel it. */
      void cancelCurrentRender();
@@ -62,6 +119,7 @@ index 45733ad..46ce981 100644
 +        Does not change the original media reference or bake native pitch processing.
 +    */
 +    bool bindPreparedSourceRender (const AudioFile&);
++    bool bindPreparedElasticProxy (const AudioFile&);
 +
 +    /** Message-thread source render status; a readable partial WAV is not completion. */
 +    bool isSourceRenderPending() const noexcept     { return renderJob != nullptr; }
@@ -70,6 +128,14 @@ index 45733ad..46ce981 100644
  
      //==============================================================================
      /** Sets the gain of the clip in dB. */
+@@ -763,6 +773,7 @@ protected:
+ 
+     RenderManager::Job::Ptr renderJob;
+     AudioFile lastProxy;
++    std::optional<AudioFile> preparedElasticProxy;
+ 
+     //==============================================================================
+     /** Triggers a source or proxy render after a timeout. Call this if something changes that
 diff --git a/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp b/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp
 index 7c3a193..17c7d53 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp

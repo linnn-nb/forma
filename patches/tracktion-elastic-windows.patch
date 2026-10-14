@@ -1,0 +1,59 @@
+diff --git a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.h b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.h
+index 5c1fd2e..cb4c9ea 100644
+--- a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.h
++++ b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.h
+@@ -66,6 +66,7 @@ public:
+     //==============================================================================
+     /** */
+     static AudioFile getFileForCachedClipRender (const AudioClipBase&, HashCode);
++    static AudioFile getFileForCachedClipRender (Edit&, const juce::String& originClipID, HashCode);
+ 
+     /** */
+     static AudioFile getFileForCachedCompRender (const AudioClipBase&, HashCode);
+diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.cpp
+index 2425cad..407a9d1 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.cpp
++++ b/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.cpp
+@@ -170,6 +170,28 @@ std::unique_ptr<AudioSegmentList> AudioSegmentList::create (AudioClipBase& acb,
+     return asl;
+ }
+ 
++std::unique_ptr<AudioSegmentList> AudioSegmentList::fromPreparedProxy (AudioClipBase& clip, const juce::ValueTree& p)
++{
++    auto list = std::unique_ptr<AudioSegmentList> (new AudioSegmentList (clip));
++    list->crossfadeTime = TimeDuration::fromSeconds (double (p["crossfade_seconds"]));
++    list->segments.ensureStorageAllocated (p.getNumChildren());
++    for (auto n : p)
++    {
++        Segment s;
++        s.start = TimePosition::fromSeconds (double (n["start"]));
++        s.length = TimeDuration::fromSeconds (double (n["length"]));
++        s.startSample = n["start_sample"].toString().getLargeIntValue();
++        s.lengthSample = n["length_sample"].toString().getLargeIntValue();
++        s.stretchRatio = float (n["stretch_ratio"]);
++        s.transpose = float (n["transpose"]);
++        s.fadeIn = bool (n["fade_in"]);
++        s.fadeOut = bool (n["fade_out"]);
++        s.followedBySilence = bool (n["followed_by_silence"]);
++        list->segments.add (s);
++    }
++    return list;
++}
++
+ bool AudioSegmentList::operator== (const AudioSegmentList& other) const noexcept
+ {
+     return crossfadeTime == other.crossfadeTime
+diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.h b/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.h
+index 764bbbb..d388915 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.h
++++ b/modules/tracktion_engine/model/clips/tracktion_AudioSegmentList.h
+@@ -23,6 +23,9 @@ public:
+     static std::unique_ptr<AudioSegmentList> create (AudioClipBase&, const WarpTimeManager&, const AudioFile&);
+     static std::unique_ptr<AudioSegmentList> create (AudioClipBase&, const WarpTimeManager&, const AudioFileInfo&, const LoopInfo&);
+ 
++    /** Restore an L1-validated complete native proxy descriptor, outside audio processing. */
++    static std::unique_ptr<AudioSegmentList> fromPreparedProxy (AudioClipBase&, const juce::ValueTree&);
++
+     /**
+     */
+     struct Segment

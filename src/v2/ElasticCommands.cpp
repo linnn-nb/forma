@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
+#include "ElasticState.h"
 namespace ndaw::v2
 {
 void validateWarpEdit(te::Edit&);
@@ -23,7 +24,18 @@ Json Commands::playbackPreparation() const
                 c && (c->getWarpTime() || c->state.getChildWithName("NDAW_ELASTIC").isValid()))
             {
                 bool failed = !c->getOriginalFile().existsAsFile();
-                bool pending = c->usesTimeStretchedProxy() && !c->getPlaybackFile().isValid();
+                bool pending =
+                    c->usesTimeStretchedProxy() &&
+                    (!c->getPlaybackFile().getFile().existsAsFile() || !c->getPlaybackFile().isValid() ||
+                     engine.getAudioFileManager().proxyGenerator.isProxyBeingGenerated(c->getPlaybackFile()));
+                if (elastic_state::descriptor(c->state).isValid())
+                {
+                    elastic_state::validate(c->state);
+                    failed |= !failed && mediaHash(c->getOriginalFile()) !=
+                                             elastic_state::descriptor(c->state)["media_hash"].toString().toStdString();
+                    if (pending)
+                        c->beginRenderingNewProxyIfNeeded();
+                }
                 if (c->getWarpTime())
                 {
                     const auto provenance = c->state.getChildWithName("NDAW_WARP");
@@ -48,6 +60,7 @@ Json Commands::elasticChange(const Json& a) const
     require(!edit->getTransport().isPlaying(), "请先停止播放，再编辑弹力音频");
     auto* c = audioClip(a.at("clip"));
     require(c, "音频片段不存在");
+    require(!elastic_state::isWindow(c->state), "继承Elastic窗口请回源Take编辑，再创建新候选");
     auto q = audioClipQuery(*c);
     const auto p = c->getPosition();
     q["track"] = c->getTrack()->itemID.toString().toStdString();
@@ -115,6 +128,11 @@ void Commands::executeElastic(const Json& a)
     if (old.isValid())
         c.state.removeChild(old, &um);
     c.state.addChild(provenance, -1, &um);
+    auto descriptor = elastic_state::descriptor(c.state);
+    if (descriptor.isValid())
+        c.state.removeChild(descriptor, &um);
+    if (c.usesTimeStretchedProxy())
+        c.state.addChild(elastic_state::capture(c), -1, &um);
     // Native background proxy jobs keep SoundTouch allocations and locks off the audio callback.
     // Readiness is asynchronous and must be checked before starting playback/render.
     c.beginRenderingNewProxyIfNeeded();

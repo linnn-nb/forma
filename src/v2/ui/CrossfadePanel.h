@@ -146,6 +146,8 @@ private:
                     juce::String(last) +
                     text(selection.value("existing_overlap_only", false)
                              ? " 采样\nWarp使用已有真实重叠区，保留锚点；不推测额外源句柄。⌘Return提交，Esc取消。"
+                         : selection.value("elastic_source_handles", false)
+                             ? " 采样\nElastic Comp使用原Take完整处理结果内的真实句柄。⌘Return提交，Esc取消。"
                          : selection.value("warp_source_handles", false)
                              ? " 采样\nWarp Comp使用原Take完整映射内的实际句柄，保留来源包络。⌘Return提交，Esc取消。"
                              : " 采样\n真实源余量在提交前校验；原 Take、媒体、增益及源淡化保持。⌘Return 提交，Esc "
