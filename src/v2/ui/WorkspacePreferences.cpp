@@ -27,6 +27,7 @@ void Workspace::showPreferences()
                 return result;
             },
             [this](int id) { commandManager.invokeDirectly(id, false); });
+        preferencesPanel->connect(commandManager);
         addChildComponent(*preferencesPanel);
     }
     preferencesPanel->show(commands.preferences());

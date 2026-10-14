@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "Workspace.h"
+#include "ui/WorkspaceWindow.h"
 #include <iostream>
 #include <fstream>
 #include <csignal>
@@ -102,9 +103,11 @@ int main(int argc, char** argv)
         uint64_t preferenceRevision = 0;
         Json final;
         {
-            ndaw::desktop::Workspace w(false, std::make_unique<Storage>(prefs));
+            ndaw::desktop::WorkspaceWindow window(
+                std::make_unique<ndaw::desktop::Workspace>(false, std::make_unique<Storage>(prefs)));
+            auto& w = window.editor();
             w.setSize(1500, 950);
-            w.setVisible(true);
+            window.showReady();
             auto& c = AudioDeviceTestAccess::commands(w);
             const auto facts = c.query(), ui = c.uiState(), original = c.preferences();
             check(original["available"] && original["values"]["default_track_height"] == 144,
@@ -166,7 +169,13 @@ int main(int argc, char** argv)
             auto* grid = dynamic_cast<juce::ComboBox*>(find(w, "preferences.grid"));
             height->setSelectedId(96, juce::dontSendNotification);
             grid->setSelectedId(1, juce::dontSendNotification);
-            key(w, 275);
+            auto* browse = find(w, "preferences.browse:media_directory");
+            const auto acceptKeys = w.uiCommands().getKeyMappings()->getKeyPressesAssignedToCommand(275);
+            browse->grabKeyboardFocus();
+            wait([&] { return window.getPeer()->isFocused() && browse->hasKeyboardFocus(false); },
+                 "real native window and browse button own focus before shortcut");
+            check(!acceptKeys.isEmpty() && window.getPeer()->handleKeyPress(acceptKeys[0]),
+                  "native peer consumes panel accept before focused JUCE browse button opens chooser");
             wait([&] { return c.preferences()["values"]["default_track_height"] == 96; },
                  "Cmd Return saves native minimum height and eighth-beat grid");
             key(w, 571);

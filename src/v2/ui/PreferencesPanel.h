@@ -4,7 +4,7 @@
 #include "PanelTextEditor.h"
 namespace ndaw::desktop
 {
-class PreferencesPanel final : public juce::Component
+class PreferencesPanel final : public juce::Component, private juce::KeyListener
 {
 public:
     using Change = std::function<Json(const Json&, uint64_t)>;
@@ -55,6 +55,7 @@ public:
                                          {
                                              safe->paths[i].setText(f.getResult().getFullPathName(), false);
                                              safe->paths[i].setTitle(f.getResult().getFullPathName());
+                                             safe->paths[i].setTooltip(f.getResult().getFullPathName());
                                          }
                                      });
             };
@@ -72,6 +73,19 @@ public:
         recovery.onClick = [this] { navigate(40); };
         zoom.onClick = [this] { navigate(266); };
     }
+    void connect(juce::ApplicationCommandManager& owner)
+    {
+        manager = &owner;
+        auto attach = [this](auto&& self, juce::Component& c) -> void
+        {
+            for (auto* child : c.getChildren())
+            {
+                child->addKeyListener(this);
+                self(self, *child);
+            }
+        };
+        attach(attach, *this);
+    }
     void show(const Json& v)
     {
         bound = v;
@@ -79,7 +93,8 @@ public:
         for (size_t i = 0; i < 3; ++i)
         {
             paths[i].setText(text(value[fields[i]].get<std::string>()), false);
-            paths[i].setTitle(paths[i].getText()); // Read-only directory values must be exposed to accessibility.
+            paths[i].setTitle(paths[i].getText());   // Read-only directory values must be exposed to accessibility.
+            paths[i].setTooltip(paths[i].getText()); // macOS static-text AX does not expose the editor's title.
         }
         scrub.setToggleState(value["scrub_insertion_follows"], juce::dontSendNotification);
         height.setSelectedId(value["default_track_height"], juce::dontSendNotification);
@@ -190,6 +205,17 @@ public:
     }
 
 private:
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        if (!manager || !isVisible())
+            return false;
+        const auto id = key == juce::KeyPress::escapeKey ? 277 : manager->getKeyMappings()->findCommandForKeyPress(key);
+        // JUCE buttons consume any Return before it bubbles to Workspace. Only panel actions
+        // precede that local behavior; ordinary Return and text editing remain local.
+        if (id != 275 && id != 277 && id != 571 && id != 572)
+            return false;
+        return manager->invokeDirectly(id, false);
+    }
     void navigate(int id)
     {
         setVisible(false);
@@ -202,6 +228,7 @@ private:
     inline static constexpr const char* fields[] = {"media_directory", "export_directory", "recording_directory"};
     inline static constexpr std::array<double, 4> grids{.125, .25, .5, 1.};
     Change change;
+    juce::ApplicationCommandManager* manager = nullptr;
     std::function<Json(bool, uint64_t)> history;
     std::function<void(int)> route;
     Json bound;
