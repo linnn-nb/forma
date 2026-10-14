@@ -637,7 +637,18 @@ private:
                                       ? juce::String{}
                                       : text(" · 未提交候选 ") + juce::String(int(draft.size())) + text(" 段")),
                        juce::dontSendNotification);
-        if (auditionStatus.value("active", false))
+        if (auditionStatus.value("active", false) && auditionStatus.value("state", std::string{}) == "preparing")
+        {
+            const auto p = auditionStatus.value("preparation", Json::object());
+            status.setText(text("正在准备试听来源 · ") + juce::String(p.value("ready_sources", 0)) + "/" +
+                               juce::String(p.value("total_sources", 0)) + text(" 源 · ") +
+                               (p.value("progress_available", false)
+                                    ? juce::String(p.value("progress", 0.) * 100., 0) + "%"
+                                    : text("等待作业")) +
+                               text(" · 完成后开始所选范围 · 停止可取消"),
+                           juce::dontSendNotification);
+        }
+        else if (auditionStatus.value("active", false))
             status.setText(
                 text(auditionStatus.value("state", std::string{}) == "requested" ? "等待实际音频回调 · "
                                                                                  : "正在试听 · ") +
@@ -645,8 +656,16 @@ private:
                     text(" · 仅所选来源及其路由/处理 · 输入/节拍器关闭 · 停止后返回原光标"),
                 juce::dontSendNotification);
         else if (auditionStatus.value("state", std::string{}) == "failed")
-            status.setText(text("试听失败：") + text(auditionStatus.value("reason", std::string{})),
-                           juce::dontSendNotification);
+        {
+            const auto reason = auditionStatus.value("reason", std::string{});
+            const auto explanation =
+                reason == "source_preparation_failed"    ? "来源音频准备失败，未开始试听"
+                : reason == "source_preparation_timeout" ? "来源音频准备超时，可检查磁盘后重试"
+                : reason == "project_changed_during_preparation" || reason == "project_or_device_changed"
+                    ? "工程或设备已变化，已取消旧试听"
+                    : reason;
+            status.setText(text("试听失败：") + text(explanation), juce::dontSendNotification);
+        }
         std::set<std::string> members;
         for (const auto& s : draft)
             members.insert(s["track"].get<std::string>());

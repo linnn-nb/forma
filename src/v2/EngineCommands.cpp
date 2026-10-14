@@ -5,6 +5,7 @@
 #include "StemExport.h"
 #include "AppPreferences.h"
 #include <nativedaw/v2/EngineCommands.h>
+#include "PreparedAudioSources.h"
 #include "TimelineState.h"
 #include <limits>
 #include "PluginEditorWindows.h"
@@ -808,7 +809,8 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
 Json Commands::preview(const Json& plan) const
 {
     checkThread();
-    require(!playlistAuditionState, "stop Playlist audition before editing");
+    require(!playlistAuditionState || playlistAuditionStatus()["state"] == "preparing",
+            "stop Playlist audition before editing");
     require(!audioConfigurationPending(), "wait for audio device preparation");
     captureNativeStates();
     bool removing = plan.at("actor") == "human" && !plan.at("operations").empty() &&
@@ -1246,6 +1248,8 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     auto reviewed = review(plan, scope);
     require(plan.at("actor") == "human" || accepted || reviewed["permission"]["automatic_allowed"].get<bool>(),
             "preview acceptance required");
+    if (playlistAuditionState && playlistAuditionStatus()["state"] == "preparing")
+        stopPlaylistAudition("project_changed_during_preparation");
     stopScrub();
     if (edit->getTransport().isPlaying())
         for (const auto& op : plan.at("operations"))

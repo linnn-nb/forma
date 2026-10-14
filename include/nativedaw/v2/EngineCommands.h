@@ -12,6 +12,7 @@ using Json = nlohmann::json;
 class OutputProbe;
 class RecordingTestAccess;
 struct PlaylistAuditionState;
+class PreparedAudioRetirement;
 class TransportTestAccess;
 class AudioDeviceTestAccess;
 class PluginEditorWindows;
@@ -452,6 +453,7 @@ private:
     std::pair<juce::ValueTree, Json> preparePlaylistAudition(const Json&) const;
     void stopPlaylistAudition(const std::string& reason = "cancelled", bool returnPosition = true);
     void advancePlaylistAudition();
+    void startPreparedPlaylistAudition();
     std::shared_ptr<PlaylistAuditionState> playlistAuditionState;
     Json lastPlaylistAudition = {{"active", false}};
     void selectPlaylist(te::AudioTrack&, const std::string&);
@@ -562,6 +564,7 @@ private:
     te::Engine engine;
     OutputProbe* outputProbe = nullptr;
     std::unique_ptr<te::Edit> edit;
+    std::unique_ptr<PreparedAudioRetirement> preparedAudioRetirement;
     // The command layer owns transaction boundaries for the entire Edit lifetime.
     std::unique_ptr<te::Edit::UndoTransactionInhibitor> undoBoundaryInhibitor;
     juce::ValueTree metadata;

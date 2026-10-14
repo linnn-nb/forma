@@ -1,8 +1,109 @@
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-index 5cd2c92..8d132ec 100644
+index 5cd2c92..11f24a4 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-@@ -1292,6 +1292,11 @@ void AudioClipBase::setTimeStretchMode (TimeStretcher::Mode mode)
+@@ -99,24 +99,39 @@ class ProxyGeneratorJob  : public AudioProxyGenerator::GeneratorJob
+ {
+ public:
+     ProxyGeneratorJob (const AudioFile& o, const AudioFile& p,
+-                       AudioClipBase& acb, bool renderTimestretched)
+-        : GeneratorJob (p), engine (acb.edit.engine), original (o)
++                       AudioClipBase& acb, bool renderTimestretched,
++                       std::shared_ptr<AudioClipBase::PreparedSourceTask> task = {})
++        : GeneratorJob (p), engine (acb.edit.engine), original (o), preparation (std::move (task))
+     {
+         setName (TRANS("Creating Proxy") + ": " + acb.getName());
+ 
+-        if (renderTimestretched)
++        if (preparation && acb.getWarpTime())
++        {
++            warpSource = true;
++            proxyInfo = std::make_unique<AudioClipBase::ProxyRenderingInfo>();
++            proxyInfo->audioSegmentList = AudioSegmentList::create (acb, acb.getWarpTimeManager(), original);
++            proxyInfo->clipTime = { {}, acb.getWarpTimeManager().getWarpEndMarkerTime() };
++            proxyInfo->speedRatio = 1.0;
++            proxyInfo->mode = acb.getTimeStretchMode();
++        }
++        else if (renderTimestretched)
+             proxyInfo = acb.createProxyRenderingInfo();
+     }
+ 
+     ~ProxyGeneratorJob() override
+     {
+         prepareForJobDeletion();
++        if (preparation && preparation->state.load() == AudioClipBase::PreparedSourceTask::queued)
++            preparation->state = preparation->cancel ? AudioClipBase::PreparedSourceTask::cancelled
++                                                    : AudioClipBase::PreparedSourceTask::failed;
+     }
+ 
+ private:
+     Engine& engine;
+     AudioFile original;
+     std::unique_ptr<AudioClipBase::ProxyRenderingInfo> proxyInfo;
++    std::shared_ptr<AudioClipBase::PreparedSourceTask> preparation;
++    bool warpSource = false;
+ 
+     bool render() override
+     {
+@@ -126,20 +141,30 @@ private:
+                                      .getSiblingFile ("temp_proxy_" + juce::String::toHexString (juce::Random().nextInt64()))
+                                      .withFileExtension (proxy.getFile().getFileExtension()));
+ 
+-        bool ok = render (tempFile);
++        if (preparation)
++            preparation->state = AudioClipBase::PreparedSourceTask::rendering;
++        bool ok = !(preparation && preparation->cancel.load()) && render (tempFile);
++        if (preparation && preparation->cancel.load())
++            ok = false;
+ 
+         if (ok)
+         {
+             ok = proxy.deleteFile();
+-            (void) ok;
+-            jassert (ok);
+-            ok = tempFile.getFile().moveFileTo (proxy.getFile());
+-            jassert (ok);
++            if (! preparation)
++                jassert (ok);
++            if (ok)
++                ok = tempFile.getFile().moveFileTo (proxy.getFile());
++            if (! preparation)
++                jassert (ok);
+         }
+ 
+         tempFile.deleteFile();
+ 
+         engine.getAudioFileManager().releaseFile (proxy);
++        if (preparation)
++            preparation->state = preparation->cancel ? AudioClipBase::PreparedSourceTask::cancelled
++                                 : ok ? AudioClipBase::PreparedSourceTask::ready
++                                      : AudioClipBase::PreparedSourceTask::failed;
+         return ok;
+     }
+ 
+@@ -160,12 +185,19 @@ private:
+ 
+         AudioFileWriter writer (tempFile, wavFormat,
+                                 sourceInfo.numChannels, sourceInfo.sampleRate,
+-                                std::max (16, sourceInfo.bitsPerSample),
++                                warpSource ? 32 : std::max (16, sourceInfo.bitsPerSample),
+                                 sourceInfo.metadata, 0,
+                                 sourceInfo.channelLayout);
+ 
+         return writer.isOpen()
+-                && (proxyInfo != nullptr ? proxyInfo->render (engine, original, writer, this, progress)
++                && (proxyInfo != nullptr ? proxyInfo->render (engine, original, writer, this, progress,
++                                              [this]
++                                              {
++                                                  if (! preparation)
++                                                      return false;
++                                                  preparation->progress = progress.load();
++                                                  return preparation->cancel.load();
++                                              })
+                                          : renderNormalSpeed  (writer));
+     }
+ 
+@@ -1292,6 +1324,11 @@ void AudioClipBase::setTimeStretchMode (TimeStretcher::Mode mode)
  
  WarpTimeManager& AudioClipBase::getWarpTimeManager() const
  {
@@ -14,7 +115,7 @@ index 5cd2c92..8d132ec 100644
      if (warpTimeManager == nullptr)
      {
          CRASH_TRACER
-@@ -2096,6 +2101,8 @@ AudioClipBase::ProxyRenderingInfo::~ProxyRenderingInfo() {}
+@@ -2096,6 +2133,8 @@ AudioClipBase::ProxyRenderingInfo::~ProxyRenderingInfo() {}
  
  AudioFile AudioClipBase::getProxyFileToCreate (bool renderTimestretched)
  {
@@ -23,7 +124,7 @@ index 5cd2c92..8d132ec 100644
      if (renderTimestretched)
          return TemporaryFileManager::getFileForCachedClipRender (*this, getProxyHash());
  
-@@ -2306,6 +2313,16 @@ struct StretchSegment
+@@ -2306,6 +2345,16 @@ struct StretchSegment
  std::unique_ptr<AudioClipBase::ProxyRenderingInfo> AudioClipBase::createProxyRenderingInfo()
  {
      auto p = std::make_unique<ProxyRenderingInfo>();
@@ -40,7 +141,25 @@ index 5cd2c92..8d132ec 100644
      p->audioSegmentList = AudioSegmentList::create (*this, true, true);
      p->clipTime = getEditTimeRange();
      p->speedRatio = getSpeedRatio();
-@@ -2363,6 +2380,9 @@ bool AudioClipBase::ProxyRenderingInfo::render (Engine& engine, const AudioFile&
+@@ -2318,7 +2367,7 @@ std::unique_ptr<AudioClipBase::ProxyRenderingInfo> AudioClipBase::createProxyRen
+ }
+ 
+ bool AudioClipBase::ProxyRenderingInfo::render (Engine& engine, const AudioFile& sourceFile, AudioFileWriter& writer,
+-                                                juce::ThreadPoolJob* const& job, std::atomic<float>& progress) const
++                                                juce::ThreadPoolJob* const& job, std::atomic<float>& progress, const std::function<bool()>& cancelled) const
+ {
+     CRASH_TRACER
+ 
+@@ -2340,7 +2389,7 @@ bool AudioClipBase::ProxyRenderingInfo::render (Engine& engine, const AudioFile&
+ 
+     for (int i = 0; i < numBlocks; ++i)
+     {
+-        if (job != nullptr && job->shouldExit())
++        if ((job != nullptr && job->shouldExit()) || (cancelled && cancelled()))
+             return false;
+ 
+         buffer.clear();
+@@ -2363,6 +2412,9 @@ bool AudioClipBase::ProxyRenderingInfo::render (Engine& engine, const AudioFile&
  
  AudioFile AudioClipBase::getPlaybackFile()
  {
@@ -50,7 +169,7 @@ index 5cd2c92..8d132ec 100644
      // this needs to return the same file right from the first call, if it's a rendered file then obviously it won't exist but we need to return it anyway
      const AudioFile af (getAudioFile());
  
-@@ -2392,6 +2412,9 @@ AudioFileInfo AudioClipBase::getWaveInfo()
+@@ -2392,6 +2444,9 @@ AudioFileInfo AudioClipBase::getWaveInfo()
  HashCode AudioClipBase::getProxyHash()
  {
      jassert (usesTimeStretchedProxy());
@@ -60,7 +179,7 @@ index 5cd2c92..8d132ec 100644
  
      auto clipPos = getPosition();
  
-@@ -2487,6 +2510,26 @@ void AudioClipBase::cancelCurrentRender()
+@@ -2487,6 +2542,59 @@ void AudioClipBase::cancelCurrentRender()
      if (renderJob != nullptr)
          renderJob->cancelJob();
  }
@@ -72,6 +191,39 @@ index 5cd2c92..8d132ec 100644
 +        return false;
 +    setCurrentSourceFile (source.getFile());
 +    return true;
++}
++
++bool AudioClipBase::pinPreparedSourceDestination (const AudioFile& destination)
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (edit.shouldPlay() || destination.engine != &edit.engine || destination.getFile() == getOriginalFile()
++         || (! getWarpTime() && ! bool (state.getChildWithName ("NDAW_ELASTIC_PROXY")["window"])))
++        return false;
++    stopTimer();
++    if (getWarpTime())
++        setCurrentSourceFile (destination.getFile());
++    else
++        preparedElasticProxy = destination;
++    return true;
++}
++
++std::shared_ptr<AudioClipBase::PreparedSourceTask> AudioClipBase::prepareAuditionSource (const AudioFile& destination)
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (edit.shouldPlay() || destination.engine != &edit.engine || destination.getFile() == getOriginalFile()
++         || (! getWarpTime() && ! bool (state.getChildWithName ("NDAW_ELASTIC_PROXY")["window"])))
++        return {};
++    stopTimer(); // The coordinator, not the clip's proxy timer, owns this preparation.
++    auto task = std::make_shared<PreparedSourceTask>();
++    auto* job = new ProxyGeneratorJob (AudioFile (edit.engine, getOriginalFile()), destination, *this, true, task);
++    // Runtime-only reference pins the destination before it exists. This Edit cannot
++    // play, and L1 will not install the audition graph until the real file is verified.
++    if (getWarpTime())
++        setCurrentSourceFile (destination.getFile());
++    else
++        preparedElasticProxy = destination;
++    edit.engine.getAudioFileManager().proxyGenerator.beginJob (job);
++    return task;
 +}
 +
 +bool AudioClipBase::bindPreparedElasticProxy (const AudioFile& file)
@@ -87,7 +239,7 @@ index 5cd2c92..8d132ec 100644
  
  void AudioClipBase::timerCallback()
  {
-@@ -2544,8 +2587,10 @@ void AudioClipBase::timerCallback()
+@@ -2544,8 +2652,10 @@ void AudioClipBase::timerCallback()
      }
  
      // Proxy file exists — restart playback to use it
@@ -99,7 +251,7 @@ index 5cd2c92..8d132ec 100644
  
      Selectable::changed();
      edit.restartPlayback();
-@@ -2573,6 +2618,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
+@@ -2573,6 +2683,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
  
                  if (! getWarpTime())
                  {
@@ -108,10 +260,10 @@ index 5cd2c92..8d132ec 100644
                          updateSourceFile();
                      else
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-index 45733ad..665d6d3 100644
+index 45733ad..78fdff7 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-@@ -168,6 +168,16 @@ public:
+@@ -168,6 +168,28 @@ public:
  
      /** If a render is in progress, this will cancel it. */
      void cancelCurrentRender();
@@ -120,6 +272,18 @@ index 45733ad..665d6d3 100644
 +    */
 +    bool bindPreparedSourceRender (const AudioFile&);
 +    bool bindPreparedElasticProxy (const AudioFile&);
++    bool pinPreparedSourceDestination (const AudioFile&);
++    struct PreparedSourceTask
++    {
++        enum State { queued, rendering, ready, failed, cancelled };
++        std::atomic<bool> cancel { false };
++        std::atomic<float> progress { 0.0f };
++        std::atomic<State> state { queued };
++    };
++    /** Compile immutable native render data on the message thread, then run it in the
++        existing proxy pool. The ticket has no Edit/Clip pointer and cancels cooperatively. */
++    std::shared_ptr<PreparedSourceTask> prepareAuditionSource (const AudioFile& destination);
++
 +
 +    /** Message-thread source render status; a readable partial WAV is not completion. */
 +    bool isSourceRenderPending() const noexcept     { return renderJob != nullptr; }
@@ -128,7 +292,16 @@ index 45733ad..665d6d3 100644
  
      //==============================================================================
      /** Sets the gain of the clip in dB. */
-@@ -763,6 +773,7 @@ protected:
+@@ -524,7 +546,7 @@ public:
+         TimeStretcher::ElastiqueProOptions options;
+ 
+         /** Renders this audio segment list to an AudioFile. */
+-        bool render (Engine&, const AudioFile&, AudioFileWriter&, juce::ThreadPoolJob* const&, std::atomic<float>& progress) const;
++        bool render (Engine&, const AudioFile&, AudioFileWriter&, juce::ThreadPoolJob* const&, std::atomic<float>& progress, const std::function<bool()>& cancelled = {}) const;
+ 
+     private:
+         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProxyRenderingInfo)
+@@ -763,6 +785,7 @@ protected:
  
      RenderManager::Job::Ptr renderJob;
      AudioFile lastProxy;

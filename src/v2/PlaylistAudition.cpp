@@ -3,6 +3,7 @@
 #include "MasterAnalysis.h"
 #include "OutputProbe.h"
 #include "SelectionOutputGate.h"
+#include "PreparedAudioSources.h"
 namespace ndaw::v2
 {
 Json bindPreparedAudioSources(te::Edit&, te::Edit&);
@@ -13,6 +14,9 @@ struct PlaylistAuditionState
     std::set<std::string> included;
     std::shared_ptr<SelectionOutputGateState> gate;
     Json receipt;
+    std::shared_ptr<PreparedAudioSources> preparation;
+    double preparationStarted = 0;
+    bool preparing = false;
     double returnPosition = 0, progressTime = 0;
     uint64_t revision = 0, firstFrame = 0, progressFrame = 0, deviceGeneration = 0;
     bool looping = false;
@@ -30,9 +34,16 @@ Json Commands::playlistAuditionStatus() const
 {
     checkThread();
     if (!playlistAuditionState)
-        return lastPlaylistAudition;
+    {
+        auto result = lastPlaylistAudition;
+        result["cleanup_pending"] = preparedAudioRetirement && preparedAudioRetirement->activeTasks() != 0;
+        return result;
+    }
     auto result = playlistAuditionState->receipt;
     result["active"] = true;
+    result["active_preparation_tasks"] =
+        (playlistAuditionState->preparation ? playlistAuditionState->preparation->activeOwnedTasks() : 0) +
+        (preparedAudioRetirement ? preparedAudioRetirement->activeTasks() : 0);
     result["processed_blocks"] = playlistAuditionState->gate->processedBlocks.load(std::memory_order_acquire);
     result["end_reached"] = playlistAuditionState->gate->reached.load(std::memory_order_acquire);
     result["output_end_device_sample"] = playlistAuditionState->gate->outputEndSample.load(std::memory_order_relaxed);
@@ -50,6 +61,7 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
         return playlistAuditionStatus();
     }
     require(action == "start", "unknown Playlist audition action");
+    const auto requestStarted = juce::Time::getMillisecondCounterHiRes();
     require(!audioConfigurationPending() && recordingCapture.is_null() && capture.is_null() &&
                 parameterCapture.is_null(),
             "finish device preparation, recording or parameter writing before audition");
@@ -115,7 +127,8 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
     options.numAudioTracks = 0;
     state->sources = te::Edit::createEdit(std::move(options));
     require(state->sources != nullptr, "native audition source snapshot could not be prepared");
-    state->receipt["prepared_sources"] = bindPreparedAudioSources(*edit, *state->sources);
+    state->preparationStarted = requestStarted;
+    state->preparation = std::make_shared<PreparedAudioSources>(*edit, *state->sources);
     for (auto* source : te::getAudioTracks(*state->sources))
         state->clips[source->itemID.toString().toStdString()] = source->getClips();
     stopPlaylistAudition();
@@ -132,13 +145,47 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
     state->progressFrame = 0;
     state->deviceGeneration = audioDeviceGeneration();
     state->progressTime = juce::Time::getMillisecondCounterHiRes();
-    state->receipt["state"] = "requested";
+    state->preparing = !state->preparation->ready();
+    state->receipt["state"] = state->preparing ? "preparing" : "requested";
+    state->receipt["preparation_timeout_ms"] = 30000;
+    state->receipt["preparation_max_owned_concurrency"] = 2;
     state->receipt["base_revision"] = revision;
     state->receipt["session_token"] = state->session;
     state->receipt["tail_policy"] = "exact audition range; tails outside it are gated";
     playlistAuditionState = state;
+    if (!preparedAudioRetirement)
+        preparedAudioRetirement = std::make_unique<PreparedAudioRetirement>();
+    startTimerHz(20);
+    if (!state->preparing)
+        startPreparedPlaylistAudition();
+    else
+        advancePlaylistAudition();
+    sendChangeMessage();
+    return playlistAuditionStatus();
+}
+void Commands::startPreparedPlaylistAudition()
+{
+    auto state = playlistAuditionState;
+    require(state != nullptr && state->preparation->ready(), "试听来源未就绪");
+    auto& transport = edit->getTransport();
     try
     {
+        // Capture native editor/controller changes before the last revision check,
+        // not after the audition graph has already been installed by the timer.
+        captureNativeStates();
+        if (state->revision != revision || state->session != sessionToken() || audioConfigurationPending() ||
+            state->deviceGeneration != audioDeviceGeneration())
+        {
+            stopPlaylistAudition("project_or_device_changed");
+            return;
+        }
+        state->receipt["prepared_sources"] = bindPreparedAudioSources(*edit, *state->sources);
+        state->receipt["preparation"] = state->preparation->status();
+        state->receipt["preparation_ms"] = juce::Time::getMillisecondCounterHiRes() - state->preparationStarted;
+        state->preparing = false;
+        state->progressTime = juce::Time::getMillisecondCounterHiRes();
+        state->firstFrame = outputProbe ? outputProbe->frames.load(std::memory_order_relaxed) : 0;
+        state->receipt["state"] = "requested";
         ParameterWriteGuard parameterGuard(*this);
         transport.prepareAuditionPlayback(
             tracktion::TimePosition::fromSeconds(state->gate->startSeconds),
@@ -177,7 +224,7 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
             masterAnalysis->prioritizePlayback(true);
         startTimerHz(20);
         sendChangeMessage();
-        return playlistAuditionStatus();
+        return;
     }
     catch (...)
     {
@@ -191,6 +238,12 @@ void Commands::stopPlaylistAudition(const std::string& reason, bool returnPositi
         return;
     auto state = std::move(playlistAuditionState);
     state->gate->muted.store(true, std::memory_order_release);
+    if (state->preparation)
+    {
+        state->receipt["preparation"] = state->preparation->status();
+        if (preparedAudioRetirement)
+            preparedAudioRetirement->retire(std::move(state->preparation));
+    }
     lastPlaylistAudition = state->receipt;
     lastPlaylistAudition["active"] = false;
     lastPlaylistAudition["state"] = reason == "completed"   ? "completed"
@@ -233,6 +286,32 @@ void Commands::advancePlaylistAudition()
         state->deviceGeneration != audioDeviceGeneration())
     {
         stopPlaylistAudition("project_or_device_changed");
+        return;
+    }
+    if (state->preparing)
+    {
+        if (now - state->preparationStarted >= 30000.)
+        {
+            stopPlaylistAudition("source_preparation_timeout");
+            return;
+        }
+        try
+        {
+            const auto retired = preparedAudioRetirement->activeTasks();
+            state->preparation->advance(retired >= 2 ? 0 : 2 - retired);
+            state->receipt["preparation"] = state->preparation->status();
+            if (state->preparation->ready())
+                startPreparedPlaylistAudition();
+        }
+        catch (const std::exception& error)
+        {
+            if (playlistAuditionState)
+            {
+                state->receipt["error"] = error.what();
+                stopPlaylistAudition("source_preparation_failed");
+            }
+        }
+        sendChangeMessage();
         return;
     }
     const auto blocks = state->gate->processedBlocks.load(std::memory_order_acquire);

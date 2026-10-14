@@ -1,0 +1,17 @@
+diff --git a/modules/tracktion_engine/model/edit/tracktion_Edit.cpp b/modules/tracktion_engine/model/edit/tracktion_Edit.cpp
+index c67b9ef..76d774b 100644
+--- a/modules/tracktion_engine/model/edit/tracktion_Edit.cpp
++++ b/modules/tracktion_engine/model/edit/tracktion_Edit.cpp
+@@ -2726,6 +2726,12 @@ void Edit::cancelAllProxyGeneratorJobs() const
+         {
+             if (auto acb = dynamic_cast<AudioClipBase*> (c))
+             {
++                // Forma's non-playing prepared-source snapshots borrow shared cache
++                // destinations. L1 owns their cancellable tickets, never this Edit.
++                const bool preparedWarp = acb->getWarpTime() && acb->state.getChildWithName ("NDAW_WARP").isValid();
++                const bool preparedWindow = bool (acb->state.getChildWithName ("NDAW_ELASTIC_PROXY")["window"]);
++                if (! shouldPlay() && (preparedWarp || preparedWindow))
++                    continue;
+                 auto af = acb->getPlaybackFile();
+ 
+                 if (apg.isProxyBeingGenerated (af))

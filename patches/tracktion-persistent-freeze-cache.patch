@@ -39,7 +39,7 @@ index 308d717..7cfafd9 100644
              else
                  unFreezeTrack();
 diff --git a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
-index 2b729c5..51376ff 100644
+index 2b729c5..4c15e3d 100644
 --- a/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
 +++ b/modules/tracktion_engine/utilities/tracktion_TemporaryFileManager.cpp
 @@ -308,9 +308,17 @@ static AudioFile getCachedClipFileWithPrefix (const AudioClipBase& clip, const j
@@ -69,7 +69,28 @@ index 2b729c5..51376ff 100644
      return track.edit.getTempDirectory (true)
               .getChildFile (getTrackFreezePrefix() + "0_" + track.itemID.toString() + ".freeze");
  }
-@@ -430,7 +440,7 @@ void TemporaryFileManager::purgeOrphanFreezeAndProxyFiles (Edit& edit)
+@@ -420,6 +430,20 @@ void TemporaryFileManager::purgeOrphanFreezeAndProxyFiles (Edit& edit)
+ 
+         if (itemID.isValid())
+         {
++            // A detached audition Edit can pin a live Edit's complete prepared cache.
++            // Do not purge it while the live Edit itself has no matching active Clip.
++            if (name.startsWith (getClipProxyPrefix()) || name.startsWith (getCompPrefix()))
++            {
++                bool pinned = false;
++                for (auto* active : edit.engine.getActiveEdits().getEdits())
++                    if (active != &edit && active->areAnyClipsUsingFile (AudioFile (edit.engine, entry.getFile())))
++                    {
++                        pinned = true;
++                        break;
++                    }
++                if (pinned)
++                    continue;
++            }
+             if (name.startsWith (getClipProxyPrefix())
+                  || name.startsWith (getCompPrefix()))
+             {
+@@ -430,7 +454,7 @@ void TemporaryFileManager::purgeOrphanFreezeAndProxyFiles (Edit& edit)
                      if (! acb->isUsingFile (AudioFile (edit.engine, entry.getFile())))
                          filesToDelete.add (entry.getFile());
                  }
