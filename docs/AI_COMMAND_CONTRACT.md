@@ -1,3 +1,5 @@
+2026-10-14 P3-WARP-01：`clip.warp {clip:string,enabled:bool,anchors?:[{id:string,source_time_seconds:number,clip_time_samples:integer}],media_hash:string}`，human/local_gui、停止态、单操作Plan；源时间与工程采样分离，2–128锚点、每段时长0.5–2倍、稳定身份/完整源范围/媒体SHA/版本/锁定校验。预览显示新增删除移动及原几何恢复；设置提交不表示后台音频准备完成。缓存失败/源改变/未就绪拒绝消费；幂等、撤销和跨重开历史沿用L1。573默认⌘⌃⌥W与275/277共享提交取消可改键；GUI无Edit旁路。M2/M3工具权限不扩。代码WarpCommands.cpp/WorkspaceWarp.cpp/WarpPanel.h；测试WarpTests.cpp，证据../evidence/P3/summary.md。
+
 2026-10-14：偏好面板子控件焦点也优先通过已注册275/277/571/572命令，实际native peer与物理Cmd Return验证；不新增Agent权限。Scrub运行时查询在缓存命中仍更新，释放事务后绑定实际Undo状态。Stems外部文件在Undo后保留的回执已实体核验。
 
 2026-10-14：应用偏好使用本地L1 preferences/configurePreferences/preferenceHistory控制（message thread）；参数为完整校验的6个字段及独立偏好revision，不纳入Edit Plan/Undo/revision，不对冻结MCP/Agent开放。UI草稿过期/原文件并发修改/写盘失败均不发布成功。Cmd逗号/Return与设置历史571/572可改键；64步历史跨软件重启，工程Undo不改变偏好。P2-PREFERENCES-01，见PREFERENCES_WORKFLOW。

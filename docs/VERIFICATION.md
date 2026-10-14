@@ -1,3 +1,5 @@
+P3-WARP-01（2026-10-14）：Release、本地deep/strict签名通过；最终8套740项/160.54秒，Warp专项144项/21.46秒，0 JUCE assertion。真实48k/44.1k PCM24源→32float处理缓存→实际PCM24输出，非零源偏移、不同分段比例、440/880Hz保音高、声道关系、原UndoRedo/保存重开/重应用、损坏/源变化/OS写盘限制、印刻/Stems/Master消费均验；预算未放宽。SDK15补丁32文件fresh apply/字节核对/reverse通过。实体⌘⌃⌥W、编辑草稿、⌘Return、⌘Z/⌘⇧Z、⌘S已验；最后重开窗口未有回执，CUA持续超时，2秒进程采样显示正常AppKit事件循环，不推断锁屏或界面通过。没有实体试听/硬件延迟/耐久/复杂Warp联动资格；详情见../evidence/P3/summary.md。
+
 2026-10-14更新：桌面恢复可操作。9套1251项185.68秒通过，后续偏好焦点专项44项3.76秒；实体Stems发布/持久UndoRedo/四WAV核验与偏好全进程重启通过。ScrubSelection不是仅锁屏故障，缓存状态及释放后绑定修复后85项通过；额外CUA拖动未有回执，不计物理成功。准确构建/批次/时限和失败见evidence/P2/summary.md。
 
 2026-10-14：偏好专项43/3.08秒通过；10受影响套件1411项分批通过，另外KeyboardSettings焦点和ScrubSelection后段指针未通过，Mac明确锁定，实机未执行。Recovery控件按实际启用/单次通知等待后31项通过；Scrub持久Undo/Redo核心检查已验，但不以部分检查冒充整套通过。Release/本地签名、14 SDK补丁审计通过；源码4cbdbe9/a049253，日志和完整数字见evidence/P2/summary.md。
