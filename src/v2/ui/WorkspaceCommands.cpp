@@ -927,6 +927,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
                     (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
                     (id != 276 && stemsPanel && stemsPanel->isVisible() && (id == 277 || stemsPanel->canApply())) ||
+                    (id != 276 && preferencesPanel && preferencesPanel->isVisible() &&
+                     (id == 277 || preferencesPanel->canApply())) ||
                     (id != 276 && sidechainPanel && sidechainPanel->isVisible() &&
                      (id == 277 || sidechainPanel->canApply())) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
@@ -1008,6 +1010,15 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 570)
     {
         invoke([&] { showPreferences(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && preferencesPanel && preferencesPanel->isVisible())
+    {
+        if (id == 275)
+            preferencesPanel->execute();
+        else
+            preferencesPanel->setVisible(false);
+        commandManager.commandStatusChanged();
         return true;
     }
     if ((id == 571 || id == 572) && preferencesPanel && preferencesPanel->isVisible())

@@ -161,6 +161,17 @@ int main(int argc, char** argv)
                  "native preference Redo key restores persisted runtime value");
             check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)) && !panel->isVisible(),
                   "Escape closes native preference draft");
+            key(w, 570);
+            auto* height = dynamic_cast<juce::ComboBox*>(find(w, "preferences.height"));
+            auto* grid = dynamic_cast<juce::ComboBox*>(find(w, "preferences.grid"));
+            height->setSelectedId(96, juce::dontSendNotification);
+            grid->setSelectedId(1, juce::dontSendNotification);
+            key(w, 275);
+            wait([&] { return c.preferences()["values"]["default_track_height"] == 96; },
+                 "Cmd Return saves native minimum height and eighth-beat grid");
+            key(w, 571);
+            check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)),
+                  "Escape cancels after preference history operation");
             c.preferenceHistory(false, c.preferences()["revision"]);
             const auto oldSession = c.sessionToken();
             c.recoveryControl("session.recovery.start", Json::object());
@@ -213,6 +224,21 @@ int main(int argc, char** argv)
                       Commands::mediaHash(prefs.getChildFile("Forma-Preferences.json")) == hash,
                   "failed write retains actual file checksum values and history");
 #endif
+        }
+        const auto capped = root.getChildFile("bounded");
+        {
+            Commands c(false, std::make_unique<Storage>(capped));
+            for (int i = 0; i < 70; ++i)
+                update(c, {{"default_track_height", i % 2 ? 144 : 216}});
+            check(c.preferences()["retained_steps"] == 64, "actual saved preference journal trims to fixed 64 steps");
+            const auto revision = c.querySummary()["revision"];
+            c.preferenceHistory(false, c.preferences()["revision"]);
+            check(c.querySummary()["revision"] == revision, "bounded preference Undo never advances Edit revision");
+        }
+        {
+            Commands c(false, std::make_unique<Storage>(capped));
+            check(c.preferences()["retained_steps"] == 64 && c.preferences()["can_redo"],
+                  "bounded journal and redo branch survive restart");
         }
         const auto bad = root.getChildFile("corrupt");
         bad.createDirectory();

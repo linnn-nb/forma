@@ -359,7 +359,16 @@ int main(int argc, char** argv)
                       c.query()["time_selection"] == savedFacts["time_selection"] &&
                       c.query()["position_samples"] == savedFacts["position_samples"],
                   "new engine reloads saved global preference and exact native Edit insertion/range");
-            rejects([&] { c.undo(); }, "saved cursor state does not manufacture persisted Undo history");
+            const auto reopened = c.query();
+            check(reopened["can_undo"], "saved real cursor edits retain verified persistent Undo history");
+            check(c.undo()["state"] == "undone", "reopened native engineering Undo has an actual receipt");
+            check(c.scrubPreferences()["insertion_follows"], "engineering Undo leaves global Scrub preference intact");
+            check(c.redo()["state"] == "committed", "reopened native Redo has an actual receipt");
+            const auto redone = c.query();
+            check(redone["tracks"] == reopened["tracks"] &&
+                      redone["position_samples"] == reopened["position_samples"] &&
+                      redone["time_selection"] == reopened["time_selection"],
+                  "persistent Redo restores exact clips routes cursor and selection");
         }
         {
             Commands c(false, std::make_unique<Storage>(folder.getChildFile("silence-prefs")));

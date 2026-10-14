@@ -96,6 +96,10 @@ public:
     {
         return bound.is_object() && bound.value("can_undo", false);
     }
+    bool canApply() const
+    {
+        return bound.is_object() && bound.value("available", false);
+    }
     bool canRedo() const
     {
         return bound.is_object() && bound.value("can_redo", false);
