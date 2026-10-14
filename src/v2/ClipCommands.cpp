@@ -190,7 +190,11 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
                                                           1e-7)))};
     return {
         {"path", f.getFullPathName().toStdString()},
-        {"source_reference", c.state[te::IDs::source].toString().toStdString()},
+        // Persistence canonicalises file references without changing their
+        // target. Query the same resolved identity on either side of a reopen;
+        // keep unresolved native references intact in the Edit and its journal.
+        {"source_reference",
+         f == juce::File{} ? c.state[te::IDs::source].toString().toStdString() : f.getFullPathName().toStdString()},
         {"source_present", f.existsAsFile()},
         {"warp", warp},
         {"elastic", elastic_state::facts(c.state)},

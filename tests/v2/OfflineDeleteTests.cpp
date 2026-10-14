@@ -417,7 +417,8 @@ int main(int argc, char** argv)
                 check(c.sessionToken() != oldSession && clips(c, t).size() == 1,
                       "offline original opens with actual source object retained");
                 const auto offline = clips(c, t)[0];
-                check(!offline["source_present"].get<bool>() &&
+                check(!offline["source_present"].get<bool>() && offline["source_reference"].is_string() &&
+                          offline["source_reference"] == file.getFullPathName().toStdString() &&
                           offline["source_reference"] == before["source_reference"],
                       "query explicitly distinguishes missing file from retained native source reference");
                 check(offline["plugins"] == before["plugins"],

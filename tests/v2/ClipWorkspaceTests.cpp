@@ -229,8 +229,15 @@ int main(int argc, char** argv)
             click(external, "history.redo", [&] { return external.query()["tracks"] == editedBatch; });
             const auto retained = dir.getChildFile("au-batch-gain-final.tracktionedit");
             ec.save(retained);
+            const auto previousSession = ec.sessionToken();
             external.openSession(retained);
-            check(external.query()["tracks"] == editedBatch &&
+            check(ec.sessionToken() != previousSession, "AU fixture actually reopens as a new native session");
+            const auto reopened = external.query();
+            if (reopened["tracks"] != editedBatch)
+                std::cerr << "AU_REOPEN_DIFF " << Json::diff(editedBatch, reopened["tracks"]).dump(2) << std::endl;
+            if (reopened["history"]["undo"]["commands"] != Json::array({"track.gain"}))
+                std::cerr << "AU_REOPEN_HISTORY " << reopened["history"].dump(2) << std::endl;
+            check(reopened["tracks"] == editedBatch &&
                       external.query()["history"]["undo"]["commands"] == Json::array({"track.gain"}),
                   "AU, imported media and separate fader value reopen with the actual persisted Undo transaction");
         }

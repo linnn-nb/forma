@@ -578,8 +578,16 @@ int main(int argc, char** argv)
         const auto rippleDemo = folder.getChildFile("shuffle-demo.tracktionedit");
         owner.save(rippleDemo);
         const auto rippleSavedView = w.queryView();
+        const auto rippleSession = owner.sessionToken();
         w.openSession(rippleDemo);
         pump();
+        check(owner.sessionToken() != rippleSession, "Shuffle fixture actually reopens a new native session");
+        const auto rippleReopened = persistentClipState(clipsOn("Shuffle lane"));
+        if (rippleReopened != persistentClipState(rippleAfter))
+            std::cerr << "SHUFFLE_REOPEN_DIFF "
+                      << Json::diff(persistentClipState(rippleAfter), rippleReopened).dump(2) << std::endl;
+        if (w.queryView() != rippleSavedView)
+            std::cerr << "SHUFFLE_VIEW_DIFF " << Json::diff(rippleSavedView, w.queryView()).dump(2) << std::endl;
         check(w.queryView() == rippleSavedView && w.queryView()["edit_mode"] == "shuffle" &&
                   persistentClipState(clipsOn("Shuffle lane")) == persistentClipState(rippleAfter),
               "Shuffle mode and actual ripple edit survive Tracktion save/reopen");

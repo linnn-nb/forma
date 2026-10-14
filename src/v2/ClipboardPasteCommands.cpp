@@ -125,7 +125,10 @@ Json Commands::clipboardPasteOperations(const Json& request) const
                             append("clip.move",
                                    {{"clip", right}, {"position_samples", first + length}, {"media_hash", hash}});
                     }
-                    append("clip.delete", {{"clip", middle}, {"media_hash", hash}});
+                    Json deletion{{"clip", middle}, {"media_hash", hash}};
+                    if (audioClip(middle))
+                        normaliseClipDeletion(deletion);
+                    append("clip.delete", std::move(deletion));
                 }
     }
     for (const auto& entry : buffer->manifest["entries"])

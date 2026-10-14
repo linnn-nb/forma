@@ -403,6 +403,12 @@ void nativeCopyInteraction(const juce::File& root, const juce::File& media)
     const int64_t expectedStart = c.realtimeState().position + 45600 - c.clipboard()["start_samples"].get<int64_t>();
     check(w.uiCommands().invokeDirectly(editCommand::paste, false), "bulk replacement opens the actual native preview");
     auto* accept = dynamic_cast<juce::Button*>(find(w, "plan.accept"));
+    if (!accept || !accept->isVisible() || !accept->isEnabled() || !c.crossfades(t).empty())
+    {
+        auto* status = dynamic_cast<juce::Label*>(find(w, "workspace.status"));
+        std::cerr << "PASTE_PREVIEW_FAILURE " << (status ? status->getText().toStdString() : "missing status")
+                  << " accept=" << (accept != nullptr) << " pairs=" << c.crossfades(t).dump() << std::endl;
+    }
     check(accept && accept->isVisible() && accept->isEnabled() && c.crossfades(t).empty(),
           "preview accept is visible and target stays unchanged before acceptance");
     accept->triggerClick();
