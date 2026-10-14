@@ -1,0 +1,383 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+#include "Workspace.h"
+#include "ui/WorkspaceWindow.h"
+#include <iostream>
+#include <csignal>
+#if JUCE_MAC || JUCE_LINUX
+#include <sys/resource.h>
+#endif
+using namespace ndaw::v2;
+namespace ndaw::v2
+{
+class AudioDeviceTestAccess
+{
+public:
+    static Commands& commands(ndaw::desktop::Workspace& w)
+    {
+        return w.commands;
+    }
+    static void select(ndaw::desktop::Workspace& w, const std::string& id)
+    {
+        w.refresh();
+        w.selectAudioClip(id);
+    }
+    static te::WaveAudioClip& clip(Commands& c, const std::string& id)
+    {
+        return *c.audioClip(id);
+    }
+};
+} // namespace ndaw::v2
+namespace
+{
+int checks = 0, serial = 0;
+Json measures = Json::array();
+void check(bool b, const char* why)
+{
+    if (!b)
+        throw std::runtime_error(why);
+    ++checks;
+    std::cout << "PASS " << why << std::endl;
+}
+void pump()
+{
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+}
+template <class F> void wait(F f, const char* why)
+{
+    const auto end = juce::Time::getMillisecondCounterHiRes() + 5000;
+    while (!f() && juce::Time::getMillisecondCounterHiRes() < end)
+        pump();
+    check(f(), why);
+}
+template <class F> void rejects(F f, const char* why)
+{
+    bool bad = false;
+    try
+    {
+        f();
+    }
+    catch (const std::exception&)
+    {
+        bad = true;
+    }
+    check(bad, why);
+}
+Json op(const char* cmd, Json args)
+{
+    return {{"command", cmd}, {"args", args}};
+}
+Json run(Commands& c, const char* cmd, Json a)
+{
+    return c.commit(c.makePlan("human", Json::array({op(cmd, a)})));
+}
+struct Storage : te::PropertyStorage
+{
+    juce::File folder;
+    Storage(juce::File f) : te::PropertyStorage("forma-warp-tests"), folder(f)
+    {
+        f.createDirectory();
+    }
+    juce::File getAppPrefsFolder() override
+    {
+        return folder;
+    }
+};
+Json clip(Commands& c)
+{
+    return c.query()["tracks"][0]["clips"][0];
+}
+void source(const juce::File& file, int sr)
+{
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::OutputStream> stream(file.createOutputStream());
+    auto writer = wav.createWriterFor(
+        stream, juce::AudioFormatWriterOptions{}.withSampleRate(sr).withNumChannels(2).withBitsPerSample(24));
+    check(bool(writer), "real source writer opens");
+    juce::AudioBuffer<float> pcm(2, sr * 4);
+    for (int n = 0; n < pcm.getNumSamples(); ++n)
+    {
+        const double t = double(n) / sr;
+        const double frequency = t < 1.5 ? 440. : 880.;
+        const float v = float(.2 * std::sin(juce::MathConstants<double>::twoPi * frequency * t));
+        pcm.setSample(0, n, v);
+        pcm.setSample(1, n, v * .5f);
+    }
+    check(writer->writeFromAudioSampleBuffer(pcm, 0, pcm.getNumSamples()), "real source PCM writes");
+}
+juce::AudioBuffer<float> render(Commands& c, const juce::File& folder)
+{
+    wait([&] { return !c.playbackPreparation()["busy"].get<bool>(); },
+         "actual source/proxy render is complete within fixed 5 seconds");
+    const auto q = clip(c);
+    const int64_t begin = q["start_samples"], length = q["length_samples"];
+    const auto file = folder.getChildFile("warp-" + juce::String(++serial) + ".wav");
+    const auto r = c.render(file, begin, begin + length);
+    check(r["frames"] == length && r["audio_verified"] && r["render_ms"].get<double>() < 10000,
+          "real Tracktion render meets fixed 10 second budget and verified duration");
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(new juce::FileInputStream(file), true));
+    check(reader && reader->sampleRate == 48000 && reader->numChannels == 2 && reader->lengthInSamples == length,
+          "actual output format and frame count decode");
+    juce::AudioBuffer<float> b(2, int(length));
+    check(reader->read(&b, 0, b.getNumSamples(), 0, true, true), "actual Warp PCM reads");
+    return b;
+}
+double frequency(const juce::AudioBuffer<float>& b, double first, double last)
+{
+    double begin = 0, end = 0;
+    int count = 0;
+    for (int n = int(first * 48000) + 1; n < int(last * 48000); ++n)
+        if (b.getSample(0, n - 1) < 0 && b.getSample(0, n) >= 0)
+        {
+            const double a = b.getSample(0, n - 1), z = b.getSample(0, n), t = n - 1 - a / (z - a);
+            if (count == 0)
+                begin = t;
+            end = t;
+            ++count;
+        }
+    return count > 1 ? (count - 1) * 48000 / (end - begin) : 0;
+}
+void measure(const juce::AudioBuffer<float>& b, int sr)
+{
+    const double lo = frequency(b, .15, .55), hi = frequency(b, 1., 2.);
+    check(std::abs(lo - 440) < 1 && std::abs(hi - 880) < 1,
+          "nonlinear segments preserve both pitches within fixed 1 Hz");
+    double boundary = -1;
+    for (double t = .45; t < 1.; t += .005)
+        if (frequency(b, t - .02, t + .02) > 700)
+        {
+            boundary = t;
+            break;
+        }
+    check(std::abs(boundary - .7) < .05,
+          "actual frequency boundary follows Warp anchor within predeclared 50 ms signal window");
+    double stereo = 0;
+    for (int n = 0; n < b.getNumSamples(); ++n)
+        stereo = std::max(stereo, std::abs(double(b.getSample(1, n) - .5f * b.getSample(0, n))));
+    check(stereo < 2e-7, "native nonlinear stereo processing preserves channel relationship");
+    measures.push_back({{"source_sample_rate", sr},
+                        {"first_frequency_hz", lo},
+                        {"second_frequency_hz", hi},
+                        {"boundary_seconds", boundary},
+                        {"expected_boundary_seconds", .7},
+                        {"boundary_budget_seconds", .05},
+                        {"stereo_max_error", stereo}});
+}
+juce::Component* find(juce::Component& c, const std::string& id)
+{
+    if (c.getComponentID().toStdString() == id)
+        return &c;
+    for (auto* x : c.getChildren())
+        if (auto* r = find(*x, id))
+            return r;
+    return nullptr;
+}
+Json anchors(Commands& c, const std::string& id)
+{
+    auto a = c.warpClip(id)["anchors"];
+    a.back()["clip_time_samples"] = 105600; // 2.2 s: source 1 s -> .7 s, then 1 s -> 1.5 s.
+    a.insert(a.begin() + 1,
+             Json{{"id", "warp:" + id + ":middle"}, {"source_time_seconds", 1.5}, {"clip_time_samples", 33600}});
+    return a;
+}
+#if JUCE_MAC || JUCE_LINUX
+struct WriteLimit
+{
+    struct rlimit original{};
+    void (*handler)(int) = nullptr;
+    WriteLimit()
+    {
+        if (getrlimit(RLIMIT_FSIZE, &original) != 0)
+            throw std::runtime_error("getrlimit failed");
+        auto limited = original;
+        limited.rlim_cur = 1024;
+        handler = std::signal(SIGXFSZ, SIG_IGN);
+        if (setrlimit(RLIMIT_FSIZE, &limited) != 0)
+            throw std::runtime_error("setrlimit failed");
+    }
+    ~WriteLimit()
+    {
+        setrlimit(RLIMIT_FSIZE, &original);
+        std::signal(SIGXFSZ, handler);
+    }
+};
+#endif
+} // namespace
+int main(int argc, char** argv)
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    const auto root = juce::File::getCurrentWorkingDirectory().getChildFile("P3-Warp-" + juce::Uuid().toString());
+    root.createDirectory();
+    try
+    {
+        ndaw::desktop::WorkspaceWindow window(
+            std::make_unique<ndaw::desktop::Workspace>(false, std::make_unique<Storage>(root.getChildFile("prefs"))));
+        auto& w = window.editor();
+        window.showReady();
+        auto& c = AudioDeviceTestAccess::commands(w);
+        Json lastReceipt;
+        for (int sr : {48000, 44100})
+        {
+            const auto media = root.getChildFile("source-" + juce::String(sr) + ".wav");
+            source(media, sr);
+            const auto hash = Commands::mediaHash(media);
+            if (sr == 48000)
+                run(c, "track.create", {{"name", "Warp source"}, {"ref", "$t"}});
+            else
+                run(c, "clip.delete", {{"clip", clip(c)["id"]}});
+            const std::string tid = c.query()["tracks"][0]["id"];
+            run(c, "clip.import",
+                {{"track", tid}, {"path", media.getFullPathName().toStdString()}, {"position_samples", 0}});
+            const std::string id = clip(c)["id"];
+            run(c, "clip.trim", {{"clip", id}, {"start_samples", 24000}, {"end_samples", 120000}});
+            const auto original = clip(c), before = c.querySummary();
+            auto a = anchors(c, id);
+            auto p =
+                c.makePlan("human", Json::array({op("clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", a}})}));
+            const auto preview = c.preview(p);
+            check(clip(c) == original && c.querySummary() == before &&
+                      preview["clip_changes"][0]["after"]["length_samples"] == 105600,
+                  "read-only query and structured Warp preview never mutate native Edit");
+            check(!preview["clip_changes"][0]["audio_verified"].get<bool>(),
+                  "plan does not pretend unheard audio is verified");
+            lastReceipt = c.commit(p);
+            check(c.commit(p)["plan_id"] == lastReceipt["plan_id"], "Warp plan retries are idempotent");
+            auto result = clip(c);
+            check(result["warp"]["anchors"] == a && result["start_samples"] == 24000 &&
+                      result["source_offset_seconds"] == .5,
+                  "actual native anchors preserve nonzero source offset, timeline start and stable IDs");
+            auto pcm = render(c, root);
+            measure(pcm, sr);
+            const auto saved = root.getChildFile("Warp-" + juce::String(sr) + ".tracktionedit");
+            c.save(saved);
+            w.openSession(saved);
+            check(clip(c) == result, "save/reopen preserves actual nonlinear native map");
+            auto again = render(c, root);
+            double error = 0;
+            for (int ch = 0; ch < 2; ++ch)
+                for (int n = 0; n < pcm.getNumSamples(); ++n)
+                    error = std::max(error, std::abs(double(pcm.getSample(ch, n) - again.getSample(ch, n))));
+            check(error <= 2e-7, "reopened actual PCM equals Warp output within fixed tolerance");
+            c.undo();
+            check(clip(c) == original, "persistent original Undo restores complete pre-Warp geometry");
+            c.redo();
+            check(clip(c) == result, "persistent Redo restores stable Warp anchors");
+            render(c, root);
+            const auto clear = run(c, "clip.warp", {{"clip", id}, {"enabled", false}});
+            check(!clip(c)["warp"]["enabled"].get<bool>() && clip(c)["length_samples"] == 96000,
+                  "clear restores actual pre-Warp duration without deleting original media");
+            render(c, root);
+            c.undo(clear["plan_id"]);
+            check(clip(c) == result, "Undo clear restores nonlinear map as one transaction");
+            c.undo();
+            check(clip(c) == original, "Undo initial Warp after clear Undo restores original native state");
+            for (auto bad : a)
+            {
+                auto invalid = a;
+                invalid[1] = bad;
+                if (invalid == a)
+                    continue;
+                rejects([&] { run(c, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", invalid}}); },
+                        "invalid identity/order is rejected atomically");
+            }
+            auto bad = a;
+            bad[1]["clip_time_samples"] = 1;
+            rejects([&] { run(c, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", bad}}); },
+                    "unbounded segment ratio rejects before native mutation");
+            check(clip(c) == original, "invalid Warp preserves exact original state");
+            auto stale =
+                c.makePlan("human", Json::array({op("clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", a}})}));
+            const auto manual = run(c, "track.gain", {{"track", tid}, {"db", -3.}});
+            rejects([&] { c.commit(stale); }, "human edit prevents stale Warp overwriting project");
+            c.undo(manual["plan_id"]);
+            check(Commands::mediaHash(media) == hash, "original file PCM hash never changes");
+            if (sr == 48000)
+            {
+                AudioDeviceTestAccess::select(w, id);
+                auto* keys = w.uiCommands().getKeyMappings();
+                const auto warpKey = keys->getKeyPressesAssignedToCommand(573);
+                check(!warpKey.isEmpty() && keys->keyPressed(warpKey[0], &w),
+                      "registered Warp shortcut opens native panel");
+                pump();
+                auto* panel = find(w, "clip.warp.panel");
+                auto* add = dynamic_cast<juce::Button*>(find(w, "clip.warp.add_point"));
+                check(panel && panel->isVisible() && add,
+                      "actual native Warp editor exposes real wave and anchor controls");
+                add->triggerClick();
+                auto* choice = dynamic_cast<juce::ComboBox*>(find(w, "clip.warp.anchors"));
+                wait([&] { return choice->getNumItems() == 3; }, "native asynchronous add produces a draft anchor");
+                check(clip(c) == original, "interactive anchor draft does not bypass command layer");
+                auto* sourceField = dynamic_cast<juce::TextEditor*>(find(w, "clip.warp.source_seconds"));
+                auto* out = dynamic_cast<juce::TextEditor*>(find(w, "clip.warp.position_ms"));
+                sourceField->setText("1.5", false);
+                out->setText("700", false);
+                auto* set = dynamic_cast<juce::Button*>(find(w, "clip.warp.set_point"));
+                set->triggerClick();
+                wait([&] { return choice->getItemText(1).contains("700.000"); },
+                     "actual native draft input changes middle anchor");
+                choice->setSelectedId(3, juce::sendNotificationSync);
+                out->setText("2200", false);
+                set->triggerClick();
+                wait([&] { return choice->getItemText(2).contains("2200.000"); },
+                     "actual native tail anchor edits full duration");
+                out->grabKeyboardFocus();
+                wait([&] { return window.getPeer()->isFocused() && out->hasKeyboardFocus(false); },
+                     "real peer and numeric field own focus before accept");
+                check(window.getPeer()->handleKeyPress(keys->getKeyPressesAssignedToCommand(275)[0]),
+                      "native peer routes actual registered Warp accept");
+                wait([&] { return !panel->isVisible() && clip(c)["warp"]["enabled"].get<bool>(); },
+                     "Warp panel obtains real L1 commit receipt");
+                measure(render(c, root), sr);
+                c.save(root.getChildFile("Warp-GUI.tracktionedit"));
+                c.undo();
+                check(clip(c) == original, "GUI Warp is one actual Undo transaction");
+#if JUCE_MAC || JUCE_LINUX
+                // A new map gets a new real destination; avoid accepting a previous successful cache.
+                auto failing = a;
+                failing[1]["clip_time_samples"] = 38400;
+                {
+                    WriteLimit limit;
+                    run(c, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", failing}});
+                    wait(
+                        [&]
+                        {
+                            const auto state = c.playbackPreparation();
+                            return !state["items"].empty() && state["items"][0]["state"] == "failed";
+                        },
+                        "real OS output limit delivers native Warp failure instead of source-copy success");
+                    check(!AudioDeviceTestAccess::clip(c, id).getCurrentSourceFile().existsAsFile(),
+                          "failed partial Warp destination is removed, original is not substituted");
+                    rejects([&] { c.play(); }, "failed Warp cannot be reported as successful playback");
+                    rejects([&] { c.render(root.getChildFile("must-not-exist.wav"), 24000, 120000); },
+                            "failed Warp refuses export before creating output");
+                }
+                c.undo();
+                check(clip(c) == original, "Undo failed preparation retains original usable engineering state");
+                check(!root.getChildFile("must-not-exist.wav").existsAsFile(),
+                      "failed export produces no false success file");
+#endif
+            }
+        }
+        Json result{{"result", "passed"},
+                    {"checks", checks},
+                    {"measurements", measures},
+                    {"fixture", root.getFullPathName().toStdString()},
+                    {"scope", "native SoundTouch nonlinear audio, source/clip mapping, real WAV, history, native peer "
+                              "and OS fault; subjective listening separate"}};
+        if (argc > 1)
+            juce::File(argv[1]).replaceWithText(result.dump(2));
+        std::cout << result.dump(2) << std::endl;
+        return 0;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "FAIL after " << checks << " checks: " << e.what() << std::endl;
+        if (argc > 1)
+            juce::File(argv[1]).replaceWithText(Json{{"result", "failed"},
+                                                     {"checks", checks},
+                                                     {"error", e.what()},
+                                                     {"fixture", root.getFullPathName().toStdString()}}
+                                                    .dump(2));
+        return 1;
+    }
+}

@@ -67,6 +67,8 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(p, 280);
         addMenuCommand(p, 538);
         addMenuCommand(p, 539);
+        addMenuCommand(p, 560);
+        addMenuCommand(p, 573);
         for (int id : {500, 501, 502, 503, 504})
             addMenuCommand(p, id);
         addMenuCommand(p, 218);
@@ -317,6 +319,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return commandManager.invokeDirectly(277, false);
     if (elasticPanel && elasticPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
+    if (warpPanel && warpPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (playlistPanel && playlistPanel->isVisible() && key == juce::KeyPress::escapeKey)
     {
         playlistPanel->execute(524);
@@ -470,6 +474,8 @@ void Workspace::resized()
         crossfadePanel->setBounds(getLocalBounds());
     if (elasticPanel)
         elasticPanel->setBounds(getLocalBounds());
+    if (warpPanel)
+        warpPanel->setBounds(getLocalBounds());
     if (sidechainPanel)
         sidechainPanel->setBounds(getLocalBounds());
     if (printPanel)

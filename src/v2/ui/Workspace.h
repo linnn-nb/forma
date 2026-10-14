@@ -25,6 +25,7 @@
 #include "FadesPanel.h"
 #include "CrossfadePanel.h"
 #include "ElasticPanel.h"
+#include "WarpPanel.h"
 #include "SidechainPanel.h"
 #include "PrintPanel.h"
 #include "StemsPanel.h"
@@ -178,6 +179,7 @@ private:
     void showFades();
     void showCrossfade(Json target = nullptr);
     void showElastic();
+    void showWarp();
     void showSidechain();
     void showPrint(const std::string&);
     void showFreezeRelink();
@@ -186,6 +188,7 @@ private:
     std::unique_ptr<FadesPanel> fadesPanel;
     std::unique_ptr<CrossfadePanel> crossfadePanel;
     std::unique_ptr<ElasticPanel> elasticPanel;
+    std::unique_ptr<WarpPanel> warpPanel;
     std::unique_ptr<SidechainPanel> sidechainPanel;
     std::unique_ptr<PrintPanel> printPanel;
     void showRollSettings();

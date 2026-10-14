@@ -192,6 +192,8 @@ const std::vector<Entry>& entries()
         {280, "淡化 / 交叉淡化…", "编辑", 'f', cmd},
         {538, "交叉淡化…", "编辑", 'f', cmd | juce::ModifierKeys::ctrlModifier},
         {560, "弹力音频 · SoundTouch…", "编辑", 't', cmd | juce::ModifierKeys::altModifier},
+        {573, "Warp锚点 · SoundTouch…", "编辑", 'w',
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {561, "所选效果器旁链…", "混音", 's', cmd | juce::ModifierKeys::altModifier},
         {562, "冻结 / 解冻所选轨道…", "轨道", 'f',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
@@ -892,7 +894,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                               : (!selected.empty() && !commands.crossfades(selected).empty()));
             if (id == 538)
                 active = !mix && !facts.value("playing", false) && !selected.empty();
-            if (id == 560)
+            if (id == 560 || id == 573)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
             if (id == 566)
                 active = !facts.value("playing", false) && pending.is_null() &&
@@ -936,6 +938,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
+                    (id != 276 && warpPanel && warpPanel->isVisible()) ||
                     (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
                     (id != 276 && stemsPanel && stemsPanel->isVisible() && (id == 277 || stemsPanel->canApply())) ||
                     (id != 276 && preferencesPanel && preferencesPanel->isVisible() &&
@@ -1244,6 +1247,19 @@ bool Workspace::perform(const InvocationInfo& invocation)
             sidechainPanel->execute();
         else
             sidechainPanel->setVisible(false);
+        return true;
+    }
+    if (id == 573)
+    {
+        invoke([&] { showWarp(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && warpPanel && warpPanel->isVisible())
+    {
+        if (id == 275)
+            warpPanel->execute();
+        else
+            warpPanel->setVisible(false);
         return true;
     }
     if (id == 560)

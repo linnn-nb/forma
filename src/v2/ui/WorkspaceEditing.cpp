@@ -622,6 +622,8 @@ void Workspace::showSidechain()
 }
 void Workspace::showElastic()
 {
+    if (warpPanel)
+        warpPanel->setVisible(false);
     if (sidechainPanel)
         sidechainPanel->setVisible(false);
     auto clip = selectedAudioClip();
