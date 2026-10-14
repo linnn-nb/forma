@@ -201,6 +201,8 @@ int main(int argc, char** argv)
               "verified freeze preview has actual artifact and leaves Edit unchanged");
         auto frozenReceipt = c.commit(plan);
         const auto frozen = track(c, id);
+        check(c.exportRequest(false)["end_samples"] == 144000 && c.query()["length_samples"] == 144000,
+              "whole session export includes verified freeze cache tail beyond original clip length");
         check(frozen["print"]["frozen"] && frozen["plugins"][0]["frozen"] && frozen["clips"] == original["clips"] &&
                   frozen["output"] == original["output"],
               "native freeze marks real prefix and preserves clips and main output");
@@ -241,6 +243,8 @@ int main(int argc, char** argv)
         wait([&] { return track(c, id)["print"]["frozen"].get<bool>(); },
              "reopened keyboard Redo restores actual native frozen track");
         auto unfreeze = run(c, "track.unfreeze", {{"track", id}});
+        check(c.exportRequest(false)["end_samples"] == 96000,
+              "unfreeze restores original session export duration without retaining stale cache tail");
         check(!track(c, id)["print"]["frozen"].get<bool>(), "unfreeze is an actual reversible engineering command");
         c.undo(unfreeze["plan_id"]);
         check(track(c, id)["print"]["frozen"], "Undo unfreeze returns to original cached processing");

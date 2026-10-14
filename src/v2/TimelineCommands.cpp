@@ -347,7 +347,7 @@ Json Commands::exportRequest(bool selection) const
     auto summary = querySummary();
     require(!summary["playing"].get<bool>() && summary["object_pages_available"].get<bool>(),
             "stop playback, recording and parameter editing before preparing export");
-    int64_t first = 0, last = std::llround(edit->getLength().inSeconds() * timelineRate);
+    int64_t first = 0, last = sessionLengthSamples();
     if (selection)
     {
         auto range = timelineRange();

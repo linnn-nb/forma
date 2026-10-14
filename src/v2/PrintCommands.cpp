@@ -61,6 +61,15 @@ void Commands::registerPrintCommands(Json& r)
                 "opaque L1 verified track-pre-fader artifact; file creation is retained, not erased by Undo"}}}});
     }
 }
+int64_t Commands::sessionLengthSamples() const
+{
+    checkThread();
+    int64_t length = std::llround(edit->getLength().inSeconds() * timelineRate);
+    for (auto* t : te::getAudioTracks(*edit))
+        if (t->isFrozen(te::Track::individualFreeze))
+            length = std::max(length, int64_t(t->state.getProperty("ndaw_freeze_frames", juce::int64(0))));
+    return length;
+}
 Json Commands::printQuery(te::AudioTrack& t) const
 {
     auto backup = t.state.getChildWithName("NDAW_BOUNCE");

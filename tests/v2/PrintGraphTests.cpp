@@ -11,6 +11,7 @@ namespace
 {
 int checks = 0, serial = 0;
 Json measurements = Json::array();
+double reverbTailRms = 0;
 constexpr int frames = 144000;
 void check(bool b, const char* why)
 {
@@ -88,10 +89,10 @@ void wave(const juce::File& f, bool key = false)
     }
     check(writer->writeFromAudioSampleBuffer(b, 0, 96000), "controlled original PCM writes");
 }
-juce::AudioBuffer<float> render(Commands& c, const juce::File& root, const char* name)
+juce::AudioBuffer<float> render(Commands& c, const juce::File& root, const char* name, bool wholeSession = false)
 {
     const auto f = root.getChildFile("mix-" + juce::String(++serial) + ".wav");
-    const auto r = c.render(f, 0, frames);
+    const auto r = wholeSession ? c.renderRequest(f, c.exportRequest(false)) : c.render(f, 0, frames);
     check(r["frames"] == frames && r["render_ms"].get<double>() < 10000 && r["audio_verified"],
           "native graph render meets fixed frames and ten second budget");
     juce::WavAudioFormat wav;
@@ -162,6 +163,8 @@ void routed(const juce::File& root, const juce::File& source)
     const auto s = named(c, "Source"), bus = named(c, "Bus"), pre = named(c, "Pre");
     const auto original = track(c, s);
     const auto baseline = render(c, root, "routed source / PRE POST baseline");
+    reverbTailRms = baseline.getRMSLevel(0, 96000, 48000);
+    check(reverbTailRms > .0001, "actual native reverb produces nonzero tail beyond the original two-second clips");
     auto freeze = print(c, s, "freeze", root);
     check(track(c, s)["sends"] == original["sends"] && track(c, s)["output"] == original["output"],
           "freeze preserves actual PRE POST sends and direct Aux output");
@@ -183,7 +186,8 @@ void routed(const juce::File& root, const juce::File& source)
     {
         const auto before = render(c, root, "Aux before print");
         auto f = print(c, target, "freeze", root);
-        same(before, render(c, root, "Aux frozen"), "Aux cache replaces actual inputs and preserves full mix");
+        same(before, render(c, root, "Aux frozen", target == pre),
+             "Aux cache and bound whole-session export preserve full mix including actual tail");
         c.undo(f["plan_id"]);
         auto b = print(c, target, "bounce", root);
         same(before, render(c, root, "Aux bounced"), "Aux Bounce avoids adding upstream inputs twice");
@@ -373,6 +377,7 @@ int main(int argc, char** argv)
             {"result", "passed"},
             {"checks", checks},
             {"fixture", root.getFullPathName().toStdString()},
+            {"reverb_tail_rms_2_to_3_seconds", reverbTailRms},
             {"renders", measurements},
             {"scope", "actual native MIDI/FourOsc, Aux, direct/PRE/POST and compressor-sidechain render, cancellation "
                       "and real OS file fault; physical devices and third party instrument separate"}};

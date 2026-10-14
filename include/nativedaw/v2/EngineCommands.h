@@ -242,6 +242,7 @@ private:
     std::unique_ptr<TrackPrint> trackPrint;
     static void registerPrintCommands(Json&);
     Json printQuery(te::AudioTrack&) const;
+    int64_t sessionLengthSamples() const;
     Json printChange(const std::string&, const Json&) const;
     void executePrint(const std::string&, const Json&, Json&);
     void validateFrozenEditing(const Json&) const;

@@ -589,10 +589,7 @@ const Json& Commands::queryFacts() const
         tracks.back().update(hierarchyQuery(*t));
         tracks.back()["print"] = printQuery(*t);
     }
-    int64_t sessionLength = std::llround(edit->getLength().inSeconds() * timelineRate);
-    for (const auto& t : tracks)
-        if (t.contains("print") && t["print"]["frozen"].get<bool>())
-            sessionLength = std::max(sessionLength, t["print"]["frames"].get<int64_t>());
+    const auto sessionLength = sessionLengthSamples();
     const auto historyEntry = [&](size_t index) -> Json
     {
         const auto& id = history.at(index);
