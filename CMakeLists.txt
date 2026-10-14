@@ -1174,3 +1174,9 @@ target_sources(ndaw_offline_delete_tests PRIVATE tests/v2/OfflineDeleteTests.cpp
 target_link_libraries(ndaw_offline_delete_tests PRIVATE ndaw_ui)
 add_test(NAME forma_offline_delete COMMAND ndaw_offline_delete_tests "${CMAKE_BINARY_DIR}/p3-offline-delete-tests.json")
 set_tests_properties(forma_offline_delete PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_grabber_tests PRODUCT_NAME "ndaw_grabber_tests")
+target_sources(ndaw_grabber_tests PRIVATE tests/v2/GrabberTests.cpp)
+target_link_libraries(ndaw_grabber_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_grabber COMMAND ndaw_grabber_tests "${CMAKE_BINARY_DIR}/p3-grabber-tests.json")
+set_tests_properties(forma_native_grabber PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
