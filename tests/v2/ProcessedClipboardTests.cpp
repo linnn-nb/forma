@@ -13,10 +13,6 @@ public:
     {
         w.refresh();
     }
-    static void select(ndaw::desktop::Workspace& w, const std::string& id)
-    {
-        w.selectAudioClip(id);
-    }
     static std::string selectedTrack(ndaw::desktop::Workspace& w)
     {
         return w.selected;
@@ -227,6 +223,22 @@ void pasted(const juce::AudioBuffer<float>& base, const juce::AudioBuffer<float>
     std::cout << "TRACE paste PCM error=" << error << std::endl;
     check(error <= 2e-6, "actual paste preserves cropped full-input DSP and fade phase at every internal sample");
 }
+void shuffled(const juce::AudioBuffer<float>& base, const juce::AudioBuffer<float>& actual, int64_t low, int64_t high,
+              int64_t point)
+{
+    const int64_t length = high - low;
+    double error = 0;
+    for (int ch = 0; ch < 2; ++ch)
+        for (int n = 256; n < base.getNumSamples() - 256; ++n)
+        {
+            const int64_t source = n < point ? n : n < point + length ? low + n - point : n - length;
+            const double expected = source >= 0 && source < base.getNumSamples() ? base.getSample(ch, int(source)) : 0.;
+            error = std::max(error, std::abs(double(actual.getSample(ch, n)) - expected));
+        }
+    maxError = std::max(maxError, error);
+    std::cout << "TRACE shuffle PCM error=" << error << std::endl;
+    check(error <= 2e-6, "Shuffle paste preserves actual cropped audio and full processed suffix phase");
+}
 void select(ndaw::desktop::Workspace& w, Commands& c, const std::string& t, int64_t low, int64_t high)
 {
     run(c, "session.range.set", {{"start_samples", low}, {"end_samples", high}});
@@ -338,6 +350,13 @@ int main(int argc, char** argv)
                 c.undo();
                 check(trackClips(c, t) == before, "one replacement Undo restores source and actual plugin instances");
 
+                const int64_t point = start + 18000;
+                c.commit(c.makeClipboardPastePlan(buffer["id"], Json::array({t}), point, point, "shuffle"));
+                check(trackClips(c, t).size() == 3,
+                      "Shuffle inserts copied window between two processed source pieces");
+                shuffled(base, render(c, folder, 0, 480000), low, high, point);
+                c.undo();
+                check(trackClips(c, t) == before, "one Shuffle Undo restores original source geometry and processors");
                 auto plan =
                     c.makeClipboardPastePlan(buffer["id"], Json::array({d}), 240000, 240000 + high - low, "replace");
                 check(!c.preview(plan).is_null(), "partial processed paste produces actual inspectable preview");
