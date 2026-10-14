@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 namespace ndaw::v2
 {
+void validateWarpEdit(te::Edit&);
 namespace
 {
 void require(bool v, const char* why)
@@ -14,6 +15,7 @@ constexpr double rate = 48000.;
 Json Commands::playbackPreparation() const
 {
     checkThread();
+    validateWarpEdit(*edit);
     Json items = Json::array();
     for (auto* t : te::getAudioTracks(*edit))
         for (auto* piece : t->getClips())

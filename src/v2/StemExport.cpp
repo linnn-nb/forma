@@ -20,6 +20,7 @@
 #endif
 namespace ndaw::v2
 {
+Json bindPreparedWarpSources(te::Edit&, te::Edit&);
 namespace
 {
 void require(bool b, const char* why)
@@ -418,6 +419,8 @@ void StemExport::beginNext()
                     "副本外部插件未实际载入");
     }
     next->sourceRefs = sourceFiles(*next->edit);
+    for (const auto& source : bindPreparedWarpSources(*owner.edit, *next->edit))
+        next->sourceRefs.push_back(source);
     for (auto* t : te::getAudioTracks(*next->edit))
         for (auto* clip : t->getClips())
             if (auto* wave = dynamic_cast<te::WaveAudioClip*>(clip); wave && next->inputs.size() < 64)

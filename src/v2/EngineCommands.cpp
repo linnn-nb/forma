@@ -1960,6 +1960,7 @@ void Commands::open(const juce::File& source)
 }
 void validatePlaylists(te::Edit&);
 void validateCrossfades(te::Edit&);
+void validateWarpEdit(te::Edit&);
 Json readStemExportState(juce::ValueTree);
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
@@ -1974,6 +1975,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
     validatePlaylists(*candidate);
+    validateWarpEdit(*candidate);
     validateCrossfades(*candidate);
     sidechain_graph::validateStored(*candidate);
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));

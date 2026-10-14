@@ -11,6 +11,7 @@
 #endif
 namespace ndaw::v2
 {
+Json bindPreparedWarpSources(te::Edit&, te::Edit&);
 namespace
 {
 void require(bool b, const char* why)
@@ -350,6 +351,7 @@ Json TrackPrint::prepare(const Json& args)
     options.editFileRetriever = [editFile] { return editFile; };
     work->edit = te::Edit::createEdit(std::move(options));
     require(bool(work->edit), "印刻工程副本创建失败");
+    const auto warpSources = bindPreparedWarpSources(*owner.edit, *work->edit);
     work->binding = {{"render_id", renderID},           {"action", args["action"]},
                      {"track", args["track"]},          {"session_token", args["session_token"]},
                      {"base_revision", owner.revision}, {"frames", end},
@@ -358,6 +360,8 @@ Json TrackPrint::prepare(const Json& args)
     // Bind the printed audio to the actual source graph, independently of its media hashes.
     const auto chain = captured.first.toXmlString().toStdString();
     work->binding["processing_chain_hash"] = juce::SHA256(chain.data(), chain.size()).toHexString().toStdString();
+    for (const auto& source : warpSources)
+        work->binding["sources"].push_back(source);
     isolate(*work->edit, args["track"]);
     work->renderStatus = std::make_unique<te::Edit::ScopedRenderStatus>(*work->edit, false);
     te::Renderer::Parameters p(*work->edit);

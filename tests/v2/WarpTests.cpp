@@ -43,9 +43,9 @@ void pump()
 {
     juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
 }
-template <class F> void wait(F f, const char* why)
+template <class F> void wait(F f, const char* why, double limitMs = 5000)
 {
-    const auto end = juce::Time::getMillisecondCounterHiRes() + 5000;
+    const auto end = juce::Time::getMillisecondCounterHiRes() + limitMs;
     while (!f() && juce::Time::getMillisecondCounterHiRes() < end)
         pump();
     check(f(), why);
@@ -249,8 +249,137 @@ int main(int argc, char** argv)
                   "actual native anchors preserve nonzero source offset, timeline start and stable IDs");
             auto pcm = render(c, root);
             measure(pcm, sr);
+            check(AudioDeviceTestAccess::clip(c, id).getPlaybackFile().getInfo().bitsPerSample == 32,
+                  "processing cache is actually float32 independently of original PCM24");
+            c.undo(lastReceipt["plan_id"]);
+            check(clip(c) == original, "fresh native Undo restores original before any project reopen");
+            lastReceipt = run(c, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", a}});
+            check(clip(c)["warp"]["anchors"] == a, "reapplying after fresh Undo attaches actual native anchor tree");
+            render(c, root);
+            juce::MemoryBlock originalBytes;
+            check(media.loadFileAsData(originalBytes), "controlled source snapshot reads before corruption injection");
+            auto changedBytes = originalBytes;
+            static_cast<char*>(changedBytes.getData())[changedBytes.getSize() - 1] ^= 1;
+            check(media.replaceWithData(changedBytes.getData(), changedBytes.getSize()),
+                  "controlled source bytes actually change");
+            check(c.playbackPreparation()["items"][0]["state"] == "failed",
+                  "changed source hash invalidates Warp even with a readable old cache");
+            rejects([&] { c.play(); }, "stale Warp media cannot start playback");
+            check(media.replaceWithData(originalBytes.getData(), originalBytes.getSize()) &&
+                      Commands::mediaHash(media) == hash,
+                  "controlled source injection restores original bytes exactly");
+            if (sr == 48000)
+            {
+                c.prepareTrackPrint({{"track", tid},
+                                     {"action", "freeze"},
+                                     {"end_samples", 129600},
+                                     {"directory", root.getFullPathName().toStdString()},
+                                     {"session_token", c.sessionToken()},
+                                     {"base_revision", c.querySummary()["revision"]}});
+                wait([&] { return !c.trackPrintStatus()["busy"].get<bool>(); },
+                     "native forRendering Warp print finishes within existing 10 second budget", 10000);
+                const auto print = c.trackPrintStatus()["receipt"];
+                check(print["state"] == "ready" && print["audio_verified"],
+                      "detached native print verifies actual Warp audio");
+                juce::WavAudioFormat wav;
+                std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(
+                    new juce::FileInputStream(juce::File(juce::String(print["path"].get<std::string>()))), true));
+                check(reader && reader->lengthInSamples == 129600, "native Warp print has complete timeline range");
+                juce::AudioBuffer<float> printed(2, 105600);
+                check(reader->read(&printed, 0, 105600, 24000, true, true), "actual printed Warp selection decodes");
+                double maxError = 0;
+                for (int ch = 0; ch < 2; ++ch)
+                    for (int n = 0; n < printed.getNumSamples(); ++n)
+                        maxError =
+                            std::max(maxError, std::abs(double(printed.getSample(ch, n) - pcm.getSample(ch, n))));
+                check(maxError <= 2e-6, "forRendering print keeps nonlinear Warp within existing PCM print tolerance");
+                c.cancelTrackPrint();
+                c.analysisControl("master", {{"session_token", c.sessionToken()},
+                                             {"base_revision", c.querySummary()["revision"]},
+                                             {"start_samples", 24000},
+                                             {"end_samples", 129600},
+                                             {"request_key", "warp-master"}});
+                wait([&] { return !c.analysisStatus()["busy"].get<bool>(); },
+                     "actual Master analysis of Warp completes within 10 seconds", 10000);
+                const auto analysed = c.analysisStatus()["receipt"];
+                double energy = 0;
+                for (int ch = 0; ch < 2; ++ch)
+                    for (int n = 0; n < pcm.getNumSamples(); ++n)
+                        energy += double(pcm.getSample(ch, n)) * pcm.getSample(ch, n);
+                const auto rms = std::sqrt(energy / (pcm.getNumSamples() * 2));
+                check(analysed["state"] == "completed" && std::abs(analysed["rms"].get<double>() - rms) <= 1e-6,
+                      "Master measurement sees actual warped processing rather than original source");
+                c.prepareStemExport({{"targets", Json::array({tid})},
+                                     {"include_master", true},
+                                     {"mode", "session"},
+                                     {"start_samples", 0},
+                                     {"end_samples", 129600},
+                                     {"tail_samples", 0},
+                                     {"directory", root.getFullPathName().toStdString()},
+                                     {"batch_name", "Warp-Stems"},
+                                     {"session_token", c.sessionToken()},
+                                     {"base_revision", c.querySummary()["revision"]}});
+                wait([&] { return !c.stemExportStatus()["busy"].get<bool>(); },
+                     "actual Warp track/Master Stems finish within existing 20 seconds", 20000);
+                const auto stems = c.stemExportStatus();
+                check(stems["state"] == "ready", "Stems have genuine prepared Warp files");
+                check(stems["receipt"]["files"].size() == 2, "actual Warp track and Master batch both exist");
+                const auto publication =
+                    run(c, "export.stems.publish", {{"batch_id", stems["receipt"]["binding"]["batch_id"]}});
+                for (const auto& item : stems["receipt"]["files"])
+                {
+                    std::unique_ptr<juce::AudioFormatReader> stemReader(wav.createReaderFor(
+                        new juce::FileInputStream(root.getChildFile("Warp-Stems")
+                                                      .getChildFile(juce::String(item["filename"].get<std::string>()))),
+                        true));
+                    check(stemReader && stemReader->lengthInSamples == 129600,
+                          "Warp Stem is an actual complete stereo WAV");
+                    juce::AudioBuffer<float> stemPCM(2, 105600);
+                    check(stemReader->read(&stemPCM, 0, 105600, 24000, true, true), "Warp Stem actually decodes");
+                    double error = 0;
+                    for (int ch = 0; ch < 2; ++ch)
+                        for (int n = 0; n < 105600; ++n)
+                            error = std::max(error, std::abs(double(stemPCM.getSample(ch, n) - pcm.getSample(ch, n))));
+                    check(error <= 2e-6, "Warp Stems preserve nonlinear processed PCM within existing print tolerance");
+                }
+                c.undo(publication["plan_id"]);
+                c.cancelStemExport();
+            }
             const auto saved = root.getChildFile("Warp-" + juce::String(sr) + ".tracktionedit");
             c.save(saved);
+            if (sr == 48000)
+            {
+                auto xml = juce::parseXML(saved);
+                auto damaged = juce::ValueTree::fromXml(*xml);
+                auto meta = damaged.getChildWithName("NATIVEDAW");
+                meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);
+                auto alter = [&](auto&& self, juce::ValueTree tree) -> bool
+                {
+                    if (tree.hasType("NDAW_WARP"))
+                    {
+                        tree.setProperty("render_hash", "incorrect", nullptr);
+                        return true;
+                    }
+                    for (auto child : tree)
+                        if (self(self, child))
+                            return true;
+                    return false;
+                };
+                check(alter(alter, damaged), "corruption fixture changes real serialized Warp descriptor");
+                const auto invalid = root.getChildFile("Damaged-Warp.tracktionedit");
+                check(invalid.replaceWithText(damaged.toXmlString()), "actual damaged input file writes");
+                bool refusedWarp = false;
+                try
+                {
+                    c.open(invalid);
+                }
+                catch (const std::exception& e)
+                {
+                    refusedWarp = std::string(e.what()).find("Warp") != std::string::npos;
+                }
+                check(refusedWarp && clip(c) == result,
+                      "specific Warp corruption validation preserves current project before adoption");
+            }
             w.openSession(saved);
             check(clip(c) == result, "save/reopen preserves actual nonlinear native map");
             auto again = render(c, root);
@@ -321,6 +450,7 @@ int main(int argc, char** argv)
                 set->triggerClick();
                 wait([&] { return choice->getItemText(2).contains("2200.000"); },
                      "actual native tail anchor edits full duration");
+                window.toFront(true);
                 out->grabKeyboardFocus();
                 wait([&] { return window.getPeer()->isFocused() && out->hasKeyboardFocus(false); },
                      "real peer and numeric field own focus before accept");

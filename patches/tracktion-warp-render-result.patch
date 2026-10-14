@@ -1,19 +1,76 @@
+diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
+index 5cd2c92..bc20ec9 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
++++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
+@@ -1292,6 +1292,11 @@ void AudioClipBase::setTimeStretchMode (TimeStretcher::Mode mode)
+ 
+ WarpTimeManager& AudioClipBase::getWarpTimeManager() const
+ {
++    // Undo may remove the entire WARPTIME tree. A cached manager must never edit
++    // that detached tree when the user applies Warp again.
++    if (warpTimeManager != nullptr && warpTimeManager->state != state.getChildWithName (IDs::WARPTIME))
++        warpTimeManager = nullptr;
++
+     if (warpTimeManager == nullptr)
+     {
+         CRASH_TRACER
+@@ -2487,6 +2492,15 @@ void AudioClipBase::cancelCurrentRender()
+     if (renderJob != nullptr)
+         renderJob->cancelJob();
+ }
++bool AudioClipBase::bindPreparedSourceRender (const AudioFile& source)
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (edit.shouldPlay() || ! getWarpTime()
++         || source.engine != &edit.engine || ! source.isValid() || source.getInfo().bitsPerSample != 32)
++        return false;
++    setCurrentSourceFile (source.getFile());
++    return true;
++}
+ 
+ void AudioClipBase::timerCallback()
+ {
+@@ -2573,6 +2587,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
+ 
+                 if (! getWarpTime())
+                 {
++                    cancelCurrentRender();
+                     if (shouldAttemptRender())
+                         updateSourceFile();
+                     else
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-index 45733ad..4a11f7a 100644
+index 45733ad..46ce981 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-@@ -169,6 +169,11 @@ public:
+@@ -168,6 +168,15 @@ public:
+ 
      /** If a render is in progress, this will cancel it. */
      void cancelCurrentRender();
- 
++    /** Bind a validated source render in a detached, playback-disabled offline Edit.
++        Does not change the original media reference or bake native pitch processing.
++    */
++    bool bindPreparedSourceRender (const AudioFile&);
++
 +    /** Message-thread source render status; a readable partial WAV is not completion. */
 +    bool isSourceRenderPending() const noexcept     { return renderJob != nullptr; }
 +    bool hasSourceRenderFailed() const noexcept     { return lastRenderJobFailed; }
 +    float getSourceRenderProgress() const noexcept  { return renderJob != nullptr ? renderJob->getCurrentTaskProgress() : 0.0f; }
-+
+ 
      //==============================================================================
      /** Sets the gain of the clip in dB. */
-     void setGainDB (float dB);
+diff --git a/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp b/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp
+index 7c3a193..17c7d53 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp
++++ b/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp
+@@ -581,7 +581,7 @@ WarpTimeManager::Ptr WarpTimeFactory::getWarpTimeManager (const Clip& clip)
+         const juce::ScopedLock sl (warpTimeLock);
+ 
+         for (auto c : warpTimeManagers)
+-            if (c->clip == &clip)
++            if (c->clip == &clip && c->state == clip.state.getChildWithName (IDs::WARPTIME))
+                 return c;
+     }
+ 
 diff --git a/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h b/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h
 index 956e6cc..083f993 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_WarpTimeRenderJob.h

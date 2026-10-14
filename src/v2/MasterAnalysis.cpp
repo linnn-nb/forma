@@ -15,6 +15,7 @@
 
 namespace ndaw::v2
 {
+Json bindPreparedWarpSources(te::Edit&, te::Edit&);
 namespace
 {
 void require(bool ok, const char* why)
@@ -1101,6 +1102,7 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
             "resolve native plugin state before analysis");
     if (!clipTap)
     {
+        require(!owner.playbackPreparation()["busy"].get<bool>(), "Warp/伸缩音频未准备好，分析未开始");
         owner.validateExternalRuntime();
         owner.validateSidechainRuntime();
     }
@@ -1183,6 +1185,13 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
     preparationSpan = now();
     work->snapshot = te::Edit::createEdit(std::move(options));
     require(work->snapshot != nullptr, "analysis snapshot creation failed");
+    if (!clipTap)
+        for (auto source : bindPreparedWarpSources(*owner.edit, *work->snapshot))
+        {
+            source["clip_references"] = Json::array({Json{{"clip_id", source["clip"]}}});
+            source["kind"] = "prepared_warp_source";
+            work->sources.push_back(std::move(source));
+        }
     work->preparation["edit_create"] = now() - preparationSpan;
     preparationSpan = now();
     if (clipTap)

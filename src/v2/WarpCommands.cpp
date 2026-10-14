@@ -19,7 +19,130 @@ Json point(const std::string& id, double source, int64_t output)
 {
     return {{"id", id}, {"source_time_seconds", source}, {"clip_time_samples", output}};
 }
+std::string renderHash(const Json& anchors, const std::string& media)
+{
+    Json mapping = Json::array();
+    for (const auto& anchor : anchors)
+        mapping.push_back(Json::array({anchor["source_time_seconds"], anchor["clip_time_samples"]}));
+    const auto descriptor = Json{
+        {"algorithm", "SoundTouch 2.1pre / Better / Warp float32 v1"},
+        {"media_hash", media},
+        {"mapping", mapping}}.dump();
+    return juce::SHA256(descriptor.data(), descriptor.size()).toHexString().toStdString();
+}
 } // namespace
+void validateWarpEdit(te::Edit& edit)
+{
+    for (auto* t : te::getAudioTracks(edit))
+        for (auto* clip : t->getClips())
+            if (auto* c = dynamic_cast<te::WaveAudioClip*>(clip); c && c->getWarpTime())
+            {
+                const auto provenance = c->state.getChildWithName("NDAW_WARP");
+                const auto state = c->state.getChildWithName(te::IDs::WARPTIME);
+                const auto markers = state.getChildWithName(te::IDs::WARPMARKERS);
+                require(provenance.isValid() && int(provenance["schema"]) == 1 && markers.getNumChildren() >= 2,
+                        "Warp来源或原生锚点缺失，工程未采用");
+                const double first = provenance["source_start_seconds"], last = provenance["source_end_seconds"],
+                             fileEnd = provenance["source_file_length_seconds"],
+                             originalLength = provenance["original_time_length_seconds"],
+                             originalSpeed = provenance["original_speed_ratio"],
+                             originalPitch = provenance["original_pitch"];
+                require(std::isfinite(first) && std::isfinite(last) && std::isfinite(fileEnd) && first >= 0 &&
+                            first < last && last <= fileEnd && c->getSpeedRatio() == 1. &&
+                            c->getPosition().getOffset().inSeconds() == first && std::isfinite(originalLength) &&
+                            originalLength > 0 && std::isfinite(originalSpeed) && originalSpeed > 0 &&
+                            std::isfinite(originalPitch),
+                        "Warp源区间或片段映射损坏");
+                Json anchors = Json::array();
+                std::set<std::string> ids;
+                double previousSource = -1, previousWarp = -1;
+                for (auto m : markers)
+                {
+                    require(m.hasType(te::IDs::WARPMARKER), "Warp包含未知锚点节点");
+                    const double source = m[te::IDs::sourceTime], warp = m[te::IDs::warpTime];
+                    const auto id = m["ndaw_id"].toString().toStdString();
+                    require(std::isfinite(source) && std::isfinite(warp) && source > previousSource &&
+                                warp > previousWarp && source <= fileEnd && id.starts_with(prefix(*c)) &&
+                                ids.insert(id).second,
+                            "Warp锚点顺序、位置或ID损坏");
+                    previousSource = source;
+                    previousWarp = warp;
+                    if (bool(m["ndaw_clip_anchor"]))
+                    {
+                        const auto sample = std::llround((warp - first) * rate);
+                        require(source >= first && source <= last && warp == first + sample / rate,
+                                "Warp锚点越出源区间或采样网格");
+                        anchors.push_back(point(id, source, sample));
+                    }
+                }
+                require(
+                    anchors.size() >= 2 && anchors.size() <= 128 && anchors.front()["id"] == prefix(*c) + "start" &&
+                        anchors.back()["id"] == prefix(*c) + "end" && anchors.front()["source_time_seconds"] == first &&
+                        anchors.back()["source_time_seconds"] == last && anchors.front()["clip_time_samples"] == 0 &&
+                        anchors.back()["clip_time_samples"] ==
+                            std::llround(c->getPosition().getLength().inSeconds() * rate),
+                    "Warp端点与实际片段不一致");
+                require(markers.getNumChildren() ==
+                                int(anchors.size()) + (first > 0 ? 1 : 0) + (last < fileEnd ? 1 : 0) &&
+                            double(markers.getChild(0)[te::IDs::sourceTime]) == 0. &&
+                            double(markers.getChild(0)[te::IDs::warpTime]) == 0.,
+                        "Warp完整源映射缺失或有隐藏锚点");
+                for (size_t i = 1; i < anchors.size(); ++i)
+                {
+                    const auto delta = anchors[i]["clip_time_samples"].get<int64_t>() -
+                                       anchors[i - 1]["clip_time_samples"].get<int64_t>();
+                    const auto ratio = delta / rate /
+                                       (anchors[i]["source_time_seconds"].get<double>() -
+                                        anchors[i - 1]["source_time_seconds"].get<double>());
+                    require(ratio >= .5 && ratio <= 2., "Warp分段速率损坏");
+                }
+                const double end = first + anchors.back()["clip_time_samples"].get<int64_t>() / rate + fileEnd - last;
+                require(double(state[te::IDs::warpEndMarkerTime]) == end && previousSource == fileEnd &&
+                            previousWarp == end,
+                        "Warp全媒体缓存端点损坏");
+                const auto media = provenance["media_hash"].toString().toStdString();
+                require(media.size() == 64 &&
+                            provenance["render_hash"].toString().toStdString() == renderHash(anchors, media),
+                        "Warp处理链指纹与锚点不一致");
+            }
+}
+
+// Offline Edit roles disable source rendering that requires shouldPlay(). Bind the already prepared source render
+// on the message thread; keep original media references and native pitch processing intact.
+Json bindPreparedWarpSources(te::Edit& source, te::Edit& target)
+{
+    require(juce::MessageManager::getInstance()->isThisTheMessageThread(), "Warp副本只在message thread准备");
+    validateWarpEdit(source);
+    validateWarpEdit(target);
+    std::map<std::string, te::WaveAudioClip*> originals;
+    for (auto* t : te::getAudioTracks(source))
+        for (auto* piece : t->getClips())
+            if (auto* c = dynamic_cast<te::WaveAudioClip*>(piece); c && c->getWarpTime())
+                originals[c->itemID.toString().toStdString()] = c;
+    Json refs = Json::array();
+    for (auto* t : te::getAudioTracks(target))
+        for (auto* piece : t->getClips())
+            if (auto* c = dynamic_cast<te::WaveAudioClip*>(piece); c && c->getWarpTime())
+            {
+                const auto id = c->itemID.toString().toStdString();
+                require(originals.contains(id), "Warp副本来源对象缺失");
+                auto& original = *originals.at(id);
+                const auto from = original.state.getChildWithName("NDAW_WARP");
+                const auto to = c->state.getChildWithName("NDAW_WARP");
+                require(from["render_hash"] == to["render_hash"] && !original.isSourceRenderPending() &&
+                            !original.hasSourceRenderFailed(),
+                        "Warp来源版本不一致或未准备好");
+                const te::AudioFile cached(source.engine, original.getCurrentSourceFile());
+                require(cached.isValid() && cached.getInfo().bitsPerSample == 32, "Warp真实float32来源缓存不可读");
+                require(c->bindPreparedSourceRender(cached), "Warp离线副本未绑定真实来源");
+                refs.push_back({{"path", cached.getFile().getFullPathName().toStdString()},
+                                {"bytes", cached.getFile().getSize()},
+                                {"modified_ms", cached.getFile().getLastModificationTime().toMilliseconds()},
+                                {"clip", id},
+                                {"render_hash", to["render_hash"].toString().toStdString()}});
+            }
+    return refs;
+}
 Json Commands::warpFacts(te::WaveAudioClip& c) const
 {
     const auto p = c.getPosition();
@@ -31,7 +154,8 @@ Json Commands::warpFacts(te::WaveAudioClip& c) const
     const double sourceStart =
         enabled ? double(provenance["source_start_seconds"]) : p.getOffset().inSeconds() * c.getSpeedRatio();
     const double sourceEnd = enabled ? double(provenance["source_end_seconds"])
-                                     : sourceStart + p.getLength().inSeconds() * c.getSpeedRatio();
+                                     : std::min(sourceStart + p.getLength().inSeconds() * c.getSpeedRatio(),
+                                                te::AudioFile(edit->engine, c.getOriginalFile()).getLength());
     result["source_start_seconds"] = sourceStart;
     result["source_end_seconds"] = sourceEnd;
     result["length_samples"] = std::llround(p.getLength().inSeconds() * rate);
@@ -138,6 +262,8 @@ Json Commands::warpChange(const Json& a) const
         after["warp"]["enabled"] = true;
         after["warp"]["anchors"] = anchors;
         after["warp"]["length_samples"] = after["length_samples"];
+        after["warp"]["original_media_hash"] = a["media_hash"];
+        after["warp"]["render_hash"] = renderHash(anchors, a["media_hash"]);
     }
     else
     {
@@ -181,7 +307,7 @@ void Commands::executeWarp(const Json& a)
         c.setSpeedRatio(double(provenance["original_speed_ratio"]));
         c.setPitchChange(float(double(provenance["original_pitch"])));
         c.setPosition({{p.getStart(), p.getStart() + tracktion::TimeDuration::fromSeconds(
-                                                         int64_t(provenance["original_length_samples"]) / rate)},
+                                                         double(provenance["original_time_length_seconds"]))},
                        tracktion::TimeDuration::fromSeconds(double(provenance["original_offset_seconds"]))});
     }
     else
@@ -200,19 +326,14 @@ void Commands::executeWarp(const Json& a)
             provenance.setProperty("original_pitch", c.getPitchChange(), nullptr);
             provenance.setProperty("source_start_seconds", facts["source_start_seconds"].get<double>(), nullptr);
             provenance.setProperty("source_end_seconds", facts["source_end_seconds"].get<double>(), nullptr);
+            provenance.setProperty("source_file_length_seconds",
+                                   te::AudioFile(edit->engine, c.getOriginalFile()).getLength(), nullptr);
+            provenance.setProperty("original_time_length_seconds", p.getLength().inSeconds(), nullptr);
             provenance.setProperty("media_hash", juce::String(a["media_hash"].get<std::string>()), nullptr);
             c.state.addChild(provenance, -1, &um);
         }
         auto& manager = c.getWarpTimeManager();
-        Json mapping = Json::array();
-        for (const auto& anchor : a["anchors"])
-            mapping.push_back(Json::array({anchor["source_time_seconds"], anchor["clip_time_samples"]}));
-        const auto descriptor = Json{
-            {"algorithm", "SoundTouch 2.1pre / Better / Warp float32 v1"},
-            {"media_hash", a["media_hash"]},
-            {"mapping", mapping}}.dump();
-        const auto hash = juce::SHA256(descriptor.data(), descriptor.size()).toHexString();
-        provenance.setProperty("render_hash", hash, &um);
+        provenance.setProperty("render_hash", juce::String(facts["render_hash"].get<std::string>()), &um);
         auto markers = manager.state.getChildWithName(te::IDs::WARPMARKERS);
         markers.removeAllChildren(&um);
         const double start = facts["source_start_seconds"], end = facts["source_end_seconds"];
