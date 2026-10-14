@@ -118,3 +118,7 @@ evidence/U/*
 !evidence/U/sample-midi-regression.txt
 
 !evidence/U/new-session-dispatch-tests.json
+
+# New run outputs remain local; milestone summaries carry qualification.
+evidence/U/midi-dock-tests.json
+evidence/U/midi-clipboard-tests.json

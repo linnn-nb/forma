@@ -1,3 +1,5 @@
+2026-10-14 P3 CC：原生控制器曲线与L1单事务已接通，169专项及6套562项主链路通过；实际播放序列/原UndoRedo/保存重开/默认快捷键通过。8套影响检查中采样基准MIDI原始源哈希、修剪源边界仍失败，未建立旧基线，不称完整P3。Warp实体重开800ms→原Undo700ms→Redo已补验。CC原生选择器已选实际文件，最后GUI回执因CUA超时未取得；正常窗口用户确认和2秒进程采样不能替代。详情MIDI_CC_WORKFLOW.md与../evidence/P3/summary.md。
+
 P3-WARP-01（2026-10-14）：Release、本地deep/strict签名通过；最终8套740项/160.54秒，Warp专项144项/21.46秒，0 JUCE assertion。真实48k/44.1k PCM24源→32float处理缓存→实际PCM24输出，非零源偏移、不同分段比例、440/880Hz保音高、声道关系、原UndoRedo/保存重开/重应用、损坏/源变化/OS写盘限制、印刻/Stems/Master消费均验；预算未放宽。SDK15补丁32文件fresh apply/字节核对/reverse通过。实体⌘⌃⌥W、编辑草稿、⌘Return、⌘Z/⌘⇧Z、⌘S已验；最后重开窗口未有回执，CUA持续超时，2秒进程采样显示正常AppKit事件循环，不推断锁屏或界面通过。没有实体试听/硬件延迟/耐久/复杂Warp联动资格；详情见../evidence/P3/summary.md。
 
 2026-10-14更新：桌面恢复可操作。9套1251项185.68秒通过，后续偏好焦点专项44项3.76秒；实体Stems发布/持久UndoRedo/四WAV核验与偏好全进程重启通过。ScrubSelection不是仅锁屏故障，缓存状态及释放后绑定修复后85项通过；额外CUA拖动未有回执，不计物理成功。准确构建/批次/时限和失败见evidence/P2/summary.md。

@@ -1,3 +1,5 @@
+2026-10-14 P3-MIDI-CC-01：`midi.cc.replace {clip,controller,state_hash,points:[{id,source_beat,raw_value}]}`为human/local_gui独立停止事务，0–119/4096点，实际离散MIDI输出；新稳定键及旧事件首次持久化、元数据/低位保留，原生可保存表示SHA校验，后续保持状态纳入Scope，不扩MCP权限。574默认⌘⌃⌥C，共享275提交/277取消，原UndoRedo和重开已测；2套MIDI映射回归未通过，见MIDI_CC_WORKFLOW/VERIFICATION。
+
 2026-10-14 P3-WARP-01：`clip.warp {clip:string,enabled:bool,anchors?:[{id:string,source_time_seconds:number,clip_time_samples:integer}],media_hash:string}`，human/local_gui、停止态、单操作Plan；源时间与工程采样分离，2–128锚点、每段时长0.5–2倍、稳定身份/完整源范围/媒体SHA/版本/锁定校验。预览显示新增删除移动及原几何恢复；设置提交不表示后台音频准备完成。缓存失败/源改变/未就绪拒绝消费；幂等、撤销和跨重开历史沿用L1。573默认⌘⌃⌥W与275/277共享提交取消可改键；GUI无Edit旁路。M2/M3工具权限不扩。代码WarpCommands.cpp/WorkspaceWarp.cpp/WarpPanel.h；测试WarpTests.cpp，证据../evidence/P3/summary.md。
 
 2026-10-14：偏好面板子控件焦点也优先通过已注册275/277/571/572命令，实际native peer与物理Cmd Return验证；不新增Agent权限。Scrub运行时查询在缓存命中仍更新，释放事务后绑定实际Undo状态。Stems外部文件在Undo后保留的回执已实体核验。

@@ -1,3 +1,5 @@
+2026-10-14 P3 CC：原生控制器曲线与L1单事务已接通，169专项及6套562项主链路通过；实际播放序列/原UndoRedo/保存重开/默认快捷键通过。8套影响检查中采样基准MIDI原始源哈希、修剪源边界仍失败，未建立旧基线，不称完整P3。Warp实体重开800ms→原Undo700ms→Redo已补验。CC原生选择器已选实际文件，最后GUI回执因CUA超时未取得；正常窗口用户确认和2秒进程采样不能替代。详情MIDI_CC_WORKFLOW.md与../evidence/P3/summary.md。
+
 2026-10-14 P3：无新增授权或依赖；沿用锁定Tracktion/JUCE/SoundTouch2.1pre LGPL-2.1-or-later。新增Warp结果与离线源绑定审计补丁，总15份/32文件fresh apply/reverse通过，修复失败复制原源报成功和离线消费未处理音频。8套740项通过；本地签名不是Developer ID/公证。实体Warp提交/UndoRedo/保存已通过，最后重开期间CUA持续超时，当前不能取得窗口回执；应用2秒采样正常事件循环，锁屏未建立。MIDI CC/复杂淡化Comp映射、长源哈希/资源预算/听评、旧性能A/耐久/Windows/公证/SBOM仍未验收。
 
 2026-10-14：桌面锁定阻塞已解除，原生打开与Stems/偏好实体主流程可用。SDK14份补丁27文件可重放；SoundTouch原速伸缩与变调继续可用，Warp尚未完成。锁定SDK的WarpTimeRenderJob失败后复制原源并报告成功，P3接入前必须修并用实际写盘故障验证。第三方/长源/并发、多声道/听评/耐久、旧性能与Windows/公证/SBOM仍未通过。

@@ -1,5 +1,7 @@
 # Forma Studio 工程规则
 
+- 2026-10-14 CC：169专项/6套562项通过；采样MIDI原源哈希和修剪源边界2套仍失败，不能称完整P3。先隔离比对fe6f764基线再修，不继续扩大曲线边界矩阵。Warp实体重开/原UndoRedo已补验；CUA按bundle ID能恢复窗口，但CC最后GUI载入又超时，未标通过。源码f92b108/0222683，详情MIDI_CC_WORKFLOW/P3证据。
+
 - 2026-10-14 P3 Warp：SoundTouch非线性锚点经L1/真实WAV/持久历史与离线印刻、Stems、Master消费资格；8套740项、144 Warp专项通过，15份SDK补丁32文件fresh apply/reverse通过。实体默认快捷键/草稿/提交/UndoRedo/保存已验，最后重开界面回执因CUA连续超时未验，不猜锁屏。下一项MIDI CC曲线，兼容淡化/Clip FX/Comp/循环和长源听评仍进BACKLOG。详见docs/WARP_WORKFLOW.md、evidence/P3/summary.md。
 
 - 2026-10-14资格更新：桌面已解锁，Stems发布/保存重开/原UndoRedo和全进程偏好历史实体通过；9套1251项及后续真实焦点44项通过。Scrub缓存命中仍须更新运行态、释放事务刷新Undo绑定；面板子按钮会截获带修饰键Return，需实际native peer/物理复验。下一项P3 Warp→MIDI CC；SDK失败复制原音频报成功须先修。详见evidence/P2/summary。
