@@ -503,6 +503,9 @@ const Json& Commands::queryFacts() const
     {
         factCache["playing"] = runtime.playing;
         factCache["recording"] = runtime.recording;
+        // Scrub lifecycle is runtime state, independent of engineering revision.
+        // A cached idle value makes an EditWindow refresh cancel a new gesture.
+        factCache["scrub"] = scrubStatus();
         factCache["position_samples"] = runtime.position;
         factCache["music"]["bar"] = runtime.bar;
         factCache["music"]["beat"] = runtime.beat;

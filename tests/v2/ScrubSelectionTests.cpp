@@ -430,6 +430,8 @@ int main(int argc, char** argv)
             check(e != nullptr, "real Edit pointer component available");
             const auto p = juce::Point<float>{float(e->coordinates().pixelAt(48000)), float(e->rowY(0) + 56)};
             e->mouseDown(event(*e, p, juce::ModifierKeys::leftButtonModifier));
+            check(c.queryFacts()["scrub"]["busy"],
+                  "cached facts expose actual pending Scrub without engineering revision change");
             ready(c);
             c.scrub("speed", {{"speed", 1.}, {"shuttle", false}});
             player.process(4096);

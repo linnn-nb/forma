@@ -470,9 +470,20 @@ void Workspace::initialiseCommandManager()
             if (action == "begin")
                 message(text("Scrubber 正在读取音频 · 松手或 Escape 取消"));
             else if (action == "end" || action == "cancel")
+            {
                 message(text(action == "end" && receipt.contains("selection_transaction")
                                  ? "Scrub 定位 / 选区已提交 · 可撤销"
                                  : "Scrubber 已停止"));
+                if (action == "end")
+                    refresh(); // Mouse release has finished before the new engineering state is bound.
+                else
+                    juce::MessageManager::callAsync(
+                        [safe = juce::Component::SafePointer<Workspace>(this)]
+                        {
+                            if (safe)
+                                safe->refresh();
+                        }); // Cancellation may originate inside a current bind.
+            }
             return true;
         }
         catch (const std::exception& e)
