@@ -105,7 +105,7 @@ EditWindow& area(Workspace& w)
     check(e != nullptr, "real native Edit timeline exists");
     return *e;
 }
-auto mouse(EditWindow& e, juce::Point<float> p, bool shift = false, bool dragged = false)
+auto mouse(juce::Component& e, juce::Point<float> p, bool shift = false, bool dragged = false)
 {
     const auto now = juce::Time::getCurrentTime();
     return juce::MouseEvent(
@@ -298,6 +298,10 @@ int main(int argc, char** argv)
             const auto view = w.queryView();
             const auto token = c.sessionToken();
             w.openSession(saved);
+            if (all(c) != after)
+                std::cerr << "GRABBER_REOPEN_TRACKS " << Json::diff(after, all(c)).dump(2) << std::endl;
+            if (w.queryView() != view)
+                std::cerr << "GRABBER_REOPEN_VIEW " << Json::diff(view, w.queryView()).dump(2) << std::endl;
             check(c.sessionToken() != token && all(c) == after && w.queryView() == view,
                   "cold native Open restores moved state and stable mixed selection");
             c.undo();
@@ -311,6 +315,28 @@ int main(int argc, char** argv)
             check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)), "Escape cancels actual active clip gesture");
             finish(w, d);
             check(all(c) == before, "mouse release after Escape cannot commit cancelled move");
+            const auto midiAnchorView = w.queryView();
+            const auto midiAnchorFile = root.getChildFile("MIDI-Anchor.tracktionedit");
+            c.save(midiAnchorFile);
+            const auto midiToken = c.sessionToken();
+            w.openSession(midiAnchorFile);
+            check(c.sessionToken() != midiToken && all(c) == before && w.queryView() == midiAnchorView,
+                  "MIDI primary anchor and editor target also survive a real native reopen");
+            auto* caption = dynamic_cast<ClipHeader*>(find(w, "clip.select:" + text(a)));
+            check(caption != nullptr, "actual native clip-name control exists");
+            auto& timeline = area(w);
+            const auto from = caption->getBounds().getCentre().toFloat();
+            const auto to = from + juce::Point<float>(40, 0);
+            const auto captionDelta = std::llround(40 * timeline.coordinates().span / timeline.coordinates().width);
+            caption->mouseDown(mouse(*caption, caption->getLocalPoint(&timeline, from)));
+            caption->mouseDrag(mouse(*caption, caption->getLocalPoint(&timeline, to), false, true));
+            check(all(c) == before && w.queryView()["object_selection"].size() == 3,
+                  "real caption forwards a mixed selection draft without writing Edit");
+            caption->mouseUp(mouse(*caption, caption->getLocalPoint(&timeline, to), false, true));
+            moved(c, before, captionDelta);
+            c.undo();
+            check(all(c) == before, "one caption-drag Undo restores all selected native clips");
+            RecordingTestAccess::refresh(w);
             choose(w, b, true);
             check(w.queryView()["object_selection"].size() == 2,
                   "Shift-click removes one selected object without moving it");
@@ -337,10 +363,10 @@ int main(int argc, char** argv)
             rejects(
                 [&]
                 {
-                    c.review(c.makePlan("human",
-                                        Json::array({op("clip.move", {{"clip", a}, {"position_samples", 72000}}),
-                                                     op("clip.move", {{"clip", b}, {"position_samples", 48000}})})),
-                             limited);
+                    c.review(
+                        c.makePlan("human", Json::array({op("clip.move", {{"clip", a}, {"position_samples", 72000}}),
+                                                         op("clip.move", {{"clip", b}, {"position_samples", 48000}})})),
+                        limited);
                 },
                 "same L1 refuses multi-target move outside actor scope");
             run(c, "group.create",
@@ -361,6 +387,15 @@ int main(int argc, char** argv)
             const auto grouped = all(c);
             d = begin(w, a, -500);
             finish(w, d);
+            if (!(clip(c, b)["start_samples"] == 0 && clip(c, a)["start_samples"] == 24000 &&
+                  clip(c, m)["start_samples"] == 72000))
+            {
+                auto* status = dynamic_cast<juce::Label*>(find(w, "workspace.status"));
+                std::cerr << "HIDDEN_CLAMP_FAILURE " << clip(c, a)["start_samples"] << ","
+                          << clip(c, b)["start_samples"] << "," << clip(c, m)["start_samples"]
+                          << " selection=" << w.queryView()["object_selection"].dump()
+                          << " status=" << (status ? status->getText().toStdString() : "missing") << std::endl;
+            }
             check(clip(c, b)["start_samples"] == 0 && clip(c, a)["start_samples"] == 24000 &&
                       clip(c, m)["start_samples"] == 72000,
                   "hidden earlier Edit-group member constrains the common delta to actual session start");
@@ -402,6 +437,13 @@ int main(int argc, char** argv)
             c.undo();
             check(all(c) == before, "large accepted move has one Undo for all twelve members");
             RecordingTestAccess::refresh(w);
+            const auto cancelled = begin(w, original[0]["id"], 30);
+            finish(w, cancelled);
+            auto* reject = dynamic_cast<juce::Button*>(find(w, "plan.reject"));
+            check(reject && reject->isEnabled() && all(c) == before, "large drag can be rejected before changing Edit");
+            reject->triggerClick();
+            wait([&] { return !reject->isEnabled(); }, "actual asynchronous Reject clears the pending Plan");
+            check(all(c) == before, "reject keeps every original clip unchanged");
             auto* map = w.uiCommands().getKeyMappings();
             const juce::KeyPress custom('g', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
             map->clearAllKeyPresses(editCommand::grabber);
@@ -414,6 +456,16 @@ int main(int argc, char** argv)
             moved(c, before, 480);
             c.undo();
             check(all(c) == before, "Nudge shortcut shares one reversible native multi-target transaction");
+            wait([&] { return !c.uiState()["keymap_xml"].get<std::string>().empty(); },
+                 "custom command key change receives actual persistent UI receipt");
+            const auto keyed = root.getChildFile("Custom-Grabber.tracktionedit");
+            c.save(keyed);
+            const auto oldSession = c.sessionToken();
+            w.openSession(keyed);
+            check(c.sessionToken() != oldSession, "custom shortcut fixture actually reopens a new session");
+            w.uiCommands().invokeDirectly(editCommand::selector, false);
+            check(w.keyPressed(custom) && w.queryView()["edit_tool"] == "grabber",
+                  "custom Grabber key persists across real save and cold command-map restoration");
             check(Commands::mediaHash(file) == hash, "all gestures and history preserve original media bytes");
         }
         Json result{{"result", "passed"},

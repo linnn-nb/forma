@@ -13,6 +13,7 @@
 #include "ScrubGesture.h"
 #include "TimeSelectionGesture.h"
 #include "GroupedClipDraft.h"
+#include "ClipHeader.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -222,7 +223,21 @@ public:
                 live.insert(id);
                 if (!headers.contains(id))
                 {
-                    auto b = std::make_unique<juce::TextButton>();
+                    auto b = std::make_unique<ClipHeader>();
+                    b->pointer = [this](int phase, const juce::MouseEvent& event)
+                    {
+                        const auto local = event.getEventRelativeTo(this);
+                        if (phase == 0)
+                            mouseDown(local);
+                        else if (phase == 1)
+                            mouseDrag(local);
+                        else if (phase == 2)
+                            mouseUp(local);
+                        else if (phase == 3)
+                            mouseDoubleClick(local);
+                        else
+                            mouseMove(local);
+                    };
                     b->setComponentID("clip.select:" + text(id));
                     b->setInterceptsMouseClicks(!ZoomGesture::isTool(editing.tool) && editing.tool != "scrubber",
                                                 false);

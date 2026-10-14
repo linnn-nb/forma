@@ -111,6 +111,14 @@ struct SelectionModel
                     }
             }
         }
+        // The final reference is the user's primary object, not the final
+        // physical track. Preserve that order after validating every reference
+        // against the real Edit, including across save/open and Undo refreshes.
+        Json ordered = Json::array();
+        for (const auto& ref : view["object_selection"])
+            if (objectIDs.contains(ref["id"].get<std::string>()))
+                ordered.push_back(ref);
+        objects = std::move(ordered);
     }
 };
 struct EditingModel

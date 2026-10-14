@@ -759,10 +759,10 @@ void Workspace::refresh()
         const auto& primary = selection.objects.back();
         for (const auto& t : facts["tracks"])
             for (const auto& c : t["clips"])
-                if (c["id"] == primary["id"] && c["kind"] == "audio")
+                if (c["id"] == primary["id"] && (c["kind"] == "audio" || c["kind"] == "midi"))
                 {
                     selected = t["id"];
-                    selectedClip = c["id"];
+                    selectedClip = c["kind"] == "audio" ? c["id"].get<std::string>() : "";
                 }
     }
     auto selectedAudio = selectedAudioClip();

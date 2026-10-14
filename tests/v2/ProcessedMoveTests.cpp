@@ -391,6 +391,31 @@ int main(int argc, char** argv)
                 check((*draggedClip)["start_samples"].get<int64_t>() ==
                           before[0]["start_samples"].get<int64_t>() + dragDelta,
                       "native drag uses the real timeline sample coordinate delta");
+                check(afterDrag.size() == before.size() &&
+                          afterDrag[1]["start_samples"].get<int64_t>() ==
+                              before[1]["start_samples"].get<int64_t>() + dragDelta &&
+                          w.queryView()["object_selection"].size() == 2,
+                      "Grabber preserves and moves every selected processed Comp window");
+                const auto draggedPairs = c.crossfades(t);
+                check(draggedPairs.size() == 1 && draggedPairs[0]["id"] == beforePair["id"] &&
+                          draggedPairs[0]["start_samples"].get<int64_t>() ==
+                              beforePair["start_samples"].get<int64_t>() + dragDelta,
+                      "complete selected Grabber move preserves paired crossfade identity and common translation");
+                aligned(reference, render(c, folder, 0, 240000), dragDelta);
+                const auto grabberSaved = folder.getChildFile("Grabber-Move.tracktionedit");
+                c.save(grabberSaved);
+                {
+                    Commands cold(false, std::make_unique<Storage>(folder.getChildFile("grabber-cold")));
+                    cold.open(grabberSaved);
+                    check(cold.query()["tracks"][0]["clips"] == afterDrag && cold.crossfades(t) == draggedPairs,
+                          "Grabber save/cold reopen preserves actual processors, source windows and pair");
+                    cold.undo();
+                    check(cold.query()["tracks"][0]["clips"] == before && cold.crossfades(t)[0] == beforePair,
+                          "cold original Grabber Undo restores every selected window and exact pair");
+                    cold.redo();
+                    check(cold.query()["tracks"][0]["clips"] == afterDrag && cold.crossfades(t) == draggedPairs,
+                          "cold original Grabber Redo restores complete processed selection");
+                }
                 c.undo();
                 check(c.query()["tracks"][0]["clips"] == before,
                       "Grabber Undo restores paired source and exact previous state");
