@@ -1,10 +1,10 @@
 # 下一步（2026-10-15）
 
-缺失媒体完整工程片段删除已接L1：508专项、41套7707项分三批通过（37/41、1/4、10/10），失败及修复见../evidence/P3/summary.md。代码a740eb0、测试04095fe、修复1037217，操作OFFLINE_MEDIA_DELETE.md。完整P1/P3与产品未完成。
+多选Grabber水平共同移动、名称区转发、主选引用顺序和原持久Undo已接通；179专项、处理移动480项，24套4359项分两批通过（23/24、1/1）。源1f34abb/bb6d392，测试19b0431/a163775/c84a152；操作GRABBER_WORKFLOW.md，实际证据../evidence/P3/summary.md。完整P1/P3与产品未完成。
 
-1. 下一项：统一多选Grabber。GUI只生成有界Plan，沿用L1完整来源映射/组/Comp约束；全部成员共同预览、提交、UndoRedo与持久重开，任何锁定/Scope/版本冲突整笔拒绝。补实际快捷键/选择绑定与真实WAV，不新增编辑事实或引擎。
-2. 解锁桌面后补当前构建的实体Backspace/自定义键/Cmd Z/Redo、保存重开和试听；演示工程见p3-offline-delete-current-results.json的offline_delete.cases[].restored_session，测试媒体完整在parked_source。工程删除不移动媒体。旧KeyboardSettings原生焦点失败保留，不以合成命令替代；本轮CUA明确Mac锁定，不反复重跑。
-3. 文件存在性仍是查询快照，提交前后检查不能替代完整监听/重定位。不可读但存在的来源、复杂关联/第三方状态失败、旧构建读取保护、长源首响应/同步SHA、连续FX图负载/XRUN与听评保持BACKLOG；不凭普通组合扩大资格。
-4. 原Warp Master分析10秒偶发超时、旧性能A、原180秒自动化矩阵保持失败和原预算。本轮相关剪贴板/自动化套件通过不代表这些根因已修。
+1. 下一项：跨轨道拖放。先明确音频/MIDI的真实轨道归属、目标Playlist、Edit组/关联Comp、自动化跟随、Scope和锁定规则；用统一L1命令完成稳定身份迁移，不能通过复制删除悄悄替换对象。保持完整Plan预览、原UndoRedo、保存重开与真实WAV验证；未资格组合明确拒绝并保留正式差距。
+2. Mac解锁后补当前构建的实体名称/主体拖动、F8/自定义键、UndoRedo、保存重开和试听。演示工程见p3-grabber-current-results.json的grabber.session和grabber_processed_sessions；旧KeyboardSettings焦点失败保留，不以组件事件替代。本轮CUA明确Mac锁定，不反复堆CLI替代。
+3. 保留旧构建读取保护、完整媒体监听/重定位、不可读但存在的来源、复杂Tempo/自动化/多轨关联、第三方/离线ClipFX等差距。缺失媒体完整工程删除已在上轮资格，不放宽其它离线编辑。
+4. 原Warp Master分析10秒偶发超时、旧性能A、原180秒自动化矩阵保持失败和原预算；长源首响应/同步SHA、含ClipFX连续图CPU/XRUN与听评需要独立实测，本轮回归不能替代。
 
 其它未完成：走带中编辑和中途FX历史预热、多输入/PDC、多声道/异采样率、耐久、Windows/视频/环绕/发行。M2/M3冻结，M4/M5暂缓。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG/源码包/应用副本。

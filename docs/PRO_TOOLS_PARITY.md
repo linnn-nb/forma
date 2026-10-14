@@ -1,3 +1,5 @@
+2026-10-15 Grabber：音频/MIDI多选水平共同移动、Edit组/关联Comp、名称区鼠标转发与主选顺序恢复已接同一L1；源码WorkspaceGrabber/ClipHeader/EditingModel，测试GrabberTests/ProcessedMoveTests，资格见GRABBER_WORKFLOW与P3证据。跨轨道迁移、实体键鼠/听评、复杂组合及Pro Tools实机行为对照未完成。状态：部分实现；无新增外部依赖。本表仍为工作流参考清单，不是完成度门槛。
+
 2026-10-14：Freeze/Bounce首版已在Tracktion生产架构接通，音频轨制作/持久历史数值已验；不是Pro Tools特定Commit/Freeze行为或生态兼容已对齐。本清单仅参考，完整处理结果/待测路由见PRINT_WORKFLOW.md、../evidence/P2/summary.md。
 
 2026-10-14：P2原生旁链已有内置Compressor实测及L1/nativeUI/持久历史；第三方格式/PDC和具体Pro Tools旁链行为仍待核验，不宣称对齐。工作流/代码/测试/边界见 SIDECHAIN_WORKFLOW.md、../evidence/P2/summary.md。本清单继续仅作参考，不是完成度门槛。

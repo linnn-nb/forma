@@ -1,3 +1,15 @@
+# P3 多选 Grabber 资格（2026-10-15）
+
+24套4359项唯一检查分两批通过：首批23/24、556.53秒，修正测试的快捷键回执等待后1/1、5.91秒；两批总562.44秒，不是一次全绿。只计每套最新通过JSON，不累计先前失败/诊断或重复processed专项。Release应用与24受影响目标构建exit0；deep/strict及固定证书指纹核验通过。唯一程序build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，SHA256 `d6f9c9e43adfdaed8fa3f4b213e504686e52115e9b43698913dfd8f40cbb2b45`；固定本地签名不代表发行公证，无新DMG/应用副本。
+
+P3-GRABBER-01：代码ui/WorkspaceGrabber.cpp、EditWindow/ClipHeader/GroupedClipDraft、WorkspaceRefresh/EditingModel；测试GrabberTests.cpp最新179项/5.90秒，实际JUCE主体/名称控件鼠标事件、原生键路由、异步Accept/Reject、混合三轨、12片段确认、锁定/版本/Scope/隐藏组边界、Esc/UndoRedo、真实保存重开和自定义键映射均验。真实双声道PCM24/48k/480000帧，整体平移对照误差0，原2e-6预算；来源5秒、WAV10秒、专项120秒不改。MIDI核验原生事件和时序，不能冒充硬件MIDI/乐器声音或听评。
+
+ProcessedMoveTests扩展为480项/37.67秒：普通/SoundTouch/Warp×无FX或实际EQ/压缩/Delay/Reverb，实际Grabber同时移动两段Comp，保留配对ID/参数/源窗口；真实WAV最大差1.1920928955078125e-7。冷重开后原Grabber Undo/Redo恢复全部成员和配对。其它当前回归包括ClipWorkspace（真实CoreAudio停止静音）、Editor/组变换/范围、MIDI/混合/自动化/音乐时间剪贴板、Shuffle、Playlist试听、交叉淡化与原持久历史；逐套结果见本地索引，不据此宣称全产品通过。
+
+失败与修复保留：第一轮重开音频状态一致，但midi_clip变化；SelectionModel原按轨道重排对象，现核实引用后保留保存顺序，恢复音频/MIDI主选目标。隐藏组实际限制正确，旧准备流程用Shift又移除了已选MIDI，改为确认原三成员选择，未放宽共同位移断言。首批最后失败的XML只有默认F8，测试误以非空旧配置作为新键回执；c84a152等待准确commandId/按键后才Save，仍严格测试真实新会话的自定义键恢复。初次新增target未配置、Button保护成员编译错误及所有失败日志保留，未计旧JSON为通过。
+
+源1f34abb/bb6d392、测试19b0431/a163775/c84a152。无新SDK/依赖/RT改动；当前17补丁/38文件SHA匹配前次fresh-apply/reverse审计，不冒充新重放。索引/结果SHA/两批JUnit与日志/签名及七个可打开工程：build-v2-tracktion/p3-grabber-current-results.json；操作GRABBER_WORKFLOW.md。CUA本轮明确Mac锁定，实体键鼠/试听未执行，旧键位焦点/性能A/分析超时、跨轨道拖放/复杂组合/长源/连续FX负载/旧读者、Windows/耐久/发行保留。完整产品未完成。
+
 # P3 缺失媒体删除资格（2026-10-15）
 
 41套、7707项唯一检查分三批通过：37/41（946.28秒）、1/4诊断（39.57秒）、修复后10/10（221.69秒），并非一次全绿。只计每套最新通过的JSON；运行时间1207.54秒为三批总和，早前414/508专项及失败检查不重复累加。Release应用及41个受影响目标构建exit0，固定本地deep/strict验签通过。唯一程序build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，二进制SHA256 `b430b8e3a0fc17e7fd0e45f6fded62ddf72e9bd81dd528fb3709f7a93e0bfd27`；不代表发行公证。

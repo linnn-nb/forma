@@ -1,3 +1,5 @@
+2026-10-15 Grabber不新增Agent命令或权限。GUI冻结真实对象/所有者/几何及会话revision，构建一组既有clip.move/midi.clip.move请求；L1重新扩展/去重组与Comp、封定真实媒体/事件哈希、校验版本Scope及全部成员，再作为一个Plan提交。小范围显示草稿并直接提交；>10操作或>128自动化点进入现有待确认流程。原生Undo/Redo及持久历史、幂等保持；不允许GUI或AI直接写Edit。测试GrabberTests.cpp与ProcessedMoveTests.cpp，操作GRABBER_WORKFLOW.md。
+
 2026-10-15 回归修复：source_reference 查询返回已解析的文件引用，原生源编码与原历史保留；相对/绝对编码不得被误报为音频工程变化。clipboardPasteOperations 对原已存在片段的删除封入同一引用前置条件，使预览重建与提交严格一致；同 Plan 新拆分别名仍沿用封定媒体哈希，未放宽校验。
 
 2026-10-15：既有 clip.delete 的已存在目标由 L1 封入 source_reference_hash（真实对象/所有者/来源/几何引用，非音频内容）与 source_present。在线继续封入/核验 media_hash，缺失必须无媒体内容哈希。预览给出真实来源路径和仅移除工程对象的影响；提交复验存在性、版本/锁定/Scope/完整组，文件重新出现拒绝旧 Plan。局部新对象仍沿用同 Plan 已封定媒体哈希。幂等重试/撤销状态、原生 UndoManager 和权限不变，不扩大 MCP 权限或允许离线 Copy/Split/Trim。测试 OfflineDeleteTests.cpp。

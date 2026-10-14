@@ -1,3 +1,19 @@
+# P3 当前增量：多选 Grabber 共同移动（2026-10-15）
+
+**24套4359项唯一检查分两批通过，非一次全绿。** 首批23/24、556.53秒；回执修正后1/1、5.91秒，两批总562.44秒。只计每套最新JSON，诊断重复和失败检查不累加。源1f34abb/bb6d392，测试19b0431/a163775/c84a152。Release应用与24受影响目标构建exit0；deep/strict及固定本地证书指纹核验通过，非发行公证。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `d6f9c9e43adfdaed8fa3f4b213e504686e52115e9b43698913dfd8f40cbb2b45`；无新DMG/应用副本，完整产品未完成。
+
+新增179项/5.90秒：真实JUCE主体/名称控件事件、多选音频/MIDI、F8/自定义Grabber键、句点Nudge、Esc、异步Accept/Reject。三轨共同拖动为一笔原生事务，12片段大范围先确认；锁定成员、过期版本、Scope、隐藏组最早边界均验。真实保存重开保持对象选择顺序、音频/MIDI主选目标、原UndoRedo和准确自定义键映射。真实PCM24/48k/双声道/480000帧，整体平移误差0；来源5秒/WAV10秒/专项120秒/PCM2e-6预算不改。MIDI是原生事件/时序验证，不代表硬件或乐器听评。
+
+处理移动扩展480项/37.67秒：普通/SoundTouch/Warp×无FX/四个真实EQ、压缩、Delay、Reverb。实际Grabber同时移动两段处理Comp，保留交叉淡化配对ID及源/插件状态；真实WAV最大差1.1920928955078125e-7。六份新Grabber工程冷重开原UndoRedo恢复全部成员和配对，原Take及媒体SHA保持。
+
+初始重开失败仅midi_clip变化，发现SelectionModel把保存顺序重排为物理轨道顺序，已改为核对真实引用后保留主选顺序。另一次隐藏组失败来自测试再次Shift点击已选MIDI，把它移除了；实际A/B边界正确，修正准备并保留原三成员共同位移断言。最后快捷键失败保存的XML仍为默认F8：原测试把非空旧配置当新回执，现等待准确commandId/按键再Save，严格测试真实新会话恢复。新增target未配置、Button保护成员编译错误、所有失败/诊断日志保留，旧成功JSON不覆盖本批失败。
+
+其余当前通过包含真实CoreAudio停止静音ClipWorkspace、Editor/组/范围、MIDI/混合/自动化/音乐时间剪贴板、Shuffle、Playlist编辑/试听、交叉淡化及原持久历史。完整逐套检查/耗时/结果SHA、两批JUnit、构建/验签和工程路径在本地 `build-v2-tracktion/p3-grabber-current-results.json`；仅统计实际当前通过。无新SDK/依赖/RT改动，17补丁/38文件SHA匹配前次重放审计，不声称新重放。
+
+操作[GRABBER_WORKFLOW.md](../../docs/GRABBER_WORKFLOW.md)：重启当前Forma加载本轮构建，F8→Shift选音频/MIDI→拖动任一名称或主体，Esc取消，松手提交或预览接受/拒绝，Cmd Z/Redo，再保存重开。混合工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-Grabber-9e78c24184c148b1801d1d15548bbd4e/Mixed-Grabber.tracktionedit`；Warp+四FX工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-ProcessedMove-1b1006fb37fa48a6af22ed60ba9f2f58/warp-fx/Grabber-Move.tracktionedit`。它们是实际测试信号和原生处理，不能代替音乐听评。
+
+CUA本轮明确Mac锁定，实体键鼠/试听未执行；旧KeyboardSettings焦点失败保留。当前是保留轨道的共同时间位移，跨轨道迁移仍未实现，作为下一项正式制作功能继续。复杂关联/Tempo/自动化、第三方/多声道/异采样率、长源/连续FX负载、旧读者/性能A/分析超时、Windows/视频/耐久/发行保持差距。以下为历史资格，不自动扩大。
+
 # P3 当前增量：缺失媒体工程删除（2026-10-15）
 
 **41套7707项唯一检查分三批通过，非一次全绿。** 首批37/41、946.28秒；诊断1/4、39.57秒；修复后10/10、221.69秒。只计每套最新JSON，早前专项和失败检查不累计；三批总1207.54秒。源a740eb0、测试04095fe、修复1037217。Release应用及受影响目标构建exit0；固定本地deep/strict验签通过，非发行公证。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `b430b8e3a0fc17e7fd0e45f6fded62ddf72e9bd81dd528fb3709f7a93e0bfd27`。无新DMG/源码包/应用副本，完整产品未完成。
