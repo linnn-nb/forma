@@ -457,8 +457,18 @@ int main(int argc, char** argv)
             moved(c, before, 480);
             c.undo();
             check(all(c) == before, "Nudge shortcut shares one reversible native multi-target transaction");
-            wait([&] { return !c.uiState()["keymap_xml"].get<std::string>().empty(); },
-                 "custom command key change receives actual persistent UI receipt");
+            wait(
+                [&]
+                {
+                    auto xml = juce::parseXML(text(c.uiState()["keymap_xml"].get<std::string>()));
+                    if (xml)
+                        for (auto* item : xml->getChildIterator())
+                            if (item->getStringAttribute("commandId").getHexValue32() == editCommand::grabber &&
+                                juce::KeyPress::createFromDescription(item->getStringAttribute("key")) == custom)
+                                return true;
+                    return false;
+                },
+                "exact custom Grabber key receives actual persistent UI receipt before Save");
             const auto keyed = root.getChildFile("Custom-Grabber.tracktionedit");
             c.save(keyed);
             const auto oldSession = c.sessionToken();
