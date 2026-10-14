@@ -899,7 +899,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
-                    (id != 276 && sidechainPanel && sidechainPanel->isVisible()) ||
+                    (id != 276 && sidechainPanel && sidechainPanel->isVisible() &&
+                     (id == 277 || sidechainPanel->canApply())) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();

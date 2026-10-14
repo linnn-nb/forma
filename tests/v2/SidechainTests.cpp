@@ -278,8 +278,12 @@ int main(int argc, char** argv)
         auto* selector = dynamic_cast<juce::ComboBox*>(find(w, "plugin.sidechain.source"));
         check(panel && panel->isVisible() && selector && selector->getText() == "Trigger",
               "real native shortcut opens panel with actual current sidechain source");
-        selector->setSelectedId(1, juce::sendNotificationSync);
+        const auto unchangedRevision = c.query()["revision"];
         auto* apply = dynamic_cast<juce::Button*>(find(*panel, "ui.command:275"));
+        wait([&] { return apply && !apply->isEnabled(); }, "unchanged source disables native Apply command");
+        check(!w.uiCommands().invokeDirectly(275, false) && c.query()["revision"] == unchangedRevision,
+              "unchanged sidechain cannot create a spurious completed edit or Undo step");
+        selector->setSelectedId(1, juce::sendNotificationSync);
         check(apply && apply->isEnabled(), "native source choice enables actual apply command");
         apply->triggerClick();
         wait([&] { return !panel->isVisible() && !plugin(c, pid)["sidechain"]["connected"].get<bool>(); },

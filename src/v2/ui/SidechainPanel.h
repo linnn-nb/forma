@@ -20,10 +20,15 @@ public:
         apply.setComponentID("ui.command:275");
         cancel.setComponentID("ui.command:277");
         source.onChange = [this]
-        { apply.setEnabled(source.getSelectedId() > 0 && ids[size_t(source.getSelectedId() - 1)] != original); };
+        {
+            apply.setEnabled(canApply());
+            if (manager)
+                manager->commandStatusChanged();
+        };
     }
     void connect(juce::ApplicationCommandManager& manager)
     {
+        this->manager = &manager;
         apply.setCommandToTrigger(&manager, 275, true);
         cancel.setCommandToTrigger(&manager, 277, true);
     }
@@ -63,7 +68,7 @@ public:
     }
     void execute()
     {
-        if (!apply.isEnabled())
+        if (!canApply())
             return;
         auto error = submit(
             Json::array({operation("plugin.sidechain.set",
@@ -71,6 +76,11 @@ public:
             snapshot["revision"], snapshot["session_token"]);
         if (!error.empty())
             status.setText(text("未连接：") + text(error), juce::dontSendNotification);
+    }
+    bool canApply() const
+    {
+        return source.getSelectedId() > 0 && size_t(source.getSelectedId()) <= ids.size() &&
+               ids[size_t(source.getSelectedId() - 1)] != original;
     }
     void paint(juce::Graphics& g) override
     {
@@ -101,6 +111,7 @@ private:
         return getLocalBounds().withSizeKeepingCentre(700, 340);
     }
     Submit submit;
+    juce::ApplicationCommandManager* manager = nullptr;
     Json snapshot, selected;
     std::vector<std::string> ids;
     std::string original;
