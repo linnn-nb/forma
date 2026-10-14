@@ -24,6 +24,7 @@
 #include "AudioImportPanel.h"
 #include "FadesPanel.h"
 #include "CrossfadePanel.h"
+#include "ElasticPanel.h"
 #include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -169,8 +170,10 @@ private:
     std::unique_ptr<PlaylistPanel> playlistPanel;
     void showFades();
     void showCrossfade(Json target = nullptr);
+    void showElastic();
     std::unique_ptr<FadesPanel> fadesPanel;
     std::unique_ptr<CrossfadePanel> crossfadePanel;
+    std::unique_ptr<ElasticPanel> elasticPanel;
     void showRollSettings();
     std::unique_ptr<RollPanel> rollPanel;
     void showMusicEvent(const std::string&, double, const std::string& = "");

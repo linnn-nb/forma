@@ -191,6 +191,7 @@ const std::vector<Entry>& entries()
         {279, "预卷 / 后卷设置…", "走带", 'k', cmd | shift},
         {280, "淡化 / 交叉淡化…", "编辑", 'f', cmd},
         {538, "交叉淡化…", "编辑", 'f', cmd | juce::ModifierKeys::ctrlModifier},
+        {560, "弹力音频 · SoundTouch…", "编辑", 't', cmd | juce::ModifierKeys::altModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
@@ -866,6 +867,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                               : (!selected.empty() && !commands.crossfades(selected).empty()));
             if (id == 538)
                 active = !mix && !facts.value("playing", false) && !selected.empty();
+            if (id == 560)
+                active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
             if (id == 280)
                 active = !mix && !facts.value("playing", false) &&
                          (!selectedAudioClip().is_null() || (!selection.range.is_null() && !selected.empty()));
@@ -887,6 +890,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && rollPanel && rollPanel->isVisible()) ||
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
+                    (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();
@@ -1116,6 +1120,19 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 538)
     {
         invoke([&] { showCrossfade(); });
+        return true;
+    }
+    if (id == 560)
+    {
+        invoke([&] { showElastic(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && elasticPanel && elasticPanel->isVisible())
+    {
+        if (id == 275)
+            elasticPanel->execute();
+        else
+            elasticPanel->setVisible(false);
         return true;
     }
     if ((id == 275 || id == 277) && crossfadePanel && crossfadePanel->isVisible())
@@ -1782,6 +1799,8 @@ void Workspace::showRollSettings()
         fadesPanel->setVisible(false);
     if (crossfadePanel)
         crossfadePanel->setVisible(false);
+    if (elasticPanel)
+        elasticPanel->setVisible(false);
     if (musicEventPanel)
         musicEventPanel->setVisible(false);
     if (!rollPanel)
@@ -1836,6 +1855,8 @@ void Workspace::showMusicEvent(const std::string& kind, double beat, const std::
         fadesPanel->setVisible(false);
     if (crossfadePanel)
         crossfadePanel->setVisible(false);
+    if (elasticPanel)
+        elasticPanel->setVisible(false);
     if (rollPanel)
         rollPanel->setVisible(false);
     if (commands.query().value("playing", false))

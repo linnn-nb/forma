@@ -47,6 +47,7 @@ with tempfile.TemporaryDirectory(prefix='package-m0-', dir=build) as work:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, dest)
     shutil.copy2(root / '.deps/json.hpp', licenses / 'json.hpp')
+    shutil.copy2(root / 'third_party/LICENSE-SoundTouch-LGPL-2.1.txt', licenses / 'SoundTouch-LGPL-2.1.txt')
     (stage / '试用说明.md').write_text('''# NativeDAW M0 本地开发包\n\nM0 可行性关口已验证，完整 DAW 尚未完成。打开应用，导入本地音频，接受预览并播放；停止后 Undo/Redo；增益可单独撤销；保存和导出请选择新文件名。\n\n不包含测试音频、第三方插件或模型。没有正式签名、公证或 Windows 验收；这是本地开发产物，尚未对外发布。M1 开始接通 Solo、内置处理器、自动化、MIDI 和完整 Edit/Mix。\n''')
     (stage / 'Source.md').write_text(f'''# 构建源码\n\n本地 Git 仓库：{root}\n分支：v2-tracktion\n提交：{commit}\n\n依赖提交、已记录补丁、构建命令和边界见 M0_REPORT.md。源码由 Git 管理，本包没有替代源码版本管理的 tar 包。这个包仅用于当前工作区的本地试用，没有对外发布。正式分发前还需完成对应源码分发和全部第三方许可审计。\n''')
     image = work / output.name

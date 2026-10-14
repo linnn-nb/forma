@@ -58,7 +58,7 @@ public:
         post.setButtonText(text("后卷 · ") + label);
         preTime.setTooltip(label);
         postTime.setTooltip(label);
-        hint.setText(text("用于选区播放；循环播放不应用预后卷，录音预后卷尚未提供。灰旗可调，勾选后启用。"
+        hint.setText(text("用于选区播放与 Punch 补录；循环播放和循环录音不应用预后卷。灰旗可调，勾选后启用。"
                           "未更改的字段保留精确时长（包括不足一帧）。拍数按选区边界和实际速度／拍号换算；"
                           "输入单位在打开面板时固定。"),
                      juce::dontSendNotification);

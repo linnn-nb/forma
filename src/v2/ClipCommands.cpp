@@ -137,7 +137,8 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
     auto info = a.getInfo();
     auto p = c.getPosition();
     const bool editable = !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
-                          !c.getWarpTime() && !c.getIsReversed() && std::abs(c.getSpeedRatio() - 1) < 1e-9;
+                          !c.getWarpTime() && !c.getIsReversed() && c.getPitchChange() == 0 &&
+                          std::abs(c.getSpeedRatio() - 1) < 1e-9;
     return {
         {"path", f.getFullPathName().toStdString()},
         {"source_sample_rate", info.sampleRate},
@@ -145,6 +146,8 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"source_offset_samples", sample(p.getOffset().inSeconds())},
         {"source_offset_seconds", p.getOffset().inSeconds() * c.getSpeedRatio()},
         {"speed_ratio", c.getSpeedRatio()},
+        {"pitch_semitones", c.getPitchChange()},
+        {"stretch_algorithm", te::TimeStretcher::getNameOfMode(c.getTimeStretchMode()).toStdString()},
         {"source_mapping_available", !c.isLooping() && !c.getAutoTempo() && !c.getWarpTime() && !c.getIsReversed() &&
                                          std::isfinite(c.getSpeedRatio()) && c.getSpeedRatio() > 0},
         {"gain_db", c.getGainDB()},
@@ -206,6 +209,12 @@ void Commands::registerClipCommands(Json& r)
     add("clip.fade", {{"in_samples", integer}, {"out_samples", integer}, {"in_curve", id}, {"out_curve", id}},
         Json::array({"in_samples", "out_samples", "in_curve", "out_curve"}));
     add("clip.lock", {{"locked", {{"type", "boolean"}}}}, Json::array({"locked"}));
+    add("clip.elastic", {{"length_samples", integer}, {"pitch_semitones", num}},
+        Json::array({"length_samples", "pitch_semitones"}));
+    r.back()["tool_visibility"] = "local_gui";
+    r.back()["test"] = "P3-ELASTIC-01";
+    r.back()["units"]["length_samples"] = "output duration at session 48000 Hz, source span preserved";
+    r.back()["units"]["pitch_semitones"] = "semitones, -12..12; independent of duration";
     Json types = Json::array();
     for (const auto& p : processorCatalog())
         if (p["type"] != te::FourOscPlugin::xmlTypeName)
@@ -322,6 +331,12 @@ Json Commands::validateClipPlan(const Json& ops) const
     {
         std::string cmd = op["command"];
         const auto& a = op["args"];
+        if (cmd == "clip.elastic")
+        {
+            require(ops.size() == 1, "Elastic audio is a standalone stopped edit");
+            diff.push_back(elasticChange(a));
+            continue;
+        }
         if (cmd.starts_with("clip."))
             for (const char* key : {"position_samples", "start_samples", "end_samples"})
                 if (a.contains(key))
@@ -509,6 +524,11 @@ Json Commands::validateClipPlan(const Json& ops) const
 void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json& objects,
                                     std::map<std::string, std::string>& aliases)
 {
+    if (cmd == "clip.elastic")
+    {
+        executeElastic(a);
+        return;
+    }
     auto& um = edit->getUndoManager();
     if (cmd == "clip.import")
     {

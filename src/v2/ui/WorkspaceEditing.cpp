@@ -572,8 +572,56 @@ void Workspace::executeDeleteCommand()
 
 namespace ndaw::desktop
 {
+void Workspace::showElastic()
+{
+    auto clip = selectedAudioClip();
+    const auto facts = commands.query();
+    require(!facts.value("playing", false), "请先停止走带");
+    require(!clip.is_null(), "请选择音频片段");
+    require(facts["revision"] == workspaceRevision, "界面工程版本已变化，请重新选择片段");
+    // Opening a panel never edits Edit. The L1 preflight checks actual state before submission.
+    if (!elasticPanel)
+    {
+        elasticPanel = std::make_unique<ElasticPanel>(
+            [this](Json ops, uint64_t version, std::string session)
+            {
+                try
+                {
+                    require(commands.sessionToken() == session && commands.query()["revision"] == version,
+                            "工程已修改，请重新打开弹力音频");
+                    auto receipt = commands.commit(commands.makePlan("human", std::move(ops)));
+                    require(receipt["state"] == "committed", "弹力音频未提交");
+                    elasticPanel->setVisible(false);
+                    refresh();
+                    message(text("弹力音频设置已提交 · 后台准备音频 · 原媒体保留 · 一次 Undo"));
+                    return std::string{};
+                }
+                catch (const std::exception& e)
+                {
+                    return std::string(e.what());
+                }
+            });
+        addChildComponent(*elasticPanel);
+        elasticPanel->connect(commandManager);
+    }
+    if (crossfadePanel)
+        crossfadePanel->setVisible(false);
+    if (fadesPanel)
+        fadesPanel->setVisible(false);
+    if (rollPanel)
+        rollPanel->setVisible(false);
+    if (musicEventPanel)
+        musicEventPanel->setVisible(false);
+    elasticPanel->show(facts, std::move(clip));
+    elasticPanel->setBounds(getLocalBounds());
+    elasticPanel->setVisible(true);
+    elasticPanel->toFront(true);
+    commandManager.commandStatusChanged();
+}
 void Workspace::showCrossfade(Json target)
 {
+    if (elasticPanel)
+        elasticPanel->setVisible(false);
     const auto current = commands.query();
     require(!current.value("playing", false), "请先停止走带");
     if (target.is_null())
@@ -632,6 +680,8 @@ void Workspace::showCrossfade(Json target)
 }
 void Workspace::showFades()
 {
+    if (elasticPanel)
+        elasticPanel->setVisible(false);
     if (crossfadePanel)
         crossfadePanel->setVisible(false);
     const auto current = commands.query();

@@ -457,6 +457,8 @@ void Workspace::resized()
         fadesPanel->setBounds(getLocalBounds());
     if (crossfadePanel)
         crossfadePanel->setBounds(getLocalBounds());
+    if (elasticPanel)
+        elasticPanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)

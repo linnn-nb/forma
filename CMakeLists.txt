@@ -82,6 +82,7 @@ add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePlugi
 target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupCommands.cpp src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/MarkerCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -1054,3 +1055,9 @@ target_sources(ndaw_production_chain_tests PRIVATE tests/v2/ProductionChainTests
 target_link_libraries(ndaw_production_chain_tests PRIVATE ndaw_ui)
 add_test(NAME forma_production_chain COMMAND ndaw_production_chain_tests "${CMAKE_BINARY_DIR}/p1-production-chain-tests.json")
 set_tests_properties(forma_production_chain PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_elastic_tests PRODUCT_NAME "ndaw_elastic_tests")
+target_sources(ndaw_elastic_tests PRIVATE tests/v2/ElasticTests.cpp)
+target_link_libraries(ndaw_elastic_tests PRIVATE ndaw_ui)
+add_test(NAME forma_elastic COMMAND ndaw_elastic_tests "${CMAKE_BINARY_DIR}/elastic-tests.json")
+set_tests_properties(forma_elastic PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

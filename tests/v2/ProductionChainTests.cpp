@@ -178,8 +178,10 @@ void key(ndaw::desktop::Workspace& w, int id)
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
-    const auto root = juce::File::getSpecialLocation(juce::File::tempDirectory)
-                          .getChildFile("forma-production-chain-" + juce::Uuid().toString());
+    const auto outputRoot = argc > 1
+                                ? juce::File::getCurrentWorkingDirectory().getChildFile(argv[1]).getParentDirectory()
+                                : juce::File::getSpecialLocation(juce::File::tempDirectory);
+    const auto root = outputRoot.getChildFile("P1-Production-Chain-" + juce::Uuid().toString());
     try
     {
         root.createDirectory();

@@ -460,6 +460,8 @@ void Workspace::refresh()
             fadesPanel->setVisible(false);
         if (crossfadePanel)
             crossfadePanel->setVisible(false);
+        if (elasticPanel)
+            elasticPanel->setVisible(false);
         if (rollPanel)
             rollPanel->setVisible(false);
         if (musicEventPanel)

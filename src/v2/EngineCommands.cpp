@@ -1561,6 +1561,7 @@ Json Commands::redo()
 void Commands::play()
 {
     checkThread();
+    require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后播放");
     stopPlaylistAudition();
     stopScrub();
     require(!audioConfigurationPending(), "wait for audio device preparation");
@@ -1757,6 +1758,7 @@ uint64_t Commands::audioDeviceGeneration() const
 Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
 {
     checkThread();
+    require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后导出；尚未生成文件");
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(!masterAnalysis || !masterAnalysis->status()["busy"].get<bool>(),
             "wait for or cancel the current analysis/export job before rendering");

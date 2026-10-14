@@ -131,6 +131,7 @@ public:
     Json setScrubPreferences(const Json&);
     Json deviceStatus() const;
     Json outputMeters() const;
+    Json playbackPreparation() const; // Actual cached elastic audio readiness, outside the realtime callback.
     Json outputMeterControl(const std::string&, const Json&);
     Json audioDevices(bool rescan = false) const;
     Json audioCapabilities(const Json&) const;
@@ -499,6 +500,8 @@ private:
     static void registerClipCommands(Json&);
     Json audioClipQuery(te::WaveAudioClip&) const;
     Json validateClipPlan(const Json&) const;
+    Json elasticChange(const Json&) const;
+    void executeElastic(const Json&);
     void executeClipOperation(const std::string&, const Json&, Json&, std::map<std::string, std::string>&);
     static void registerLegacyCommands(Json&);
     static void registerQueryCommands(Json&);
