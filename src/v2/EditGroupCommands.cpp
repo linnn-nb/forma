@@ -145,6 +145,7 @@ Json Commands::audioRangeOperations(const std::string& action, const Json& seeds
                 !((c["kind"] == "audio" &&
                    c.value(action == "move"       ? "movable_audio"
                            : action == "separate" ? "splittable_audio"
+                           : action == "delete"   ? "deletable_audio"
                                                   : "editable_audio",
                            false) &&
                    !c.value("offline_clip_effects", false)) ||

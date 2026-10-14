@@ -70,7 +70,7 @@ struct Model
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
     int64_t trimBefore = 0, trimAfter = 0;
-    bool trimmable = true, splittable = true, processedTrim = false, fxWindow = false;
+    bool trimmable = true, splittable = true, deletable = true, processedTrim = false, fxWindow = false;
     bool locked = false, moveLocked = false, editable = true, movable = true, envelopeEditable = false,
          inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
@@ -225,6 +225,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
         {"movable_audio", movable},
+        {"deletable_audio", editable || movable},
         {"trimmable_audio", trimmable},
         {"splittable_audio", trimmable && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
                                  c.getFadeOutBehaviour() == te::AudioClipBase::gainFade},
@@ -391,6 +392,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.movable = q["movable_audio"];
                 m.trimmable = q["trimmable_audio"];
                 m.splittable = q["splittable_audio"];
+                m.deletable = q["deletable_audio"];
                 m.processedTrim = q["trim_preserves_processing"];
                 m.fxWindow = q["clip_fx"].value("full_input_window", false);
                 m.trimBefore = q["trim_handles_before_samples"];
@@ -528,9 +530,10 @@ Json Commands::validateClipPlan(const Json& ops) const
         auto& m = clips.at(id);
         const bool envelopeOnly =
             cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock" || cmd == "clip.fx.insert";
-        require((cmd == "clip.trim"    ? m.trimmable
-                 : cmd == "clip.split" ? m.splittable
-                                       : m.editable) ||
+        require((cmd == "clip.trim"     ? m.trimmable
+                 : cmd == "clip.split"  ? m.splittable
+                 : cmd == "clip.delete" ? m.deletable
+                                        : m.editable) ||
                     (cmd == "clip.move" && m.movable) || (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
         if (m.hash.empty())

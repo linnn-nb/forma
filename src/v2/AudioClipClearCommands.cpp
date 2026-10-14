@@ -39,7 +39,8 @@ Json Commands::audioClipClearOperations(const Json& request) const
     auto clipOperation = [&](const char* command, const Json& clip, Json args)
     {
         auto* native = audioClip(clip.at("id"));
-        require(native && native->canUseProxy() && clip.at("kind") == "audio" && clip.value("editable_audio", false) &&
+        require(native && native->canUseProxy() && clip.at("kind") == "audio" &&
+                    clip.value(std::string(command) == "clip.delete" ? "deletable_audio" : "movable_audio", false) &&
                     !clip.value("locked", false) && !clip.value("offline_clip_effects", false),
                 "entire clip clear refused: locked/unsupported audio or unqualified reader");
         args["clip"] = clip.at("id");

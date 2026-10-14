@@ -389,6 +389,43 @@ int main(int argc, char** argv)
                                         {{"clip", "$r"}, {"track", t}, {"position_samples", end}, {"ref", "$copy"}})}));
                         },
                         "new split alias does not accidentally grant unqualified processed clipboard permission");
+                run(c, "clip.split",
+                    {{"clip", id}, {"position_samples", start + (end - start) / 2}, {"ref", "$delete-right"}});
+                const auto both = c.query()["tracks"][0]["clips"];
+                const std::string removeID = both[1]["id"];
+                RecordingTestAccess::select(w, removeID);
+                const auto deleteRevision = c.query()["revision"];
+                check(w.keyPressed(juce::KeyPress(juce::KeyPress::backspaceKey)),
+                      "native Delete key accepts actual processed right clip without granting clipboard access");
+                wait([&] { return c.query()["revision"] != deleteRevision; },
+                     "native Delete has successful actual transaction receipt");
+                const auto removed = c.query()["tracks"][0]["clips"];
+                check(removed.size() == 1 && removed[0]["id"] == id && Commands::mediaHash(file) == hash,
+                      "processed deletion removes only selected project object and preserves original file");
+                gated(baseline, render(c, folder, 0, 240000), 0, start + (end - start) / 2);
+                const auto deleteSave = folder.getChildFile("Processed-Split-Delete.tracktionedit");
+                c.save(deleteSave);
+                {
+                    Commands cold(false, std::make_unique<Storage>(folder.getChildFile("delete-cold")));
+                    cold.open(deleteSave);
+                    check(cold.query()["tracks"][0]["clips"] == removed, "processed Delete survives cold save/reopen");
+                    cold.undo();
+                    check(cold.query()["tracks"][0]["clips"] == both,
+                          "saved Delete Undo restores exact right clip and real processors");
+                    cold.redo();
+                    check(cold.query()["tracks"][0]["clips"] == removed,
+                          "saved Delete Redo restores intended project-only removal");
+                    cold.undo();
+                    cold.undo();
+                    check(cold.query()["tracks"][0]["clips"] == before,
+                          "two original saved transactions restore unsplit source");
+                }
+                c.undo();
+                check(c.query()["tracks"][0]["clips"] == both,
+                      "single native Delete Undo restores both native split identities");
+                c.undo();
+                check(c.query()["tracks"][0]["clips"] == before,
+                      "split Undo after Delete Undo recombines original source");
                 RecordingTestAccess::select(w, id);
                 c.seek(start + 7200);
                 RecordingTestAccess::refresh(w);
@@ -503,6 +540,7 @@ int main(int argc, char** argv)
                                  {"clip_fx", fx},
                                  {"session", save.getFullPathName().toStdString()},
                                  {"range_session", rangeSave.getFullPathName().toStdString()},
+                                 {"delete_session", deleteSave.getFullPathName().toStdString()},
                                  {"comp_session", compSave.getFullPathName().toStdString()}});
             }
         Json result{{"result", "passed"},

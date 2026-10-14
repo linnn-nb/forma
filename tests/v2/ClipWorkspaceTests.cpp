@@ -238,6 +238,12 @@ int main(int argc, char** argv)
         live.setVisible(true);
         auto& lc = AudioDeviceTestAccess::owner(live);
         live.importAudioFiles({a});
+        const std::string liveClip = lc.query()["tracks"][0]["clips"][0]["id"];
+        const auto inserted = lc.commit(lc.makePlan(
+            "human", Json::array({{{"command", "clip.fx.insert"},
+                                   {"args", {{"clip", liveClip}, {"type", te::EqualiserPlugin::xmlTypeName}}}}})));
+        check(inserted["state"] == "committed" && lc.query()["tracks"][0]["clips"][0]["plugins"].size() == 1,
+              "actual Clip FX activates continuous native graph before device Stop regression");
         wait([&] { return lc.deviceStatus().value("driver_running", false); });
         Json stops = Json::array();
         for (int start : {0, 48000, 96000})

@@ -676,7 +676,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     if (!midiKeyboardFocus())
                         for (const auto& clip : clips)
                             active = active && !clip.value("locked", false) &&
-                                     ((clip["kind"] == "audio" && clip.value("editable_audio", false)) ||
+                                     ((clip["kind"] == "audio" && clip.value("deletable_audio", false)) ||
                                       (!selection.objects.empty() && clip["kind"] == "midi"));
                     if (shuffleRange && !mix && !midiKeyboardFocus())
                     {
