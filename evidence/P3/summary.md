@@ -1,3 +1,19 @@
+# P3 当前增量：缺失媒体工程删除（2026-10-15）
+
+**41套7707项唯一检查分三批通过，非一次全绿。** 首批37/41、946.28秒；诊断1/4、39.57秒；修复后10/10、221.69秒。只计每套最新JSON，早前专项和失败检查不累计；三批总1207.54秒。源a740eb0、测试04095fe、修复1037217。Release应用及受影响目标构建exit0；固定本地deep/strict验签通过，非发行公证。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `b430b8e3a0fc17e7fd0e45f6fded62ddf72e9bd81dd528fb3709f7a93e0bfd27`。无新DMG/源码包/应用副本，完整产品未完成。
+
+最新离线删除专项508项/39.20秒、八组实际工程：普通/Elastic/Warp×有无真实EQ/压缩/Delay/Reverb、Warp+FX Comp配对、完整两轨Edit组。真实PCM源移走后，Backspace/自定义键与范围完整删除共用L1；原UndoRedo及冷重开原历史恢复原Clip/插件/配对ID、参数、原Take和来源。锁定/Scope/部分组/部分缺失源切分、旧版本/伪造引用/媒体重新出现/重试均验。原始源字节SHA不变，返回来源后实际PCM24渲染误差0（预算2e-6），来源5秒/普通WAV10秒/正式导出12秒/专项180秒预算不改。
+
+删空活动时间线最初在第44项失败，旧Renderer检查拒绝没有有声节点的图。最终仅对没有活动片段的显式导出放开该条件；真实原生图/WAV写盘/解码/格式/帧数/零样本仍核验，正式verified export交付响度不得冒充通过。非空图和分析原检查保持。初始414项与最终508专项、失败日志均保留，不重复计数。
+
+广泛回归四失败的精确证据：旧ClipTests仍要求空工程导出失败；AU/Shuffle完整工程重开差异仅新source_reference的相对/绝对编码；大范围粘贴预览提示clipboard paste changed。修复为查询返回规范文件引用、粘贴展开封入真实删除前置条件，原生源编码/历史与严格Plan比较保留。测试继续比较完整状态，并增加真正新会话回执。后续10套包括这四项、原PersistentHistory、权限、原生正式导出、普通与处理来源Clipboard及离线专项，全通过。ClipWorkspace包含真实CoreAudio停止静音回归；合成键不替代实体输入。
+
+单一L1/te::Edit/UndoManager保持，无SDK/依赖/RT改动。当前17补丁/38源码SHA匹配前次fresh-apply/reverse审计，不声称新重放。已知离线片段标文字，无假波形。文件存在状态只是查询快照，尚无完整文件监听/重定位面板；不可读但存在的源仍拒绝，不放宽其它媒体SHA编辑。
+
+操作[OFFLINE_MEDIA_DELETE.md](../../docs/OFFLINE_MEDIA_DELETE.md)。本地 `build-v2-tracktion/p3-offline-delete-current-results.json` 含三批JUnit/日志、逐套检查数/耗时/输出SHA、签名及八个demo路径；`offline_delete.cases[].restored_session` 真正离线，原媒体在parked_source，删除工程对象本身不移动文件。可试Backspace、Cmd Z、Redo、保存重开后原Undo。当前Warp+FX演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-OfflineDelete-1fa515193a314a50823dabf56180da86/warp-fx/Offline-Restored.tracktionedit`。
+
+CUA本轮明确Mac锁定，实体键鼠/听评未执行；先前用户报告窗口正常操作，不归因为应用故障。旧KeyboardSettings焦点、复杂关联/第三方/异采样率/多声道、旧读者/长源/连续FX负载/旧性能A/分析超时、Windows/视频/耐久/发行保持差距。下一项统一多选Grabber。下方为历史资格，不能自动扩大。
+
 # P3 当前增量：完整处理来源复制粘贴（2026-10-15）
 
 **当前32受影响套件、6793项分三批通过，不是一次全绿批次。** 首批27/32、669.44秒；旧夹具复测2/5、147.26秒；绑定/身份修正后3/3、83.34秒。只计每套最新通过的一份结果，先前735专项和失败批次不重复累计。源码8865e53，Shuffle测试24e57b4，旧夹具/绑定修正39db6dd/57579e7。Release构建exit0，固定本地deep-strict验签通过；唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `1cf0c8f04d438aa95c53dc07a49636e00a2ef99ce7b503381abf7f98a5d8ec57`。本地签名不是发行公证，无新DMG/源码包/应用副本，完整产品未完成。

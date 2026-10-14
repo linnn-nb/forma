@@ -1,10 +1,10 @@
 # 下一步（2026-10-15）
 
-完整处理来源复制/粘贴、原位置替换、Shuffle插入与Comp完整配对已有777专项/80.57秒，PCM24最大差1.1920928955078125e-7；当前32套6793项分三批通过，失败及修复见../evidence/P3/summary.md。源码8865e53、测试24e57b4/39db6dd/57579e7，操作PROCESSED_CLIPBOARD.md。完整P1/P3与产品未完成。
+缺失媒体完整工程片段删除已接L1：508专项、41套7707项分三批通过（37/41、1/4、10/10），失败及修复见../evidence/P3/summary.md。代码a740eb0、测试04095fe、修复1037217，操作OFFLINE_MEDIA_DELETE.md。完整P1/P3与产品未完成。
 
-1. 下一项：缺失媒体的工程删除。明确只删除工程对象，不删除用户文件；保留缺失引用、源/处理描述、插件原状态和原Undo。不能为了删除移除其它命令的媒体SHA检查。通过同一L1和删除键，验证锁定/Scope/版本、删除/撤销/Redo、保存重开、媒体重新出现与真实WAV。
-2. 解锁桌面后补当前构建的实体Cmd C/V、自定义键、Cmd Z、保存重开和试听；实际工程见p3-processed-clipboard-current-results.json的processed_clipboard.cases[].session/mixed_session/comp_session。旧KeyboardSettings原生焦点专项仍未通过，不能以本轮合成命令替代；CUA本轮明确Mac锁定，不反复重跑。
-3. 之后补统一多选Grabber和旧构建读取保护。含ClipFX连续调度的稀疏长时间线/密集剪辑CPU、XRUN和负载预算待专测；无旧起音逐位兼容承诺。更复杂Tempo/自动化/多轨关联、伸缩与MIDI同时混合的完整组合、第三方/离线ClipFX和额外尾音句柄继续列BACKLOG。
-4. 原Warp Master分析10秒偶发超时、旧性能A和原180秒自动化矩阵保持失败/原预算；本轮自动化Clipboard与Clear回归通过不等于其它矩阵或性能根因已修。
+1. 下一项：统一多选Grabber。GUI只生成有界Plan，沿用L1完整来源映射/组/Comp约束；全部成员共同预览、提交、UndoRedo与持久重开，任何锁定/Scope/版本冲突整笔拒绝。补实际快捷键/选择绑定与真实WAV，不新增编辑事实或引擎。
+2. 解锁桌面后补当前构建的实体Backspace/自定义键/Cmd Z/Redo、保存重开和试听；演示工程见p3-offline-delete-current-results.json的offline_delete.cases[].restored_session，测试媒体完整在parked_source。工程删除不移动媒体。旧KeyboardSettings原生焦点失败保留，不以合成命令替代；本轮CUA明确Mac锁定，不反复重跑。
+3. 文件存在性仍是查询快照，提交前后检查不能替代完整监听/重定位。不可读但存在的来源、复杂关联/第三方状态失败、旧构建读取保护、长源首响应/同步SHA、连续FX图负载/XRUN与听评保持BACKLOG；不凭普通组合扩大资格。
+4. 原Warp Master分析10秒偶发超时、旧性能A、原180秒自动化矩阵保持失败和原预算。本轮相关剪贴板/自动化套件通过不代表这些根因已修。
 
-其它未完成：长源首响应/同步SHA、走带中编辑和中途FX历史预热、多输入/PDC、多声道/异采样率/听评、耐久、Windows/视频/环绕/发行。M2/M3冻结，M4/M5暂缓。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG/源码包/应用副本。
+其它未完成：走带中编辑和中途FX历史预热、多输入/PDC、多声道/异采样率、耐久、Windows/视频/环绕/发行。M2/M3冻结，M4/M5暂缓。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG/源码包/应用副本。

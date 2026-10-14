@@ -1,3 +1,5 @@
+2026-10-15 离线删除：L1 以真实 Clip/轨道/来源/几何引用指纹及文件存在状态封定 clip.delete；在线另验实际媒体 SHA，缺失不伪造内容哈希。完整范围删除共用规则，局部拆分/复制仍需可读媒体。原生 removeFromParent 与 Comp/组变更保持一 Plan 一 Undo；冷重开保留原历史。仅无活动片段的显式导出放开有声节点条件，仍由真实 Tracktion Renderer 写盘并校验。GUI 已知离线时标记文字；无文件监听、第二引擎、SDK 或 RT 改动。范围与证据见 OFFLINE_MEDIA_DELETE.md。
+
 2026-10-15 剪贴板：AudioClipboardState在L1/message thread冻结完整处理输入与输出窗口，保留未截断的外侧原生淡化以重建完整过渡；原生ClipCopy分配新Clip/插件ID，Warp锚点和Elastic来源重映射。clip.copy、普通音频剪贴板、Timeline/MIDI混合路径共享此实现；copyable_audio与自由editable_audio分离。处理片段替换直接复用窗口拆分，不提前向schema1 Warp写输出包络；普通粘贴原行为保留。GUI只查询/提交，Undo仍一Plan一原生事务；无新引擎/RT/SDK改动。代码8865e53，资格PROCESSED_CLIPBOARD.md。
 
 2026-10-15 拆分：L1 clip.split复用ProcessedClipTrim离线准备两侧完整输入窗口；原生ClipCopy递归新ID并重映射Warp/Elastic，左Clip/插件保留，右Clip/插件独立。普通音频用NativeAudioFades保留原坡度相位。splittable_audio/deletable_audio与其它动作能力分离；有效来源删除仅改工程对象，修复新窗口导致局部Cut被误拒，局部引用不授予自由复制。SDK原render-bus补丁让含ClipFX的片段连续调度，修正拆分前后图布局导致的源起音约40采样差异；无新RT代码/引擎/服务/依赖。17份/38文件本轮重放/逐字比对/reverse通过；性能代价仍待验。代码085ca68/3851f2c、PROCESSED_CLIP_SPLIT.md。
