@@ -7,13 +7,21 @@ void Workspace::showMidiControllers()
     const auto facts = commands.query();
     if (facts["revision"] != workspaceRevision || facts.value("playing", false))
         throw std::runtime_error("请停止走带并刷新工程");
-    auto clip = piano.viewedClip();
-    if (clip.is_null())
-        for (const auto& t : facts["tracks"])
-            if (t["id"] == selected)
+    Json clip = nullptr;
+    for (const auto& t : facts["tracks"])
+        if (t["id"] == selected && t.contains("clips"))
+        {
+            for (const auto& c : t["clips"])
+                if (c["kind"] == "midi" && selection.contains(c["id"].get<std::string>()))
+                    clip = c;
+            if (clip.is_null())
                 for (const auto& c : t["clips"])
-                    if (c["kind"] == "midi" && (clip.is_null() || selection.contains(c["id"].get<std::string>())))
-                        clip = c;
+                    if (c["kind"] == "midi")
+                    {
+                        if (clip.is_null() || (!piano.viewedClip().is_null() && c["id"] == piano.viewedClip()["id"]))
+                            clip = c;
+                    }
+        }
     if (clip.is_null())
         throw std::runtime_error("请选择MIDI片段");
     if (!controllerPanel)

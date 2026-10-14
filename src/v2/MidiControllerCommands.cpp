@@ -14,9 +14,10 @@ void require(bool ok, const char* why)
 }
 std::string digest(const juce::ValueTree& state)
 {
-    juce::MemoryOutputStream bytes;
-    state.writeToStream(bytes);
-    return juce::SHA256(bytes.getData(), bytes.getDataSize()).toHexString().toStdString();
+    // Hash the portable XML representation: native var numeric types become strings
+    // after project reopening, while the saved event values remain the same.
+    const auto xml = state.createXml()->toString();
+    return juce::SHA256(xml.toRawUTF8(), xml.getNumBytesAsUTF8()).toHexString().toStdString();
 }
 std::string prefix(te::MidiClip& clip)
 {
@@ -69,10 +70,30 @@ bool newKey(const std::string& id, const std::string& p)
 } // namespace
 void validateMidiControllerIDs(te::Edit& edit)
 {
+    // Validate persisted metadata without hydrating MIDI playback lists during adoption.
+    // Native objects are prepared after candidate validation, under L1's normal lifecycle.
     for (auto* track : te::getAudioTracks(edit))
         for (auto* c : track->getClips())
             if (auto* clip = dynamic_cast<te::MidiClip*>(c))
-                (void)events(*clip);
+            {
+                std::function<void(juce::ValueTree)> visit = [&](juce::ValueTree node)
+                {
+                    if (node.hasType(te::IDs::SEQUENCE))
+                    {
+                        std::set<std::string> keys;
+                        for (auto event : node)
+                            if (event.hasType(te::IDs::CONTROL) && event.hasProperty(keyProperty))
+                            {
+                                const auto key = event.getProperty(keyProperty).toString().toStdString();
+                                require(!key.empty() && keys.insert(key).second,
+                                        "duplicate stored MIDI controller identity");
+                            }
+                    }
+                    for (auto child : node)
+                        visit(child);
+                };
+                visit(clip->state);
+            }
 }
 Json Commands::controllerQuery(te::MidiClip& clip) const
 {
@@ -138,12 +159,16 @@ Json Commands::controllerChange(const Json& a) const
     require(type >= 0 && type <= 119 && a.at("points").size() <= 4096, "CC编号或事件数量无效");
     Json before = Json::array(), after = Json::array(), removed = Json::array();
     std::map<std::string, Event> originals;
+    std::set<std::string> allKeys;
     for (const auto& e : events(*clip))
+    {
+        allKeys.insert(e.key);
         if (e.native->getType() == type)
         {
             before.push_back(facts(*clip, e));
             originals.emplace(e.key, e);
         }
+    }
     const auto content = clip->getContentStartBeat().inBeats();
     const auto begin = clip->getStartBeat().inBeats(), end = clip->getEndBeat().inBeats();
     std::set<std::string> seen;
@@ -158,7 +183,7 @@ Json Commands::controllerChange(const Json& a) const
                 "CC锚点身份、顺序、拍位置或值无效");
         previous = beat;
         const bool existing = originals.contains(id);
-        require(existing || newKey(id, prefix(*clip)), "CC身份失效或不属于当前片段/控制器");
+        require(existing || (newKey(id, prefix(*clip)) && !allKeys.contains(id)), "CC身份失效或不属于当前片段/控制器");
         const bool changed = !existing || originals.at(id).native->getBeatPosition().inBeats() != beat ||
                              originals.at(id).native->getControllerValue() != value;
         require(!changed || (content + beat >= begin && content + beat < end), "CC修改超出片段可播放范围");

@@ -148,6 +148,7 @@ public:
         }
         title.setText(text("MIDI CC · 控制器曲线"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
+        status.setComponentID("midi.cc.status");
         controller.setComponentID("midi.cc.controller");
         for (int i = 0; i <= 119; ++i)
             controller.addItem("CC " + juce::String(i) +

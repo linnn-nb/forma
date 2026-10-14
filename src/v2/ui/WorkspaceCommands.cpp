@@ -899,6 +899,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) && !selected.empty();
             if (id == 574)
                 active = !mix && !facts.value("playing", false) && !selectedTrack().is_null() &&
+                         selectedTrack().contains("clips") &&
                          std::any_of(selectedTrack()["clips"].begin(), selectedTrack()["clips"].end(),
                                      [](const Json& c) { return c["kind"] == "midi"; });
             if (id == 560 || id == 573)
