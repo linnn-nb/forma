@@ -16,6 +16,10 @@
 
 多来源候选：在不同 Playlist 中拖选并「加入候选」，清单核对后「创建候选」，生成不影响原播放的独立 Comp。Ctrl+Shift+Option+1/2/3/4 对应加入、移除、创建、清空；一份候选一次 Undo，保存重开保持。关联多轨：右上方切换来源轨，Shift 点选波形沿用共同选区，再加入候选；多轨来源核对后一次创建关联 Comp。「用于播放」整组切换，「恢复整组原播放」恢复所有成员；解除关联后可独立编辑。Ctrl+Shift+Option+5/6/7 为恢复、解除、下一来源轨。活动关联 Comp 已接通时间线拖动、逗号/句号 Nudge 与 F3 Spot，全部片段和启用编辑组成员共同位移，自动化跟随，一次 Undo/Redo 并保存重开。逐段区间试听和带真实源余量的交叉淡化已接通；Ctrl+Cmd+F 打开，Cmd+Return 提交，Ctrl+Shift+Cmd+F 移除，一处转场一笔 Undo。实体麦克风制作链路、保存重开与二次导出 PCM 一致已验；多来源拖选/窗口组合与人工听评仍有缺口。[验证范围](evidence/P1/summary.md)。
 
+## 原生旁链
+
+在接收轨插入 Compressor，检查器「旁链…」选择触发轨；Cmd Option S 打开，Cmd Return 连接，Esc 取消。主输出保持，触发轨可输出 None；支持一笔 Undo/Redo、改键和保存重开。内置处理器的真实压缩响应与实体窗口已验，第三方旁链/PDC仍待测。[操作与边界](docs/SIDECHAIN_WORKFLOW.md)。
+
 ## 首版弹力音频
 
 选中无淡化/片段效果的音频 Clip，Cmd+Option+T 打开 SoundTouch 伸缩面板；设置目标毫秒与独立半音，Cmd+Return 提交、Esc 取消。原媒体/源跨度保留，Undo/Redo 和保存重开可用。音频在后台准备，未准备好时录放/导出明确拒绝。已实测原速 0.5–2 倍、±12 半音范围内的代表性信号；Warp、带 Comp/交叉淡化/Clip FX 的伸缩及长媒体体验尚未完成。[选型、源码许可证和实测边界](docs/ELASTIC_AUDIO.md)。
@@ -98,6 +102,6 @@ Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine
 
 ## 当前边界
 
-Forma 仍是开发版。P1 当前已接通音频循环、选区 Punch 与基础 Take/Playlist 切换；完整 Playlist 管理/Comp、交叉淡化、MIDI 循环/Punch 仍未完成。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
+Forma 仍是开发版。P1 音频 Loop→Punch→Take/Comp→交叉淡化→导出主链路已通过；完整发布听评、多输入/耐久与 MIDI Loop/Punch 仍未完成。P2 当前已接通原生旁链首版，Freeze/原地 Bounce、Stems 和偏好设置继续推进。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
 
 既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。

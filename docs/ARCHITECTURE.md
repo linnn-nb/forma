@@ -1,3 +1,5 @@
+2026-10-14：旁链复用 L0 原生 Send/Return 节点与插件实际针脚；L1 `plugin.sidechain.set` 独立停止态事务、反馈预检、稳定源引用、删除源显式断开与持久 Undo。L5 `SidechainPanel` 只提交 Plan，未改来源不能创建事务；Play/Record/Render/非片段分析预检缺失引用。代码 `SidechainCommands.cpp` / `SidechainGraph.h`，资格与剩余边界见 `SIDECHAIN_WORKFLOW.md`、`../evidence/P2/summary.md`。无第二引擎、SDK补丁或固定IPC延迟。
+
 2026-10-14 增量：P1 主链路复用 te::Edit/录音器/Renderer，并在同一工程贯通验证。clip.elastic 仍只有 L1 改原生 Clip；SoundTouch 使用 Tracktion 后台 proxy 作业，实时图读取缓存 WaveNode。playbackPreparation 按实际缓存文件状态预检 Play/Record/Render，禁止未就绪成功回执；参数与源映射/provenance 在同一 Undo 事务。没有第二引擎或新服务。长媒体进度/失败/取消和 Warp 另列缺口，见 ELASTIC_AUDIO.md。
 
 P1 时间线复制（2026-10-13）：L1 的 ClipboardBuffer 冻结源片段、配对及恢复边界；CrossfadeEditing 将完整配对投影到实际粘贴的 Clip ID、目标 Playlist 和统一样本位移。Timeline Shuffle 的共同后缀位移同时更新配对、切点与恢复锚；不完整配对只保留源坡度。全部修改在既有 Plan/UndoManager 事务内，L5 仍只查询与提交命令。

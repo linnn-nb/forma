@@ -1,3 +1,5 @@
+2026-10-14：P2 旁链首版 Release / 固定本地 deep-strict 验签通过；受影响六套件386项、无JUCE assertion（重复production_chain不重复计数）。Sidechain76项/5.27s、Elastic87项/7.34s、Production91项/12.41s，最终三套批次25.03s；另Processor40、Routing41、Hierarchy51通过。原120s套件/10s渲染预算不变。实体自定义键、连接/断开、跨重开Undo/Redo、空提交禁止、真实设备走带和完整Mix截图已验，所有源保持。第三方旁链、硬件PDC、mute/solo及听感未通过；完整产品未完成。输出与失败记录见 ../evidence/P2/summary.md。
+
 2026-10-14：P1 主链路已在真实麦克风与受控双轨音乐输入跑通；9 套件 908 项、0 JUCE assertion。实体 Loop/Punch Undo/Redo、Comp 转场、快捷键、保存重开及二次导出 PCM 一致；首版 SoundTouch 85 项及真实窗口 4→6 s/Undo/Redo/导出已验。Release/固定签名通过。完整 P1 发布、Warp、听评/窗口组合、旧性能及自动化超时仍未通过。路径、测量、预算、失败修复见 evidence/P1/summary.md、docs/ELASTIC_AUDIO.md。
 
 P1-XFADE-CLIPBOARD-01（2026-10-13）：Release/固定本地 deep-strict 验签通过；最终受影响10套件1029项、0 JUCE assertion，分批结果为 build-v2-tracktion/p1-crossfade-clipboard-current-results.json。新 CrossfadeClipboardTests 73项/11.900秒/120秒、12份真实 WAV，完整/部分/叠加复制双声道最大差均1.1920928955078125e-7，固定2e-7容差不变；真实坡度、配对、ID、原历史和媒体哈希通过。MixedShuffleTests 修正外改夹具历史与界面绑定后153项/52.948秒/120秒通过，原事件/数值要求未降低。

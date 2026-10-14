@@ -1,3 +1,5 @@
+2026-10-14：P2旁链不新增依赖，不新增Tracktion/JUCE补丁，仍使用原锁定提交与13份已审计补丁。当前无授权阻塞；本机插件清单未见已资格的第三方旁链压缩器，AU/VST3旁链音频/PDC和mute/solo待验证，不以接口接通冒充兼容。SoundTouch首版保持原锁定版本；Warp/长媒体/听评、性能A、旧自动化矩阵及发布条件继续保留。最新唯一应用与本地工程见 ../evidence/P2/summary.md。
+
 2026-10-14：复用锁定 Tracktion 内 SoundTouch 2.1pre（LGPL-2.1-or-later）；全文已补入仓库/开发包脚本。核验 SoundTouch、Signalsmith（MIT）、Rubber Band（GPL 路线）官方资料，选型与边界见 ELASTIC_AUDIO.md，未增加 SDK 或付费依赖。P1 主链路与普通伸缩实测通过；Warp、特殊映射/淡化联动、长媒体准备进度/失败/取消、听评/全面视觉、实体多输入及耐久仍待做。旧性能 A、自动化 180 s 超时、多层旧版兼容缺口均保留；不假称发行/SBOM/Windows 完成。
 
 P1 当前差距（2026-10-13，本轮更新）：时间线/局部复制配对、实际坡度、持久历史和实机保存重开/原 Undo/Redo 已通过；无新增依赖或授权阻塞。现有 render-bus SDK 补丁扩展多层源包络，仍13份审计补丁；Tracktion/JUCE pin 与固定本地签名不变。
