@@ -52,7 +52,10 @@ public:
                                      [safe = juce::Component::SafePointer<PreferencesPanel>(this), i](const auto& f)
                                      {
                                          if (safe && f.getResult().isDirectory())
+                                         {
                                              safe->paths[i].setText(f.getResult().getFullPathName(), false);
+                                             safe->paths[i].setTitle(f.getResult().getFullPathName());
+                                         }
                                      });
             };
         }
@@ -74,7 +77,10 @@ public:
         bound = v;
         const auto& value = bound["values"];
         for (size_t i = 0; i < 3; ++i)
+        {
             paths[i].setText(text(value[fields[i]].get<std::string>()), false);
+            paths[i].setTitle(paths[i].getText()); // Read-only directory values must be exposed to accessibility.
+        }
         scrub.setToggleState(value["scrub_insertion_follows"], juce::dontSendNotification);
         height.setSelectedId(value["default_track_height"], juce::dontSendNotification);
         for (size_t i = 0; i < grids.size(); ++i)
