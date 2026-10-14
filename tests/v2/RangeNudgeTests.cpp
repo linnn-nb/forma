@@ -202,6 +202,7 @@ float value(te::AutomatableParameter& p, double at)
     it.setPosition(tracktion::TimePosition::fromSeconds(at));
     return it.getCurrentValue();
 }
+std::vector<int> amplitudeThresholdOnsets;
 int onset(Commands& c, const juce::File& output)
 {
     auto r = c.render(output, 0, 9 * 48000);
@@ -213,10 +214,19 @@ int onset(Commands& c, const juce::File& output)
           "actual WAV independently decoded format and duration");
     juce::AudioBuffer<float> audio(2, 9 * 48000);
     check(reader->read(&audio, 0, audio.getNumSamples(), 0, true, true), "actual PCM read");
+    int pcm = -1, amplitude = -1;
     for (int i = 0; i < audio.getNumSamples(); ++i)
-        if (std::abs(audio.getSample(0, i)) > 3e-6)
-            return i;
-    throw std::runtime_error("native instrument render silent");
+    {
+        // PCM24 first representable nonzero sample and 3e-6 amplitude crossing
+        // are separate observations. Random oscillator phase affects the latter.
+        if (pcm < 0 && audio.getSample(0, i) != 0.f)
+            pcm = i;
+        if (amplitude < 0 && std::abs(audio.getSample(0, i)) > 3e-6)
+            amplitude = i;
+    }
+    check(pcm >= 0 && amplitude >= pcm, "real PCM onset and original amplitude threshold are measured separately");
+    amplitudeThresholdOnsets.push_back(amplitude);
+    return pcm;
 }
 } // namespace
 int main(int argc, char** argv)
@@ -671,10 +681,22 @@ int main(int argc, char** argv)
         open(fixture);
         run(c, Json::array({op("track.mute", {{"track", a}, {"enabled", true}}),
                             op("track.mute", {{"track", u}, {"enabled", true}})}));
+        auto firstNoteTime = [&]
+        {
+            double time = std::numeric_limits<double>::infinity();
+            for (const auto& e : events(c, first))
+                if (e["kind"] == "note")
+                    time = std::min(time, e["a"].get<double>());
+            return time;
+        };
+        check(std::abs(firstNoteTime() - 2.) <= 1e-9 && std::llround(firstNoteTime() * 48000.) == 96000,
+              "actual initial note uses original 1ns and exact event-frame budgets");
         const int originalOnset = onset(c, folder.getChildFile("Before.wav"));
         range(w, c, 48000, 336000, Json::array({m}));
         c.commit(c.makeRangeNudgePlan(Json::array({m}), 48000, 336000, 4800));
         pump();
+        check(std::abs(firstNoteTime() - 2.1) <= 1e-9 && std::llround(firstNoteTime() * 48000.) == 100800,
+              "actual moved note preserves exact 4800-frame scheduling independently of oscillator phase");
         const int movedOnset = onset(c, folder.getChildFile("After.wav"));
         check(originalOnset == 96000 && movedOnset == 100800,
               "actual native instrument onset follows 4800-sample range Nudge");
@@ -690,6 +712,8 @@ int main(int argc, char** argv)
                           {"event_seconds_budget", 1e-9},
                           {"rounded_samples", "exact"},
                           {"render_onsets", Json::array({originalOnset, movedOnset})},
+                          {"amplitude_threshold", 3e-6},
+                          {"amplitude_threshold_onsets", amplitudeThresholdOnsets},
                           {"demo", demo.getFullPathName().toStdString()},
                           {"physical_GUI", "not executed"},
                           {"limits", "MIDI Separate and partial-clip Nudge are distinct; implicit slicing "

@@ -76,6 +76,18 @@ juce::Component* find(juce::Component& c, const juce::String& id)
             return q;
     return nullptr;
 }
+void nudge(Workspace& w, Commands& c, const std::string& amount)
+{
+    auto* control = dynamic_cast<juce::ComboBox*>(find(w, "edit.nudge.value"));
+    check(control && control->isEnabled(), "production Nudge control is enabled");
+    const std::vector<std::string> choices{"sample", "10ms", "100ms", "beat", "quarter-beat"};
+    const auto item = std::find(choices.begin(), choices.end(), amount);
+    check(item != choices.end(), "Nudge fixture uses an actual product option");
+    control->setSelectedId(int(std::distance(choices.begin(), item)) + 1, juce::sendNotificationSync);
+    pump();
+    check(c.uiState()["nudge"] == amount && control->getSelectedId() == int(std::distance(choices.begin(), item)) + 1,
+          "native Nudge control updates displayed and saved setting together");
+}
 juce::AudioBuffer<float> render(Commands& c, const juce::File& file)
 {
     auto receipt = c.render(file, 0, 288000);
@@ -177,8 +189,7 @@ int main(int argc, char** argv)
         for (const std::string amount : {"sample", "10ms", "100ms", "beat", "quarter-beat"})
             for (int i = 0; i < 4; ++i)
             {
-                c.updateUiState({{"nudge", amount}}, c.sessionToken());
-                pump();
+                nudge(w, c, amount);
                 const int sign = i % 2 ? 1 : -1;
                 // Fixture has exactly 120 BPM through 4 s, then 60 BPM. The
                 // end edge is 5 s, independently proving edge vs cursor anchoring.
@@ -195,6 +206,10 @@ int main(int argc, char** argv)
                     check(w.uiCommands().invokeDirectly(ids[i], false), "registered native boundary command invoked");
                 pump();
                 const auto changed = clip(c, id);
+                if (changed["start_samples"] != expectedStart ||
+                    changed["length_samples"] != expectedEnd - expectedStart)
+                    std::cerr << "Nudge " << amount << " edge " << i << " expected " << expectedStart << ":"
+                              << expectedEnd << " actual " << changed.dump() << std::endl;
                 check(changed["start_samples"] == expectedStart &&
                           changed["length_samples"] == expectedEnd - expectedStart,
                       "all four trim directions change the requested real edge by independent Nudge amount");
@@ -245,8 +260,7 @@ int main(int argc, char** argv)
                 check(Commands::mediaHash(media) == hash,
                       "every trim Undo Redo save/reopen leaves original media hash unchanged");
             }
-        c.updateUiState({{"nudge", "beat"}}, c.sessionToken());
-        pump();
+        nudge(w, c, "beat");
         w.uiCommands().invokeDirectly(editCommand::trimEndForward, false);
         pump();
         check(clip(c, id)["length_samples"] == 240000,
@@ -271,8 +285,7 @@ int main(int argc, char** argv)
                       !pan->getBounds().intersects(view->getBounds()),
                   "visible pan control and readout remain inside header and clear of parameter selector");
         }
-        c.updateUiState({{"nudge", "10ms"}}, c.sessionToken());
-        pump();
+        nudge(w, c, "10ms");
         auto* keys = w.uiCommands().getKeyMappings();
         const juce::KeyPress custom(
             'k', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
