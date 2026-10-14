@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
 #include "PlaylistLinks.h"
+#include "WarpState.h"
 namespace ndaw::v2
 {
 namespace
@@ -104,8 +105,8 @@ Json linkedCandidates(const Json& a)
 void qualifySlice(te::Edit& edit, juce::ValueTree c)
 {
     require(c.hasType(te::IDs::AUDIOCLIP), "Comp selection requires an audio clip");
-    for (const char* key : {"loopLength", "loopLengthBeats", "autoTempo", "autoPitch", "warpTime", "isReversed",
-                            "transpose", "pitchChange", "groupID"})
+    for (const char* key : {"loopLength", "loopLengthBeats", "autoTempo", "autoPitch", "isReversed", "transpose",
+                            "pitchChange", "groupID"})
         require(double(c.getProperty(key)) == 0,
                 "Comp of stretched, pitched, looped or grouped audio is not yet qualified");
     require(int(c.getProperty("sync")) == int(te::Clip::syncAbsolute), "Comp requires absolute-time audio");
@@ -117,8 +118,18 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
         require(!child.hasType(te::IDs::PLUGIN) && !child.hasType("EFFECTS"), "Comp with Clip FX is not yet qualified");
     te::AudioFile f(edit.engine, media(edit, c));
     require(media(edit, c).existsAsFile() && f.isValid(), "Comp source media is missing or unreadable");
-    require(frame(c, "offset") >= 0 && frame(c, "offset") + frame(c, "length") <= std::llround(f.getLength() * 48000.),
-            "Comp source interval exceeds media");
+    if (bool(c[te::IDs::warpTime]))
+    {
+        warp_state::validate(c);
+        require(double(c[te::IDs::start]) == frame(c, "start") / 48000., "Warp Comp来源起点必须位于工程采样网格");
+        require(Commands::mediaHash(media(edit, c)) ==
+                    c.getChildWithName("NDAW_WARP")["media_hash"].toString().toStdString(),
+                "Warp Comp原媒体已变化");
+    }
+    else
+        require(frame(c, "offset") >= 0 &&
+                    frame(c, "offset") + frame(c, "length") <= std::llround(f.getLength() * 48000.),
+                "Comp source interval exceeds media");
 }
 // Preserve source-anchored fades, using the same native graph support as Punch.
 juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
@@ -139,9 +150,14 @@ juce::ValueTree sliced(juce::ValueTree c, int64_t begin, int64_t end)
     }
     copy.setProperty("fadeIn", 0., nullptr);
     copy.setProperty("fadeOut", 0., nullptr);
-    copy.setProperty("start", begin / 48000., nullptr);
-    copy.setProperty("length", (end - begin) / 48000., nullptr);
-    copy.setProperty("offset", double(c.getProperty("offset")) + (begin - start) / 48000., nullptr);
+    if (bool(copy[te::IDs::warpTime]))
+        warp_state::slice(copy, begin, end);
+    else
+    {
+        copy.setProperty("start", begin / 48000., nullptr);
+        copy.setProperty("length", (end - begin) / 48000., nullptr);
+        copy.setProperty("offset", double(c.getProperty("offset")) + (begin - start) / 48000., nullptr);
+    }
     return copy;
 }
 } // namespace
@@ -192,6 +208,7 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
         // The allocator is runtime-only. Preview nodes never reuse a live graph
         // ID, never become project clips and never enter the editing history.
         piece.setProperty(te::IDs::id, edit->createNewItemID().toVar(), nullptr);
+        warp_state::remapIDs(piece, str(clip, "id"));
         piece.setProperty(te::IDs::source, juce::String(path), nullptr);
         tracks.at(id).addChild(piece, -1, nullptr);
         sources.push_back({{"track", id},
@@ -391,6 +408,17 @@ Json Commands::queryPlaylists(const std::string& id) const
                                      {"locked", bool(c.getProperty("ndaw_locked", false))},
                                      {"take_id", str(c, "ndaw_take_id")},
                                      {"comp_origin", str(c, "ndaw_comp_origin")}});
+            auto& row = item["clips"].back();
+            if (bool(c[te::IDs::warpTime]))
+            {
+                warp_state::validate(c);
+                row["warp"] = {{"enabled", true},
+                               {"anchors", warp_state::visibleAnchors(c)},
+                               {"inherited_window", warp_state::isWindow(c)}};
+                row["playback_offset_seconds"] = double(c[te::IDs::offset]);
+                row["source_offset_seconds"] = row["warp"]["anchors"].front()["source_time_seconds"];
+                row["warp"]["render_hash"] = str(c.getChildWithName("NDAW_WARP"), "render_hash");
+            }
         }
     }
     return result;
@@ -722,7 +750,11 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
         return;
     }
     auto copy = [&](juce::ValueTree c)
-    { return te::ClipCopy::fromClipboardState(c, false).withNewItemID(*edit).getState().createCopy(); };
+    {
+        auto result = te::ClipCopy::fromClipboardState(c, false).withNewItemID(*edit).getState().createCopy();
+        warp_state::remapIDs(result, str(c, "id"));
+        return result;
+    };
     if (cmd == "playlist.comp.linked.create")
     {
         const auto set = juce::Uuid().toString();

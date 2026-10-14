@@ -5,6 +5,7 @@
 #include "SelectionOutputGate.h"
 namespace ndaw::v2
 {
+Json bindPreparedWarpSources(te::Edit&, te::Edit&);
 struct PlaylistAuditionState
 {
     std::unique_ptr<te::Edit> sources;
@@ -114,6 +115,7 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
     options.numAudioTracks = 0;
     state->sources = te::Edit::createEdit(std::move(options));
     require(state->sources != nullptr, "native audition source snapshot could not be prepared");
+    state->receipt["warp_sources"] = bindPreparedWarpSources(*edit, *state->sources);
     for (auto* source : te::getAudioTracks(*state->sources))
         state->clips[source->itemID.toString().toStdString()] = source->getClips();
     stopPlaylistAudition();

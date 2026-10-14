@@ -136,16 +136,21 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
     te::AudioFile a(edit->engine, f);
     auto info = a.getInfo();
     auto p = c.getPosition();
+    const auto warp = warpFacts(c);
     const bool editable = !c.isLooping() && !c.isGrouped() && !c.getAutoTempo() && !c.getAutoPitch() &&
                           !c.getWarpTime() && !c.getIsReversed() && c.getPitchChange() == 0 &&
                           std::abs(c.getSpeedRatio() - 1) < 1e-9;
     return {
         {"path", f.getFullPathName().toStdString()},
-        {"warp", warpFacts(c)},
+        {"warp", warp},
         {"source_sample_rate", info.sampleRate},
         {"source_frames", int64_t(info.lengthInSamples)},
         {"source_offset_samples", sample(p.getOffset().inSeconds())},
-        {"source_offset_seconds", p.getOffset().inSeconds() * c.getSpeedRatio()},
+        {"source_offset_seconds", c.getWarpTime() && warp.value("available", false)
+                                      ? warp["source_start_seconds"].get<double>()
+                                      : p.getOffset().inSeconds() * c.getSpeedRatio()},
+        {"playback_offset_seconds", p.getOffset().inSeconds()},
+        {"source_offset_samples_space", c.getWarpTime() ? "prepared-warp-output" : "linear-source-playback"},
         {"speed_ratio", c.getSpeedRatio()},
         {"pitch_semitones", c.getPitchChange()},
         {"stretch_algorithm", te::TimeStretcher::getNameOfMode(c.getTimeStretchMode()).toStdString()},
@@ -175,7 +180,7 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"legacy_source_id", c.state.getProperty("ndaw_legacy_source_id").toString().toStdString()},
         {"editable_audio", editable},
         {"editable_envelope",
-         editable || (c.getWarpTime() && warpFacts(c).value("available", false) && !c.isLooping() && !c.isGrouped() &&
+         editable || (c.getWarpTime() && warp.value("available", false) && !c.isLooping() && !c.isGrouped() &&
                       !c.getAutoTempo() && !c.getAutoPitch() && !c.getIsReversed() && c.getSpeedRatio() == 1. &&
                       c.getPitchChange() == 0 && c.getSyncType() == te::Clip::syncAbsolute &&
                       !c.state.getChildWithName("NDAW_FADE_ORIGIN").isValid() && c.getPluginList()->size() == 0 &&
