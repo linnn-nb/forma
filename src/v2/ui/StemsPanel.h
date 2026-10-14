@@ -107,8 +107,7 @@ public:
                 folder = previous;
         }
         path.setText(folder.getFullPathName(), juce::dontSendNotification);
-        message.setText(text("选择要打印的实际输出。现有文件不覆盖；同时仅准备一个原生图。"),
-                        juce::dontSendNotification);
+        message.setText(text("选择要打印的实际输出。整批核验后再提交到新目录。"), juce::dontSendNotification);
         enableInput(true);
         apply.setEnabled(false);
         resized();

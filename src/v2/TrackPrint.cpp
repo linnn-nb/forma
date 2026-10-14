@@ -150,7 +150,10 @@ struct TrackPrint::Job
             {
                 gate->wait();
 #if JUCE_MAC
-                pthread_set_qos_class_self_np(QOS_CLASS_BACKGROUND, 0);
+                // Background QoS throttles disk reads in macOS, even for short
+                // renders. Utility stays below interactive/audio work; pause and
+                // deadline checks still give playback/recording priority.
+                pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
 #endif
                 try
                 {

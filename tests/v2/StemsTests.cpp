@@ -445,7 +445,7 @@ int main(int argc, char** argv)
         auto* apply = dynamic_cast<juce::Button*>(find(*panel, "ui.command:275"));
         wait([&] { return apply && apply->isEnabled() && c.stemExportStatus()["state"] == "ready"; },
              "native asynchronous Prepare reaches actual verified batch preview");
-        apply->triggerClick();
+        key(w, 275);
         wait([&] { return !panel->isVisible() && root.getChildFile("GUI-Verified/manifest.json").existsAsFile(); },
              "native Apply obtains actual L1 publication receipt", 2000);
         check(c.stemExportPreset()["configuration"]["batch_name"] == "GUI-Verified",
@@ -484,7 +484,8 @@ int main(int argc, char** argv)
         check(keys->findCommandForKeyPress(custom) == 566, "custom Stems key remains assigned after save reopen");
         key(w, 566);
         check(panel->isVisible(), "custom Stems key really opens panel after reopen");
-        key(w, 277);
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)),
+              "contextual Escape dispatches actual native cancellation command");
         check(!panel->isVisible(), "Escape cancels native Stems panel without project editing");
         check(Commands::mediaHash(voiceFile) == voiceHash && Commands::mediaHash(beatFile) == beatHash,
               "all batch preparation faults GUI and history preserve original source hashes");
