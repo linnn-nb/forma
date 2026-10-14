@@ -1,5 +1,7 @@
 # 伸缩／变调 Take → Comp（2026-10-15）
 
+2026-10-15 更新：非活动来源缺缓存时现可异步准备后试听，支持真实进度、取消和明确超时；本页旧“未做自动预热”仅由[SOURCE_PREPARATION_WORKFLOW.md](SOURCE_PREPARATION_WORKFLOW.md)的99项资格替代。长源首响应/复杂组合/实体听评等原缺口保持。
+
 SoundTouch 线性伸缩和独立变调的来源现可建立候选 Comp、区间提升及带真实句柄的交叉淡化。候选保留原媒体和原生处理描述，只读取完整处理结果中的窗口；缓存丢失后仍能用原媒体与同一描述重建，未将渲染文件当作原始 Take。验证与边界见 ../evidence/P3/summary.md。
 
 先退出旧 Forma 进程再启动本轮唯一开发应用；本轮桌面锁定，没有替用户重启旧窗口。打开 p3-elastic-comp-tests.json 的 cases 中 session 指向的 Elastic-Source-Comp.tracktionedit。四个工程分别为 2→3 秒、独立 +7 半音、3 秒并 -5 半音、2→1 秒，均有来源 Take、两段候选与淡化；测试素材为实际合成 PCM，不是麦克风听评。

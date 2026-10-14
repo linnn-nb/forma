@@ -1,4 +1,4 @@
-2026-10-15 当前：无新增授权或库/版本；新增原生完整proxy窗口审计，总16份patch/35文件可重放。261专项通过，受影响15套分批1704项；首批Warp分析一次10秒超时，原预算单独及Stems→Warp复测通过，原因未定。固定本地签名有效，不是公证发行。CUA明确Mac锁定，旧进程未重启，新实体流程/听评未验。inactive冷cache自动预热/取消、Clip FX/复杂关联/旧读者保护、长源/旧性能A/Windows/视频/发行保留；详见ELASTIC_COMP_WORKFLOW.md及P3证据。
+2026-10-15 当前：无新增授权/算法/依赖版本；17份SDK patch/36文件可重放。非活动Warp/Elastic来源自动准备99项通过，2自有任务/30秒截止/取消与共享缓存保护已验；媒体SHA预检仍同步，超长源首响应未资格。固定本地签名通过，不是公证发行。桌面工具报告Mac锁定，新实体流程/听评未验。旧偶发Warp Master分析10秒超时根因、Clip FX/复杂关联/旧读者保护、异采样率/旧性能A/Windows/视频/发行保持；详见SOURCE_PREPARATION_WORKFLOW.md及P3证据。
 
 2026-10-15 当前：无新增授权/依赖版本需求。Warp源Comp的11套1095项及3次专项通过，既有Warp SDK patch修正共享源失效，15份/32文件审计通过。固定本地签名通过，不等于Developer ID/公证。CUA当前明确Mac锁定，本轮实体验收未执行；用户此前反馈窗口可正常操作，不能归因为App故障。线性elastic/pitch proxy窗口、Clip FX/复杂关联、旧版inactive schema2保护、听评/长源/旧性能A/Windows/发行保留。详见WARP_SOURCE_COMP_WORKFLOW.md与../evidence/P3/summary.md。
 

@@ -1,5 +1,7 @@
 # Warp 源 Take → Comp（2026-10-15）
 
+2026-10-15 更新：非活动来源缺缓存时现可异步准备后试听，支持真实进度、取消和明确超时；本页旧“未做自动预热”仅由[SOURCE_PREPARATION_WORKFLOW.md](SOURCE_PREPARATION_WORKFLOW.md)的99项资格替代。长源首响应/复杂组合/实体听评等原缺口保持。
+
 已实现原生 Warp 源的候选 Comp、区间提升及原 Take 内的交叉淡化句柄。候选保留原媒体、完整非线性锚点和处理链指纹，只改变播放窗口；不把渲染文件冒充原始可编辑源。验证结果见 [P3 证据](../evidence/P3/summary.md)。本增量的实体操作/听评未执行，完整产品未验收。
 
 用唯一开发应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app` 打开专项输出 `build-v2-tracktion/p3-warp-comp-tests.json` 中 `session` 指向的 `Warp-Source-Comp.tracktionedit`。工程内有 Processed Take、两段 Warp Comp 及真实交叉淡化；原 Take 的媒体仍保留。

@@ -1,9 +1,9 @@
 # 下一步（2026-10-15）
 
-线性SoundTouch/独立变调源的单轨Comp、提升和原Take输出句柄crossfade已接通；261专项通过，15套受影响测试分批1704项。首批Warp Master分析一次10秒超时，单独与Stems→Warp原顺序复测通过，根因未定；不能写成一次全绿。操作ELASTIC_COMP_WORKFLOW.md，证据../evidence/P3/summary.md。
+非活动 Warp／SoundTouch／独立变调 Take 缺少完整缓存时，已有异步准备、真实进度、立即取消、30秒截止和版本/共享任务保护；99项专项通过。接受候选、原Undo/Redo、保存重开与导出继续复用既有命令层。操作见 SOURCE_PREPARATION_WORKFLOW.md，实际本轮回归见 ../evidence/P3/summary.md。完整 P1/P3/产品未完成。
 
-1. 实现非活动Take缺少完整来源cache时的异步预热：原生后台完整描述重建，播放前有界准备、真实进度、立即取消、版本/会话冲突保护。当前明确拒绝缺缓存试听，不能以成功预览或切换播放来掩盖。
-2. 解锁后退出旧Forma、启动唯一新构建，以p3-elastic-comp-tests.json中的session完成源拖选→候选→试听→crossfade→实体快捷键UndoRedo→保存重开→WAV。本轮未执行，不沿用旧窗口算通过。
-3. 保留并定位偶发Master分析超时，预算不变；不因一次复测通过宣称根因已修复。
+1. 桌面可操作后，退出旧进程、启动唯一新构建，实体走完 Loop→Punch→Take拖选→候选试听→Comp→交叉淡化→Undo/Redo→保存重开→WAV。旧实体证据不代替本轮；桌面锁定时继续下一项开发，不重复CLI凑验收。
+2. 下一项工程任务：检查处理源带 Clip FX 的 Comp 组合，明确分析/处理 tap、来源及处理链失效规则；从真实原生输出对照开始，只放行实测范围。不另建引擎、不扩M2/M3、不先加空接口。
+3. 保留 Warp Master 分析偶发10秒超时的原失败及原预算复测；再次出现时依据实际栈/资源状态定位，不能因一次通过宣称根因已修复。
 
-继承Warp/Elastic窗口重新处理仍明确拒绝，回原始完整来源片段编辑并创建新Take/候选；Clip FX、复杂关联、旧版读取新窗口保护、长源/异采样率/听评仍保留。旧性能A、多输入/PDC、耐久、Windows/视频/环绕与发行未完成。M2/M3冻结、M4/M5暂缓。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，无新DMG。
+媒体哈希/描述预检仍同步，长源首响应/取消预算未资格；复杂关联、旧版读取新窗口保护、异采样率/听评、旧性能A、多输入/PDC、耐久、Windows/视频/环绕与发行继续保留。M2/M3冻结，M4/M5暂缓。只使用 build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，不制作新DMG。

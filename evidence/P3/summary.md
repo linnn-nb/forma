@@ -1,3 +1,21 @@
+# P3 当前增量：非活动 Take 缓存准备（2026-10-15）
+
+**17/17 受影响回归、1879项、398.61秒一次通过；新增来源准备专项另99项/56.31秒通过，共1978项分两批验证。** 代码 `0bc92b8`，Release实际构建exit0；固定本地deep-strict验签通过（非发行公证）。唯一程序SHA256 `fe49a412f8c375f221097d7693b0b2fb12140ae1eccc1fc6d1ec79b30f843059`，无新DMG/应用副本。完整P1/P3/产品仍未验收。
+
+非活动Warp／SoundTouch伸缩／独立变调Take缺完整缓存时，真实准备→核验→原路由试听已接通。来源及候选段共用准备；不切原播放/target，不改变原Take/媒体或新增历史。真实进度、最多2自有任务、30秒截止、停止/取消、人工提交冲突和最终版本/会话/设备门禁已接通。复用Tracktion原生后台渲染，RT仍读完整处理文件，没有第二引擎/回调伸缩/IPC。
+
+真实短源hosted256帧双声道PCM最大差 `1.341104507446289e-7`（固定2e-6）；已进入异步准备后的L1取消最大0.154ms（100ms）、引擎退出88.147ms（2s）、实际截止30076.904ms（30s/观测上界30.5s）。真实64秒处理源覆盖排队/重启/上限、源SHA、写盘冲突、共享作业和孤立缓存清理。仅永不结束的共享任务超时故障使用明确测试替身；没有用替身交付音频。
+
+原生控件专项等待真实异步通知，验证选列表/准备标签/停止按钮/可改键注册；不是实体键鼠。桌面工具明确Mac锁定，旧进程未重启，新构建物理操作/试听未执行，不推断App故障，也不沿用旧实体结果。
+
+本批回归：Clip58、持久历史86、Loop51、Punch124、Playlist227、Audition98、Crossfade101、CrossfadeClipboard73、Production91、Elastic87、Print77、PrintGraph148、Stems123、Warp144、WarpMix68、WarpComp62、ElasticComp261。实际Loop→Punch→Take/Comp→crossfade→WAV套件及原Undo/保存重开保持通过。所有原预算保留；旧偶发Warp Master分析10秒失败本次未复现，根因仍未确定。
+
+失败日志保留在忽略构建目录：AudioFile无默认构造导致首编译失败；截止起点过晚；原生只读快照析构误取消共享作业；新增控件测试未等待异步打开；新patch尚未登记造成配置拒绝；回归命令首次误用不存在target。分别修正实现/登记/测试调用后，先确认实际build exit0再测试，没有用旧成功JSON替代失败。SDK17 patch/36文件fresh apply/逐字核对/reverse通过；不提交脏子模块指针。
+
+完整输出/原失败/批次/JUnit/媒体及实际工程路径的本地索引：`build-v2-tracktion/p3-source-preparation-current-results.json`。可打开其`source_preparation.sources[].session`，操作见[SOURCE_PREPARATION_WORKFLOW.md](../../docs/SOURCE_PREPARATION_WORKFLOW.md)：Option+L，选择非活动Take，试听所选列表/来源选区，停止返回；随后原Comp/crossfade/UndoRedo/保存/WAV入口不变。暖缓存可能直接试听，禁止为观察进度删除用户源。
+
+仍未完成：同步媒体SHA预检的超长源首响应/取消预算、Clip FX/复杂关联、旧版读取新窗口保护、异采样率/听评、旧性能A/硬件PDC/耐久、Windows/视频/发行。下一项工程任务是处理源带Clip FX参与Comp的原生输出与缓存失效资格；桌面恢复后补本轮实体链路。下面保留历史结果，旧“inactive自动准备未做”只由上述受测范围替代。
+
 # P3 当前增量：伸缩／变调源 Comp（2026-10-15）
 
 **新增261项通过；15套当前分批结果共1704项**。首批14/15、348.73秒，Warp Master分析超过原10秒截止；单独Warp33.87秒通过，原Stems→Warp顺序120.78秒通过，预算/负载/容差未改。不能写成一次全绿或超时根因已修复。代码f398fa2；Release exit0、固定本地签名deep-strict通过，程序SHA `57a445888eb9e775d1e4c37eb33c0dd2024b38d0aaafc228e764614becfd2f07`。无新DMG，完整产品未验收。

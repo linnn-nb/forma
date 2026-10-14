@@ -1,4 +1,4 @@
-2026-10-15 Elastic源窗口：L1 ElasticState从Tracktion实际ProxyRenderingInfo捕获完整单段、原生key和源/处理SHA到Edit的NDAW_ELASTIC_PROXY schema1；只有L1在message thread写入。候选只改窗口及父身份，原媒体/原Take/处理来源保持；源/输出时间分别查询，原native Undo/迁移仍共用。旧inactive来源在L1脱离Edit的只读native副本编译。L0后台原生AudioSegmentList从描述恢复完整proxy，非RT构图指定输出窗口，原WaveNode读音；没有回调推理/伸缩、新服务或第二引擎。16 patch/35文件审计，统一prepared源绑定用于原离线消费者。cache缺失inactive预热/取消、旧版兼容等保持差距；资格ELASTIC_COMP_WORKFLOW.md。
+2026-10-15 来源准备：L1 PreparedAudioSources校验媒体SHA和完整原生描述，在同Engine只读Edit快照中捕获处理数据；复用L0后台ProxyRenderingInfo/AudioSegmentList/SoundTouch，最多2个自有作业，30秒截止，原子ticket逐1024帧检查取消。共享任务只借用；SDK快照析构不取消共享任务，缓存清理保留真实快照引用。message thread核验文件及revision/session/设备代次后才发布试听图，RT仍读WaveNode，不增加引擎/服务/IPC或回调伸缩。继承窗口/原生Undo与原媒体保持。17 patch/36文件fresh apply/字节核对/reverse通过；操作、99项资格和未完成范围见SOURCE_PREPARATION_WORKFLOW.md。
 
 2026-10-15 Warp源Comp：L1 WarpState保留完整源/输出非线性映射，schema2仅记录播放窗口；候选新Clip/锚点ID与源渲染指纹分开。输出源包络显式标坐标，区间提升复用native_fades.fragment保留多层坡度；crossfade只在完整原Take句柄内扩窗，单原生Undo事务。活动/非活动描述符均校验，查询区分原媒体逆映射与缓存播放时间。试听快照绑定同一Engine已准备float32源，原Take不改。既有SDK Warp补丁修正定时器无变化源缓存失效，不改实时回调；15份/32文件审计不变。线性elastic proxy窗口/旧版兼容/Clip FX/关联多轨保持差距，资格见WARP_SOURCE_COMP_WORKFLOW.md。
 

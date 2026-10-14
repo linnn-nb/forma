@@ -1,4 +1,4 @@
-2026-10-15 当前：线性SoundTouch/独立变调源的单轨Comp/提升/句柄crossfade、冷缓存活动工程完整重建和旧inactive来源描述编译已有261项资格。下一项inactive缺cache异步预热/取消/进度；本轮新实体流程因Mac锁定未验。首批Warp Master分析10秒偶发超时根因未定（原预算单独/原顺序复测通过）；Clip FX/复杂关联/旧读者保护/长源听评等继续保留。以下旧“线性源Comp未做”由上述具体范围替代，完整产品未完成。
+2026-10-15 当前：非活动Take缺完整Warp/Elastic缓存的异步准备、进度、取消、30秒截止和共享任务保护已有99项资格，旧“未做自动预热”仅由该范围替代。长源同步SHA/首响应、复杂关联/Clip FX、旧读者保护、异采样率/听评未资格；实体新流程受桌面锁定影响未验。旧Warp Master分析10秒偶发超时根因未定，旧性能A/Windows/发行保留。完整产品未完成，下一项见NEXT_STEPS。
 
 2026-10-15 当前：Warp源Take的候选Comp/区间提升、继承输出包络和原映射内crossfade句柄已接通，见WARP_SOURCE_COMP_WORKFLOW.md。其实体快捷键/试听仍未执行（桌面工具明确Mac锁定）；线性elastic proxy窗口、复杂关联多轨/Clip FX、旧版本读取inactive schema2的保护和长源/听评保留。以下旧“Warp源直接Comp未做”由本轮具体资格替代，不据此扩大范围。
 

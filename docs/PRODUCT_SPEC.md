@@ -1,4 +1,4 @@
-2026-10-15 当前制作增量：本产品线性SoundTouch/独立变调的单轨来源可用于Comp、区间提升与原Take真实输出句柄crossfade；保留原媒体/完整原生处理描述、来源包络、Undo与冷缓存重开。261专项和受影响分批结果见ELASTIC_COMP_WORKFLOW.md；未完成inactive冷缓存自动准备、复杂关联/Clip FX/长源/听评及完整产品。
+2026-10-15 当前制作增量：Warp／线性SoundTouch／独立变调来源可用于单轨Comp、提升与原Take输出句柄crossfade；非活动Take缺缓存时已有异步准备、真实进度、立即取消和失败回执，验证后自动试听，不切换原列表或添加历史。99项来源准备专项通过；已有261项Elastic Comp资格保持。操作见SOURCE_PREPARATION_WORKFLOW.md。Clip FX/复杂关联、长源首响应/异采样率/听评、旧读者保护及完整产品未完成。
 
 2026-10-15 制作联动增量：已准备的原生Warp Take可切为候选Comp/提升区间，原媒体、完整映射及处理链保留；配对交叉淡化只能揭示原Take实际输出句柄。可撤销/持久原历史/真实导出资格见WARP_SOURCE_COMP_WORKFLOW.md。独立线性伸缩/变调源Comp和全部Elastic Audio未完成，实体本增量仍待验。
 
