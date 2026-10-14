@@ -18,6 +18,7 @@ class PluginEditorWindows;
 class NativePluginStates;
 class SessionRecovery;
 class PersistentHistory;
+class AppPreferences;
 class MasterAnalysis;
 class TrackPrint;
 class StemExport;
@@ -92,6 +93,9 @@ public:
     Json prepareStemExport(const Json&);
     Json stemExportStatus();
     Json cancelStemExport();
+    Json preferences() const;
+    Json configurePreferences(const Json&, uint64_t expectedRevision);
+    Json preferenceHistory(bool redo, uint64_t expectedRevision);
     Json timelineRange() const;
     Json shuffleOptions() const;
     std::string automationEditBasis(const std::string& track) const;
@@ -246,6 +250,8 @@ private:
     friend class TrackPrint;
     friend class StemExport;
     std::unique_ptr<StemExport> stemExport;
+    mutable std::unique_ptr<AppPreferences> appPreferences;
+    void applyPreferenceDefaults(te::Edit&);
     static void registerStemCommands(Json&);
     Json stemExportChange(const Json&) const;
     void executeStemExport(const Json&, Json&);

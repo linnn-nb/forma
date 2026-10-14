@@ -199,6 +199,9 @@ const std::vector<Entry>& entries()
         {564, "还原原地 Bounce", "轨道", 'b', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {565, "重定位冻结缓存…", "轨道", 'r', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {566, "Stems · 批量导出…", "文件", 'b', cmd | shift | juce::ModifierKeys::altModifier},
+        {570, "偏好设置…", "设置", ',', cmd},
+        {571, "撤销偏好设置", "设置", 'z', cmd | shift | juce::ModifierKeys::altModifier},
+        {572, "重做偏好设置", "设置", 'z', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
@@ -689,6 +692,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                          (id == 141 ? !piano.viewedClip().is_null() : piano.canQuantize());
             if (id == 6)
                 active = undoButton.isEnabled();
+            if (id == 571 || id == 572)
+                active = preferencesPanel && preferencesPanel->isVisible() &&
+                         (id == 571 ? preferencesPanel->canUndo() : preferencesPanel->canRedo());
             if (id == 7)
                 active = redoButton.isEnabled();
             if (id == 83)
@@ -999,6 +1005,17 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 bool Workspace::perform(const InvocationInfo& invocation)
 {
     const auto id = invocation.commandID;
+    if (id == 570)
+    {
+        invoke([&] { showPreferences(); });
+        return true;
+    }
+    if ((id == 571 || id == 572) && preferencesPanel && preferencesPanel->isVisible())
+    {
+        preferencesPanel->restore(id == 572);
+        commandManager.commandStatusChanged();
+        return true;
+    }
     if (audioImportPanel && audioImportPanel->isVisible())
     {
         if (id == 275)

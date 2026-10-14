@@ -3,6 +3,7 @@
 #include "NativeEditXml.h"
 #include "MasterAnalysis.h"
 #include "StemExport.h"
+#include "AppPreferences.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "TimelineState.h"
 #include <limits>
@@ -286,6 +287,7 @@ Commands::Commands(bool openDevice, std::unique_ptr<te::PropertyStorage> storage
     metadata = edit->state.getOrCreateChildWithName("NATIVEDAW", nullptr);
     metadata.setProperty("schema", 2, nullptr);
     metadata.setProperty("revision", juce::int64(0), nullptr);
+    applyPreferenceDefaults(*edit);
     restoreTransportSettings();
     initialiseMusicIDs();
     initialiseAutomationIDs();

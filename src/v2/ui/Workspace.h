@@ -28,6 +28,7 @@
 #include "SidechainPanel.h"
 #include "PrintPanel.h"
 #include "StemsPanel.h"
+#include "PreferencesPanel.h"
 #include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -68,6 +69,9 @@ public:
     explicit Workspace(bool openDevice = true, std::unique_ptr<te::PropertyStorage> storage = {});
     ~Workspace() override;
     void chooseExport(bool selection);
+    void showPreferences();
+    void syncPreferencePaths();
+    std::unique_ptr<PreferencesPanel> preferencesPanel;
     void showVerifiedExport(bool selection = false);
     void showAnalysis();
     Json queryAnalysis();
@@ -258,8 +262,12 @@ private:
     void choose(bool writing, std::function<void(const juce::File&)> action,
                 const juce::String& filter = "*.wav;*.aiff;*.flac")
     {
-        chooser = std::make_unique<juce::FileChooser>(
-            writing ? text("保存到新文件（现有文件不会被覆盖）") : text("选择本地文件"), juce::File{}, filter);
+        const auto prefs = commands.preferences()["values"];
+        const auto path = prefs[writing ? "export_directory" : "media_directory"].get<std::string>();
+        const juce::File folder(text(path));
+        chooser = std::make_unique<juce::FileChooser>(writing ? text("保存到新文件（现有文件不会被覆盖）")
+                                                              : text("选择本地文件"),
+                                                      folder.isDirectory() ? folder : juce::File{}, filter);
         chooser->launchAsync((writing ? juce::FileBrowserComponent::saveMode : juce::FileBrowserComponent::openMode) |
                                  juce::FileBrowserComponent::canSelectFiles,
                              [safe = juce::Component::SafePointer<Workspace>(this), action](const auto& c)

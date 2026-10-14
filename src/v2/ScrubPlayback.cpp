@@ -612,8 +612,7 @@ void Commands::stopScrub(const std::string& reason)
 Json Commands::scrubPreferences() const
 {
     checkThread();
-    return {{"insertion_follows",
-             engine.getPropertyStorage().getPropertiesFile().getBoolValue("formaScrubInsertionFollows", false)}};
+    return {{"insertion_follows", preferences()["values"]["scrub_insertion_follows"]}};
 }
 Json Commands::setScrubPreferences(const Json& value)
 {
@@ -622,14 +621,7 @@ Json Commands::setScrubPreferences(const Json& value)
     require(value.is_object() && value.size() == 1 && value.contains("insertion_follows") &&
                 value["insertion_follows"].is_boolean(),
             "invalid Scrubber preference");
-    auto& properties = engine.getPropertyStorage().getPropertiesFile();
-    const bool before = scrubPreferences()["insertion_follows"];
-    properties.setValue("formaScrubInsertionFollows", value["insertion_follows"].get<bool>());
-    if (!properties.saveIfNeeded())
-    {
-        properties.setValue("formaScrubInsertionFollows", before);
-        throw std::runtime_error("Scrubber preference could not be saved");
-    }
+    configurePreferences({{"scrub_insertion_follows", value["insertion_follows"]}}, preferences()["revision"]);
     return scrubPreferences();
 }
 Json Commands::finishScrubSelection(const std::string& reason)

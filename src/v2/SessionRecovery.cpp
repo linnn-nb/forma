@@ -489,6 +489,7 @@ void Commands::createNewSession(const std::string& name, const std::string& sess
     info.setProperty("schema", 2, nullptr);
     info.setProperty("revision", juce::int64(0), nullptr);
     info.setProperty("session_name", juce::String(name), nullptr);
+    applyPreferenceDefaults(*candidate);
     adoptEdit(std::move(candidate));
 }
 void Commands::restoreRecoveryState(juce::ValueTree state, const std::string& session, uint64_t expected)

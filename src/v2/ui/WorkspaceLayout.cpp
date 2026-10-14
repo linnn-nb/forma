@@ -303,6 +303,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (preferencesPanel && preferencesPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return preferencesPanel->keyPressed(key);
     if (audioImportPanel && audioImportPanel->isVisible())
         return audioImportPanel->handleKey(key);
     if (keyboardSettings && keyboardSettings->isVisible())
@@ -474,6 +476,8 @@ void Workspace::resized()
         printPanel->setBounds(getLocalBounds());
     if (stemsPanel)
         stemsPanel->setBounds(getLocalBounds());
+    if (preferencesPanel)
+        preferencesPanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)

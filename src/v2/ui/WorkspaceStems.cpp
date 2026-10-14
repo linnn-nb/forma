@@ -46,7 +46,7 @@ void Workspace::showStems()
                                                                fadesPanel.get(), rollPanel.get(), playlistPanel.get()})
         if (panel)
             panel->setVisible(false);
-    stemsPanel->show(current, commands.stemExportPreset(), commands.timelineRange());
+    stemsPanel->show(current, commands.stemExportPreset(), commands.timelineRange(), commands.preferences());
     stemsPanel->setBounds(getLocalBounds());
     stemsPanel->setVisible(true);
     stemsPanel->toFront(true);

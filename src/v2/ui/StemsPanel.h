@@ -64,7 +64,7 @@ public:
         apply.setCommandToTrigger(&m, 275, true);
         cancel.setCommandToTrigger(&m, 277, true);
     }
-    void show(const Json& facts, const Json& preset, const Json& range)
+    void show(const Json& facts, const Json& preset, const Json& range, const Json& preferences)
     {
         snapshot = facts;
         selection = range;
@@ -99,7 +99,7 @@ public:
         tail.setText(config.is_object() ? juce::String(config.value("tail_samples", int64_t(48000)) / 48) : "1000",
                      false);
         name.setText("Stems-" + juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"), false);
-        folder = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+        folder = juce::File(text(preferences["values"]["export_directory"].get<std::string>()));
         if (config.is_object())
         {
             juce::File previous(text(config.value("directory", folder.getFullPathName().toStdString())));

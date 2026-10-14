@@ -663,7 +663,9 @@ void Workspace::chooseAudioFiles()
             if (audioImportPanel && audioImportPanel->isVisible())
                 throw std::runtime_error("请先完成或取消当前导入");
             const auto context = audioImportContext();
-            chooser = std::make_unique<juce::FileChooser>(text("导入音频 · 可多选"), juce::File{},
+            const juce::File start(text(commands.preferences()["values"]["media_directory"].get<std::string>()));
+            chooser = std::make_unique<juce::FileChooser>(text("导入音频 · 可多选"),
+                                                          start.isDirectory() ? start : juce::File{},
                                                           "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
             chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles |
                                      juce::FileBrowserComponent::canSelectMultipleItems,

@@ -908,6 +908,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     saveButton.setButtonText(text("保存副本…"));
     exportButton.setButtonText(text("导出…"));
 
+    syncPreferencePaths();
     setSize(1440, 880);
     refresh();
     commands.addChangeListener(this);
