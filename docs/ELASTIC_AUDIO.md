@@ -1,4 +1,4 @@
-2026-10-15 补充：SoundTouch／Warp来源可在完整Take上插入原生EQ、压缩、延迟、混响后创建单轨Comp，保持真实插件、完整处理输入和选段包络；与先前缓存准备共用L1/原生图，见[CLIP_FX_COMP_WORKFLOW.md](CLIP_FX_COMP_WORKFLOW.md)。没有新算法或烘焙替代。窗口结构编辑/FX尾音/复杂关联、长源/异采样率/听评及完整Elastic Audio仍未完成。
+2026-10-15 补充：Elastic/Warp及带原生Clip FX的Comp整体位置移动已有414项专项，使用同一L1 clip.move/Grabber/Nudge，保留原生时长、完整来源和插件；操作[PROCESSED_CLIP_MOVE.md](PROCESSED_CLIP_MOVE.md)。仍非自由结构编辑资格，修剪/复制/复杂关联、旧读者/长源/听评和完整Elastic Audio继续保留。
 
 # 弹力音频（2026-10-14）
 

@@ -1,3 +1,19 @@
+# P3 当前增量：处理后片段整体移动（2026-10-15）
+
+**18/18受影响套件一次通过，17538项数值/状态检查，342.38秒。** 其中范围Nudge15337项、新移动专项414项/29.76秒；此前独立专项414项/29.38秒不重复计数。源码ea10462/a5e199b；正常Release构建exit0，固定本地deep-strict验签通过。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `89ae7e367576753848b90d7290fbb72653b76e52156ceafc1ff65a2d64e353a3`；本地签名非发行公证，无新DMG/应用副本，完整P1/P3/产品未完成。
+
+普通／SoundTouch／Warp × 有无原生EQ、压缩、Delay、Reverb的Comp，已支持同一L1 clip.move、单片段Grabber及多选Nudge；共同移动两侧时保留crossfade配对和相同位移。真实WAV位移最大差 `1.1920928955078125e-7`（原2e-6），移位前段为0；原duration/offset、来源描述、插件实例、源SHA和原Take保持。原Undo/Redo、保存重开后原Undo/Redo、锁定/过期Plan/稳定ID选择及显式无历史旧工程100001帧44.1k分数时长夹具通过。新导入的工程网格对齐与旧存储精度分别测试。
+
+发现并修复真实历史故障：TrackList异步sortTracksByType在回放后追加未命名Undo动作。只在L1事务边界刷新原生派生排序，历史回放不重新排队；未知事务保护未放宽。回归检查独立工程重开/渲染泵消息期间当前会话原Undo描述不变。17 SDK patch/38文件fresh apply、逐字比对、reverse审计通过；临时JUCE UndoManager插桩已逐字恢复，正式Release重新编译juce_data_structures，诊断运行不算资格。
+
+本批：Folder/VCA51、Clip58、PersistentHistory86、Editor83、GroupTransform99、ClipTime57、RangeNudge15337、Loop51、Punch124、Playlist227、Audition98、Crossfade101、CrossfadeClipboard73、Production91、WarpComp62、ElasticComp261、ClipFxComp265、ProcessedMove414。没有JUCE断言，原来源5秒/每次WAV10秒/专项180秒及其它既定套件预算不变。旧Warp Master分析10秒偶发超时不是本批覆盖，不声称根因修复；没有新性能A、PDC或耐久结论。
+
+保留初始失败：混合auto类型声明编译失败；把随位置更新的bar/beat当作不变量；跨过其他片段后按旧下标/独立坐标舍入差查拖动；真实未登记排序事务；补测时误把按网格对齐的新导入当作分数旧时长。逐项纠正夹具或实现，未放宽音频/时间/历史标准。所有日志、本次JUnit、各套新JSON哈希/六个可打开工程及SDK审计见本地 `build-v2-tracktion/p3-processed-move-current-results.json`；大媒体未进Git或上传。
+
+用户已报告此前窗口手动正常；本次CUA明确返回Mac锁定，当前实体键鼠/听评未执行，合成组件不代替实机。正常应用/测试文件无临时跟踪钩子。如何试见[PROCESSED_CLIP_MOVE.md](../../docs/PROCESSED_CLIP_MOVE.md)：打开cases[].session，Grabber单片段拖动或Shift多选后逗号/句号Nudge，再Undo/Redo、保存重开。
+
+后续：处理窗口内非破坏性修剪；自由拆分/复制、多选统一Grabber、复杂Tempo/自动化/多轨关联、旧读者/长源/多声道/实体听评、Windows/发行仍未完成。以下为旧增量记录，其资格不自动扩大。
+
 # P3 当前增量：Clip FX 来源 Comp（2026-10-15）
 
 **15/15受影响套件、1722项、384.32秒一批全绿，含新增265项/35.69秒。** 代码f83a269，Release构建exit0，固定本地deep-strict验签通过；唯一程序SHA256 `1e59def275de9cabce5c28bcab53c272151a739aa958a6561834ae394d2db474`。本地身份不等于发行公证，无新DMG或应用副本。完整P1/P3/产品未完成。

@@ -1,4 +1,4 @@
-2026-10-15 Clip FX Comp：既有playlist命令/权限/幂等/revision/Scope/原生Undo不变，不扩M2/M3权限。预览注明独立原生处理器、完整来源输入与选段输出；query的clip_fx区分full_input_window、plugin_state_hash、input_hash、processing_hash及输出范围。真实参数/顺序/源处理/增益与包络变更更新对应指纹；空容器/等价XML写法不假装声音改变。坏描述/媒体变化拒绝，原生插件不替换成假参数。500新增默认⌘⌃⌥E可改键。资格和限制见CLIP_FX_COMP_WORKFLOW.md。
+2026-10-15 clip.move Schema/actor/revision/Scope/权限/幂等不变；新增只读movable_audio能力，允许已验证处理来源整体移位，不授予trim/split/copy权限。移动前核验媒体SHA/处理描述/锁定及真实原生时长边界，预览沿用交叉淡化共同移动/解除配对记录。L1只改变start，源坐标/原生duration/插件不量化。派生bar/beat随新工程位置更新；原Undo、保存历史和版本冲突规则保持。快捷键/原生入口及414专项见PROCESSED_CLIP_MOVE.md，不扩M2/M3工具权限。
 
 2026-10-15 Warp Comp查询单位：source_offset_seconds为逆非线性映射得到的原媒体时间；playback_offset_seconds与source_offset_samples_space=prepared-warp-output为实际缓存播放坐标。Warp inherited_window带window_start_samples、完整处理链hash、origin_clip及直接parent_clip。已有playlist.comp.create/promote与crossfade命令沿用原actor/local_gui/版本/Scope/权限与一Plan原生Undo，不增加Agent权限；GUI/AI不可绕过L1编辑树。资格及拒绝范围见WARP_SOURCE_COMP_WORKFLOW.md。
 

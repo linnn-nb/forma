@@ -1,4 +1,4 @@
-2026-10-15 Clip FX来源窗口：L1在切片时保存NDAW_CLIPFX_WINDOW schema1完整输入边界、媒体/源处理链指纹；原生ClipCopy递归分配试听及Comp的插件新ID。L0图准备扩大WaveNode输入区间，真实插件后使用来源包络/输出窗口；原生SummingNode持续处理，避免切点前CombiningNode跳过FX。没有烘焙替代、第二引擎/服务/RT分配/IPC。查询按SDK真实float参数与double几何计算语义指纹，普通无FX片段不序列化XML。17份SDK patch/36文件重放审计通过。信号顺序、实际资格及未完成范围见CLIP_FX_COMP_WORKFLOW.md。
+2026-10-15 处理后片段移动：L1查询新增movable_audio，与editable_audio自由结构权限分开；clip.move只写原生start，保留duration/offset/完整Warp/Elastic/FX描述及插件。GUI Grabber/Nudge/整组范围移动消费同一能力位并提交Plan。定位到TrackList.sortTracksByType的异步未命名Undo写入：新增原生flushPendingOrder供L1边界收束，历史恢复不重新排队排序，保留未知事务保护。17 SDK patch/38文件可重放，临时JUCE诊断逐字恢复；无新引擎/DSP/服务/RT工作。资格及边界PROCESSED_CLIP_MOVE.md。
 
 2026-10-15 Warp源Comp：L1 WarpState保留完整源/输出非线性映射，schema2仅记录播放窗口；候选新Clip/锚点ID与源渲染指纹分开。输出源包络显式标坐标，区间提升复用native_fades.fragment保留多层坡度；crossfade只在完整原Take句柄内扩窗，单原生Undo事务。活动/非活动描述符均校验，查询区分原媒体逆映射与缓存播放时间。试听快照绑定同一Engine已准备float32源，原Take不改。既有SDK Warp补丁修正定时器无变化源缓存失效，不改实时回调；15份/32文件审计不变。线性elastic proxy窗口/旧版兼容/Clip FX/关联多轨保持差距，资格见WARP_SOURCE_COMP_WORKFLOW.md。
 

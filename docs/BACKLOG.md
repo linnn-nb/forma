@@ -1,4 +1,4 @@
-2026-10-15 当前：四类原生Clip FX的普通／SoundTouch／Warp单轨来源Comp、原生独立实例、完整输入/选段输出、交叉淡化与持久原历史已有专项资格。旧“Clip FX与Comp全部未做”仅由CLIP_FX_COMP_WORKFLOW.md范围替代。普通FX额外尾音句柄、FX自动化/离线ClipEffects/第三方Clip插件、处理窗口自由移动/剪裁/复制、复杂关联/多声道/异采样率/长源/旧读者与实体听评仍保留；旧性能/偶发分析超时及完整产品未完成。
+2026-10-15 当前：普通/Elastic/Warp×有无四原生FX的Comp整体移动、原生Grabber单片段/多选Nudge/配对共同移动及持久原历史已有414项资格，见PROCESSED_CLIP_MOVE.md。TrackList异步排序越过Undo边界的实际故障已修；原失败保留。自由修剪/拆分/复制粘贴、多选统一Grabber拖动、复杂Tempo/自动化/多轨关联、旧读者/长源/听评等保持；旧“处理窗口全部不能移动”仅由本轮具体范围替代。完整产品未完成。
 
 2026-10-15 当前：Warp源Take的候选Comp/区间提升、继承输出包络和原映射内crossfade句柄已接通，见WARP_SOURCE_COMP_WORKFLOW.md。其实体快捷键/试听仍未执行（桌面工具明确Mac锁定）；线性elastic proxy窗口、复杂关联多轨/Clip FX、旧版本读取inactive schema2的保护和长源/听评保留。以下旧“Warp源直接Comp未做”由本轮具体资格替代，不据此扩大范围。
 
