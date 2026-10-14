@@ -2,7 +2,7 @@
 
 - 高：forma_native_sample_midi：immutable original native sequence hash retained失败。尚未建立fe6f764基线，不能称旧缺口或忽略；先做隔离对照，再原源哈希/持久来源修复。
 - 高：forma_native_midi_clip_trim：第63项后MIDI trim cannot precede original source content失败。保持原精确边界与预算，禁止epsilon掩盖；同样先建立基线。
-- 中：CC实机最后载入、点拖动/提交/保存重开/改键；CUA选择文件后超时，进程采样正常不是GUI验收。
+- 中：CC实机点拖动/提交/保存重开/改键；载入与默认键打开曲线已补验，后续点选工具报noWindowsAvailable但进程仍在，不以采样当GUI验收。
 - 中：CC首次持久化之前的旧事件身份与采样基准变换、实体MIDI端口/第三方响应、曲线复杂联动；未以128个合成CC值冒充完整音乐制作资格。
 
 以下保留旧列表。
