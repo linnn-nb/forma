@@ -1,5 +1,7 @@
 # 带 Clip FX 的 Take／Comp（2026-10-15）
 
+后续完整输入拆分已接通，操作与资格见[PROCESSED_CLIP_SPLIT.md](PROCESSED_CLIP_SPLIT.md)；有效来源的工程删除也已接通；处理窗口复制/粘贴仍未放行。
+
 后续：处理输出窗口的非破坏性修剪见[PROCESSED_CLIP_TRIM.md](PROCESSED_CLIP_TRIM.md)；拆分/复制及复杂联动仍未完成。
 
 2026-10-15 更新：本页的处理窗口整体移动限制已由[PROCESSED_CLIP_MOVE.md](PROCESSED_CLIP_MOVE.md)的414项资格部分补齐；自由修剪/拆分/复制及复杂联动仍保留。

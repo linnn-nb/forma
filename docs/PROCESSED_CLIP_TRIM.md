@@ -1,5 +1,7 @@
 # 处理后片段非破坏性修剪（2026-10-15）
 
+后续完整输入拆分已接通，操作与资格见[PROCESSED_CLIP_SPLIT.md](PROCESSED_CLIP_SPLIT.md)；有效来源的工程删除也已接通；处理窗口复制/粘贴仍未放行。
+
 SoundTouch、Warp 和带原生 EQ／压缩／Delay／Reverb 的片段及其 Comp 可以通过同一 `clip.trim` 修剪输出窗口。完整源音频、伸缩映射、效果器输入历史、插件实例和源淡化保留；普通未处理音频沿用既有 Trim 行为。专项和本批回归结果见 [P3证据](../evidence/P3/summary.md)；不是完整 P1／P3 或产品验收。
 
 选择音频片段，按 F6 使用 Trim，在片段边缘拖动；Smart Tool 的边缘也接入同一命令。按 Option＋数字键盘减／加修剪起点，Command＋数字键盘减／加修剪终点，步长使用当前 Nudge 设置。快捷键可自定义，Command Z／Command Shift Z 撤销重做，Command S 保存，重新打开后保留原事务。这里只实现已有原生界面的编辑，不新增聊天操作或必须填写的表单。

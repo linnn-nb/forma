@@ -1,3 +1,23 @@
+# P3 当前增量：处理后片段拆分与工程删除（2026-10-15）
+
+**最终28/28受影响套件、19972项数值/状态检查、663.14秒一次通过；新增拆分专项1207项/87.18秒。** 仅计最终每套一份结果，15342项属于范围Nudge，先前专项与失败批次不累计。源码085ca68/3851f2c；当前Release构建exit0，固定本地deep-strict验签通过。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `53818e9134abe6beaffcc8dfd4ab93dd6d47dd1ea32a42951f62502ff72cc4aa`。本地签名不是发行公证，无新DMG/源码包/应用副本，完整P1/P3/产品未完成。
+
+普通／SoundTouch／Warp × 无效果／真实EQ、压缩、Delay、Reverb的完整来源及Comp支持同一L1 `clip.split`。左Clip/插件身份保留；右Clip及插件实际新ID、owner_clip与参数枚举均核对。真实WAV对照包含一采样左片段、淡入/淡出内部和中间切点，完整Warp/Elastic映射、处理输入、源坡度、原Take及媒体SHA保持；修改右EQ实际改声而左实例不变。选区Separate两端切点为一事务，保存重开原Undo/Redo、幂等、过期Plan/锁定/外边界拒绝、Comp配对明确解除与原Undo恢复通过。新增独立deletable能力修复局部Cut，并验证Backspace仅移除有效来源工程对象、真实WAV静音遮罩、保存重开后两笔原Undo分别恢复删除与拆分。复制/粘贴权限继续独立拒绝，不据此扩大缺失媒体/复杂Ripple等资格。
+
+PCM24最大差 `0.0`，原2e-6容差未改。来源准备5秒、每WAV10秒、专项180秒预算保持；只沿用整体首尾256采样观测窗，内部切点完整逐采样比较。合成Cmd E、Cmd Z、自定义CtrlAltJ与删除键走真实原生命令路由，不能代替实体按键。ClipWorkspace71项包含真实CoreAudio插EQ后的3位置Stop/0.5秒静音回调，不是声学回路、听感或零XRUN资格。
+
+保留失败：最初把右插件owner_clip当作不变量的测试断言已改为明确验证新归属；随后真实FX拆分出现最大2.0265579223632812e-6（17个PCM24量化级），超过原2e-6。独立解码失败plain-fx/render-13.wav与render-14.wav，差异位于24003–24030帧。原因是普通FX与新窗口分别走CombiningNode/SummingNode，改变源起音约40采样的隐式平滑；图构建统一为含实际Clip FX的连续调度，未修改实时WaveNode防跳变代码。手工patch更新被精确CMake审计拒绝后，重新从所属SDK文件生成规范diff，没有绕过保护。原首批27/28（648.60秒）的AudioClipboard局部Cut失败另以动作专属Delete能力修复；定向2套94.21秒及最终本批通过，不计旧成功JSON。
+
+仍为17份SDK补丁/38文件，fresh apply、逐字核对当前已构建字节、reverse审计通过，当前pin/17补丁SHA/38源码SHA再核对一致；见本地p3-processed-split-sdk-replay.json。含FX稀疏/密集工程连续调度的CPU、XRUN与负载预算仍待专测，也不承诺旧构建起音逐位兼容；无新依赖/服务/引擎或RT代码。
+
+当前CUA明确Mac锁定，实体键鼠/听评未执行；用户此前报告手动窗口正常，不能据此归因App挂死。旧KeyboardSettings焦点失败不在本批28套、未解除，不计旧JSON。复制/粘贴、缺失媒体删除/复杂关联、多选统一Grabber、旧读者/长源/中途FX历史预热/走带编辑、多声道/异采样率、旧分析10秒偶发超时/性能A/耐久、Windows/视频/发行继续保留。
+
+本批逐套检查数：tracktion_clip_fx_tail_scope 13；tracktion_clip_fx 85；tracktion_native_clip_fx 30；tracktion_folder_vca 51；tracktion_audio_clip_edits 58；forma_persistent_native_history 86；tracktion_native_clip_workspace 71；forma_native_editor_interactions 83；forma_native_audio_clipboard 49；forma_native_group_transforms 99；forma_native_group_ranges 72；forma_native_clip_time 57；forma_native_boundary_nudge 255；forma_native_mixed_clipboard 95；forma_native_range_nudge 15342；forma_loop_recording 51；forma_punch_recording 124；forma_playlist_editing 227；forma_playlist_audition 98；forma_crossfade 101；forma_crossfade_clipboard 73；forma_production_chain 91；forma_warp_comp 62；forma_elastic_comp 261；forma_clip_fx_comp 265；forma_processed_move 414；forma_processed_trim 552；forma_processed_split 1207。
+
+操作见[PROCESSED_CLIP_SPLIT.md](../../docs/PROCESSED_CLIP_SPLIT.md)：打开当前结果索引processed_split.cases中的session/range_session/delete_session/comp_session，Cmd E拆分、Backspace工程删除、Cmd Z/Shift Cmd Z恢复，再保存重开。当前一份含Warp/FX示例工程本地路径：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-ProcessedSplit-6b4ba9e2db2f4642b5c0bc9647c827ca/warp-fx/Processed-Split.tracktionedit`。它是测试信号与实际处理，不是音乐听评。
+
+最终CTest日志/JUnit、当前28套结果JSON与SHA、6组工程和真实WAV、初始失败日志、签名日志及SDK审计索引：`build-v2-tracktion/p3-processed-split-current-results.json`。大媒体与运行输出留本地，不上传。下一项为处理窗口复制/粘贴与缺失媒体删除边界；以下历史资格不自动扩大。
+
 # P3 当前增量：处理后片段非破坏性修剪（2026-10-15）
 
 **当前21/22套、18420项数值与状态检查分两批通过；1套原生焦点未通过，不写22套全绿。** 首批19/22、408.01秒；Boundary255项/16.73秒、Range15342项/70.92秒修正后两套87.65秒通过。源码721c808，测试修正7584677。正常Release构建exit0，固定本地deep-strict验签通过；唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `1da1acf9a917477972148dd96dbeb566a9f5712a2d2f1e18d7e4eaedf31f781d`。本地签名不是发行公证，无新DMG/应用副本，完整P1/P3/产品未完成。

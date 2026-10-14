@@ -1,4 +1,4 @@
-2026-10-15 当前制作增量：SoundTouch/Warp及四原生Clip FX的完整来源与Comp可非破坏性修剪输出窗口（普通未处理Trim沿用既有行为）；完整输入、源淡化、插件状态与ID保持。F6/Smart边缘、边界Nudge、可改键入口共享clip.trim；专项552项已验原UndoRedo/保存重开/真实WAV与原Take、媒体SHA。代码721c808，操作PROCESSED_CLIP_TRIM.md。配对独立修剪会明确解除，Undo恢复；自由拆分/复制、复杂关联/旧读者/长源/听评与完整产品未完成。
+2026-10-15 当前制作增量：普通/SoundTouch/Warp与四原生Clip FX的完整来源及Comp可采样级拆分；Cmd E/自定义键、选区三段Separate、真实插件独立身份与改参、原坡度/媒体、原UndoRedo/冷重开及有效处理片段删除已有1207专项资格，PCM24最大差0（原2e-6预算）。代码085ca68/3851f2c；操作PROCESSED_CLIP_SPLIT.md。含ClipFX图连续调度的新负载、复制/粘贴/缺失媒体删除、多选拖动、复杂关联/旧读者/长源/听评与完整产品未完成。
 
 2026-10-15 制作联动增量：已准备的原生Warp Take可切为候选Comp/提升区间，原媒体、完整映射及处理链保留；配对交叉淡化只能揭示原Take实际输出句柄。可撤销/持久原历史/真实导出资格见WARP_SOURCE_COMP_WORKFLOW.md。独立线性伸缩/变调源Comp和全部Elastic Audio未完成，实体本增量仍待验。
 
