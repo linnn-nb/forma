@@ -70,7 +70,7 @@ struct Model
     int64_t start = 0, length = 0, offset = 0, source = 0, fadeIn = 0, fadeOut = 0;
     double gain = 0;
     int64_t trimBefore = 0, trimAfter = 0;
-    bool trimmable = true, processedTrim = false, fxWindow = false;
+    bool trimmable = true, splittable = true, processedTrim = false, fxWindow = false;
     bool locked = false, moveLocked = false, editable = true, movable = true, envelopeEditable = false,
          inheritedFades = false;
     std::string track, path, hash, inCurve = "linear", outCurve = "linear";
@@ -226,6 +226,8 @@ Json Commands::audioClipQuery(te::WaveAudioClip& c) const
         {"editable_audio", editable},
         {"movable_audio", movable},
         {"trimmable_audio", trimmable},
+        {"splittable_audio", trimmable && c.getFadeInBehaviour() == te::AudioClipBase::gainFade &&
+                                 c.getFadeOutBehaviour() == te::AudioClipBase::gainFade},
         {"trim_preserves_processing", preserveInput},
         {"trim_handles_before_samples", handles.first},
         {"trim_handles_after_samples", handles.second},
@@ -388,6 +390,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                 m.editable = q["editable_audio"];
                 m.movable = q["movable_audio"];
                 m.trimmable = q["trimmable_audio"];
+                m.splittable = q["splittable_audio"];
                 m.processedTrim = q["trim_preserves_processing"];
                 m.fxWindow = q["clip_fx"].value("full_input_window", false);
                 m.trimBefore = q["trim_handles_before_samples"];
@@ -525,8 +528,10 @@ Json Commands::validateClipPlan(const Json& ops) const
         auto& m = clips.at(id);
         const bool envelopeOnly =
             cmd == "clip.fade" || cmd == "clip.gain" || cmd == "clip.lock" || cmd == "clip.fx.insert";
-        require(((cmd == "clip.trim") ? m.trimmable : m.editable) || (cmd == "clip.move" && m.movable) ||
-                    (envelopeOnly && m.envelopeEditable),
+        require((cmd == "clip.trim"    ? m.trimmable
+                 : cmd == "clip.split" ? m.splittable
+                                       : m.editable) ||
+                    (cmd == "clip.move" && m.movable) || (envelopeOnly && m.envelopeEditable),
                 "此片段仅支持已资格的增益包络编辑；源映射或结构编辑尚未资格");
         if (m.hash.empty())
         {
@@ -535,7 +540,7 @@ Json Commands::validateClipPlan(const Json& ops) const
             m.hash = hashes.at(m.path);
         }
         require(m.hash == a.at("media_hash").get<std::string>(), "clip source changed since planning");
-        if (cmd == "clip.move" || (cmd == "clip.trim" && m.processedTrim))
+        if (cmd == "clip.move" || ((cmd == "clip.trim" || cmd == "clip.split") && m.processedTrim))
             if (auto* source = audioClip(id))
             {
                 if (cmd == "clip.move")
@@ -574,6 +579,7 @@ Json Commands::validateClipPlan(const Json& ops) const
                     m.inheritedFades || (m.fadeIn > 0 && start < m.start + m.fadeIn && end > m.start) ||
                     (m.fadeOut > 0 && end > m.start + m.length - m.fadeOut && start < m.start + m.length);
                 m.fadeIn = m.fadeOut = 0;
+                m.editable = false;
             }
             m.offset += left;
             m.start = start;
@@ -622,11 +628,29 @@ Json Commands::validateClipPlan(const Json& ops) const
             right.start = point;
             right.offset += point - m.start;
             right.length = m.start + m.length - point;
-            right.fadeIn = 0;
-            right.fadeOut = std::min(right.fadeOut, right.length);
+            if (m.processedTrim)
+            {
+                right.trimBefore += point - m.start;
+                m.trimAfter += right.length;
+                right.inheritedFades =
+                    m.inheritedFades || m.fadeOut > 0 || (m.fadeIn > 0 && point < m.start + m.fadeIn);
+                m.inheritedFades =
+                    m.inheritedFades || m.fadeIn > 0 || (m.fadeOut > 0 && point > m.start + m.length - m.fadeOut);
+                right.fadeIn = right.fadeOut = m.fadeIn = m.fadeOut = 0;
+                right.editable = m.editable = false;
+            }
+            else
+            {
+                const bool cutIn = m.fadeIn > 0 && point < m.start + m.fadeIn,
+                           cutOut = m.fadeOut > 0 && point > m.start + m.length - m.fadeOut;
+                right.inheritedFades = m.inheritedFades || cutIn || cutOut;
+                m.inheritedFades = m.inheritedFades || cutIn || cutOut;
+                right.fadeIn = 0;
+                right.fadeOut = cutOut ? 0 : right.fadeOut;
+                m.fadeOut = 0;
+                m.fadeIn = cutIn ? 0 : m.fadeIn;
+            }
             m.length = point - m.start;
-            m.fadeOut = 0;
-            m.fadeIn = std::min(m.fadeIn, m.length);
             created = newRef(a);
             clips[created] = right;
         }
@@ -655,6 +679,10 @@ Json Commands::validateClipPlan(const Json& ops) const
                         {"after", cmd == "clip.delete" ? Json(nullptr) : m.facts()}});
         if (!created.empty())
             diff.back()["created"] = {{"clip", created}, {"after", clips.at(created).facts()}};
+        if (cmd == "clip.split" && m.processedTrim)
+            diff.back()["processing"] = {{"full_input_preserved", true},
+                                         {"identity_policy", "left clip/plugins retained; right clip/plugins new IDs"},
+                                         {"source_envelope", "original phase retained on each output window"}};
         if (cmd == "clip.delete")
             clips.erase(id);
     }
@@ -791,20 +819,44 @@ void Commands::executeClipOperation(const std::string& cmd, const Json& a, Json&
         auto start = pos(a["position_samples"]);
         n->setPosition({{start, start + p.getLength()}, p.getOffset()});
     }
+    else if (cmd == "clip.split" && processed_trim::preservesInput(c->state))
+    {
+        auto* t = dynamic_cast<te::AudioTrack*>(c->getTrack());
+        require(t != nullptr, "split source track disappeared");
+        const auto oldID = c->itemID.toString().toStdString();
+        const int64_t point = a["position_samples"], first = sample(p.getStart().inSeconds()),
+                      last = sample(p.getEnd().inSeconds());
+        const auto left = processed_trim::prepare(*edit, c->state, first, point);
+        auto right = processed_trim::prepare(*edit, c->state, point, last);
+        right = te::ClipCopy::fromClipboardState(right, false).withNewItemID(*edit).getState().createCopy();
+        warp_state::remapIDs(right, oldID);
+        elastic_state::remap(right, oldID);
+        right.setProperty("ndaw_parent_clip", juce::String(oldID), nullptr);
+        right.setProperty("ndaw_origin", "split", nullptr);
+        auto* n =
+            dynamic_cast<te::WaveAudioClip*>(te::insertClipCopy(*t, te::ClipCopy::fromClipboardState(right, false)));
+        require(n != nullptr, "native processed split insertion failed");
+        processed_trim::apply(*c, left);
+        const auto actual = n->itemID.toString().toStdString();
+        aliases[a["ref"]] = actual;
+        objects.push_back({{"id", actual}, {"kind", "clip"}, {"parent_clip", oldID}, {"full_input_preserved", true}});
+    }
     else if (cmd == "clip.split")
     {
         auto* t = dynamic_cast<te::AudioTrack*>(c->getTrack());
         require(t != nullptr, "clip track disappeared");
+        const auto point = pos(a["position_samples"]);
+        auto left = native_fades::fragment(c->state, p.getStart().inSeconds(), point.inSeconds());
+        auto right = native_fades::fragment(c->state, point.inSeconds(), p.getEnd().inSeconds());
+        left.setProperty(te::IDs::length, (point - p.getStart()).inSeconds(), nullptr);
+        right.setProperty(te::IDs::start, point.inSeconds(), nullptr);
+        right.setProperty(te::IDs::length, (p.getEnd() - point).inSeconds(), nullptr);
+        right.setProperty(te::IDs::offset, (p.getOffset() + (point - p.getStart())).inSeconds(), nullptr);
         auto* n = copy(*t, "split");
-        auto point = pos(a["position_samples"]);
-        auto in = sample(c->getFadeIn().inSeconds()), out = sample(c->getFadeOut().inSeconds());
-        auto ci = curveName(c->getFadeInType()), co = curveName(c->getFadeOutType());
-        // Use native copy and position setters to retain sample resolution; SDK split's editor helper enforces a 1 ms
-        // exclusion zone.
-        n->setPosition({{point, p.getEnd()}, p.getOffset() + (point - p.getStart())});
-        c->setPosition({{p.getStart(), point}, p.getOffset()});
-        fades(*c, std::min(in, sample(c->getPosition().getLength().inSeconds())), 0, ci, co);
-        fades(*n, 0, std::min(out, sample(n->getPosition().getLength().inSeconds())), ci, co);
+        // Keep the original ramp phase even when Cmd E cuts inside a fade.
+        // The editor SDK helper's 1ms exclusion is not used for sample-grid edits.
+        processed_trim::apply(*c, left);
+        processed_trim::apply(*n, right);
     }
     else
         throw std::runtime_error("unhandled clip command");

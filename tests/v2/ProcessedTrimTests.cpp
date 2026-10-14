@@ -279,7 +279,7 @@ int main(int argc, char** argv)
                       "actual native start and length equal requested output samples");
                 if (processed)
                     check(trimmed[0]["inherited_fades"] && !trimmed[0]["editable_audio"],
-                          "source fade phase survives trim without granting split or clipboard permissions");
+                          "source fade phase survives trim without granting unrestricted structural editing");
                 const auto draft = clipgroup::preview(before[0], "clip.trim",
                                                       {{"clip", id}, {"start_samples", begin}, {"end_samples", end}});
                 check(std::abs(draft["source_offset_seconds"].get<double>() -

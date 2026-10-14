@@ -215,7 +215,8 @@ public:
             if (onClose)
                 onClose();
         };
-        split.setEnabled(editable && playhead > facts["start_samples"].get<int64_t>() &&
+        split.setEnabled(!facts.is_null() && facts.value("splittable_audio", false) && !playing &&
+                         !facts.value("locked", false) && playhead > facts["start_samples"].get<int64_t>() &&
                          playhead < facts["start_samples"].get<int64_t>() + facts["length_samples"].get<int64_t>());
         if (facts.is_null())
         {

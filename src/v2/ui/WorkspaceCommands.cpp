@@ -610,13 +610,14 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                         const auto point = commands.realtimeState().position;
                         for (const auto& c : clips)
                         {
-                            active = active &&
-                                     !c.value(id == editCommand::split ? "locked" : "move_locked",
-                                              c.value("locked", false)) &&
-                                     ((c["kind"] == "audio" &&
-                                       c.value(id == editCommand::split ? "editable_audio" : "movable_audio", false)) ||
-                                      (id != editCommand::split && c["kind"] == "midi" &&
-                                       c.value("sample_mapping_available", false)));
+                            active =
+                                active &&
+                                !c.value(id == editCommand::split ? "locked" : "move_locked",
+                                         c.value("locked", false)) &&
+                                ((c["kind"] == "audio" &&
+                                  c.value(id == editCommand::split ? "splittable_audio" : "movable_audio", false)) ||
+                                 (id != editCommand::split && c["kind"] == "midi" &&
+                                  c.value("sample_mapping_available", false)));
                             splitTarget |=
                                 point > c["start_samples"].get<int64_t>() &&
                                 point < c["start_samples"].get<int64_t>() + c["length_samples"].get<int64_t>();

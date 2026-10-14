@@ -1154,3 +1154,10 @@ target_sources(ndaw_processed_trim_tests PRIVATE tests/v2/ProcessedTrimTests.cpp
 target_link_libraries(ndaw_processed_trim_tests PRIVATE ndaw_ui)
 add_test(NAME forma_processed_trim COMMAND ndaw_processed_trim_tests "${CMAKE_BINARY_DIR}/p3-processed-trim-tests.json")
 set_tests_properties(forma_processed_trim PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+# Native split preserves complete processing input and sample-accurate source envelopes.
+juce_add_console_app(ndaw_processed_split_tests PRODUCT_NAME "ndaw_processed_split_tests")
+target_sources(ndaw_processed_split_tests PRIVATE tests/v2/ProcessedSplitTests.cpp)
+target_link_libraries(ndaw_processed_split_tests PRIVATE ndaw_ui)
+add_test(NAME forma_processed_split COMMAND ndaw_processed_split_tests "${CMAKE_BINARY_DIR}/p3-processed-split-tests.json")
+set_tests_properties(forma_processed_split PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

@@ -282,7 +282,7 @@ int main(int argc, char** argv)
                 check(reference.getMagnitude(0, reference.getNumSamples()) > .001f,
                       "movement reference contains real non-silent native processed PCM");
                 check(before[0]["movable_audio"] && before[1]["movable_audio"],
-                      "native source windows explicitly advertise move capability without granting trim");
+                      "native source windows advertise move without unrestricted structural editing");
                 if (kind != "plain" || fx)
                     check(!before[0]["editable_audio"], "processed structural editing remains independently protected");
                 Json ops = Json::array();
