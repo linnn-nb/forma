@@ -238,8 +238,16 @@ int main(int argc, char** argv)
         auto* canvas = dynamic_cast<MidiControllerPanel::Curve*>(find(w, "midi.cc.curve"));
         check(panel && canvas && canvas->getWidth() > 100, "actual controller event canvas has usable geometry");
         const auto draftBefore = clip(c);
-        check(canvas->keyPressed(juce::KeyPress(juce::KeyPress::homeKey)),
-              "CC keyboard Home selects first visible event");
+        auto* controllerField = find(w, "midi.cc.controller");
+        window.toFront(true);
+        controllerField->grabKeyboardFocus();
+        wait([&] { return window.getPeer()->isFocused() && controllerField->hasKeyboardFocus(true); },
+             "native controller selector owns keyboard focus");
+        check(window.getPeer()->handleKeyPress(juce::KeyPress(juce::KeyPress::tabKey)),
+              "native Tab traverses within the CC editor");
+        wait([&] { return canvas->hasKeyboardFocus(false); }, "Tab focuses actual event curve, not the timeline");
+        check(window.getPeer()->handleKeyPress(juce::KeyPress(juce::KeyPress::homeKey)),
+              "focused native Home selects first visible CC event");
         auto* sourceField = dynamic_cast<juce::TextEditor*>(find(w, "midi.cc.source_beat"));
         auto* valueField = dynamic_cast<juce::TextEditor*>(find(w, "midi.cc.value"));
         check(sourceField->isEnabled() && sourceField->getText().getDoubleValue() == 0 && valueField->getText() == "0",

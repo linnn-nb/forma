@@ -169,11 +169,14 @@ public:
     explicit MidiControllerPanel(Submit s) : submit(std::move(s)), curve(*this)
     {
         setComponentID("midi.cc.panel");
+        setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
+        int focusOrder = 1;
         for (auto* c : std::initializer_list<juce::Component*>{&title, &controller, &curve, &sourceBeat, &value, &set,
                                                                &remove, &ramp, &status, &apply, &cancel})
         {
             addAndMakeVisible(c);
             c->addKeyListener(this);
+            c->setExplicitFocusOrder(focusOrder++);
         }
         title.setText(text("MIDI CC · 控制器曲线"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
@@ -280,8 +283,15 @@ public:
     }
 
 private:
-    bool keyPressed(const juce::KeyPress& k, juce::Component*) override
+    bool keyPressed(const juce::KeyPress& k, juce::Component* origin) override
     {
+        // Tab is a timeline command elsewhere; keep unmodified navigation inside this editor.
+        if (k.getKeyCode() == juce::KeyPress::tabKey &&
+            (k.getModifiers().getRawFlags() & ~juce::ModifierKeys::shiftModifier) == 0)
+        {
+            origin->moveKeyboardFocusToSibling(!k.getModifiers().isShiftDown());
+            return true;
+        }
         if (!manager)
             return false;
         const auto id = k == juce::KeyPress::escapeKey ? 277 : manager->getKeyMappings()->findCommandForKeyPress(k);
