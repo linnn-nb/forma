@@ -401,6 +401,7 @@ Json Commands::registry()
     registerParameterCommands(result);
     registerRoutingCommands(result);
     registerMusicCommands(result);
+    registerControllerCommands(result);
     registerTransportCommands(result);
     registerTimelineCommands(result);
     registerMarkerCommands(result);
@@ -930,6 +931,8 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human" && ops.size() == 1, "Stems发布仅通过本地独立事务和目录授权");
         if (cmd == "plugin.sidechain.set")
             require(actor == "human", "Sidechain editing is local human only during P2");
+        if (cmd == "midi.cc.replace")
+            require(actor == "human" && ops.size() == 1, "CC editing is a local human standalone Plan during P3");
         if (cmd == "clip.warp")
             require(actor == "human" && ops.size() == 1, "Warp editing is a local human standalone Plan during P3");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
@@ -1961,6 +1964,7 @@ void Commands::open(const juce::File& source)
 void validatePlaylists(te::Edit&);
 void validateCrossfades(te::Edit&);
 void validateWarpEdit(te::Edit&);
+void validateMidiControllerIDs(te::Edit&);
 Json readStemExportState(juce::ValueTree);
 void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
 {
@@ -1976,6 +1980,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     (void)candidate->createNewItemID();
     validatePlaylists(*candidate);
     validateWarpEdit(*candidate);
+    validateMidiControllerIDs(*candidate);
     validateCrossfades(*candidate);
     sidechain_graph::validateStored(*candidate);
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));

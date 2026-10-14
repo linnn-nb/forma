@@ -194,6 +194,8 @@ const std::vector<Entry>& entries()
         {560, "弹力音频 · SoundTouch…", "编辑", 't', cmd | juce::ModifierKeys::altModifier},
         {573, "Warp锚点 · SoundTouch…", "编辑", 'w',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {574, "MIDI CC 控制器曲线…", "音乐", 'c',
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {561, "所选效果器旁链…", "混音", 's', cmd | juce::ModifierKeys::altModifier},
         {562, "冻结 / 解冻所选轨道…", "轨道", 'f',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
@@ -502,6 +504,7 @@ void Workspace::initialiseCommandManager()
     editingControls.onZoomFit = [this] { commandManager.invokeDirectly(103, false); };
     editingControls.onZoomOverview = [this] { commandManager.invokeDirectly(262, false); };
     piano.connect(commandManager);
+    piano.onControllers = [this] { invoke([&] { showMidiControllers(); }); };
     commandManager.commandStatusChanged();
 }
 juce::ApplicationCommandTarget* Workspace::getNextCommandTarget()
@@ -894,6 +897,10 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                               : (!selected.empty() && !commands.crossfades(selected).empty()));
             if (id == 538)
                 active = !mix && !facts.value("playing", false) && !selected.empty();
+            if (id == 574)
+                active = !mix && !facts.value("playing", false) && !selectedTrack().is_null() &&
+                         std::any_of(selectedTrack()["clips"].begin(), selectedTrack()["clips"].end(),
+                                     [](const Json& c) { return c["kind"] == "midi"; });
             if (id == 560 || id == 573)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
             if (id == 566)
@@ -939,6 +946,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
                     (id != 276 && warpPanel && warpPanel->isVisible()) ||
+                    (id != 276 && controllerPanel && controllerPanel->isVisible()) ||
                     (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
                     (id != 276 && stemsPanel && stemsPanel->isVisible() && (id == 277 || stemsPanel->canApply())) ||
                     (id != 276 && preferencesPanel && preferencesPanel->isVisible() &&
@@ -1247,6 +1255,19 @@ bool Workspace::perform(const InvocationInfo& invocation)
             sidechainPanel->execute();
         else
             sidechainPanel->setVisible(false);
+        return true;
+    }
+    if (id == 574)
+    {
+        invoke([&] { showMidiControllers(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && controllerPanel && controllerPanel->isVisible())
+    {
+        if (id == 275)
+            controllerPanel->execute();
+        else
+            controllerPanel->setVisible(false);
         return true;
     }
     if (id == 573)

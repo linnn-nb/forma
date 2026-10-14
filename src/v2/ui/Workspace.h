@@ -26,6 +26,7 @@
 #include "CrossfadePanel.h"
 #include "ElasticPanel.h"
 #include "WarpPanel.h"
+#include "MidiControllerPanel.h"
 #include "SidechainPanel.h"
 #include "PrintPanel.h"
 #include "StemsPanel.h"
@@ -180,6 +181,8 @@ private:
     void showCrossfade(Json target = nullptr);
     void showElastic();
     void showWarp();
+    void showMidiControllers();
+    std::unique_ptr<MidiControllerPanel> controllerPanel;
     void showSidechain();
     void showPrint(const std::string&);
     void showFreezeRelink();

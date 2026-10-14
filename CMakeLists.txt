@@ -88,7 +88,7 @@ add_library(ndaw_engine STATIC src/v2/AudioDeviceCommands.cpp src/v2/NativePlugi
 target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupCommands.cpp src/v2/Spectrum.cpp src/v2/LoudnessCurve.cpp src/v2/SourceMapping.cpp src/v2/SourceFeatures.cpp src/v2/DeliveryCheck.cpp src/v2/MasterAnalysis.cpp src/v2/AudioAnalysis.cpp src/v2/ExportVerification.cpp src/v2/TimelineCommands.cpp src/v2/MarkerCommands.cpp src/v2/UiState.cpp src/v2/PanCommands.cpp src/v2/QueryCommands.cpp src/v2/RequestRecovery.cpp src/v2/RecoveryStore.cpp src/v2/SessionRecovery.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommands.cpp src/v2/MidiControllerCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
@@ -579,7 +579,7 @@ add_library(ndaw_ui STATIC
   src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceStems.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
 target_include_directories(ndaw_ui PUBLIC src/v2)
 target_link_libraries(ndaw_ui PUBLIC ndaw_engine)
-target_sources(ndaw_ui PRIVATE src/v2/ui/WorkspacePreferences.cpp src/v2/ui/WorkspaceWarp.cpp)
+target_sources(ndaw_ui PRIVATE src/v2/ui/WorkspacePreferences.cpp src/v2/ui/WorkspaceWarp.cpp src/v2/ui/WorkspaceControllers.cpp)
 target_link_libraries(NativeDAW PRIVATE ndaw_ui)
 get_property(FORMA_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(FORMA_TARGET IN LISTS FORMA_TARGETS)

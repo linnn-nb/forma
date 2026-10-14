@@ -364,6 +364,11 @@ private:
     te::MidiClip* midiClip(const std::string&) const;
     Json musicQuery() const;
     Json midiQuery(te::MidiClip&) const;
+    Json controllerQuery(te::MidiClip&) const;
+    std::string midiControllerHash(te::MidiClip&) const;
+    static void registerControllerCommands(Json&);
+    Json controllerChange(const Json&) const;
+    void executeControllers(const Json&, Json&);
     void applySampleMidiProjection(te::MidiClip&, const Json&, const juce::ValueTree&, const std::string& sourceClip,
                                    const std::string& tempoHash);
     Json midiClipTrimChange(const Json&, bool includeFacts = true) const;

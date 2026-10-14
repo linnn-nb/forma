@@ -654,7 +654,7 @@ public:
                  &view,           &clips,    &snap,          &velocity,  &remove,        &detail,
                  &selectionScope, &strength, &strengthLabel, &quantize,  &semitones,     &transpose,
                  &start,          &end,      &rangeLabel,    &selectAll, &quickQuantize, &velocityLane,
-                 &advanced,       &pitchIn,  &pitchOut,      &pitchFit})
+                 &advanced,       &pitchIn,  &pitchOut,      &pitchFit,  &controllers})
             addAndMakeVisible(c);
         view.setViewedComponent(&canvas, false);
         view.setScrollBarsShown(true, true);
@@ -682,6 +682,12 @@ public:
         pitchFit.setTooltip(text("适配所选音符，未选时适配片段全部音符 · Control Option F"));
         canvas.onPitchZoom = [this](double ratio, double canvasY)
         { setPitchHeight(noteHeight * ratio, canvasY - view.getViewPositionY()); };
+        controllers.setComponentID("midi.cc.open");
+        controllers.onClick = [this]
+        {
+            if (onControllers)
+                onControllers();
+        };
         advanced.setComponentID("midi.advanced");
         advanced.onClick = [this]
         {
@@ -744,6 +750,7 @@ public:
         setComponentID("midi.editor");
         view.setViewPosition(0, 32 + (127 - 84) * 14);
     }
+    std::function<void()> onControllers;
     void setPlayhead(double beat)
     {
         positionBeat = beat;
@@ -952,7 +959,7 @@ public:
     void resized() override
     {
         restoring = true;
-        const double ratio = std::min(1., std::max(.5, (getWidth() - 20.) / 622.));
+        const double ratio = std::min(1., std::max(.5, (getWidth() - 20.) / 710.));
         auto place = [ratio](juce::Component& c, int x, int y, int width)
         { c.setBounds(10 + int((x - 10) * ratio), y, int(width * ratio), 28); };
         place(clips, 10, 6, 140);
@@ -960,6 +967,7 @@ public:
         place(quickQuantize, 276, 6, 90);
         place(velocity, 374, 6, 190);
         place(advanced, 572, 6, 60);
+        place(controllers, 640, 6, 80);
         for (auto* c : std::initializer_list<juce::Component*>{&remove, &selectionScope, &strengthLabel, &strength,
                                                                &quantize, &semitones, &transpose, &selectAll})
             c->setVisible(detailed);
@@ -1139,6 +1147,7 @@ private:
     juce::Slider velocity;
     juce::TextButton remove{text("删除所选音符")}, quantize{text("预览量化")}, transpose{text("预览移调")},
         selectAll{text("全选音符")}, quickQuantize{text("量化所选")}, advanced{text("变换…")};
+    juce::TextButton controllers{text("CC曲线…")};
     juce::TextButton pitchIn{"+"}, pitchOut{text("−")}, pitchFit{"N"};
     juce::Label detail, strengthLabel, rangeLabel;
     juce::TextEditor strength, semitones, start, end;

@@ -429,15 +429,10 @@ Json Commands::midiQuery(te::MidiClip& clip) const
                          {"position_samples", sourceSamples(begin)},
                          {"length_samples", sourceSamples(end) - sourceSamples(begin)}});
     }
-    Json controllers = Json::array();
-    for (auto* e : clip.getSequence().getControllerEvents())
-        controllers.push_back({{"type", e->getType()},
-                               {"raw_value", e->getControllerValue()},
-                               {"metadata", e->getMetadata()},
-                               {"source_beat", e->getBeatPosition().inBeats()},
-                               {"position_samples", sourceSamples(e->getEditTime(clip))}});
+    const auto controllers = controllerQuery(clip);
     return {{"notes", notes},
             {"controller_events", controllers},
+            {"controller_state_hash", midiControllerHash(clip)},
             {"sysex_count", clip.getSequence().getNumSysExEvents()},
             {"start_beat", clip.getStartBeat().inBeats()},
             {"length_beats", clip.getLengthInBeats().inBeats()},
@@ -594,6 +589,11 @@ Json Commands::validateMusicPlan(const Json& operations) const
     std::map<std::string, std::string> tracks;
     std::set<std::string> refs;
     Json diff = Json::array();
+    if (operations.size() == 1 && operations[0]["command"] == "midi.cc.replace")
+    {
+        diff.push_back(controllerChange(operations[0]["args"]));
+        return diff;
+    }
     if (std::any_of(operations.begin(), operations.end(),
                     [](const Json& op)
                     {
@@ -984,6 +984,11 @@ Json Commands::validateMusicPlan(const Json& operations) const
 void Commands::executeMusicOperation(const std::string& cmd, const Json& input, Json& objects,
                                      std::map<std::string, std::string>& aliases)
 {
+    if (cmd == "midi.cc.replace")
+    {
+        executeControllers(input, objects);
+        return;
+    }
     auto a = input;
     for (const char* key : {"clip", "note"})
         if (a.contains(key))

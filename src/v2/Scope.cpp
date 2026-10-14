@@ -242,6 +242,17 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                                {"clip", c->itemID.toString().toStdString()},
                                {"extent", "whole MIDI performance and future Tempo mapping"}});
         }
+        else if (cmd == "midi.cc.replace")
+        {
+            auto* c = midiClip(a.at("clip"));
+            require(c != nullptr, "CC scope target missing");
+            object(c->itemID.toString().toStdString(), c->getTrack());
+            full(); // Held controller state can affect subsequent clips.
+            automatic = false;
+            impacts.push_back({{"command", cmd},
+                               {"clip", a.at("clip")},
+                               {"extent", "controller lane and subsequent held MIDI state"}});
+        }
         else if (cmd.starts_with("midi.note"))
         {
             auto* c = midiClip(a["clip"]);
