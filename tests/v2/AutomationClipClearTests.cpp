@@ -8,6 +8,10 @@ namespace ndaw::v2
 class AudioDeviceTestAccess
 {
 public:
+    static void refresh(Workspace& w)
+    {
+        w.refresh();
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -392,6 +396,8 @@ int main(int argc, char** argv)
         {
             demo = dir.getChildFile("Baseline-0.5.tracktionedit");
             Workspace w(false, std::make_unique<Storage>(dir.getChildFile("Prefs")));
+            w.setSize(1440, 900);
+            w.setVisible(true);
             w.openSession(demo);
             pump();
             auto& c = AudioDeviceTestAccess::owner(w);
@@ -407,6 +413,7 @@ int main(int argc, char** argv)
             auto ready = dir.getChildFile("WholeClipDesktopReady.tracktionedit");
             c.save(ready);
             demo = ready;
+            AudioDeviceTestAccess::refresh(w);
             check(w.keyPressed(juce::KeyPress('x', juce::ModifierKeys::commandModifier, 0)),
                   "production CmdX whole-clip command invoked");
             pump();
@@ -414,6 +421,7 @@ int main(int argc, char** argv)
             click(w, "plan.reject");
             check(persistent(c, t) == before && c.query()["tracks"][0]["clips"] == originalClips,
                   "whole-clip Reject preserves clips and curves");
+            AudioDeviceTestAccess::refresh(w);
             w.keyPressed(juce::KeyPress('x', juce::ModifierKeys::commandModifier, 0));
             pump();
             click(w, "plan.accept");
@@ -490,6 +498,7 @@ int main(int argc, char** argv)
                                         0);
             keys->addKeyPress(editCommand::remove, custom);
             pump();
+            AudioDeviceTestAccess::refresh(w);
             check(w.keyPressed(custom), "custom whole-clip Delete key invoked");
             pump();
             if (!AudioDeviceTestAccess::pending(w).is_null())

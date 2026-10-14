@@ -8,6 +8,10 @@ namespace ndaw::v2
 class AudioDeviceTestAccess
 {
 public:
+    static void refresh(Workspace& w)
+    {
+        w.refresh();
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -152,6 +156,7 @@ std::string inserted(const Json& receipt)
 
 void key(Workspace& w, char k, bool alt = false)
 {
+    AudioDeviceTestAccess::refresh(w);
     const bool handled = w.keyPressed(
         juce::KeyPress(k, juce::ModifierKeys::commandModifier | (alt ? juce::ModifierKeys::altModifier : 0), k));
     if (!handled)

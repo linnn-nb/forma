@@ -8,6 +8,10 @@ namespace ndaw::v2
 class AudioDeviceTestAccess
 {
 public:
+    static void refresh(Workspace& w)
+    {
+        w.refresh();
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -95,7 +99,11 @@ Json run(Commands& c, Json ops)
 Json controllers(Json value)
 {
     for (auto& c : value)
+    {
         c.erase("position_samples");
+        c.erase("start_beat");
+        c.erase("id"); // Clip-owned identity is checked separately below.
+    }
     return value;
 }
 Json data(const juce::File& saved, const std::string& id)
@@ -150,6 +158,7 @@ void objects(Commands& c, const std::string& source, const std::string& owner)
 }
 void key(Workspace& w, char k, bool alt = false)
 {
+    AudioDeviceTestAccess::refresh(w);
     check(w.keyPressed(
               juce::KeyPress(k, juce::ModifierKeys::commandModifier | (alt ? juce::ModifierKeys::altModifier : 0), k)),
           "native clipboard shortcut dispatched");
@@ -314,6 +323,14 @@ int main(int argc, char** argv)
                   controllers(clip(c, pasted)["controller_events"]) == controllers(nativeSource["controller_events"]) &&
                   clip(c, pasted)["sysex_count"] == 1,
               "copied CC and SysEx remain actual native events");
+        const auto copiedControllers = clip(c, pasted)["controller_events"];
+        check(copiedControllers.size() == 1 &&
+                  copiedControllers[0]["id"].get<std::string>().starts_with("cc:" + pasted + ":") &&
+                  copiedControllers[0]["id"] != nativeSource["controller_events"][0]["id"],
+              "copied CC identity belongs to actual new native clip");
+        check(std::abs(copiedControllers[0]["start_beat"].get<double>() - 11.) < 1e-11 &&
+                  copiedControllers[0]["position_samples"] == 336000,
+              "copied CC maps to actual destination beat and exact session sample independently of source payload");
         const auto saved = dir.getChildFile("Pasted.tracktionedit");
         c.save(saved);
         check(data(saved, pasted) == canonical, "persisted complete NOTE/CC/SysEx and opaque clip fields preserved");
