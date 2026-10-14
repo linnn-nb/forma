@@ -1,5 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <limits>
+#include "SidechainGraph.h"
 
 namespace ndaw::v2
 {
@@ -54,6 +55,11 @@ void Commands::registerRoutingCommands(Json& registry)
     add("send.level", {{"send", string}, {"db", db}});
     add("send.position", {{"send", string}, {"position", pos}});
     add("send.remove", {{"send", string}});
+    add("plugin.sidechain.set", {{"plugin", string}, {"source", string}});
+    registry.back()["test"] = "P2-SIDECHAIN-01";
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["units"] = {
+        {"source", "stable audio/Aux/instrument track ID or none; native post-insert/post-fader tap"}};
 }
 te::AuxSendPlugin* Commands::send(const std::string& target) const
 {
@@ -111,13 +117,16 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
     // this Plan. No Edit writes or graph construction take place during dry-run.
     struct Node
     {
-        bool isAux = false, isMidi = false;
+        bool isAux = false, isMidi = false, audioTrack = true;
+        std::string parentSubmix;
         std::string output;
         std::map<std::string, std::string> sends;
+        std::map<std::string, std::string> sidechains;
         int plugins = 2;
     };
     std::map<std::string, Node> nodes;
     std::map<std::string, std::string> owners;
+    std::map<std::string, std::string> pluginOwners;
     for (auto* t : te::getAudioTracks(*edit))
     {
         auto facts = routingQuery(*t);
@@ -126,6 +135,8 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
         n.isMidi = trackType(*t) == "midi" || trackType(*t) == "instrument";
         n.output = facts["output"]["target"];
         n.plugins = t->pluginList.size();
+        if (auto* parent = dynamic_cast<te::FolderTrack*>(t->getParentTrack()); parent && parent->isSubmixFolder())
+            n.parentSubmix = parent->itemID.toString().toStdString();
         for (const auto& s : facts["sends"])
         {
             require(s["targets"].size() == 1, "unresolved or ambiguous Aux bus; repair routing before editing");
@@ -133,6 +144,26 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
             owners[s["id"]] = id(*t);
         }
     }
+    for (auto* t : te::getAudioTracks(*edit))
+        for (auto* p : t->pluginList)
+        {
+            const auto pid = p->itemID.toString().toStdString();
+            pluginOwners[pid] = id(*t);
+            const auto source = p->getSidechainSourceID().toString().toStdString();
+            if (p->getSidechainSourceID().isValid() && nodes.contains(source))
+                nodes.at(source).sidechains[pid] = id(*t);
+        }
+    for (auto* t : te::getAllTracks(*edit))
+        if (auto* folder = dynamic_cast<te::FolderTrack*>(t))
+        {
+            auto& n = nodes[id(*folder)];
+            n.audioTrack = false;
+            n.output = "master";
+            if (folder->isSubmixFolder())
+                if (auto* parent = dynamic_cast<te::FolderTrack*>(folder->getParentTrack());
+                    parent && parent->isSubmixFolder())
+                    n.parentSubmix = parent->itemID.toString().toStdString();
+        }
     auto cycleCheck = [&]
     {
         std::map<std::string, int> colours;
@@ -145,7 +176,11 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
                 return;
             colours[target] = 1;
             visit(nodes.at(target).output);
+            if (nodes.at(target).output == "master" && !nodes.at(target).parentSubmix.empty())
+                visit(nodes.at(target).parentSubmix);
             for (const auto& [_, dest] : nodes.at(target).sends)
+                visit(dest);
+            for (const auto& [_, dest] : nodes.at(target).sidechains)
                 visit(dest);
             colours[target] = 2;
         };
@@ -185,6 +220,11 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
                     for (auto& [owner, n] : nodes)
                         if (!deleted.contains(owner))
                         {
+                            for (auto it = n.sidechains.begin(); it != n.sidechains.end();)
+                                if (deleted.contains(it->second))
+                                    it = n.sidechains.erase(it);
+                                else
+                                    ++it;
                             if (deleted.contains(n.output))
                                 n.output = "none";
                             for (auto it = n.sends.begin(); it != n.sends.end();)
@@ -204,7 +244,7 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
         else if (cmd == "track.output" || cmd == "send.create")
         {
             const std::string source = a.at("track"), target = a.at("target");
-            require(nodes.contains(source), "routing source not found");
+            require(nodes.contains(source) && nodes.at(source).audioTrack, "routing source not found");
             bool midiPort = false;
             if (cmd == "track.output" && nodes.at(source).isMidi)
             {
@@ -213,7 +253,7 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
                     if (auto* d = dm.getMidiOutDevice(n); d->getDeviceID().toStdString() == target && d->isEnabled())
                         midiPort = true;
             }
-            require(nodes.contains(target) ||
+            require((nodes.contains(target) && nodes.at(target).audioTrack) ||
                         (cmd == "track.output" && (target == "master" || target == "none" || midiPort)),
                     "routing target not found or MIDI output unavailable");
             if (cmd == "track.output")
@@ -226,6 +266,24 @@ void Commands::validateRoutingPlan(const Json& operations, const Json& trackDiff
                 nodes.at(source).sends["$send" + std::to_string(++serial)] = target;
                 ++nodes.at(source).plugins;
             }
+        }
+        else if (cmd == "plugin.sidechain.set")
+        {
+            const auto change = sidechainChange(a);
+            require(operations.size() == 1, "旁链连接是一笔独立停止态事务");
+            const std::string pid = a.at("plugin"), source = a.at("source");
+            for (auto& [_, n] : nodes)
+                n.sidechains.erase(pid);
+            if (source != "none")
+                nodes.at(source).sidechains[pid] = change["track"];
+        }
+        else if (cmd == "plugin.remove")
+        {
+            const std::string pid = a.at("plugin");
+            for (auto& [_, n] : nodes)
+                n.sidechains.erase(pid);
+            if (pluginOwners.contains(pid) && nodes.contains(pluginOwners.at(pid)))
+                --nodes.at(pluginOwners.at(pid)).plugins;
         }
         else if (cmd.starts_with("send."))
         {

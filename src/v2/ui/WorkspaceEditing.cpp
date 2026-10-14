@@ -572,8 +572,58 @@ void Workspace::executeDeleteCommand()
 
 namespace ndaw::desktop
 {
+void Workspace::showSidechain()
+{
+    auto p = selectedProcessor();
+    const auto current = commands.query();
+    require(!p.is_null() && !clipFXInspector && !current.value("playing", false), "请先停止并选择轨道插入效果器");
+    require(current["revision"] == workspaceRevision, "界面版本已变化，请重新选择效果器");
+    if (!sidechainPanel)
+    {
+        sidechainPanel = std::make_unique<SidechainPanel>(
+            [this](Json ops, uint64_t version, std::string session)
+            {
+                try
+                {
+                    require(commands.sessionToken() == session && commands.query()["revision"] == version,
+                            "工程已变化，请重新打开旁链");
+                    const auto receipt = commands.commit(commands.makePlan("human", std::move(ops)));
+                    require(receipt["state"] == "committed", "旁链未提交");
+                    sidechainPanel->setVisible(false);
+                    refresh();
+                    message(text("旁链连接已提交 · 主输出保持 · 一次 Undo"));
+                    return std::string{};
+                }
+                catch (const std::exception& e)
+                {
+                    return std::string(e.what());
+                }
+            });
+        addChildComponent(*sidechainPanel);
+        sidechainPanel->connect(commandManager);
+    }
+    if (elasticPanel)
+        elasticPanel->setVisible(false);
+    if (crossfadePanel)
+        crossfadePanel->setVisible(false);
+    if (fadesPanel)
+        fadesPanel->setVisible(false);
+    if (rollPanel)
+        rollPanel->setVisible(false);
+    if (musicEventPanel)
+        musicEventPanel->setVisible(false);
+    if (playlistPanel)
+        playlistPanel->setVisible(false);
+    sidechainPanel->show(current, std::move(p));
+    sidechainPanel->setBounds(getLocalBounds());
+    sidechainPanel->setVisible(true);
+    sidechainPanel->toFront(true);
+    commandManager.commandStatusChanged();
+}
 void Workspace::showElastic()
 {
+    if (sidechainPanel)
+        sidechainPanel->setVisible(false);
     auto clip = selectedAudioClip();
     const auto facts = commands.query();
     require(!facts.value("playing", false), "请先停止走带");
@@ -620,6 +670,8 @@ void Workspace::showElastic()
 }
 void Workspace::showCrossfade(Json target)
 {
+    if (sidechainPanel)
+        sidechainPanel->setVisible(false);
     if (elasticPanel)
         elasticPanel->setVisible(false);
     const auto current = commands.query();
@@ -680,6 +732,8 @@ void Workspace::showCrossfade(Json target)
 }
 void Workspace::showFades()
 {
+    if (sidechainPanel)
+        sidechainPanel->setVisible(false);
     if (elasticPanel)
         elasticPanel->setVisible(false);
     if (crossfadePanel)

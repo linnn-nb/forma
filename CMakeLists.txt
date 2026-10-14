@@ -83,6 +83,7 @@ target_sources(ndaw_engine PRIVATE src/v2/ScrubPlayback.cpp src/v2/MixGroupComma
 target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.cpp src/v2/AutomationShuffle.cpp src/v2/AutomationClear.cpp src/v2/AutomationMove.cpp src/v2/AutomationClipboard.cpp src/v2/MusicalCurveMap.cpp src/v2/AutomationRangeCommands.cpp src/v2/AudioClipClearCommands.cpp src/v2/ClipboardPasteCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -1061,3 +1062,9 @@ target_sources(ndaw_elastic_tests PRIVATE tests/v2/ElasticTests.cpp)
 target_link_libraries(ndaw_elastic_tests PRIVATE ndaw_ui)
 add_test(NAME forma_elastic COMMAND ndaw_elastic_tests "${CMAKE_BINARY_DIR}/elastic-tests.json")
 set_tests_properties(forma_elastic PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_sidechain_tests PRODUCT_NAME "ndaw_sidechain_tests")
+target_sources(ndaw_sidechain_tests PRIVATE tests/v2/SidechainTests.cpp)
+target_link_libraries(ndaw_sidechain_tests PRIVATE ndaw_ui)
+add_test(NAME forma_sidechain COMMAND ndaw_sidechain_tests "${CMAKE_BINARY_DIR}/p2-sidechain-tests.json")
+set_tests_properties(forma_sidechain PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

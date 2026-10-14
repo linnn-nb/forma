@@ -412,6 +412,11 @@ void Workspace::refreshInspector()
                             p["external"]["has_editor"].get<bool>() && facts["recording_capture"].is_null() &&
                             (!parameterEditing || editorOpen));
     editorButton.setButtonText(editorOpen ? text("关闭窗口") : text("插件窗口"));
+    sidechainButton.setEnabled(!p.is_null() && !clipFXInspector && !playing && !parameterEditing &&
+                               (p["sidechain"]["supported"].get<bool>() || p["sidechain"]["connected"].get<bool>()));
+    sidechainButton.setTooltip(sidechainButton.isEnabled()
+                                   ? text("所选实例旁链来源 · Cmd Option S，可改键")
+                                   : text("请选择有实际旁链输入的轨道效果器；片段效果与未载入插件不可连接"));
     parameters.setEnabled(unlocked);
     parameters.update(p, playing, 300, selected, !clipFXInspector && !facts["automation_capture"].is_null(),
                       t.is_null() ? "read" : t["automation_mode"].get<std::string>(),
@@ -462,6 +467,8 @@ void Workspace::refresh()
             crossfadePanel->setVisible(false);
         if (elasticPanel)
             elasticPanel->setVisible(false);
+        if (sidechainPanel)
+            sidechainPanel->setVisible(false);
         if (rollPanel)
             rollPanel->setVisible(false);
         if (musicEventPanel)

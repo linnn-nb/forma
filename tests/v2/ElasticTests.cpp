@@ -231,6 +231,10 @@ int main(int argc, char** argv)
         auto* length = dynamic_cast<juce::TextEditor*>(find(w, "clip.elastic.length_ms"));
         auto* pitch = dynamic_cast<juce::TextEditor*>(find(w, "clip.elastic.pitch"));
         check(panel && panel->isVisible() && length && pitch, "native elastic editor opens on selected real clip");
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)) && !panel->isVisible() && clip(c) == original,
+              "native elastic Escape cancels panel without modifying clip or history");
+        check(keys->keyPressed(shortcut[0], &w), "elastic shortcut reopens cancelled native panel");
+        pump();
         length->setText("3000", false);
         pitch->setText("0", false);
         auto* apply = dynamic_cast<juce::Button*>(find(*panel, "ui.command:275"));

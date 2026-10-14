@@ -306,6 +306,10 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return audioImportPanel->handleKey(key);
     if (keyboardSettings && keyboardSettings->isVisible())
         return keyboardSettings->keyPressed(key);
+    if (sidechainPanel && sidechainPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
+    if (elasticPanel && elasticPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (playlistPanel && playlistPanel->isVisible() && key == juce::KeyPress::escapeKey)
     {
         playlistPanel->execute(524);
@@ -459,6 +463,8 @@ void Workspace::resized()
         crossfadePanel->setBounds(getLocalBounds());
     if (elasticPanel)
         elasticPanel->setBounds(getLocalBounds());
+    if (sidechainPanel)
+        sidechainPanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)
@@ -582,9 +588,13 @@ void Workspace::resized()
     insertButton.setBounds(right + 22 + processorWidth, 270, 64, 28);
     externalLibraryButton.setBounds(right + 92 + processorWidth, 270, 112, 28);
     pluginChoice.setBounds(right + 16, 312, sideWidth - 32, 29);
-    bypassButton.setBounds(right + 16, 352, 86, 26);
-    editorButton.setBounds(right + 108, 352, 108, 26);
-    removeButton.setBounds(right + 222, 352, 94, 26);
+    auto pluginRow = juce::Rectangle<int>(right + 16, 352, sideWidth - 32, 26);
+    const int pluginButton = (pluginRow.getWidth() - 18) / 4;
+    for (auto* b : {&bypassButton, &editorButton, &removeButton, &sidechainButton})
+    {
+        b->setBounds(pluginRow.removeFromLeft(pluginButton));
+        pluginRow.removeFromLeft(6);
+    }
     const bool preview = !pending.is_null();
     clipsList.setVisible(commands.uiState()["clips_list"].get<bool>() && !preview && !reportShowing);
     const bool legacyView =
@@ -616,9 +626,9 @@ void Workspace::resized()
     recordView.setBounds(right + 6, 274, 320, std::max(100, bottom - 274));
     recording.setSize(302, 775);
     recordView.setVisible(recordInspector);
-    for (auto* c :
-         std::initializer_list<juce::Component*>{&pluginType, &insertButton, &externalLibraryButton, &pluginChoice,
-                                                 &bypassButton, &editorButton, &removeButton, &parameterView})
+    for (auto* c : std::initializer_list<juce::Component*>{&pluginType, &insertButton, &externalLibraryButton,
+                                                           &pluginChoice, &bypassButton, &editorButton, &removeButton,
+                                                           &sidechainButton, &parameterView})
         c->setVisible(!routingInspector && !groupInspector && !autoInspector && !recordInspector);
     externalLibraryButton.setVisible(externalLibraryButton.isVisible() && !clipFXInspector);
     previewText.setBounds(right + 16, getHeight() - 246, 300, 164);
@@ -629,8 +639,8 @@ void Workspace::resized()
         previewText.setBounds(right + 16, 274, 300, std::max(100, getHeight() - 356));
         for (auto* c : std::initializer_list<juce::Component*>{
                  &pluginType, &insertButton, &externalLibraryButton, &pluginChoice, &bypassButton, &editorButton,
-                 &removeButton, &stateStatus, &stateRetryButton, &stateRestoreButton, &programIndex, &programButton,
-                 &parameterView, &routingView, &groupView, &autoView, &recordView})
+                 &removeButton, &sidechainButton, &stateStatus, &stateRetryButton, &stateRestoreButton, &programIndex,
+                 &programButton, &parameterView, &routingView, &groupView, &autoView, &recordView})
             c->setVisible(false);
     }
     if (audioSettings && audioSettings->isVisible())

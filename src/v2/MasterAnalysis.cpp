@@ -1099,7 +1099,10 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
                                     owner.nativeStates->query()["failure"].is_null()),
             "resolve native plugin state before analysis");
     if (!clipTap)
+    {
         owner.validateExternalRuntime();
+        owner.validateSidechainRuntime();
+    }
     auto captured = owner.recoverySnapshot();
     auto work = std::make_unique<Job>();
     work->actor = actor;

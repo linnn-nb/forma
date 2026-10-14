@@ -192,6 +192,7 @@ Json Commands::processorSummary(te::Plugin& plugin) const
                 {"bypassed", !plugin.isEnabled()},
                 {"parameter_count", plugin.getAutomatableParameters().size()},
                 {"detail_collection", "parameters"}};
+    result["sidechain"] = sidechainQuery(plugin);
     if (auto* ext = dynamic_cast<te::ExternalPlugin*>(&plugin))
     {
         result["external"] = {
@@ -228,7 +229,9 @@ Json Commands::processorQuery(te::PluginList& list) const
         const auto cacheID = plugin->itemID.toString().toStdString();
         if (auto it = processorCache.find(cacheID); it != processorCache.end())
         {
-            plugins.push_back(it->second);
+            auto result = it->second;
+            result["sidechain"] = sidechainQuery(*plugin);
+            plugins.push_back(std::move(result));
             continue;
         }
         Json parameters = Json::array();
@@ -239,6 +242,7 @@ Json Commands::processorQuery(te::PluginList& list) const
                     {"name", plugin->getName().toStdString()},
                     {"bypassed", !plugin->isEnabled()},
                     {"parameters", parameters}};
+        result["sidechain"] = sidechainQuery(*plugin);
         if (auto* ext = dynamic_cast<te::ExternalPlugin*>(plugin))
         {
             const bool loaded = ext->getAudioPluginInstance() != nullptr, allowed = mayLoadExternal(*ext);
@@ -296,6 +300,11 @@ Json Commands::processorQuery(te::PluginList& list) const
 }
 void Commands::validateProcessorOperation(const std::string& cmd, const Json& a) const
 {
+    if (cmd == "plugin.sidechain.set")
+    {
+        (void)sidechainChange(a);
+        return;
+    }
     if (cmd == "plugin.external.insert")
     {
         auto p = externalDescriptor(a.at("descriptor"));
@@ -345,6 +354,11 @@ void Commands::validateProcessorOperation(const std::string& cmd, const Json& a)
 }
 void Commands::executeProcessorOperation(const std::string& cmd, const Json& a, Json& objects)
 {
+    if (cmd == "plugin.sidechain.set")
+    {
+        executeSidechain(a);
+        return;
+    }
     if (cmd == "plugin.insert" || cmd == "plugin.external.insert")
     {
         auto* t = track(a.at("track"));

@@ -500,6 +500,11 @@ private:
     static void registerClipCommands(Json&);
     Json audioClipQuery(te::WaveAudioClip&) const;
     Json validateClipPlan(const Json&) const;
+    Json sidechainQuery(te::Plugin&) const;
+    Json sidechainChange(const Json&) const;
+    void executeSidechain(const Json&);
+    void disconnectSidechain(te::Plugin&);
+    void validateSidechainRuntime() const;
     Json elasticChange(const Json&) const;
     void executeElastic(const Json&);
     void executeClipOperation(const std::string&, const Json&, Json&, std::map<std::string, std::string>&);

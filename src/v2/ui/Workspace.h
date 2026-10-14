@@ -25,6 +25,7 @@
 #include "FadesPanel.h"
 #include "CrossfadePanel.h"
 #include "ElasticPanel.h"
+#include "SidechainPanel.h"
 #include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -171,9 +172,11 @@ private:
     void showFades();
     void showCrossfade(Json target = nullptr);
     void showElastic();
+    void showSidechain();
     std::unique_ptr<FadesPanel> fadesPanel;
     std::unique_ptr<CrossfadePanel> crossfadePanel;
     std::unique_ptr<ElasticPanel> elasticPanel;
+    std::unique_ptr<SidechainPanel> sidechainPanel;
     void showRollSettings();
     std::unique_ptr<RollPanel> rollPanel;
     void showMusicEvent(const std::string&, double, const std::string& = "");
@@ -354,7 +357,7 @@ private:
         loopButton{text("循环")}, markerButton{text("Marker +")}, locationsButton{text("位置…")}, undoButton{"Undo"},
         redoButton{"Redo"}, externalLibraryButton{text("AU / VST3…")}, insertButton{text("插入")},
         bypassButton{text("旁通")}, editorButton{text("插件窗口")}, removeButton{text("移除")},
-        stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
+        sidechainButton{text("旁链…")}, stateRetryButton{text("重试读取")}, stateRestoreButton{text("还原已知状态")},
         programButton{text("切换 Program")}, acceptButton{text("接受计划")}, rejectButton{text("取消")};
     juce::TextButton insertTab{text("插入 / 参数")}, routingTab{text("I/O / 发送")}, groupTab{text("组织")},
         autoTab{text("自动化")}, recordTab{text("录音")};

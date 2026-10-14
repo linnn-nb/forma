@@ -192,6 +192,7 @@ const std::vector<Entry>& entries()
         {280, "淡化 / 交叉淡化…", "编辑", 'f', cmd},
         {538, "交叉淡化…", "编辑", 'f', cmd | juce::ModifierKeys::ctrlModifier},
         {560, "弹力音频 · SoundTouch…", "编辑", 't', cmd | juce::ModifierKeys::altModifier},
+        {561, "所选效果器旁链…", "混音", 's', cmd | juce::ModifierKeys::altModifier},
         {539, "移除交叉淡化", "编辑", 'f', cmd | shift | juce::ModifierKeys::ctrlModifier},
         {500, "片段效果…", "编辑"},
         {501, "锁定 / 解锁片段", "编辑"},
@@ -333,7 +334,8 @@ void Workspace::initialiseCommandManager()
                                                                               {&zoomFit, 103},
                                                                               {&scrollLeft, 104},
                                                                               {&scrollRight, 105},
-                                                                              {&shortcutsButton, 108}})
+                                                                              {&shortcutsButton, 108},
+                                                                              {&sidechainButton, 561}})
     {
         pair.first->onClick = [this, id = pair.second] { commandManager.invokeDirectly(id, false); };
         pair.first->setComponentID("ui.command:" + juce::String(pair.second));
@@ -869,6 +871,12 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !mix && !facts.value("playing", false) && !selected.empty();
             if (id == 560)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
+            if (id == 561)
+            {
+                const auto p = selectedProcessor();
+                active = !facts.value("playing", false) && !clipFXInspector && !p.is_null() &&
+                         (p["sidechain"]["supported"].get<bool>() || p["sidechain"]["connected"].get<bool>());
+            }
             if (id == 280)
                 active = !mix && !facts.value("playing", false) &&
                          (!selectedAudioClip().is_null() || (!selection.range.is_null() && !selected.empty()));
@@ -891,6 +899,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
+                    (id != 276 && sidechainPanel && sidechainPanel->isVisible()) ||
                     (id != 276 && clipPanel.isVisible() && clipPanel.hasDraft() && !facts.value("playing", false));
             if (id >= 268 && id <= 272)
                 active = !mix && pianoMode && piano.canPitchZoom();
@@ -1120,6 +1129,19 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 538)
     {
         invoke([&] { showCrossfade(); });
+        return true;
+    }
+    if (id == 561)
+    {
+        invoke([&] { showSidechain(); });
+        return true;
+    }
+    if ((id == 275 || id == 277) && sidechainPanel && sidechainPanel->isVisible())
+    {
+        if (id == 275)
+            sidechainPanel->execute();
+        else
+            sidechainPanel->setVisible(false);
         return true;
     }
     if (id == 560)
@@ -1801,6 +1823,8 @@ void Workspace::showRollSettings()
         crossfadePanel->setVisible(false);
     if (elasticPanel)
         elasticPanel->setVisible(false);
+    if (sidechainPanel)
+        sidechainPanel->setVisible(false);
     if (musicEventPanel)
         musicEventPanel->setVisible(false);
     if (!rollPanel)
@@ -1857,6 +1881,8 @@ void Workspace::showMusicEvent(const std::string& kind, double beat, const std::
         crossfadePanel->setVisible(false);
     if (elasticPanel)
         elasticPanel->setVisible(false);
+    if (sidechainPanel)
+        sidechainPanel->setVisible(false);
     if (rollPanel)
         rollPanel->setVisible(false);
     if (commands.query().value("playing", false))

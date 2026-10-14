@@ -318,6 +318,7 @@ Json Commands::configureInput(const std::string& deviceName)
 Json Commands::record(const juce::File& directory)
 {
     checkThread();
+    validateSidechainRuntime();
     require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后录音");
     require(!scrubPlayback, "finish scrub preparation or audition before recording");
     captureNativeStates();

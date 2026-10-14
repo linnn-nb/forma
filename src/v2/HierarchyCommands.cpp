@@ -171,11 +171,17 @@ Json Commands::validateHierarchyPlan(const Json& operations) const
     std::vector<std::string> order;
     std::map<std::string, std::string> outputs;
     std::map<std::string, std::pair<std::string, std::string>> sends;
+    std::map<std::string, std::pair<std::string, std::string>> sidechains;
     std::set<std::string> dead;
     Json diff = Json::array();
     auto q = query();
     bool hasDeletion = std::any_of(operations.begin(), operations.end(),
                                    [](const auto& op) { return op.at("command") == "track.delete"; });
+    if (hasDeletion)
+        for (auto* p : te::getAllPlugins(*edit, true))
+            if (p->getOwnerTrack() && p->getSidechainSourceID().isValid())
+                sidechains[p->itemID.toString().toStdString()] = {p->getOwnerTrack()->itemID.toString().toStdString(),
+                                                                  p->getSidechainSourceID().toString().toStdString()};
     for (const auto& t : q["tracks"])
     {
         std::string key = t["id"];
@@ -260,6 +266,8 @@ Json Commands::validateHierarchyPlan(const Json& operations) const
             sends["#planned-send-" + std::to_string(serial)] = {a.at("track"), a.at("target")};
         if (cmd == "send.remove")
             sends.erase(a.at("send"));
+        if (cmd == "plugin.remove")
+            sidechains.erase(a.at("plugin"));
         if (!a.contains("track"))
         {
             ++serial;
@@ -322,7 +330,19 @@ Json Commands::validateHierarchyPlan(const Json& operations) const
             const std::string policy = a.at("connections");
             require(policy == "reject" || policy == "disconnect", "unknown deletion connections policy");
             auto affected = subtree(target);
-            Json disconnected = Json::array(), removedSends = Json::array(), tracks = Json::array();
+            Json disconnected = Json::array(), removedSends = Json::array(), removedSidechains = Json::array(),
+                 tracks = Json::array();
+            for (auto it = sidechains.begin(); it != sidechains.end();)
+                if (dead.contains(it->first) || affected.contains(it->second.first) ||
+                    affected.contains(it->second.second))
+                {
+                    if (!dead.contains(it->first) && !affected.contains(it->second.first))
+                        removedSidechains.push_back(
+                            {{"plugin", it->first}, {"track", it->second.first}, {"source", it->second.second}});
+                    it = sidechains.erase(it);
+                }
+                else
+                    ++it;
             for (auto& [owner, output] : outputs)
                 if (!affected.contains(owner) && affected.contains(output))
                 {
@@ -342,8 +362,9 @@ Json Commands::validateHierarchyPlan(const Json& operations) const
                 }
                 else
                     ++it;
-            require(policy == "disconnect" || (disconnected.empty() && removedSends.empty()),
-                    "track has incoming routes or sends; preview explicit disconnect policy");
+            require(policy == "disconnect" ||
+                        (disconnected.empty() && removedSends.empty() && removedSidechains.empty()),
+                    "track has incoming routes, sends or sidechains; preview explicit disconnect policy");
             for (const auto& key : order)
                 if (affected.contains(key))
                 {
@@ -363,6 +384,7 @@ Json Commands::validateHierarchyPlan(const Json& operations) const
                             {"deleted_tracks", tracks},
                             {"disconnected_outputs", disconnected},
                             {"removed_incoming_sends", removedSends},
+                            {"removed_incoming_sidechains", removedSidechains},
                             {"media_files_deleted", false},
                             {"snapshot", "original facts; all preceding planned changes listed in changes"}});
             for (const auto& key : affected)
@@ -433,6 +455,14 @@ void Commands::executeHierarchyOperation(const std::string& cmd, const Json& a)
         for (auto* child : t->getAllSubTracks(true))
             affected.insert(id(*child));
         std::vector<std::string> incoming;
+        for (auto* p : te::getAllPlugins(*edit, true))
+            if (p->getOwnerTrack() && !affected.contains(id(*p->getOwnerTrack())) &&
+                p->getSidechainSourceID().isValid() &&
+                affected.contains(p->getSidechainSourceID().toString().toStdString()))
+            {
+                require(a.at("connections") == "disconnect", "incoming sidechain requires disconnect");
+                disconnectSidechain(*p);
+            }
         for (auto* source : te::getAudioTracks(*edit))
             if (!affected.contains(id(*source)))
             {

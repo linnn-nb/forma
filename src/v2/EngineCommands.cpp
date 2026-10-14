@@ -9,6 +9,7 @@
 #include "NativePluginStates.h"
 #include "PersistentHistory.h"
 #include "SessionRecovery.h"
+#include "SidechainGraph.h"
 #include "OutputProbe.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <filesystem>
@@ -909,6 +910,8 @@ Json Commands::preview(const Json& plan) const
         auto reg = registry();
         if (cmd.starts_with("playlist.") || cmd == "transport.punch.set")
             require(actor == "human", "Playlist selection is a local GUI command");
+        if (cmd == "plugin.sidechain.set")
+            require(actor == "human", "Sidechain editing is local human only during P2");
         auto entry = std::find_if(reg.begin(), reg.end(), [&](const auto& r) { return r.at("id") == cmd; });
         require(entry != reg.end() && a.is_object(), "unknown command");
         require(entry->value("execution", std::string("plan")) == "plan",
@@ -1126,6 +1129,10 @@ Json Commands::preview(const Json& plan) const
             .push_back(change);
     const auto transportDiff = validateTransportPlan(ops);
     const auto markerDiff = validateMarkerPlan(ops);
+    Json sidechainDiff = Json::array();
+    for (const auto& op : ops)
+        if (op["command"] == "plugin.sidechain.set")
+            sidechainDiff.push_back(sidechainChange(op["args"]));
     Json result{{"plan_id", plan.at("plan_id")},
                 {"base_revision", revision},
                 {"changes", diff},
@@ -1140,6 +1147,7 @@ Json Commands::preview(const Json& plan) const
                 {"timeline_changes", timelineDiff},
                 {"transport_changes", transportDiff},
                 {"marker_changes", markerDiff},
+                {"sidechain_changes", sidechainDiff},
                 {"group_changes", groupDiff},
                 {"playlist_changes", playlistDiff},
                 {"crossfade_changes", crossfadeMaintenancePreview(ops, timelineDiff)},
@@ -1561,6 +1569,7 @@ Json Commands::redo()
 void Commands::play()
 {
     checkThread();
+    validateSidechainRuntime();
     require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后播放");
     stopPlaylistAudition();
     stopScrub();
@@ -1758,6 +1767,7 @@ uint64_t Commands::audioDeviceGeneration() const
 Json Commands::render(const juce::File& destination, int64_t start, int64_t end)
 {
     checkThread();
+    validateSidechainRuntime();
     require(!playbackPreparation()["busy"].get<bool>(), "弹力音频仍在后台准备，请稍后导出；尚未生成文件");
     require(!audioConfigurationPending(), "wait for audio device preparation");
     require(!masterAnalysis || !masterAnalysis->status()["busy"].get<bool>(),
@@ -1905,6 +1915,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     (void)candidate->createNewItemID();
     validatePlaylists(*candidate);
     validateCrossfades(*candidate);
+    sidechain_graph::validateStored(*candidate);
     readTimelineState(candidate->state.getChildWithName("NATIVEDAW"));
     readEditingOptions(candidate->state.getChildWithName("NATIVEDAW"));
     readShuffleOptions(candidate->state.getChildWithName("NATIVEDAW"));

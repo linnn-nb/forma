@@ -349,6 +349,20 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
                 object(id, p ? p->getOwnerTrack() : nullptr);
                 full();
                 impacts.push_back({{"command", cmd}, {"object", id}, {"extent", "whole_track"}});
+                if (cmd == "plugin.sidechain.set")
+                {
+                    const auto change = sidechainChange(a);
+                    for (const char* side : {"before", "after"})
+                    {
+                        const std::string source = change[side]["source"];
+                        if (source != "none")
+                        {
+                            object(source, domainTrack(source));
+                            impacts.push_back(
+                                {{"command", cmd}, {"object", source}, {"extent", "sidechain_source"}, {"side", side}});
+                        }
+                    }
+                }
             }
         }
         else if (bounded)
