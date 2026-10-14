@@ -1,3 +1,29 @@
+# P3当前增量：Warp/Comp/淡化（2026-10-15）
+
+**7/7受影响套件、618项、114.47秒一次通过**；P3/完整产品仍未完成。源码55743bd；无新SDK/算法/RT/服务/MCP权限。本地Release与固定身份deep-strict验证通过，程序SHA256 `636279c0c866164715aaa43ba0c18c2d24c5ffaad64689ac9da77fad5e3ee160`，不是发行公证。当前唯一Forma已打开实体制作文件，未生成新DMG。
+
+L1 Warp保留输出采样淡化，分离envelope/结构编辑能力，配对时保护长度；原生crossfade只用实际重叠、不推测Warp外源句柄，恢复原边界须先还原Warp。原Edit/Undo/源SHA/Scope不变。L5默认真实重叠并显示约束。源继承包络/Clip FX、关联多轨、Warp源直接Comp切片及复杂范围仍不宣称通过。
+
+| 实际CTest | 检查 | 时间 |
+|---|---:|---:|
+| tracktion_audio_clip_edits | 58 | 11.46s |
+| forma_persistent_native_history | 86 | 35.85s |
+| tracktion_native_clip_workspace | 70 | 7.19s |
+| forma_crossfade | 101 | 8.59s |
+| forma_production_chain | 91 | 12.48s |
+| forma_warp | 144 | 32.96s |
+| forma_warp_mix | 68 | 5.93s |
+
+新专项：实际PCM24双声道Take→候选Comp→source-handle交叉淡化→非线性Warp→真实WAV；独立逐采样公式最大差1.2243632227515455e-7，fade与resize差1.203517119e-7（固定2e-6），重开差0（2e-7）。原源SHA、候选与原Take、实际窗口peer/注册键位、保存重开原历史、移除/还原顺序与拒绝额外源句柄均验；排除256采样外侧native防爆音段，未把该段计入逐样包络资格。缓存5s/render10s/套件120s预算不变。
+
+实体：r10→⌘F淡入120ms/⌘Return r11→⌘Z r12/0→⌘⇧Z r13/120；⌘⌃F默认45600–50400采样重叠/提交r14；另存/Open r15→原配对Undo r16→原fade Undo r17/0→两次Redo r19/120+配对。实体CoreAudio 48k/512/外置耳机走带0.277s已观察且停止；不是听评/XRUN/耐久结论。⌘⌥B实际界面导出144000帧/-19.45 LUFS-I回执。独立PCM24/48k/2声道/3秒解码与120ms增益公式比较误差1.186918881235233e-07（2e-7）。
+
+本地可试文件：`build-v2-tracktion/P3-WarpMix-c2024b6f36f343ceac831f1f521e1177/WarpMix-Physical-1015.tracktionedit`及同名WAV；原生图和波形真实，截图已查看未另存PNG。WAV SHA `0c96d20373b8c8e39a4f8722cebbe6d71f538fb1d3e6cd9a960bbb64d422f57c`；源工程与测试文件不覆盖。操作与边界见docs/WARP_MIX_WORKFLOW.md。
+
+失败保留：首构建自动再配置后旧Make入口未识别新target，重跑构建exit0；新测试误把回执created数量当对象数组造成segfault，改读取objects并核对实际对象；锚点initializer_list插入成数组被生产Schema正确拒绝，改明确Json对象。未改生产校验或数值预算。LLDB自有停止进程已结束，系统崩溃栈只用于定位测试，不把它记成用户App故障或GUI成功。原始日志与当前文件SHA索引在忽略目录build-v2-tracktion/p3-warp-mix-current-results.json；大文件不进Git。
+
+下一项：Warp/伸缩源Take参与候选Comp/区间提升的真实源映射与派生来源。全目标与旧缺口继续保留；M2/M3冻结、M4/M5暂缓。下面是此前CC/Warp证据，旧泛化的“全部淡化组合待验”仅由上面具体范围替代。
+
 # P3 当前结果（2026-10-14）
 
 MIDI CC首版的软件与实体主链路通过；完整P3和DAW未完成。8套受影响测试**分批通过4639项**，不是一次全绿批次。Warp实体重开/原UndoRedo已补验；硬件MIDI、第三方响应、听评及复杂Warp联动继续待验。

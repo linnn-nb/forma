@@ -1,3 +1,5 @@
+2026-10-15 P3-WARP-MIX-01：现有clip.warp/fade/gain/lock及playlist.crossfade接口保持，新增派生editable_envelope查询能力不代表可结构编辑。Warp预览声明输出时间的淡化长度/曲线保持；新长度不能容纳淡化时整笔拒绝，配对几何不变。Warp配对只允许实际已存在重叠区；移除会改变Warp几何时须先还原Warp。所有修改经原L1/native Undo，版本/幂等/权限与M2/M3工具表不扩充。GUI默认280 CmdF、538 CmdCtrlF、573 Warp、275接受、277取消可改键；代码/实测WARP_MIX_WORKFLOW。
+
 2026-10-14 P3-MIDI-CC-01：`midi.cc.replace {clip,controller,state_hash,points:[{id,source_beat,raw_value}]}`为human/local_gui独立停止事务，0–119/4096点，实际离散MIDI输出；新稳定键及旧事件首次持久化、元数据/低位保留，原生可保存表示SHA校验，后续保持状态纳入Scope，不扩MCP权限。574默认⌘⌃⌥C，共享275提交/277取消，原UndoRedo和重开已测；两项失效测试夹具已修复并保留现代工程校验，原生1ns事件预算不变；资格见MIDI_CC_WORKFLOW/VERIFICATION。
 
 2026-10-14 P3-WARP-01：`clip.warp {clip:string,enabled:bool,anchors?:[{id:string,source_time_seconds:number,clip_time_samples:integer}],media_hash:string}`，human/local_gui、停止态、单操作Plan；源时间与工程采样分离，2–128锚点、每段时长0.5–2倍、稳定身份/完整源范围/媒体SHA/版本/锁定校验。预览显示新增删除移动及原几何恢复；设置提交不表示后台音频准备完成。缓存失败/源改变/未就绪拒绝消费；幂等、撤销和跨重开历史沿用L1。573默认⌘⌃⌥W与275/277共享提交取消可改键；GUI无Edit旁路。M2/M3工具权限不扩。代码WarpCommands.cpp/WorkspaceWarp.cpp/WarpPanel.h；测试WarpTests.cpp，证据../evidence/P3/summary.md。
