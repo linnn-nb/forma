@@ -433,9 +433,24 @@ int main(int argc, char** argv)
             const std::string id = clip["id"];
             check(clip["source_frames"] == 100001 && clip["source_sample_rate"] == 44100,
                   "native import distinguishes file frames and session samples");
+            // Domain import deliberately aligns new clips to the session grid.
+            // Load an explicit historyless legacy fixture to exercise an actual
+            // existing fractional native duration, without invalid modern history.
+            auto legacy = RecordingTestAccess::state(c);
+            auto meta = legacy.getChildWithName("NATIVEDAW");
+            meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);
+            for (auto track : legacy)
+                if (track.hasType(te::IDs::TRACK))
+                    for (auto part : track)
+                        if (part.hasType(te::IDs::AUDIOCLIP))
+                            part.setProperty(te::IDs::length, 100001. / 44100., nullptr);
+            const auto legacyFile = root.getChildFile("Legacy-Fractional.tracktionedit");
+            check(legacyFile.replaceWithText(legacy.toXmlString()),
+                  "explicit historyless fractional legacy fixture writes");
+            c.open(legacyFile);
             const double duration = native(c, id)[te::IDs::length];
             check(duration != std::llround(duration * 48000) / 48000.,
-                  "actual imported duration is not an integer session-sample duration");
+                  "actual legacy duration is not an integer session-sample duration");
             run(c, "clip.move", {{"clip", id}, {"position_samples", 444}});
             check(double(native(c, id)[te::IDs::length]) == duration,
                   "native move preserves fractional stored duration exactly");
