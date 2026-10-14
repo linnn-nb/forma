@@ -1,3 +1,5 @@
+2026-10-14：应用偏好使用本地L1 preferences/configurePreferences/preferenceHistory控制（message thread）；参数为完整校验的6个字段及独立偏好revision，不纳入Edit Plan/Undo/revision，不对冻结MCP/Agent开放。UI草稿过期/原文件并发修改/写盘失败均不发布成功。Cmd逗号/Return与设置历史571/572可改键；64步历史跨软件重启，工程Undo不改变偏好。P2-PREFERENCES-01，见PREFERENCES_WORKFLOW。
+
 2026-10-14：`export.stems.publish {batch_id:string}` 为 human/local_gui、停止态、独立 Plan、medium 风险的本地外部文件操作。`prepareStemExport` 仅准备已授予本地路径的草稿，绑定 session/revision/媒体和处理链哈希；状态没有真实整批文件核验时不得提交。preview 给出之前工程记录、每个真实 WAV、范围/尾音、Mute/Solo、测量和最终路径。commit 原子独占发布新批次目录＋manifest，并原位更新 STEM_EXPORT 工程单例；一笔原生 Undo/Redo 仅恢复工程记录，外部文件保留。配置随保存重开；历史引用不会伪装成新音频核验。取消、幂等、版本/文件/目录冲突有明确回执。MCP/Agent权限不扩，测试P2-STEMS-01，见 STEMS_WORKFLOW.md。
 
 2026-10-14：新增 track.freeze.relink {track:string,path:absolute string}，human/local_gui、停止态、单操作Plan。必须为已冻结且未锁定对象；新文件SHA256、48k/双声道/帧数匹配原记录。preview给出前后引用；commit复验并在一个Undo事务保留重定位来源，幂等回执/版本冲突沿用L1。Undo恢复原引用（可能缺失），不伪装移动或删除文件；缓存不可用时播放/导出明确失败。Cmd Ctrl Option R可改键。冻结尾音进入统一exportRequest范围，选择区间仍保持明确边界。本轮不开放额外MCP/AI权限，P2-PRINT-GRAPH-01实测见PRINT_WORKFLOW。

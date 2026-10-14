@@ -1,3 +1,5 @@
+2026-10-14：原生偏好设置（Cmd逗号）已接通实际目录默认值、Scrub结束插入点和新工程轨高/Edit网格，应用/独立Undo/Redo与64步历史跨软件重启保持；旧工程内容/视图/Undo不变。音频/MIDI、键位、恢复副本及Zoom Toggle入口复用真实面板。43专项及10套1411项分批通过；两套GUI/实体因锁屏环境未完成资格，不称完整P2。详见PREFERENCES_WORKFLOW和P2证据。
+
 2026-10-14：新增原生Stems批量导出入口（文件菜单／Cmd Shift Option B，可改键），按真实轨道后推子或独立Master生成双声道48k/PCM24 WAV，支持工程/选区及追加尾音。整批渲染、再解码和测量后预览并发布到不覆盖的新目录；保存重开保留配置和历史，Undo只还原工程记录、文件保留。共享返回单独选，Bus与上游重复选择/非线性Master不能保证相加还原。验收结果及差距见 STEMS_WORKFLOW.md 和 evidence/P2/summary.md；多格式、长源、第三方与完整P2仍待资格。
 
 2026-10-14：Freeze/Bounce的音频、原生MIDI乐器、直连/发送Aux、PRE/POST与旁链组合已通过实际PCM测试；缓存重定位可从轨头菜单或Cmd Ctrl Option R执行，校验原哈希、持久Undo/Redo且不覆盖文件。全工程导出包含冻结缓存尾音。9个受影响套件655项及实体重开/快捷键/导出已验；下一项Stems批量导出、偏好。第三方乐器/旁链、多声道、长素材与完整P2仍未验收。见 PRINT_WORKFLOW.md。

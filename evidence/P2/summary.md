@@ -1,3 +1,34 @@
+# P2 偏好设置首版（2026-10-14，锁屏期间部分资格）
+
+结论：Release和固定本地deep/strict签名通过；偏好43项/3.08秒、Stems123项/53.63秒通过。受影响测试分批10套1411项通过，另有KeyboardSettings前台焦点和ScrubSelection后段指针资格未通过，不称全量/P2验收。代码4cbdbe9/a049253；唯一应用二进制SHA256 `ee9b7b0a23ac7b742e7f52f814b5b675312244d226d941756f91e1cd43d8b086`。
+
+亲手试：⌘,打开原生偏好→设置导入/导出/录音目录、Scrub结束插入点、新工程轨高/Edit网格→应用或⌘↩→⌘⇧⌥Z撤销设置/⌘⌃⌥Z重做设置；Esc取消草稿。应用设置与64步历史、Redo分支随重启保留；工程Undo、revision和旧视图保持。新建工程才使用96/144/216/288高度、1/8–1拍网格默认值。四个配置入口连接实际音频/MIDI、键位、恢复副本、Zoom Toggle面板。当前未完成最终实体验收。
+
+| 套件 | 检查 | 秒 | 固定预算秒 |
+| --- | ---: | ---: | ---: |
+| session_recovery | 52 | 17.25 | 60 |
+| recovery_workspace（修测试后） | 31 | 3.05 | 60 |
+| navigation | 73 | 4.11 | 60 |
+| presentation | 313 | 6.90 | 90 |
+| scrub | 543 | 27.81 | 90 |
+| multi_scrub | 126 | 9.09 | 90 |
+| recording_workspace | 16 | 3.50 | 60 |
+| production_chain | 91 | 11.62 | 120 |
+| stems | 123 | 53.63 | 180 |
+| preferences | 43 | 3.08 | 90 |
+
+偏好实测：真实原子写文件及SHA256、实际OS文件大小限制后原文件/值/历史保持；损坏配置保留且不可写，DAW工程仍可用；失效版本/非法字段与原生未支持网格/缺失目录/另一实例冲突拒绝。新Commands对象实际读取原配置、Undo和Redo分支；70次真实修改裁剪为64步并跨对象重启验证。原生组件异步Apply、Cmd逗号/Return、独立撤销重做快捷键、Esc、当前录音目录和新Edit默认值均通过。固定GUI回执2秒保持。不是实体按键、声学试听或任意磁盘故障通过。
+
+首轮构建遇到摘要函数名称/JSON字符串比较错误，修后Release成功；新增CTest目标须显式配置，未冒充测试已运行。首批10套7通过/3失败：恢复面板后台完成后旧测试直接点击尚未启用控件；按原5秒预算等待实际UI启用和单次点击通知、移除旧私调onClick后31项通过。Scrub旧测试要求重开丢弃Undo，与已实现持久历史冲突，现实际Undo/Redo回执和准确轨道/路由/插入点/选区恢复、全局偏好保持均通过；一次新增断言误用Redo状态redone，修为真实committed。后段实际指针准备仍cancelled，完整ScrubSelection未通过。KeyboardSettings在前台捕获5秒预算失败。桌面工具随后明确返回Mac已锁定，不能由此证明所有失败仅因锁屏；解锁后必须复测，不放宽时限、不注入假焦点或假回执。
+
+实体：回收仅此前自行启动的旧验收PID62226，最新应用启动PID63247；桌面接口先cgWindowNotFound，之后明确报Mac锁定、无法自动解锁。已请求人类手动解锁，不获取密码、不改系统安全。最新原生工程打开、Stems和偏好实体全流程未执行；上一轮对话框未启用的原因仍待解锁复验。CLI组件回归不替代此验收。没有新DMG/预览包，没有上传音频。
+
+日志/索引：build-v2-tracktion/p2-preferences-final-regression.log（7/10），p2-preferences-recovery-scrub-regression.log、p2-preferences-scrub-history-regression.log、p2-preferences-recording-regression.log、p2-preferences-tests.json、p2-preferences-current-results.json。raw presentation/scrub/multi-scrub输出移动到同build目录；这四项CTest输出以后直接写build，evidence/U不再积累这些JSON。14份SDK补丁/27文件fresh apply、比对、reverse仍通过，未新增依赖或RT处理。
+
+下一项：解锁后复验GUI打开工程、Stems、偏好/重启与两套GUI；然后SoundTouch Warp和MIDI CC。当前完整P2、P3、实际制作听评/耐久、旧性能A/自动化180秒、Windows、公证/SBOM及完整产品仍未完成。
+
+以下为历史记录。
+
 # P2 Stems 首版（2026-10-14，实体复验未完成）
 
 结论：Release/固定本地 deep-strict 签名通过；最终相同源码分两批10套786项通过，189.80秒、0 JUCE assertion。Stems123项45.74秒；实际四文件合并PCM最大差2.384185791015625e-7（固定2e-6），独立Master与原混音差0。不是完整P2、全仓回归、第三方/听感/耐久或发行验收。源码37d0a8e/966fc14/00ebdce；唯一应用二进制SHA256 `79cf888b8b2c61a7f0479ff5928820ac4730cde0f12ab74f26e9bc782b0e500a`。

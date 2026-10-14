@@ -690,7 +690,7 @@ set_tests_properties(forma_native_midi_dock PROPERTIES TIMEOUT 90 FAIL_REGULAR_E
 juce_add_console_app(ndaw_presentation_tests PRODUCT_NAME "ndaw_presentation_tests")
 target_sources(ndaw_presentation_tests PRIVATE tests/v2/PresentationWorkspaceTests.cpp)
 target_link_libraries(ndaw_presentation_tests PRIVATE ndaw_ui)
-add_test(NAME forma_native_track_presentation COMMAND ndaw_presentation_tests "${CMAKE_SOURCE_DIR}/evidence/U/presentation-tests.json")
+add_test(NAME forma_native_track_presentation COMMAND ndaw_presentation_tests "${CMAKE_BINARY_DIR}/presentation-tests.json")
 set_tests_properties(forma_native_track_presentation PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 # Actual timeline automation editing and project/PCM invariants.
@@ -721,19 +721,19 @@ set_tests_properties(forma_native_waveform_zoom PROPERTIES TIMEOUT 90 FAIL_REGUL
 juce_add_console_app(ndaw_scrub_tests PRODUCT_NAME "ndaw_scrub_tests")
 target_sources(ndaw_scrub_tests PRIVATE tests/v2/ScrubPlaybackTests.cpp)
 target_link_libraries(ndaw_scrub_tests PRIVATE ndaw_ui)
-add_test(NAME forma_native_scrub COMMAND ndaw_scrub_tests "${CMAKE_SOURCE_DIR}/evidence/U/scrub-tests.json")
+add_test(NAME forma_native_scrub COMMAND ndaw_scrub_tests "${CMAKE_BINARY_DIR}/scrub-tests.json")
 set_tests_properties(forma_native_scrub PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_multi_scrub_tests PRODUCT_NAME "ndaw_multi_scrub_tests")
 target_sources(ndaw_multi_scrub_tests PRIVATE tests/v2/MultiScrubTests.cpp)
 target_link_libraries(ndaw_multi_scrub_tests PRIVATE ndaw_ui)
-add_test(NAME forma_native_multi_scrub COMMAND ndaw_multi_scrub_tests "${CMAKE_SOURCE_DIR}/evidence/U/multi-scrub-tests.json")
+add_test(NAME forma_native_multi_scrub COMMAND ndaw_multi_scrub_tests "${CMAKE_BINARY_DIR}/multi-scrub-tests.json")
 set_tests_properties(forma_native_multi_scrub PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_scrub_selection_tests PRODUCT_NAME "ndaw_scrub_selection_tests")
 target_sources(ndaw_scrub_selection_tests PRIVATE tests/v2/ScrubSelectionTests.cpp)
 target_link_libraries(ndaw_scrub_selection_tests PRIVATE ndaw_ui)
-add_test(NAME forma_native_scrub_selection COMMAND ndaw_scrub_selection_tests "${CMAKE_SOURCE_DIR}/evidence/U/scrub-selection-tests.json")
+add_test(NAME forma_native_scrub_selection COMMAND ndaw_scrub_selection_tests "${CMAKE_BINARY_DIR}/scrub-selection-tests.json")
 set_tests_properties(forma_native_scrub_selection PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_selection_extension_tests PRODUCT_NAME "ndaw_selection_extension_tests")

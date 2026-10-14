@@ -1,3 +1,5 @@
+2026-10-14：AppPreferences为L1本地应用控制，不是第二工程。只在message thread读写有界配置、独立版本与64步状态历史；非阻塞进程锁+旧文件哈希+校验暂存原子替换，成功后才发布内存。损坏保留/显示不可写，核心DAW仍启动；旧Scrub布尔迁为默认值。只有L1写新Edit的UI默认，打开旧Edit保留自己的UI；GUI面板只提交类型化配置。录音/导入/WAV/Stems默认目录实际消费，MCP权限不扩，RT路径不变。资格及未通过GUI见PREFERENCES_WORKFLOW。
+
 # P2 Stems 架构增量（2026-10-14）
 
 Stems 是 L1 的 `StemExport/StemCommands`，不是第二引擎：message thread 创建同一 Engine 的 forRendering Edit，一份版本绑定快照、一个原生图、一个持久 Utility worker。后推子捕获保留原发送和旁链，用原生 audibility 控制捕获输出；Master 使用未改路由的原生混音。实际 float32 → PCM24 编码/解码及测量完成后，L1 单操作 Plan 以 exclusive rename 发布整批新目录并写入原位更新的 STEM_EXPORT 单例。文件副作用保留，工程记录才由 UndoManager 撤销。GUI 只读事实/草稿，所有写入经 L1；播放/录音在开始时请求后台让行，不新增 RT 处理或 IPC。

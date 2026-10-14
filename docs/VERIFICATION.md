@@ -1,3 +1,5 @@
+2026-10-14：偏好专项43/3.08秒通过；10受影响套件1411项分批通过，另外KeyboardSettings焦点和ScrubSelection后段指针未通过，Mac明确锁定，实机未执行。Recovery控件按实际启用/单次通知等待后31项通过；Scrub持久Undo/Redo核心检查已验，但不以部分检查冒充整套通过。Release/本地签名、14 SDK补丁审计通过；源码4cbdbe9/a049253，日志和完整数字见evidence/P2/summary.md。
+
 2026-10-14：Stems首版最终Release/固定签名通过；10个受影响套件分两批786项/189.80秒、0断言，Stems123/45.74秒，实际合并PCM差2.384185791015625e-7、Master差0。Mute/Solo/PRE共享返回/旁链/非零选区、真实文件再解码/篡改、取消/OS写盘错误/目录竞争、原生准备/Cmd Return/上下文Esc/改键、跨重开Undo/Redo通过。一次印刻10秒预算失败保留，Utility磁盘调度修复后复测通过，时限/容差未放宽。最新实体工程打开尚无载入回执，取消后桌面接口持续超时，Stems最终键鼠验收未完成；不以自动组件替代。源码37d0a8e/966fc14/00ebdce；SDK14补丁27文件fresh apply/比对/reverse通过。完整结果见 evidence/P2/summary.md 和 STEMS_WORKFLOW.md，其他旧缺口保持。
 
 2026-10-14：最终Release/固定本地deep-strict验签通过；9受影响套件655项、0 JUCE assertion，一批178.08秒（每套原预算保持）。Print77项27.56秒/180秒、PrintGraph148项81.08秒/180秒；实际FourOsc/MIDI、Aux/PRE/POST/旁链Freeze/Bounce与重定位的PCM最大差0（2e-6）。原生混响在2–3秒尾段RMS约0.002413，全工程绑定导出保留该尾段。实际取消、OS文件大小限制引起的写盘失败、缺失缓存/原源、持久历史已验；不是磁盘满/设备容量/听感/耐久结论。实体新快捷键、另存重开、原Undo/Redo与CoreAudio播放通过；最终实体WAV144000帧、48k双声道24-bit，与32-bit缓存PCM最大差2.0954e-14。源码08c709e/9bf5f35；索引build-v2-tracktion/p2-print-graph-current-results.json，见 ../evidence/P2/summary.md。
