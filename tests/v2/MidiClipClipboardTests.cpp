@@ -172,6 +172,13 @@ int onset(Commands& c, const juce::File& output)
     throw std::runtime_error("actual instrument render silent");
 }
 } // namespace
+void openNative(Workspace& w, Commands& c, const juce::File& file)
+{
+    const auto previous = c.sessionToken();
+    w.openSession(file);
+    pump();
+    check(c.sessionToken() != previous, "native Open has actual new session receipt; no old Edit fallback");
+}
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -212,6 +219,9 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        check(bool(xml) && xml->getChildByName("NATIVEDAW"), "owned foreign MIDI fixture has native metadata");
+        // SDK event injection deliberately creates a foreign, history-free input.
+        xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         auto* src = byID(*xml, source);
         src->setAttribute("start", 1.);
         src->setAttribute("length", 3.);
@@ -239,7 +249,7 @@ int main(int argc, char** argv)
         sequence->addChildElement(sx.release());
         const auto fixture = dir.getChildFile("Fixture.tracktionedit");
         check(xml->writeTo(fixture), "owned CC/SysEx fixture saved");
-        w.openSession(fixture);
+        openNative(w, c, fixture);
         pump();
         const auto before = c.query();
         const auto nativeSource = clip(c, source), canonical = data(fixture, source);
@@ -325,7 +335,7 @@ int main(int argc, char** argv)
         check(std::abs(firstOnset - 312000) <= 64,
               "real FourOsc onset follows source musical offset at destination Tempo within 64 samples");
         // Production timeline shortcuts and custom key mapping, no piano-roll context.
-        w.openSession(fixture);
+        openNative(w, c, fixture);
         pump();
         objects(c, source, owner);
         const auto uiBefore = c.query()["tracks"];
@@ -384,7 +394,7 @@ int main(int argc, char** argv)
         key(w, 'z');
         const auto demo = dir.getChildFile("MidiClipsDesktopReady.tracktionedit");
         c.save(demo);
-        w.openSession(demo);
+        openNative(w, c, demo);
         pump();
         check(w.uiCommands().getKeyMappings()->getKeyPressesAssignedToCommand(editCommand::paste).contains(custom),
               "custom key survives native Save/Open");
@@ -405,7 +415,7 @@ int main(int argc, char** argv)
             check(locked.query() == lockedBefore, "locked replacement refusal leaves entire native state intact");
         }
         // Native curve follow uses the same Undo transaction as whole MIDI Cut.
-        w.openSession(fixture);
+        openNative(w, c, fixture);
         pump();
         run(c, Json::array({operation("automation.point.add", {{"track", owner},
                                                                {"parameter", "volume"},

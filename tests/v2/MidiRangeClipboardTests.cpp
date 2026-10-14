@@ -176,6 +176,13 @@ int onset(Commands& c, const juce::File& output)
     throw std::runtime_error("actual instrument render silent");
 }
 } // namespace
+void openNative(Workspace& w, Commands& c, const juce::File& file)
+{
+    const auto previous = c.sessionToken();
+    w.openSession(file);
+    pump();
+    check(c.sessionToken() != previous, "native Open has actual new session receipt; no old Edit fallback");
+}
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -220,6 +227,9 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        check(bool(xml) && xml->getChildByName("NATIVEDAW"), "owned foreign MIDI fixture has native metadata");
+        // SDK event injection deliberately creates a foreign, history-free input.
+        xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         auto* src = byID(*xml, source);
         src->setAttribute("start", 1.);
         src->setAttribute("length", 8.);
@@ -249,7 +259,7 @@ int main(int argc, char** argv)
         const auto fixture = dir.getChildFile("Fixture.tracktionedit");
         check(xml->writeTo(fixture), "owned held-note CC/SysEx fixture saved");
         const auto originalHash = juce::SHA256(fixture).toHexString();
-        w.openSession(fixture);
+        openNative(w, c, fixture);
         pump();
         const auto before = c.query()["tracks"];
         auto buffer = c.prepareMidiRangeClipboard(Json::array({owner, empty}), 96000, 144000, c.sessionToken(),
@@ -330,7 +340,7 @@ int main(int argc, char** argv)
         check(r->read(&tail, 0, 48000, 432000, true, true) && tail.getRMSLevel(0, 0, 48000) < 1e-6,
               "actual instrument releases held note at range end without stuck note");
         // Range Cut keeps source sides; native event trees remain non-destructive.
-        w.openSession(fixture);
+        openNative(w, c, fixture);
         pump();
         buffer = c.prepareMidiRangeClipboard(Json::array({owner, empty}), 96000, 144000, c.sessionToken(),
                                              c.querySummary()["revision"]);
@@ -351,7 +361,7 @@ int main(int argc, char** argv)
         c.open(cutSaved);
         check(c.query()["tracks"][0]["clips"].size() == 2, "Cut survives save/Open");
         // Full selection including leading/trailing silence, not just clip extent.
-        w.openSession(fixture);
+        openNative(w, c, fixture);
         buffer = c.prepareMidiRangeClipboard(Json::array({owner, empty}), 0, 480000, c.sessionToken(),
                                              c.querySummary()["revision"]);
         c.acceptClipboard(buffer["id"]);

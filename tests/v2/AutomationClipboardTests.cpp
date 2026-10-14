@@ -241,6 +241,9 @@ int main(int argc, char** argv)
                 reference.save(referenceFile);
                 auto xml = juce::XmlDocument::parse(referenceFile);
                 check(bool(xml), "owned independently arranged native reference parsed");
+                // The dense independent oracle is edited outside L1; its old
+                // journal describes another Edit and must not be imported.
+                xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
                 auto findPlugin = [&](auto&& self, juce::XmlElement& node, const juce::String& id) -> juce::XmlElement*
                 {
                     if (node.hasTagName("PLUGIN") && node.getStringAttribute("id") == id)

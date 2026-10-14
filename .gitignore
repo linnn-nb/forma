@@ -123,3 +123,5 @@ evidence/U/*
 evidence/U/midi-dock-tests.json
 evidence/U/midi-clipboard-tests.json
 evidence/U/boundary-nudge-tests.json
+
+evidence/U/automation-clear-tests.json

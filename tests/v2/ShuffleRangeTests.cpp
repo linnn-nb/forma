@@ -33,6 +33,11 @@ public:
     {
         return w.status.getText();
     }
+    static bool defaultReader(Commands& c, const std::string& id)
+    {
+        auto* clip = c.audioClip(id);
+        return clip && clip->canUseProxy();
+    }
     static Commands& owner(Workspace& w)
     {
         return w.commands;
@@ -173,6 +178,13 @@ Json byID(const Json& tracks, const std::string& id)
                 return clip;
     throw std::runtime_error("missing stable test clip");
 }
+void openNative(Workspace& w, Commands& c, const juce::File& file)
+{
+    const auto previous = c.sessionToken();
+    w.openSession(file);
+    pump();
+    check(c.sessionToken() != previous, "native Open has actual new session receipt; no old Edit fallback");
+}
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -245,21 +257,25 @@ int main(int argc, char** argv)
         c.save(saved);
         auto xml = juce::XmlDocument::parse(saved);
         bool changed = false;
+        double expectedFraction = 0;
         std::function<void(juce::XmlElement&)> fractional = [&](juce::XmlElement& n)
         {
             if (n.hasTagName("AUDIOCLIP") && n.getStringAttribute("id") == text(b0))
             {
-                n.setAttribute("offset", n.getDoubleAttribute("offset") + .25 / 48000.);
+                expectedFraction = n.getDoubleAttribute("offset") + .25 / 48000.;
+                n.setAttribute("offset", expectedFraction);
                 changed = true;
             }
             for (auto* child : n.getChildIterator())
                 fractional(*child);
         };
         check(bool(xml), "real session XML parsed");
+        // The fractional native fixture intentionally starts without a journal.
+        xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         fractional(*xml);
         const auto fractionFile = folder.getChildFile("Fractional.tracktionedit");
         check(changed && xml->writeTo(fractionFile), "fractional source time fixture uses separate owned session");
-        w.openSession(fractionFile);
+        openNative(w, c, fractionFile);
         pump();
         const auto original = c.query()["tracks"];
         check(original[0]["clips"][0]["source_sample_rate"] == 48000 &&
@@ -267,6 +283,8 @@ int main(int argc, char** argv)
                   original[1]["clips"][1]["source_sample_rate"] == 44100,
               "original failed workload keeps native 48k/44.1k sources including later mixed-rate clip");
         const double bOffset = original[1]["clips"][0]["source_offset_seconds"];
+        check(std::abs(bOffset - expectedFraction) < 1e-12,
+              "opened source retains actual injected quarter-sample offset");
         const auto beforeAudio = rendered(c, folder.getChildFile("before.wav"), 0, 400000);
         range(w, c, 48000, 96000, Json::array({a}));
         run(c, Json::array({operation("session.insertion.set", {{"position_samples", 17000}})}));
@@ -447,7 +465,7 @@ int main(int argc, char** argv)
         range(w, c, 48000, 96000, Json::array({a}));
         const auto ready = folder.getChildFile("ShuffleReady.tracktionedit");
         c.save(ready);
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         check(w.uiCommands().getKeyMappings()->containsMapping(editCommand::remove, custom),
               "custom Delete shortcut survives native save/reopen");
@@ -462,7 +480,7 @@ int main(int argc, char** argv)
         c.undo();
         pump();
         check(c.query()["tracks"][0]["clips"][1]["id"] == a1, "reopened native edit remains undoable until close");
-        w.openSession(collapsed);
+        openNative(w, c, collapsed);
         pump();
         auto reopened = c.query()["tracks"];
         for (const auto& delta : Json::diff(committed["tracks"], reopened))
@@ -479,7 +497,7 @@ int main(int argc, char** argv)
                 c.query()["mix_groups"] == committed["mix_groups"],
             "saved collapsed session reopens exact topology identities and groups with declared source-time tolerance");
         // A short destructive selection can affect many later clips; previews count those too.
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         Json added = Json::array();
         for (int i = 0; i < 6; ++i)
@@ -524,7 +542,7 @@ int main(int argc, char** argv)
         pump(); // Undo the range selection, then the six added clips.
         c.undo();
         pump();
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         // Linked unsupported MIDI must reject before editing either audio track.
         run(c, Json::array({operation("track.create", {{"name", "Linked MIDI"}, {"type", "midi"}, {"ref", "$m"}}),
@@ -545,10 +563,11 @@ int main(int argc, char** argv)
         fails([&] { c.makeShuffleRangePlan(Json::array({a}), 48000, 96000); },
               "transitively linked MIDI later in selection rejects entire audio collapse");
         check(c.query()["tracks"] == midiBefore["tracks"], "unsupported later group target leaves all audio intact");
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         auto directXml = juce::XmlDocument::parse(ready);
         check(bool(directXml), "owned session parsed for non-default reader fixture");
+        directXml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         std::function<void(juce::XmlElement&)> directReader = [&](juce::XmlElement& n)
         {
             if (n.hasTagName("AUDIOCLIP") && n.getStringAttribute("id") == text(b0))
@@ -562,14 +581,16 @@ int main(int argc, char** argv)
         directReader(*directXml);
         const auto directFile = folder.getChildFile("DirectReaderBlocked.tracktionedit");
         check(directXml->writeTo(directFile), "non-default direct reader settings retained in separate session");
-        w.openSession(directFile);
+        openNative(w, c, directFile);
         pump();
         const auto directBefore = c.query();
+        check(!AudioDeviceTestAccess::defaultReader(c, b0),
+              "actual imported native clip uses unqualified direct reader");
         fails([&] { c.makeShuffleRangePlan(Json::array({a}), 48000, 96000); },
               "unqualified direct stretching/HQ reader refuses whole Shuffle rather than silently changing settings");
         check(c.query()["tracks"] == directBefore["tracks"] && c.query()["revision"] == directBefore["revision"],
               "direct reader refusal preserves media settings Edit and revision");
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         run(c, Json::array({operation("automation.point.add", {{"track", b},
                                                                {"parameter", "volume"},
@@ -596,7 +617,7 @@ int main(int argc, char** argv)
         restoredCurves["revision"] = curves["revision"];
         check(c.query()["tracks"] == automationBefore["tracks"] && restoredCurves == curves,
               "one grouped Undo restores all audio and native automation");
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         run(c, Json::array({operation("automation.point.add", {{"track", b},
                                                                {"parameter", "volume"},
@@ -666,10 +687,10 @@ int main(int argc, char** argv)
                       << Json::diff(curvedClips, c.query()["tracks"]).size() << std::endl;
         check(afterSavedUndo == curvedBefore && c.query()["tracks"] == curvedClips,
               "save and recovery flush after Redo do not introduce an untracked Undo transaction");
-        w.openSession(curveSaved);
+        openNative(w, c, curveSaved);
         pump();
         check(c.automationQuery(b)["lanes"] != curvedBefore["lanes"], "saved projected curve reopens in native GUI");
-        w.openSession(automationReady);
+        openNative(w, c, automationReady);
         pump();
         const auto pasteKey = juce::KeyPress(
             'v', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
@@ -726,7 +747,7 @@ int main(int argc, char** argv)
               "Redo preserves pasted native identities");
         const auto pasteSaved = folder.getChildFile("AutomationClipboardPasted.tracktionedit");
         c.save(pasteSaved);
-        w.openSession(pasteSaved);
+        openNative(w, c, pasteSaved);
         pump();
         auto reopenedPaste = trackState(c);
         for (const auto& difference : Json::diff(pastedGroup, reopenedPaste))
@@ -746,7 +767,7 @@ int main(int argc, char** argv)
               "native GUI reopens pasted group and curves");
         check(w.uiCommands().getKeyMappings()->containsMapping(editCommand::paste, pasteKey),
               "custom Paste shortcut survives save and Open");
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         // Actual Edit workload, not a mock: 65 later clips exceed the fixed Plan limit.
         for (int batch = 0; batch < 3; ++batch)
@@ -766,7 +787,7 @@ int main(int argc, char** argv)
               "65 real later clips exceed fixed budget and reject whole Plan");
         check(c.query()["tracks"] == budgetBefore["tracks"] && c.query()["revision"] == budgetBefore["revision"],
               "budget failure never partially splits or silently drops tracks");
-        w.openSession(ready);
+        openNative(w, c, ready);
         pump();
         for (const auto& source : sources)
             check(Commands::mediaHash(juce::File(text(source["path"]))) == source["hash"].get<std::string>(),

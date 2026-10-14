@@ -96,6 +96,8 @@ juce::AudioBuffer<float> reference(Commands& original, const std::string& track,
 {
     auto xml = juce::XmlDocument::parse(baseline);
     check(bool(xml), "owned independent baseline XML parsed");
+    // Independently arranged oracle: a foreign Edit, not a modern save.
+    xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
     auto* root = xml->getChildByName("TRACK");
     check(root && root->getStringAttribute("id").toStdString() == track, "actual reference audio track identified");
     for (auto* child = root->getFirstChildElement(); child;)
