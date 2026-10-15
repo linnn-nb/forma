@@ -1188,6 +1188,12 @@ target_link_libraries(ndaw_relocation_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_relocation COMMAND ndaw_relocation_tests "${CMAKE_BINARY_DIR}/p3-relocation-tests.json")
 set_tests_properties(forma_native_relocation PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_linked_relocation_tests PRODUCT_NAME "ndaw_linked_relocation_tests")
+target_sources(ndaw_linked_relocation_tests PRIVATE tests/v2/LinkedRelocationTests.cpp)
+target_link_libraries(ndaw_linked_relocation_tests PRIVATE ndaw_ui)
+add_test(NAME forma_linked_comp_relocation COMMAND ndaw_linked_relocation_tests "${CMAKE_BINARY_DIR}/p3-linked-relocation-tests.json")
+set_tests_properties(forma_linked_comp_relocation PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_relocation_automation_tests PRODUCT_NAME "ndaw_relocation_automation_tests")
 target_sources(ndaw_relocation_automation_tests PRIVATE tests/v2/RelocationAutomationTests.cpp)
 target_link_libraries(ndaw_relocation_automation_tests PRIVATE ndaw_ui)

@@ -79,6 +79,10 @@ Json Commands::linkedCompRelocationChanges(const Json& moves) const
         {
             auto* destination = track(member["to_track"]);
             const auto active = playlist_links::active(*destination);
+            const auto collision = destination->state.getChildWithName("NDAW_PLAYLISTS")
+                                       .getChildWithProperty("id", juce::String(member["playlist"].get<std::string>()));
+            require(!collision.isValid() || (sources.contains(id(*destination)) && collision == active),
+                    "目标已有相同Playlist身份，不能覆盖");
             require(playlist_links::value(active, "linked_set").empty() || sources.contains(id(*destination)),
                     "目标属于未参与迁移的关联Comp，请先完整安排该组");
             member["destination_before"] = playlistQuery(*destination);
@@ -91,11 +95,15 @@ Json Commands::linkedCompRelocationChanges(const Json& moves) const
                 {
                     const auto clipID = clip->itemID.toString().toStdString();
                     if (!selected.contains(clipID))
+                    {
+                        require(!bool(clip->state.getProperty("ndaw_locked", false)),
+                                "目标播放列表包含锁定片段，不能切换其播放状态");
                         member["stashed_clips"].push_back(
                             {{"clip", clipID},
                              {"state_hash", hash(clip->state)},
                              {"start_seconds", clip->getPosition().getStart().inSeconds()},
                              {"end_seconds", clip->getPosition().getEnd().inSeconds()}});
+                    }
                 }
             member["policy"] = "move stable Comp Playlist; leave source empty; preserve destination playback as "
                                "inactive restore Playlist";
