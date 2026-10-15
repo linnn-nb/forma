@@ -49,6 +49,7 @@ namespace
 int checks = 0, serial = 0;
 int renderFrames = 144000;
 double maxError = 0;
+Json renderFiles = Json::array(), comparisons = Json::array();
 void check(bool ok, const char* why)
 {
     if (!ok)
@@ -151,6 +152,8 @@ juce::AudioBuffer<float> render(Commands& c, juce::File folder, int first = 0)
     check(!c.playbackPreparation()["busy"].get<bool>(), "actual source ready within fixed five-second budget");
     auto file = folder.getChildFile("Render-" + juce::String(++serial) + ".wav");
     const auto receipt = c.render(file, first, first + renderFrames);
+    renderFiles.push_back(
+        {{"path", file.getFullPathName().toStdString()}, {"start_samples", first}, {"frames", renderFrames}});
     check(receipt["audio_verified"] && receipt["render_ms"].get<double>() < 10000,
           "actual native WAV render verified within fixed ten-second budget");
     juce::WavAudioFormat wav;
@@ -165,13 +168,29 @@ juce::AudioBuffer<float> render(Commands& c, juce::File folder, int first = 0)
 void compare(const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& b, int shift, const char* why)
 {
     double error = 0;
+    int worstFrame = 0, worstChannel = 0;
     for (int ch = 0; ch < 2; ++ch)
         for (int i = 0; i < renderFrames; ++i)
         {
             const double expected = i >= shift ? a.getSample(ch, i - shift) : 0.;
-            error = std::max(error, std::abs(expected - b.getSample(ch, i)));
+            const double difference = std::abs(expected - b.getSample(ch, i));
+            if (difference > error)
+            {
+                error = difference;
+                worstFrame = i;
+                worstChannel = ch;
+            }
         }
     maxError = std::max(maxError, error);
+    comparisons.push_back({{"check", why},
+                           {"max_error", error},
+                           {"frame", worstFrame},
+                           {"channel", worstChannel},
+                           {"shift_samples", shift},
+                           {"render", renderFiles.back()},
+                           {"tolerance", 2e-6}});
+    if (error > 2e-6)
+        std::cout << "PCM FAILURE " << comparisons.back().dump() << std::endl;
     check(error <= 2e-6, why);
 }
 juce::Component* find(juce::Component& c, const juce::String& id)
@@ -241,9 +260,35 @@ int main(int argc, char** argv)
                     run(c, "clip.warp", {{"clip", clip}, {"enabled", true}, {"anchors", anchors}});
                 }
                 if (fx)
+                {
                     for (const char* type : {te::EqualiserPlugin::xmlTypeName, te::CompressorPlugin::xmlTypeName,
                                              te::DelayPlugin::xmlTypeName, te::ReverbPlugin::xmlTypeName})
                         run(c, "clip.fx.insert", {{"clip", clip}, {"type", type}});
+                    Json processors;
+                    const auto snapshot = c.query();
+                    for (const auto& actual : snapshot["tracks"])
+                        if (actual["id"] == t)
+                            for (const auto& piece : actual["clips"])
+                                if (piece["id"] == clip)
+                                    processors = piece["plugins"];
+                    check(processors.size() == 4,
+                          "actual Clip effect instances enumerated before controlling real parameter IDs");
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[0]["id"]}, {"parameter", "Mid freq 1"}, {"value", 880}});
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[0]["id"]}, {"parameter", "Mid gain 1"}, {"value", 4}});
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[1]["id"]}, {"parameter", "threshold"}, {"value", .1}});
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[1]["id"]}, {"parameter", "ratio"}, {"value", .25}});
+                    run(c, "plugin.delay_time", {{"plugin", processors[2]["id"]}, {"ms", 150}});
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[2]["id"]}, {"parameter", "feedback"}, {"value", -6}});
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[2]["id"]}, {"parameter", "mix proportion"}, {"value", .35}});
+                    run(c, "plugin.parameter",
+                        {{"plugin", processors[3]["id"]}, {"parameter", "wet level"}, {"value", .12}});
+                }
                 run(c, "clip.fade",
                     {{"clip", clip},
                      {"in_samples", 40000},
@@ -512,6 +557,8 @@ int main(int argc, char** argv)
                     {"pcm_tolerance", 2e-6},
                     {"profile", profile},
                     {"render_frames", renderFrames},
+                    {"renders", renderFiles},
+                    {"comparisons", comparisons},
                     {"cases", cases},
                     {"scope", "real native Edit, Workspace key/confirmation, PCM24 files and cold original UndoRedo; "
                               "no physical keyboard/microphone/listening claim"}};
@@ -522,7 +569,8 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        Json result{{"result", "failed"}, {"checks", checks}, {"error", e.what()}, {"cases", cases}};
+        Json result{{"result", "failed"}, {"checks", checks},       {"error", e.what()},         {"cases", cases},
+                    {"profile", profile}, {"renders", renderFiles}, {"comparisons", comparisons}};
         if (argc > 1)
             std::ofstream(argv[1]) << result.dump(2) << '\n';
         std::cerr << result.dump(2) << std::endl;
