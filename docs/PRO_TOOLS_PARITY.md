@@ -1,4 +1,4 @@
-本表继续是Pro Tools交互/工作流参考清单，不是完成度门槛。2026-10-15：跨轨自动化增加明确尾随范围、源外点复制、目标/同批片段冲突、设置原Undo/冷重开与注册快捷键；两个真实EQ场景完整WAV差0，原2e-6通过，23套受影响回归分批通过。代码TimelineCommands/RelocationAutomation/Workspace，测试RelocationAutomationTests/RelocationTests/AutomationFollowTests，验收步骤见AUTOMATION_TAIL_WORKFLOW.md及P3证据。状态：部分实现；任意更长/共享/第三方尾音、实体听评、Pro Tools实机对照及专有生态/平台等差距仍保留；无新增外部依赖。以下保留历史核验。
+本表仍是Pro Tools交互与工作流参考清单，不是完成度门槛。2026-10-15：关联Comp整组跨轨迁移支持真实Playlist/Take身份、源留空/目标列表暂存、相邻重叠与交换、原Undo/冷重开、注册键位与PCM对照。实现LinkedCompRelocation/ClipRelocation/PlaylistCommands/PlaylistEditing/Scope/Workspace，验收步骤与测试LINKED_COMP_RELOCATION.md及P3证据。状态：部分实现；处理源/自动化/PDC/混合组组合、实体验收和Pro Tools实机对照未完成；无新增外部依赖，不称生态、性能或完整行为对齐。以下保留历史核验。
 
 2026-10-15 跨轨Grabber：稳定音频/MIDI Clip归属迁移、目标Playlist与完整/部分交叉淡化、编辑组完整性、预览/原UndoRedo/冷重开已接通，源码ClipRelocation/WorkspaceGrabber/UiState，测试RelocationTests/ProcessedMoveTests。关联多轨Comp和跨轨自动化跟随、实体键鼠/听评与Pro Tools实机行为对照未完成。状态：部分实现；无新外部依赖。此表仍为参考清单，不是完成度门槛；资格见CLIP_RELOCATION.md与P3证据。
 

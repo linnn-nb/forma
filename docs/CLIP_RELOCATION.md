@@ -1,3 +1,5 @@
+2026-10-15 当前：关联Comp整组跨轨迁移已接通，源留空Playlist、目标原播放列表保留为非活动；不是把成员拆散成普通片段。分离目标/相邻重叠/交换、原生身份、原Undo/冷重开及真实PCM已验。新语义和边界见[LINKED_COMP_RELOCATION.md](LINKED_COMP_RELOCATION.md)，下文旧“关联Comp拒绝”由该具体范围替代；复杂联动及实体听评仍待验。
+
 2026-10-15 当前：已加入显式自动化尾随（默认2秒），两个EQ场景整段WAV差0，原2e-6通过；23套受影响回归分批通过。固定范围不等于自动尾音检测，完整迁移能力仍未完成。设置/快捷键/冲突规则见[AUTOMATION_TAIL_WORKFLOW.md](AUTOMATION_TAIL_WORKFLOW.md)。
 
 # 跨轨道移动片段

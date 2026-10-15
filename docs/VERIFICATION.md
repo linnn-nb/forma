@@ -1,18 +1,20 @@
-# P3 跨轨自动化尾随（2026-10-15）
+# P3 关联 Comp 整组迁移（2026-10-15）
 
-**23套最新结果分批通过、6676项唯一检查、247.30秒。** 全部19个测试目标及Release应用本轮构建exit0，之后单进程运行；不是全部仓库或整个产品验收。首次3套19.88秒通过仅作初测，未重复累加检查。补同批无曲线到达防护后，首批22/23套、237.61秒：新夹具创建辅助轨道漏ref，在58检查处失败，旧成功JSON早于批次启动，未计通过。046deee补必需ref，并让异常终态写失败JSON；仅测试目标重建exit0，随后单项复测通过。22套沿用本轮首批终态，失败专项只取复测；CTest/JSON/时间新鲜度逐项核对，不声称最后提交后整批重跑。
+**31套最新结果分批通过，8047项唯一检查，467.30秒。** Release应用和27个测试目标本轮构建exit0后单进程运行。首批31套结果保留；随后只加强新专项的Set/配对ID和源实际留空断言，测试目标重建exit0、单项复测取最新结果。随后d6444e3增加已记录来源的删除保护，应用与3相关目标重建exit0，关联迁移/Playlist/层级3套复测。当前31套按每套最新终态统计；其它28套复用首批，不伪称最后提交后全批复跑。之前新专项初测不累加检查。
 
-功能：编辑菜单「跨轨自动化尾随」0/0.5/2/5秒，默认2秒；Control Option Shift+0/1/2/5可改键。设置由L1独立原生Undo事务保存；片段内点迁移，后续点复制为新ID，保留未知属性及ndaw_copied_from，源外点身份保留。匹配目标范围包含尾随，预览逐参数显示实际端点；未移动片段和同批最终到达片段冲突整笔拒绝，仍需两侧及完整时间Scope。不是自动尾音检测。
+新专项283检查，三个实际工程：分离目标+1000采样、A/B→B/C相邻重叠且目标有非活动素材、A/B交换。真实原生Clip指针及ID、Playlist/Set/Take/配对身份、原Take保留、目标素材暂存/恢复、来源为空而非重播相反极性Take、Source/Target/时间Scope、锁定源/目标素材、漏成员/拆散成员/过期/幂等均已验证。原生Workspace注册上下轨快捷键、真实异步接受；三工程保存、冷Open原UndoRedo及其实际WAV通过。
 
-跨轨自动化专项2596检查：真实Volume/Pan/EQ三场景、两组PCM24/48k/双声道/480000帧原地与位移WAV，完整比较差0.0，**原2e-6门槛通过**。曲线超限点0，原跨度1e-7加2floatULP、来源5秒、每次WAV10秒、套件180秒未改。尾随范围内与冻结源比较，尾随外继续核对目标原值；不是删除尾音窗口或放宽标准。初始0.030845和上一轮0.002492失败日志/原WAV/索引保留。三份实际工程冷重开原UndoRedo、未知属性与复制身份、来源媒体不改、负数/超限/小数设置、源/目标邻片段、同批无曲线到达、全局Scope与人工冲突均已执行。
+PCM24/48k/双声道/144000帧，完整相位抵消与单麦非零PCM对照最大差2.38418579102e-07，原2e-6不变。单麦与留空断言避免“全静音/重复相反音频”假通过。来源准备5秒、单次WAV10秒、专项180秒先定预算不改。恢复目标列表后在原600000采样位置实际导出非零旧素材。独立解析三份保存XML核对实际成员/Clip/Take源引用、恢复列表及源空列表，不替代原Undo和音频测试。
 
-原生Workspace专项79检查，实际注册快捷键设0.5秒，保存冷重开原Undo/Redo，live Undo恢复2秒；同批真实抓取/确认/上下轨快捷键/保存历史与WAV通过。AutomationFollow74检查更新新默认设置字段，其它原标准保留。其余包括Loop/Punch/Comp/交叉淡化/导出主链路、处理移动、MIDI CC/音乐时间、权限/队列/MCP、持久历史、混音/自动化与采样级推子专项；实际逐套检查见本地索引，不扩大为实体键鼠/麦克风/听评。
+制作路径：完整关联Playlist进入目标，原目标列表保留为非活动，源空列表显式可见，已记录的来源被关联成员引用时删除预检要求先解除关联；不是普通片段与目标原素材相混。原生Clip::moveTo保留实际对象，描述符分阶段转移保证相邻/交换，旧Take不搬走。Comp选段和Take来源分别标记，旧缺失返回null，不猜当前owner；更复杂嵌套待专项。新命令写入仍仅human/local_gui，一Plan一Undo；不扩MCP/自动执行，不改L0/SDK/RT/DSP。
 
-代码9d06e9f/e5b3108，测试夹具046deee；RelocationAutomation/TimelineCommands/EngineCommands/ui；工作流[AUTOMATION_TAIL_WORKFLOW.md](AUTOMATION_TAIL_WORKFLOW.md)。无新依赖、L0/SDK/RT/IPC或引擎；既有18补丁/44文件本轮fresh apply/实际源码逐字比对/reverse通过。推子内核64轨预算复测p99=0.247917ms、最大0.270875ms，原预算1.333333/2.666667ms不改，仅内核而非设备XRUN。其它插件流锁/EQ锁及VCA/Modifier/录写/停播监听/MIDI音量回退仍未资格。
+其余回归含Loop/Punch/Playlist/区间试听/Comp/交叉淡化/导出主链路、Warp/Elastic/ClipFX源Comp、处理移动、MIDI、自动化/推子、Scope/队列/MCP/持久历史。它们不等于处理源与关联跨轨的组合已资格，下一项专门验证该组合。18补丁/44SDK文件本轮fresh apply/实际源码逐字匹配/reverse通过；依赖pin保持。
 
-唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，SHA256 7688b764f149fa85e0df73da12d7d2745649a0d272b4ced2f4a9090d8e45a2db；deep/strict固定本地身份及指纹通过，非发行公证；无新DMG/应用副本。逐套JSON/SHA/新鲜度、JUnit、原工程/WAV路径、独立解码全帧PCM及源码/SDK/验签在本地build-v2-tracktion/p3-tail-current-results.json。CUA本轮明确Mac锁定，实体拖动/键盘与听评未执行；不能据此认定App故障。
+失败保留：首次新增target未显式configure而找不到；configure后测试std::string/JSON比较编译错误修正为明确类型。首次33检查处选区为空，来自测试迭代临时JSON子对象，改持有完整查询；再次52检查处错误地读取crossfades查询不存在的playlist字段，改读真实原生记录。两次均为新夹具/断言错误，不能称生产音频失败；完整失败JSON/日志/JUnit保留。之后初测277项通过，再增加核心身份/留空断言；不覆盖旧失败或计其检查为通过。
 
-下一项关联多轨Comp整组跨轨迁移。更长/先前输入/共享/第三方尾音、复杂Tempo/采样率、旧性能A/180秒自动化矩阵/分析超时/长源/连续FX/旧读者、Windows/视频/发行等完整缺口保留；完整P1/P3及产品未完成。以下保留历史验证，旧结论以对应提交为准。
+代码50c2fa7/5a79750/595aa2a/082522b，断言006288a、来源保护d6444e3。唯一应用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，SHA256 8ab45946f1f8daddd867426f4a55065e20002ecae88f41db3fe3c207d4fb746e；deep/strict固定本地身份及指纹通过，非发行公证；无新DMG/应用副本。逐套终态/时间/JSON SHA和新鲜度、JUnit、构建与验签、原工程/WAV和XML引用检查见本地build-v2-tracktion/p3-linked-relocation-current-results.json，操作[LINKED_COMP_RELOCATION.md](LINKED_COMP_RELOCATION.md)。
+
+CUA本轮明确Mac锁定，实体键鼠与听评未执行；不据此认定App故障。处理源/自动化/PDC/混合组/重复搬移、旧来源缺标记、空列表整理、原性能A/180秒矩阵/分析超时/长源/连续FX/旧读者、Windows/视频/发行等缺口全部保留。完整P1/P3及产品未完成。以下为历史记录。
 
 # P3 跨轨自动化：声音验收失败（2026-10-15）
 

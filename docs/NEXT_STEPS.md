@@ -1,13 +1,11 @@
 # 下一步（2026-10-15）
 
-本轮显式尾随设置和冲突规则已接通，23套/6676检查通过，两个EQ场景完整WAV差0（原2e-6），具体资格见[AUTOMATION_TAIL_WORKFLOW.md](AUTOMATION_TAIL_WORKFLOW.md)。更长/共享/第三方尾音及实体验收仍保留。
+关联Comp整组迁移新增283检查；31套8047项分批通过，PCM最大差2.38418579102e-07，原2e-6不变。分离目标、相邻重叠、交换、已记录来源的删除保护和原Undo/冷重开已验；源留空、目标原列表转非活动可恢复。操作与范围见[LINKED_COMP_RELOCATION.md](LINKED_COMP_RELOCATION.md)、[P3证据](../evidence/P3/summary.md)。完整P1/P3及产品未完成。
 
-音频/MIDI跨轨道Grabber和相邻轨道快捷键已接通：实际预览后，同一Clip身份迁入目标处理链；完整配对随迁、部分迁移解除配对并保留淡化。原UndoRedo、保存冷重开、编辑组完整性、MIDI CC与真实WAV见[CLIP_RELOCATION.md](CLIP_RELOCATION.md)、[P3证据](../evidence/P3/summary.md)。此前未含本轮自动化的32套7130项分批通过，首批31/32、MIDI旧夹具修正后1/1；完整P1/P3与产品未完成。
+1. **下一项：关联Comp迁移的处理源和自动化联动。** 资格SoundTouch/Warp/Clip FX、冻结源曲线和目标尾随、重叠交换/PDC、混合Edit组及重复迁移；保留原Take/源时间映射/单原Undo/冷重开及固定PCM预算。嵌套来源标记、旧缺失标记的可核验补全、空列表整理仍需实现或补验，不猜旧来源。
+2. 解锁后补本构建实体主体/名称拖放、上下轨快捷键、预览接受/拒绝、UndoRedo、重开和试听。本轮CUA确认Mac锁定；组件事件不代替实体操作，旧KeyboardSettings原生焦点失败保留。
+3. 旧读者保护、媒体监听/重定位、不可读但存在的来源、复杂Tempo/子采样端点/采样率、多声道和第三方/离线ClipFX仍保留正式差距，只按实际资格扩大。
+4. 原性能A、原180秒自动化矩阵、Warp Master分析10秒偶发超时不被本轮回归替代。长源SHA/首响应、处理链密集负载/CPU/XRUN/听评和耐久继续实测，大曲线重复捕获开销待压测优化。
+5. 走带中编辑/FX历史预热、多输入/PDC、Windows/视频/环绕与发行未完成。M2/M3冻结，M4/M5暂缓，完整剩余范围见[BACKLOG.md](BACKLOG.md)。
 
-1. **下一项：关联多轨Comp整组跨轨迁移。** 保留真实Take/Playlist/组身份、目标关联、完整配对与原Undo/冷重开，先移植v1行为规格，再验证实际音频；当前拒绝迁移，不拆散关联。
-2. Mac解锁后补本构建的实体主体/名称跨轨拖动、F8/上下轨快捷键、预览接受/拒绝、UndoRedo、保存重开与试听。此前CUA报告锁屏，本增量未执行实体操作，组件事件不代替实体操作；旧KeyboardSettings原生焦点失败保留。演示路径在本地p3-relocation-current-results.json。
-3. 旧读者保护、完整媒体监听/重定位、不可读但存在的来源、复杂Tempo/自动化/多轨关联、第三方/离线Clip FX仍保留正式差距；普通/处理源的移动、修剪、拆分、复制/粘贴和缺失媒体完整删除只按各自实际资格扩大。
-4. 长源同步SHA与首响应、含Clip FX连续图CPU/XRUN/起音兼容和听评须独立实测。原Warp Master分析10秒偶发超时、性能A、原180秒自动化矩阵保持原失败和预算，本轮回归不替代。
-5. 继续保留走带中编辑/中途FX历史预热、多输入/PDC、多声道/异采样率、长期制作可靠性、Windows/视频/环绕与发行资格。M2/M3冻结，M4/M5暂缓。其它开放项见[BACKLOG.md](BACKLOG.md)。
-
-唯一应用：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app。固定本地签名不代表发行公证；不制造新DMG、源码包或应用副本。每个可构建步骤提交，受影响测试终态确认后再统计，保留失败日志。
+唯一应用：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app。本地签名非发行公证；不制造新DMG/源码包/应用副本。先确认构建exit0，再统计当前测试终态；每个可构建步骤提交Git，保留失败证据。
