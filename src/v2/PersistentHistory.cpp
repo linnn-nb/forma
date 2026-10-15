@@ -568,6 +568,15 @@ Json PersistentHistory::status() const
             {"discarded_steps", discarded},
             {"notice", discarded ? "历史上限200步或32MiB；历史窗口已截断，当前工程与媒体保留" : ""}};
 }
+project_document::Requirements PersistentHistory::requirements() const
+{
+    project_document::Requirements result;
+    project_document::collect(mirror, result);
+    for (const auto& step : steps)
+        project_document::collect(step.delta, result);
+    project_document::validate(result);
+    return result;
+}
 juce::ValueTree PersistentHistory::save()
 {
     juce::ScopedValueSetter<bool> flushedState(saving, true);
@@ -609,6 +618,8 @@ juce::ValueTree PersistentHistory::save()
 PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, const juce::File& file)
 {
     Archive result;
+    project_document::collect(current, result.requirements);
+    project_document::validate(result.requirements);
     const auto archive = current.getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY");
     if (!archive.isValid())
         return result;
@@ -647,6 +658,7 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
             auto xml = juce::XmlDocument::parse(data);
             require(xml && xml->hasTagName("EDIT"), "invalid legacy history state");
             auto state = juce::ValueTree::fromXml(*xml);
+            project_document::collect(state, result.requirements);
             require(!state.getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY").isValid(),
                     "recursive persistent history is not allowed");
             highWater(state, result.highestID);
@@ -709,6 +721,7 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
                 }
             };
             unpack(unpack, delta);
+            project_document::collect(delta, result.requirements);
             require(transaction(delta, id).isValid(), "persistent transaction description missing");
             highWater(delta, result.highestID);
             result.deltas.push_back(std::move(delta));
@@ -718,6 +731,7 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
                 "saved Edit and history disagree");
         result.discarded = size_t(std::max<juce::int64>(0, juce::int64(archive["discarded"])));
     }
+    project_document::validate(result.requirements);
     require(cursor >= 0 && size_t(cursor) <= result.deltas.size(), "invalid persistent history cursor");
     result.cursor = size_t(cursor);
     // Validate every stored path/structural operation on one detached Edit before adoption.

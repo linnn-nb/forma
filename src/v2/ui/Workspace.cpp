@@ -486,9 +486,11 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                 invoke(
                     [&]
                     {
-                        commands.save(f);
+                        const auto saved = commands.save(f);
                         sessionName = f.getFileName();
-                        message(text("已另存工程 · ") + sessionName);
+                        message(
+                            text("已另存工程 · ") + sessionName +
+                            (saved.value("protected_format", false) ? text(" · Forma 完整处理工程") : juce::String{}));
                     });
             },
             "*.tracktionedit");

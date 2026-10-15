@@ -1,5 +1,6 @@
 #include "SessionRecovery.h"
 #include "NativePluginStates.h"
+#include "ProjectDocument.h"
 #include <chrono>
 #if JUCE_MAC
 #include <pthread.h>
@@ -509,6 +510,9 @@ void Commands::restoreRecoveryState(juce::ValueTree state, const std::string& se
             safeInputs(child);
     };
     safeInputs(state);
+    project_document::Requirements required;
+    project_document::collect(state, required);
+    project_document::validate(required);
     auto candidate = te::loadEditFromState(engine, state);
     require(candidate != nullptr, "recovery Edit cannot be loaded");
     adoptEdit(std::move(candidate));

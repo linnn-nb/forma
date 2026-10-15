@@ -2,6 +2,7 @@
 #pragma once
 #include <nativedaw/v2/EngineCommands.h>
 #include "HistoryDelta.h"
+#include "ProjectDocument.h"
 
 namespace ndaw::v2
 {
@@ -19,6 +20,7 @@ public:
         size_t cursor = 0;
         uint64_t highestID = 0;
         size_t discarded = 0;
+        project_document::Requirements requirements;
     };
     explicit PersistentHistory(Commands&);
     ~PersistentHistory();
@@ -29,6 +31,7 @@ public:
     void parameterTouched(te::AutomatableParameter&);
     Json status() const;
     juce::ValueTree save();
+    project_document::Requirements requirements() const;
     static Archive read(juce::ValueTree, const juce::File&); // validates before touching the current Edit
     void install(Archive);
 

@@ -1,5 +1,6 @@
 #include "NativeEditXml.h"
 #include "RecoveryStore.h"
+#include "ProjectDocument.h"
 #include <algorithm>
 #include <fstream>
 #ifndef _WIN32
@@ -116,7 +117,9 @@ Json write(const juce::File& directory, Snapshot snapshot)
     require(catalog["entries"].size() < maximumSnapshots,
             "recovery snapshot capacity reached; archive copies explicitly");
     require(snapshot.state.hasType(te::IDs::EDIT), "snapshot is not an Edit");
-    const auto document = preciseEditXml(snapshot.state);
+    project_document::Requirements required;
+    project_document::collect(snapshot.state, required);
+    const auto document = project_document::write(snapshot.state, required);
     require(document != nullptr, "recovery native XML serialization failed");
     const auto xml = document->toString().toStdString();
     require(!xml.empty() && xml.size() <= uint64_t(maximumBytes), "snapshot exceeds 64 MiB budget");
@@ -147,8 +150,8 @@ Loaded read(const juce::File& directory, const std::string& id, const std::strin
     require(xml.size() == meta["bytes"].get<uint64_t>() && digest(xml) == expectedHash,
             "recovery payload checksum mismatch");
     auto document = juce::XmlDocument::parse(juce::String::fromUTF8(xml.data(), int(xml.size())));
-    require(document && document->hasTagName("EDIT"), "recovery payload is not valid Edit XML");
-    auto state = juce::ValueTree::fromXml(*document);
+    require(bool(document), "recovery payload is not valid Edit XML");
+    auto state = project_document::read(*document).edit;
     const auto native = state.getChildWithName("NATIVEDAW");
     require(int64_t(native.getProperty("revision", -1)) == meta["revision"].get<int64_t>(),
             "recovery revision does not match manifest");

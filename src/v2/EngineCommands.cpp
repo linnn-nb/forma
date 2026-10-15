@@ -2,6 +2,7 @@
 #include "SampleMidiMap.h"
 #include "ClipReferenceState.h"
 #include "NativeEditXml.h"
+#include "ProjectDocument.h"
 #include "MasterAnalysis.h"
 #include "StemExport.h"
 #include "AppPreferences.h"
@@ -1948,6 +1949,7 @@ Json Commands::save(const juce::File& destination)
     require(capture.is_null(), "stop automation writing before saving");
     require(!destination.exists(), "save destination exists; use a new filename");
     auto staged = destination.getSiblingFile(destination.getFileName() + "-" + juce::Uuid().toString() + ".tmp");
+    project_document::Requirements requirements;
     try
     {
         {
@@ -1961,10 +1963,11 @@ Json Commands::save(const juce::File& destination)
         {
             Performance::Span journal("save_journal");
             image = persistentHistory->save();
+            requirements = persistentHistory->requirements();
         }
         {
             Performance::Span xmlWrite("save_xml_write");
-            auto xml = preciseEditXml(image); // Checked local history, never live permissions.
+            auto xml = project_document::write(image, requirements); // Checked local history, never live permissions.
             require(xml && xml->writeTo(staged), "lossless native Edit XML save failed");
         }
         {
@@ -1979,7 +1982,9 @@ Json Commands::save(const juce::File& destination)
     }
     return {{"path", destination.getFullPathName().toStdString()},
             {"sha256", mediaHash(destination)},
-            {"revision", revision}};
+            {"revision", revision},
+            {"protected_format", !requirements.empty()},
+            {"required_capabilities", requirements}};
 }
 void Commands::open(const juce::File& source)
 {
@@ -1988,11 +1993,13 @@ void Commands::open(const juce::File& source)
     require(parameterCapture.is_null(), "finish native parameter gesture before opening");
     ParameterWriteGuard parameterGuard(*this);
     require(source.existsAsFile(), "Edit file missing");
-    stop();
     auto xml = juce::XmlDocument::parse(source);
-    require(xml && xml->hasTagName("EDIT"), "invalid Edit XML");
-    auto loaded = juce::ValueTree::fromXml(*xml);
+    require(bool(xml), "invalid Edit XML");
+    auto document = project_document::read(*xml);
+    auto loaded = std::move(document.edit);
     auto archive = PersistentHistory::read(loaded, source);
+    project_document::validate(archive.requirements, document.declared);
+    stop();
     auto info = loaded.getChildWithName("NATIVEDAW");
     info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);
     trackPrint.reset();

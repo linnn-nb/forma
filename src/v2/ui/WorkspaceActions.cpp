@@ -561,7 +561,7 @@ void Workspace::openSession(const juce::File& f)
             clipFXInspector = false;
             pending = nullptr;
             sessionName = f.getFileName();
-            message(text("工程已重开 · 本轮撤销历史从此开始"));
+            message(text("工程已重开"));
         });
     const auto openedSession = commands.sessionToken();
     if (previousSession != openedSession && isShowing())
