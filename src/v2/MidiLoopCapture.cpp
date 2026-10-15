@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "MidiLoopState.h"
 #include <juce_cryptography/juce_cryptography.h>
+#include <locale>
+#include <sstream>
 namespace ndaw::v2
 {
 namespace
@@ -14,6 +16,23 @@ std::string str(juce::ValueTree n, const char* k)
 {
     return n[k].toString().toStdString();
 }
+double sourceNumber(const juce::var& value)
+{
+    if (!value.isString())
+        return double(value);
+    // ValueTree XML loads attributes as strings. JUCE's display-number parser
+    // does not always recover the original binary double from max_digits10.
+    // Keep the existing v1 numeric hash, using a correctly rounded, locale-free
+    // read on this non-realtime provenance path. Never round captured events.
+    std::istringstream input(value.toString().toStdString());
+    input.imbue(std::locale::classic());
+    double number = 0;
+    input >> number;
+    require(!input.fail(), "invalid MIDI capture number");
+    input >> std::ws;
+    require(input.eof(), "invalid MIDI capture number");
+    return number;
+}
 } // namespace
 namespace midi_loop
 {
@@ -23,7 +42,7 @@ std::string fingerprint(juce::ValueTree source)
     for (auto e : source)
     {
         require(e.hasType("EVENT"), "invalid MIDI loop source event");
-        const auto t = double(e["time_seconds"]);
+        const auto t = sourceNumber(e["time_seconds"]);
         require(std::isfinite(t), "invalid MIDI source time");
         const auto bytes = e["bytes"].toString().removeCharacters(" \t");
         require(bytes.isNotEmpty() && bytes.length() % 2 == 0 && bytes.containsOnly("0123456789abcdefABCDEF"),
@@ -44,7 +63,7 @@ std::string fingerprint(juce::ValueTree source)
                                          "adjustment_seconds"};
     for (const char* key : keys)
     {
-        const auto value = double(source[key]);
+        const auto value = sourceNumber(source[key]);
         require(std::isfinite(value), "invalid MIDI capture range");
         q[key] = value;
     }
