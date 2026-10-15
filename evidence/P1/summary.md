@@ -1,3 +1,5 @@
+2026-10-16 XML修复后追加：Loop51项/8.34秒、Punch124项/21.32秒、Playlist227项/16.35秒、Audition98项/8.40秒、Crossfade101项/8.82秒及ProductionChain91项/12.58秒通过，制作链路二次导出PCM差0。当前自有工程与 `04-final.wav` 在 `build-v2-tracktion/P1-Production-Chain-6871abcb86d1477ca027ca38d3551812/`；最新索引 `build-v2-tracktion/xml-attribute-current-results.json`。本轮没有重做实体录音/听评，整体27/28套最新通过；真实AU自动化重开首段0dB而应−6dB仍失败，不能由P1受控链路绿覆盖。原自动化/对象Shuffle/共享时钟时间门槛均由新完整矩阵通过替代，旧性能A继续未通过。以下保留历史证据。
+
 2026-10-16历史索引构建追加回归：ProductionChain91项/12.56秒通过，真实录音写盘→Loop→双轨Punch→来源Comp→交叉淡化→导出→原UndoRedo/快捷键→保存重开/再次导出PCM差0。当前自有示例与 `04-final.wav` 在 `build-v2-tracktion/P1-Production-Chain-86a983ab1eee4b9c8435d1def75981ed/`，索引 `build-v2-tracktion/history-lookup-current-results.json`。输入仍为两路受控PCM，本轮没有重做实体麦克风/听评；整体17套中2处原180/300秒超时保留，不由P1局部通过覆盖。后续历史证据如下。
 
 2026-10-14追加回归：最终印刻/导出修复构建中 production_chain91项11.48秒、elastic87项7.73秒再次通过，原120秒预算保持；P1完整制作/实体麦克风证据如下，未新做音乐听评或耐久。SoundTouch仍为已锁定首版，Warp未完成；完整原生Edit截图本轮再次查看。

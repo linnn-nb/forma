@@ -1,3 +1,12 @@
+# 当前优先任务（2026-10-16，XML与完整矩阵后）
+
+XML属性累积增量已构建、原23种字节语义保持；原AutomationMove/SharedClock/ObjectShuffle在116.32/82.05/121.19秒全矩阵通过，旧180/240/300秒红项由本轮明确资格替代。解析增量收口，勿继续堆其边界。最新27/28通过，完整产品未完成。
+
+1. **下一项：真实AU自动化重开首段声音失败。** 原生曲线/点ID仍在，初次−6/−12dB、Undo0/0dB正常；重开实际WAV为0/−12dB，原0.01dB预算失败。保留失败原文件与PCM，先跟踪L1 open/render、原生/SDK参数缓存与初始化/首块读值；不能只加睡眠、放宽容差或仅凭曲线查询宣称修复，也不能预设由XML补丁造成。保留原120秒专项及真实AU/VST3、Read/Touch/Latch/Write范围。
+2. AU解决后回到实际制作体验/听评；旧性能A15.84%超15%、分析超时、其它读取能力审计、首Warp根因、长源/复杂路由/PDC/硬件/耐久、Windows/视频/环绕/发行保持。M2/M3冻结，M4/M5暂缓，不移出最终范围。
+
+当前证据 `build-v2-tracktion/xml-attribute-current-results.json`、VERIFICATION与P3汇总；以下历史红项仅由上述明确资格替代。
+
 # 当前优先任务（2026-10-16，历史索引与原矩阵复测后）
 
 detached历史索引已构建、核心3/3及完整回归12/14通过，本增量收口；不要继续扩展同一查找边界替代推进产品。详见VERIFICATION当前节及 `build-v2-tracktion/history-lookup-current-results.json`。

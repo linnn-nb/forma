@@ -1,3 +1,20 @@
+# XML解析修复与原超时矩阵（2026-10-16）
+
+结论：锁定JUCE新增实体属性流式累积补丁，原AutomationMove、SharedClock、ObjectShuffle完整矩阵均已在原180/240/300秒内通过。28套首批26通过/2失败，Object输入修正后1/1通过，按各自最新结果27/28通过、通过suite11755次检查；不是一次全绿，也不是完整产品验收。**外部AU自动化保存重开后第一段实际电平失败，仍未解决。**
+
+- 实现前提交 `86691ed` 固定32768记录/2752643编码字节负载，500ms解析、测试进程256MiB峰值和60秒专项预算；未改既有工作负载/数值/超时。旧路径基线 `xml-attribute-baseline-v3.json` 的 `budget_evaluated=false`，不是预算通过。
+- 生产最终 `cad8321`：仅改JUCE `XmlDocument::readQuotedString`，普通属性保留原路，实体属性用临时流累积；用实际UTF8字节长度保存畸形数字实体的旧字节。工程格式、Undo日志、L1命令/权限、模型入口和实时音频图不变。23种语义观察（有效/无效输入的树、错误和原字节）与锁定旧版一致。
+- 固定大属性解析6807.64→19.23ms；小属性688259字节431.95→4.45ms。同一3807929字节自有工程XML解析8754.73→18.31ms，解析加生产Document解码19.72ms；文件SHA `044480b36c7b12de80124d5048e096b2331ee57beab5a5ca726663d45726a03f`、解析语义SHA `bc7d622f09422e6bc07525cd97715cf4948f78379cfafc9eaedca75768b600bf` 均保持。直接含真实工程专项19项通过，进程峰值32948224字节（31.42MiB）；标准CTest17项/0.06秒。OS缓存未清，不是冷盘、RT、整机稳定倍率或Pro Tools对照。
+- 原AutomationMove722项/116.32秒（180秒）、SharedClock717项/82.05秒（240秒）、ObjectShuffle5472项/121.19秒（300秒）全矩阵通过，原数值与全部探针保留。MixedShuffle153项/26.98秒、MusicalShuffle222项/40.12秒亦通过；由这些明确资格替代此前对应超时，原性能A不由此转绿。
+- Object首批113.15秒跑完数据矩阵后在旧快捷键输入失败。`b4b1be1`仅修测试：native peer、等待实际显示session/revision、时间线加选/Selector范围入口与真实可见接受/拒绝按钮（500ms观测限，不抢占同步回调）；完整重跑121.19秒通过。没有强制刷新私有facts、私写选择或调用onClick兜底。不是实体OS键鼠资格。
+- Loop51项/8.34秒、Punch124项/21.32秒、Playlist227项/16.35秒、Audition98项/8.40秒、Crossfade101项/8.82秒、ProductionChain91项/12.58秒通过；完整受控录音→Comp→淡化→导出→快捷键/原UndoRedo→保存重开→再次导出PCM差0。当前示例 `build-v2-tracktion/P1-Production-Chain-6871abcb86d1477ca027ca38d3551812/`；不是新实体麦克风或听评。
+- 扫描17项、实际AU/VST3音频63项、插件窗口54项、私有状态92项通过。**ExternalAutomation3.64秒失败**：首轮Read约−6/−12dB正常，Undo约0/0dB正常，重开曲线点仍相同但实际WAV约0/−12dB，首段超过原0.01dB容差。未降低门槛、未当作成功、未把它预设归因为新解析器；生命周期/缓存/首块根因待定位。原工程/源/三份PCM共5文件4667482字节逐SHA拷贝保留在 `build-v2-tracktion/xml-attribute-au-failure-evidence/`，逐段独立解码记录 `xml-attribute-au-failure-pcm.json`；工程副本保持原引用，可用原目录或命令层重定位。
+- 先确认所有构建exit0再测试：`xml-attribute-current-build.log` / `xml-attribute-regression-build.log` / `xml-attribute-object-input-build.log`。首批JUnit `xml-attribute-regression.xml`（698.33秒/exit8），Object复测 `xml-attribute-object-current.xml`（121.20秒/exit0）；当前索引 `build-v2-tracktion/xml-attribute-current-results.json`，按最新终态及实际新输出汇总，失败项不消费旧成功JSON。
+- 初探针误设DTD期望、报告层无法输出旧非法UTF8，及首补丁丢一个畸形实体字节的失败均保留；改为字节兼容夹具及真实字节长度后通过，不放宽夹具。补丁 `48a5884832a07e09f288ba4d38d9e1cc9b7599ed10289f60870840561a5763e7` 已从锁定归档fresh apply、当前字节核对、reverse，且核对实际Git blob/CRLF。Tracktion原18补丁哈希未变、当前构建exact-diff guard通过；本轮未新重放Tracktion。
+- 唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，源码cad8321，二进制SHA `36dc0832aa5ad3282f540c9e4688cdf5f7e3dd266b32a7ee10be4d75b1320434`；固定本地deep/strict通过，非发行公证。桌面工具cgWindowNotFound，实际Forma进程仍存在，本轮未新取得实体界面/听评资格，不推断锁屏/崩溃；测试进程全部终止，无新DMG/tar/app副本。Windows/耐久等完整范围仍未完成。
+
+以下保留历史证据，以本节明确资格为准。
+
 # 历史索引与完整矩阵当前结果（2026-10-16）
 
 结论：新增有界 detached 历史查找索引；核心3/3通过，原完整回归12/14通过，AutomationMove180.03秒、ObjectShuffle300.03秒仍超时。另修正旧GUI测试漏接受Grabber预览，界面段30项/9.51秒通过；不拿局部通过替代完整超时，也不宣称完整产品或总体性能达标。

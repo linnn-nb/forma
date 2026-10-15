@@ -1,3 +1,15 @@
+# 大历史属性解析与原完整矩阵（2026-10-16）
+
+结论：JUCE流式属性累积已落地，原三套时间门槛均通过；当前27/28套最新终态通过，剩余真实AU重开首段电平失败。XML增量收口，下一项修AU声音，不继续堆解析边界或把局部通过包装为完整产品。
+
+- `86691ed`先定负载/语义/500ms与256MiB预算；最终生产 `cad8321`，界面测试输入 `b4b1be1`。固定2752643编码字节解析6807.64→19.23ms；同一3807929字节工程8754.73→18.31ms，文件及解析结果SHA保持；23种原始语义一致，当前峰值31.42MiB。含实际工程19项，标准CTest17项；不是冷盘/RT/整机倍率或Pro Tools对齐。
+- 构建实际exit0后运行。首批28套26通过/2失败、698.33秒；Object修实际GUI输入后1/1、121.20秒。最新27/28、通过suite11755项，具体索引 `build-v2-tracktion/xml-attribute-current-results.json`，JUnit与原日志同目录；不是一次全绿，失败JSON不沿用旧绿。
+- AutomationMove722项/116.32秒、SharedClock717项/82.05秒、ObjectShuffle5472项/121.19秒，原180/240/300秒、原曲线/PCM/事件/所有探针不变。Object首批在113.15秒的旧快捷键输入失败，修为native peer、实际显示版本、时间线加选/范围入口及可见异步确认，整矩阵重跑通过。未改生产UI，也非OS实体键鼠。
+- P1各Loop/Punch/Playlist/Comp/Audition/Crossfade通过，ProductionChain91项/12.58秒，原UndoRedo/快捷键/保存重开与二次导出PCM差0。当前工程与 `04-final.wav` 在 `build-v2-tracktion/P1-Production-Chain-6871abcb86d1477ca027ca38d3551812/`；当前Object GUI示例 `build-v2-tracktion/object-shuffle-demos/object-shuffle-6516331ce43a45a5b49d6660f673e2a4/ObjectShuffleReady.tracktionedit`。测试输入明确自有受控，不冒充实体麦克风/用户听评。
+- **未通过AU**：保存重开后曲线点保留，第一段约0dB而应−6dB，第二段约−12dB正常；原0.01dB预算不变。首轮/Undo渲染正常，根因未定；`xml-attribute-au-failure-pcm.json`及 `xml-attribute-au-failure-evidence/` 保留5份原文件/SHA，复测优先核查原生插件初始化、缓存与首块状态。实际扫描、AU/VST3音频、编辑器及私有状态已通过，不据此覆盖AU自动化失败。
+- 最终JUCE补丁从锁定归档fresh apply/逐字比对/reverse及Git blob/CRLF验证通过，Tracktion18补丁未改，本轮无新Tracktion重放。先前DTD探针期望、非法字节报告和中间补丁丢字节的失败均保留并已修；语义夹具未放宽。
+- 唯一app `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `36dc0832aa5ad3282f540c9e4688cdf5f7e3dd266b32a7ee10be4d75b1320434`；本地deep/strict通过，非发行公证。桌面cgWindowNotFound但进程存在，未得新实体界面/听评证据，不推断锁屏/崩溃。无新DMG/tar/app副本；旧性能A/分析超时/复杂路由硬件/Windows/发行等差距保留。
+
 # 有界历史查找与完整回归（2026-10-16）
 
 结论：生产历史镜像/读取校验使用临时stable-key索引，保留原格式、原Undo与所有安全校验。固定4096点正反回放29项、25.16ms/原线性3494.60ms，事先设定1000ms/2倍预算通过；这不是总体DAW性能结论。实际同工程三次打开中位数2.000→1.597秒，但新首轮2.174秒更慢，OS缓存未清。
