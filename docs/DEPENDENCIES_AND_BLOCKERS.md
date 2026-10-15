@@ -1,3 +1,5 @@
+2026-10-16 Punch候选/默认键：无新依赖、SDK字节、授权、服务、签名身份或实时回调工作；SDK19补丁47文件沿用CMake核对，本轮无fresh replay。真实hosted Punch组合200项、Loop200项和轨高/琴键默认归属/迁移41项通过。快捷键编辑器测试foreground=false/peer=false，原保护正确报告未获得前台；实际原因未证实，保留失败及实体键鼠待验，不把用户主工程可操作当成功。旧短Loop/复杂MIDI/PDC/耐久/实体端口/听评、性能A/分析/RT/Windows/视频/环绕/发行差距保持。
+
 2026-10-16 录音候选局部提升：无新依赖、SDK字节、授权、服务或签名身份。复用唯一Tracktion Engine、原L1 Promote与原生试听，未增加实时回调工作。桌面读取此前超时，用户再次确认主界面可操作，本轮不再重复桌面调用；原生peer测试不冒充实体设备/听评。Punch→局部候选、短Loop/圈末、MIDI多轨关联与原先焦点/性能A/分析超时/RT SDK锁分配/硬件耐久/Windows/视频/环绕/发行缺口保留，当前构建测试见VERIFICATION.md。
 
 2026-10-16 MIDI Comp：无新增依赖、SDK字节、授权、服务或签名身份；原Tracktion/JUCE锁定不变，19补丁47文件沿用CMake字节核对，本轮未另做SDK fresh replay。专项155项与尾随键位回归已通过；六组旧默认冲突、迁移和真实命令归属已验证。完整P1、多轨关联MIDI、短Loop、复杂控制器/MPE/私有插件/实体端口/听评、旧焦点/性能A/分析超时/RT SDK锁分配/耐久/Windows/视频/环绕/发行仍未完成；最终受影响回归以VERIFICATION.md为准。

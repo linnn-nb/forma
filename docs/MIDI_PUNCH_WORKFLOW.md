@@ -1,3 +1,5 @@
+2026-10-16 补齐录得Take后的候选制作组合（P1-MIDI-PUNCH-COMP-03）：真实普通录音作为另一Take，再实际Punch连续捕获预/补录/后卷；候选分段发声、上一/下一、取消/到点返回、局部提升到原Main、原Undo/Redo、冷重开与CmdS/自定义键、真实WAV导出200项通过。完整Punch结果/Take/原始11条事件和CC/SysEx均保留，不把整个Take替换当局部提升。操作和演示工程见 MIDI_COMP_WORKFLOW.md；当前受影响7套787项通过、快捷键编辑器前台捕获仍失败，不是完整P1或实体输入/听评资格。
+
 # MIDI Punch（2026-10-16）
 
 MIDI / Instrument 使用同一 Tracktion 引擎连续捕获预卷、补录区间和后卷。停止后保留原 Main、完整捕获 Take，并生成补录区间替换、两侧原演奏保留的 Punch Playlist。结果仍是可编辑的原生 MIDI；一笔录音可撤销，保存重开保留原历史。完整产品验收仍未完成，当前测试终态见 VERIFICATION.md。

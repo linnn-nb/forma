@@ -1,3 +1,5 @@
+2026-10-16 Punch候选组合没有新Agent命令、权限或参数：实际完整Take/原始来源进入既有playlistAudition与playlist.promote，保存重开保留原Plan/Undo，CC/SysEx完整SEQ和来源SHA不变。默认键268/269与172/173分离只影响L5分派及原UI键图，不新增Edit事务或MCP能力；OS前台失败不得绕过保护或用旧成功回执。P1-MIDI-PUNCH-COMP-03与U-P0-SHORTCUT-02的真实终态见VERIFICATION.md。
+
 2026-10-16 录音候选：GUI命令580映射原playlist.promote，参数为既有track/source/target/clip/start_samples/end_samples，源于所选候选段；保留human身份、实际session/revision、媒体/完整MIDI状态校验、权限与原幂等/Undo。没有新增MCP权限或域命令。接受后的版本通知清空未提交草稿；试听、定位和文件写入不伪称可撤销编辑。GUI521只为尚无take_id且未锁定的源片段启用，L1重复登记拒绝仍保留。P1-MIDI-TAKE-02代码/测试/操作见MIDI_COMP_WORKFLOW.md。
 
 2026-10-16 MIDI Comp：既有local_gui playlist.lock/create/take.register/promote/comp.create与可信本地playlistAudition扩展原生MIDI；不增加MCP工具或权限。MIDI媒体指纹由精确原生XML及Tempo组成，候选来源也参与；差异与来源用source_kind=midi/midi_state_hash，不能冒充WAV媒体哈希。Promote范围外保留，候选不切换播放或目标；间隙是没有调度MIDI，乐器release可继续。查询locked合并片段与活动Playlist锁；录音/编辑/试听原版本守卫、同一Undo及幂等不变。新能力与实际执行证据见PROJECT_FORMAT.md、VERIFICATION.md。

@@ -1,3 +1,5 @@
+2026-10-16 Punch Take局部候选组合实测200项：完整NDAW_MIDI_PUNCH_SOURCE/TAKE、原Punch Playlist/CC/SysEx、窗口和原Undo/Redo冷重开保持。沿用midi.punch-capture v1、midi.playlist-editing v1及Comp来源能力，不新增格式。两组旧重复琴键默认只在真实读取的键图双方都重复时迁移，并持久化规范图；唯一自定义与明确解绑的真实Save/Open已有专项，未把未提交草稿保存为工程对象。
+
 2026-10-16 录音候选局部提升没有新增格式/能力：仍使用midi.playlist-editing v1、原Loop来源与Comp provenance。新增专项实际保存并冷重开普通登记Take、录得Loop来源、接受窗口/完整SEQ和原Undo/Redo；源树比较按活动列表在轨道下的实际片段与非活动存储片段统一取只读快照，精确XML比较不混用加载前后var类型。GUI自定义键580随原UI子树保存，未提交候选草稿不保存；证据见VERIFICATION.md。
 
 2026-10-16 新增midi.playlist-editing v1：NDAW_PLAYLISTS上的midi_edit_schema=1标记新MIDI锁定/创建/Comp/Promote语义，登记和窗口保留完整原生SEQUENCE/原始引用；当前、非活动及Undo/Redo闭包均保护。Redo-only锁定保存/冷重开/原Redo、未知能力与漏声明拒绝已有专项；冷Edit实际Note/CC原始值/SysEx的精确XML逐段核对，不能仅凭显示点数宣称恢复。旧循环/Punch能力和源指纹保持。

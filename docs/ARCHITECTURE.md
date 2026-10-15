@@ -1,3 +1,5 @@
+2026-10-16 Punch/候选与默认键：P1-MIDI-PUNCH-COMP-03使用同一production hosted捕获、原L1 Promote/Undo与原生试听组合，完整来源/事件/历史及真实WAV已执行，不增加引擎、SDK或实时处理。L5注册表的琴键268/269改CtrlOptionShift↑/↓，轨高172/173原键保持；restoreShortcuts只迁移双方确实重复的旧默认，规范化仍经L1 UI子树保存。实际几何/保存迁移41项通过，OS前台捕获失败保留；边界见VERIFICATION.md。
+
 2026-10-16 录音候选局部采用：L5 PlaylistPanel 的命令580只冻结所选草稿段并调用既有L1 playlist.promote；不直接写Edit。新按钮与可改键受实际候选/目标锁定、单轨、关联状态和试听/播放守卫约束；提交沿用一Plan一原UndoManager事务及revision失效。521按事实禁止重复登记自动Take。候选导航沿用原生试听，无新引擎/SDK/服务/实时处理；当前完整来源/声音/持久化资格见MIDI_COMP_WORKFLOW.md和VERIFICATION.md。
 
 2026-10-16 MIDI Comp：L1 MidiPlaylistState/PlaylistEditing在同一Edit复制完整原生MIDI树，按源偏移构建播放窗口，稳定ID重映射、原SEQ/来源不破坏；新midi.playlist-editing v1保护活动、非活动及历史。PlaylistAudition复用原有同一Engine只读快照和原生MIDI节点，可走实际乐器/Read链或MIDI输出；未引入新SDK字节、服务、引擎或实时过滤。锁定统一保护音符/CC/边界/插入/剪贴板，GUI事实也读取活动列表锁定。旧重复默认键只在双方确实重复时定向迁移，独立自定义键保持。资格与边界见MIDI_COMP_WORKFLOW.md。

@@ -1,3 +1,5 @@
+2026-10-16：Punch完整Take可与前次录音做候选分段试听/局部采用并真实导出，原Main两侧、完整Punch结果、原始事件与历史保持；同一测试程序的Loop/Punch组合各200项。琴键缩放默认改CtrlOptionShift↑/↓，全轨高CtrlOption↑/↓保持，旧重复键定向迁移。当前7套787项通过、快捷键编辑器测试未取得系统前台仍失败；不是完整P0/P1/产品或实体听评资格。代码、操作与实际回执见MIDI_COMP_WORKFLOW.md、VERIFICATION.md。
+
 2026-10-16 P1录音候选：普通MIDI录音可登记Take，录得Loop Take可按候选上一/下一实际试听，再只提升选中段到TARGET，保留原Main两侧、源Take和完整事件。新按钮/可改键580复用L1 Promote，一笔Undo/Redo、冷重开原历史和实际Save已通过199项专项。实体端口、Punch→局部候选组合与完整P1/产品未完成；亲手操作和当前回归见MIDI_COMP_WORKFLOW.md、VERIFICATION.md。
 
 2026-10-16 P1 MIDI Playlist/Comp：9efaaf2/5c30aed接通锁定、非破坏Promote、多来源候选和分段试听；原 Main/源Take保留，结果继续钢琴卷帘编辑。一笔原Undo/保存重开/真实注册键与实际音符、CC/SysEx、合成器WAV专项155项通过，实体端口/听评及完整P1/产品未完成。每项代码/测试与当前回归见MIDI_COMP_WORKFLOW.md和VERIFICATION.md。

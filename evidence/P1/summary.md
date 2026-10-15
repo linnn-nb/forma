@@ -1,20 +1,20 @@
-# 录得 MIDI Take 与局部 Comp 当前验证（2026-10-16）
+# Punch 录得 Take→候选 Comp 当前验证（2026-10-16）
 
-结论：ac9d12a / dc327ae 接通候选清单所选段的局部提升，并完成真实普通 MIDI 登记与 Loop Take 比较。新专项199项/14.64秒；受影响回归12/12、173.12秒，通过13套1970项检查。不是全仓、完整P1/产品、实体输入/听评或性能资格。
+结论：530f045跑通普通录音→实际Punch完整Take→候选试听/局部采用→保存重开/导出；2525c48修复轨高与琴键两组默认重号。当前8种受影响套按最新终态7套787项通过，快捷键编辑器因测试进程未取得系统前台仍失败；不是一次全绿、完整P1/产品、实体输入/听评或性能资格。
 
-- 原生 WorkspaceWindow 与 production hosted MIDI 输入48k/256，实际普通录音3音符及CC/pitch/SysEx→CtrlOptionK登记→原Undo/Redo→冷重开。Loop再录两整圈和较短尾圈，生成3 Take及真实原始来源回执，Main和手动Take保留；自动Take在GUI与L1禁止重复登记。
-- 真实可见滚动后拖选两段120037–191119、52037–110119采样，来自不同录得圈；候选试听/下一/上一实际解析到533/535/534，回调输出新测非零FourOsc PCM。停止态已知输入不冒充输出；自然到点、CtrlOptionShift0取消、原光标24000与工程/来源保持均通过。未验证实体音频设备上的该试听或主观音质。
-- 新GUI580「提升候选选段 ↑」/CtrlOptionShiftU复用L1 playlist.promote，只替换TARGET对应窗口，原演奏两侧、源Take/完整SEQ、CC/SysEx及原始输入SHA保持。提交是一笔原Undo，版本通知清空未提交候选。只对单轨草稿、未锁定/未关联目标开放，播放/试听中禁用；没有新域命令、引擎、SDK、服务或实时回调工作。
-- CmdZ/ShiftCmdZ、冷重开原Undo/Redo、真实CmdS均执行；580自定义为CmdShiftF11并在实际GUI重开后再次完成提升/保存，先核对映射归属再取执行回执。默认仍CtrlOptionShiftU。普通登记Take/全部窗口的精确原生事件树另行比较，不把设备可用性/解析输出名称等运行测量当作持久数据。
-- 回归：历史86、普通MIDI界面23、MIDI Loop169/Punch497/Comp155、音频Playlist227/试听98/交叉淡化剪贴板73/完整制作链98、CC186、跨轨与键位兼容79、工程格式80。原音频Loop→Punch→Comp→交叉淡化→导出链重开PCM最大差0；不是用MIDI专项替代音频链路。
-- 独立stdlib解码4份实际WAV：MIDI提升/重开各48k双声道PCM24/144000帧；本轮音频链路各192000帧、完整data逐字节相同。完整文件SHA、Peak/RMS均保留。FourOsc随机相位的两份输出仅资格非零音频和格式，不宣称逐位PCM或听评一致。
-- 新专项早期失败保留为build中的midi-take-first/source/native/io/notification日志与JUnit：完整XML实际相等而var类型不同、运行设备标签/可用性、未等实际订阅启用、活动列表片段实际放在轨道下的快照差异分别修正测试观察。最终严格比较原生持久字段和活动/非活动实际片段，未放宽输入256帧、拖选1采样、UI5秒、捕获15秒、渲染10秒/总120秒预算。不能用后续JSON覆写早期失败结论。
-- NativeDAW、CLI与全部所需目标构建exit0；唯一App本地deep/strict通过，SHA256 `31f6e66ce3d4fb6c2fd797314715f78996258f094f082ae26d5e9102f50009fd`，非发行公证。19 SDK审计补丁/47文件沿用CMake字节核对，本轮无SDK变更/fresh replay/新依赖。用户PID44913未重启，测试进程已结束，无新DMG/tar/应用副本。
+- **P1-MIDI-PUNCH-COMP-03**：复用MidiTakeWorkflowTests的punch模式，真实hosted MIDI 48k/256普通捕获并登记另一Take，再在96037–168119采样补录、48000–192000连续捕获预/后卷，原生自动到后卷停止。4音符、CC/pitch/SysEx和11条原始事件/来源SHA实际保留；无人工拼接捕获结果或虚构MIDI WAV。
+- 完整Punch Take的120037–156119、前次Take的170037–190119成为两个真实候选，上一/下一发声、到点/取消返回24000采样均执行。来源与原Punch结果不变，局部提升到Main只替换选中区间，两侧原演奏保留；完整原生SEQ/隐藏事件不裁掉。原Undo/Redo、冷重开原历史与完整Punch结果/来源哈希、自定义580=CmdShiftF11、实际CmdS和合成器WAV均通过。Loop同一路径新增来源校验后为200项，Punch另200项。
+- **U-P0-SHORTCUT-02**：新WorkspaceShortcutTests在真实native peer与开/关琴键命令上下文复现：268与172、269与173共用CtrlOption↑/↓；实际琴键键触发172，轨高改变而音符仍14px。现在琴键为CtrlOptionShift↑/↓，实际14→17.5px且轨高不变；全轨高原键仍工作。当前注册表逐一核对默认键归属无重复；旧重复映射真实Save/Open后定向迁移，唯一用户自定义/明确解绑保留，41项通过。这不是所有OS按键行为或焦点资格。
+- PianoPitch旧断言仍要求已退役的CtrlOptionShift0，另一个测试自定义键CtrlOptionP已归属Playlist播放。现使用当前reset=CtrlOptionShiftR、实际空闲的CtrlOptionShiftF11并核对真实归属；原音符拖动/修剪/Undo/重开/真实音频检查保持，59项/6.32秒通过，没有删保护或放宽容差。KeyboardSettings候选也改为实际空闲CmdCtrlShiftF11，原前台/peer/焦点断言保持。
+- **未通过项**：forma_native_keyboard_settings本轮4.90秒失败，foreground=false、native_peer_focused=false、capture_visible=false，界面明确提示窗口未取得键盘焦点。没有绕过前台保护、伪造捕获或把用户主工程可操作当作测试通过。未证明其根因；OS前台捕获/实体键鼠继续待验。本轮不再重复桌面读取。
+- 原批punch-comp-shortcuts.xml实际6/8、77.78秒，Piano补验1/1、6.32秒；早期Punch/Loop2/2、25.85秒单列。当前最新：MIDI Dock34、Piano59、默认键/迁移41、Loop候选200、Punch候选200、MIDI Comp155、音频完整链98，共787。原两红和补验均保留，不取旧成功JSON替代失败。历史Piano JSON用failures=0，仍须同时核对当前CTest终态和新鲜度。
+- 独立stdlib解码本轮6份真实WAV：Punch/Loop各两份双声道48k/PCM24/144000帧，音频链两份192000帧；完整data/格式/长度/SHA/Peak/RMS已检查。音频Loop→Punch→Take/Comp→交叉淡化→导出重开PCM最大差0，独立data逐字节一致；FourOsc随机相位的MIDI输出只资格实际发声/格式，不宣称逐位PCM或听评一致。
+- NativeDAW及所需目标构建exit0，唯一App本地deep/strict通过，SHA256 `9bd0b433f62e6eea5da36ab190374a41b7e50f99244709395494c933ec55fcd2`，非发行公证。无新依赖/SDK字节/服务/证书/实时回调工作，原19补丁47文件沿用CMake核对，本轮无fresh replay。用户PID44913未重启，无新DMG/tar/应用副本，测试进程已结束。
 
-证据索引：`build-v2-tracktion/midi-take-current-results.json`，两批`midi-take-snapshot`/`midi-take-regression`的JUnit/log；逐项核对终态与JSON新鲜度。精简持久回执`evidence/P1/recorded-take-qualification.json`和组件快照`recorded-take-comp.png`（已查看，非OS桌面截图）；来源为已知测试输入，非音乐作品。桌面工具此前超时，用户再次确认主界面可操作，本轮不重复调用。
+证据：`build-v2-tracktion/punch-comp-current-results.json`，punch-comp-shortcuts / piano-shortcut-compat / punch-comp-native的JUnit/log；快捷键修前实际错误归属及几何在shortcut-routes-repro日志/JSON。早期缺目标CMake配置、测试API/类型/缺ref编译与夹具错误均保留，未运行旧二进制当成功。持久简表`evidence/P1/punch-comp-qualification.json`和`punch-comp.png`（已查看的原生组件快照，非OS桌面截图）。输入均为已知测试事件，非音乐作品。
 
-亲手试：先保存当前工程并重启唯一`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5/MIDI-Take-Workflow.tracktionedit`，选Recorded Keys按Option+L。CmdZ撤销最后提升；在录得Take拖选→加入候选→上一/下一试听→选行→「提升候选选段 ↑」或CmdShiftF11→CmdS。默认键与边界见 docs/MIDI_COMP_WORKFLOW.md。原音频链路本轮工程`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-335107e5928045978aa223e5846942c4/P1-Production-Chain.tracktionedit`。
+亲手试：保存当前工程后重启唯一`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-Comp-2d920dee5bdf4db0a1e9402ae88d4ae9/MIDI-Punch-Comp.tracktionedit`，选Recorded Keys、Option+L。CmdZ撤销最后采用；完整Punch Take拖选→加入候选→上一/下一试听→CmdShiftF11局部提升→CmdS。琴键打开时CtrlOptionShift↑/↓改键高，CtrlOption↑/↓改全轨高；可在键位窗口自行修改。hosted输入是测试引用，新录须选真实设备。操作见MIDI_COMP_WORKFLOW.md / MIDI_PUNCH_WORKFLOW.md。
 
-下一项：实际Punch录得完整Take→候选试听→局部提升→导出组合。原Punch497项不冒充这个新组合通过。短Loop/圈末原始事件、多轨关联MIDI Comp、MPE/Groove/量化/覆盖、原始MIDI流式日志/崩溃、实体输入/听评/PDC/耐久，旧键位焦点、性能A15.84%>15%、分析超时、RT SDK锁分配、Windows/视频/环绕/发行等仍未完成；M2/M3冻结，M4/M5暂缓，完整架构范围保留。
+下一项：P1短Loop/空圈与圈末原始NoteOff，核对捕获、可编辑Take、原来源/Undo/冷重开和实际快捷键；本次组合增量收口。快捷键编辑器焦点、MIDI多轨关联/MPE/Groove/量化/覆盖、原始MIDI流式日志/崩溃、实体输入/听评/PDC/耐久、保存管理/性能A15.84%>15%/分析超时/RT SDK锁分配/Windows/视频/环绕/发行等继续未完成。M2/M3冻结、M4/M5暂缓，完整架构目标保留。
 
-历史证据见 docs/VERIFICATION.md 与Git历史。
+历史证据见docs/VERIFICATION.md和Git历史。

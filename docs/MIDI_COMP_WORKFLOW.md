@@ -30,10 +30,14 @@ L1 `MidiPlaylistState.h` / `PlaylistEditing.cpp` 校验并生成窗口/来源；
 
 循环播放片段、播放量化、Groove、MPE/嵌套音符表达、多轨关联 MIDI Comp 与复杂旁链/硬件插入试听尚待实现或资格；受限来源明确拒绝。实体 MIDI 端口、私有插件、听评与长期稳定性不从 hosted 测试外推。完整架构目标保留。
 
-旧默认键的六组冲突已修：跨轨尾随改为 Command+Control+Option+Shift+0/1/2/5，琴键高度复位改为 Control+Option+Shift+R，新建 Comp 改为 Command+Control+Option+Shift+C。只迁移确实重复的旧映射；用户单独指定或清空的键位保留。真实归属与旧工程迁移见专项测试。其余全局键位上下文冲突仍须审查。
+旧默认键的六组冲突已修：跨轨尾随改为 Command+Control+Option+Shift+0/1/2/5，琴键高度复位改为 Control+Option+Shift+R，新建 Comp 改为 Command+Control+Option+Shift+C。只迁移确实重复的旧映射；用户单独指定或清空的键位保留。真实归属与旧工程迁移见专项测试。另两组轨高/琴键缩放冲突已实测修复：轨高保留CtrlOption↑/↓，琴键改CtrlOptionShift↑/↓；只迁移确实重复的旧映射。当前注册表默认键归属审查无重复，实际轨高/琴键开关上下文已验；这不代表所有命令的OS按键/焦点都已验证，快捷键编辑器前台捕获仍失败。
 
-验收关联：P1-MIDI-COMP-01 → tests/v2/MidiPlaylistEditingTests.cpp / CTest forma_midi_playlist_editing（155项）；P1-MIDI-TAKE-02 → tests/v2/MidiTakeWorkflowTests.cpp / forma_midi_take_workflow（199项）。后者使用实际普通/Loop hosted MIDI 捕获、原生窗口/键位、候选导航/到点/取消、局部提升、冷重开原 Undo/Redo、实际保存和合成器 WAV。代码入口为 PlaylistPanel.h 的 GUI 580 → 既有 L1 playlist.promote，GUI 521 → playlist.take.register；无新引擎/SDK/实时处理。48k/256、普通CC1与已知SysEx、非块边界和变化Tempo，不把控制器重发、RPN/NRPN/踏板或实体输入推断为已资格。Punch 录得 Take→局部候选组合尚未在此新专项执行；原 Punch 独立专项资格不因此扩大。
+验收关联：P1-MIDI-COMP-01 → tests/v2/MidiPlaylistEditingTests.cpp / CTest forma_midi_playlist_editing（155项）；P1-MIDI-TAKE-02 → tests/v2/MidiTakeWorkflowTests.cpp / forma_midi_take_workflow（现200项）。后者使用实际普通/Loop hosted MIDI 捕获、原生窗口/键位、候选导航/到点/取消、局部提升、冷重开原 Undo/Redo、实际保存和合成器 WAV。代码入口为 PlaylistPanel.h 的 GUI 580 → 既有 L1 playlist.promote，GUI 521 → playlist.take.register；无新引擎/SDK/实时处理。48k/256、普通CC1与已知SysEx、非块边界和变化Tempo，不把控制器重发、RPN/NRPN/踏板或实体输入推断为已资格。P1-MIDI-PUNCH-COMP-03 使用同一可执行文件的 punch 参数，另有实际普通捕获→Punch完整Take→候选试听/局部提升→保存重开/导出200项；不是仅靠原Punch独立专项推断。
 
 录音候选演示工程：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5/MIDI-Take-Workflow.tracktionedit`。选 Recorded Keys，Option+L；源列表包括普通手动登记及三次 Loop Take。该工程的局部提升键为 CmdShiftF11；CmdZ 可撤销最后一次提升，重新拖选加入候选后可再提升。乐器可直接回放；hosted 测试输入引用需换成实际 MIDI 设备才能新录入。Accepted.wav / Reopened.wav 为真实输出的已知短音符测试，不是音乐作品或用户听评。
 
 自动复验：先构建 `ndaw_midi_take_workflow_tests`，确认 exit0 后执行 `ctest --test-dir build-v2-tracktion -R '^forma_midi_take_workflow$' --output-on-failure`。每次使用独立测试工程与原生窗口，120秒总截止；输入256帧、拖选1采样、UI5秒、捕获15秒、渲染10秒预算固定，不操作用户已打开的工程。
+
+Punch组合演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-Comp-2d920dee5bdf4db0a1e9402ae88d4ae9/MIDI-Punch-Comp.tracktionedit`。选Recorded Keys、Option+L；Main Take是前一次普通录音，MIDI Punch Take 2保留完整预/补录/后卷，MIDI Punch 2保留整次补录结果。Main中120037–156119采样为局部采用的Punch演奏；CmdZ撤销最后采用，拖选完整Take后重新加入候选、上一/下一试听、CmdShiftF11提升所选段、CmdS保存。原Main两侧和完整Punch结果保留。
+
+复验Punch组合：`ctest --test-dir build-v2-tracktion -R '^forma_midi_punch_comp$' --output-on-failure`；先构建同一`ndaw_midi_take_workflow_tests`并确认exit0。当前最终批次与前台失败见VERIFICATION.md。
