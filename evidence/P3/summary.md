@@ -1,3 +1,20 @@
+# 共享 Warp 渲染取消修复（2026-10-16）
+
+结论：`b0553c5`统一整数/浮点秒的处理链指纹；`e13aecc`修复单个片段关闭 Warp 时取消其它片段共用任务的问题。新增专项87项/6.38秒与受影响14/14套/243.10秒均通过，两批15套/1681项；不是全仓、完整产品、实体麦克风或人工听评验收。
+
+- 真实失败先行：`shared-warp-baseline.xml/.log`在29项后暴露整数秒8与原生读回8.0的指纹不一致；统一哈希编码后，`shared-warp-cancel-baseline.xml/.log`在67项后明确复现一个片段取消了唯一共享任务。修复不扩大重试次数、不接受原音替代Warp、不放宽预算。历史其它首次失败是否同因仍未证明。
+- 代码：L1 `WarpCommands.cpp`复用`WarpState.h::renderHash`，秒统一double、采样统一int64，保持原单位/参数Schema/权限/Undo。SDK `AudioClipBase::cancelCurrentRender`在message thread解绑自身listener与引用，最后使用者离开才取消；`RenderManager::Job::hasListeners`只供该非实时所有权检查。无新引擎、服务、实时等待或工程格式。
+- `SharedWarpRenderTests.cpp` / `forma_shared_warp_render`：真实16秒PCM24源、两个相同映射片段、原生SoundTouch与float32缓存；自然冷启动及排队时关闭另一片段均首次成功，恢复额度使用0。排队由明确测试专用的有界调度gate注入（实际8 worker，上限16，5秒自动退出），未替换音频/DSP实现。cache_ms为命令后/解除gate后的等待，实测769.20/109.82ms，不是硬件往返延迟或完整作业延迟。
+- 固定原预算：短缓存5秒、每WAV10秒、音高1Hz、重开PCM差≤2e-7，CTest120秒；三份真实WAV独立stdlib解码均为48k/双声道/PCM24/768000帧，测得439.962/880.039Hz；重开前后完整WAV SHA256相同。原媒体哈希、单笔Undo/Redo、重开原历史全部通过。
+- 回归保持原断言与时限：Loop/Punch/Playlist编辑与试听/交叉淡化及剪贴板/ProductionChain/Elastic/Warp/WarpMix/WarpComp/ElasticComp/SourcePreparation/ProjectDocument。原Warp157项含native peer和真实OS文件写入上限/一次恢复/失败拒绝；本轮14套原样通过。P1完整受控双声道录音写盘→Comp→交叉淡化→导出91项，重开二次导出PCM最大差0；实体输入与人工听评另验。
+- 所有构建实际exit0后才运行相应测试；第一次批量构建Punch目标名写错而exit2，改成实际`ndaw_punch_recording_tests`后的完整构建exit0，失败日志保留。计数来自新鲜JSON回执（mtime核验），不是截断的JUnit system-out。索引`build-v2-tracktion/shared-warp-current-results.json`、JUnit `shared-warp-fixed.xml`和`shared-warp-regression-current.xml`、独立PCM `shared-warp-independent-pcm.json`。
+- Tracktion固定pin不变；18补丁/45源码fresh apply→逐字匹配→reverse实际通过，回执`shared-warp-sdk-replay.json`。唯一Release App固定本地deep/strict签名通过，SHA256 `689fa86b840b8963f9b04ed1397d00f0607c7cdb2125ef61647b9ba838a4eb2f`，非发行公证。未重启用户正在运行的Forma或替换当前工程；需保存现有工程并重启唯一App才使用新代码，无新DMG/tar/应用副本。
+- 快捷键焦点旧失败未改判通过：本轮较早`fc63410`的诊断记录foreground/native peer/window active均false，捕获已取消并显示失败；正常LaunchServices尝试无新成功回执。桌面工具cgWindowNotFound不能推断锁屏或崩溃；用户确认工程主界面可操作。没有因此略过快捷键断言，也没有将其它native peer测试通过外推为快捷键设置通过。
+
+可演示的自有测试工程：`build-v2-tracktion/P3-SharedWarp-4bd798862aaf499e95d7b5700df12638/queued-cancel/Shared-Warp.tracktionedit`（明确测试音，非音乐作品），以及P1 `build-v2-tracktion/P1-Production-Chain-a9fecb00f0ff4270984fdf95f3f9b280/P1-Production-Chain.tracktionedit`。保留各自源WAV和实际导出；打开后可播放、CmdZ/ShiftCmdZ，再另存/重开。代码与测试已按可构建步骤提交，桌面实操与听评仍待完成。
+
+以下为此前验证记录，当前资格以本节和上述新回执为准。
+
 # 外部自动化重开与原始历史音频（2026-10-16）
 
 结论：L1历史恢复将原生端点同步到引擎当前有效值，保留显式基础值和原曲线；已知AU重开首段增益错误已修。真实AUNBandEQ AU/Serum VST3的原始UndoRedo、保存重开、Read/Touch/Latch/Write及实际音频通过，未宣称全插件或完整产品资格。

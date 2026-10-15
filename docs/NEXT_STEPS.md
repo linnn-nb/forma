@@ -1,9 +1,9 @@
 # 下一步（2026-10-16）
 
-外部参数恢复已修（d292dc1）：显式基础值与引擎当前值分开，native DSP对齐当前有效值，解决已知AU重开首段增益失配。增强真实AU/VST3专项87项/25.92秒，原UndoRedo/保存重开/实际音频通过；受影响14套/178.63秒，分批15/15、1096项。原门槛未改、全部当前测试已退出；索引 `build-v2-tracktion/au-reopen-current-results.json`。未重跑全仓或全部旧28套，完整产品未完成。
+已修Warp整数秒指纹与共享任务取消（b0553c5/e13aecc）；新增87项/6.38秒，原受影响14套/243.10秒，全程15套1681项通过。真实SoundTouch/WAV、原UndoRedo/保存重开与P1受控完整链路通过，后者重开导出PCM差0。完整产品未完成，不是全仓/实体录音/人工听评验收。索引`build-v2-tracktion/shared-warp-current-results.json`。
 
-1. **下一项：P0快捷键编辑器焦点旧失败。** 先核对 `forma_native_keyboard_settings` 当前终态与实际native peer/前台/捕获路径，再验证默认/自定义绑定、冲突、编辑器Undo与保存重开。涉及文件 `KeyboardSettingsTests.cpp`、`ui/KeyboardSettings.h/.cpp`；保留原预算，不私调回调/强制facts或用固定等待冒充实际焦点。桌面不可读时继续可执行工作，不推断锁屏。
-2. XML/参数恢复增量本轮收口，不继续扩边界。随后回到实际制作体验与听评、首Warp作业根因/读取能力全量、旧性能A15.84%超15%/分析超时、长源/路由/PDC/硬件/耐久、Windows/视频/环绕/发行。M2/M3冻结，M4/M5暂缓，最终范围不缩减。
-3. 可亲手打开保留自有AU工程 `build-v2-tracktion/au-automation-demos/ndaw-ext-auto-12a2d5ea8d9a4dda97023e2feccc0c54/external-auto.tracktionedit`，CmdZ/ShiftCmdZ原曲线再播放/导出；同目录有Serum工程、已知验证输入和16份实际WAV，回执见 `evidence/M1/external-automation-tests.json`，不是音乐作品或人工听评。P1当前完整受控链路示例在 `build-v2-tracktion/P1-Production-Chain-b55f5113a3244b5ab2858527d3e20378/`，二次导出PCM差0。
+1. **下一项：P1原生界面完整制作体验及快捷键焦点。** 保留KeyboardSettings真实foreground/native peer失败，不重复用CLI替代桌面验收；用户确认主界面可操作不等于快捷键设置通过。桌面可观察时按真实面板操作Loop→Punch→Take/Comp→交叉淡化→导出，核对自定义键/焦点/原UndoRedo及保存重开，补实际听评；不改当前用户工程。
+2. 本轮共享任务与数值编码修复收口。未归因的其它首次Warp失败保留；后续按架构继续读取能力全量、性能A15.84%超15%/分析超时、长源/路由/PDC/硬件/耐久、Windows/视频/环绕/发行。M2/M3冻结，M4/M5暂缓，最终范围不缩减。
+3. 自有P1示例`build-v2-tracktion/P1-Production-Chain-a9fecb00f0ff4270984fdf95f3f9b280/P1-Production-Chain.tracktionedit`；新Warp测试音示例`build-v2-tracktion/P3-SharedWarp-4bd798862aaf499e95d7b5700df12638/queued-cancel/Shared-Warp.tracktionedit`。均保留源WAV与真实导出，可打开播放，CmdZ/ShiftCmdZ后另存重开。
 
-唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；保存现有工程后重启该App再试新代码。Release/固定本地deep-strict通过，非发行公证；无新DMG/tar/app副本。本轮未重做桌面工具读取、实体键鼠/麦克风/听评，未替换现有运行工程。
+唯一App：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。保存现有工程再重启此App以加载新代码；本地deep/strict通过，非发行公证；未重启/替换运行中工程，无新DMG/tar/应用副本。

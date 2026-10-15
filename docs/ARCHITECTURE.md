@@ -1,3 +1,5 @@
+2026-10-16 共享处理源生命周期：L1的Warp指纹复用同一个规范编码函数，源秒为double、工程采样为int64；不建立第二份工程事实。L0原生RenderManager任务继续按媒体/映射hash共享，AudioClipBase取消时只解绑自身，最后listener离开才取消实际任务。所有解绑/所有权检查在message thread，不进入实时回调。既有审计warp补丁新增RenderManager.h，18补丁/45源码已完整重放；原生音频、Undo/保存重开与P1回归的实际资格见VERIFICATION.md。
+
 2026-10-15 零点Shuffle修复：L1 shuffleRangeOperations的append阶段对已有clip.delete调用同一normaliseClipDeletion，保证首次Plan与复编译都携带来源/存在性/媒体前置条件；split别名保留原有同Plan来源处理。严格operations相等、版本/Scope/锁定与幂等不变。未改GUI直接写入、L0/RT/SDK/引擎；界面仍经既有Selector范围与Delete命令。实际验证以当前VERIFICATION.md/P3汇总为准。
 
 2026-10-15 工程格式增量：L1 ProjectDocument 只封装同一原生 Edit，不引入第二工程。特殊处理能力由当前/非活动树和未打包增量历史保守推导，FORMA_PROJECT v1 根确保已有 EDIT-only 读者明确拒绝；简单工程保持原生根。内容 hash、必需能力/版本、历史闭包均先于新 Edit 初始化校验；恢复共享编码，原历史 codec/Undo/稳定身份保持。纯 XML/ValueTree/文件工作不进入实时路径，未增加 SDK/服务/依赖。协议、旧读者实际证据和限制见 PROJECT_FORMAT.md。
