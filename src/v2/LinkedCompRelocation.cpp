@@ -146,6 +146,9 @@ void Commands::beginLinkedCompRelocation(const Json& groups, Json& objects)
                 list.setProperty("origin_restore_playlist", juce::String(member["old_restore"].get<std::string>()),
                                  undo);
             }
+            for (auto* clip : source->getClips())
+                if (!clip->state.hasProperty("ndaw_comp_origin_track"))
+                    clip->state.setProperty("ndaw_comp_origin_track", list["origin_track"], undo);
             transfers.push_back({list, ensurePlaylists(*track(member["to_track"]))});
             objects.push_back({{"id", member["vacancy"]}, {"kind", "playlist"}, {"track", member["from_track"]}});
         }

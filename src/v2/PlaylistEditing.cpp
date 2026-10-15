@@ -434,8 +434,11 @@ Json Commands::queryPlaylists(const std::string& id) const
                  {"locked", bool(c.getProperty("ndaw_locked", false))},
                  {"take_id", str(c, "ndaw_take_id")},
                  {"comp_origin", str(c, "ndaw_comp_origin")}});
-            item["clips"].back()["comp_origin_track"] =
-                str(list, "origin_track").empty() ? id : str(list, "origin_track");
+            for (const auto& key : {"comp_origin_track", "take_origin_track"})
+            {
+                const auto known = str(c, (std::string("ndaw_") + key).c_str());
+                item["clips"].back()[key] = known.empty() ? Json(nullptr) : Json(known);
+            }
             auto& row = item["clips"].back();
             row["elastic"] = elastic_state::facts(c);
             row["clip_fx"] = clip_fx_window::facts(c);
@@ -843,6 +846,7 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                     origin["revision"] = revision;
                     origin["media_hash"] = mediaHash(media(*edit, c));
                     inserted.setProperty("ndaw_comp_origin", juce::String(origin.dump()), nullptr);
+                    inserted.setProperty("ndaw_comp_origin_track", t.itemID.toString(), nullptr);
                     candidate.addChild(inserted, -1, nullptr);
                     objects.push_back({{"id", str(inserted, "id")}, {"kind", "clip"}, {"playlist", id.toStdString()}});
                     break;
@@ -870,6 +874,8 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                     const auto take = juce::Uuid().toString();
                     c.setProperty("ndaw_take_id", take, &um);
                     newClip.setProperty("ndaw_take_id", take, nullptr);
+                    c.setProperty("ndaw_take_origin_track", t.itemID.toString(), &um);
+                    newClip.setProperty("ndaw_take_origin_track", t.itemID.toString(), nullptr);
                     list.setProperty("take_id", take, nullptr);
                     Json origin{{"kind", "source_interval"},
                                 {"source_playlist", a["source"]},

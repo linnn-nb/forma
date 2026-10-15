@@ -260,7 +260,9 @@ int main(int argc, char** argv)
             Json moves = Json::array();
             std::map<std::string, te::WaveAudioClip*> native;
             for (const auto& t : {a, b})
-                for (const auto& clip : list(c, t, ids[t])["clips"])
+            {
+                const auto sourceList = list(c, t, ids[t]);
+                for (const auto& clip : sourceList["clips"])
                 {
                     const std::string clipID = clip["id"];
                     native[clipID] = RecordingTestAccess::clip(c, clipID);
@@ -269,6 +271,7 @@ int main(int argc, char** argv)
                                      {"to_track", targets.at(t)},
                                      {"position_samples", clip["start_samples"].get<int64_t>() + shift}});
                 }
+            }
             auto plan = [&](const Json& m)
             { return c.makePlan("human", Json::array({op("clips.relocate", {{"moves", m}})})); };
             auto p = plan(moves);
@@ -336,7 +339,8 @@ int main(int argc, char** argv)
                 check(current["active"] && current["origin_track"] == t && current["linked_tracks"].size() == 2,
                       "Comp Playlist identity, origin owner and complete new membership preserved");
                 for (const auto& clip : current["clips"])
-                    check(clip["take_id"] == takeLineage[t] && clip["comp_origin_track"] == t,
+                    check(clip["take_id"] == takeLineage[t] && clip["comp_origin_track"] == t &&
+                              clip["take_origin_track"] == t,
                           "real Take lineage remains resolvable on its original track");
                 check(c.crossfades(targets.at(t)).size() == 1 && c.crossfades(targets.at(t))[0]["playlist"] == ids[t],
                       "crossfade record follows the same Comp Playlist and target");

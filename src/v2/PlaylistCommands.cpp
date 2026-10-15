@@ -204,6 +204,7 @@ void Commands::makeLoopPlaylists(te::AudioTrack& track, te::WaveAudioClip& recor
                          nullptr);
         clip.setProperty(te::IDs::name, track.getName() + " - Take " + juce::String(existingTakes + pass + 1), nullptr);
         clip.setProperty("ndaw_take_id", take, nullptr);
+        clip.setProperty("ndaw_take_origin_track", track.itemID.toString(), nullptr);
         juce::ValueTree list("PLAYLIST");
         list.setProperty("id", playlist, nullptr);
         list.setProperty("name", "Take " + juce::String(existingTakes + pass + 1), nullptr);
