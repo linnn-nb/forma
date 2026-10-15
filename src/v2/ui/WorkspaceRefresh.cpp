@@ -895,6 +895,8 @@ void Workspace::timerCallback()
         analysisPanel->update(commands.analysisStatus());
     if (recoveryPanel && recoveryPanel->isVisible())
         recoveryPanel->update(commands.recoveryStatus());
+    if (newSessionPanel && newSessionPanel->isVisible())
+        newSessionPanel->update(commands.queryFacts(), commands.recoveryStatus());
     if (audioSettings && audioSettings->isVisible())
         audioSettings->updateRuntime(commands.audioDevices());
 }

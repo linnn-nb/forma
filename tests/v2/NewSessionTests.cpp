@@ -342,10 +342,15 @@ void ui(const juce::File& folder)
     name->setText("GUI recording session", false);
     w.startMcp(Permission::Preview, folder.getChildFile("gateway/socket"));
     const auto token = w.queryRecovery()["session_token"];
-    readyButton(w, "session.new.confirm")->onClick();
-    check(w.queryRecovery()["busy"] && w.queryRecovery()["session_token"] == token &&
-              w.queryMcpStatus()["permission"]["mode"] == "read_only",
-          "GUI local confirmation revokes external writing immediately, before backup completes");
+    readyButton(w, "session.new.confirm");
+    click(w, "session.new.confirm");
+    const auto accepted = w.queryRecovery();
+    // Real notification delivery may observe either the active job or its
+    // completed receipt. Idle/no receipt is never accepted as a successful click.
+    const bool pending = accepted["busy"] && accepted["session_token"] == token;
+    const bool completed = accepted["state"] == "created" && accepted.value("receipt_current_session", false);
+    check((pending || completed) && w.queryMcpStatus()["permission"]["mode"] == "read_only",
+          "actual New notification has a pending/completed real receipt and revokes external writing");
     idle([&] { return w.queryRecovery(); });
     pump();
     check(w.queryRecovery()["state"] == "created" && w.query()["tracks"].empty() && !find(w, "session.new.panel") &&
