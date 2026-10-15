@@ -1151,6 +1151,12 @@ target_link_libraries(ndaw_source_preparation_tests PRIVATE ndaw_ui)
 add_test(NAME forma_source_preparation COMMAND ndaw_source_preparation_tests "${CMAKE_BINARY_DIR}/p3-source-preparation-tests.json")
 set_tests_properties(forma_source_preparation PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_shared_warp_render_tests PRODUCT_NAME "ndaw_shared_warp_render_tests")
+target_sources(ndaw_shared_warp_render_tests PRIVATE tests/v2/SharedWarpRenderTests.cpp)
+target_link_libraries(ndaw_shared_warp_render_tests PRIVATE ndaw_engine)
+add_test(NAME forma_shared_warp_render COMMAND ndaw_shared_warp_render_tests "${CMAKE_BINARY_DIR}/p3-shared-warp-render-tests.json")
+set_tests_properties(forma_shared_warp_render PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_clip_fx_comp_tests PRODUCT_NAME "ndaw_clip_fx_comp_tests")
 target_sources(ndaw_clip_fx_comp_tests PRIVATE tests/v2/ClipFxCompTests.cpp)
 target_link_libraries(ndaw_clip_fx_comp_tests PRIVATE ndaw_ui)
