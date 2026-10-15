@@ -66,6 +66,8 @@ void SessionExit::save(const juce::File& file)
         if (!file.hasFileExtension("tracktionedit"))
             throw std::runtime_error("工程文件必须使用 .tracktionedit 扩展名");
         receipt = commands.save(file);
+        if (juce::Time::getMillisecondCounterHiRes() >= deadline)
+            throw std::runtime_error("保存已返回，但超过退出的30秒截止；文件保留，窗口不退出");
         if (!current() || receipt["revision"] != revision || !file.existsAsFile() ||
             receipt["sha256"] != Commands::mediaHash(file))
             throw std::runtime_error("保存回执与当前工程不一致；窗口已保留");
@@ -116,6 +118,8 @@ bool SessionExit::authorise()
     {
         if (!current())
             throw std::runtime_error("写入后工程已改变；请重新选择退出方式");
+        if (juce::Time::getMillisecondCounterHiRes() >= deadline)
+            throw std::runtime_error("已超过退出的30秒截止；窗口已保留");
         if (receipt.contains("path"))
         {
             const juce::File file(juce::String(receipt["path"].get<std::string>()));
@@ -131,6 +135,8 @@ bool SessionExit::authorise()
             if (loaded.metadata["session_token"] != session || loaded.metadata["revision"] != revision)
                 throw std::runtime_error("恢复副本与当前工程不一致；窗口已保留");
         }
+        if (juce::Time::getMillisecondCounterHiRes() >= deadline)
+            throw std::runtime_error("文件复核超过退出的30秒截止；窗口已保留");
     }
     catch (const std::exception& e)
     {

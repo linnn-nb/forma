@@ -39,7 +39,8 @@ public:
             save(juce::File(path.getText()));
         };
         snapshotButton.onClick = std::move(snapshot);
-        cancelButton.onClick = std::move(cancel);
+        cancelAction = std::move(cancel);
+        cancelButton.onClick = cancelAction;
         browseButton.onClick = std::move(browse);
     }
     void destination(const juce::File& file)
@@ -62,7 +63,7 @@ public:
     bool keyPressed(const juce::KeyPress& key) override
     {
         if (key == juce::KeyPress::escapeKey)
-            cancelButton.triggerClick();
+            cancelAction();
         return true; // No transport/edit shortcuts behind the exit review.
     }
     void paint(juce::Graphics& g) override
@@ -88,5 +89,6 @@ private:
     juce::Label title, detail, outcome;
     juce::TextEditor path;
     juce::TextButton saveButton, snapshotButton, cancelButton, browseButton;
+    std::function<void()> cancelAction;
 };
 } // namespace ndaw::desktop

@@ -147,6 +147,11 @@ int main(int argc, char** argv)
         check(exits == 0 && duplicate == 0 && c.query()["tracks"] == facts && c.query()["history"] == history,
               "cancel preserves actual session and original Undo history");
         w.requestExit([&] { ++exits; });
+        check(w.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)) && !find(w, "exit.panel")->isVisible(),
+              "production Escape cancels synchronously before any queued final exit message");
+        pump();
+        check(exits == 0, "queued notifications cannot revive Escape-cancelled exit");
+        w.requestExit([&] { ++exits; });
         auto* path = dynamic_cast<juce::TextEditor*>(find(w, "exit.path"));
         check(path != nullptr, "production save destination editor exists");
         path->setText("relative.tracktionedit", false);
