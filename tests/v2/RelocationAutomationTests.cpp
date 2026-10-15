@@ -686,7 +686,7 @@ int main(int argc, char** argv)
                             "tail continuation rejects actual untouched source or target neighbour overlap");
                     c.undo();
                 }
-                run(c, "track.create", {{"name", "No source curves"}, {"type", "audio"}});
+                run(c, "track.create", {{"name", "No source curves"}, {"type", "audio"}, {"ref", "$extra"}});
                 const std::string extraTrack = c.query()["tracks"][2]["id"];
                 run(c, "clip.import",
                     {{"track", extraTrack},
@@ -907,6 +907,9 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
+        if (argc > 1)
+            std::ofstream(argv[1]) << Json({{"result", "failed"}, {"checks", checks}, {"error", e.what()}}).dump(2)
+                                   << '\n';
         std::cerr << "FAIL after " << checks << ": " << e.what() << std::endl;
         return 1;
     }
