@@ -22,6 +22,7 @@ namespace
 {
 int checks = 0, serial = 0;
 double worst = 0, pcmError = 0;
+Json pcmResults = Json::array();
 void check(bool v, const char* why)
 {
     if (!v)
@@ -140,7 +141,11 @@ void aligned(const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& 
         for (int i = 256; i < a.getNumSamples() - delta - 256; ++i)
             error = std::max(error, std::abs(double(a.getSample(ch, i)) - b.getSample(ch, i + delta)));
     pcmError = std::max(pcmError, error);
-    check(error <= 2e-6, "real relocated native mix matches original PCM within unchanged 2e-6 budget");
+    pcmResults.push_back({{"max_error", error}, {"tolerance", 2e-6}, {"passed", error <= 2e-6}});
+    if (error <= 2e-6)
+        check(true, "real relocated native mix matches original PCM within unchanged 2e-6 budget");
+    else
+        std::cout << "FAIL AUDIO unchanged 2e-6 budget, actual " << error << std::endl;
 }
 struct Fixture
 {
@@ -405,8 +410,13 @@ int main(int argc, char** argv)
                              {"vertical", kind == 0},
                              {"session", saved.getFullPathName().toStdString()}});
         }
-        Json result{{"result", "passed"},
+        bool audioPassed = true;
+        for (const auto& measured : pcmResults)
+            audioPassed &= measured["passed"].get<bool>();
+        Json result{{"result", audioPassed ? "passed" : "failed"},
                     {"checks", checks},
+                    {"engineering_state", "passed"},
+                    {"pcm_comparisons", pcmResults},
                     {"max_relative_curve_error", worst},
                     {"max_pcm_error", pcmError},
                     {"cases", cases},
@@ -415,7 +425,7 @@ int main(int argc, char** argv)
         if (argc > 1)
             std::ofstream(argv[1]) << result.dump(2) << '\n';
         std::cout << result.dump(2) << std::endl;
-        return 0;
+        return audioPassed ? 0 : 1;
     }
     catch (const std::exception& e)
     {
