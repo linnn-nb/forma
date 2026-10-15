@@ -1,3 +1,5 @@
+2026-10-16 MIDI Comp：L1 MidiPlaylistState/PlaylistEditing在同一Edit复制完整原生MIDI树，按源偏移构建播放窗口，稳定ID重映射、原SEQ/来源不破坏；新midi.playlist-editing v1保护活动、非活动及历史。PlaylistAudition复用原有同一Engine只读快照和原生MIDI节点，可走实际乐器/Read链或MIDI输出；未引入新SDK字节、服务、引擎或实时过滤。锁定统一保护音符/CC/边界/插入/剪贴板，GUI事实也读取活动列表锁定。旧重复默认键只在双方确实重复时定向迁移，独立自定义键保持。资格与边界见MIDI_COMP_WORKFLOW.md。
+
 2026-10-16 MIDI Punch：L1 校验原生采样映射，在同一 Engine 的临时 forRendering Edit 准备原演奏两侧只读窗口；L0 沿用原生 MIDI 节点，停止先 clearNodes 再释放来源快照。原始来源仍在唯一工程 Edit 根，MidiPunchCapture 转为同一 Undo 事务内的原 Main/完整 Take/补录 Playlist；midi.punch-capture v1 保护活动、非活动及历史。既有 scrub-context 审计补丁另修非折返 hosted MIDI 的整块时间原点；无新增服务、引擎或回调分配/锁。SDK 既有实时分配/锁仍未资格；详细范围见 MIDI_PUNCH_WORKFLOW.md。
 
 2026-10-16 MIDI循环：L0停止后的applyRecording保留未折回输入并分圈；L1 MidiLoopCapture把原生TAKES转成同一Edit的Playlist/Clip/Note，一笔Undo。Edit根NDAW_MIDI_SOURCES持有原始时间/字节、Tempo XML、设备及调整值的SHA；Take引用来源和圈号。无第二引擎/服务，回调无新增工作。MIDI/Instrument面板显示真实音符；只开放选择/重命名/目标，锁定/Comp待资格。工程必需能力midi.loop-capture v1覆盖活动/非活动/历史；CC指纹改用与保存一致的preciseEditXml，避免SysEx显示精度造成重开伪变更。实测范围见MIDI_LOOP_WORKFLOW.md和VERIFICATION.md。

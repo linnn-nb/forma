@@ -1,9 +1,10 @@
 # 下一步（2026-10-16）
 
-MIDI Punch 增量 24f7f29/c87f485 已接通原 Main/完整 Take/补录结果；受影响回归 12/12，加专项补验后各套最新终态 1722 项、MIDI Punch 497 项。真实音符/CC/来源、Undo/保存冷重开、注册键和 WAV 已验，完整 P1/产品未完成。索引与失败记录见 VERIFICATION.md。
+MIDI Playlist/Comp增量9efaaf2/5c30aed/06ccacd：原生提升、多来源候选、锁定/试听及历史/键位已接通；当前20种受影响套最新终态分批2431项，新专项155、真实Loop Take集成169。原17/18与补验1/1保留；不是全仓、完整P1/产品或实体听评资格。索引见 VERIFICATION.md。
 
-1. **下一项 P1：MIDI Playlist 锁定、Comp/Promote、分段试听。** 以现有音频/v1行为为规格，先明确长音与CC追逐/隐藏原事件的非破坏窗口，再复用L1/原Undo/稳定身份/保存历史与注册快捷键。现在只开放选择、重命名和目标；不得靠解除禁用冒充实现。
-2. MIDI Loop/Punch本增量收口。短范围、圈末原始NoteOff/空圈、MPE/量化/Groove/合并覆盖、外部原始MIDI流式写盘/崩溃日志、长时/断连/过载/复杂PDC和实体端口/听评另验。hosted非折返切点1帧资格与输入256帧、原生NoteOff提前约5帧分开；循环折返派发仍待测，FourOsc随机相位无逐位PCM资格。
-3. 原音频 Loop→Punch→Take/Comp→交叉淡化→导出链98项本轮保持，保存重开二次PCM差0。P0/P2/P3未完成项目、覆盖另存/精确脏状态/备份管理、焦点、性能A15.84%>15%、分析超时、全量读取能力、SDK实时锁分配/多设备/耐久/Windows/视频/环绕/发行等原差距保留；M2/M3冻结，M4/M5暂缓。
+1. **下一项P1：录得Take的手动登记、候选上一/下一与局部试听接受等剩余MIDI组合。** 基于真实Loop/Punch来源走原L1，不用人工拼出的候选代替实际录音，核对原来源/完整SEQ与CC、Undo/重开原历史、实际注册键。当前新专项覆盖主要路径，并非所有按钮组合。
+2. P0回归：本轮真实按键发现六组默认重号，已修并做旧工程定向迁移。余下全局默认键（如轨高/琴键缩放）须先按实际焦点/命令上下文复现，再修或规范映射；不得靠invokeDirectly、等待或删保护伪装键盘可用。旧KeyboardSettings焦点失败仍保留。
+3. 后续P1：短Loop/圈末原始NoteOff/空圈、MIDI多轨关联Comp、MPE/播放量化/Groove/覆盖合并、外部原始MIDI流式写盘/崩溃日志、长时/断连/过载/复杂PDC与实体端口/听评。已验证普通hosted非折返事件切点1帧与原生NoteOff提前5帧分开，输入256帧预算不变，循环折返派发仍待验。
+4. 原音频Loop→Punch→Take/Comp→交叉淡化→导出98项保持，重开PCM差0。P0/P2/P3未完成、保存/备份管理、性能A15.84%>15%、分析超时、读取能力全量、RT SDK锁分配、多设备/耐久/Windows/视频/环绕/发行等原差距保留。M2/M3冻结，M4/M5暂缓，完整架构目标不缩减。
 
-唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，本地签名非发行公证；不重启用户现有工程，无新包。保存后重启用Option+P/F12/Space、Option+L、Option+[和]、CmdS亲手试，演示文件和完整边界见 MIDI_PUNCH_WORKFLOW.md、VERIFICATION.md。
+唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，本地签名非公证；用户现有进程未重启，无新包。保存后重启，Option+L打开Playlists；操作、演示工程、自定义锁定键与hosted端口说明见 MIDI_COMP_WORKFLOW.md、VERIFICATION.md。

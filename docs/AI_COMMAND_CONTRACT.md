@@ -1,3 +1,5 @@
+2026-10-16 MIDI Comp：既有local_gui playlist.lock/create/take.register/promote/comp.create与可信本地playlistAudition扩展原生MIDI；不增加MCP工具或权限。MIDI媒体指纹由精确原生XML及Tempo组成，候选来源也参与；差异与来源用source_kind=midi/midi_state_hash，不能冒充WAV媒体哈希。Promote范围外保留，候选不切换播放或目标；间隙是没有调度MIDI，乐器release可继续。查询locked合并片段与活动Playlist锁；录音/编辑/试听原版本守卫、同一Undo及幂等不变。新能力与实际执行证据见PROJECT_FORMAT.md、VERIFICATION.md。
+
 2026-10-16 MIDI Punch：可信本地录音复用 transport.punch.set 与原录音事务/注册键，未新增 MCP 权限。last_recording.takes[].kind=midi 记录原列表、完整 Take、实际捕获及替换范围；midi_sources 单列源 ID/SHA/tap point，files 只列实际音频文件。全空 no_events 不删除原演奏；预卷提前停只存完整 Take、替换长度为零。playlist 查询的 capture_source 对 Punch 返回 kind=punch/capture_start_samples/window，Loop 既有 pass 结构不变。Undo/Redo 与文件写入副作用分开，未执行录音不能显示成功。
 
 2026-10-16 MIDI循环：本地录音命令复用L1录音事务，回执takes[].kind区分audio/midi，files只列真实音频文件，midi_sources列源ID/哈希/引擎未折回tap point，失败回滚清空未提交的来源声明。原Main保留，Loop/Take选择与之后编辑分别Undo；空输入no_events不创建成功事务。playlist.select/rename/target扩到MIDI/Instrument，实际原生SEQ参与版本/来源指纹；MIDI锁定/Comp等明确拒绝且界面禁用。无新增MCP写权限、AI结果或生产测试替身；契约/范围见MIDI_LOOP_WORKFLOW.md。

@@ -1,3 +1,5 @@
+2026-10-16 P1 MIDI Playlist/Comp：9efaaf2/5c30aed接通锁定、非破坏Promote、多来源候选和分段试听；原 Main/源Take保留，结果继续钢琴卷帘编辑。一笔原Undo/保存重开/真实注册键与实际音符、CC/SysEx、合成器WAV专项155项通过，实体端口/听评及完整P1/产品未完成。每项代码/测试与当前回归见MIDI_COMP_WORKFLOW.md和VERIFICATION.md。
+
 2026-10-16 MIDI Punch：Instrument/MIDI 轨真实捕获预卷、补录和后卷，保留原 Main 与完整 Take，生成只替换选区的 Punch Playlist；一笔 Undo、保存重开、原快捷键与真实合成器 WAV 已接通。Off/Auto/On 监听规则见 MIDI_PUNCH_WORKFLOW.md；MIDI Comp/锁定/Promote/分段试听及实体端口仍未完成，不代表完整 P1 或产品。当前测试以 VERIFICATION.md 为准。
 
 2026-10-16 MIDI循环录音增量：MIDI/Instrument原生输入分圈为可编辑Take，原Main与较短尾圈保留，沿用L/F12/Space、Option+[或]、Option+L及原Undo/保存历史。当前开放Take选择、重命名与目标；MIDI锁定、Comp/Promote/Punch等仍未完成。原始捕获在Edit内保留来源/时间/哈希，非外部原始MIDI写盘。真实资格、FourOsc随机相位和剩余范围见MIDI_LOOP_WORKFLOW.md及VERIFICATION.md，不代表完整P1/产品。

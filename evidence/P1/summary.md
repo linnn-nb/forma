@@ -1,18 +1,19 @@
-# MIDI Punch 当前验证（2026-10-16）
+# MIDI Playlist / Comp 当前验证（2026-10-16）
 
-结论：24f7f29 / c87f485 接通真实 MIDI / Instrument Punch。受影响回归同批 12/12、169.73 秒；新增读取负例后专项 1/1、24.67 秒。按各套最新终态共 1722 项，MIDI Punch 专项 497 项。不是全仓、完整 P1、实体输入或听评资格。
+结论：9efaaf2 / 5c30aed / 06ccacd 接通 MIDI 锁定、原生窗口提升、多来源候选及分段试听。当前20种受影响套按各自最新终态分批2431项通过；新专项155项/23.92秒，实际录得Loop Take集成169项/16.79秒。原回归17/18红项与补验1/1均保留，不是全仓、完整P1/产品或实体端口/听评资格。
 
-- 48k / 256 帧 hosted 原生输入/输出，非整块边界 96037–168119、120→90 Tempo、双 MIDI 目标、跨边界长音、CC / pitch wheel / SysEx，Off / Auto / On 三模式。原 Main、完整捕获 Take、三段 Punch 结果均保持可编辑；两侧原演奏与输入监听独立验证。原始 11 条消息及来源 SHA 保留。
-- 实际原生窗口/命令管理器验证 Punch/Record/Space、Take 前后切换、Playlist 面板和保存键；一笔 Undo/Redo、Redo-only 保存能力、冷重开原历史、真实合成器 5 秒 WAV 均通过。不是 OS 桌面按键或实体键盘资格。预卷提前停只留 Take、不替换原演奏；全空 no_events 不新建事务；混合音频/MIDI 一笔提交一份真实 WAV 与两份来源，一笔 Undo 保留 WAV 不变。
-- 已复现 hosted MIDI 在 Tempo / 处理拆块时提前约 128 帧：旧派发减去最后子段原点。审计 scrub-context 补丁改为非折返整设备块原点。本组原48 NoteOff=96032、录入74 NoteOn=96036、录入76 NoteOff=168114、原48恢复=168119，补录切点按原生时间戳 1 帧容差通过。原生 NoteOff 仍提前 0.0001 秒（48k约5帧）；输入捕获仍为256帧预算，不把它称零误差。循环折返输出保留旧逻辑，物理端口/其它采样率未外推。
-- 工程 `midi.punch-capture` v1 覆盖活动、非活动及 Undo/Redo；未知版本/漏声明、现代 Edit 与历史不一致、明确 historyless 导入夹具的源损坏/缺源分别拒绝，当前会话/历史/revision 不变。Loop v1 来源指纹不改变；完整原生 SEQUENCE/隐藏事件和原媒体保留。
-- 其余回归：普通 MIDI62、音频Loop51、MIDI Loop164、writer故障49、音频Punch124、Playlist227、Playlist试听98、P1制作链98、CC186、ProjectDocument80、PersistentHistory86。原音频 Loop→Punch→Take/Comp→交叉淡化→导出、保存重开、实际快捷键保持，二次导出 PCM 最大差0。
-- 独立 Python stdlib 解码四份实际 WAV：48k/PCM24，MIDI重开前后双声道240000帧，混合捕获单声道144000帧/RMS0.0249999762，P1双声道192000帧；完整data/SHA/Peak/RMS通过。FourOsc随机相位不作逐位PCM声明，非听评或True Peak独立复算。
-- NativeDAW、CLI及受影响目标构建 exit0；唯一App本地deep/strict验签通过，SHA256 `2d3f0f0ece8fb67aa6a1f1ceaa2d1d0fcba9c7ca80c2d26c0f31587f910c4cb9`。非发行公证。SDK19补丁/47文件从锁定提交fresh apply/字节匹配/reverse通过，无新依赖版本/服务/实时分配锁。SDK既有实时分配锁仍未资格。
-- 先前未等实际播放启动/渲染后context已退休导致的空观察、早期时序实测及编译失败日志保留于build；新增观察先分配原生停止态context并等待真实started，不替换生产信号或放宽等待/负载。最终日志以 `midi-punch-regression`、`midi-punch-qualified` 为准，失败不拿旧JSON充当通过。
+- `MidiPlaylistState.h` / `PlaylistEditing.cpp` 在L1复制完整原生MIDI树，保留原Main/来源/隐藏事件与控制器精度，只改播放窗口并重映射副本ID。跨120→90 Tempo、非块切点48037/144119、跨入跨出长音、两个来源和512帧无调度间隙均经过实际hosted MIDI输出；切点按原生时间戳1帧容差，原生NoteOff提前0.0001秒（48k约5帧）单列，未放宽预算。
+- 真实原生节点试听验证来源CC1追逐90、第二来源追逐70、范围外SysEx排除，以及FourOsc实际声音。试听不写活动/目标/源或编辑revision，自动到点和快捷键停止返回；没有复制另一套引擎或新增实时过滤。间隙是没有MIDI事件，乐器release/效果尾音可继续。复杂RPN/NRPN/踏板、MPE/Groove/播放量化、物理端口/复杂路由仍待验。
+- MIDI锁定在统一命令层拒绝音符删除、CC修改、修剪、插入和剪贴板删除，GUI钢琴卷帘事实同样显示锁定；原Undo/Redo、冷重开原历史、源SEQ实际Note/CC原始值/SysEx精确XML均检查。`midi.playlist-editing` v1覆盖活动、非活动与Redo-only，未来能力/漏声明拒绝不替换当前工程。
+- 新原生peer测试通过实际映射检查锁定、加入/创建候选、提升、Undo、来源试听、停止和Save；自定义锁定键保存冷重开保持。23个Playlist动作的绑定逐一核对实际命令归属，不再把keyPressed=true当作执行回执。候选未提交草稿与已创建工程对象区分。
+- 原失败定位为真实默认键重号：候选操作触发`session.relocation_tail.set`，revision变化后清空草稿；等待通知并未修复。另查出停止/琴键高度复位、新建Comp/CC窗口冲突。修复六组默认并仅迁移确实重复的旧映射，真实保存→Open→规范化及独立自定义键保留已验。尾随现多加Command，琴键复位CtrlOptionShiftR，新建Comp为CmdCtrlOptionShiftC；其它全局键位/真实焦点问题未因此宣称解决。
+- 旧MIDI Loop测试的“锁定/Comp必须禁用”与新增功能矛盾，现改为实际录得Take的锁定、L1拒绝编辑、复制Comp及原Undo；不是删断言或放宽9秒输入/等待/原始源校验。Loop现169项。其它回归包括音频Loop51/Punch124/Playlist227/试听98/交叉淡化剪贴板73/完整制作链98，MIDI Punch497、普通录音62/界面23、CC186、持久历史86/工程格式80，以及MIDI/混合剪贴板四套374项。
+- 三批JUnit/log：`midi-comp-qualified` 2/2、27.80秒；`midi-comp-regression` 17/18、215.11秒；`midi-comp-loop-qualified` 1/1、16.80秒。索引`build-v2-tracktion/midi-comp-current-results.json`逐项核对CTest终态与JSON新鲜度，旧红不取后续成功JSON充当通过。早期CC夹具130越界、键位归属/旧限制红、构建目标名称错误均保留；现有数值预算不变。
+- 独立stdlib解码Comp.wav/Reopened.wav，两者真实48k/双声道/PCM24/240000帧，完整data、SHA、Peak/RMS通过；FourOsc随机相位不作逐位PCM等价或听评声明。原音频Loop→Punch→Take/Comp→交叉淡化→导出链本轮98项通过，重开导出PCM最大差0；工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-225d77f177f641bb96c77f61e954b064/P1-Production-Chain.tracktionedit`。
+- NativeDAW、CLI及受影响目标构建exit0；唯一App本地deep/strict通过，SHA256 `44475714d727f2ced72dcaa1f5abfa1cf7a4a6e1b0e7e76cbbc1dbcc0daf54f0`，非发行公证。Tracktion/JUCE pin及SDK字节不变，19补丁/47文件沿用CMake核对，本轮无新SDK重放/依赖/服务/证书。无新DMG/tar/应用副本，用户PID44913未重启，测试进程已结束。
 
-索引：`build-v2-tracktion/midi-punch-current-results.json`，JUnit/log 同名前缀；SDK `midi-punch-timing-sdk-replay.json`，独立文件 `midi-punch-independent-files.json`。演示工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-f62c36dcc7904494bb2a9e09352362d0/auto/MIDI-Punch.tracktionedit`；同目录Punch.wav。关键组件快照 `evidence/P1/midi-punch-takes.png` 已查看，不是 OS 桌面截图。实际已知测试输入，不是音乐作品。
+演示：保存当前工程后重启唯一 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Comp-137e12560377475b9151ead6209dc882/MIDI-Comp.tracktionedit`，选Comp Keys轨按Option+L看原Main/Alternative/候选，拖选后提升或加入候选、试听、创建；CmdZ/ShiftCmdZ与CmdS共用原历史。该演示把锁定改成CmdShiftF8以验证持久自定义，新工程默认CtrlOptionL。hosted测试MIDI端口不是实体设备，缺失时请选择真实端口；FourOsc轨可独立回放。完整默认键与边界见docs/MIDI_COMP_WORKFLOW.md。
 
-亲手试：保存当前工程后重启唯一 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开上述工程；Option+L看Main/完整Take/Punch，Option+[和]切换，空格播放，CmdZ/ShiftCmdZ撤销重做、CmdS保存。新录入须选真实MIDI设备，待命/选区后Option+P、F12。详见 docs/MIDI_PUNCH_WORKFLOW.md。用户现有PID44913未重启，无新DMG/tar/应用副本；桌面工具此前超时，用户确认主界面可操作，本轮未再重复调用。
+关键快照 `evidence/P1/midi-comp.png` 已查看，是原生组件渲染，不是OS桌面截图。MIDI来源为明确已知夹具，不是音乐作品；桌面此前超时、用户确认主界面可操作，本轮未再调用桌面工具。
 
-下一项 MIDI Playlist 锁定/Comp/Promote/分段试听。短Punch/Loop、MPE/量化/Groove、合并覆盖、外部原始MIDI流式写盘/崩溃日志、复杂PDC/端口/耐久/听评，旧焦点、性能A15.84%>15%、分析超时、Windows/视频/环绕/发行与完整产品继续未完成。M2/M3冻结，M4/M5暂缓。历史增量与旧失败保留在 docs/VERIFICATION.md 和 Git 历史，当前资格以上述范围为准。
+下一项：继续录得Take的手动登记/候选上一下一/局部试听等MIDI专项，并以真实上下文复现其余全局默认重号。短Loop/更多原始边界、多轨关联MIDI Comp、长时/原始MIDI流式崩溃日志/复杂PDC/硬件、旧焦点/性能A15.84%>15%/分析超时/RT SDK锁分配、Windows/视频/环绕/发行等仍未完成；M2/M3冻结，M4/M5暂缓。历史回执与旧失败见 docs/VERIFICATION.md 和 Git 历史；当前范围以上述资格为准。

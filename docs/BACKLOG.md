@@ -1,3 +1,9 @@
+# 当前优先任务（2026-10-16，MIDI Comp后）
+
+1. P1录得Take的手动登记、候选上一/下一与局部试听等剩余MIDI组合，按NEXT_STEPS.md继续。当前原生Comp/Promote/锁定/主要试听路径155项、真实Loop Take169项；20种套最新终态分批2431，原17/18与补验保留，非完整P1。
+2. 六组默认键重号已修且旧工程迁移已验；余下全局默认重号需在实际焦点/上下文复现，不能凭键绑定存在或invokeDirectly通过宣称键盘有效。旧KeyboardSettings焦点与实体桌面资格保留。
+3. 短Loop/原始边界、MIDI多轨关联、MPE/Groove/量化/覆盖、RPN/NRPN/踏板、原始MIDI流式崩溃日志、PDC/耐久/硬件/听评，以及保存/性能A/分析/RT/Windows/视频/环绕/发行等原缺口继续保留。以下为历史记录，不覆盖本轮明确资格。
+
 # 当前优先任务（2026-10-16，MIDI Punch后）
 
 1. 下一项 **MIDI Playlist锁定/Comp/Promote/分段试听**；当前MIDI Loop/Punch只支持选择、重命名和目标。先实现真实来源窗口与CC/长音规则，再Undo/历史/快捷键和试听，不直接放开按钮。

@@ -23,6 +23,7 @@
 - 不虚构MIDI源固定帧上限；循环/量化/Groove/MPE及共享曲线歧义未资格即拒绝。CC真实14-bit存储与7-bit发送精度分开。
 - 自动化显示值和基础值分开；恢复外部参数时分别核验显式基础值、引擎当前值和原生DSP。重开核对实际曲线与声音，不只比较推子读数。
 - 测试外改XML后不得保留失效现代历史校验；明确historyless导入夹具与现代工程损坏拒绝分开。GUI Open测试必须核对新会话回执，不能沿用旧Edit假通过。
+- 快捷键测试先核对映射实际解析到预期命令ID；keyPressed返回true不代表执行了所声称的动作。
 - 合成triggerClick异步等待实际通知和回执，设时限；不以固定睡眠、重发点击或私调回调兜底。焦点键盘测试须真实native peer，Tab可能与时间线命令冲突。
 - 范围/选轨GUI测试用时间线实际输入和显示版本；不能私写UI后按固定时间发键。输入端点与包含长度/时基/采样率的查询事实分开校验。
 - 音符事件时序、随机相位音频起音、幅度阈值和逐位音频一致性分开测量；不放宽既定预算使测试通过。
@@ -34,4 +35,4 @@
 - 每级只保留evidence/<级别>/summary.md和关键输出/截图；中间输出在忽略build。里程碑验收才打DMG，不制造源码tar包。
 - 付费、上传音频、系统安全修改、覆盖用户原媒体须授权；提交/推送现有公开仓库已授权。有效源媒体不得覆盖。
 
-文档入口：docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md、docs/MIDI_PUNCH_WORKFLOW.md及evidence/P1、P2、P3/summary.md。
+文档入口：docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md、docs/MIDI_PUNCH_WORKFLOW.md、docs/MIDI_COMP_WORKFLOW.md及evidence/P1、P2、P3/summary.md。
