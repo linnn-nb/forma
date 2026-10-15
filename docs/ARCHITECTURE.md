@@ -1,3 +1,5 @@
+2026-10-16 L1工程文件生命周期：Commands的projectPath/projectHash只记录实际装载/保存的外部文件上下文，不是第二工程/编辑模型。open绑定同一批解析字节；saveAs新建并重绑，saveCurrent版本复核后调用原save序列化；Save Copy不重绑，adopt新/恢复Edit清空绑定。ProjectFileStore只做非RT存储发布，通过一次同步L1 producer取图像；不持有Edit，不新增服务。合作非阻塞锁、独立旧版、私有暂存、fsync/原子替换/最终核验后才更新已知版本。SessionExit新增真实快照请求启动进度观察，未接到音频线程。实际资格、锁/同步限制与副作用语义见SAVE_WORKFLOW.md和VERIFICATION.md。
+
 2026-10-16 L5工程生命周期：requestTransition复用SessionExit/SessionExitPanel绑定一次本地动作，退出与用户Open共用L1保存/恢复及最终session/revision/UI/实际文件校验；Open另封定目标路径/内容hash。取消撤回generation，重复请求只展示原卡片，不替换回调或目标。GUI Open按钮/单工程拖入使用requestOpenSession，可信openSession只供新进程初始装载/已验证回调，后者仍调用同一L1 open。UI工作线程不持有Edit。新建面板可见时在既有5Hz计时器只更新服务进度和事实，不恢复全工程轮询重建。无新引擎/SDK/服务/权限；代码WorkspaceExit/WorkspaceRefresh/SessionExitPanel，实际资格见VERIFICATION.md。
 
 2026-10-16 录音生命周期：L1 RecordingCommands在停止态通过审计SDK入口排空InputDeviceInstance待处理的目的地状态，再打开原生捕获。原20Hz非RT检查实际目标上下文/Wave writer，丢失则走同一finish事务与failed回执；MIDI-only不依赖Wave writer。EditOrdering统一在Plan/Undo/Redo和录音完成/失败回滚前排空原生派生排序，不泵消息队列。原始录音文件保留；普通部分附件与Loop原子Playlist政策分开。MIDI分页/编辑复用L1内部MidiControllerFacts投影，身份遍历与页内JSON序列化分开，仍为原te::Edit事实。无新引擎/服务/IPC/Agent权限；18补丁46文件实际重放通过，数值和剩余RT缺口见VERIFICATION.md。

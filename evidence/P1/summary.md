@@ -1,3 +1,16 @@
+# P1 与普通保存当前证据（2026-10-16）
+
+9aa7eb5/2736942普通Save/另存/旧版与P1真实Save键；ca93b11确切作业启动取消、保存前置检查/完整性能span。当前按各套最新终态分批9/9、562项；原批8/9和后续4/4均保留，不是一次全仓全绿或完整产品。
+
+- ProjectSave64项：实际文件、旧版SHA/原历史/冷重开、跨目录WAV、外部修改、真实OS文件大小失败/重试、实际第二描述符合作锁和原生/自定义Save键。备份独立，自动保存不覆盖，但不是文件系统不可变或任意非合作写入保护；Windows/实体选择器/听评未验。
+- P1音频链路98项/13.44秒，原9秒输入/6 Take/15秒等待/120秒CTest保持。真实保存卡片重开后UndoRedo再CmdS写回当前路径，最终二次导出PCM差0；工程`build-v2-tracktion/P1-Production-Chain-8a94ce4390ab454387daf492651c36e6/P1-Production-Chain.tracktionedit`。
+- Open原轮询等saving在82项后失败、现场终态缺失；现真实capture作业已启动/busy才在同消息线程发送生产Escape，晚到写入不切换旧工程。Open当前96项，原取消按钮用例仍保留，五秒预算未放宽，不用当前通过证明所有旧超时因果。
+- 当前New34/Recovery31/PersistentHistory86/Legacy21/Exit52/Open96/Save64/P1 98/ProjectDocument80；JSON mtime及JUnit索引`build-v2-tracktion/project-save-current-results.json`。旧编译File空赋值/string-Json错误及New测试漏显式UI链接的真实失败保留，修复完整构建exit0后才测。
+- 独立stdlib核对真实旧版SHA/0700目录、两份保存重开WAV和P1前后WAV：48k双声道PCM24，48000/192000帧、完整data/Peak/RMS、P1 PCM逐字节相等，见project-save-independent-files.json，不是听评/True Peak独立测量。
+- 唯一App本地deep/strict通过，SHA256 efb278a8aef0819d877f3754bece9767867dc25dc4eed8a6d2da87cef2e67177，无新SDK/依赖/服务/包，非公证，用户现有进程未重启。保存后重启可用CmdS/CmdShiftS，旧版在当前目录.forma-backups；演示`build-v2-tracktion/ProjectSave-ad308f5bcaf84b2aa0ee84e8b9b2c86b/core/Current.tracktionedit`。GUI负例文件被故意损坏，不作为演示。操作/限制见docs/SAVE_WORKFLOW.md、docs/VERIFICATION.md。
+
+当前MIDI循环仍明确未实现/未资格，下一项回到此P1缺口；其余全局未完成项见docs/NEXT_STEPS.md及docs/BACKLOG.md。以下为历史范围。
+
 # P1 与工程切换当前证据（2026-10-16）
 
 当前cc3d37b/5f5ae2b用户Open保护、1be9c38原生窗口/实际卡片链路、70bea84新建面板进度修复；最终同批6/6套331项/30.19秒。New34、Recovery31、Legacy21、Exit52、Open99、ProductionChain94。不是完整产品或实体桌面/麦克风/听评资格。

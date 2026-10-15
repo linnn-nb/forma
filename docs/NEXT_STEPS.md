@@ -1,9 +1,9 @@
 # 下一步（2026-10-16）
 
-用户Open/工程拖入的真实保存保护已接通；旧新建面板的恢复进度卡死已修。当前同批6/6套331项、30.19秒，P1链路94项含真实原生窗口/保存卡片、原历史/快捷键和重开PCM差0。不是完整产品或实体制作资格。索引`build-v2-tracktion/session-open-current-results.json`，两批旧红保留。
+普通Save/Save As和独立旧版已接通，P1音频链路98项包含重开后实际CmdS写回与PCM差0。当前按各套最新终态分批9/9、562项，原批8/9红与后续4/4补验保留；不是完整产品。索引`build-v2-tracktion/project-save-current-results.json`。
 
-1. **下一项：普通Save与Save As分离。** 审查L1 save/publish和Workspace保存入口；持有实际工程路径/期望文件hash，写回前核对外改，原子发布并保留可恢复的旧版。未命名工程仍选择新路径，保存失败/外部冲突不得假报成功；保留完整原Undo与读取能力。用自有文件验证写回、冲突、真实写入故障、重开和实际音频，不能覆盖用户原媒体。
-2. Open/退出增量收口；每次仍确认、尚无精确脏状态跳过/丢弃入口。新建34、恢复31、Legacy21、退出52、Open99及P1 94项是本批范围；真实文件选择器/键鼠、实体录音/私有插件切换、30秒超时/强制终止仍待资格。勿重复桌面超时或同类CLI替代，用户主界面可操作反馈保留。
-3. 已修录音提前Stop/writer失效误报/Loop派生排序、MIDI分页和共享Warp取消的既有资格保留，不外推全部历史失败同因。旧KeyboardSettings前台/native peer、性能A15.84%超15%、分析超时、读取能力全量、长源/复杂路由/PDC/多设备/RT录音队列/耐久/Windows/视频/环绕/发行继续保留；M2/M3冻结，M4/M5暂缓，完整目标不缩减。
+1. **下一项回到P1：MIDI循环录音。** 当前`RecordingCommands.cpp::recordingReadiness`仍以loop_midi_pending拒绝MIDI/乐器循环。先核验锁定Tracktion的原生MIDI循环捕获、跨圈Note/CC时序和合并模式，明确非破坏Take/Playlist模型，再接到相同L1事务、原Undo/Redo、保存冷重开和注册快捷键；真实hosted输入与实体键盘资格分开，不移除拒绝条件冒充支持。随后再处理MIDI Punch等未验范围。
+2. 保存增量收口：当前版本复核/合作非阻塞锁、真实独立旧版、原子替换及GUI键已验；覆盖式另存、GUI播放中保存、精确脏状态/未保存标记/丢弃入口、备份浏览/保留策略、真实发布后同步失效/断电、任意非合作强竞争、Windows、私有插件/实体选择器/键鼠/听评仍待完成。旧Open saving轮询超时未捕获当时终态，不由新观察点通过外推全因果证明。
+3. 原录音/writer/Loop Undo、MIDI分页、共享Warp与项目能力保护的资格保留；其它历史失败不可一概归因。旧KeyboardSettings焦点、性能A15.84%超15%、分析超时、读取能力全量、长源/复杂路由/PDC/多设备/RT录音队列/耐久/视频/环绕/发行继续保留；M2/M3冻结，M4/M5暂缓，完整目标不缩减。
 
-唯一App仍为`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，固定本地验签非发行公证；未重启用户现有工程，无新DMG/tar/应用副本。CmdO后选工程即可看保存卡片；完整步骤和自有测试音工程见OPEN_SESSION_WORKFLOW.md。
+唯一App`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`本地deep/strict非发行公证；保存现有工程后重启，CmdS保存、CmdShiftS另存，旧版在当前工程目录.forma-backups。未重启用户现有进程，无新DMG/tar/应用副本。自有演示和具体步骤见SAVE_WORKFLOW.md、OPEN_SESSION_WORKFLOW.md。

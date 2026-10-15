@@ -1,3 +1,5 @@
+2026-10-16 Save/Save As：无新依赖/SDK字节/证书/服务；沿用实际18补丁46文件核对，本轮无新fresh replay。Release及所需目标构建exit0、本地deep/strict通过，非公证。分批9套562项；原批Open轮询红及后续四套补验均保留，不假称一次全绿或所有旧超时已证明根因。新CMake显式链接旧New测试的ndaw_ui依赖，避免源码头文件扫描漏WorkspaceWindow而不可复现链接。当前只在macOS实测普通写回/独立备份/OS写入故障/合作flock与跨目录PCM；Windows、掉电/发布后同步失败、任意忽略锁的强竞争、实体选择器/键鼠/私有插件仍未验。覆盖式另存、GUI播放中保存、脏状态与备份管理待完成；下一项MIDI循环录音（当前明确拒绝），旧性能/焦点/硬件/发行缺口保留。
+
 2026-10-16 Open保护：无新增依赖、SDK修改、授权或签名身份；现有18补丁46文件由CMake核对，本轮未另做fresh replay。唯一Release App本地deep/strict通过，非公证；最终6/6套331项，早两批New Session UI红项已由原5秒门槛的服务进度修复替代。可信初次装载与普通GUI Open入口分开，旧格式追加导入不破坏当前Edit。实体文件选择器/键鼠/麦克风听评、录音或私有插件切换、真实30秒超时/强制终止未验；旧键位焦点、性能A/分析超时/硬件/PDC/耐久/Windows/发行保留。下一项普通Save写回/冲突与备份；Open/Exit目前每次确认、无精确脏状态或丢弃入口。当前证据见VERIFICATION.md与OPEN_SESSION_WORKFLOW.md。以下为历史。
 
 2026-10-16 录音修复：无新增依赖版本、服务、授权或证书需求。Tracktion仍0d4d77c，JUCE仍8.0.13/37c894f；扩展既有recording-status补丁含InputDevice.h，18补丁/46源码fresh apply→逐字匹配→reverse已执行。Release/本地deep/strict通过，非公证。原生输入排队更新提前停止的复现路径已有调用栈并修复，原P1链路连续5次通过；不把全部历史短录音归同因。分批13套879项资格见VERIFICATION.md；原10套中MIDI分页红项已由保留原断言的3套补验替代。旧键位设置foreground/native peer、桌面读取/实体制作听评、SDK录音队列RT分配/锁、复杂设备/PDC/耐久、性能A/分析超时及Windows/发行仍保留。普通Open替换工程缺少保存/取消保护是下一项。以下历史阻塞按当前资格更新，不把旧绿色回执覆盖新失败。

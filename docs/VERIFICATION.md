@@ -1,3 +1,23 @@
+# 普通保存与另存为（2026-10-16）
+
+结论：9aa7eb5/2736942接通CmdS普通保存、CmdShiftS另存为和真实旧版备份；ca93b11补齐整次保存测量及快照作业启动观察。受影响按各套最新终态分批9/9、562项通过，P1音频链路98项已实际用CmdS写回当前工程；不是一次全仓全绿、实体输入/听评或完整产品资格。
+
+- L1 saveAs只创建不存在的新.tracktionedit并在成功后绑定路径/实际SHA；saveCurrent只写回当前绑定的已知文件版本。原save仍为不覆盖的Save Copy，不改变绑定，退出/恢复等调用语义不变。新建/恢复adopt清除旧绑定；open对同一批实际解析字节生成SHA，避免把加载后另一次路径读取误认作已加载版本。绑定是本地文件副作用上下文，不是第二工程事实/Undo；工程格式/能力Schema不变。
+- ProjectFileStore在非RT执行：前置文件/内容检查→同规范路径的非阻塞合作锁→私有暂存目录中调用原L1序列化→旧版独立写入.forma-backups并fsync/核验→保留POSIX权限→新文件fsync→最后版本复核→同文件系统原子rename→父目录fsync/新SHA核验。Windows分支用既有同类MoveFileExW/写入穿透调用，未执行。源音频不覆盖；备份不会被后续自动保存覆盖，不伪称文件系统不可变或防止用户另行编辑。重复完全相同的实际工程图像返回unchanged，不新增旧版或改文件。
+- 文件已删除/变成链接/版本不符、锁冲突、备份路径/序列化写盘失败均不得确认保存成功；已知版本只在完整成功后更新。发布后同步或校验若失败，目标可能已改变，旧版仍保留；报错提示核对/重开/另存，不宣称已回滚。备份暂不自动清理。合作锁与发布前哈希复核不等于操作系统内容CAS，未验证忽略锁的任意外部强竞争或掉电。
+- GUI实际入口：工具栏「保存」/CmdS对已命名工程写回，未命名时选择另存；文件菜单另存为/CmdShiftS用新路径并防止沿用旧会话的文件选择结果。新建面板的「另存」保持显式Save As。外改冲突显示真实失败，不改当前Edit、原历史或冲突文件。Save Current的完整区间另有save_current性能span，不把内部序列化时间冒充整次保存。录音/参数手势/设备准备在文件操作前拒绝。
+- ProjectSaveTests64项/当前3.30秒：真实PCM24源/文件、旧版SHA与实际重开、原UndoRedo、重复无变化保存、跨目录另存/后续写回、Save Copy不重绑、Save As拒绝已有文件、实际外部改写与生产中改写、真实OS文件大小写入故障及显式重试、实际第二文件描述符flock冲突（<500ms）、原生窗口默认/自定义Save键、冷重开键位及GUI失败。文件锁测试不是双Forma进程资格。UI侧使用生产命令管理器/真实文件结果，未操作原生文件选择器或实体键鼠。
+- 原P1音频9秒输入/6 Take/15秒等待/120秒CTest不变；加入重开UndoRedo之后实际Save键写回与绑定SHA断言，现98项/13.44秒，二次导出PCM最大差0。真实旧版/跨目录渲染48k双声道PCM24各48000帧，P1导出前后各192000帧；独立stdlib解码/完整data/SHA/Peak/RMS和P1 PCM逐字节相等通过，见project-save-independent-files.json。不是听评或True Peak独立复算。
+- 原批project-save-regression.xml实际8/9、84.74秒，Open在82项后的saving轮询等待失败，现场终态缺失，不能证明所有旧超时的根因。现SessionExit在真实capture请求启动后同步发出可选非RT进度通知；Open测试只在确认实际作业busy后，通过生产Escape入口取消，仍核对旧会话/片段及晚到回执，原五秒时限未改。新Open96项（减少轮询后的取消按钮通知四项，新增确切启动/Escape观察一项），原取消按钮场景仍保留；不接受未启动作业或空回执作成功。ca93b11后Open/Exit/Save/P1四套4/4、23.64秒。旧红日志保留，不能称原9套一次全绿或旧超时已全部归因。
+- 各套当前计数：New34、Recovery31、PersistentHistory86、Legacy21、Exit52、Open96、Save64、P1链路98、ProjectDocument80。索引project-save-current-results.json记录每项JUnit/JSON/mtime新鲜度和实际批次；计数不取截断system-out。早期编译的File空赋值、测试string/Json比较失败已修；回归重新CMake配置发现旧New测试改用WorkspaceWindow后漏ndaw_ui链接，已显式链接，所有所需目标实际构建exit0后才测。旧静态库重复链接警告保留。
+- 唯一App本地deep/strict通过，SHA256 efb278a8aef0819d877f3754bece9767867dc25dc4eed8a6d2da87cef2e67177；非发行公证。无新增依赖、SDK字节、签名身份、服务或IPC，无新DMG/tar/应用副本，未重启用户运行中工程。Tracktion/JUCE pin不变，CMake沿用18补丁46文件核对，本轮未另做fresh replay。
+
+亲手试：保存现有工程并重启唯一App，打开`build-v2-tracktion/ProjectSave-ad308f5bcaf84b2aa0ee84e8b9b2c86b/core/Current.tracktionedit`或P1 `build-v2-tracktion/P1-Production-Chain-8a94ce4390ab454387daf492651c36e6/P1-Production-Chain.tracktionedit`；改推子再CmdS，旧版在同目录.forma-backups；CmdShiftS选新名字后，之后CmdS只写新路径。备份可用系统显示隐藏文件/前往文件夹访问并作为工程打开，不是音频素材包。GUI负例夹具的GUI-current.tracktionedit被故意写成损坏XML，不作为演示工程。步骤/边界见SAVE_WORKFLOW.md。
+
+增量收口，下一项回到P1的MIDI循环录音；RecordingCommands::recordingReadiness仍明确loop_midi_pending，未冒充支持。当前还有带明确确认的覆盖式另存、GUI播放中保存、未保存标记/精确脏状态跳过、备份浏览与保留策略、真实录音/私有插件/选择器/键鼠/听评、发布后真实同步失败/断电、多进程强竞争、Windows未验；旧键位焦点、性能A/分析超时/读取能力全量/长源/PDC/耐久/视频/环绕/发行缺口保留，M2/M3冻结、M4/M5暂缓。
+
+以下为历史验证，以本节最新范围为准。
+
 # 打开工程前的真实保存与取消保护（2026-10-16）
 
 结论：cc3d37b/5f5ae2b接通用户Open与工程文件拖入的保存卡片，1be9c38把原P1制作链路接到真实原生窗口和卡片按钮；70bea84修复新建工程面板遗漏恢复进度更新。最终6/6套331项、30.19秒通过，其中Open专项99项、完整链路94项。不是全仓、实体桌面/麦克风/听评或完整产品资格。

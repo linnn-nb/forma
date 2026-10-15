@@ -4,6 +4,7 @@
 - 当前工程任务与资格以 docs/NEXT_STEPS.md、docs/VERIFICATION.md 和 evidence/P3/summary.md 为准；处理源/共享自动化/关联迁移仍按实际测过的场景开放，不推断完整产品或全部插件资格。
 - 按当前P级清单推进；M2/M3冻结，M4/M5暂缓，AI入口不占据制作主界面。同项两轮边界工作即收口进BACKLOG。
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
+- Save Copy不重绑路径；Save As/打开成功才绑定实际文件字节版本，普通Save先核对并保留独立旧版。文件写入不伪称工程Undo，失败不能沿用旧成功回执。
 - 新增持久音频/编辑语义须登记工程读取能力；保存覆盖当前/非活动/Undo/Redo，禁止靠旧读者忽略的字段防误读。实际格式与迁移规则见 docs/PROJECT_FORMAT.md。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。
 - 每个Plan一个UndoManager事务；actor/revision/幂等/权限/预览/回执保留。旁路人工参数变化由L1捕获。
@@ -27,6 +28,7 @@
 - 不伪造波形、电平、播放、模型结果或完成回执；测试源、真实麦克风、硬件端口与用户听评资格分开。
 - 桌面超时不推断锁屏或应用退出；按名称Forma刷新绑定可恢复观察。继续独立工作，不反复堆CLI替代GUI证据。
 - 只复用build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app；不复制预览应用。历史预览路径不保证存在，本地签名不代表发行公证。
+- 新GUI测试显式链接ndaw_ui；修改头文件入口后先重新CMake配置验证，不依赖仅匹配Workspace.h的旧扫描。
 - 每个可构建步骤提交Git；先确认构建exit0，再运行受影响测试。保存失败日志，旧成功JSON不能覆盖当前CTest失败。
 - 每级只保留evidence/<级别>/summary.md和关键输出/截图；中间输出在忽略build。里程碑验收才打DMG，不制造源码tar包。
 - 付费、上传音频、系统安全修改、覆盖用户原媒体须授权；提交/推送现有公开仓库已授权。有效源媒体不得覆盖。
