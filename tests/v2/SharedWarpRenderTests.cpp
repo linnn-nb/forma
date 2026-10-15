@@ -205,19 +205,22 @@ void scenario(const juce::File& root, bool cancel)
     std::unique_ptr<Gates> gates;
     if (cancel)
         gates = std::make_unique<Gates>(engine);
-    for (const auto& id : ids)
+    for (size_t n = 0; n < ids.size(); ++n)
     {
+        const auto& id = ids[n];
         auto anchors = c.warpClip(id)["anchors"];
         anchors.insert(
             anchors.begin() + 1,
             Json{{"id", "warp:" + id + ":middle"}, {"source_time_seconds", 8}, {"clip_time_samples", 345600}});
+        if (n == 1)
+            anchors[1]["source_time_seconds"] = 8.;
         run(c, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", anchors}});
     }
     auto& a = RecordingTestAccess::clip(c, ids[0]);
     auto& b = RecordingTestAccess::clip(c, ids[1]);
     const auto expected = te::RenderManager::getAudioFileForHash(
         engine, RecordingTestAccess::edit(c).getTempDirectory(false), a.getHash());
-    check(a.getHash() == b.getHash(), "identical source and Warp map share native render hash");
+    check(a.getHash() == b.getHash(), "integer and float seconds for identical source maps share native render hash");
     const auto bothWarp = c.query()["tracks"];
     if (cancel)
     {

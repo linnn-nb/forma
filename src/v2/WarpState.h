@@ -25,7 +25,7 @@ inline std::string renderHash(const Json& anchors, const std::string& media)
 {
     Json mapping = Json::array();
     for (const auto& a : anchors)
-        mapping.push_back(Json::array({a["source_time_seconds"], a["clip_time_samples"]}));
+        mapping.push_back(Json::array({a["source_time_seconds"].get<double>(), a["clip_time_samples"].get<int64_t>()}));
     const auto descriptor = Json{
         {"algorithm", "SoundTouch 2.1pre / Better / Warp float32 v1"},
         {"media_hash", media},

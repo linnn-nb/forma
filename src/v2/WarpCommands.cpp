@@ -24,14 +24,7 @@ Json point(const std::string& id, double source, int64_t output)
 }
 std::string renderHash(const Json& anchors, const std::string& media)
 {
-    Json mapping = Json::array();
-    for (const auto& anchor : anchors)
-        mapping.push_back(Json::array({anchor["source_time_seconds"], anchor["clip_time_samples"]}));
-    const auto descriptor = Json{
-        {"algorithm", "SoundTouch 2.1pre / Better / Warp float32 v1"},
-        {"media_hash", media},
-        {"mapping", mapping}}.dump();
-    return juce::SHA256(descriptor.data(), descriptor.size()).toHexString().toStdString();
+    return warp_state::renderHash(anchors, media);
 }
 } // namespace
 void validateWarpEdit(te::Edit& edit)
