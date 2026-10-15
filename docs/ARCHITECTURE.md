@@ -1,3 +1,5 @@
+2026-10-15 工程格式增量：L1 ProjectDocument 只封装同一原生 Edit，不引入第二工程。特殊处理能力由当前/非活动树和未打包增量历史保守推导，FORMA_PROJECT v1 根确保已有 EDIT-only 读者明确拒绝；简单工程保持原生根。内容 hash、必需能力/版本、历史闭包均先于新 Edit 初始化校验；恢复共享编码，原历史 codec/Undo/稳定身份保持。纯 XML/ValueTree/文件工作不进入实时路径，未增加 SDK/服务/依赖。协议、旧读者实际证据和限制见 PROJECT_FORMAT.md。
+
 2026-10-15 处理源/关联迁移增量：仍由 L1/message thread 冻结源曲线和原生处理窗口，一 Plan/UndoManager 迁移原 Clip/Playlist/Comp 身份。RelocationAutomation 仅在原生端点与声明样本精确相等时用整数 sampleDelta 合并共享区间，音乐和分数采样映射保持原精确校验；合并保留成员集合，排除自碰撞。Clip FX 纳入有状态尾随准备，不改变实际 DSP 或实时回调。
 
 Warp 准备的恢复票据仅在 Commands 运行时存在：会话 token＋活动 Clip ID＋原生处理 hash，每种状态最多一次；只在停止态、原媒体/映射有效、前作业退出后调用原生 markAsDirty/updateSourceFile。第二次失败保持真实 failed，读取轮询不能无限重试；实际可读缓存仍是播放/录音/导出的前提。票据按活动对象清理，不进入工程事实/Undo；没有新增引擎、服务、SDK 补丁或推理/IPC 路径。初始失败调用链尚未证明，不能宣称根因已解决。资格见 LINKED_COMP_RELOCATION.md 与 P3 证据。

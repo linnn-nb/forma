@@ -4,6 +4,7 @@
 - 当前工程任务与资格以 docs/NEXT_STEPS.md、docs/VERIFICATION.md 和 evidence/P3/summary.md 为准；处理源/共享自动化/关联迁移仍按实际测过的场景开放，不推断完整产品或全部插件资格。
 - 按当前P级清单推进；M2/M3冻结，M4/M5暂缓，AI入口不占据制作主界面。同项两轮边界工作即收口进BACKLOG。
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
+- 新增持久音频/编辑语义须登记工程读取能力；保存覆盖当前/非活动/Undo/Redo，禁止靠旧读者忽略的字段防误读。实际格式与迁移规则见 docs/PROJECT_FORMAT.md。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。
 - 每个Plan一个UndoManager事务；actor/revision/幂等/权限/预览/回执保留。旁路人工参数变化由L1捕获。
 - GUI只读facts并建草稿，src/v2/ui使用原生组件和ApplicationCommandManager。新代码遵守.clang-format（120列）。

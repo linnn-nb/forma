@@ -1,3 +1,27 @@
+# 工程读取能力与旧读者保护（2026-10-15）
+
+**本轮整体未通过：77套按最新终态72通过、5未通过。** 初始55/77，Scrub1/1，夹具修复16/22，局部再测0/2，真实Nudge控件复测1/1。只取各套最新结果，旧JSON不能覆盖失败；完整索引 build-v2-tracktion/p3-project-document-current-results.json，五批JUnit及失败日志均保留。并非全套一次通过，也不是完整产品。
+
+工程格式专项80项/8.72秒、完整WAV差0≤2e-6。L1按当前/非活动/原UndoRedo声明七类读取能力，特殊工程使用带SHA的FORMA_PROJECT封装，简单工程保留EDIT。冷重开、原历史、九种拒绝且当前revision/历史不变、随后原Redo/Undo和真实L1恢复来源已验。旧生产CLI60e7017四例中简单成功、三个保护文件明确拒绝；当前CLI四例全部成功，未保存重复旧应用。旧工程另存不改原文件。协议/代码/边界见 [PROJECT_FORMAT](../../docs/PROJECT_FORMAT.md)。
+
+| 当前未通过套件 | 实际结果（原预算不变） |
+| --- | --- |
+| forma_native_automation_shuffle | 曲线0.75，PCM差0.0291538＞2e-5 |
+| forma_native_automation_move | 180.03秒，原180秒超时 |
+| forma_native_musical_shuffle | 103.61秒，Delete计划/预览断言失败 |
+| forma_native_shared_clock | 226.42秒，时间线快捷键分发失败 |
+| forma_native_object_shuffle | 300.04秒，原300秒超时 |
+
+外改正向导入夹具明确去掉失效现代历史，现代损坏文件仍拒绝；GUI Open须换会话，禁止沿用旧Edit假通过。两个初始载入失败、后续数字/声音/焦点失败和超时分开保留。MIDITiming通过真实Nudge组件/500ms实际通知回执后324项通过，原五单位/1e-11拍/64帧起音预算和原Undo/重开/键路由不变；不以直接私写UI后的短等待冒充原生控件。P1完整制作链路91项、PCM差0仍为受控双通道输入资格，非真实麦克风/听评。
+
+初次连续I/O失败之后局部复测可写，根因未证明；约11GiB可用不是磁盘满证据。收据索引校验CTest终态、新鲜JSON及SHA；两份旧协议JSON使用明确failures=0，失败项不计其旧checks。格式专项早先JSON数组构造/恢复字段遗漏、engine-only helper头路径错误、旧外改夹具和native Open未核验、编辑脚本以5处Open匹配实际4处的保护断言均留记录，没有放宽生产历史/数值/时限。
+
+生产实现67652ce，CLI60e7017；后续a0016b9/a6393de/0a3ef6b/9a1452c/3c98922/70cd45a修测试与真实控件路径。应用和67目标构建exit0后测试，局部目标逐次构建exit0再测，无生产RT/SDK改动。18补丁/44文件已fresh apply/精确比对/reverse；固定本地签名deep/strict通过，非发行公证。唯一应用 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，可执行SHA256 `730b6c5478f3702a35a9adf9bf4a734620710bf95bb6244a3d9353f37ad31cfa`；没有新DMG或应用副本。
+
+可亲手打开保护工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-ProjectDocument-0cfe410ae4134a5dab0eb2d7f0f5d382/Processed.tracktionedit`，执行CmdZ/CmdShiftZ、另存新文件后重开；P1工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-1deb990fcec744348e65f61bc8323b30/P1-Production-Chain.tracktionedit`。实体自动操作本轮只取得Before-Restart保存和恢复查询证据：Warp Comp/2片段/9历史；用户确认主界面可操作，后续CUA读取超时。保护工程实体保存/Undo/试听尚未验，不能称锁屏，也不能把MCP查询当实体GUI证明。
+
+下一项先修自动化Shuffle声音、音乐Delete和shared-clock键路由，再解决180/300秒矩阵。七类以外能力版本、原性能A/分析超时、真实硬件/听评/长源/耐久/Windows/视频/环绕/发行等保留；M2/M3冻结、M4/M5暂缓。以下为历史资格。
+
 # 处理源、自动化与关联 Comp 迁移（2026-10-15）
 
 **40 套受影响测试按各自最新终态通过，11869 次断言；3/3、36/37、1/1 三批合计 643.57 秒，不是一次全绿。P1 完整制作链路 91 项、重开导出 PCM 差 0。** 先确认 Release 应用和30个测试目标构建 exit0；37项批次中的旧 WarpMix 断言仍要求拆分拒绝，与已有完整处理窗口拆分相冲突。55b3e79 将它替换为实际新 Clip/精确相邻窗口/完整 WAV/原 UndoRedo，单目标重建 exit0、83项复测通过；拆分与重做 PCM 差0。其它39套不重复跑、不累计旧断言。三批 JUnit 和 fresh JSON 按每套最新终态核对；完整结果/格式/SHA 索引为本地 `build-v2-tracktion/p3-linked-comp-current-results.json`。

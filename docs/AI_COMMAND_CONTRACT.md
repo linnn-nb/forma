@@ -1,3 +1,5 @@
+2026-10-15：本地 L1 save 回执新增 protected_format 和 required_capabilities，来自当前原生 Edit、非活动对象及完整保留历史的实际能力闭包；它们不是 Agent 权限或音频验证回执。Open 在构造新 Edit 前校验封装、内容 SHA、能力版本及历史覆盖，不支持时拒绝接管。恢复快照继续 undo_restored=false，不假称恢复原 Undo。未新增 MCP 工具或绕过人工确认；ndaw inspect PROJECT 复用同一 L1 只读载入路径。代码/边界/测试见 PROJECT_FORMAT.md 与 VERIFICATION.md。
+
 2026-10-15 关联处理源增量不增加 Agent 权限或命令。clips.relocate 仍为停止态独立 Plan，Scope/版本/来源 hash/幂等/原 Undo 契约保持。声明采样位移的共享曲线区间只在精确匹配原生端点时合并，不用容差覆盖不确定映射；Clip FX 后续曲线仍显示在变更范围内。
 
 本地 playbackPreparation 返回真实 busy/items，并新增 source_recovery_attempts；失败项给出 source_recovery_attempted。它们是原生源缓存准备票据，不是编辑或完成回执；最多一次恢复后仍不可读则 failed，未经实际缓存验证不能显示播放/导出成功。未新增 MCP 工具，未改变外部确认策略。
