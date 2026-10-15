@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
-index c0675a3..4268ce4 100644
+index c0675a3..795fc3c 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
 @@ -190,6 +190,14 @@ bool InputDeviceInstance::isLivePlayEnabled (const Track& t) const
@@ -33,7 +33,7 @@ index c0675a3..4268ce4 100644
 +void InputDeviceInstance::flushPendingRecordingStatus()
 +{
 +    TRACKTION_ASSERT_MESSAGE_THREAD
-+    jassert (! context.transport.isRecording());
++    jassert (! context.transport.isPlaying() && ! context.transport.isRecording());
 +    recordStatusUpdater.handleUpdateNowIfNeeded();
 +}
 +
@@ -56,7 +56,7 @@ index b10abc6..e348c7d 100644
      //==============================================================================
      /** @internal */
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
-index 55cefed..1d7f567 100644
+index 55cefed..9f32d0c 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 @@ -39,7 +39,10 @@ public:
@@ -128,14 +128,16 @@ index 55cefed..1d7f567 100644
              std::scoped_lock sl (fileWriterLock);
  
              if (fileWriter != nullptr)
-@@ -746,6 +767,17 @@ public:
+@@ -746,6 +767,20 @@ public:
  
              if (extractedFileWriter)
                  engine.getWaveInputRecordingThread().waitForWriterToFinish (*extractedFileWriter);
 +
-+            // Bounded diagnostic on the message thread after the input context
-+            // is closed. No formatting, logging or new lock in the audio callback.
-+            juce::Logger::writeToLog ("FORMA_RECORD_CLOSE target=" + targetID.toString()
++            // Opt-in, bounded diagnostic after close; never format or log in the audio callback.
++            if (juce::SystemStats::getEnvironmentVariable ("FORMA_RECORD_TRACE", "") == "1")
++            {
++                extractedFileWriter.reset();
++                juce::Logger::writeToLog ("FORMA_RECORD_CLOSE target=" + targetID.toString()
 +                + " observed=" + juce::String (observedSamples) + " overlap=" + juce::String (overlapSamples)
 +                + " captured=" + juce::String (capturedSamples) + " dropped_adjust=" + juce::String (droppedAdjustmentSamples)
 +                + " initial_adjust=" + juce::String (initialAdjustmentSamples)
@@ -143,10 +145,11 @@ index 55cefed..1d7f567 100644
 +                + " range_start=" + juce::String (recordingBlockRange.getStart().inSeconds(), 9)
 +                + " range_end=" + juce::String (recordingBlockRange.getEnd().inSeconds(), 9)
 +                + " queue_exit=" + juce::String (int (engine.getWaveInputRecordingThread().threadShouldExit())));
++            }
          }
      };
  
-@@ -787,8 +819,12 @@ public:
+@@ -787,8 +822,12 @@ public:
  
          // Never loop or punch record to slots
          const bool isClipSlot = dynamic_cast<ClipSlot*> (clipOwner) != nullptr;
@@ -161,7 +164,7 @@ index 55cefed..1d7f567 100644
  
          return applyLastRecording (*rc, recordedFile, *clipOwner,
                                     { rc->punchTimes.getStart(), unloopedEndTime },
-@@ -807,13 +843,14 @@ public:
+@@ -807,13 +846,14 @@ public:
  
          auto recordedFileLength = TimeDuration::fromSeconds (recordedFile.getLength());
  
@@ -178,7 +181,7 @@ index 55cefed..1d7f567 100644
          {
              CRASH_TRACER
              juce::String s;
-@@ -1243,11 +1280,16 @@ public:
+@@ -1243,11 +1283,16 @@ public:
              for (auto& recordingContext : recordingContexts)
              {
                  const TimeRange blockRange (blockStart, TimeDuration::fromSamples (numSamples, recordingContext->sampleRate));
@@ -195,7 +198,7 @@ index 55cefed..1d7f567 100644
                      if (! recordingContext->hasHitThreshold)
                      {
                          auto bufferLevelDb = gainToDb (inputBuffer.getMagnitude (0, numSamples));
-@@ -1268,6 +1310,7 @@ public:
+@@ -1268,6 +1313,7 @@ public:
  
                          auto timeDiff = blockRange.getStart() - recordingContext->recordingBlockRange.getStart();
                          recordingContext->adjustSamples -= (int) tracktion::toSamples (timeDiff, recordingContext->sampleRate);
@@ -203,7 +206,7 @@ index 55cefed..1d7f567 100644
                      }
  
                      const int adjustSamples = recordingContext->adjustSamples;
-@@ -1286,10 +1329,12 @@ public:
+@@ -1286,10 +1332,12 @@ public:
                          // drop samples
                          if (adjustSamples >= numSamples)
                          {
@@ -216,7 +219,7 @@ index 55cefed..1d7f567 100644
                              recordingContext->addBlockToRecord (inputBuffer, adjustSamples, numSamples - adjustSamples);
                              recordingContext->adjustSamples = 0;
                          }
-@@ -2065,6 +2110,9 @@ void WaveInputRecordingThread::run()
+@@ -2065,6 +2113,9 @@ void WaveInputRecordingThread::run()
  void WaveInputRecordingThread::timerCallback()
  {
      stopTimer();

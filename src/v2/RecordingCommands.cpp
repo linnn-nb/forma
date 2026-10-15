@@ -447,12 +447,21 @@ Json Commands::record(const juce::File& directory)
         throw;
     }
     bool success = edit->getTransport().isRecording();
+    bool hasWaveTarget = false;
     for (const auto& target : targets)
     {
         auto* t = track(target);
         auto q = recordingQuery(*t);
+        hasWaveTarget |= q["kind"] == "audio";
         success &=
             q["recording"].get<bool>() && (q["kind"] == "midi" || !q["recording_file"].get<std::string>().empty());
+    }
+    if (hasWaveTarget && (!engine.getWaveInputRecordingThread().isThreadRunning() ||
+                          engine.getWaveInputRecordingThread().threadShouldExit()))
+    {
+        success = false;
+        recordingCapture["failure_code"] = "writer_unavailable";
+        recordingError = "音频写盘线程不可用；录音未安全开始，文件可能不完整";
     }
     if (!success)
     {
@@ -503,6 +512,7 @@ void Commands::timerCallback()
         fail("clock_unavailable", "Audio device stopped during recording; files may be partial");
         return;
     }
+    bool hasWaveTarget = false;
     for (const auto& target : recordingCapture["targets"])
     {
         auto* t = track(target);
@@ -511,6 +521,20 @@ void Commands::timerCallback()
             fail("input_unavailable", "Armed input disappeared during recording; files may be partial");
             return;
         }
+        const auto input = recordingQuery(*t);
+        hasWaveTarget |= input["kind"] == "audio";
+        if (!input["recording"].get<bool>() ||
+            (input["kind"] == "audio" && input["recording_file"].get<std::string>().empty()))
+        {
+            fail("recording_target_lost", "录音输入上下文已停止；已保留可能不完整的文件");
+            return;
+        }
+    }
+    if (hasWaveTarget && (!engine.getWaveInputRecordingThread().isThreadRunning() ||
+                          engine.getWaveInputRecordingThread().threadShouldExit()))
+    {
+        fail("writer_unavailable", "音频录音写盘线程已停止；录音文件可能不完整，已停止录音");
+        return;
     }
     const auto frames = outputProbe ? outputProbe->frames.load(std::memory_order_relaxed) : 0;
     const auto now = juce::Time::getMillisecondCounterHiRes();

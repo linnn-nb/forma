@@ -165,9 +165,10 @@ void scenario(const juce::File& folder, bool loop)
                   << Json{{"active", c.query()["recording_capture"]}, {"last", c.query()["last_recording"]}}.dump()
                   << std::endl;
     check(writer.isThreadRunning(), "actual native recording writer is running before fault");
-    const auto stoppedAt = juce::Time::getMillisecondCounterHiRes();
+    const auto injectionAt = juce::Time::getMillisecondCounterHiRes();
     // Real thread fault injection, not a replacement writer or fake success result.
     check(writer.stopThread(1000), "actual recording disk thread stops within fixed 1 second injection bound");
+    const auto stoppedAt = juce::Time::getMillisecondCounterHiRes();
     const auto stoppedFrame = feed.frames.load();
     try
     {
@@ -205,6 +206,12 @@ void scenario(const juce::File& folder, bool loop)
     }
     if (!loop && !failed["clips"].empty())
     {
+        stopTrace.reset();
+        const auto attached = c.query()["tracks"];
+        const auto failedSession = folder.getChildFile("Failed-Partial.tracktionedit");
+        c.save(failedSession);
+        c.open(failedSession);
+        check(c.query()["tracks"] == attached, "explicit partial failed attachment survives actual save/reopen");
         c.undo(failed["plan_id"]);
         check(c.query()["tracks"] == before, "normal partial failed attachment has one original Undo");
         c.redo();
@@ -242,6 +249,7 @@ void scenario(const juce::File& folder, bool loop)
                   f["sha256"].get<std::string>(),
               "subsequent recording and history do not overwrite retained failed source media");
     measurements.push_back({{"mode", loop ? "loop" : "normal"},
+                            {"injection_ms", stoppedAt - injectionAt},
                             {"fault_to_receipt_ms", response},
                             {"failed", failed},
                             {"recovered", good},
