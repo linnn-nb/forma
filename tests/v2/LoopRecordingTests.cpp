@@ -212,9 +212,9 @@ int main(int argc, char** argv)
         const auto originalPlaylistsA = c.query()["tracks"][0]["playlists"];
         const auto originalPlaylistsB = c.query()["tracks"][1]["playlists"];
         const std::string a = c.query()["tracks"][0]["id"];
-        run(c, Json::array({op("session.range.set", {{"start_samples", 37}, {"end_samples", 24037}}),
+        run(c, Json::array({op("session.range.set", {{"start_samples", 37}, {"end_samples", 293}}),
                             op("transport.loop.set", {{"enabled", true}})}));
-        rejects([&] { c.record(folder); }, "subsecond loop playback range is rejected for recording");
+        rejects([&] { c.record(folder); }, "loop no longer than the actual 256-frame buffer is rejected for recording");
         constexpr int64_t start = 37, length = 96037;
         run(c, Json::array({op("session.range.set", {{"start_samples", start}, {"end_samples", start + length}}),
                             op("transport.loop.set", {{"enabled", true}})}));

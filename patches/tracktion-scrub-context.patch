@@ -122,7 +122,7 @@ index a852ebf..1430f7b 100644
      std::function<std::unique_ptr<graph::Node> (OutputDevice&,
                                                  const CreateNodeParams&,
 diff --git a/modules/tracktion_engine/playback/tracktion_TransportControl.cpp b/modules/tracktion_engine/playback/tracktion_TransportControl.cpp
-index 1c5ff24..e20a30f 100644
+index 1c5ff24..ddace7c 100644
 --- a/modules/tracktion_engine/playback/tracktion_TransportControl.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_TransportControl.cpp
 @@ -848,6 +848,22 @@ void TransportControl::ensureContextAllocated (bool alwaysReallocate)
@@ -148,6 +148,27 @@ index 1c5ff24..e20a30f 100644
  void TransportControl::freePlaybackContext()
  {
      playbackContext.reset();
+@@ -1462,9 +1478,18 @@ std::optional<std::pair<SyncPoint, std::optional<TimeRange>>> TransportControl::
+ 
+                 if (looping)
+                 {
+-                    if (loopRange.getLength() < 2s)
++                    // Host continuous Take recording can use shorter musical
++                    // ranges. Keep the upstream policy for other applications;
++                    // a host range must still exceed one device processing block.
++                    const bool hostLoopTakes = bool (edit.state.getProperty ("preserveLoopRecordingSource", false));
++                    const auto& dm = engine.getDeviceManager();
++                    const auto loopFrames = toSamples (loopRange, dm.getSampleRate()).getLength();
++                    if (hostLoopTakes ? loopFrames <= std::max (50, dm.getBlockSize())
++                                      : loopRange.getLength() < 2s)
+                     {
+-                        engine.getUIBehaviour().showWarningMessage (TRANS("To record in loop mode, the length of loop must be greater than 2 seconds."));
++                        engine.getUIBehaviour().showWarningMessage (hostLoopTakes
++                            ? TRANS("Loop recording must exceed one audio buffer and 50 device samples.")
++                            : TRANS("To record in loop mode, the length of loop must be greater than 2 seconds."));
+                         return std::nullopt;
+                     }
+ 
 diff --git a/modules/tracktion_engine/playback/tracktion_TransportControl.h b/modules/tracktion_engine/playback/tracktion_TransportControl.h
 index fc2e289..b1c6145 100644
 --- a/modules/tracktion_engine/playback/tracktion_TransportControl.h

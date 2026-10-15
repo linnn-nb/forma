@@ -1,3 +1,5 @@
+2026-10-16 P1-SHORTLOOP-01 预声明预算（尚未通过）：48k/256帧、混合Instrument+Audio同一次真实hosted捕获。测试125ms(6000采样)、500ms(24000采样)，另测128/512ms的设备块对齐圈末NoteOff；每次至少4完整圈+尾圈、上限32圈。保留原256帧输入时间预算；已对齐边界/raw帧与Take端点按1帧核对；UI5秒、捕获15秒、渲染10秒、CTest120秒不变。原生图每块最多一次折返、初始loop需>50设备样本，因此录音范围须严格长于实际设备缓冲且>50设备样本，负例覆盖等于/小于缓冲，不能用静默关循环代替拒绝。空圈应保留为真实空MIDI Take；无输入整次no_events与混合音频捕获分开。实际资格以VERIFICATION.md为准，本段不是成功声明。
+
 # MIDI 循环录音（2026-10-16）
 
 MIDI / Instrument 轨复用 Tracktion 原生循环录音器。停止后，每圈成为独立、可编辑的 MIDI Take Playlist；原 Main 保留。当前仍是 P1 增量，MIDI Playlist 锁定、Comp、Promote、MIDI Punch 未完成。

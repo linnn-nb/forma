@@ -145,9 +145,30 @@ Json Commands::recordingReadiness() const
         {
             block("punch_setup", error.what());
         }
-    if (loop && (!metadata.getProperty("loop_range_configured", false) ||
-                 edit->getTransport().getLoopRange().getLength().inSeconds() < 2.0))
-        block("loop_range", "Loop recording requires a saved range of at least two seconds");
+    Json loopConstraints = nullptr;
+    if (loop)
+    {
+        if (!metadata.getProperty("loop_range_configured", false))
+            block("loop_range", "Choose a saved loop range before recording");
+        if (running)
+        {
+            const auto rate = clock->getCurrentSampleRate();
+            const auto frames = tracktion::toSamples(edit->getTransport().getLoopRange(), rate).getLength();
+            // The native PlayHead represents at most one wrap per processing
+            // block and initially disables loops of 50 device samples or less.
+            const auto minimum = std::max(51, clock->getCurrentBufferSizeSamples() + 1);
+            loopConstraints = {{"device_sample_rate", rate},
+                               {"buffer_frames", clock->getCurrentBufferSizeSamples()},
+                               {"range_device_frames", frames},
+                               {"minimum_device_frames", minimum}};
+            if (frames < minimum)
+            {
+                const auto message =
+                    "Loop recording needs at least " + std::to_string(minimum) + " device samples with this buffer";
+                block("loop_range", message.c_str());
+            }
+        }
+    }
     for (auto* target : te::getAllTracks(*edit))
     {
         if (target->automationMode != te::AutomationMode::read)
@@ -175,10 +196,15 @@ Json Commands::recordingReadiness() const
     }
     if (armed == 0)
         block("no_armed_tracks", "Choose an input and arm at least one track");
-    return {{"ready", total == 0},      {"clock_running", running},
-            {"armed_tracks", armed},    {"available_armed_tracks", available},
-            {"blockers", blockers},     {"blockers_total", total},
-            {"disk_check", "on_start"}, {"processing_stall_budget_ms", recordingStallBudgetMs}};
+    return {{"ready", total == 0},
+            {"clock_running", running},
+            {"armed_tracks", armed},
+            {"available_armed_tracks", available},
+            {"blockers", blockers},
+            {"blockers_total", total},
+            {"disk_check", "on_start"},
+            {"processing_stall_budget_ms", recordingStallBudgetMs},
+            {"loop_capture_constraints", loopConstraints}};
 }
 void Commands::validateRecordingPlan(const Json& ops) const
 {

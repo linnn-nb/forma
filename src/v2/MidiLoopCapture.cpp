@@ -121,7 +121,7 @@ void Commands::makeMidiLoopPlaylists(te::AudioTrack& track, te::MidiClip& record
     const auto start = receipt["loop_range"]["start_samples"].get<int64_t>(),
                end = receipt["loop_range"]["end_samples"].get<int64_t>();
     const auto loopLength = end - start;
-    require(loopLength >= 2 * timelineRate, "invalid MIDI loop length");
+    require(loopLength > 0, "invalid MIDI loop length");
     const auto sourceID = "midi:" + receipt["plan_id"].get<std::string>() + ":" + track.itemID.toString().toStdString();
     source.setProperty("source_id", juce::String(sourceID), nullptr);
     source.setProperty("device_id", juce::String(recordingQuery(track)["device"].get<std::string>()), nullptr);

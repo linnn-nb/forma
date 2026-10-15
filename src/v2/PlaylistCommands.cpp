@@ -176,7 +176,7 @@ void Commands::makeLoopPlaylists(te::AudioTrack& track, te::WaveAudioClip& recor
     const auto sourcePath = recording.getOriginalFile().getFullPathName().toStdString();
     const auto sourceOffset = int64_t(std::llround(position.getOffset().inSeconds() * timelineRate));
     const auto total = int64_t(std::llround(position.getLength().inSeconds() * timelineRate));
-    require(length >= 2 * timelineRate && total > 0, "invalid recorded loop extent");
+    require(length > 0 && total > 0, "invalid recorded loop extent");
     const auto passes = (total + length - 1) / length;
     require(passes <= 4096, "recording exceeds 4096-pass Playlist budget; continuous file retained");
     auto& undo = edit->getUndoManager();
