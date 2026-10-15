@@ -1,3 +1,5 @@
+2026-10-16 正常退出保护：无新增依赖、SDK变更、证书或授权需求；本地deep/strict通过，非发行公证。当前4套226项通过，但前批Loop Take失败（2048/2304帧原WAV）根因未明，保留为可靠性阻断；新增诊断，原负载最新重放通过不等于修复。快捷键foreground/native peer失败仍在，普通应用身份无效，已收口；桌面cgWindowNotFound不推断锁屏/崩溃。退出每次确认/Save仅另存、真实录音/插件/桌面选择器退出、30秒超时分支、Windows/发行及其它旧差距保持未完成。当前证据见VERIFICATION.md，以下为历史。
+
 2026-10-16 共享Warp取消修复：无新增授权、服务或依赖版本变更。Tracktion仍为0d4d77c，JUCE仍为37c894f/8.0.13；扩展既有warp补丁后18补丁/45源码已实际fresh apply/字节匹配/reverse。Release与固定本地deep/strict签名通过，非发行公证。两批15套1681项及真实WAV通过；键位设置foreground/peer焦点旧失败、实体制作/听评、未归因的其它首次Warp失败、性能A/分析超时、硬件/耐久/Windows/视频/环绕/发行仍未完成。桌面工具未找到窗口与用户确认主界面可操作分别保留，不推断锁屏/崩溃。当前证据以VERIFICATION.md及P3汇总为准；以下是历史。
 
 2026-10-16 参数恢复当前结论：无新增授权/依赖/SDK/工程格式需求。L1恢复外部DSP时使用引擎当前有效值，保留显式基础值，已知AU重开首段增益错误由真实AU/VST3原UndoRedo和实际音频通过替代；增强专项87项/25.92秒、受影响14/14/178.63秒，分批15/15。原0.01dB/512帧/120秒门槛不变，不宣称全插件/平台/全仓通过。Tracktion18补丁、JUCE XML源/补丁哈希匹配前次审计，本轮无新SDK重放；固定本地deep/strict非发行公证。本轮未重新调用桌面工具，实体键鼠/听评未新验，已有用户窗口可操作反馈保留。下一项回到P0 KeyboardSettings焦点旧失败；完整架构、旧性能A/分析超时、硬件/耐久/Windows/发行等差距保持。当前结果见VERIFICATION/P3汇总和 `build-v2-tracktion/au-reopen-current-results.json`。

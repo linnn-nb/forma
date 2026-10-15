@@ -1,3 +1,5 @@
+2026-10-16 本地正常退出没有新增MCP/Agent命令或权限。SessionExit只调用原L1 stop/save/recoveryControl，绑定本次session/revision和持久UI，最终校验真实文件后才允许应用退出；取消与并发改动不能沿用旧成功。退出/外部文件创建不可伪称Undo，完整另存保留原工程历史，恢复快照明确undo_restored=false/media_copied=false。验证SessionExitTests.cpp及VERIFICATION.md。
+
 2026-10-16 Warp数值编码修复：`clip.warp`的`source_time_seconds:number`继续接受整数或浮点形式；处理链指纹统一以double秒、int64采样序列编码，与原生工程读回一致。整数8和浮点8.0不再形成不同指纹，权限、单位、版本、幂等、单Plan/Undo边界保持原样。该提交回执仍只表示工程编辑成功，真实音频准备结果必须另验；无M2/M3权限扩展。代码WarpState.h/WarpCommands.cpp，验证SharedWarpRenderTests.cpp与VERIFICATION.md。
 
 2026-10-15 零点Shuffle：schema1编译式shuffle_range在重建operations时封入已有删除对象的source_present/source_reference_hash/media_hash，复验与makePlanImpl的规范化一致。未知/失效对象、源变化和伪造hash仍拒绝，未跳过严格operations比较；局部split别名由原同Plan规则验证。没有新Agent工具、权限或事务语义。

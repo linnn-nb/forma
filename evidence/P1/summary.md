@@ -1,3 +1,22 @@
+# 正常退出前的真实保存（2026-10-16）
+
+结论：aeb435d已接通关闭窗口/应用退出→原生退出面板→L1停止录放→另存完整工程或保存恢复副本→最终回执复核→延后退出。当前4/4套226项/33.75秒通过，其中退出52项/2.61秒，P1完整受控链路91项/12.69秒。完整产品未完成；本轮曾发生Loop Take失败，最新重放通过不能证明根因已修。
+
+- L5 `SessionExit`/`WorkspaceExit.cpp`不持有Edit写入口，停止、保存、快照都调用原L1。Main::systemRequestedQuit同时保护窗口关闭与系统正常退出请求。旧默认JUCE实现直接quit，现需明确选择；取消保留当前工程，重复请求不重复执行。窗口销毁前清理退出意图，最终回调延至消息队列并再次复核，避免从按钮回调销毁自身。
+- 完整另存沿用原子不覆盖发布，保留原生Undo/Redo；恢复副本复用现有worker/manifest/校验，不复制媒体、不恢复Undo，面板明确区分。退出和外部文件创建本身不属于Undo。路径须为绝对路径及.tracktionedit，已有文件拒绝覆盖；失败保留窗口。未新增服务、SDK补丁或Agent权限。
+- 退出许可绑定session/revision与持久UI状态；写入后人工编辑、键位/布局变化、播放/录音、原生状态待捕获均阻止退出。完整文件再核对SHA；恢复副本经实际recovery::read校验payload/manifest/session/revision。取消撤回退出意图，已启动的副本写入可继续，晚到成功不能重新退出。退出许可有30秒截止，保存返回和文件复核后仍检查；不能抢占同步L1保存/插件捕获，真实超时和保存期间GUI响应尚未实测。
+- 测试先有真实失败：session-exit-first.xml在5项后因测试夹具没有native peer而失败；改用生产WorkspaceWindow，原isShowing断言保留，不把无窗口按钮当可见。退出专项52项涵盖真实面板通知、取消、重复请求、相对路径拒绝、全工程文件、原Undo/Redo、实际WAV、恢复解码、前后人工改动、持久UI变化、落盘后文件损坏、真实OS目录阻断及取消晚到回执。测试未点击真实桌面或原生文件选择器。
+- 4套是tracktion_session_recovery52项、tracktion_native_session_recovery31项、forma_session_exit52项、forma_production_chain91项；各当前JSON mtime已核验，构建exit0后才运行。首版编译曾因string/Json比较exit2，修正显式类型后通过，原日志保留；没有改低测试预算或录音负载。当前索引`build-v2-tracktion/session-exit-current-results.json`、JUnit `session-exit-qualified.xml`及日志。
+- 独立stdlib解码真实After-Reopen.wav：48k/双声道/PCM24/48000帧，左RMS0.05315893、频率440.000002Hz；不是听评或实体麦克风证明。原媒体及已另存完整工程的SHA保持。可打开自有测试音工程`build-v2-tracktion/SessionExit-b293eaac44b94589956f6756dfcd8c39/Full-History.tracktionedit`，CmdZ/ShiftCmdZ检查原历史，再关闭窗口体验三个出口；不是音乐作品。
+- 当前唯一App固定本地deep/strict通过，SHA256 `9910cacea1c4afec8d632623edb1748b8ea308b6b1a42256a00ff13e9e3d244b`，非发行公证。保存现有工程后重启唯一App才能用新代码；未重启或替换用户运行中工程，无新DMG/tar/应用副本。本轮SDK未改，CMake核对既有18补丁/45文件字节；fresh replay沿用上轮记录，不冒充新重放。
+- **未通过项保留**：keyboard-app-role.xml仍exit8，正常应用身份没有解决foreground/peer均false的焦点失败，7c1a8ab仅为测试启动设置；两轮后收口。桌面cgWindowNotFound与用户主界面可操作反馈分别保留，不归因为锁屏或崩溃。session-exit-peer.xml中的P1 Loop断言失败：受控输入帧等待通过，却只留下2048/2304帧的两份单声道WAV，未取得原失败回执；新增LOOP_FAILURE诊断后原负载重放通过，根因仍未证明，作为可靠性阻断继续定位。
+- 当前每次正常退出均显示确认面板，尚未用精确脏状态自动跳过；正常Save仍是另存，不覆盖旧文件。当前未提供丢弃退出；磁盘故障会保留窗口。普通Open替换工程的同类确认流程仍待补。原生CmdQ/文件选择器/实体键鼠、真实录音中退出与第三方插件退出、人工听评、强制终止/系统断电、Windows及发行资格尚未完成。
+
+
+- Escape增量：session-exit-text-escape-baseline.xml在14项后明确失败，JUCE TextEditor回调是异步消息。1753ce7/cd2442b/aeb435d将面板与输入框的Escape改为实际键盘入口立即撤回意图，52项专项保持原时限通过；未用重发点击、私调回调或固定等待兜底。取消不撤销已停止的录放或已创建的文件。
+
+以下为历史验证，当前状态以上述回执和未通过项为准。
+
 2026-10-16 外部参数恢复后追加：ProductionChain91项/12.66秒通过，Loop→Punch→Take/Comp→交叉淡化→原UndoRedo/快捷键→保存重开→真实二次WAV的PCM差0。自有工程与 `04-final.wav` 在 `build-v2-tracktion/P1-Production-Chain-b55f5113a3244b5ab2858527d3e20378/`；本轮15套受影响资格见 `build-v2-tracktion/au-reopen-current-results.json`。已知AU重开首段增益错误由真实AU/Serum VST3专项87项和实际PCM通过替代，未新执行实体麦克风/听评，不宣称所有插件或完整产品通过。以下保留历史证据。
 
 2026-10-16 XML修复后追加：Loop51项/8.34秒、Punch124项/21.32秒、Playlist227项/16.35秒、Audition98项/8.40秒、Crossfade101项/8.82秒及ProductionChain91项/12.58秒通过，制作链路二次导出PCM差0。当前自有工程与 `04-final.wav` 在 `build-v2-tracktion/P1-Production-Chain-6871abcb86d1477ca027ca38d3551812/`；最新索引 `build-v2-tracktion/xml-attribute-current-results.json`。本轮没有重做实体录音/听评，整体27/28套最新通过；真实AU自动化重开首段0dB而应−6dB仍失败，不能由P1受控链路绿覆盖。原自动化/对象Shuffle/共享时钟时间门槛均由新完整矩阵通过替代，旧性能A继续未通过。以下保留历史证据。
