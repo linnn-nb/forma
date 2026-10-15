@@ -1,3 +1,19 @@
+# 历史索引与完整矩阵当前结果（2026-10-16）
+
+结论：新增有界 detached 历史查找索引；核心3/3通过，原完整回归12/14通过，AutomationMove180.03秒、ObjectShuffle300.03秒仍超时。另修正旧GUI测试漏接受Grabber预览，界面段30项/9.51秒通过；不拿局部通过替代完整超时，也不宣称完整产品或总体性能达标。
+
+- 代码 `a743959`（先建固定预算）、`054093f`（生产索引）、`70513d2`（实际GUI输入与接受）。Release构建均确认exit0后才测试；原负载、探针、数值和180/300/240秒时限未变。索引边界与线性回退见ARCHITECTURE；未改SDK/实时音频路径/工程格式/命令权限。
+- `HistoryLookupTests.cpp`：29项，4096个真实ValueTree属性正反回放25.16ms，对照原线性路径3494.60ms，固定≤1000ms/≥2倍通过。实现前旧路径诊断3579.89ms；该次 `budget_evaluated=false`，不是预算通过。微基准倍数不能推广为DAW或音频性能。
+- 相同1461604字节真实工程、源SHA与轨道/Clip ID不变，三次独立旧CLI进程打开/查询/退出2.055/2.000/2.000秒，新CLI2.174/1.590/1.597秒。中位数改善，但新首轮更慢；OS文件缓存未清，非冷磁盘、RT或Pro Tools对照。
+- 核心：persistent_native_history86项/36.50秒、project_document80项/8.15秒、lookup29项/3.98秒，共48.64秒。回归通过：恢复、权限、队列、MCP、请求恢复、MixedShuffle49.73秒、MusicalShuffle222项/99.59秒、SharedClock717项/208.22秒、MidiMove1926项/15.47秒、ProductionChain91项/12.56秒、ProcessedMove747项/62.08秒、LinkedComp328项/19.58秒。原完整14套耗时988.60秒，exit8；两批合计15/17通过、通过项4717次检查，不是全仓全绿。
+- ProductionChain仍实际走两路受控录音→Loop→Punch→Take/Comp→交叉淡化→WAV→保存重开→快捷键/原UndoRedo→再次导出，PCM差0，原媒体哈希保持。该输入不冒充真人演奏。当前可打开示例及WAV路径由 `build-v2-tracktion/p1-production-chain-tests.json` 给出。
+- AutomationMove完整矩阵跑完七曲线数值/保存重开后到达GUI段附近超时。独立旧GUI段2.78秒返回失败，实际状态为“共同移动已预览”；修正测试使用native peer、生产工具/Nudge控件及真实可见接受按钮（500ms观测限，不中断同步回调），9.51秒通过30项，包括预览前不写入、接受、原Undo、Spot、改键和保存重开。原完整180秒状态仍未通过，修后未重跑全矩阵。
+- ObjectShuffle一秒抽样85/85主线程样本在XML属性解析；自有测试文件 `Clear-6.tracktionedit` 3807929字节，最长xml属性2880496字节/207408实体。源码确认反复String追加；这是下一项具体热点证据，尚未修复或证明完整耗时归因。AutomationMove另一样本含插件/媒体哈希等成本，未把节点查找当作唯一根因。
+- 实际索引 `build-v2-tracktion/history-lookup-current-results.json`；JUnit `history-lookup-core.xml` / `history-lookup-regression.xml`，固定基准/真实打开/GUI诊断与旧失败均保留同目录。失败suite不采信旧成功JSON。证据收集首次误仅读codesign的stderr，已修为合读stdout/stderr后生成索引；实际deep/strict始终exit0。
+- 唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，二进制SHA256 `f6c2e80d491780a2f5e204f9c40196ce2cf7e268ae1f01c0e658a65e9fd61a8c`；固定本地身份deep/strict通过，非发行公证。18份SDK patch哈希与上次fresh replay一致，当前构建exact-diff guard通过；本轮没有新SDK重放/修改。GUI测试进程均退出，无新DMG/tar/app副本；未新做实体键鼠/麦克风/MIDI/听评或耐久。用户确认主界面可操作，本轮未调用桌面读取，不推断锁屏。
+
+以下保留历史证据，由上述明确资格替代对应项。
+
 # 混合轨道范围与键路由复验（2026-10-16）
 
 **两套原完整矩阵均通过，完整产品未完成。** MusicalShuffle222项/112.05秒，SharedClock717项/235.54秒；939项、143616个原生曲线采样探针，原场景/数值/240秒时限全部保留。本轮只修改测试，生产GUI/引擎/应用二进制没有改变，也没有重跑原全部77套。实际命令、JUnit、新鲜JSON及SHA、示例文件见本地 build-v2-tracktion/p3-native-range-current-results.json。

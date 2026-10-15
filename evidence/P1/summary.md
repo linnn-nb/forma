@@ -1,3 +1,5 @@
+2026-10-16历史索引构建追加回归：ProductionChain91项/12.56秒通过，真实录音写盘→Loop→双轨Punch→来源Comp→交叉淡化→导出→原UndoRedo/快捷键→保存重开/再次导出PCM差0。当前自有示例与 `04-final.wav` 在 `build-v2-tracktion/P1-Production-Chain-86a983ab1eee4b9c8435d1def75981ed/`，索引 `build-v2-tracktion/history-lookup-current-results.json`。输入仍为两路受控PCM，本轮没有重做实体麦克风/听评；整体17套中2处原180/300秒超时保留，不由P1局部通过覆盖。后续历史证据如下。
+
 2026-10-14追加回归：最终印刻/导出修复构建中 production_chain91项11.48秒、elastic87项7.73秒再次通过，原120秒预算保持；P1完整制作/实体麦克风证据如下，未新做音乐听评或耐久。SoundTouch仍为已锁定首版，Warp未完成；完整原生Edit截图本轮再次查看。
 
 ## 2026-10-14 最终结果：P1 制作主链路与首版伸缩

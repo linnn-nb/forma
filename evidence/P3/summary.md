@@ -1,3 +1,14 @@
+# 有界历史查找与完整回归（2026-10-16）
+
+结论：生产历史镜像/读取校验使用临时stable-key索引，保留原格式、原Undo与所有安全校验。固定4096点正反回放29项、25.16ms/原线性3494.60ms，事先设定1000ms/2倍预算通过；这不是总体DAW性能结论。实际同工程三次打开中位数2.000→1.597秒，但新首轮2.174秒更慢，OS缓存未清。
+
+- 代码 `a743959` / `054093f`；Release和固定本地deep/strict构建验证通过，实际build exit0后才测试。核心3/3、48.64秒；完整回归12/14、988.60秒（exit8），保留AutomationMove180.03秒与ObjectShuffle300.03秒超时，不改预算/负载/数值。两批15/17通过、通过suite4717项。详细逐suite索引 `build-v2-tracktion/history-lookup-current-results.json`；原日志和JUnit同目录。
+- 完整ProductionChain91项/12.56秒、PCM差0；当前自有示例 `build-v2-tracktion/P1-Production-Chain-86a983ab1eee4b9c8435d1def75981ed/P1-Production-Chain.tracktionedit`，实际导出同目录 `04-final.wav`。Loop→Punch→Take/Comp→两处交叉淡化→导出→原UndoRedo→保存重开/再次导出；受控录音输入不是实体麦克风/听评。
+- SharedClock717项/208.22秒、MusicalShuffle222项/99.59秒、MixedShuffle153项/49.73秒；ProcessedMove747项/62.08秒、LinkedComp328项/19.58秒通过，原时间与数值门槛保持。
+- 另定位旧AutomationMove GUI测试误把Grabber预览当作已提交：原GUI-only2.78秒失败，`70513d2`改用native peer/生产工具及Nudge控件/实际可见接受按钮；修后GUI-only30项/9.51秒通过，预览不变→接受→Undo→Spot→改键→保存重开。`matrix_executed=false`且曲线/PCM最大误差为空，不冒充完整180秒通过。全部进程已结束。
+- ObjectShuffle抽样85/85在XML解析；3.8MB自有工程中单个转义xml属性约2.9MB/207408实体。源码存在反复String追加，下一项处理这条已观察路径；本轮未改解析器。旧GUI失败、两处完整超时和样本均保留，不采信失败后的旧JSON。
+- app SHA256 `f6c2e80d491780a2f5e204f9c40196ce2cf7e268ae1f01c0e658a65e9fd61a8c`；唯一路径 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`。本地签名非发行公证；SDK18补丁哈希匹配前次重放，当前exact-diff guard通过，本轮无新SDK改动/重放、DMG/tar/app副本或桌面/实体听评。完整P级/架构范围未完成。
+
 # 混合时间线范围与快捷键完整复验（2026-10-16）
 
 **原完整矩阵2/2通过：MusicalShuffle112.05秒/222项，SharedClock235.54秒/717项。** 143616个实际SDK曲线探针、原场景、全部数值/状态断言与各240秒时限不变；没有缩小工作负载。只改测试输入与检查，未改生产实现、应用二进制、SDK或依赖。结果索引 build-v2-tracktion/p3-native-range-current-results.json；两目标构建exit0后测试，最新JUnit p3-native-range-schema.xml。
