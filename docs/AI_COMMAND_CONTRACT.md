@@ -1,3 +1,5 @@
+2026-10-16 录音候选：GUI命令580映射原playlist.promote，参数为既有track/source/target/clip/start_samples/end_samples，源于所选候选段；保留human身份、实际session/revision、媒体/完整MIDI状态校验、权限与原幂等/Undo。没有新增MCP权限或域命令。接受后的版本通知清空未提交草稿；试听、定位和文件写入不伪称可撤销编辑。GUI521只为尚无take_id且未锁定的源片段启用，L1重复登记拒绝仍保留。P1-MIDI-TAKE-02代码/测试/操作见MIDI_COMP_WORKFLOW.md。
+
 2026-10-16 MIDI Comp：既有local_gui playlist.lock/create/take.register/promote/comp.create与可信本地playlistAudition扩展原生MIDI；不增加MCP工具或权限。MIDI媒体指纹由精确原生XML及Tempo组成，候选来源也参与；差异与来源用source_kind=midi/midi_state_hash，不能冒充WAV媒体哈希。Promote范围外保留，候选不切换播放或目标；间隙是没有调度MIDI，乐器release可继续。查询locked合并片段与活动Playlist锁；录音/编辑/试听原版本守卫、同一Undo及幂等不变。新能力与实际执行证据见PROJECT_FORMAT.md、VERIFICATION.md。
 
 2026-10-16 MIDI Punch：可信本地录音复用 transport.punch.set 与原录音事务/注册键，未新增 MCP 权限。last_recording.takes[].kind=midi 记录原列表、完整 Take、实际捕获及替换范围；midi_sources 单列源 ID/SHA/tap point，files 只列实际音频文件。全空 no_events 不删除原演奏；预卷提前停只存完整 Take、替换长度为零。playlist 查询的 capture_source 对 Punch 返回 kind=punch/capture_start_samples/window，Loop 既有 pass 结构不变。Undo/Redo 与文件写入副作用分开，未执行录音不能显示成功。

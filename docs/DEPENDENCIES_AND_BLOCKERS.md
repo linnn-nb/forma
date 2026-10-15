@@ -1,3 +1,5 @@
+2026-10-16 录音候选局部提升：无新依赖、SDK字节、授权、服务或签名身份。复用唯一Tracktion Engine、原L1 Promote与原生试听，未增加实时回调工作。桌面读取此前超时，用户再次确认主界面可操作，本轮不再重复桌面调用；原生peer测试不冒充实体设备/听评。Punch→局部候选、短Loop/圈末、MIDI多轨关联与原先焦点/性能A/分析超时/RT SDK锁分配/硬件耐久/Windows/视频/环绕/发行缺口保留，当前构建测试见VERIFICATION.md。
+
 2026-10-16 MIDI Comp：无新增依赖、SDK字节、授权、服务或签名身份；原Tracktion/JUCE锁定不变，19补丁47文件沿用CMake字节核对，本轮未另做SDK fresh replay。专项155项与尾随键位回归已通过；六组旧默认冲突、迁移和真实命令归属已验证。完整P1、多轨关联MIDI、短Loop、复杂控制器/MPE/私有插件/实体端口/听评、旧焦点/性能A/分析超时/RT SDK锁分配/耐久/Windows/视频/环绕/发行仍未完成；最终受影响回归以VERIFICATION.md为准。
 
 2026-10-16 MIDI Punch：无新授权、依赖版本、服务或签名身份；复用 Tracktion 0d4d77c / JUCE 8.0.13 与原生 MIDI 节点，扩展现有审计补丁。19 补丁/47 文件已 fresh apply、逐字节匹配、reverse；hosted 非折返输出原点修复不代表物理端口/循环折返或全采样率资格。MIDI Comp/锁定/Promote/试听、外部原始流式捕获/崩溃恢复、实体输入/听评与长期录音待做。旧焦点、性能 A 15.84%>15%、分析超时、SDK 实时锁/分配、多设备/PDC/Windows/视频/环绕/发行差距保留；当前构建/测试见 VERIFICATION.md。

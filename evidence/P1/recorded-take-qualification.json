@@ -1,0 +1,537 @@
+{
+  "result": "passed_with_explicit_scope",
+  "code_commit": "dc327ae2981f5eda4f992fb3ece2069c2b8e6f2b",
+  "tests": {
+    "forma_midi_take_workflow": {
+      "passed": true,
+      "seconds": 14.6319,
+      "batch": "midi-take-snapshot",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-take-workflow-tests.json",
+      "checks": 199,
+      "result": "passed",
+      "mtime": 1792105549.9903574,
+      "fresh": true
+    },
+    "forma_persistent_native_history": {
+      "passed": true,
+      "seconds": 36.8656,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/persistent-history-tests.json",
+      "checks": 86,
+      "result": "passed",
+      "mtime": 1792105712.5660741,
+      "fresh": true
+    },
+    "tracktion_native_midi_recording_workspace": {
+      "passed": true,
+      "seconds": 5.28488,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/M1/midi-recording-workspace-tests.json",
+      "checks": 23,
+      "result": "passed",
+      "mtime": 1792105717.7973955,
+      "fresh": true
+    },
+    "forma_midi_loop_recording": {
+      "passed": true,
+      "seconds": 17.0517,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-loop-tests.json",
+      "checks": 169,
+      "result": "passed",
+      "mtime": 1792105734.9035246,
+      "fresh": true
+    },
+    "forma_midi_punch_recording": {
+      "passed": true,
+      "seconds": 25.1284,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-punch-tests.json",
+      "checks": 497,
+      "result": "passed",
+      "mtime": 1792105760.029951,
+      "fresh": true
+    },
+    "forma_midi_playlist_editing": {
+      "passed": true,
+      "seconds": 23.538,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-playlist-tests.json",
+      "checks": 155,
+      "result": "passed",
+      "mtime": 1792105783.5746498,
+      "fresh": true
+    },
+    "forma_playlist_editing": {
+      "passed": true,
+      "seconds": 16.4006,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-playlist-editing-tests.json",
+      "checks": 227,
+      "result": "passed",
+      "mtime": 1792105799.929664,
+      "fresh": true
+    },
+    "forma_playlist_audition": {
+      "passed": true,
+      "seconds": 8.36883,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/playlist-audition-tests.json",
+      "checks": 98,
+      "result": "passed",
+      "mtime": 1792105808.3010736,
+      "fresh": true
+    },
+    "forma_crossfade_clipboard": {
+      "passed": true,
+      "seconds": 13.1562,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/crossfade-clipboard-tests.json",
+      "checks": 73,
+      "result": "passed",
+      "mtime": 1792105821.5047414,
+      "fresh": true
+    },
+    "forma_production_chain": {
+      "passed": true,
+      "seconds": 13.4221,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-production-chain-tests.json",
+      "checks": 98,
+      "result": "passed",
+      "mtime": 1792105834.876128,
+      "fresh": true
+    },
+    "forma_midi_controllers": {
+      "passed": true,
+      "seconds": 1.85631,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-cc-tests.json",
+      "checks": 186,
+      "result": "passed",
+      "mtime": 1792105836.741412,
+      "fresh": true
+    },
+    "forma_native_relocation": {
+      "passed": true,
+      "seconds": 3.89232,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-relocation-tests.json",
+      "checks": 79,
+      "result": "passed",
+      "mtime": 1792105840.6364388,
+      "fresh": true
+    },
+    "forma_project_document": {
+      "passed": true,
+      "seconds": 8.13575,
+      "batch": "midi-take-regression",
+      "json": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-project-document-tests.json",
+      "checks": 80,
+      "result": "passed",
+      "mtime": 1792105848.7722883,
+      "fresh": true
+    }
+  },
+  "batches": [
+    {
+      "name": "midi-take-snapshot",
+      "tests": 1,
+      "passed": true,
+      "seconds": 14.6319
+    },
+    {
+      "name": "midi-take-regression",
+      "tests": 12,
+      "passed": true,
+      "seconds": 173.10069000000001
+    }
+  ],
+  "distinct_suites": 13,
+  "checks": 1970,
+  "app": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "sha256": "31f6e66ce3d4fb6c2fd797314715f78996258f094f082ae26d5e9102f50009fd",
+    "local_signature_verified": true,
+    "release_notarized": false,
+    "verification": "--prepared:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp\n--validated:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/forma-mcp\n--prepared:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app\n--validated:/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents/Helpers/ndaw_plugin_scan_worker.app\n/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: valid on disk\n/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app: satisfies its Designated Requirement"
+  },
+  "independent_files": {
+    "scope": "independent stdlib PCM24 decoder; random-phase synth has no bitwise equivalence claim",
+    "files": [
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5/Accepted.wav",
+        "channels": 2,
+        "pcm_bits": 24,
+        "rate": 48000,
+        "frames": 144000,
+        "peak": 0.034505367279052734,
+        "rms": 0.004545967757493194,
+        "sha256": "ae6a10f94402893ec53a10e599323bfeadba5a37a022d77f8384725d454b2526"
+      },
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5/Reopened.wav",
+        "channels": 2,
+        "pcm_bits": 24,
+        "rate": 48000,
+        "frames": 144000,
+        "peak": 0.03444838523864746,
+        "rms": 0.004555224377973283,
+        "sha256": "5ec49012eec68a4777f3da30fff86494fc2f11e70581f94d703a524ba53a0b57"
+      },
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-335107e5928045978aa223e5846942c4/04-final.wav",
+        "channels": 2,
+        "pcm_bits": 24,
+        "rate": 48000,
+        "frames": 192000,
+        "peak": 0.18713176250457764,
+        "rms": 0.04733896330195799,
+        "sha256": "3cc0b37b59a2f3f2a1f509b5991663c05693d6f40cf0b7e40c66821e784f0ee3"
+      },
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-335107e5928045978aa223e5846942c4/05-reopened.wav",
+        "channels": 2,
+        "pcm_bits": 24,
+        "rate": 48000,
+        "frames": 192000,
+        "peak": 0.18713176250457764,
+        "rms": 0.04733896330195799,
+        "sha256": "d8ad7067513f7e89be3d915ea130f83ee960ede194ae0f9d23299b0612e7157d"
+      }
+    ],
+    "project": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5/MIDI-Take-Workflow.tracktionedit",
+      "root": "FORMA_PROJECT",
+      "sha256": "34fad121fe58e9f576cb5c02ccbeb871fd0846fe2e3705391849fef36a607800",
+      "declared_capabilities": [
+        {
+          "id": "midi.loop-capture",
+          "version": "1"
+        },
+        {
+          "id": "midi.playlist-editing",
+          "version": "1"
+        },
+        {
+          "id": "playlist.comp.provenance",
+          "version": "1"
+        }
+      ]
+    },
+    "native_sequences": [
+      {
+        "notes": 3,
+        "controllers": 2,
+        "sysex": 1
+      },
+      {
+        "notes": 2,
+        "controllers": 1,
+        "sysex": 0
+      },
+      {
+        "notes": 2,
+        "controllers": 1,
+        "sysex": 1
+      },
+      {
+        "notes": 1,
+        "controllers": 0,
+        "sysex": 0
+      },
+      {
+        "notes": 3,
+        "controllers": 2,
+        "sysex": 1
+      },
+      {
+        "notes": 2,
+        "controllers": 1,
+        "sysex": 0
+      },
+      {
+        "notes": 3,
+        "controllers": 2,
+        "sysex": 1
+      }
+    ],
+    "result": "passed",
+    "audio_production_pcm_equal": true
+  },
+  "workflow": {
+    "auditions": [
+      {
+        "action": 533,
+        "measured_peak": 0.0344080813229084,
+        "receipt": {
+          "active": false,
+          "base_revision": 14,
+          "cleanup_pending": false,
+          "device_sample_rate": 48000.0,
+          "end_reached": true,
+          "end_samples": 110119,
+          "mode": "draft",
+          "output_end_device_sample": 112453,
+          "preparation": {
+            "active_owned_tasks": 0,
+            "cleanup_pending": false,
+            "progress": 1.0,
+            "progress_available": true,
+            "ready_sources": 0,
+            "sources": [],
+            "total_sources": 0
+          },
+          "preparation_max_owned_concurrency": 2,
+          "preparation_ms": 0.40454167127609253,
+          "preparation_timeout_ms": 30000,
+          "prepared_sources": [],
+          "processed_blocks": 237,
+          "reason": "completed",
+          "return_samples": 24000,
+          "session_token": "cfb5081d9fb6404e849f5374d76556c6",
+          "sources": [
+            {
+              "clip": "1032",
+              "end_samples": 110119,
+              "midi_state_hash": "792f99722605a5d5492ee3ab303056e05d00bab40e3b9af10c9daefb23d5a235",
+              "playlist": "a5eec642b0694d27810d459195cba79d",
+              "source_kind": "midi",
+              "start_samples": 52037,
+              "track": "1012"
+            }
+          ],
+          "start_samples": 52037,
+          "state": "completed",
+          "tail_policy": "exact audition range; tails outside it are gated"
+        }
+      },
+      {
+        "action": 535,
+        "measured_peak": 0.03444446623325348,
+        "receipt": {
+          "active": false,
+          "base_revision": 14,
+          "cleanup_pending": false,
+          "device_sample_rate": 48000.0,
+          "end_reached": true,
+          "end_samples": 191119,
+          "mode": "draft",
+          "output_end_device_sample": 193253,
+          "preparation": {
+            "active_owned_tasks": 0,
+            "cleanup_pending": false,
+            "progress": 1.0,
+            "progress_available": true,
+            "ready_sources": 0,
+            "sources": [],
+            "total_sources": 0
+          },
+          "preparation_max_owned_concurrency": 2,
+          "preparation_ms": 0.3518333286046982,
+          "preparation_timeout_ms": 30000,
+          "prepared_sources": [],
+          "processed_blocks": 286,
+          "reason": "completed",
+          "return_samples": 24000,
+          "session_token": "cfb5081d9fb6404e849f5374d76556c6",
+          "sources": [
+            {
+              "clip": "1029",
+              "end_samples": 191119,
+              "midi_state_hash": "466307b3017e7ee79795e1bf07b1aadc035b103ce3480bf25433d06fa66f6db1",
+              "playlist": "6bfbf546a5de4ad4a17bb6c2e4a1b456",
+              "source_kind": "midi",
+              "start_samples": 120037,
+              "track": "1012"
+            }
+          ],
+          "start_samples": 120037,
+          "state": "completed",
+          "tail_policy": "exact audition range; tails outside it are gated"
+        }
+      },
+      {
+        "action": 534,
+        "measured_peak": 0.01579505205154419,
+        "receipt": {
+          "active": false,
+          "base_revision": 14,
+          "cleanup_pending": false,
+          "device_sample_rate": 48000.0,
+          "end_reached": false,
+          "end_samples": 110119,
+          "mode": "draft",
+          "output_end_device_sample": 53573,
+          "preparation": {
+            "active_owned_tasks": 0,
+            "cleanup_pending": false,
+            "progress": 1.0,
+            "progress_available": true,
+            "ready_sources": 0,
+            "sources": [],
+            "total_sources": 0
+          },
+          "preparation_max_owned_concurrency": 2,
+          "preparation_ms": 0.3126666694879532,
+          "preparation_timeout_ms": 30000,
+          "prepared_sources": [],
+          "processed_blocks": 6,
+          "reason": "cancelled",
+          "return_samples": 24000,
+          "session_token": "cfb5081d9fb6404e849f5374d76556c6",
+          "sources": [
+            {
+              "clip": "1032",
+              "end_samples": 110119,
+              "midi_state_hash": "792f99722605a5d5492ee3ab303056e05d00bab40e3b9af10c9daefb23d5a235",
+              "playlist": "a5eec642b0694d27810d459195cba79d",
+              "source_kind": "midi",
+              "start_samples": 52037,
+              "track": "1012"
+            }
+          ],
+          "start_samples": 52037,
+          "state": "cancelled",
+          "tail_policy": "exact audition range; tails outside it are gated"
+        }
+      }
+    ],
+    "budgets": {
+      "capture_ms": 15000,
+      "input_samples": 256,
+      "mouse_samples": 1,
+      "render_ms": 10000,
+      "ui_ms": 5000
+    },
+    "capture_receipt": {
+      "actor": "human",
+      "clips": [
+        {
+          "id": "1029",
+          "kind": "midi",
+          "path": "",
+          "playlist": "6bfbf546a5de4ad4a17bb6c2e4a1b456",
+          "track": "1012"
+        },
+        {
+          "id": "1032",
+          "kind": "midi",
+          "path": "",
+          "playlist": "a5eec642b0694d27810d459195cba79d",
+          "track": "1012"
+        },
+        {
+          "id": "1034",
+          "kind": "midi",
+          "path": "",
+          "playlist": "ce542d1d4a344a748977c71071d10ebf",
+          "track": "1012"
+        }
+      ],
+      "directory": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5",
+      "end_samples": 98688,
+      "error": "",
+      "files": [],
+      "loop_range": {
+        "end_samples": 192000,
+        "length_samples": 144000,
+        "sample_rate": 48000,
+        "start_samples": 48000,
+        "timebase": "session_samples"
+      },
+      "midi_sources": [
+        {
+          "events": 11,
+          "hash": "8ad575becbc6f37495a5737efa396b516dd85b7f8818ea1932048fca0a7dabb8",
+          "id": "midi:1e56cbb306ed4ace8446402f5833f581:1012",
+          "tap_point": "native_input_unlooped_before_channel_and_adjustment",
+          "time_space": "unlooped_edit_seconds",
+          "track": "1012"
+        }
+      ],
+      "mode": "loop",
+      "outcome": "success",
+      "plan_id": "1e56cbb306ed4ace8446402f5833f581",
+      "processing_stall_budget_ms": 500.0,
+      "punch_range": null,
+      "start_samples": 48000,
+      "state": "committed",
+      "takes": [
+        {
+          "clip": "1029",
+          "complete": true,
+          "kind": "midi",
+          "length_samples": 144000,
+          "pass": 1,
+          "playlist": "6bfbf546a5de4ad4a17bb6c2e4a1b456",
+          "source_hash": "8ad575becbc6f37495a5737efa396b516dd85b7f8818ea1932048fca0a7dabb8",
+          "source_id": "midi:1e56cbb306ed4ace8446402f5833f581:1012",
+          "source_offset_samples": 0,
+          "start_samples": 48000,
+          "take": "8f02a013cfd840eca34de28f455ad7a9",
+          "timebase_rate": 48000.0,
+          "track": "1012"
+        },
+        {
+          "clip": "1032",
+          "complete": true,
+          "kind": "midi",
+          "length_samples": 144000,
+          "pass": 2,
+          "playlist": "a5eec642b0694d27810d459195cba79d",
+          "source_hash": "8ad575becbc6f37495a5737efa396b516dd85b7f8818ea1932048fca0a7dabb8",
+          "source_id": "midi:1e56cbb306ed4ace8446402f5833f581:1012",
+          "source_offset_samples": 144000,
+          "start_samples": 48000,
+          "take": "6f97464d1a3a4158ae085f7783822c7c",
+          "timebase_rate": 48000.0,
+          "track": "1012"
+        },
+        {
+          "clip": "1034",
+          "complete": false,
+          "kind": "midi",
+          "length_samples": 51200,
+          "pass": 3,
+          "playlist": "ce542d1d4a344a748977c71071d10ebf",
+          "source_hash": "8ad575becbc6f37495a5737efa396b516dd85b7f8818ea1932048fca0a7dabb8",
+          "source_id": "midi:1e56cbb306ed4ace8446402f5833f581:1012",
+          "source_offset_samples": 288000,
+          "start_samples": 48000,
+          "take": "703b1422166d447b89e9628b4b8d8fcc",
+          "timebase_rate": 48000.0,
+          "track": "1012"
+        }
+      ],
+      "target_results": [
+        {
+          "active_playlist": "a5eec642b0694d27810d459195cba79d",
+          "clips": 3,
+          "kind": "midi",
+          "state": "captured",
+          "track": "1012"
+        }
+      ],
+      "targets": [
+        "1012"
+      ],
+      "undo_scope": "Edit clips, Playlists and MIDI sources; recorded audio files are retained"
+    },
+    "checks": 199,
+    "last_key": 524,
+    "result": "passed",
+    "root": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-e856dfa049ce40de80b0072408a5e7a5",
+    "scope": "actual production hosted MIDI input capture, native peer keys and actual synth output; no physical keyboard/MIDI port or listening claim"
+  },
+  "production_chain": {
+    "checks": 98,
+    "export": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-335107e5928045978aa223e5846942c4/04-final.wav",
+    "fixture": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-335107e5928045978aa223e5846942c4",
+    "pcm_max_error": 0.0,
+    "result": "passed",
+    "scope": "controlled two-channel native input; real recording writer, Edit, Undo, key dispatch, persistence and Tracktion render; physical microphone/listening separate",
+    "session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-335107e5928045978aa223e5846942c4/P1-Production-Chain.tracktionedit"
+  },
+  "scope": "known production hosted input, actual native peer commands and native PCM; no physical MIDI/microphone, listening, full P1 or performance qualification; original failed logs retained"
+}

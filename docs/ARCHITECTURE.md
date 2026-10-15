@@ -1,3 +1,5 @@
+2026-10-16 录音候选局部采用：L5 PlaylistPanel 的命令580只冻结所选草稿段并调用既有L1 playlist.promote；不直接写Edit。新按钮与可改键受实际候选/目标锁定、单轨、关联状态和试听/播放守卫约束；提交沿用一Plan一原UndoManager事务及revision失效。521按事实禁止重复登记自动Take。候选导航沿用原生试听，无新引擎/SDK/服务/实时处理；当前完整来源/声音/持久化资格见MIDI_COMP_WORKFLOW.md和VERIFICATION.md。
+
 2026-10-16 MIDI Comp：L1 MidiPlaylistState/PlaylistEditing在同一Edit复制完整原生MIDI树，按源偏移构建播放窗口，稳定ID重映射、原SEQ/来源不破坏；新midi.playlist-editing v1保护活动、非活动及历史。PlaylistAudition复用原有同一Engine只读快照和原生MIDI节点，可走实际乐器/Read链或MIDI输出；未引入新SDK字节、服务、引擎或实时过滤。锁定统一保护音符/CC/边界/插入/剪贴板，GUI事实也读取活动列表锁定。旧重复默认键只在双方确实重复时定向迁移，独立自定义键保持。资格与边界见MIDI_COMP_WORKFLOW.md。
 
 2026-10-16 MIDI Punch：L1 校验原生采样映射，在同一 Engine 的临时 forRendering Edit 准备原演奏两侧只读窗口；L0 沿用原生 MIDI 节点，停止先 clearNodes 再释放来源快照。原始来源仍在唯一工程 Edit 根，MidiPunchCapture 转为同一 Undo 事务内的原 Main/完整 Take/补录 Playlist；midi.punch-capture v1 保护活动、非活动及历史。既有 scrub-context 审计补丁另修非折返 hosted MIDI 的整块时间原点；无新增服务、引擎或回调分配/锁。SDK 既有实时分配/锁仍未资格；详细范围见 MIDI_PUNCH_WORKFLOW.md。

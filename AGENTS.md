@@ -1,7 +1,7 @@
 # Forma Studio 工程规则
 
 - 线程目标：按docs/ARCHITECTURE.md构建Tracktion开源AI-native DAW；Pro Tools作为界面和工作流参考。
-- 当前工程任务与资格以 docs/NEXT_STEPS.md、docs/VERIFICATION.md 和 evidence/P3/summary.md 为准；处理源/共享自动化/关联迁移仍按实际测过的场景开放，不推断完整产品或全部插件资格。
+- 当前工程任务与资格以 docs/NEXT_STEPS.md、docs/VERIFICATION.md 和 evidence/P1、P3/summary.md 为准；处理源/共享自动化/关联迁移仍按实际测过的场景开放，不推断完整产品或全部插件资格。
 - 按当前P级清单推进；M2/M3冻结，M4/M5暂缓，AI入口不占据制作主界面。同项两轮边界工作即收口进BACKLOG。
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
 - Save Copy不重绑路径；Save As/打开成功才绑定实际文件字节版本，普通Save先核对并保留独立旧版。文件写入不伪称工程Undo，失败不能沿用旧成功回执。
