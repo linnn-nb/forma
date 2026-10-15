@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include "RecoveryStore.h"
 #include <chrono>
@@ -52,7 +53,7 @@ void mainFlow(const juce::File& folder){
     auto bad=prefs.getChildFile("Recovery-blocked");bad.replaceWithText("file, not directory");fails([&]{recovery::write(bad,{juce::ValueTree(te::IDs::EDIT),snapshot});},"real OS filesystem failure is reported");check(recovery::read(recoveryDir,snapshot["id"],snapshot["sha256"]).state.isValid(),"filesystem failure does not damage an earlier committed snapshot");
     fails([&]{c.makePlan("agent:test",Json::array({op("session.recovery.restore",args)}));},"external editing Plans cannot invoke local recovery controls");
     // Verify relative references using a real saved Edit file, not an engine double.
-    auto document=juce::ValueTree::fromXml(*juce::XmlDocument::parse(savedFile));int converted=0;
+    auto document=juce::ValueTree::fromXml(*ndaw::v2::project_fixture::nativeXml(savedFile));int converted=0;
     std::function<void(juce::ValueTree)> relative=[&](juce::ValueTree node){if(node.getProperty(te::IDs::source).toString()==source.getFullPathName()){node.setProperty(te::IDs::source,"source.wav",nullptr);++converted;}for(auto child:node)relative(child);};relative(document);
     check(converted==1,"relative-media fixture retains one actual WaveAudioClip reference");auto relativeFile=folder.getChildFile("relative.tracktionedit");relativeFile.replaceWithText(document.toXmlString());c.open(relativeFile);auto relativeSnapshot=capture(c);restore(c,relativeSnapshot);check(wait(c)["state"]=="restored"&&render(c,folder)==pcm,"relative source resolves to original media after recovery to an independent session");
     auto keyed=c.makePlan("agent:automated-test",Json::array({op("track.rename",{{"track",voice},{"name","Keyed edit"}})}));keyed["request_key"]="snapshot-request";keyed["request_fingerprint"]=std::string(64,'1');keyed["request_scope_hash"]=std::string(64,'2');c.commit(keyed,true);check(c.requestRecovery("snapshot-request")["trusted_current_run"],"keyed test transaction has a real live L1 execution receipt");auto audited=capture(c);restore(c,audited);check(wait(c)["state"]=="restored"&&c.requestRecovery("snapshot-request")["state"]=="recovery_requires_review"&&c.requestRecovery("snapshot-request")["receipt"].is_null(),"restored AI request marker stays historical and does not invent current success");

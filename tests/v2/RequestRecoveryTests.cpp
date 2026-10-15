@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include <nativedaw/v2/McpSession.h>
 #include <nativedaw/v2/RequestIdentity.h>
 #include <chrono>
@@ -94,7 +95,7 @@ void recovery(const juce::File& folder){
         check(status["historical_marker"]["state"]==(file==committed?"committed":"undone"),"saved marker retains actual committed or undone history");
         const auto before=c.query()["tracks"];check(result(reopened.submit("plan",body))["status"]=="failed"&&c.query()["tracks"]==before&&c.query()["can_undo"].get<bool>(),"saved request cannot silently replay; restored local Undo does not grant Agent permission");q.revoke(reopened.id());
     }
-    auto xml=juce::XmlDocument::parse(committed);auto state=juce::ValueTree::fromXml(*xml);auto audit=state.getChildWithName("NATIVEDAW").getChildWithName("REQUEST_AUDIT");check(audit.getNumChildren()==1,"one keyed successful Plan creates one saved audit marker");
+    auto xml=ndaw::v2::project_fixture::nativeXml(committed);auto state=juce::ValueTree::fromXml(*xml);auto audit=state.getChildWithName("NATIVEDAW").getChildWithName("REQUEST_AUDIT");check(audit.getNumChildren()==1,"one keyed successful Plan creates one saved audit marker");
     audit.addChild(audit.getChild(0).createCopy(),-1,nullptr);const auto corrupt=folder.getChildFile("duplicate.tracktionedit");corrupt.replaceWithText(state.toXmlString());c.open(corrupt);
     auto malformed=q.connect("agent:malformed");check(request(malformed,"gain-once")["status"]=="failed","duplicate historical keys fail closed without pretending recovery succeeded");
     c.commit(c.makePlan("human",Json::array({op("track.gain",{{"track",track},{"db",-10}})})));check(std::abs(c.query()["tracks"][0]["gain_db"].get<double>()+10)<.002,"corrupt audit metadata does not block ordinary local DAW editing");q.revoke(malformed.id());
@@ -132,7 +133,7 @@ void runtimeReset(const juce::File& folder){
     const auto before=c.query()["tracks"];CommandQueue renewed(c);auto client=renewed.connect("agent:after-reset");
     check(request(client,"runtime-reset")["receipt"]["state"]=="committed","recreated gateway queue retrieves a genuine live Commands receipt");
     auto recovered=result(client.submit("plan",body));check(recovered["plan"]==original&&recovered["recovered"]&&c.query()["tracks"]==before,"gateway recreation cannot duplicate an acknowledged native transaction");
-    auto file=folder.getChildFile("duplicate-root.tracktionedit");c.save(file);auto xml=juce::XmlDocument::parse(file);auto tree=juce::ValueTree::fromXml(*xml);auto metadata=tree.getChildWithName("NATIVEDAW");metadata.addChild(metadata.getChildWithName("REQUEST_AUDIT").createCopy(),-1,nullptr);
+    auto file=folder.getChildFile("duplicate-root.tracktionedit");c.save(file);auto xml=ndaw::v2::project_fixture::nativeXml(file);auto tree=juce::ValueTree::fromXml(*xml);auto metadata=tree.getChildWithName("NATIVEDAW");metadata.addChild(metadata.getChildWithName("REQUEST_AUDIT").createCopy(),-1,nullptr);
     const auto malformed=folder.getChildFile("duplicate-root-copy.tracktionedit");malformed.replaceWithText(tree.toXmlString());c.open(malformed);auto reopened=renewed.connect("agent:duplicate-root");
     check(request(reopened,"runtime-reset")["status"]=="failed","duplicate audit roots cannot hide a saved key or create a recovery receipt");
 }

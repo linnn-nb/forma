@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "OwnedEditFixture.h"
 #include <fstream>
@@ -146,7 +147,7 @@ juce::AudioBuffer<float> reference(Commands& c, const std::string& track, const 
                                    const Json& originalClips, const Json& moves, const juce::File& baseline,
                                    const juce::File& file)
 {
-    auto xml = juce::XmlDocument::parse(baseline);
+    auto xml = ndaw::v2::project_fixture::nativeXml(baseline);
     check(bool(xml), "independent native fixture parsed");
     auto* t = xml->getChildByName("TRACK");
     struct Span

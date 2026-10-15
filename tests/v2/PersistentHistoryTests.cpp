@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include "PersistentHistory.h"
 #include "HistoryDelta.h"
@@ -422,7 +423,7 @@ void flow(const juce::File& dir)
     c.undo(branch["plan_id"]);
     pump();
     check(c.query()["tracks"].empty(), "branched history saves reopens and undoes to its actual baseline");
-    auto corrupt = juce::XmlDocument::parse(file);
+    auto corrupt = ndaw::v2::project_fixture::nativeXml(file);
     auto* archive = corrupt->getChildByName("NATIVEDAW")->getChildByName("PERSISTENT_HISTORY");
     archive->getFirstChildElement()->setAttribute("sha256", "incorrect");
     auto bad = dir.getChildFile("corrupt.tracktionedit");
@@ -595,7 +596,7 @@ Json stableTracks(Json tracks)
 void legacySong(const juce::File& source, const juce::File& dir)
 {
     const auto hash = Commands::mediaHash(source);
-    auto xml = juce::XmlDocument::parse(source);
+    auto xml = ndaw::v2::project_fixture::nativeXml(source);
     auto old = juce::ValueTree::fromXml(*xml);
     check(int(old.getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY")["schema"]) == 1,
           "legacy qualification uses an actual schema1 document");
@@ -627,7 +628,7 @@ void legacySong(const juce::File& source, const juce::File& dir)
     check(stableTracks(c.query()["tracks"]) == original, "six-instance live Undo restores public project facts");
     auto file = dir.getChildFile("legacy-migrated.tracktionedit");
     c.save(file);
-    auto saved = juce::XmlDocument::parse(file);
+    auto saved = ndaw::v2::project_fixture::nativeXml(file);
     auto history =
         juce::ValueTree::fromXml(*saved).getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY");
     check(int(history["schema"]) == 2, "explicit Save Copy converts schema1 into schema2");

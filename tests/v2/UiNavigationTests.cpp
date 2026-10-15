@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "ui/TimelineCoordinates.h"
 #include <fstream>
@@ -179,7 +180,7 @@ int main(int argc, char** argv)
         c.open(session);
         check(c.uiState() == savedView, "real Edit save/reopen preserves UI subtree");
         const auto preserved = c.query();
-        auto xml = juce::XmlDocument::parse(session);
+        auto xml = ndaw::v2::project_fixture::nativeXml(session);
         xml->getChildByName("NATIVEDAW")->getChildByName("UI")->setAttribute("json", "{bad}");
         auto broken = folder.getChildFile("broken.tracktionedit");
         xml->writeTo(broken);

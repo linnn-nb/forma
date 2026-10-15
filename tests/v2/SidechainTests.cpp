@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -343,7 +344,7 @@ int main(int argc, char** argv)
         rejects([&] { run(c, "plugin.sidechain.set", {{"plugin", eq}, {"source", trigger}}); },
                 "unsupported actual plugin refuses connection");
         c.undo();
-        auto xml = juce::parseXML(saved);
+        auto xml = ndaw::v2::project_fixture::nativeXml(saved);
         check(bool(xml), "saved native project opens for explicit corrupt-reference fixture");
         auto damaged = juce::ValueTree::fromXml(*xml);
         auto receiverState = damaged.getChildWithProperty(te::IDs::id, juce::String(receiver));

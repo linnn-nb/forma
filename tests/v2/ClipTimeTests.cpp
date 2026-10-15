@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/WorkspaceWindow.h"
 #include <fstream>
 #include <iostream>
@@ -137,7 +138,7 @@ int main(int argc, char** argv)
                             operation("track.gain", {{"track", "$t"}, {"db", 0}})}));
         const auto initialFile = folder.getChildFile("Initial.tracktionedit");
         c.save(initialFile);
-        auto xml = juce::XmlDocument::parse(initialFile);
+        auto xml = ndaw::v2::project_fixture::nativeXml(initialFile);
         check(bool(xml), "native initial session parsed");
         auto* nativeTrack = xml->getChildByName("TRACK");
         auto* node = nativeTrack ? nativeTrack->getChildByName("AUDIOCLIP") : nullptr;

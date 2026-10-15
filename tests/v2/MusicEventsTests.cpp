@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "TimelineState.h"
 #include <fstream>
@@ -326,7 +327,7 @@ int main(int argc, char** argv)
         }
         // Corrupt only our test copy to reproduce older duplicate meter IDs, then load through L1.
         const auto duplicate = dir.getChildFile("LegacyDuplicate.tracktionedit");
-        auto xml = juce::parseXML(file);
+        auto xml = ndaw::v2::project_fixture::nativeXml(file);
         check(xml != nullptr, "actual saved native XML parses for controlled fault injection");
         // A deliberate legacy XML derivative cannot retain modern history hashes.
         xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
@@ -357,7 +358,7 @@ int main(int argc, char** argv)
                   "legacy ID repair leaves actual media MIDI and plugin facts intact");
         }
         // Imported curve and click subdivision survive editing existing events; new meter uses declared defaults.
-        auto imported = juce::parseXML(file);
+        auto imported = ndaw::v2::project_fixture::nativeXml(file);
         imported->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         std::function<void(juce::XmlElement&)> decorate = [&](juce::XmlElement& e)
         {
@@ -388,7 +389,7 @@ int main(int argc, char** argv)
                      operation("meter.event.create", {{"beat_position", 7.}, {"numerator", 4}, {"denominator", 4}})})));
             const auto rewritten = dir.getChildFile("ImportedMusicSaved.tracktionedit");
             owner.save(rewritten);
-            auto saved = juce::parseXML(rewritten);
+            auto saved = ndaw::v2::project_fixture::nativeXml(rewritten);
             int preservedMeters = 0, freshMeters = 0;
             bool curvePreserved = false;
             std::function<void(juce::XmlElement&)> inspect = [&](juce::XmlElement& e)

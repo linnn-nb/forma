@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -112,7 +113,7 @@ Json run(Commands& c, Json ops)
 
 Json data(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* state = byID(*xml, id);
     if (!state)
         throw std::runtime_error("saved MIDI clip ID missing");
@@ -231,7 +232,7 @@ int main(int argc, char** argv)
                           emptyDestination = q["tracks"][3]["id"];
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         check(bool(xml) && xml->getChildByName("NATIVEDAW"), "owned foreign MIDI fixture has native metadata");
         // SDK event injection deliberately creates a foreign, history-free input.
         xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");

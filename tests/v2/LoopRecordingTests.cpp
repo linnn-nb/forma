@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -290,7 +291,7 @@ int main(int argc, char** argv)
                   "reopened selected Takes render actual audible PCM through Tracktion");
         }
         {
-            auto xml = juce::XmlDocument::parse(saved);
+            auto xml = ndaw::v2::project_fixture::nativeXml(saved);
             auto corrupt = juce::ValueTree::fromXml(*xml);
             for (auto state : corrupt)
                 if (auto lists = state.getChildWithName("NDAW_PLAYLISTS"); lists.isValid())

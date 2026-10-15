@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "SampleMidiMap.h"
 #include "ui/Workspace.h"
 #include "OwnedEditFixture.h"
@@ -301,7 +302,7 @@ int main(int argc, char** argv)
                           audio = facts["tracks"][1]["clips"][0]["id"];
         const auto base = folder.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         for (const auto& id : {first, second})
         {
             auto* native = byID(*xml, id);
@@ -321,7 +322,7 @@ int main(int argc, char** argv)
         discardDerivedFixtureHistory(*xml);
         const auto fixture = folder.getChildFile("Step.tracktionedit");
         check(xml->writeTo(fixture), "actual note CC SysEx fixture saved");
-        auto rampXml = juce::XmlDocument::parse(fixture);
+        auto rampXml = ndaw::v2::project_fixture::nativeXml(fixture);
         for (auto* event : rampXml->getChildByName("TEMPOSEQUENCE")->getChildIterator())
             if (event->hasTagName("TEMPO") && event->getDoubleAttribute("startBeat") == 8)
                 event->setAttribute("curve", .35);
@@ -627,7 +628,7 @@ int main(int argc, char** argv)
         // Local saved native lock/loop fixtures are data, not production direct Edit writes.
         for (const char* fault : {"ndaw_locked", "loopLengthBeats"})
         {
-            auto bad = juce::XmlDocument::parse(fixture);
+            auto bad = ndaw::v2::project_fixture::nativeXml(fixture);
             auto* node = byID(*bad, first);
             node->setAttribute(fault, std::string(fault) == "ndaw_locked" ? 1 : 2);
             auto file = folder.getChildFile(juce::String(fault) + ".tracktionedit");

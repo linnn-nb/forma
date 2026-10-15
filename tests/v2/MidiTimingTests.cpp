@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -197,7 +198,7 @@ int main(int argc, char** argv)
         std::vector<std::string> selected{initial[0]["id"], initial[1]["id"]};
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         check(bool(xml), "owned native MIDI fixture parsed");
         auto *midi = byID(*xml, id), *first = byID(*xml, selected[0]), *second = byID(*xml, selected[1]);
         check(midi && first && second && first->hasTagName("NOTE"),
@@ -294,7 +295,7 @@ int main(int argc, char** argv)
                                   << clip(c)["controller_events"].dump() << std::endl;
                     check(sameSavedNotes(changed, clip(c)["notes"]) && clip(c)["controller_events"] == originalCC,
                           "actual save/reopen restores timed notes and controllers");
-                    auto savedXML = juce::XmlDocument::parse(saved);
+                    auto savedXML = ndaw::v2::project_fixture::nativeXml(saved);
                     check(byID(*savedXML, selected[0])->getStringAttribute("qualification_extra") ==
                               "retained-import-metadata",
                           "timing edit preserves unexposed imported note metadata");
@@ -322,7 +323,7 @@ int main(int argc, char** argv)
         bounded.end = 270000;
         rejects([&] { c.review(footprint, bounded); },
                 "partial permission range rejects an out-of-scope note destination");
-        auto lockedXML = juce::XmlDocument::parse(imported);
+        auto lockedXML = ndaw::v2::project_fixture::nativeXml(imported);
         byID(*lockedXML, id)->setAttribute("ndaw_locked", true);
         const auto lockedFile = dir.getChildFile("Locked.tracktionedit");
         check(lockedXML->writeTo(lockedFile), "owned locked MIDI source fixture saved");

@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include <fstream>
 #include <iostream>
@@ -174,8 +175,8 @@ int main(int argc, char** argv)
                 const auto referenceFacts = reference.query();
                 const auto referenceFile = folder.getChildFile("Reference-" + juce::String(curve) + ".tracktionedit");
                 reference.save(referenceFile);
-                auto referenceXml = juce::XmlDocument::parse(referenceFile);
-                auto originalXml = juce::XmlDocument::parse(beforeFile);
+                auto referenceXml = ndaw::v2::project_fixture::nativeXml(referenceFile);
+                auto originalXml = ndaw::v2::project_fixture::nativeXml(beforeFile);
                 check(referenceXml && originalXml, "owned native reference sessions parsed");
                 auto findByID = [&](auto&& self, juce::XmlElement& root, const juce::String& id) -> juce::XmlElement*
                 {
@@ -430,7 +431,7 @@ int main(int argc, char** argv)
             run(c, Json::array({add(t, "volume", 120000, -9., .25), add(t, "volume", 192000, -18., 0.)}));
             const auto imported = folder.getChildFile("FractionalMetadata.tracktionedit");
             c.save(imported);
-            auto xml = juce::XmlDocument::parse(imported);
+            auto xml = ndaw::v2::project_fixture::nativeXml(imported);
             auto annotate = [&](auto&& self, juce::XmlElement& n) -> void
             {
                 if (n.hasTagName("POINT"))
@@ -451,7 +452,7 @@ int main(int argc, char** argv)
             pump();
             const auto saved = folder.getChildFile("FractionalCollapsed.tracktionedit");
             c.save(saved);
-            auto savedXml = juce::XmlDocument::parse(saved);
+            auto savedXml = ndaw::v2::project_fixture::nativeXml(saved);
             std::map<std::string, double> retained;
             auto inspect = [&](auto&& self, juce::XmlElement& n) -> void
             {
@@ -469,7 +470,7 @@ int main(int argc, char** argv)
             pump();
             // Inject 65537 genuine native points through an OWNED import fixture,
             // not a test double. Enforce the documented work budget atomically.
-            auto denseXml = juce::XmlDocument::parse(saved);
+            auto denseXml = ndaw::v2::project_fixture::nativeXml(saved);
             auto densify = [&](auto&& self, juce::XmlElement& n) -> bool
             {
                 if (n.getChildByName("POINT"))

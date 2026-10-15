@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "SampleMidiMap.h"
 #include "ui/Workspace.h"
 #include <fstream>
@@ -311,7 +312,7 @@ int main(int argc, char** argv)
                           target = query["tracks"][1]["id"];
         auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         // Check the production integrity gate before deriving a legacy import fixture.
         auto damagedModern = std::make_unique<juce::XmlElement>(*xml);
         byID(*damagedModern, src)->setAttribute("offset", .5);
@@ -341,7 +342,7 @@ int main(int argc, char** argv)
             event->setAttribute("opaque_sample_test", "retain exact text");
         const auto fixture = dir.getChildFile("Step.tracktionedit");
         check(xml->writeTo(fixture), "real native offset note CC SysEx fixture saved");
-        auto rampXml = juce::XmlDocument::parse(fixture);
+        auto rampXml = ndaw::v2::project_fixture::nativeXml(fixture);
         for (auto* event : rampXml->getChildByName("TEMPOSEQUENCE")->getChildIterator())
             if (event->hasTagName("TEMPO") && event->getDoubleAttribute("startBeat") == 8)
                 event->setAttribute("curve", .35);
@@ -423,7 +424,7 @@ int main(int argc, char** argv)
                 }
         {
             // Preserve a native fractional-sample boundary when only the other edge changes.
-            auto xml = juce::XmlDocument::parse(fixture);
+            auto xml = ndaw::v2::project_fixture::nativeXml(fixture);
             auto* clip = byID(*xml, src);
             const double start = 4. + .25 / 48000.;
             clip->setAttribute("start", juce::String(start, 17));
@@ -556,7 +557,7 @@ int main(int argc, char** argv)
         check(c.query() == guarded && Commands::mediaHash(wave) == mediaHash,
               "source bound refusal is atomic and PCM remains unchanged");
         {
-            auto locked = juce::XmlDocument::parse(groupFile);
+            auto locked = ndaw::v2::project_fixture::nativeXml(groupFile);
             legacyFixture(*locked);
             byID(*locked, src)->setAttribute("ndaw_locked", 1);
             const auto file = dir.getChildFile("LockedMixedGroup.tracktionedit");
@@ -576,7 +577,7 @@ int main(int argc, char** argv)
         }
         for (const auto& mode : {"locked", "loop", "expression"})
         {
-            auto bad = juce::XmlDocument::parse(fixture);
+            auto bad = ndaw::v2::project_fixture::nativeXml(fixture);
             auto* clip = byID(*bad, src);
             if (std::string(mode) == "locked")
                 clip->setAttribute("ndaw_locked", 1);

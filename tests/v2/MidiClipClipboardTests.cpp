@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -108,7 +109,7 @@ Json controllers(Json value)
 }
 Json data(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* state = byID(*xml, id);
     if (!state)
         throw std::runtime_error("saved MIDI clip ID missing");
@@ -227,7 +228,7 @@ int main(int argc, char** argv)
                           destination = q["tracks"][1]["id"], target = q["tracks"][1]["clips"][0]["id"];
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         check(bool(xml) && xml->getChildByName("NATIVEDAW"), "owned foreign MIDI fixture has native metadata");
         // SDK event injection deliberately creates a foreign, history-free input.
         xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
@@ -415,7 +416,7 @@ int main(int argc, char** argv)
         pump();
         check(w.uiCommands().getKeyMappings()->getKeyPressesAssignedToCommand(editCommand::paste).contains(custom),
               "custom key survives native Save/Open");
-        auto lockedXml = juce::XmlDocument::parse(fixture);
+        auto lockedXml = ndaw::v2::project_fixture::nativeXml(fixture);
         byID(*lockedXml, target)->setAttribute("ndaw_locked", true);
         const auto lockedPath = dir.getChildFile("Locked.tracktionedit");
         check(lockedXml->writeTo(lockedPath), "owned locked MIDI destination fixture saved");

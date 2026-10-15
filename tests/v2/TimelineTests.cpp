@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <nativedaw/v2/McpSession.h>
 #include <chrono>
@@ -201,7 +202,7 @@ void core(const juce::File& folder, const juce::File& source)
     const auto intact = c.query();
     for (const auto bad : {"1.5", "garbage", "9223372036854775808", "24000"})
     {
-        auto xml = juce::XmlDocument::parse(saved);
+        auto xml = ndaw::v2::project_fixture::nativeXml(saved);
         if (!xml || !xml->getChildByName("NATIVEDAW"))
             throw std::runtime_error("saved metadata missing");
         xml->getChildByName("NATIVEDAW")->setAttribute("range_end_samples", bad);

@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -127,7 +128,7 @@ juce::XmlElement* byID(juce::XmlElement& x, const std::string& id)
 }
 Json nativeData(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* clip = byID(*xml, id);
     check(clip != nullptr, "saved native clip identity exists");
     Json events = Json::array();
@@ -298,7 +299,7 @@ int main(int argc, char** argv)
             run(c, Json::array({curve(id, 0, -30.), curve(id, 480000, -12.)}));
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         // Outside-L1 fixture edits intentionally start a new, history-free import.
         xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         byID(*xml, audio)->setAttribute("qualification_extra", "retained-audio-state");

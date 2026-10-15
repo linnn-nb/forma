@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -489,7 +490,7 @@ int main(int argc, char** argv)
         check(difference(savedPCM, reopenPCM, 0, 192000) <= 2e-6, "reopened native render retains complete PCM");
 
         // An owned file fixture supplies sub-sample source time; production still writes only via L1.
-        auto xml = juce::XmlDocument::parse(project);
+        auto xml = ndaw::v2::project_fixture::nativeXml(project);
         check(bool(xml), "owned session XML decoded");
         bool found = false;
         std::function<void(juce::XmlElement&)> fractional = [&](juce::XmlElement& node)

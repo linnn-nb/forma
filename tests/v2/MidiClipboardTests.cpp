@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -202,7 +203,7 @@ int main(int argc, char** argv)
         const Json selected = Json::array({initial[0]["id"], initial[1]["id"]});
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         // This is a deliberately edited import fixture, not a saved Undo stack.
         // Its native XML changes must not retain an incompatible history hash.
         xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
@@ -318,7 +319,7 @@ int main(int argc, char** argv)
             check(replay == receipt, "retry retains the original complete execution receipt apart from replay flag");
             const auto saved = dir.getChildFile(juce::Uuid().toString() + ".tracktionedit");
             c.save(saved);
-            auto savedXml = juce::XmlDocument::parse(saved);
+            auto savedXml = ndaw::v2::project_fixture::nativeXml(saved);
             auto* copied = byID(*savedXml, inserted[0]["id"].get<std::string>());
             check(copied && copied->getStringAttribute("qualification_extra") == "opaque-original-data" &&
                       copied->getIntAttribute("c") == 3 && copied->getIntAttribute("lift") == 27,
@@ -448,7 +449,7 @@ int main(int argc, char** argv)
               "MIDI clipboard validates the displayed revision after a concurrent facts query");
         c.undo();
         pump();
-        auto lockedXML = juce::XmlDocument::parse(imported);
+        auto lockedXML = ndaw::v2::project_fixture::nativeXml(imported);
         byID(*lockedXML, destination)->setAttribute("ndaw_locked", true);
         const auto lockedFile = dir.getChildFile("Locked.tracktionedit");
         check(lockedXML->writeTo(lockedFile), "owned locked destination fixture saved");

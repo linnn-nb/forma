@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include <nativedaw/v2/McpSession.h>
 #include <fstream>
 #include <iostream>
@@ -174,7 +175,7 @@ int main(int argc,char** argv) {juce::ScopedJuceInitialiser_GUI gui;try {
         Commands large(false,std::make_unique<Storage>(scratch.folder.getChildFile("byte-prefs")));
         Json ops=Json::array();for(int n=0;n<6;++n)ops.push_back(operation("track.create",{{"name","Metadata "+std::to_string(n)},{"ref","$t"+std::to_string(n)}}));commit(large,std::move(ops));
         auto savedLarge=scratch.folder.getChildFile("metadata.tracktionedit");large.save(savedLarge);
-        auto xml=juce::XmlDocument::parse(savedLarge);check(xml!=nullptr,"byte-budget fixture is an actual readable native Edit document");
+        auto xml=ndaw::v2::project_fixture::nativeXml(savedLarge);check(xml!=nullptr,"byte-budget fixture is an actual readable native Edit document");
         int found=0;forEachXmlChildElement(*xml,child)if(child->hasTagName("TRACK")){child->setAttribute("name",juce::String(std::string(70000,'x')));++found;}
         check(found==6&&xml->writeTo(savedLarge),"oversized imported metadata is stored only in the generated test document");large.open(savedLarge);
         auto args=arguments(large.querySummary(),"tracks");args["limit"]=64;auto first=large.queryObjects(args);

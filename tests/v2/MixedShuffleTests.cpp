@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -106,7 +107,7 @@ juce::XmlElement* byID(juce::XmlElement& x, const std::string& id)
 }
 Json nativeData(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* clip = byID(*xml, id);
     check(clip != nullptr, "saved native clip identity exists");
     Json events = Json::array();
@@ -287,7 +288,7 @@ int main(int argc, char** argv)
                                 curve(id, 24 * 48000, -12.)}));
         const auto initial = dir.getChildFile("Base.tracktionedit");
         c.save(initial);
-        auto xml = juce::XmlDocument::parse(initial);
+        auto xml = ndaw::v2::project_fixture::nativeXml(initial);
         for (const auto& id : {srcMidi, destMidi, lateMidi})
         {
             auto* native = byID(*xml, id);

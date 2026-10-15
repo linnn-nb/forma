@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -199,7 +200,7 @@ void basic(const juce::File& root, const juce::File& file)
         reopened.redo();
         check(reopened.crossfades(t) == xf, "reopened Redo restores equal-power transition");
     }
-    auto corrupted = juce::ValueTree::fromXml(*juce::XmlDocument::parse(saved));
+    auto corrupted = juce::ValueTree::fromXml(*ndaw::v2::project_fixture::nativeXml(saved));
     auto info = corrupted.getChildWithName("NATIVEDAW");
     info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);
     for (auto node : corrupted)

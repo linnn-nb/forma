@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -255,7 +256,7 @@ int main(int argc, char** argv)
                                                        {"solo", false}})}));
         const auto saved = folder.getChildFile("Original.tracktionedit");
         c.save(saved);
-        auto xml = juce::XmlDocument::parse(saved);
+        auto xml = ndaw::v2::project_fixture::nativeXml(saved);
         bool changed = false;
         double expectedFraction = 0;
         std::function<void(juce::XmlElement&)> fractional = [&](juce::XmlElement& n)
@@ -565,7 +566,7 @@ int main(int argc, char** argv)
         check(c.query()["tracks"] == midiBefore["tracks"], "unsupported later group target leaves all audio intact");
         openNative(w, c, ready);
         pump();
-        auto directXml = juce::XmlDocument::parse(ready);
+        auto directXml = ndaw::v2::project_fixture::nativeXml(ready);
         check(bool(directXml), "owned session parsed for non-default reader fixture");
         directXml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
         std::function<void(juce::XmlElement&)> directReader = [&](juce::XmlElement& n)

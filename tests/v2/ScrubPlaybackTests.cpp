@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "ScrubWindowCache.h"
 #include <thread>
@@ -912,7 +913,7 @@ int main(int argc, char** argv)
             }
             // Owned native data fixture for a sliced Punch remainder. It has
             // no persisted history because its state is intentionally authored below.
-            auto inherited = juce::ValueTree::fromXml(*juce::XmlDocument::parse(saved));
+            auto inherited = juce::ValueTree::fromXml(*ndaw::v2::project_fixture::nativeXml(saved));
             auto info = inherited.getChildWithName("NATIVEDAW");
             info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);
             auto remainder = inherited.getChildWithName("TRACK").getChildWithName("AUDIOCLIP");
@@ -942,7 +943,7 @@ int main(int argc, char** argv)
                         "Punch remainder scrub retains the source-anchored envelope in both directions");
             }
             // This isolated native-file fault fixture is data, not an Edit-side writer.
-            auto xml = juce::XmlDocument::parse(saved);
+            auto xml = ndaw::v2::project_fixture::nativeXml(saved);
             auto fixture = juce::ValueTree::fromXml(*xml);
             auto faultInfo = fixture.getChildWithName("NATIVEDAW");
             faultInfo.removeChild(faultInfo.getChildWithName("PERSISTENT_HISTORY"), nullptr);

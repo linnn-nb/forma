@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "SampleMidiMap.h"
 #include "ui/Workspace.h"
 #include <fstream>
@@ -299,7 +300,7 @@ int main(int argc, char** argv)
                           target = query["tracks"][1]["id"];
         auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         // Check the production integrity gate before deriving a legacy import fixture.
         auto damagedModern = std::make_unique<juce::XmlElement>(*xml);
         byID(*damagedModern, src)->setAttribute("offset", .5);
@@ -329,7 +330,7 @@ int main(int argc, char** argv)
             event->setAttribute("opaque_sample_test", "retain exact text");
         const auto fixture = dir.getChildFile("Step.tracktionedit");
         check(xml->writeTo(fixture), "real native offset note CC SysEx fixture saved");
-        auto rampXml = juce::XmlDocument::parse(fixture);
+        auto rampXml = ndaw::v2::project_fixture::nativeXml(fixture);
         for (auto* event : rampXml->getChildByName("TEMPOSEQUENCE")->getChildIterator())
             if (event->hasTagName("TEMPO") && event->getDoubleAttribute("startBeat") == 8)
                 event->setAttribute("curve", .35);
@@ -507,7 +508,7 @@ int main(int argc, char** argv)
         const auto unchanged = c.query();
         for (bool corruptTimes : {false, true})
         {
-            auto bad = juce::XmlDocument::parse(projectedFile);
+            auto bad = ndaw::v2::project_fixture::nativeXml(projectedFile);
             legacyFixture(*bad); // Exercise provenance validation independently of outer history checksum.
             auto* provenance = byID(*bad, src)->getChildByName("NDAW_SAMPLE_MIDI_ORIGIN");
             check(provenance != nullptr, "saved native project contains original MIDI provenance");
@@ -520,7 +521,7 @@ int main(int argc, char** argv)
         }
         for (bool nested : {false, true})
         {
-            auto bad = juce::XmlDocument::parse(fixture);
+            auto bad = ndaw::v2::project_fixture::nativeXml(fixture);
             auto* clip = byID(*bad, src);
             if (nested)
                 clip->getChildByName("SEQUENCE")

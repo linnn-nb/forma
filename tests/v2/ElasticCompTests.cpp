@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <fstream>
@@ -249,7 +250,7 @@ int main(int argc, char** argv)
             if (cases.empty())
             {
                 // Explicit historyless legacy fixture. Modern-file integrity remains strict.
-                const auto xml = juce::parseXML(saved);
+                const auto xml = ndaw::v2::project_fixture::nativeXml(saved);
                 auto legacyState = juce::ValueTree::fromXml(*xml);
                 auto meta = legacyState.getChildWithName("NATIVEDAW");
                 meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);

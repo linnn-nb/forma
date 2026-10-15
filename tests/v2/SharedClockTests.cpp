@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -127,7 +128,7 @@ juce::XmlElement* byID(juce::XmlElement& x, const std::string& id)
 }
 Json nativeData(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* clip = byID(*xml, id);
     check(clip != nullptr, "saved native clip identity exists");
     Json events = Json::array();
@@ -414,7 +415,7 @@ int main(int argc, char** argv)
         }
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         for (const auto& id : {sm, lm})
         {
             auto* native = byID(*xml, id);
@@ -433,7 +434,7 @@ int main(int argc, char** argv)
         const auto fixture = dir.getChildFile("Fixture.tracktionedit");
         check(xml->writeTo(fixture), "owned actual native MIDI event fixture written");
         const auto fixtureHash = juce::SHA256(fixture).toHexString();
-        auto rampXml = juce::XmlDocument::parse(fixture);
+        auto rampXml = ndaw::v2::project_fixture::nativeXml(fixture);
         int ramps = 0;
         for (auto* event : rampXml->getChildByName("TEMPOSEQUENCE")->getChildIterator())
             if (event->hasTagName("TEMPO") &&
@@ -518,7 +519,7 @@ int main(int argc, char** argv)
         selectBasis(source, "auto");
         const auto reset = dir.getChildFile("BasisReset.tracktionedit");
         c.save(reset);
-        auto resetXml = juce::XmlDocument::parse(reset);
+        auto resetXml = ndaw::v2::project_fixture::nativeXml(reset);
         check(byID(*resetXml, source)->getChildByName("NDAW_AUTOMATION_EDIT_BASIS") == nullptr,
               "automatic basis removes explicit native metadata without removing track content");
         w.openSession(reset);
@@ -797,7 +798,7 @@ int main(int argc, char** argv)
         pump();
         check(sameSavedState(persistentTracks(c), guiAfter) && keys->containsMapping(editCommand::paste, custom),
               "shared GUI state and custom key persist through Open");
-        auto invalidXml = juce::XmlDocument::parse(guiSaved);
+        auto invalidXml = ndaw::v2::project_fixture::nativeXml(guiSaved);
         auto* node = byID(*invalidXml, target)->getChildByName("NDAW_AUTOMATION_EDIT_BASIS");
         check(node != nullptr, "basis persisted in owning native track metadata");
         node->setAttribute("basis", "invented");

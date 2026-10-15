@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "OwnedEditFixture.h"
 #include <nativedaw/v2/McpSession.h>
@@ -555,7 +556,7 @@ int main(int argc, char** argv)
             owner.redo();
             const auto migrated = dir.getChildFile("MigratedGroups.tracktionedit");
             owner.save(migrated);
-            auto migratedXML = juce::parseXML(migrated);
+            auto migratedXML = ndaw::v2::project_fixture::nativeXml(migrated);
             std::function<bool(juce::XmlElement&)> hasSchema2 = [&](juce::XmlElement& xml)
             {
                 if (xml.hasTagName("MIX_GROUPS"))

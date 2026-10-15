@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include "AutomationCurveEdit.h"
 #include <fstream>
@@ -202,7 +203,7 @@ int main(int argc, char** argv)
                                     add(destination, 960000, -9., 0., "$de")}));
                 const auto raw = caseFolder.getChildFile("Raw.tracktionedit");
                 c.save(raw);
-                auto xml = juce::XmlDocument::parse(raw);
+                auto xml = ndaw::v2::project_fixture::nativeXml(raw);
                 // Keep deliberate fixture edits separate from validated saved history.
                 xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");
                 if (ramp)
@@ -298,7 +299,7 @@ int main(int argc, char** argv)
                 check(stable(c, source) == srcBefore, "source automation untouched by paste");
                 const auto saved = caseFolder.getChildFile("Mapped.tracktionedit");
                 c.save(saved);
-                auto savedXml = juce::XmlDocument::parse(saved);
+                auto savedXml = ndaw::v2::project_fixture::nativeXml(saved);
                 bool attribute = false;
                 for (const auto& p : points(c, destination))
                     if (auto* node = byID(*savedXml, p["id"]);

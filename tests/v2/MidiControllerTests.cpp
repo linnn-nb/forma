@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -297,7 +298,7 @@ int main(int argc, char** argv)
         // An imported legacy event preserves opaque properties, raw low bits and metadata.
         const auto imported = root.getChildFile("CC-Imported.tracktionedit");
         c.save(imported);
-        auto xml = juce::XmlDocument::parse(imported);
+        auto xml = ndaw::v2::project_fixture::nativeXml(imported);
         auto state = juce::ValueTree::fromXml(*xml);
         auto meta = state.getChildWithName("NATIVEDAW");
         meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);

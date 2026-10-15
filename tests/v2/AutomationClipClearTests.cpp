@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -98,7 +99,7 @@ juce::AudioBuffer<float> render(Commands& c, const juce::File& path, int64_t end
 juce::AudioBuffer<float> reference(Commands& original, const std::string& track, const Json& clips,
                                    const juce::File& baseline, const juce::File& folder, bool ripple)
 {
-    auto xml = juce::XmlDocument::parse(baseline);
+    auto xml = ndaw::v2::project_fixture::nativeXml(baseline);
     check(bool(xml), "owned independent baseline XML parsed");
     // Independently arranged oracle: a foreign Edit, not a modern save.
     xml->getChildByName("NATIVEDAW")->deleteAllChildElementsWithTagName("PERSISTENT_HISTORY");

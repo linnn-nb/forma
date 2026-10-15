@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "ui/WorkspaceWindow.h"
 #include <iostream>
@@ -357,7 +358,7 @@ int main(int argc, char** argv)
             c.save(saved);
             if (sr == 48000)
             {
-                auto xml = juce::parseXML(saved);
+                auto xml = ndaw::v2::project_fixture::nativeXml(saved);
                 auto damaged = juce::ValueTree::fromXml(*xml);
                 auto meta = damaged.getChildWithName("NATIVEDAW");
                 meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);

@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "OwnedEditFixture.h"
 #include <fstream>
@@ -212,7 +213,7 @@ int main(int argc, char** argv)
                                                        {"solo", false}})}));
         auto project = folder.getChildFile("RangeDemo.tracktionedit");
         c.save(project);
-        auto xml = juce::XmlDocument::parse(project);
+        auto xml = ndaw::v2::project_fixture::nativeXml(project);
         check(bool(xml), "saved native session independently parsed");
         bool found = false;
         std::function<void(juce::XmlElement&)> fractional = [&](juce::XmlElement& node)

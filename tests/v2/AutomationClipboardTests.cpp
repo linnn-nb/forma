@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include <fstream>
 #include <iostream>
@@ -239,7 +240,7 @@ int main(int argc, char** argv)
                 run(reference, Json::array({add(r, "volume", 0, 0, 0), add(r, "pan", 0, 0, 0), add(r, req, 0, 0, 0)}));
                 const auto referenceFile = folder.getChildFile("Reference-" + juce::String(shape) + ".tracktionedit");
                 reference.save(referenceFile);
-                auto xml = juce::XmlDocument::parse(referenceFile);
+                auto xml = ndaw::v2::project_fixture::nativeXml(referenceFile);
                 check(bool(xml), "owned independently arranged native reference parsed");
                 // The dense independent oracle is edited outside L1; its old
                 // journal describes another Edit and must not be imported.

@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/WorkspaceWindow.h"
 #include <fstream>
 #include <iostream>
@@ -255,7 +256,7 @@ int main(int argc, char** argv)
         check(c.query()["markers"] == savedMarkers && currentRoll(c) == roll(0, 0),
               "native Edit save/reopen retains stable locations and optional roll data");
         rejects([&] { c.commit(stale); }, "old-session recall cannot commit after reopening");
-        auto root = juce::XmlDocument::parse(saved);
+        auto root = ndaw::v2::project_fixture::nativeXml(saved);
         check(root && findRoll(*root), "stored durations are present in real saved Edit XML");
         for (auto bad : {"-1", "1.5", "NaN", "99999999999999999999", ""})
         {

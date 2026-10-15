@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#include "ProjectFixture.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include <fstream>
 #include <iostream>
@@ -314,7 +315,7 @@ void nativeFixture(Commands& c, juce::File folder)
 {
     const auto modern = folder.getChildFile("Initial.tracktionedit");
     c.save(modern);
-    auto xml = juce::XmlDocument::parse(modern);
+    auto xml = ndaw::v2::project_fixture::nativeXml(modern);
     if (auto* meta = xml->getChildByName("NATIVEDAW"))
         if (auto* history = meta->getChildByName("PERSISTENT_HISTORY"))
             meta->removeChildElement(history, true);

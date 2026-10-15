@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <fstream>
@@ -526,7 +527,7 @@ int main(int argc, char** argv)
                   "withheld real hosted output callbacks trigger explicit two-second watchdog failure");
         }
         const auto bad = dir.getChildFile("BadRoll.tracktionedit");
-        auto xml = juce::parseXML(file);
+        auto xml = ndaw::v2::project_fixture::nativeXml(file);
         check(xml != nullptr, "real saved native XML readable");
         std::function<void(juce::XmlElement&)> corrupt = [&](juce::XmlElement& e)
         {

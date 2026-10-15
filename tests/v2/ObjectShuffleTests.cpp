@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "RecoveryStore.h"
 #include "ui/Workspace.h"
 #include <fstream>
@@ -137,7 +138,7 @@ juce::XmlElement* byID(juce::XmlElement& x, const std::string& id)
 }
 Json nativeData(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* clip = byID(*xml, id);
     check(clip != nullptr, "saved native clip identity exists");
     Json events = Json::array();
@@ -422,7 +423,7 @@ int main(int argc, char** argv)
         }
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
-        auto xml = juce::XmlDocument::parse(base);
+        auto xml = ndaw::v2::project_fixture::nativeXml(base);
         for (const auto& owner : query["tracks"])
             for (const auto& v : owner["clips"])
                 if (v["kind"] == "midi")
@@ -444,14 +445,14 @@ int main(int argc, char** argv)
         const auto step = dir.getChildFile("Step.tracktionedit");
         check(xml->writeTo(step), "actual raw native fixture written");
         const auto stepHash = juce::SHA256(step).toHexString();
-        auto rampXml = juce::XmlDocument::parse(step);
+        auto rampXml = ndaw::v2::project_fixture::nativeXml(step);
         for (auto* event : rampXml->getChildByName("TEMPOSEQUENCE")->getChildIterator())
             if (event->hasTagName("TEMPO") &&
                 (event->getDoubleAttribute("startBeat") == 8 || event->getDoubleAttribute("startBeat") == 16))
                 event->setAttribute("curve", event->getDoubleAttribute("startBeat") == 8 ? .35 : -.25);
         const auto ramp = dir.getChildFile("Ramp.tracktionedit");
         check(rampXml->writeTo(ramp), "native ramp fixture written");
-        auto constantXml = juce::XmlDocument::parse(step);
+        auto constantXml = ndaw::v2::project_fixture::nativeXml(step);
         auto* tempo = constantXml->getChildByName("TEMPOSEQUENCE");
         for (auto* event = tempo->getFirstChildElement(); event;)
         {

@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "Workspace.h"
 #include "TimelineState.h"
 #include <fstream>
@@ -287,7 +288,7 @@ int main(int argc, char** argv)
         check(c.editingOptions()["automation_follows_edit"] == false && lanes(c, track) == originals &&
                   c.query()["tracks"][0]["clips"] == roundtrip,
               "actual save/close/reopen retains off policy, audio and all point identities");
-        auto xml = juce::XmlDocument::parse(demo);
+        auto xml = ndaw::v2::project_fixture::nativeXml(demo);
         check(xml && options(*xml) && options(*xml)->getStringAttribute("automation_follows_edit") == "0",
               "canonical persisted Edit XML contains the engineering option");
         for (int variant = 0; variant < 9; ++variant)

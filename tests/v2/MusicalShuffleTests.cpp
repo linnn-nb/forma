@@ -1,3 +1,4 @@
+#include "ProjectFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -102,7 +103,7 @@ juce::XmlElement* byID(juce::XmlElement& x, const std::string& id)
 }
 Json nativeData(const juce::File& saved, const std::string& id)
 {
-    auto xml = juce::XmlDocument::parse(saved);
+    auto xml = ndaw::v2::project_fixture::nativeXml(saved);
     auto* clip = byID(*xml, id);
     check(clip != nullptr, "saved native clip identity exists");
     Json events = Json::array();
@@ -325,7 +326,7 @@ int main(int argc, char** argv)
                                 curve(id, 24 * 48000, -12.)}));
         const auto initial = dir.getChildFile("Base.tracktionedit");
         c.save(initial);
-        auto xml = juce::XmlDocument::parse(initial);
+        auto xml = ndaw::v2::project_fixture::nativeXml(initial);
         for (const auto& id : {srcMidi, destMidi, lateMidi})
         {
             auto* native = byID(*xml, id);
@@ -344,7 +345,7 @@ int main(int argc, char** argv)
         const auto fixture = dir.getChildFile("Fixture.tracktionedit");
         check(xml->writeTo(fixture), "owned native event fixture written");
         const auto fixtureHash = juce::SHA256(fixture).toHexString();
-        auto rampXml = juce::XmlDocument::parse(fixture);
+        auto rampXml = ndaw::v2::project_fixture::nativeXml(fixture);
         auto* tempo = rampXml->getChildByName("TEMPOSEQUENCE");
         check(tempo != nullptr, "real native Tempo sequence found in owned fixture");
         int changedRamps = 0;
@@ -737,7 +738,7 @@ int main(int argc, char** argv)
         w.openSession(guiFile);
         pump();
         // Owned corrupt-state input must not replace the current Edit.
-        auto corrupt = juce::XmlDocument::parse(guiFile);
+        auto corrupt = ndaw::v2::project_fixture::nativeXml(guiFile);
         auto* metadata = corrupt->getChildByName("NATIVEDAW");
         check(metadata != nullptr && metadata->getChildByName("SHUFFLE_OPTIONS"),
               "native saved Shuffle settings exist");
