@@ -46,6 +46,7 @@ public:
 namespace
 {
 int checks = 0;
+Json pcmOnsetMeasurements = Json::array();
 void check(bool ok, const char* message)
 {
     if (!ok)
@@ -180,10 +181,21 @@ int renderOnset(Commands& c, const juce::File& file, int64_t start, int64_t end)
           "native FourOsc WAV independently decoded and length checked");
     juce::AudioBuffer<float> pcm(2, int(end - start));
     check(reader->read(&pcm, 0, pcm.getNumSamples(), 0, true, true), "actual native WAV samples read");
+    int firstNonzero = -1, thresholdCrossing = -1;
     for (int i = 0; i < pcm.getNumSamples(); ++i)
-        if (std::abs(pcm.getSample(0, i)) > 3e-6)
-            return i;
-    throw std::runtime_error("actual instrument render silent");
+    {
+        const auto sample = pcm.getSample(0, i);
+        if (firstNonzero < 0 && sample != 0)
+            firstNonzero = i;
+        if (thresholdCrossing < 0 && std::abs(sample) > 3e-6)
+            thresholdCrossing = i;
+    }
+    check(firstNonzero >= 0 && thresholdCrossing >= firstNonzero,
+          "native PCM onset and original amplitude threshold are both measured");
+    pcmOnsetMeasurements.push_back({{"file", file.getFullPathName().toStdString()},
+                                    {"first_nonzero_pcm", firstNonzero},
+                                    {"threshold_3e_minus6", thresholdCrossing}});
+    return firstNonzero;
 }
 juce::Component* find(juce::Component& c, const juce::String& id)
 {
@@ -750,6 +762,8 @@ int main(int argc, char** argv)
                        {"demo", demo.getFullPathName().toStdString()},
                        {"render_before_onset", initialOnset},
                        {"render_after_onset", movedOnset},
+                       {"onset_definition", "first nonzero PCM24 sample; amplitude crossing reported separately"},
+                       {"pcm_onset_measurements", pcmOnsetMeasurements},
                        {"physical_gui", "not executed"},
                        {"limits", "no loop quantisation Groove expression or MIDI trim qualification"}};
         if (argc > 1)
