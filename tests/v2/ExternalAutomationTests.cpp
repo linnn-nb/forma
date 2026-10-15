@@ -23,14 +23,19 @@ public:
                 if (auto* native = external->getAudioPluginInstance())
                     if (auto p = external->getAutomatableParameterByID("0"))
                     {
-                        te::AutomationIterator curve(*p);
-                        curve.setPosition(tracktion::TimePosition::fromSeconds(0));
+                        Json atZero = nullptr;
+                        if (p->getCurve().getNumPoints() != 0)
+                        {
+                            te::AutomationIterator curve(*p);
+                            curve.setPosition(tracktion::TimePosition::fromSeconds(0));
+                            atZero = curve.getCurrentValue();
+                        }
                         result.push_back({{"plugin", plugin->itemID.toString().toStdString()},
                                           {"format", external->desc.pluginFormatName.toStdString()},
                                           {"current", p->getCurrentValue()},
                                           {"explicit", p->getCurrentExplicitValue()},
                                           {"native", native->getParameters()[0]->getValue()},
-                                          {"curve_at_zero", curve.getCurrentValue()},
+                                          {"curve_at_zero", atZero},
                                           {"points", p->getCurve().getNumPoints()},
                                           {"sample_rate", native->getSampleRate()},
                                           {"block_size", native->getBlockSize()},
