@@ -1217,3 +1217,9 @@ add_test(NAME forma_prepared_fader_publication COMMAND ndaw_relocation_automatio
 set_tests_properties(forma_prepared_fader_accuracy forma_prepared_fader_publication PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 add_test(NAME forma_prepared_fader_performance COMMAND ndaw_relocation_automation_tests "${CMAKE_BINARY_DIR}/p3-prepared-fader-performance.json" prepared-performance)
 set_tests_properties(forma_prepared_fader_performance PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_history_lookup_tests PRODUCT_NAME "ndaw_history_lookup_tests")
+target_sources(ndaw_history_lookup_tests PRIVATE tests/v2/HistoryLookupTests.cpp)
+target_link_libraries(ndaw_history_lookup_tests PRIVATE ndaw_engine)
+add_test(NAME forma_history_lookup COMMAND ndaw_history_lookup_tests "${CMAKE_BINARY_DIR}/history-lookup-tests.json")
+set_tests_properties(forma_history_lookup PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
