@@ -16,6 +16,10 @@ public:
     {
         return c.timelineClip(id);
     }
+    static te::VolumeAndPanPlugin& fader(Commands& c, const std::string& id)
+    {
+        return *c.track(id)->getVolumePlugin();
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -252,6 +256,55 @@ void nativeFixture(Commands& c, juce::File folder)
     c.open(legacy);
     check(c.sessionToken() != token, "actual legacy fixture Open replaces the native session");
 }
+juce::AudioBuffer<float> directFader(te::VolumeAndPanPlugin& fader, double ramp)
+{
+    constexpr int block = 128, frames = 192000;
+    fader.smoothingRampTimeSeconds = ramp; // Test-only control; never a production setting.
+    fader.baseClassInitialise({tracktion::TimePosition::fromSeconds(0), 48000, block});
+    juce::AudioBuffer<float> output(2, frames), chunk(2, block);
+    te::MidiMessageArray midi;
+    for (int first = 0; first < frames; first += block)
+    {
+        const int count = std::min(block, frames - first);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < count; ++i)
+                chunk.setSample(ch, i, first + i >= 48000 && first + i < 144000 ? .25f : 0.f);
+        const auto range = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(first / 48000.),
+                                                tracktion::TimePosition::fromSeconds((first + count) / 48000.));
+        const te::PluginRenderContext context{&chunk, 0, count, &midi, 0., range, true, false, true, false};
+        fader.applyToBufferWithAutomation(context);
+        for (int ch = 0; ch < 2; ++ch)
+            output.copyFrom(ch, first, chunk, ch, 0, count);
+    }
+    fader.baseClassDeinitialise();
+    return output;
+}
+Json smoothingControl(juce::File root)
+{
+    Json cases = Json::array();
+    for (double ramp : {.015, 0.})
+    {
+        auto folder = root.getChildFile(ramp == 0 ? "zero-ramp-control" : "native-15ms");
+        folder.createDirectory();
+        Commands c(false, std::make_unique<Storage>(folder.getChildFile("prefs")));
+        auto f = setup(c, folder, false, false);
+        const auto before = directFader(RecordingTestAccess::fader(c, f.a), ramp);
+        const auto receipt = c.commit(plan(c, Json::array({move(f.clip, f.a, f.b, 48000)})));
+        const auto after = directFader(RecordingTestAccess::fader(c, f.b), ramp);
+        double error = 0;
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < before.getNumSamples(); ++i)
+                error = std::max(error, std::abs(double(before.getSample(ch, i)) - after.getSample(ch, i)));
+        cases.push_back({{"ramp_seconds", ramp}, {"max_error", error}});
+        check(ramp == 0 ? error <= 2e-6 : error > 2e-6,
+              "controlled native fader distinguishes smooth-history error from exact curve mapping");
+        c.undo(receipt["plan_id"]);
+    }
+    return {{"result", "passed"},
+            {"checks", checks},
+            {"cases", cases},
+            {"scope", "native VolumeAndPan processor control only; no change to production smoothing"}};
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -261,6 +314,14 @@ int main(int argc, char** argv)
         const auto root =
             juce::File::getCurrentWorkingDirectory().getChildFile("P3-RelocationAutomation-" + juce::Uuid().toString());
         root.createDirectory();
+        if (argc > 2 && std::string(argv[2]) == "smoothing-control")
+        {
+            const auto result = smoothingControl(root);
+            if (argc > 1)
+                std::ofstream(argv[1]) << result.dump(2) << '\n';
+            std::cout << result.dump(2) << std::endl;
+            return 0;
+        }
         Json cases = Json::array();
         for (int kind = 0; kind < 3; ++kind)
         {

@@ -1193,3 +1193,5 @@ target_sources(ndaw_relocation_automation_tests PRIVATE tests/v2/RelocationAutom
 target_link_libraries(ndaw_relocation_automation_tests PRIVATE ndaw_ui)
 add_test(NAME forma_relocation_automation COMMAND ndaw_relocation_automation_tests "${CMAKE_BINARY_DIR}/p3-relocation-automation-tests.json")
 set_tests_properties(forma_relocation_automation PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+add_test(NAME forma_fader_smoothing_control COMMAND ndaw_relocation_automation_tests "${CMAKE_BINARY_DIR}/p3-fader-smoothing-control.json" smoothing-control)
+set_tests_properties(forma_fader_smoothing_control PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
