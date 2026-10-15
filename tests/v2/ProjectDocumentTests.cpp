@@ -130,8 +130,9 @@ int main(int argc, char** argv)
         check(!plainReceipt["protected_format"].get<bool>() && juce::parseXML(plain)->hasTagName("EDIT"),
               "simple native project remains readable by established native readers");
         auto anchors = c.warpClip(clip)["anchors"];
-        anchors.insert(anchors.begin() + 1,
-                       {{"id", "warp:" + clip + ":middle"}, {"source_time_seconds", .5}, {"clip_time_samples", 14400}});
+        anchors.insert(
+            anchors.begin() + 1,
+            Json{{"id", "warp:" + clip + ":middle"}, {"source_time_seconds", .5}, {"clip_time_samples", 14400}});
         const auto warp = run(c, "clip.warp", {{"clip", clip}, {"enabled", true}, {"anchors", anchors}});
         const auto split = run(c, "clip.split", {{"clip", clip}, {"position_samples", 24000}, {"ref", "$right"}});
         const auto pcm = render(c, root);
