@@ -237,12 +237,16 @@ int main(int argc, char** argv)
                     captureSamples(47999, 48000, 2);
                     captureSamples(96000, 96001, 2);
                     captureSamples(239999, 240000, 2);
-                    if (std::abs(curve) == 1)
-                        for (const auto& point : lane["points"])
-                        {
-                            const int64_t at = point["position_samples"];
-                            captureSamples(at, at + 1, 2); // exact native step sample, not a 16-frame ramp
-                        }
+                    // Strong native curves (not only +/-1) may jump at a POINT.
+                    // A 16-frame reference lattice must retain both adjacent
+                    // samples instead of inventing a pre/post-jump linear ramp.
+                    for (const auto& point : lane["points"])
+                    {
+                        const int64_t at = point["position_samples"];
+                        if (at > 0)
+                            captureSamples(at - 1, at, 2);
+                        captureSamples(at, at + 1, 2);
+                    }
                     for (const auto& [at, value] : samples)
                     {
                         auto* point = copied->createNewChildElement("POINT");
@@ -335,7 +339,13 @@ int main(int argc, char** argv)
             std::cout << "curve " << curve << " native normalized error " << curveError << std::endl;
             check(curveError < 4e-7, "retained curve equals original time splice within fixed normalized tolerance");
             const auto afterAudio = render(c, folder.getChildFile("after-" + juce::String(curve) + ".wav"), 192000);
-            double pcmError = 0;
+            double pcmError = 0, untouchedError = 0;
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 48000 - 2048; ++i)
+                    untouchedError = std::max(
+                        untouchedError, std::abs(double(afterAudio.getSample(ch, i)) - beforeAudio.getSample(ch, i)));
+            check(untouchedError < 2e-5,
+                  "actual untouched audio before Shuffle matches the original render, including strong curve jumps");
             for (int ch = 0; ch < 2; ++ch)
                 for (int i = 2048; i < 190000; ++i)
                     if (std::abs(i - 48000) >= 2048)
