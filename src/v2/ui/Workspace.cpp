@@ -876,7 +876,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     menu.setComponentID("workspace.menu");
     newTrack.setButtonText(text("＋ 轨道"));
     importButton.setButtonText(text("导入…"));
-    saveButton.setButtonText(text("保存副本…"));
+    saveButton.setButtonText(text("保存"));
     exportButton.setButtonText(text("导出…"));
 
     syncPreferencePaths();

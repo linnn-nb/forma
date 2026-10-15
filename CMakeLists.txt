@@ -245,7 +245,7 @@ set_tests_properties(tracktion_time_selection PROPERTIES TIMEOUT 60 FAIL_REGULAR
 juce_add_console_app(ndaw_new_session_tests PRODUCT_NAME "ndaw_new_session_tests")
 target_sources(ndaw_new_session_tests PRIVATE tests/v2/NewSessionTests.cpp)
 target_include_directories(ndaw_new_session_tests PRIVATE src/v2)
-target_link_libraries(ndaw_new_session_tests PRIVATE ndaw_engine)
+target_link_libraries(ndaw_new_session_tests PRIVATE ndaw_ui)
 add_test(NAME tracktion_native_new_session COMMAND ndaw_new_session_tests "${CMAKE_SOURCE_DIR}/evidence/M1/new-session-tests.json")
 set_tests_properties(tracktion_native_new_session PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 juce_add_console_app(ndaw_session_recovery_tests PRODUCT_NAME "ndaw_session_recovery_tests")

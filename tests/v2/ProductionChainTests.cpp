@@ -375,6 +375,13 @@ int main(int argc, char** argv)
         key(w, 7);
         check(c.query()["tracks"] == finished && c.crossfades(a) == pairs,
               "reopened keyboard Redo restores all IDs and source mappings");
+        const auto previousFileHash = Commands::mediaHash(saved);
+        key(w, 3);
+        wait([&] { return Commands::mediaHash(saved) != previousFileHash; },
+             "ordinary Save key writes reopened production history to its actual current file");
+        check(c.projectFile()["path"] == saved.getFullPathName().toStdString() &&
+                  c.projectFile()["expected_sha256"] == Commands::mediaHash(saved),
+              "P1 Save keeps its real document binding without another file chooser");
         c.render(root.getChildFile("05-reopened.wav"), 0, 192000);
         same(finalPCM, read(root.getChildFile("05-reopened.wav")), 0, 192000,
              "reopened final export matches the full rendered PCM");
