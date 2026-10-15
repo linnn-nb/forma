@@ -418,8 +418,18 @@ int main(int argc, char** argv)
         key(w, 514);
         wait([&] { return visible(w, "ui.command:523") != nullptr; },
              "Playlist key opens actual native panel with Take selection");
-        check(visible(w, "ui.command:522") && !visible(w, "ui.command:522")->isEnabled(),
-              "unqualified MIDI Playlist locking remains visibly disabled");
+        check(visible(w, "ui.command:522") && visible(w, "ui.command:522")->isEnabled(),
+              "actual recorded MIDI Take exposes qualified Playlist locking");
+        const auto beforeLock = c.query()["tracks"];
+        key(w, 522);
+        wait([&] { return c.query()["tracks"][0]["clips"][0]["locked"].get<bool>(); },
+             "actual lock key protects the recorded MIDI Take");
+        const auto lockedClip = c.query()["tracks"][0]["clips"][0];
+        rejects([&]
+                { run(c, "midi.note.delete", {{"clip", lockedClip["id"]}, {"note", lockedClip["notes"][0]["id"]}}); },
+                "recorded Take locking is enforced by the production note command");
+        c.undo(c.query()["history"]["undo"]["plan_id"]);
+        check(c.query()["tracks"] == beforeLock, "original Take lock Undo restores editable notes and raw provenance");
         {
             juce::PNGImageFormat png;
             auto out = root.getChildFile("MIDI-Takes.png").createOutputStream();
@@ -430,15 +440,19 @@ int main(int argc, char** argv)
         key(w, 145);
         wait([&] { return visible(w, "midi.canvas") != nullptr; },
              "registered MIDI editor key opens active Take in actual piano roll");
-        const auto beforeBlocked = c.query()["tracks"];
-        rejects(
-            [&]
-            {
-                c.makePlan("human", Json::array({op("playlist.create",
-                                                    {{"track", track}, {"name", "Not qualified"}, {"role", "comp"}})}));
-            },
-            "unqualified MIDI Comp/new Playlist cannot silently use audio-only implementation");
-        check(c.query()["tracks"] == beforeBlocked, "rejected MIDI-only workflow leaves project unchanged");
+        const auto beforeCandidate = c.query()["tracks"];
+        const auto candidate = run(c, "playlist.create",
+                                   {{"track", track},
+                                    {"source", beforeCandidate[0]["playlists"]["active"]},
+                                    {"name", "Loop Take Comp"},
+                                    {"role", "comp"}});
+        check(c.query()["tracks"][0]["clips"] == beforeCandidate[0]["clips"] &&
+                  c.query()["tracks"][0]["playlists"]["items"].size() ==
+                      beforeCandidate[0]["playlists"]["items"].size() + 1,
+              "actual recorded MIDI Take creates a non-playing Comp copy without replacing source");
+        c.undo(candidate["plan_id"]);
+        check(c.query()["tracks"] == beforeCandidate,
+              "Comp creation Undo restores recorded Take and immutable capture sources");
         const auto active = c.query()["tracks"][0]["clips"][0];
         const auto edit = run(c, "midi.note.set",
                               {{"clip", active["id"]},
