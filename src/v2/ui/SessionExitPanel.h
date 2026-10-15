@@ -46,6 +46,7 @@ public:
             b.setComponentID(id);
         };
         setup(saveButton, "另存完整工程并退出", "exit.save");
+        saveButton.setColour(juce::TextButton::buttonColourId, accent().darker(0.5f));
         setup(snapshotButton, "保留恢复副本并退出", "exit.snapshot");
         setup(cancelButton, "返回工程", "exit.cancel");
         setup(browseButton, "选择位置…", "exit.browse");
@@ -102,11 +103,16 @@ public:
     }
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(base());
+        g.fillAll(juce::Colours::black.withAlpha(0.55f));
+        const auto card = reviewBounds().expanded(24).toFloat();
+        g.setColour(base().brighter(0.06f));
+        g.fillRoundedRectangle(card, 8.0f);
+        g.setColour(accent().withAlpha(0.4f));
+        g.drawRoundedRectangle(card, 8.0f, 1.0f);
     }
     void resized() override
     {
-        auto card = juce::Rectangle<int>(std::min(820, getWidth() - 40), 300).withCentre(getLocalBounds().getCentre());
+        auto card = reviewBounds();
         title.setBounds(card.removeFromTop(40));
         detail.setBounds(card.removeFromTop(90));
         auto row = card.removeFromTop(34);
@@ -120,6 +126,10 @@ public:
     }
 
 private:
+    juce::Rectangle<int> reviewBounds() const
+    {
+        return juce::Rectangle<int>(std::min(820, getWidth() - 88), 300).withCentre(getLocalBounds().getCentre());
+    }
     juce::Label title, detail, outcome;
     PathEditor path;
     juce::TextButton saveButton, snapshotButton, cancelButton, browseButton;
