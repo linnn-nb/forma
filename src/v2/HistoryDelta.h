@@ -44,11 +44,15 @@ inline std::vector<Path> locators(juce::ValueTree parent)
     }
     return result;
 }
-inline int find(juce::ValueTree parent, const Path& part)
+inline void validateLocator(const Path& part)
 {
     require(part.is_object() && part.size() == 3 && part.at("type").is_string() && part.at("key").is_string() &&
                 part.at("ordinal").is_number_integer(),
             "invalid history node locator");
+}
+inline int find(juce::ValueTree parent, const Path& part)
+{
+    validateLocator(part);
     int ordinal = 0;
     for (int i = 0; i < parent.getNumChildren(); ++i)
     {
@@ -78,6 +82,99 @@ inline juce::ValueTree resolve(juce::ValueTree root, const Path& path)
     }
     return root;
 }
+// One detached replay only. Native reconciliation may mutate other parents, so
+// that path deliberately keeps the original lookup. Anonymous ordinal locators
+// also retain their original semantics; only stable keyed siblings are indexed.
+class ReplayLookup
+{
+public:
+    struct Limits
+    {
+        size_t parents = 64, nodes = 65536, keyBytes = 8 * 1024 * 1024;
+    };
+    explicit ReplayLookup(bool active) : enabled(active) {}
+    ReplayLookup(bool active, Limits budget) : enabled(active), limits(budget) {}
+    void clear()
+    {
+        entries.clear();
+        nodes = bytes = 0;
+    }
+    size_t cachedNodes() const
+    {
+        return nodes;
+    }
+    size_t cachedKeyBytes() const
+    {
+        return bytes;
+    }
+    size_t cachedParents() const
+    {
+        return entries.size();
+    }
+    juce::ValueTree child(juce::ValueTree parent, const Path& part)
+    {
+        validateLocator(part);
+        auto linear = [&]
+        {
+            const auto at = find(parent, part);
+            return at < 0 ? juce::ValueTree{} : parent.getChild(at);
+        };
+        if (!enabled || part["key"].get_ref<const std::string&>().empty() || parent.getNumChildren() < 32)
+            return linear();
+        auto found = std::find_if(entries.begin(), entries.end(), [&](const Entry& e) { return e.parent == parent; });
+        if (found == entries.end())
+        {
+            const auto count = size_t(parent.getNumChildren());
+            if (entries.size() >= limits.parents || count > limits.nodes - nodes)
+                return linear();
+            Entry entry;
+            entry.parent = parent;
+            for (auto node : parent)
+            {
+                auto type = node.getType().toString().toStdString(), key = identity(node);
+                const auto available = limits.keyBytes - bytes - entry.bytes;
+                if (type.size() > available || key.size() > available - type.size())
+                    return linear();
+                entry.bytes += type.size() + key.size();
+                if (!key.empty())
+                    entry.keyed[{std::move(type), std::move(key)}].push_back(node);
+            }
+            bytes += entry.bytes;
+            nodes += count;
+            entries.push_back(std::move(entry));
+            found = std::prev(entries.end());
+        }
+        const auto match = found->keyed.find({part["type"].get<std::string>(), part["key"].get<std::string>()});
+        if (match != found->keyed.end())
+            for (auto node : match->second)
+                if (node.getParent() == parent && identity(node) == part["key"].get<std::string>())
+                    return node; // Preserve first-live-match behavior, including duplicate keys.
+        return {};
+    }
+    juce::ValueTree resolve(juce::ValueTree root, const Path& path)
+    {
+        require(path.is_array() && path.size() <= 128, "invalid persistent history path");
+        for (const auto& part : path)
+        {
+            root = child(root, part);
+            if (!root.isValid())
+                return {};
+        }
+        return root;
+    }
+
+private:
+    struct Entry
+    {
+        juce::ValueTree parent;
+        std::map<std::pair<std::string, std::string>, std::vector<juce::ValueTree>> keyed;
+        size_t bytes = 0;
+    };
+    bool enabled;
+    Limits limits;
+    size_t nodes = 0, bytes = 0;
+    std::vector<Entry> entries;
+};
 inline Path address(juce::ValueTree node)
 {
     Path result = Json::array();
@@ -226,14 +323,16 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
         Path locator;
     };
     std::vector<Transfer> transfers;
+    ReplayLookup lookup(!reconcile);
     for (int step = 0; step < delta.getNumChildren(); ++step)
     {
         const auto change = delta.getChild(forward ? step : delta.getNumChildren() - step - 1);
         require(change.hasType("CHANGE"), "invalid history delta change");
-        auto target = resolve(root, Json::parse(change["path"].toString().toStdString()));
+        auto target = lookup.resolve(root, Json::parse(change["path"].toString().toStdString()));
         require(target.isValid(), "persistent history target unavailable");
         if (change.hasProperty("properties"))
         {
+            const auto oldIdentity = reconcile ? std::string{} : identity(target);
             const auto values = change.getChildWithName(forward ? "AFTER" : "BEFORE");
             require(values.isValid(), "persistent property image missing");
             for (const auto& name : Json::parse(change["properties"].toString().toStdString()))
@@ -245,6 +344,8 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
                 else
                     target.removeProperty(key, nullptr);
             }
+            if (!reconcile && identity(target) != oldIdentity)
+                lookup.clear();
         }
         const auto removeType = juce::Identifier(forward ? "REMOVE" : "ADD");
         const auto addType = juce::Identifier(forward ? "ADD" : "REMOVE");
@@ -252,9 +353,16 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
             if (auto child = change.getChild(i); child.hasType(removeType))
             {
                 const auto locator = Json::parse(child["locator"].toString().toStdString());
-                const auto at = find(target, locator);
-                if (at >= 0)
+                const auto value = lookup.child(target, locator);
+                if (value.isValid())
+                {
+                    const int recorded = int(child["index"]);
+                    const int at =
+                        recorded >= 0 && recorded < target.getNumChildren() && target.getChild(recorded) == value
+                            ? recorded
+                            : target.indexOf(value);
                     target.removeChild(at, nullptr);
+                }
                 else
                 {
                     // Native reconciliation can transfer this same stable node
@@ -266,6 +374,11 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
                     transfers.erase(moved);
                 }
             }
+        // Additions can precede an existing duplicate key or create a formerly
+        // missing path. Removals need no rebuild: cached handles are checked for
+        // their actual parent, and anonymous ordinals always use linear lookup.
+        if (change.getChildWithName(addType).isValid())
+            lookup.clear();
         for (auto child : change)
             if (child.hasType(addType))
             {
@@ -281,17 +394,19 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
             }
         if (change.hasProperty("order_before"))
         {
+            lookup.clear();
             const auto order = Json::parse(change[forward ? "order_after" : "order_before"].toString().toStdString());
             require(order.is_array() && int(order.size()) == target.getNumChildren(), "invalid history child order");
             std::vector<juce::ValueTree> values;
             for (const auto& part : order)
             {
-                const auto at = find(target, part);
-                require(at >= 0, "persistent ordered child unavailable");
-                values.push_back(target.getChild(at));
+                const auto value = lookup.child(target, part);
+                require(value.isValid(), "persistent ordered child unavailable");
+                values.push_back(value);
             }
             for (int i = 0; i < int(values.size()); ++i)
                 target.moveChild(target.indexOf(values[size_t(i)]), i, nullptr);
+            lookup.clear();
         }
     }
 }
