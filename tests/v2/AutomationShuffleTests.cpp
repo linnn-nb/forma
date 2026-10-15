@@ -347,14 +347,13 @@ int main(int argc, char** argv)
             check(untouchedError < 2e-5,
                   "actual untouched audio before Shuffle matches the original render, including strong curve jumps");
             for (int ch = 0; ch < 2; ++ch)
-                for (int i = 2048; i < 190000; ++i)
-                    if (std::abs(i - 48000) >= 2048)
-                        pcmError = std::max(
-                            pcmError, std::abs(double(afterAudio.getSample(ch, i)) - referenceAudio.getSample(ch, i)));
+                for (int i = 0; i < afterAudio.getNumSamples(); ++i)
+                    pcmError = std::max(
+                        pcmError, std::abs(double(afterAudio.getSample(ch, i)) - referenceAudio.getSample(ch, i)));
             maxPcmError = std::max(maxPcmError, pcmError);
             std::cout << "curve " << curve << " real PCM error " << pcmError << std::endl;
             check(pcmError < 2e-5,
-                  "real automated stereo EQ mix equals independent manually edited reference within fixed budget");
+                  "full automated stereo EQ WAV equals independent native reference without excluding boundaries");
             const auto after = persistent(c, t), clipsAfter = c.query()["tracks"][0]["clips"];
             check(c.commit(plan)["replayed"] == true && persistent(c, t) == after,
                   "retry cannot collapse curves twice");
@@ -524,7 +523,11 @@ int main(int argc, char** argv)
                     {"curve_max_normalized_error", maxCurveError},
                     {"pcm_max_error", maxPcmError},
                     {"cases", cases},
-                    {"budgets", {{"curve_normalized", 4e-7}, {"pcm", 2e-5}, {"split_edge_exclusion_frames", 2048}}},
+                    {"budgets",
+                     {{"curve_normalized", 4e-7},
+                      {"pcm", 2e-5},
+                      {"split_edge_exclusion_frames", 0},
+                      {"head_tail_exclusion_frames", 0}}},
                     {"scope", "native DSP iterator and decoded real stereo WAV plus independent manual/dense "
                               "reference; volume/pan/enumerated EQ, 9 shapes, "
                               "Undo/Redo/save/open; physical GUI separate"},
