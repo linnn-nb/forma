@@ -1095,6 +1095,8 @@ target_include_directories(ndaw_midi_take_workflow_tests PRIVATE src/v2)
 target_link_libraries(ndaw_midi_take_workflow_tests PRIVATE ndaw_ui)
 add_test(NAME forma_midi_take_workflow COMMAND ndaw_midi_take_workflow_tests "${CMAKE_BINARY_DIR}/p1-midi-take-workflow-tests.json")
 set_tests_properties(forma_midi_take_workflow PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+add_test(NAME forma_midi_punch_comp COMMAND ndaw_midi_take_workflow_tests "${CMAKE_BINARY_DIR}/p1-midi-punch-comp-tests.json" punch)
+set_tests_properties(forma_midi_punch_comp PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_midi_playlist_editing_tests PRODUCT_NAME "ndaw_midi_playlist_editing_tests")
 target_sources(ndaw_midi_playlist_editing_tests PRIVATE tests/v2/MidiPlaylistEditingTests.cpp)

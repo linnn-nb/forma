@@ -167,6 +167,7 @@ void key(ndaw::desktop::Workspace& w, int id)
 struct Feed
 {
     std::atomic<bool> done{false};
+    std::atomic<bool> punchPattern{false};
     std::atomic<int64_t> frames{0}, anchor{-1};
     std::atomic<uint64_t> request{0}, observed{0}, measured{0};
     std::atomic<float> peak{0};
@@ -195,19 +196,38 @@ struct Feed
                               if (at >= pos && at < pos + 256)
                                   midi.addEvent(m, int(at - pos));
                           };
-                          // Two full passes plus tail; the held note crosses the first boundary.
-                          add(4800, juce::MidiMessage::noteOn(1, 60, juce::uint8(100)));
-                          add(28800, juce::MidiMessage::noteOff(1, 60));
-                          add(48000, juce::MidiMessage::controllerEvent(1, 1, 71));
-                          add(132000, juce::MidiMessage::noteOn(1, 64, juce::uint8(90)));
-                          add(158400, juce::MidiMessage::noteOff(1, 64));
-                          add(163200, juce::MidiMessage::pitchWheel(1, 9400));
-                          add(168000, juce::MidiMessage::noteOn(1, 67, juce::uint8(80)));
-                          add(192000, juce::MidiMessage::noteOff(1, 67));
-                          const juce::uint8 sysex[] = {0x7d, 0x12, 0x34};
-                          add(196800, juce::MidiMessage::createSysExMessage(sysex, 3));
-                          add(297600, juce::MidiMessage::noteOn(1, 72, juce::uint8(85)));
-                          add(312000, juce::MidiMessage::noteOff(1, 72));
+                          if (punchPattern.load())
+                          {
+                              // Actual pre/in/post capture; held notes cross both Punch boundaries.
+                              add(4800, juce::MidiMessage::noteOn(1, 72, juce::uint8(100)));
+                              add(28800, juce::MidiMessage::noteOff(1, 72));
+                              add(36000, juce::MidiMessage::noteOn(1, 74, juce::uint8(90)));
+                              add(66000, juce::MidiMessage::noteOff(1, 74));
+                              add(48000, juce::MidiMessage::controllerEvent(1, 1, 71));
+                              add(72000, juce::MidiMessage::noteOn(1, 76, juce::uint8(80)));
+                              add(122880, juce::MidiMessage::noteOff(1, 76));
+                              const juce::uint8 sysex[] = {0x7d, 0x12, 0x34};
+                              add(84000, juce::MidiMessage::createSysExMessage(sysex, 3));
+                              add(96000, juce::MidiMessage::pitchWheel(1, 9400));
+                              add(126000, juce::MidiMessage::noteOn(1, 77, juce::uint8(85)));
+                              add(132000, juce::MidiMessage::noteOff(1, 77));
+                          }
+                          else
+                          {
+                              // Two full passes plus tail; held note crosses the first boundary.
+                              add(4800, juce::MidiMessage::noteOn(1, 60, juce::uint8(100)));
+                              add(28800, juce::MidiMessage::noteOff(1, 60));
+                              add(48000, juce::MidiMessage::controllerEvent(1, 1, 71));
+                              add(132000, juce::MidiMessage::noteOn(1, 64, juce::uint8(90)));
+                              add(158400, juce::MidiMessage::noteOff(1, 64));
+                              add(163200, juce::MidiMessage::pitchWheel(1, 9400));
+                              add(168000, juce::MidiMessage::noteOn(1, 67, juce::uint8(80)));
+                              add(192000, juce::MidiMessage::noteOff(1, 67));
+                              const juce::uint8 sysex[] = {0x7d, 0x12, 0x34};
+                              add(196800, juce::MidiMessage::createSysExMessage(sysex, 3));
+                              add(297600, juce::MidiMessage::noteOn(1, 72, juce::uint8(85)));
+                              add(312000, juce::MidiMessage::noteOff(1, 72));
+                          }
                       }
                       h.processBlock(b, midi);
                       const auto next = request.load(std::memory_order_acquire);
@@ -339,11 +359,13 @@ void selectRange(juce::Component& canvas, int row, int64_t first, int64_t last)
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
-    const auto root =
-        juce::File::getCurrentWorkingDirectory().getChildFile("MIDI-Take-Workflow-" + juce::Uuid().toString());
+    const bool punch = argc > 2 && std::string(argv[2]) == "punch";
+    const auto root = juce::File::getCurrentWorkingDirectory().getChildFile(
+        juce::String(punch ? "MIDI-Punch-Comp-" : "MIDI-Take-Workflow-") + juce::Uuid().toString());
     root.createDirectory();
     result = {
         {"root", root.getFullPathName().toStdString()},
+        {"capture_mode", punch ? "punch" : "loop"},
         {"budgets",
          {{"input_samples", 256}, {"mouse_samples", 1}, {"ui_ms", 5000}, {"capture_ms", 15000}, {"render_ms", 10000}}}};
     int code = 0;
@@ -444,37 +466,76 @@ int main(int argc, char** argv)
             cold.redo();
             check(playlists(cold, track) == registered, "original registration Redo survives cold reopen");
         }
-        run(c, "session.range.set", {{"start_samples", 48000}, {"end_samples", 192000}});
-        key(w, 113);
-        wait([&] { return c.query()["transport_settings"]["loop_enabled"].get<bool>(); },
-             "Loop key enables real cycle capture");
+        run(c, "session.range.set",
+            {{"start_samples", punch ? 96037 : 48000}, {"end_samples", punch ? 168119 : 192000}});
+        if (punch)
+        {
+            run(c, "transport.roll.set",
+                {{"pre_enabled", true},
+                 {"post_enabled", true},
+                 {"pre_samples", 96037 - 48000},
+                 {"post_samples", 192000 - 168119}});
+            feed.punchPattern = true;
+        }
+        key(w, punch ? 513 : 113);
+        wait([&] { return c.query()["transport_settings"][punch ? "punch_enabled" : "loop_enabled"].get<bool>(); },
+             "actual capture-mode key enables intended Punch or Loop policy");
         key(w, 83);
         wait([&] { return c.query()["recording"].get<bool>(); },
-             "Record key starts native Loop capture over existing Main");
+             "Record key starts native capture over existing recorded Main");
         feed.anchor = feed.frames.load() + 2048;
-        wait([&] { return feed.frames >= feed.anchor + 144000 * 2 + 48000; },
-             "Loop input advances two full passes and real partial tail", 15000);
-        key(w, 80);
-        wait([&] { return !c.query()["recording"].get<bool>(); }, "Space commits native Loop Takes");
+        if (!punch)
+        {
+            wait([&] { return feed.frames >= feed.anchor + 144000 * 2 + 48000; },
+                 "Loop input advances two full passes and real partial tail", 15000);
+            key(w, 80);
+        }
+        wait([&] { return !c.query()["recording"].get<bool>(); },
+             "native device clock stops Punch at post-roll or Space commits Loop", 15000);
         feed.anchor = -1;
         const auto receipt = c.query()["last_recording"];
         result["capture_receipt"] = receipt;
-        check(receipt["state"] == "committed" && receipt["takes"].size() == 3 && receipt["midi_sources"].size() == 1,
-              "real Loop creates three Takes with truthful source receipt");
+        check(receipt["state"] == "committed" && receipt["takes"].size() == (punch ? 1 : 3) &&
+                  receipt["midi_sources"].size() == 1 && receipt["files"].empty(),
+              "actual MIDI capture creates truthful Take and source receipts without fictional WAV files");
+        if (punch)
+            check(receipt["automatic_stop"] && receipt["punch_range"]["start_samples"] == 96037 &&
+                      receipt["punch_range"]["end_samples"] == 168119 &&
+                      receipt["punch_range"]["capture_start_samples"] == 48000 &&
+                      receipt["punch_range"]["capture_end_samples"] == 192000,
+                  "Punch completes automatically with actual non-block-aligned request bounds");
         run(c, "track.arm", {{"track", track}, {"enabled", false}});
         const auto captured = playlists(c, track);
         std::array<std::string, 2> passes;
         std::array<int, 2> rows;
-        for (int p = 0; p < 2; ++p)
-            for (int i = 0; i < int(captured["items"].size()); ++i)
-                if (captured["items"][i]["pass"] == p + 1)
-                {
-                    passes[p] = captured["items"][i]["id"];
-                    rows[p] = i;
-                }
-        check(!passes[0].empty() && !passes[1].empty(), "source choices refer to actual distinct recorded passes");
+        if (punch)
+        {
+            check(captured["items"].size() == 4 && captured["active"] == captured["items"][3]["id"],
+                  "ordinary Main and manual Take coexist with full Punch Take and Punch result");
+            passes = {captured["items"][2]["id"].get<std::string>(), take};
+            rows = {2, 1};
+            const auto full = item(c, track, passes[0])["clips"][0];
+            check(full["start_samples"] == 48000 && full["length_samples"] == 144000 && full["notes"].size() == 4 &&
+                      full["controller_count"] == 2 && full["sysex_count"] == 1,
+                  "candidate source is the actual complete pre/in/post recording with CC, pitch and SysEx");
+        }
+        else
+            for (int p = 0; p < 2; ++p)
+                for (int i = 0; i < int(captured["items"].size()); ++i)
+                    if (captured["items"][i]["pass"] == p + 1)
+                    {
+                        passes[p] = captured["items"][i]["id"];
+                        rows[p] = i;
+                    }
+        check(!passes[0].empty() && !passes[1].empty(), "candidate choices refer to actual distinct recorded Takes");
+        const std::array<int64_t, 2> candidateStart{120037, punch ? 170037 : 52037};
+        const std::array<int64_t, 2> candidateEnd{punch ? 156119 : 191119, punch ? 190119 : 110119};
         const auto source = RecordingTestAccess::source(c, 0);
         const auto sourceHash = midi_loop::fingerprint(source);
+        check(sourceHash == receipt["midi_sources"][0]["hash"].get<std::string>() && source.getNumChildren() == 11,
+              "candidate evidence refers to all eleven actual input events and the receipt's original checksum");
+        const std::string punchResult = punch ? captured["active"].get<std::string>() : std::string{};
+        const auto punchState = punch ? RecordingTestAccess::listState(c, punchResult) : juce::ValueTree{};
         const auto manualBefore = RecordingTestAccess::listState(c, take);
         std::array<juce::ValueTree, 2> passStates{RecordingTestAccess::listState(c, passes[0]),
                                                   RecordingTestAccess::listState(c, passes[1])};
@@ -483,17 +544,17 @@ int main(int argc, char** argv)
         key(w, 514);
         canvas = visible(w, "playlist.lanes");
         check(canvas, "recorded Take comparison uses native lanes");
-        selectRange(*canvas, rows[0], 120037, 191119);
+        selectRange(*canvas, rows[0], candidateStart[0], candidateEnd[0]);
         wait([&] { return enabled(w, 525); }, "actual late source range enables adding candidate");
         key(w, 525);
         wait([&] { return enabled(w, 527); }, "first actual candidate notification completes");
-        selectRange(*canvas, rows[1], 52037, 110119);
+        selectRange(*canvas, rows[1], candidateStart[1], candidateEnd[1]);
         key(w, 525);
         auto* draft = dynamic_cast<juce::ListBox*>(visible(w, "playlist.candidate.segments"));
         check(draft, "actual candidate list exists");
         wait([&] { return draft->getListBoxModel()->getNumRows() == 2; },
              "two nonoverlapping recorded ranges enter real candidate list");
-        check(!enabled(w, 521), "automatically recorded Loop Take remains visibly registered");
+        check(!enabled(w, 521), "already recorded source Take remains visibly registered");
         const auto idle = feed.request.fetch_add(1) + 1;
         wait([&] { return feed.observed.load() == idle && feed.measured.load() > 32; },
              "idle output observation uses new real device blocks");
@@ -533,9 +594,9 @@ int main(int argc, char** argv)
                   "candidate comparison returns cursor and preserves Main, Takes and history facts");
             result["auditions"].push_back({{"action", action}, {"receipt", done}, {"measured_peak", feed.peak.load()}});
         };
-        listen(533, passes[1], 52037, 110119, true);
-        listen(535, passes[0], 120037, 191119, true);
-        listen(534, passes[1], 52037, 110119, false);
+        listen(533, passes[1], candidateStart[1], candidateEnd[1], true);
+        listen(535, passes[0], candidateStart[0], candidateEnd[0], true);
+        listen(534, passes[1], candidateStart[1], candidateEnd[1], false);
         draft->selectRow(0);
         wait([&] { return enabled(w, 580); }, "selected recorded candidate enables partial acceptance");
         const auto beforeAccept = c.query()["tracks"];
@@ -546,21 +607,24 @@ int main(int argc, char** argv)
         const auto accepted = c.query()["tracks"];
         const auto acceptID = c.query()["history"]["undo"]["plan_id"];
         const auto target = item(c, track, main)["clips"];
-        check(std::abs(target[1]["start_samples"].get<int64_t>() - 120037) <= 1 &&
+        check(std::abs(target[1]["start_samples"].get<int64_t>() - candidateStart[0]) <= 1 &&
                   std::abs((target[1]["start_samples"].get<int64_t>() + target[1]["length_samples"].get<int64_t>()) -
-                           191119) <= 1,
+                           candidateEnd[0]) <= 1,
               "accepted target has actual selected sample window, not complete Take replacement");
         check(target[1]["capture_source"]["id"] == receipt["midi_sources"][0]["id"] &&
-                  target[1]["capture_source"]["pass"] == 1,
-              "accepted native clip references the actually selected recorded pass");
+                  (punch ? target[1]["capture_source"]["kind"] == "punch" : target[1]["capture_source"]["pass"] == 1),
+              "accepted native clip references the actually selected capture source");
         check(midi_playlist::hash(withoutIDs(RecordingTestAccess::rawSequence(c, 1))) ==
                   midi_playlist::hash(withoutIDs(passStates[0].getChild(0).getChildWithName(te::IDs::SEQUENCE))),
-              "accepted window retains every selected pass event, including hidden original CC and SysEx");
+              "accepted window retains the complete source event tree rather than trimming hidden events");
         check(RecordingTestAccess::listState(c, passes[0]).isEquivalentTo(passStates[0]) &&
                   RecordingTestAccess::listState(c, passes[1]).isEquivalentTo(passStates[1]) &&
                   RecordingTestAccess::listState(c, take).isEquivalentTo(manualBefore) &&
                   midi_loop::fingerprint(RecordingTestAccess::source(c, 0)) == sourceHash,
               "partial acceptance preserves recorded source Playlists, manual Take and immutable raw input");
+        if (punch)
+            check(RecordingTestAccess::listState(c, punchResult).isEquivalentTo(punchState),
+                  "accepting another recorded range preserves the original full Punch-result Playlist");
         check(draft->getListBoxModel()->getNumRows() == 0, "committed edit invalidates uncommitted candidate draft");
         key(w, 6);
         wait([&] { return c.query()["tracks"] == beforeAccept; },
@@ -579,7 +643,8 @@ int main(int argc, char** argv)
                        std::string::npos;
             },
             "partial acceptance custom key reaches actual persisted UI state");
-        const auto file = root.getChildFile("MIDI-Take-Workflow.tracktionedit");
+        const auto file =
+            root.getChildFile(punch ? "MIDI-Punch-Comp.tracktionedit" : "MIDI-Take-Workflow.tracktionedit");
         c.saveAs(file);
         render(c, root.getChildFile("Accepted.wav"));
         {
@@ -587,6 +652,11 @@ int main(int argc, char** argv)
             cold.open(file);
             check(playlists(cold, track) == playlists(c, track),
                   "accepted recorded Comp and source selections survive cold reopen");
+            if (punch)
+                check(midi_playlist::hash(RecordingTestAccess::listState(cold, punchResult)) ==
+                              midi_playlist::hash(punchState) &&
+                          midi_loop::fingerprint(RecordingTestAccess::source(cold, 0)) == sourceHash,
+                      "cold reopen preserves complete original Punch result and raw input evidence");
             for (int i = 0; i < 3; ++i)
                 check(midi_playlist::hash(RecordingTestAccess::rawSequence(cold, i)) ==
                           midi_playlist::hash(RecordingTestAccess::rawSequence(c, i)),
@@ -607,7 +677,7 @@ int main(int argc, char** argv)
              "GUI reopen retains original acceptance Undo via shortcut");
         key(w, 514);
         canvas = visible(w, "playlist.lanes");
-        selectRange(*canvas, rows[0], 120037, 191119);
+        selectRange(*canvas, rows[0], candidateStart[0], candidateEnd[0]);
         key(w, 525);
         wait([&] { return enabled(w, 580); }, "actual recorded source rebuilds candidate after reopen");
         key(w, 580);
