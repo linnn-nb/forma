@@ -53,10 +53,53 @@ public:
     }
     static void confirm(Workspace& w, bool yes)
     {
-        if (yes)
-            w.acceptButton.onClick();
-        else
-            w.rejectButton.onClick();
+        auto& button = yes ? w.acceptButton : w.rejectButton;
+        if (w.pending.is_null() || !button.isShowing() || !button.isEnabled())
+            throw std::runtime_error("actual object confirmation control is unavailable");
+        button.triggerClick();
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 500;
+        while (!w.pending.is_null() && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        if (!w.pending.is_null())
+            throw std::runtime_error("actual object confirmation did not finish within 500ms");
+    }
+    static void displayed(Workspace& w)
+    {
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 500;
+        auto current = [&]
+        {
+            return w.workspaceRevision == w.commands.querySummary()["revision"].get<uint64_t>() &&
+                   w.workspaceSession == w.commands.sessionToken();
+        };
+        while (!current() && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        if (!current())
+            throw std::runtime_error("object fixture changes did not reach the actual displayed version");
+    }
+    static void objects(Workspace& w, const Json& ids)
+    {
+        displayed(w);
+        std::set<std::string> expected;
+        for (const auto& id : ids)
+        {
+            w.editArea.onClipSelection(id.get<std::string>(), !expected.empty(), false);
+            expected.insert(id.get<std::string>());
+        }
+        if (w.selection.objectIDs != expected)
+            throw std::runtime_error("actual additive clip inputs did not adopt every requested object");
+    }
+    static void range(Workspace& w, const Json& tracks, int64_t first, int64_t last)
+    {
+        displayed(w);
+        w.editArea.onRange({{"start_samples", first}, {"end_samples", last}}, tracks, w.workspaceRevision,
+                           w.workspaceSession, first);
+        const Json expected{{"start_samples", first},
+                            {"end_samples", last},
+                            {"length_samples", last - first},
+                            {"timebase", "session_samples"},
+                            {"sample_rate", 48000}};
+        if (w.selection.tracks != tracks || w.selection.range != expected || !w.selection.objects.empty())
+            throw std::runtime_error("actual Selector input did not adopt the complete range and track facts");
     }
     static juce::String preview(Workspace& w)
     {
@@ -282,8 +325,9 @@ int main(int argc, char** argv)
     try
     {
         Workspace w(false, std::make_unique<Storage>(dir.getChildFile("prefs")));
-        w.setVisible(true);
         w.setSize(1440, 900);
+        w.addToDesktop(0);
+        w.setVisible(true);
         auto& c = AudioDeviceTestAccess::owner(w);
         std::vector<juce::File> media;
         std::vector<std::string> hashes;
@@ -904,18 +948,8 @@ int main(int argc, char** argv)
         check(persistentTracks(c) == lockedState, "lock failure preserves selected objects and every curve");
         auto selectObjects = [&]
         {
-            AudioDeviceTestAccess::select(w, owners[0]);
-            pump();
-            Json objects = Json::array();
-            const auto selectionFacts = c.query();
-            for (const auto& track : selectionFacts["tracks"])
-                for (const auto& f : track["clips"])
-                    if (std::find(selected.begin(), selected.end(), f["id"]) != selected.end())
-                        objects.push_back({{"id", f["id"]}, {"track", track["id"]}, {"kind", "clip"}});
-            check(objects.size() == selected.size(), "GUI selection resolves every real owner from native query");
-            c.updateUiState({{"object_selection", objects}, {"selection_tracks", Json::array({owners[0], owners[1]})}},
-                            c.sessionToken());
-            pump();
+            AudioDeviceTestAccess::objects(w, selected);
+            check(true, "actual additive timeline inputs resolve all selected native objects");
         };
         // GUI Cut/Delete, rejected preview retains original RAM clipboard, one native Undo.
         const juce::KeyPress custom(
@@ -978,12 +1012,7 @@ int main(int argc, char** argv)
         pump();
         w.uiCommands().invokeDirectly(editCommand::shuffle, false);
         pump();
-        run(c, Json::array({operation("session.range.set",
-                                      {{"start_samples", 9 * 48000}, {"end_samples", 9 * 48000 + 24000}})}));
-        c.updateUiState(
-            {{"object_selection", Json::array()}, {"selection_tracks", Json::array({owners[2], owners[3]})}},
-            c.sessionToken());
-        pump();
+        AudioDeviceTestAccess::range(w, Json::array({owners[2], owners[3]}), 9 * 48000, 9 * 48000 + 24000);
         auto* keys = w.uiCommands().getKeyMappings();
         keys->clearAllKeyPresses(editCommand::paste);
         keys->addKeyPress(editCommand::paste, custom);
