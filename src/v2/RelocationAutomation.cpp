@@ -150,6 +150,9 @@ Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked
         for (auto* owner : {source, destination})
             for (auto* plugin : owner->pluginList)
                 stateful |= dynamic_cast<te::VolumeAndPanPlugin*>(plugin) == nullptr;
+        for (const auto& clip : clips)
+            if (clip["from_track"] == r.source)
+                stateful |= !clip["before"].value("plugins", Json::array()).empty();
         const double tail = stateful ? result["tail_samples"].get<int64_t>() / timelineRate : 0.;
         r.tailHigh = r.high + tail;
         r.tailEnd =

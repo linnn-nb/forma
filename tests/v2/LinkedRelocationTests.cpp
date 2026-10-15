@@ -34,11 +34,20 @@ public:
             .toString()
             .toStdString();
     }
+    static Json plugins(Commands& c, const std::string& id)
+    {
+        Json result = Json::array();
+        for (const auto& child : c.audioClip(id)->state)
+            if (child.hasType(te::IDs::PLUGIN))
+                result.push_back(child.createXml()->toString().toStdString());
+        return result;
+    }
 };
 } // namespace ndaw::v2
 namespace
 {
 int checks = 0, serial = 0;
+int renderFrames = 144000;
 double maxError = 0;
 void check(bool ok, const char* why)
 {
@@ -106,7 +115,14 @@ Json state(Commands& c)
         auto playlists = c.queryPlaylists(track["id"]);
         playlists.erase("revision");
         playlists.erase("session_token");
-        result.push_back({{"track", track["id"]}, {"playlists", playlists}, {"pairs", c.crossfades(track["id"])}});
+        Json curves = Json::array();
+        const auto automation = c.automationQuery(track["id"]);
+        for (const auto& lane : automation["lanes"])
+            curves.push_back({{"id", lane["id"]}, {"points", lane["points"]}, {"base", lane["explicit_value"]}});
+        result.push_back({{"track", track["id"]},
+                          {"playlists", playlists},
+                          {"pairs", c.crossfades(track["id"])},
+                          {"curves", curves}});
     }
     return result;
 }
@@ -134,23 +150,23 @@ juce::AudioBuffer<float> render(Commands& c, juce::File folder, int first = 0)
         juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
     check(!c.playbackPreparation()["busy"].get<bool>(), "actual source ready within fixed five-second budget");
     auto file = folder.getChildFile("Render-" + juce::String(++serial) + ".wav");
-    const auto receipt = c.render(file, first, first + 144000);
+    const auto receipt = c.render(file, first, first + renderFrames);
     check(receipt["audio_verified"] && receipt["render_ms"].get<double>() < 10000,
           "actual native WAV render verified within fixed ten-second budget");
     juce::WavAudioFormat wav;
     std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(new juce::FileInputStream(file), true));
     check(reader && reader->sampleRate == 48000 && reader->bitsPerSample == 24 && reader->numChannels == 2 &&
-              reader->lengthInSamples == 144000,
+              reader->lengthInSamples == renderFrames,
           "independent WAV decoder verifies PCM24 stereo sample rate and exact frames");
-    juce::AudioBuffer<float> pcm(2, 144000);
-    check(reader->read(&pcm, 0, 144000, 0, true, true), "actual exported PCM decodes");
+    juce::AudioBuffer<float> pcm(2, renderFrames);
+    check(reader->read(&pcm, 0, renderFrames, 0, true, true), "actual exported PCM decodes");
     return pcm;
 }
 void compare(const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& b, int shift, const char* why)
 {
     double error = 0;
     for (int ch = 0; ch < 2; ++ch)
-        for (int i = 0; i < 144000; ++i)
+        for (int i = 0; i < renderFrames; ++i)
         {
             const double expected = i >= shift ? a.getSample(ch, i - shift) : 0.;
             error = std::max(error, std::abs(expected - b.getSample(ch, i)));
@@ -172,8 +188,16 @@ int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
     Json cases = Json::array();
+    const std::string profile = argc > 2 ? argv[2] : "plain";
     try
     {
+        const std::set<std::string> profiles{"plain",      "plain-auto", "plain-fx", "elastic",
+                                             "elastic-fx", "warp",       "warp-fx"};
+        check(profiles.contains(profile), "actual supported compound test profile selected");
+        const bool automation = profile != "plain", fx = profile.find("-fx") != std::string::npos;
+        const bool elastic = profile.starts_with("elastic"), warp = profile.starts_with("warp");
+        if (automation)
+            renderFrames = 480000; // Longer observation, unchanged per-file and per-suite time/error budgets.
         auto root =
             juce::File::getCurrentWorkingDirectory().getChildFile("P3-LinkedRelocation-" + juce::Uuid().toString());
         root.createDirectory();
@@ -201,6 +225,25 @@ int main(int argc, char** argv)
                      {"ref", "$source"}});
                 main[t] = c.queryPlaylists(t)["active"];
                 const auto clip = list(c, t, main[t])["clips"][0]["id"];
+                if (elastic)
+                    run(c, "clip.elastic",
+                        {{"clip", clip},
+                         {"length_samples", 192000},
+                         {"pitch_semitones", 3},
+                         {"media_hash", t == a ? hashP : hashN}});
+                if (warp)
+                {
+                    auto anchors = c.warpClip(clip)["anchors"];
+                    anchors.back()["clip_time_samples"] = 192000;
+                    anchors.insert(anchors.begin() + 1, Json{{"id", "warp:" + clip.get<std::string>() + ":middle"},
+                                                             {"source_time_seconds", 1.5},
+                                                             {"clip_time_samples", 48000}});
+                    run(c, "clip.warp", {{"clip", clip}, {"enabled", true}, {"anchors", anchors}});
+                }
+                if (fx)
+                    for (const char* type : {te::EqualiserPlugin::xmlTypeName, te::CompressorPlugin::xmlTypeName,
+                                             te::DelayPlugin::xmlTypeName, te::ReverbPlugin::xmlTypeName})
+                        run(c, "clip.fx.insert", {{"clip", clip}, {"type", type}});
                 run(c, "clip.fade",
                     {{"clip", clip},
                      {"in_samples", 40000},
@@ -251,14 +294,42 @@ int main(int argc, char** argv)
                  {"curve", "equal_power"}});
             check(c.crossfades(a).size() == 1 && c.crossfades(b).size() == 1,
                   "actual linked crossfade has both microphone records");
+            if (automation)
+                for (const auto& t : {a, b, cc, d})
+                {
+                    run(c, "track.automation_edit_basis.set", {{"track", t}, {"basis", "samples"}});
+                    for (const char* parameter : {"volume", "pan"})
+                    {
+                        int j = 0;
+                        for (const int64_t at : {0, 12000, 48000, 96000, 120000, 240000, 480000, 960000})
+                        {
+                            const bool source = t == a || t == b;
+                            const double value = std::string(parameter) == "volume"
+                                                     ? (source ? -9. + (j % 3) * 3. : -2.)
+                                                     : (source ? -.3 + (j % 3) * .3 : 0.);
+                            run(c, "automation.point.add",
+                                {{"track", t},
+                                 {"parameter", parameter},
+                                 {"position_samples", at},
+                                 {"value", value},
+                                 {"curve", source ? (j % 2 ? .3 : -.3) : 0.},
+                                 {"ref", "$p"}});
+                            ++j;
+                        }
+                    }
+                }
             run(c, "track.mute", {{"track", b}, {"enabled", true}});
             const auto reference = render(c, folder);
-            check(reference.getMagnitude(0, 144000) > .01f, "positive Comp reference contains real audible signal");
+            check(reference.getMagnitude(0, renderFrames) > .01f,
+                  "positive Comp reference contains real audible signal");
             c.undo();
-            juce::AudioBuffer<float> silence(2, 144000);
+            juce::AudioBuffer<float> silence(2, renderFrames);
             silence.clear();
             compare(silence, render(c, folder), 0,
                     "actual original linked microphones phase null across the entire WAV");
+            juce::AudioBuffer<float> targetReference;
+            if (!parked.empty())
+                targetReference = render(c, folder, 600000);
             const auto before = state(c), originalA = list(c, a, takes[a]), originalB = list(c, b, takes[b]);
             const auto originalSet = list(c, a, ids[a])["linked_set"];
             std::map<std::string, std::string> originalPairs;
@@ -271,6 +342,7 @@ int main(int argc, char** argv)
             const int shift = mode == 0 ? 1000 : 0;
             Json moves = Json::array();
             std::map<std::string, te::WaveAudioClip*> native;
+            std::map<std::string, Json> originalPlugins;
             for (const auto& t : {a, b})
             {
                 const auto sourceList = list(c, t, ids[t]);
@@ -278,6 +350,9 @@ int main(int argc, char** argv)
                 {
                     const std::string clipID = clip["id"];
                     native[clipID] = RecordingTestAccess::clip(c, clipID);
+                    originalPlugins[clipID] = RecordingTestAccess::plugins(c, clipID);
+                    check(originalPlugins[clipID].size() == (fx ? 4 : 0),
+                          "actual selected Clip has the required real processor instances");
                     moves.push_back({{"clip", clipID},
                                      {"from_track", t},
                                      {"to_track", targets.at(t)},
@@ -341,10 +416,14 @@ int main(int argc, char** argv)
                 check(c.commit(p)["state"] == "committed", "all native member transfers commit once");
             check(c.commit(p)["replayed"], "retry returns the real original receipt without duplicate Playlists");
             for (const auto& move : moves)
+            {
                 check(RecordingTestAccess::clip(c, move["clip"]) == native.at(move["clip"]) &&
                           RecordingTestAccess::clip(c, move["clip"])->getTrack()->itemID.toString().toStdString() ==
                               move["to_track"].get<std::string>(),
                       "same runtime Clip and stable identity enter the actual destination");
+                check(RecordingTestAccess::plugins(c, move["clip"]) == originalPlugins.at(move["clip"]),
+                      "native Clip processor IDs and complete opaque states survive relocation");
+            }
             for (const auto& t : {a, b})
             {
                 const auto current = list(c, targets.at(t), ids[t]);
@@ -394,6 +473,9 @@ int main(int argc, char** argv)
                 cold.open(file);
                 check(state(cold) == after,
                       "actual cold Open retains active membership, parked material and origin references");
+                for (const auto& move : moves)
+                    check(RecordingTestAccess::plugins(cold, move["clip"]) == originalPlugins.at(move["clip"]),
+                          "actual cold Open restores complete real Clip plugin state and IDs");
                 cold.undo(p["plan_id"]);
                 check(state(cold) == before, "cold original Undo restores both sources and every destination Playlist");
                 compare(silence, render(cold, folder), 0, "cold original Undo renders the original linked PCM");
@@ -406,8 +488,8 @@ int main(int argc, char** argv)
                 check(!list(c, targets.at(t), ids[t])["active"].get<bool>(),
                       "restore retires every relocated Comp member together");
             if (!parked.empty())
-                check(render(c, folder, 600000).getMagnitude(0, 144000) > .01f,
-                      "restore makes the preserved target's actual audio audible again");
+                compare(targetReference, render(c, folder, 600000), 0,
+                        "restored target audio and exterior automation equal their actual original PCM");
             c.undo();
             check(state(c) == after, "one restore Undo reactivates the entire relocated set");
             c.undo(p["plan_id"]);
@@ -419,6 +501,8 @@ int main(int argc, char** argv)
             cases.push_back({{"mode", mode == 0   ? "disjoint+1000samples"
                                       : mode == 1 ? "overlapping+occupied+native-key"
                                                   : "swap"},
+                             {"profile", profile},
+                             {"render_frames", renderFrames},
                              {"session", file.getFullPathName().toStdString()},
                              {"plan_id", p["plan_id"]}});
         }
@@ -426,6 +510,8 @@ int main(int argc, char** argv)
                     {"checks", checks},
                     {"max_pcm_error", maxError},
                     {"pcm_tolerance", 2e-6},
+                    {"profile", profile},
+                    {"render_frames", renderFrames},
                     {"cases", cases},
                     {"scope", "real native Edit, Workspace key/confirmation, PCM24 files and cold original UndoRedo; "
                               "no physical keyboard/microphone/listening claim"}};
