@@ -27,7 +27,7 @@ public:
 namespace
 {
 int checks = 0, serial = 0;
-double chainError = 0, reopenError = 0, envelopeError = 0;
+double chainError = 0, reopenError = 0, envelopeError = 0, splitError = 0;
 void check(bool b, const char* why)
 {
     if (!b)
@@ -241,8 +241,27 @@ int main(int argc, char** argv)
                 "paired Warp cannot silently invalidate crossfade geometry");
         rejects([&] { run(c, "playlist.crossfade.remove", {{"track", track}, {"left", left}, {"right", right}}); },
                 "restoring pre-overlap edges requires restoring Warp first");
-        rejects([&] { run(c, "clip.split", {{"clip", left}, {"position_samples", 24000}, {"ref", "$split"}}); },
-                "envelope capability does not pretend structural Warp mapping is qualified");
+        const auto beforeSplit = c.query()["tracks"];
+        const auto split = run(c, "clip.split", {{"clip", left}, {"position_samples", 24000}, {"ref", "$split"}});
+        check(split["state"] == "committed" && split["objects"].size() == 1 &&
+                  split["objects"][0]["full_input_preserved"] == true,
+              "qualified Warp split returns a real new Clip and preserves its full processing input");
+        const std::string splitID = split["objects"][0]["id"];
+        check(splitID != left && piece(c, left)["length_samples"] == 24000 &&
+                  piece(c, splitID)["start_samples"] == 24000 && piece(c, splitID)["length_samples"] == 26400 &&
+                  piece(c, left)["warp"]["enabled"] && piece(c, splitID)["warp"]["enabled"],
+              "real split has distinct identity, exact adjacent windows and native Warp on both sides");
+        splitError = delta(mixed, render(c, root));
+        check(splitError <= 2e-6, "qualified Warp split preserves every sample of the full crossfade WAV");
+        c.undo(split["plan_id"]);
+        check(c.query()["tracks"] == beforeSplit && c.crossfades(track) == paired,
+              "one original split Undo restores exact Clip, source mapping and paired transition");
+        c.redo();
+        splitError = std::max(splitError, delta(mixed, render(c, root)));
+        check(splitError <= 2e-6, "split Redo preserves the full PCM under the unchanged error budget");
+        c.undo(split["plan_id"]);
+        check(c.query()["tracks"] == beforeSplit && c.crossfades(track) == paired,
+              "original state is restored before the existing save and cold-reopen checks");
         const auto saved = root.getChildFile("Comp-Crossfade-Warp.tracktionedit");
         const auto warped = piece(c, left);
         c.save(saved);
@@ -362,6 +381,7 @@ int main(int argc, char** argv)
             {"gui_session", guiSaved.getFullPathName().toStdString()},
             {"chain_pcm_max_error", chainError},
             {"reopen_pcm_max_error", reopenError},
+            {"split_pcm_max_error", splitError},
             {"output_envelope_max_error", envelopeError},
             {"resize_envelope_max_error", resizeError},
             {"budgets", {{"envelope_pcm", 2e-6}, {"reopen_pcm", 2e-7}, {"cache_ms", 5000}, {"render_ms", 10000}}},
