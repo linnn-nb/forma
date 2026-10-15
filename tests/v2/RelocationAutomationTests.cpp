@@ -172,7 +172,11 @@ Fixture setup(Commands& c, juce::File folder, bool midi, bool eq)
     if (midi)
     {
         run(c, "midi.clip.create",
-            {{"track", f.a}, {"position_samples", 48000}, {"length_samples", 96000}, {"ref", "$c"}});
+            {{"track", f.a},
+             {"name", "Beat source"},
+             {"position_samples", 48000},
+             {"length_samples", 96000},
+             {"ref", "$c"}});
         f.clip = c.query()["tracks"][0]["clips"][0]["id"];
         run(c, "midi.note.add",
             {{"clip", f.clip},
