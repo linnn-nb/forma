@@ -1198,3 +1198,5 @@ set_tests_properties(forma_fader_smoothing_control PROPERTIES TIMEOUT 60 FAIL_RE
 add_test(NAME forma_prepared_fader_accuracy COMMAND ndaw_relocation_automation_tests "${CMAKE_BINARY_DIR}/p3-prepared-fader-accuracy.json" prepared-accuracy)
 add_test(NAME forma_prepared_fader_publication COMMAND ndaw_relocation_automation_tests "${CMAKE_BINARY_DIR}/p3-prepared-fader-publication.json" prepared-publication)
 set_tests_properties(forma_prepared_fader_accuracy forma_prepared_fader_publication PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+add_test(NAME forma_prepared_fader_performance COMMAND ndaw_relocation_automation_tests "${CMAKE_BINARY_DIR}/p3-prepared-fader-performance.json" prepared-performance)
+set_tests_properties(forma_prepared_fader_performance PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

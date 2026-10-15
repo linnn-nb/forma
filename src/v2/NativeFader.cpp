@@ -169,7 +169,8 @@ public:
             }
         } reader(readers);
         const auto* data = published.load(std::memory_order_seq_cst);
-        if (!data || !data->supported || !plugin.edit.getAutomationRecordManager().isReadingAutomation() ||
+        if ((!context.isPlaying && !context.isRendering) || !data || !data->supported ||
+            !plugin.edit.getAutomationRecordManager().isReadingAutomation() ||
             plugin.volParam->isCurrentlyRecording() || plugin.panParam->isCurrentlyRecording())
             return false;
         const bool volumeAuto = !data->volume.bypass && !data->volume.points.empty(),

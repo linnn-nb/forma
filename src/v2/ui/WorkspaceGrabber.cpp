@@ -161,7 +161,7 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                                    text(transfer["parameter"].get<std::string>()) + " · " +
                                    text(transfer["clock"].get<std::string>()) + "\n";
                     if (!change["automation"]["transfers"].empty())
-                        summary += text("注意：原生参数平滑可能改变迁移边界的声音；音频保持验收尚未通过。\n");
+                        summary += text("注意：恢复目标参数时可能改变效果器尾音；音频保持验收尚未通过。\n");
                     for (const auto& pair : change["crossfades"])
                         summary += text(pair["action"] == "rehome" ? "完整交叉淡化配对随片段迁移\n"
                                                                    : "不完整配对将解除，片段淡化保留\n");

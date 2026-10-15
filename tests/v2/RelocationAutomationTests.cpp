@@ -4,6 +4,9 @@
 #include <iostream>
 #include <thread>
 #include <cstdlib>
+#if JUCE_WINDOWS
+#include <malloc.h>
+#endif
 namespace heap_probe
 {
 thread_local bool active = false;
@@ -44,17 +47,29 @@ void* operator new(std::size_t size, std::align_val_t alignment)
     if (heap_probe::active)
         ++heap_probe::allocations;
     void* p = nullptr;
+#if JUCE_WINDOWS
+    p = _aligned_malloc(size ? size : 1, std::size_t(alignment));
+    if (p != nullptr)
+        return p;
+#else
     if (posix_memalign(&p, std::size_t(alignment), size ? size : 1) == 0)
         return p;
+#endif
     throw std::bad_alloc();
 }
 void operator delete(void* p, std::align_val_t) noexcept
 {
+#if JUCE_WINDOWS
+    if (heap_probe::active && p)
+        ++heap_probe::releases;
+    _aligned_free(p);
+#else
     ::operator delete(p);
+#endif
 }
-void operator delete[](void* p, std::align_val_t) noexcept
+void operator delete[](void* p, std::align_val_t alignment) noexcept
 {
-    ::operator delete(p);
+    ::operator delete(p, alignment);
 }
 using namespace ndaw::v2;
 namespace ndaw::v2
@@ -508,6 +523,103 @@ Json preparedChecks(juce::File root, bool publication)
             {"scope", "native prepared processor; C++ new/delete instrumentation only, no hardware/XRUN or "
                       "entire-engine lock-free claim"}};
 }
+Json faderPerformance(juce::File root)
+{
+    Commands c(false, std::make_unique<Storage>(root.getChildFile("prefs")));
+    Json tracks = Json::array();
+    for (int i = 0; i < 64; ++i)
+        tracks.push_back(
+            op("track.create",
+               {{"name", "Automated " + std::to_string(i)}, {"type", "audio"}, {"ref", "$t" + std::to_string(i)}}));
+    c.commit(c.makePlan("human", tracks));
+    const auto actual = c.query()["tracks"];
+    check(actual.size() == 64, "performance workload contains all 64 real native tracks");
+    for (size_t first = 0; first < actual.size(); first += 8)
+    {
+        Json points = Json::array();
+        for (size_t i = first; i < std::min(first + 8, actual.size()); ++i)
+            for (const char* parameter : {"volume", "pan"})
+                for (int at = 0; at < 3; ++at)
+                    points.push_back(op("automation.point.add",
+                                        {{"track", actual[i]["id"]},
+                                         {"parameter", parameter},
+                                         {"position_samples", at * 24000},
+                                         {"value", std::string(parameter) == "volume" ? -12. + at * 3. : -.5 + at * .5},
+                                         {"curve", .3},
+                                         {"ref", "$p" + std::to_string(points.size())}}));
+        c.commit(c.makePlan("human", points));
+    }
+    std::vector<te::VolumeAndPanPlugin*> faders;
+    std::vector<juce::AudioBuffer<float>> buffers;
+    for (const auto& track : actual)
+    {
+        auto* fader = &RecordingTestAccess::fader(c, track["id"]);
+        fader->baseClassInitialise({tracktion::TimePosition::fromSeconds(0), 48000, 128});
+        faders.push_back(fader);
+        buffers.emplace_back(2, 128);
+    }
+    std::vector<double> durations;
+    durations.reserve(512);
+    te::MidiMessageArray midi;
+    const auto beforeNew = heap_probe::allocations, beforeFree = heap_probe::releases;
+    for (int block = 0; block < 512; ++block)
+    {
+        const int first = (block * 128) % 48000;
+        for (auto& buffer : buffers)
+            for (int ch = 0; ch < 2; ++ch)
+                juce::FloatVectorOperations::fill(buffer.getWritePointer(ch), .25f, 128);
+        const auto begin = juce::Time::getMillisecondCounterHiRes();
+        heap_probe::active = true;
+        for (size_t i = 0; i < faders.size(); ++i)
+        {
+            const te::PluginRenderContext context{&buffers[i],
+                                                  0,
+                                                  128,
+                                                  &midi,
+                                                  0.,
+                                                  {tracktion::TimePosition::fromSeconds(first / 48000.),
+                                                   tracktion::TimePosition::fromSeconds((first + 128) / 48000.)},
+                                                  true,
+                                                  false,
+                                                  true,
+                                                  false};
+            if (!faders[i]->applyWithPreparedAutomation(context))
+            {
+                heap_probe::active = false;
+                throw std::runtime_error("automated fader workload fell back to native streams");
+            }
+        }
+        heap_probe::active = false;
+        durations.push_back(juce::Time::getMillisecondCounterHiRes() - begin);
+    }
+    const auto allocations = heap_probe::allocations - beforeNew, releases = heap_probe::releases - beforeFree;
+    for (auto* fader : faders)
+        fader->baseClassDeinitialise();
+    std::sort(durations.begin(), durations.end());
+    const double p99 = durations[size_t(std::ceil(durations.size() * .99)) - 1], maximum = durations.back(),
+                 deadline = 128. / 48000. * 1000.;
+    const bool passed = p99 <= deadline * .5 && maximum <= deadline && allocations == 0 && releases == 0;
+    if (p99 <= deadline * .5)
+        check(true, "64-fader p99 meets the declared half-deadline budget");
+    if (maximum <= deadline)
+        check(true, "64-fader maximum meets the declared block deadline");
+    if (allocations == 0 && releases == 0)
+        check(true, "64-fader processing performs no C++ allocation or release");
+    return {{"result", passed ? "passed" : "failed"},
+            {"checks", checks},
+            {"tracks", 64},
+            {"sample_rate", 48000},
+            {"block", 128},
+            {"iterations", 512},
+            {"p99_ms", p99},
+            {"max_ms", maximum},
+            {"p99_budget_ms", deadline * .5},
+            {"max_budget_ms", deadline},
+            {"cpp_new", allocations},
+            {"cpp_delete", releases},
+            {"scope", "64 actual prepared stereo fader kernels on this machine; not an audio device/XRUN or "
+                      "whole-project capacity test"}};
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -517,6 +629,14 @@ int main(int argc, char** argv)
         const auto root =
             juce::File::getCurrentWorkingDirectory().getChildFile("P3-RelocationAutomation-" + juce::Uuid().toString());
         root.createDirectory();
+        if (argc > 2 && std::string(argv[2]) == "prepared-performance")
+        {
+            const auto result = faderPerformance(root);
+            if (argc > 1)
+                std::ofstream(argv[1]) << result.dump(2) << '\n';
+            std::cout << result.dump(2) << std::endl;
+            return result["result"] == "passed" ? 0 : 1;
+        }
         if (argc > 2 && (std::string(argv[2]) == "prepared-accuracy" || std::string(argv[2]) == "prepared-publication"))
         {
             const auto result = preparedChecks(root, std::string(argv[2]) == "prepared-publication");
