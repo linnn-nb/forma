@@ -1,3 +1,5 @@
+2026-10-15 跨轨迁移：L1 ClipRelocation在message thread校验源/目标类型、锁定/冻结/Playlist、完整Edit组、媒体/状态SHA与两侧Scope；复用精确位置映射后原生Clip::moveTo重挂同一对象，仍一Plan一UndoManager事务。完整配对迁移前物化目标Main，部分迁移解除配对；UiState只读clipCache投影真实归属，不维护第二模型。GUI仅草稿/预览/提交；无新Engine/SDK/RT任务。只在单次校验按媒体路径复用SHA，跨阶段重新读取。关联Comp和跨轨曲线映射保持未完成，详见CLIP_RELOCATION.md。
+
 2026-10-15 Grabber：L5 WorkspaceGrabber只读真实事实，冻结多选对象和Edit组/关联Comp闭包，绘制共同采样位移草稿；L1沿用clip.move/midi.clip.move扩展、Scope、版本、媒体SHA、自动化跟随与一个UndoManager事务。隐藏成员几何限制草稿，MIDI预览复用原生映射。ClipHeader将原生名称区鼠标事件转到同一时间线；SelectionModel验证对象后保留已存引用顺序，重开不改变主选目标。GUI没有直接Edit写入，无新引擎/SDK/RT处理。水平移动与跨轨道迁移资格分开，操作GRABBER_WORKFLOW.md。
 
 2026-10-15 离线删除：L1 以真实 Clip/轨道/来源/几何引用指纹及文件存在状态封定 clip.delete；在线另验实际媒体 SHA，缺失不伪造内容哈希。完整范围删除共用规则，局部拆分/复制仍需可读媒体。原生 removeFromParent 与 Comp/组变更保持一 Plan 一 Undo；冷重开保留原历史。仅无活动片段的显式导出放开有声节点条件，仍由真实 Tracktion Renderer 写盘并校验。GUI 已知离线时标记文字；无文件监听、第二引擎、SDK 或 RT 改动。范围与证据见 OFFLINE_MEDIA_DELETE.md。

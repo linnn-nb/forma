@@ -1,7 +1,7 @@
 # Forma Studio 工程规则
 
 - 线程目标：按docs/ARCHITECTURE.md构建Tracktion开源AI-native DAW；Pro Tools作为界面和工作流参考。
-- 当前P3：多选Grabber水平移动、名称区手势、主选顺序与原持久Undo已接通，179专项及24套4359项分批通过；操作docs/GRABBER_WORKFLOW.md，证据evidence/P3/summary.md。跨轨道拖放、实体/旧焦点/性能/分析缺口按NEXT_STEPS继续。
+- 当前P3：音频/MIDI跨轨Grabber/快捷键、稳定身份、配对迁移、原Undo和冷重开已接通；资格与正式缺口见docs/CLIP_RELOCATION.md、evidence/P3/summary.md。下一项跨轨自动化跟随；关联Comp/实体/旧焦点/性能/分析缺口保留。
 - 按当前P级清单推进；M2/M3冻结，M4/M5暂缓，AI入口不占据制作主界面。同项两轮边界工作即收口进BACKLOG。
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。
