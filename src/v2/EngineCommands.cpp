@@ -2000,6 +2000,7 @@ Json Commands::projectFile() const
 }
 Json Commands::saveAs(const juce::File& destination)
 {
+    Performance::Span measured("save_as");
     checkThread();
     require(destination.hasFileExtension("tracktionedit"), "工程文件必须使用 .tracktionedit 扩展名");
     auto result = save(destination);
@@ -2012,8 +2013,12 @@ Json Commands::saveAs(const juce::File& destination)
 }
 Json Commands::saveCurrent()
 {
+    Performance::Span measured("save_current");
     checkThread();
     require(projectPath != juce::File{}, "工程尚未命名；请先另存为");
+    require(recordingCapture.is_null() && capture.is_null() && parameterCapture.is_null(),
+            "请先停止录音或结束参数操作，再保存工程");
+    require(!audioConfigurationPending(), "wait for audio device preparation");
     auto result =
         project_files::replace(projectPath, projectHash, [this](const juce::File& staged) { return save(staged); });
     projectHash = result.at("sha256");

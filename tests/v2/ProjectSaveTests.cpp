@@ -363,7 +363,7 @@ int main(int argc, char** argv)
     result["checks"] = checks;
     result["receipts"] = receipts;
     result["fixture"] = root.getFullPathName().toStdString();
-    result["scope"] = "real project writeback, immutable prior-version backups, original Undo/Redo, cold reopen, "
+    result["scope"] = "real project writeback, independent prior-version backups, original Undo/Redo, cold reopen, "
                       "actual rendered WAV, native Save key dispatch and actual filesystem failures; native chooser, "
                       "physical input/listening, arbitrary uncooperative concurrent writers and Windows separate";
     if (argc > 1)

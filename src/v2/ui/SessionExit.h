@@ -15,6 +15,9 @@ public:
     void poll();
     bool authorise();
     ndaw::v2::Json status() const;
+    // Optional message-thread progress observation, synchronously after the
+    // real recovery capture request starts. Observers may cancel the intent.
+    std::function<void()> onSnapshotStarted;
 
 private:
     ndaw::v2::Commands& commands;

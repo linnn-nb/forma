@@ -95,6 +95,8 @@ void SessionExit::poll()
         {
             commands.recoveryControl("session.recovery.capture", Json::object());
             phase = "saving";
+            if (onSnapshotStarted)
+                onSnapshotStarted();
             return;
         }
         receipt = r.value("receipt", Json::object());
