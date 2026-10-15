@@ -53,6 +53,12 @@ void check(bool ok, const char* message)
     ++checks;
     std::cout << "PASS " << message << '\n';
 }
+void legacyFixture(juce::XmlElement& xml)
+{
+    if (auto* meta = xml.getChildByName("NATIVEDAW"))
+        if (auto* history = meta->getChildByName("PERSISTENT_HISTORY"))
+            meta->removeChildElement(history, true);
+}
 void pump()
 {
     juce::MessageManager::getInstance()->runDispatchLoopUntil(70);
@@ -139,6 +145,8 @@ void sameTimes(Commands& c, const std::string& id, const Json& expected, double 
         for (const char* field : {"start", "end"})
         {
             const double want = e[field].get<double>() + delta, got = a[field];
+            if (std::abs(want - got) > 1e-9)
+                std::cerr << Json{{"event", i}, {"field", field}, {"expected", want}, {"actual", got}}.dump() << '\n';
             check(std::abs(want - got) <= 1e-9, "native event absolute timestamp respects 1 ns budget");
             check(std::llround(want * 48000) == std::llround(got * 48000), "native event sample projection exact");
             a.erase(field);
@@ -306,6 +314,17 @@ int main(int argc, char** argv)
         auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = juce::XmlDocument::parse(base);
+        auto damagedModern = std::make_unique<juce::XmlElement>(*xml);
+        byID(*damagedModern, src)->setAttribute("offset", .5);
+        const auto damagedFile = dir.getChildFile("RejectedModern.tracktionedit");
+        check(damagedModern->writeTo(damagedFile), "owned modern history corruption fixture writes");
+        const auto beforeDamaged = c.query();
+        const auto beforeDamagedSession = c.sessionToken();
+        w.openSession(damagedFile);
+        pump();
+        check(c.sessionToken() == beforeDamagedSession && c.query() == beforeDamaged,
+              "GUI rejected modern corruption preserves the previous Edit and does not report a successful load");
+        legacyFixture(*xml); // Explicit old-format import; modern save/Open retains real history below.
         auto* native = byID(*xml, src);
         native->setAttribute("offset", .5);
         auto* sequence = native->getChildByName("SEQUENCE");
@@ -332,8 +351,11 @@ int main(int argc, char** argv)
         const auto inputHash = juce::SHA256(fixture).toHexString();
         auto open = [&](const juce::File& file)
         {
+            const auto session = c.sessionToken();
             w.openSession(file);
             pump();
+            check(c.sessionToken() != session,
+                  "native Open actually replaces session; rejected import cannot reuse previous MIDI state");
         };
         int cases = 0;
         double worstCurveError = 0;
@@ -529,6 +551,7 @@ int main(int argc, char** argv)
         }
         {
             auto locked = juce::XmlDocument::parse(groupFile);
+            legacyFixture(*locked);
             byID(*locked, src)->setAttribute("ndaw_locked", 1);
             const auto file = dir.getChildFile("LockedMixedGroup.tracktionedit");
             check(locked->writeTo(file), "owned locked mixed-group fixture written");
