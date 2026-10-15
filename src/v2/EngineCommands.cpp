@@ -16,6 +16,7 @@
 #include "SidechainGraph.h"
 #include "TrackPrint.h"
 #include "OutputProbe.h"
+#include "NativeFader.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <filesystem>
 namespace ndaw::v2
@@ -160,6 +161,12 @@ struct GainAction final : juce::UndoableAction
 };
 struct Behaviour : te::EngineBehaviour
 {
+    NativeFaderManager faders;
+    std::unique_ptr<te::VolumeAndPanAutomationProcessor>
+    createVolumeAndPanAutomationProcessor(te::VolumeAndPanPlugin& plugin) override
+    {
+        return faders.create(plugin);
+    }
     te::EditLimits getEditLimits() override
     {
         auto limits = te::EditLimits{};

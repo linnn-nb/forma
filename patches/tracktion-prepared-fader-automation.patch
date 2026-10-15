@@ -1,0 +1,138 @@
+diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.h b/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.h
+index 1369f40..66d2962 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.h
++++ b/modules/tracktion_engine/model/automation/tracktion_AutomatableParameter.h
+@@ -146,6 +146,14 @@ public:
+         or the plugin telling us one if its parameters has changed.
+     */
+     float getCurrentExplicitValue() const                       { return currentParameterValue; }
++    // Publish a host-prepared, unmodulated readout without changing the explicit
++    // base, notifying listeners, mutating ValueTrees or acquiring a stream lock.
++    void publishPreparedAutomationValue (float value) noexcept
++    {
++        currentBaseValue.store (value, std::memory_order_relaxed);
++        currentModifierValue.store (0.0f, std::memory_order_relaxed);
++        currentValue.store (value, std::memory_order_relaxed);
++    }
+ 
+     /** This is the current base value of the parameter i.e. either the explicit value or
+         the automation curve value.
+diff --git a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
+index 85a7fa9..f134343 100644
+--- a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
++++ b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
+@@ -123,6 +123,7 @@ VolumeAndPanPlugin::VolumeAndPanPlugin (PluginCreationInfo info, bool isMasterVo
+ 
+     volParam->attachToCurrentValue (volume);
+     panParam->attachToCurrentValue (pan);
++    preparedAutomation = edit.engine.getEngineBehaviour().createVolumeAndPanAutomationProcessor (*this);
+ }
+ 
+ VolumeAndPanPlugin::VolumeAndPanPlugin (Edit& ed, const juce::ValueTree& v, bool isMaster)
+@@ -132,6 +133,7 @@ VolumeAndPanPlugin::VolumeAndPanPlugin (Edit& ed, const juce::ValueTree& v, bool
+ 
+ VolumeAndPanPlugin::~VolumeAndPanPlugin()
+ {
++    preparedAutomation.reset();
+     notifyListenersOfDeletion();
+ 
+     volParam->detachFromCurrentValue();
+@@ -157,6 +159,8 @@ void VolumeAndPanPlugin::initialise (const PluginInitialisationInfo& info)
+     smoothedGainL.reset (info.sampleRate, smoothingRampTimeSeconds);
+     smoothedGainR.reset (info.sampleRate, smoothingRampTimeSeconds);
+     smoothedGain.reset (info.sampleRate, smoothingRampTimeSeconds);
++    if (preparedAutomation)
++        preparedAutomation->prepare (info);
+ }
+ 
+ void VolumeAndPanPlugin::initialiseWithoutStopping (const PluginInitialisationInfo&)
+diff --git a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h
+index 12a877a..0cc9ea1 100644
+--- a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h
++++ b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h
+@@ -10,6 +10,14 @@
+ 
+ namespace tracktion::inline engine {
+ 
++class VolumeAndPanAutomationProcessor
++{
++public:
++    virtual ~VolumeAndPanAutomationProcessor() = default;
++    virtual void prepare (const PluginInitialisationInfo&) = 0;
++    virtual bool process (const PluginRenderContext&) noexcept = 0;
++};
++
+ /**
+     The built-in Tracktion volume/pan plugin.
+ */
+@@ -60,6 +68,22 @@ public:
+     void initialiseWithoutStopping (const PluginInitialisationInfo&) override;
+     void deinitialise() override;
+     void applyToBuffer (const PluginRenderContext&) override;
++    bool applyWithPreparedAutomation (const PluginRenderContext& context) override
++    {
++        return isEnabled() && preparedAutomation && preparedAutomation->process (context);
++    }
++    void setPreparedAutomationProcessor (std::unique_ptr<VolumeAndPanAutomationProcessor> processor)
++    {
++        preparedAutomation = std::move (processor);
++    }
++    void finishPreparedAutomationBlock (float volumeValue, float panValue, float leftGain, float rightGain, float gain) noexcept
++    {
++        volParam->publishPreparedAutomationValue (volumeValue);
++        panParam->publishPreparedAutomationValue (panValue);
++        smoothedGainL.setCurrentAndTargetValue (leftGain);
++        smoothedGainR.setCurrentAndTargetValue (rightGain);
++        smoothedGain.setCurrentAndTargetValue (gain);
++    }
+     int getNumOutputChannelsGivenInputs (int numInputs) override    { return numInputs; }
+     BusLayout getBusses() const override   { return BusLayout::singleInOut (ChannelConfiguration::stereo(), ChannelConfiguration::none()); }
+ 
+@@ -78,6 +102,7 @@ public:
+     double smoothingRampTimeSeconds = 0.015;
+ 
+ private:
++    std::unique_ptr<VolumeAndPanAutomationProcessor> preparedAutomation;
+     float lastVolumeBeforeMute = 0.0f;
+     juce::SmoothedValue<float> smoothedGainL, smoothedGainR, smoothedGain;
+ 
+diff --git a/modules/tracktion_engine/plugins/tracktion_Plugin.cpp b/modules/tracktion_engine/plugins/tracktion_Plugin.cpp
+index 78b5ce9..ceb75d0 100644
+--- a/modules/tracktion_engine/plugins/tracktion_Plugin.cpp
++++ b/modules/tracktion_engine/plugins/tracktion_Plugin.cpp
+@@ -738,6 +738,9 @@ void Plugin::applyToBufferWithAutomation (const PluginRenderContext& pc)
+ 
+     updateLastPlaybackTime();
+ 
++    if (applyWithPreparedAutomation (pc))
++        return;
++
+     if (isAutomationNeeded()
+         && (arm.isReadingAutomation() || isClipEffect.load()))
+     {
+diff --git a/modules/tracktion_engine/plugins/tracktion_Plugin.h b/modules/tracktion_engine/plugins/tracktion_Plugin.h
+index 3712e3e..e2957fd 100644
+--- a/modules/tracktion_engine/plugins/tracktion_Plugin.h
++++ b/modules/tracktion_engine/plugins/tracktion_Plugin.h
+@@ -261,6 +261,9 @@ public:
+         from getChannelNames() - never more than this).
+     */
+     virtual void applyToBuffer (const PluginRenderContext&) = 0;
++    // Optional host-prepared automation processing. Returning true owns this
++    // whole block and bypasses the mutable parameter-stream path below.
++    virtual bool applyWithPreparedAutomation (const PluginRenderContext&) { return false; }
+ 
+     /** Called between successive rendering blocks. */
+     virtual void prepareForNextBlock (TimePosition /*editTime*/) {}
+diff --git a/modules/tracktion_engine/utilities/tracktion_EngineBehaviour.h b/modules/tracktion_engine/utilities/tracktion_EngineBehaviour.h
+index a21ea9c..11d4b82 100644
+--- a/modules/tracktion_engine/utilities/tracktion_EngineBehaviour.h
++++ b/modules/tracktion_engine/utilities/tracktion_EngineBehaviour.h
+@@ -47,6 +47,7 @@ public:
+ 
+     /// This will be called if the PluginManager doesn't know how to create a Plugin for the given info.
+     virtual Plugin::Ptr createCustomPlugin (PluginCreationInfo)                     { return {}; }
++    virtual std::unique_ptr<VolumeAndPanAutomationProcessor> createVolumeAndPanAutomationProcessor (VolumeAndPanPlugin&) { return {}; }
+ 
+     /// Gives the host a chance to do any extra configuration after a plugin is loaded
+     virtual void doAdditionalInitialisation (ExternalPlugin&)                       {}

@@ -259,7 +259,8 @@ void nativeFixture(Commands& c, juce::File folder)
 juce::AudioBuffer<float> directFader(te::VolumeAndPanPlugin& fader, double ramp)
 {
     constexpr int block = 128, frames = 192000;
-    fader.smoothingRampTimeSeconds = ramp; // Test-only control; never a production setting.
+    fader.setPreparedAutomationProcessor({}); // Isolate the original SDK path for this causal control.
+    fader.smoothingRampTimeSeconds = ramp;    // Test-only control; never a production setting.
     fader.baseClassInitialise({tracktion::TimePosition::fromSeconds(0), 48000, block});
     juce::AudioBuffer<float> output(2, frames), chunk(2, block);
     te::MidiMessageArray midi;
