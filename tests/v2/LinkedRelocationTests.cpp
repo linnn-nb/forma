@@ -46,6 +46,79 @@ public:
     {
         c.edit->state.createXml()->writeTo(file);
     }
+    class SourceMonitor final : public te::RenderManager::Job::Listener
+    {
+        Commands& commands;
+        std::set<te::RenderManager::Job*> watching;
+
+    public:
+        inline static SourceMonitor* active = nullptr;
+        SourceMonitor* previous = active;
+        Json events = Json::array();
+        explicit SourceMonitor(Commands& c) : commands(c)
+        {
+            active = this;
+        }
+        ~SourceMonitor() override
+        {
+            active = previous;
+            for (auto* job : watching)
+                job->removeListener(this);
+        }
+        void sample(const char* context = "render")
+        {
+            for (auto* track : te::getAudioTracks(*commands.edit))
+                for (auto* piece : track->getClips())
+                    if (auto* clip = dynamic_cast<te::WaveAudioClip*>(piece); clip && clip->getWarpTime())
+                    {
+                        const auto file = te::RenderManager::getAudioFileForHash(
+                            commands.engine, commands.edit->getTempDirectory(false), clip->getHash());
+                        if (auto job = commands.engine.getRenderManager().getRenderJobWithoutCreating(file);
+                            job && watching.insert(job.get()).second)
+                        {
+                            job->addListener(this);
+                            events.push_back({{"event", "observed"},
+                                              {"context", context},
+                                              {"path", file.getFile().getFullPathName().toStdString()},
+                                              {"cancelled", job->shouldExit()}});
+                        }
+                    }
+        }
+        void jobFinished(te::RenderManager::Job& job, bool ok) override
+        {
+            events.push_back({{"event", "finished"},
+                              {"path", job.proxy.getFile().getFullPathName().toStdString()},
+                              {"ok", ok},
+                              {"cancelled", job.shouldExit()},
+                              {"progress", job.progress.load()}});
+            job.removeListener(this);
+            watching.erase(&job);
+        }
+    };
+    static Json sourceDiagnostic(Commands& c)
+    {
+        Json result = Json::array();
+        for (auto* track : te::getAudioTracks(*c.edit))
+            for (auto* piece : track->getClips())
+                if (auto* clip = dynamic_cast<te::WaveAudioClip*>(piece); clip && clip->getWarpTime())
+                {
+                    const te::AudioFile source(c.engine, clip->getOriginalFile());
+                    const auto expected = te::RenderManager::getAudioFileForHash(
+                        c.engine, c.edit->getTempDirectory(false), clip->getHash());
+                    const auto segments = te::AudioSegmentList::create(*clip, clip->getWarpTimeManager(), source);
+                    result.push_back({{"clip", clip->itemID.toString().toStdString()},
+                                      {"edit_plays", c.edit->shouldPlay()},
+                                      {"mute", track->state.getProperty("mute").toString().toStdString()},
+                                      {"failed", clip->hasSourceRenderFailed()},
+                                      {"source_valid", source.isValid()},
+                                      {"segments", segments->getSegments().size()},
+                                      {"expected", expected.getFile().getFullPathName().toStdString()},
+                                      {"expected_exists", expected.getFile().existsAsFile()},
+                                      {"expected_valid", expected.isValid()},
+                                      {"current", clip->getCurrentSourceFile().getFullPathName().toStdString()}});
+                }
+        return result;
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -55,6 +128,44 @@ int renderFrames = 144000;
 double maxError = 0;
 Json renderFiles = Json::array(), comparisons = Json::array();
 Json pluginDifferences = Json::array(), lastPreparation = nullptr;
+Json semanticPlugins(const Json& raw)
+{
+    Json result = Json::array();
+    for (const auto& text : raw)
+    {
+        const auto xml = juce::parseXML(juce::String(text.get<std::string>()));
+        if (!xml)
+            throw std::runtime_error("invalid native plugin XML");
+        auto read = [&](auto&& self, const juce::XmlElement& node) -> Json
+        {
+            Json attributes = Json::object(), children = Json::array();
+            // These properties are actually read as float by the pinned native
+            // processors. Compare exact DSP values, not decimal XML spellings.
+            static const std::map<std::string, std::set<std::string>> fields{
+                {"4bandEq",
+                 {"loFreq", "loGain", "loQ", "midFreq1", "midGain1", "midQ1", "midFreq2", "midGain2", "midQ2", "hiFreq",
+                  "hiGain", "hiQ"}},
+                {"compressor", {"threshold", "ratio", "attack", "release", "outputDb", "inputDb"}},
+                {"delay", {"feedback", "mix"}},
+                {"reverb", {"roomSize", "damp", "wet", "dry", "width", "mode"}}};
+            const auto native = fields.find(node.getStringAttribute("type").toStdString());
+            for (int i = 0; i < node.getNumAttributes(); ++i)
+            {
+                const auto key = node.getAttributeName(i).toStdString();
+                const auto value = node.getAttributeValue(i);
+                if (node.hasTagName("PLUGIN") && native != fields.end() && native->second.contains(key))
+                    attributes[key] = double(value.getFloatValue());
+                else
+                    attributes[key] = value.toStdString();
+            }
+            for (auto* child = node.getFirstChildElement(); child; child = child->getNextElement())
+                children.push_back(self(self, *child));
+            return {{"tag", node.getTagName().toStdString()}, {"attributes", attributes}, {"children", children}};
+        };
+        result.push_back(read(read, *xml));
+    }
+    return result;
+}
 void check(bool ok, const char* why)
 {
     if (!ok)
@@ -89,6 +200,8 @@ Json op(const char* cmd, Json args)
 Json run(Commands& c, const char* cmd, Json args)
 {
     auto receipt = c.commit(c.makePlan("human", Json::array({op(cmd, args)})));
+    if (auto* monitor = RecordingTestAccess::SourceMonitor::active)
+        monitor->sample(cmd);
     check(receipt["state"] == "committed", "actual native transaction returns a committed receipt");
     return receipt;
 }
@@ -151,13 +264,21 @@ juce::File source(juce::File folder, bool negative)
 }
 juce::AudioBuffer<float> render(Commands& c, juce::File folder, int first = 0)
 {
+    RecordingTestAccess::SourceMonitor monitor(c);
     const auto deadline = juce::Time::getMillisecondCounterHiRes() + 5000;
     while (c.playbackPreparation()["busy"].get<bool>() && juce::Time::getMillisecondCounterHiRes() < deadline)
+    {
+        monitor.sample();
         juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    }
     lastPreparation = c.playbackPreparation();
     if (lastPreparation["busy"].get<bool>())
     {
         RecordingTestAccess::diagnostic(c, folder.getChildFile("Diagnostic-Edit.xml"));
+        lastPreparation["source_debug"] = RecordingTestAccess::sourceDiagnostic(c);
+        lastPreparation["jobs"] = monitor.events;
+        if (monitor.previous)
+            lastPreparation["earlier_jobs"] = monitor.previous->events;
         std::cout << "PREPARATION FAILURE " << lastPreparation.dump() << " · " << folder.getFullPathName() << std::endl;
     }
     check(!lastPreparation["busy"].get<bool>(), "actual source ready within fixed five-second budget");
@@ -240,6 +361,7 @@ int main(int argc, char** argv)
             Workspace w(false, std::make_unique<Storage>(folder.getChildFile("prefs")));
             w.setSize(1280, 900);
             auto& c = RecordingTestAccess::commands(w);
+            RecordingTestAccess::SourceMonitor sourceMonitor(c);
             for (const char* name : {"Mic A", "Mic B", "Destination C", "Destination D"})
                 run(c, "track.create", {{"name", name}, {"ref", "$t"}});
             const auto tracks = c.query()["tracks"];
@@ -532,10 +654,10 @@ int main(int argc, char** argv)
                 for (const auto& move : moves)
                 {
                     const auto actual = RecordingTestAccess::plugins(cold, move["clip"]);
-                    if (actual != originalPlugins.at(move["clip"]))
+                    if (semanticPlugins(actual) != semanticPlugins(originalPlugins.at(move["clip"])))
                         pluginDifferences.push_back(
                             {{"clip", move["clip"]}, {"original", originalPlugins.at(move["clip"])}, {"cold", actual}});
-                    check(actual == originalPlugins.at(move["clip"]),
+                    check(semanticPlugins(actual) == semanticPlugins(originalPlugins.at(move["clip"])),
                           "actual cold Open restores complete real Clip plugin state and IDs");
                 }
                 cold.undo(p["plan_id"]);
