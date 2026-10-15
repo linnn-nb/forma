@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "Workspace.h"
+#include "ui/WorkspaceWindow.h"
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -185,9 +185,11 @@ int main(int argc, char** argv)
     try
     {
         root.createDirectory();
-        ndaw::desktop::Workspace w(false, std::make_unique<Storage>(root.getChildFile("prefs")));
-        w.setSize(1600, 1000);
-        w.setVisible(true);
+        ndaw::desktop::WorkspaceWindow window(
+            std::make_unique<ndaw::desktop::Workspace>(false, std::make_unique<Storage>(root.getChildFile("prefs"))));
+        window.setSize(1600, 1000);
+        window.showReady();
+        auto& w = window.editor();
         auto& c = RecordingTestAccess::commands(w);
         auto& host = RecordingTestAccess::host(c);
         Feed feed(host);
@@ -349,7 +351,19 @@ int main(int argc, char** argv)
         check(receipt["audio_verified"] && receipt["frames"] == 192000 && receipt["peak"].get<double>() > .05,
               "final export has verified actual stereo audio, exact range and nonzero signal");
         auto finalPCM = read(exported);
-        w.openSession(saved);
+        const auto previousSession = c.sessionToken();
+        w.requestOpenSession(saved);
+        auto* review = dynamic_cast<ndaw::desktop::SessionExitPanel*>(w.findChildWithID("exit.panel"));
+        check(review && review->isShowing() && c.sessionToken() == previousSession,
+              "complete production chain reviews persistence before replacing its Edit");
+        auto* save = dynamic_cast<juce::TextButton*>(review->findChildWithID("exit.save"));
+        auto* destination = dynamic_cast<juce::TextEditor*>(review->findChildWithID("exit.path"));
+        check(save && destination && save->isShowing() && save->isEnabled(),
+              "production chain has actual native review controls");
+        destination->setText(root.getChildFile("Before-Reopen-Full-History.tracktionedit").getFullPathName(), false);
+        save->triggerClick();
+        wait([&] { return c.sessionToken() != previousSession; },
+             "actual save notification and verified persistence precede P1 project Open");
         check(c.query()["tracks"] == finished && c.crossfades(a) == pairs,
               "save/close/reopen restores complete production chain facts");
         check(mappings->getKeyPressesAssignedToCommand(513).contains(custom), "custom Punch key survives reopen");

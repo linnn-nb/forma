@@ -1,4 +1,4 @@
-#include "Workspace.h"
+#include "ui/WorkspaceWindow.h"
 #include "RecoveryStore.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <chrono>
@@ -274,8 +274,16 @@ juce::Button* readyButton(ndaw::desktop::Workspace& w, const juce::String& id)
             return b;
         }
         if (std::chrono::steady_clock::now() - began > std::chrono::seconds(5))
+        {
+            auto* outcome = dynamic_cast<juce::Label*>(find(w, "session.new.result"));
+            auto* preview = dynamic_cast<juce::TextEditor*>(find(w, "session.new.preview"));
             throw std::runtime_error("new-session UI readiness exceeds fixed five-second budget: " +
-                                     w.queryRecovery().dump());
+                                     Json{{"recovery", w.queryRecovery()},
+                                          {"project", w.query()},
+                                          {"outcome", outcome ? outcome->getText().toStdString() : "missing"},
+                                          {"preview", preview ? preview->getText().toStdString() : "missing"}}
+                                         .dump());
+        }
         pump();
     }
 }
@@ -313,9 +321,11 @@ void click(juce::Component& p, const juce::String& id)
 }
 void ui(const juce::File& folder)
 {
-    ndaw::desktop::Workspace w(false, std::make_unique<Storage>(folder));
-    w.setVisible(true);
-    w.setSize(1120, 700);
+    ndaw::desktop::WorkspaceWindow window(
+        std::make_unique<ndaw::desktop::Workspace>(false, std::make_unique<Storage>(folder)));
+    window.setSize(1120, 700);
+    window.showReady();
+    auto& w = window.editor();
     click(w, "track.create");
     const auto before = w.query()["tracks"];
     w.menuItemSelected(41, 0);
