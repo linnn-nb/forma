@@ -4,6 +4,7 @@
 #include "OutputProbe.h"
 #include "SelectionOutputGate.h"
 #include "NativePluginStates.h"
+#include "EditOrdering.h"
 namespace ndaw::v2
 {
 namespace
@@ -677,6 +678,9 @@ void Commands::finishRecordingCapture(bool unexpected)
                 engine.getDeviceManager().findInputDeviceForID(juce::String(device))))
             wave->setMergeMode(mode);
     waveRecordModes.clear();
+    // Keep native derived ordering inside the capture transaction, including
+    // failed capture rollback. A late sort must not create an untracked Undo.
+    detail::settleClipOrder(*edit);
     if ((receipt.value("mode", std::string{}) == "loop" || receipt.value("mode", std::string{}) == "punch") &&
         !recordingError.empty())
     {

@@ -18,6 +18,7 @@
 #include "TrackPrint.h"
 #include "OutputProbe.h"
 #include "NativeFader.h"
+#include "EditOrdering.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <filesystem>
 namespace ndaw::v2
@@ -25,29 +26,7 @@ namespace ndaw::v2
 static_assert(OutputProbe::capacity == te::DeviceManager::maxNumChannelsPerDevice);
 namespace
 {
-// Drain only native derived ordering, never the message queue.
-// Sorting must belong to the originating Plan before JUCE Undo/Redo closes it.
-void settleClipOrder(te::Edit& edit)
-{
-    edit.getTrackList().flushPendingOrder();
-    for (auto* track : te::getAllTracks(edit))
-        if (auto* children = track->getSubTrackList())
-            children->flushPendingOrder();
-    const auto settle = [](auto&& self, te::ClipOwner& owner) -> void
-    {
-        owner.flushPendingClipOrder();
-        // The SDK sort emits child-order notifications which schedule one more
-        // sort. Drain that echo while the originating transaction is still open;
-        // otherwise it can run after Undo and discard the native Redo branch.
-        owner.flushPendingClipOrder();
-        for (auto* clip : owner.getClips())
-            if (auto* nested = dynamic_cast<te::ClipOwner*>(clip))
-                self(self, *nested);
-    };
-    for (auto* track : te::getAllTracks(edit))
-        if (auto* owner = dynamic_cast<te::ClipOwner*>(track))
-            settle(settle, *owner);
-}
+using detail::settleClipOrder;
 bool isTrackFlag(const std::string& command)
 {
     return command == "track.mute" || command == "track.solo" || command == "track.solo_safe";
