@@ -49,7 +49,7 @@ struct Lane
     std::vector<Incoming> incoming;
 };
 } // namespace
-Json Commands::relocationAutomationChanges(const Json& clips) const
+Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked) const
 {
     checkThread();
     Json result{
@@ -135,6 +135,11 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
     std::set<std::string> moving;
     for (const auto& clip : clips)
         moving.insert(clip.at("clip").get<std::string>());
+    std::set<std::string> stashed;
+    for (const auto& group : linked)
+        for (const auto& member : group["members"])
+            for (const auto& clip : member["stashed_clips"])
+                stashed.insert(clip["clip"].get<std::string>());
     for (auto& r : merged)
     {
         auto* source = track(r.source);
@@ -162,7 +167,8 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
             const double first = sourceSide ? r.high : r.end;
             const double last = sourceSide ? r.tailHigh : r.tailEnd;
             for (auto* clip : owner->getClips())
-                if (!moving.contains(clip->itemID.toString().toStdString()))
+                if (!moving.contains(clip->itemID.toString().toStdString()) &&
+                    !stashed.contains(clip->itemID.toString().toStdString()))
                     require(last <= first || clip->getPosition().getStart().inSeconds() >= last ||
                                 clip->getPosition().getEnd().inSeconds() <= first,
                             "自动化尾随区与未移动片段相交，请先缩短尾随时长或调整选择");

@@ -411,6 +411,8 @@ Json Commands::queryPlaylists(const std::string& id) const
         item["origin"] = str(listFor(*t, item["id"]), "origin");
         auto list = listFor(*t, item["id"]);
         item["linked_set"] = str(list, "linked_set");
+        item["origin_track"] = str(list, "origin_track");
+        item["restore_playlist"] = str(list, "restore_playlist");
         item["linked_tracks"] = Json::array();
         for (auto [member, linked] : playlist_links::members(*edit, list))
             item["linked_tracks"].push_back(member->itemID.toString().toStdString());
@@ -432,6 +434,8 @@ Json Commands::queryPlaylists(const std::string& id) const
                  {"locked", bool(c.getProperty("ndaw_locked", false))},
                  {"take_id", str(c, "ndaw_take_id")},
                  {"comp_origin", str(c, "ndaw_comp_origin")}});
+            item["clips"].back()["comp_origin_track"] =
+                str(list, "origin_track").empty() ? id : str(list, "origin_track");
             auto& row = item["clips"].back();
             row["elastic"] = elastic_state::facts(c);
             row["clip_fx"] = clip_fx_window::facts(c);

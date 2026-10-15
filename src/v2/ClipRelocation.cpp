@@ -92,9 +92,7 @@ Json Commands::relocationChange(const Json& args) const
                 require(!bool(owner->state.getProperty("ndaw_locked", false)) &&
                             !owner->isFrozen(te::Track::anyFreeze) && !printQuery(*owner)["bounce_active"].get<bool>(),
                         "来源或目标轨道已锁定、冻结或印刻");
-                require(!activePlaylistLocked(*owner), "来源或目标播放列表已锁定");
-                require(playlist_links::value(playlist_links::active(*owner), "linked_set").empty(),
-                        "关联多轨Comp的跨轨道迁移尚待资格；请保留关联并取消本次拖放");
+                require(!activePlaylistLocked(*owner, true), "来源或目标播放列表已锁定");
                 bool hasCurves = false;
                 for (auto* plugin : owner->pluginList)
                     for (auto* parameter : plugin->getAutomatableParameters())
@@ -186,6 +184,8 @@ Json Commands::relocationChange(const Json& args) const
             require(selected.contains(peer.at("id").get<std::string>()), "整组迁移缺少Edit组或Comp成员");
     (void)validateClipPlan(nativeMoves);
     (void)validateMusicPlan(nativeMoves);
+    (void)validatePlaylistPlan(nativeMoves);
+    const auto linked = linkedCompRelocationChanges(moves);
     // Account for the real native capacity before any parent is changed.
     std::map<te::AudioTrack*, int> counts;
     for (const auto& move : moves)
@@ -202,6 +202,9 @@ Json Commands::relocationChange(const Json& args) const
             ++counts[to];
         }
     }
+    for (const auto& group : linked)
+        for (const auto& member : group["members"])
+            counts[track(member["to_track"])] -= member["stashed_clips"].size();
     for (const auto& [owner, count] : counts)
         require(count <= engine.getEngineBehaviour().getEditLimits().maxClipsInTrack,
                 "目标轨道达到原生片段资源上限，整笔迁移未执行");
@@ -218,7 +221,7 @@ Json Commands::relocationChange(const Json& args) const
                              {"action", intact ? "rehome" : "detach"},
                              {"to_track", intact ? selected.at(left)["to_track"] : Json(nullptr)}});
         }
-    const auto automation = relocationAutomationChanges(changes);
+    const auto automation = relocationAutomationChanges(changes, linked);
     auto sealedOwners = owners;
     for (auto& owner : sealedOwners)
     {
@@ -246,8 +249,9 @@ Json Commands::relocationChange(const Json& args) const
                         owner.erase("pan");
                 }
     }
-    const Json sealed{{"moves", moves},   {"native_moves", nativeMoves}, {"owners", sealedOwners}, {"pairs", pairs},
-                      {"follow", follow}, {"automation", automation},    {"revision", revision}};
+    const Json sealed{
+        {"moves", moves},   {"native_moves", nativeMoves}, {"owners", sealedOwners}, {"pairs", pairs},
+        {"follow", follow}, {"automation", automation},    {"linked_comp", linked},  {"revision", revision}};
     const auto bytes = sealed.dump();
     return {{"command", "clips.relocate"},
             {"clips", changes},
@@ -255,6 +259,7 @@ Json Commands::relocationChange(const Json& args) const
             {"crossfades", pairs},
             {"native_moves", nativeMoves},
             {"automation", automation},
+            {"linked_comp", linked},
             {"automation_policy", follow ? (automation["transfers"].empty()
                                                 ? "follow enabled; no source curves present"
                                                 : "move frozen source curves; overwrite matching destination intervals")
@@ -304,6 +309,7 @@ void Commands::executeRelocation(const Json& args, Json& objects)
             records.push_back(
                 {node, p["to_track"].is_null() ? "" : p["to_track"].get<std::string>(), p["action"] == "detach"});
     }
+    beginLinkedCompRelocation(change["linked_comp"], objects);
     for (const auto& move : args["moves"])
     {
         te::Clip::Ptr clip = timelineClip(move["clip"]);
@@ -316,6 +322,7 @@ void Commands::executeRelocation(const Json& args, Json& objects)
         }
         objects.push_back({{"id", move["clip"]}, {"kind", "clip"}, {"track", move["to_track"]}, {"relocated", true}});
     }
+    finishLinkedCompRelocation(change["linked_comp"], objects);
     for (auto& pair : records)
     {
         auto parent = pair.state.getParent();

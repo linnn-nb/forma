@@ -149,6 +149,15 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                 if (relocate)
                 {
                     const auto& change = preview.at("relocation_changes").at(0);
+                    for (const auto& group : change["linked_comp"])
+                    {
+                        summary += text("\n关联Comp整组迁移：Playlist身份与原Take保留，源轨道留空。\n");
+                        for (const auto& member : group["members"])
+                            summary += trackName(member["from_track"]) + " → " + trackName(member["to_track"]) +
+                                       text(" · 目标原播放列表保留为非活动状态（") +
+                                       juce::String(int(member["stashed_clips"].size())) +
+                                       text("个片段），可整组恢复\n");
+                    }
                     summary += text("\n片段进入目标轨道的处理链、发送与输出。轨道本身的路由保持。\n");
                     const auto policy = change["automation_policy"].get<std::string>();
                     summary += text(policy == "track curves explicitly stay in place"

@@ -96,6 +96,20 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
             automatic = false;
             for (const auto& change : preview.at("relocation_changes"))
             {
+                if (!change["linked_comp"].empty())
+                {
+                    full(); // Whole active Playlists change, including destination material outside the clips.
+                    for (const auto& group : change["linked_comp"])
+                        for (const auto& member : group["members"])
+                            impacts.push_back({{"command", cmd},
+                                               {"linked_set", group["set"]},
+                                               {"source", member["from_track"]},
+                                               {"destination", member["to_track"]},
+                                               {"playlist", member["playlist"]},
+                                               {"vacancy", member["vacancy"]},
+                                               {"stashed_clips", member["stashed_clips"]},
+                                               {"extent", "whole active Playlist relocation"}});
+                }
                 if (!change["automation"]["transfers"].empty())
                     full(); // Effect tails and native fallback paths can outlive the copied continuation window.
                 for (const auto& track : change["automation"]["tracks"])
