@@ -18,6 +18,17 @@ public:
     {
         return w.pending;
     }
+    static void confirm(Workspace& w)
+    {
+        if (w.pending.is_null() || !w.acceptButton.isShowing() || !w.acceptButton.isEnabled())
+            throw std::runtime_error("actual move confirmation control is unavailable");
+        w.acceptButton.triggerClick();
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 500;
+        while (!w.pending.is_null() && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        if (!w.pending.is_null())
+            throw std::runtime_error("actual move confirmation did not finish within 500ms");
+    }
     static void select(Workspace& w, const std::string& clip)
     {
         w.selectAudioClip(clip);
@@ -592,13 +603,20 @@ int main(int argc, char** argv)
         {
             Workspace w(false, std::make_unique<Storage>(dir.getChildFile("Prefs")));
             w.setSize(1440, 900);
+            w.addToDesktop(0);
+            w.setVisible(true);
             w.openSession(demo);
             pump();
             auto& c = AudioDeviceTestAccess::owner(w);
             const std::string t = c.query()["tracks"][0]["id"];
             const auto clips = c.query()["tracks"][0]["clips"], before = persistent(c, t);
             AudioDeviceTestAccess::select(w, clips[1]["id"]);
-            c.updateUiState({{"edit_tool", "grabber"}, {"edit_mode", "slip"}, {"nudge", "10ms"}}, c.sessionToken());
+            check(w.uiCommands().invokeDirectly(editCommand::grabber, false) &&
+                      w.uiCommands().invokeDirectly(editCommand::slip, false),
+                  "actual GUI commands select Grabber and Slip");
+            auto* nudge = dynamic_cast<juce::ComboBox*>(find(w, "edit.nudge.value"));
+            check(nudge && nudge->isEnabled(), "actual Nudge control available");
+            nudge->setSelectedId(2, juce::sendNotificationSync);
             pump();
             check(w.keyPressed(juce::KeyPress('.', 0, 0)), "production Nudge shortcut invoked");
             pump();
@@ -624,6 +642,11 @@ int main(int argc, char** argv)
             area->mouseDown(event(*area, float(rect.getCentreX()), y));
             area->mouseDrag(event(*area, float(rect.getCentreX() + delta), y, true));
             area->mouseUp(event(*area, float(rect.getCentreX() + delta), y, true));
+            pump();
+            check(!AudioDeviceTestAccess::pending(w).is_null() &&
+                      actualClip(c, clips[1]["id"])["start_samples"] == 48000 && persistent(c, t) == before,
+                  "actual Grabber preview leaves clip and curves unchanged before acceptance");
+            AudioDeviceTestAccess::confirm(w);
             pump();
             if (actualClip(c, clips[1]["id"])["start_samples"] != 72000)
             {
@@ -661,7 +684,7 @@ int main(int argc, char** argv)
             w.uiCommands().invokeDirectly(6, false);
             pump();
             check(persistent(c, t) == before, "Spot and native curves share one Undo");
-            c.updateUiState({{"edit_mode", "slip"}}, c.sessionToken());
+            check(w.uiCommands().invokeDirectly(editCommand::slip, false), "actual GUI command restores Slip");
             pump();
             auto* keys = w.uiCommands().getKeyMappings();
             const juce::KeyPress custom('j',
