@@ -96,7 +96,15 @@ public:
     void capture(bool force = false)
     {
         std::lock_guard lock(captureMutex); // Never entered by process().
-        if (force || dirty.exchange(false))
+        const bool changed = dirty.exchange(false) || force;
+        if (changed && retired.size() >= 8 && readers.load(std::memory_order_seq_cst) != 0)
+        {
+            // Coalesce to the newest model revision instead of growing a queue
+            // while an overloaded callback keeps old snapshots in use.
+            dirty.store(true);
+            return;
+        }
+        if (changed)
         {
             auto next = std::make_unique<Snapshot>();
             auto load = [&](te::AutomatableParameter& parameter, Curve& curve)

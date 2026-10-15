@@ -2,6 +2,60 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <fstream>
 #include <iostream>
+#include <thread>
+#include <cstdlib>
+namespace heap_probe
+{
+thread_local bool active = false;
+thread_local size_t allocations = 0, releases = 0;
+} // namespace heap_probe
+void* operator new(std::size_t size)
+{
+    if (heap_probe::active)
+        ++heap_probe::allocations;
+    if (auto* p = std::malloc(size ? size : 1))
+        return p;
+    throw std::bad_alloc();
+}
+void* operator new[](std::size_t size)
+{
+    return ::operator new(size);
+}
+void operator delete(void* p) noexcept
+{
+    if (heap_probe::active && p)
+        ++heap_probe::releases;
+    std::free(p);
+}
+void operator delete[](void* p) noexcept
+{
+    ::operator delete(p);
+}
+void operator delete(void* p, std::size_t) noexcept
+{
+    ::operator delete(p);
+}
+void operator delete[](void* p, std::size_t) noexcept
+{
+    ::operator delete(p);
+}
+void* operator new(std::size_t size, std::align_val_t alignment)
+{
+    if (heap_probe::active)
+        ++heap_probe::allocations;
+    void* p = nullptr;
+    if (posix_memalign(&p, std::size_t(alignment), size ? size : 1) == 0)
+        return p;
+    throw std::bad_alloc();
+}
+void operator delete(void* p, std::align_val_t) noexcept
+{
+    ::operator delete(p);
+}
+void operator delete[](void* p, std::align_val_t) noexcept
+{
+    ::operator delete(p);
+}
 using namespace ndaw::v2;
 namespace ndaw::v2
 {
@@ -306,6 +360,154 @@ Json smoothingControl(juce::File root)
             {"cases", cases},
             {"scope", "native VolumeAndPan processor control only; no change to production smoothing"}};
 }
+Json preparedChecks(juce::File root, bool publication)
+{
+    Commands c(false, std::make_unique<Storage>(root.getChildFile("prefs")));
+    auto f = setup(c, root, false, false);
+    auto& p = RecordingTestAccess::fader(c, f.a);
+    Json rows = Json::array();
+    if (!publication)
+    {
+        for (double rate : {44100., 48000., 96000., 192000.})
+            for (int block : {32, 128, 512})
+            {
+                p.baseClassInitialise({tracktion::TimePosition::fromSeconds(0), rate, block});
+                te::AutomationIterator vol(*p.volParam), pan(*p.panParam);
+                juce::AudioBuffer<float> buffer(2, block);
+                te::MidiMessageArray midi;
+                double error = 0, maximumMs = 0;
+                size_t allocations = 0, releases = 0;
+                for (int first = 0; first < int(rate * 2); first += block)
+                {
+                    const int count = std::min(block, int(rate * 2) - first);
+                    for (int ch = 0; ch < 2; ++ch)
+                        juce::FloatVectorOperations::fill(buffer.getWritePointer(ch), .25f, count);
+                    const te::PluginRenderContext context{
+                        &buffer,
+                        0,
+                        count,
+                        &midi,
+                        0.,
+                        {tracktion::TimePosition::fromSeconds(first / rate),
+                         tracktion::TimePosition::fromSeconds((first + count) / rate)},
+                        true,
+                        false,
+                        true,
+                        false};
+                    const auto before = juce::Time::getMillisecondCounterHiRes();
+                    const auto oldAlloc = heap_probe::allocations, oldFree = heap_probe::releases;
+                    heap_probe::active = true;
+                    const bool handled = p.applyWithPreparedAutomation(context);
+                    heap_probe::active = false;
+                    maximumMs = std::max(maximumMs, juce::Time::getMillisecondCounterHiRes() - before);
+                    allocations += heap_probe::allocations - oldAlloc;
+                    releases += heap_probe::releases - oldFree;
+                    if (!handled)
+                        throw std::runtime_error("prepared automation unexpectedly used native fallback");
+                    for (int i = 0; i < count; ++i)
+                    {
+                        const auto time = tracktion::TimePosition::fromSeconds((first + i) / rate);
+                        vol.setPosition(time);
+                        pan.setPosition(time);
+                        float left, right;
+                        te::getGainsFromVolumeFaderPositionAndPan(vol.getCurrentValue(), pan.getCurrentValue(),
+                                                                  p.getPanLaw(), left, right);
+                        error = std::max({error, std::abs(double(buffer.getSample(0, i)) - .25f * left),
+                                          std::abs(double(buffer.getSample(1, i)) - .25f * right)});
+                    }
+                }
+                check(error <= 2e-6, "prepared fader matches independent native iterator at every sample");
+                check(allocations == 0 && releases == 0, "prepared callback performs no C++ allocation or reclamation");
+                rows.push_back({{"sample_rate", rate},
+                                {"block", block},
+                                {"max_error", error},
+                                {"max_callback_ms", maximumMs},
+                                {"cpp_new", allocations},
+                                {"cpp_delete", releases}});
+                p.baseClassDeinitialise();
+            }
+    }
+    else
+    {
+        p.baseClassInitialise({tracktion::TimePosition::fromSeconds(0), 48000, 128});
+        const auto lanes = c.automationQuery(f.a)["lanes"];
+        std::string point;
+        for (const auto& lane : lanes)
+            if (lane["parameter"] == "volume")
+                point = lane["points"][0]["id"];
+        check(!point.empty(), "actual stable volume point is available for concurrent publication");
+        std::atomic<bool> stop{false};
+        size_t calls = 0, fallback = 0, invalid = 0, allocations = 0, releases = 0;
+        std::thread audio(
+            [&]
+            {
+                juce::AudioBuffer<float> buffer(2, 128);
+                te::MidiMessageArray midi;
+                for (int i = 0; i < 500000 && !stop.load(); ++i)
+                {
+                    const int first = (i * 128) % 192000;
+                    for (int ch = 0; ch < 2; ++ch)
+                        juce::FloatVectorOperations::fill(buffer.getWritePointer(ch), .25f, 128);
+                    const te::PluginRenderContext context{
+                        &buffer,
+                        0,
+                        128,
+                        &midi,
+                        0.,
+                        {tracktion::TimePosition::fromSeconds(first / 48000.),
+                         tracktion::TimePosition::fromSeconds((first + 128) / 48000.)},
+                        true,
+                        false,
+                        true,
+                        false};
+                    heap_probe::active = true;
+                    fallback += !p.applyWithPreparedAutomation(context);
+                    heap_probe::active = false;
+                    ++calls;
+                    for (int ch = 0; ch < 2; ++ch)
+                        for (int n = 0; n < 128; ++n)
+                            invalid += !std::isfinite(buffer.getSample(ch, n));
+                }
+                allocations = heap_probe::allocations;
+                releases = heap_probe::releases;
+            });
+        try
+        {
+            for (int i = 0; i < 100; ++i)
+                run(c, "automation.point.set",
+                    {{"track", f.a},
+                     {"parameter", "volume"},
+                     {"point", point},
+                     {"position_samples", 0},
+                     {"value", i % 2 ? -9. : -12.},
+                     {"curve", .3}});
+        }
+        catch (...)
+        {
+            stop.store(true);
+            audio.join();
+            throw;
+        }
+        stop.store(true);
+        audio.join();
+        check(calls > 0 && fallback == 0 && invalid == 0,
+              "real concurrent native model publication produces finite prepared audio");
+        check(allocations == 0 && releases == 0,
+              "retired snapshots are reclaimed outside the measured processing thread");
+        rows.push_back({{"calls", calls},
+                        {"publications_requested", 100},
+                        {"fallback", fallback},
+                        {"invalid_samples", invalid},
+                        {"cpp_new", allocations},
+                        {"cpp_delete", releases}});
+        p.baseClassDeinitialise();
+    }
+    return {{"result", "passed"},
+            {"checks", checks},
+            {"cases", rows},
+            {"scope", "native prepared processor; C++ new/delete instrumentation only, no hardware/XRUN or "
+                      "entire-engine lock-free claim"}};
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -315,6 +517,14 @@ int main(int argc, char** argv)
         const auto root =
             juce::File::getCurrentWorkingDirectory().getChildFile("P3-RelocationAutomation-" + juce::Uuid().toString());
         root.createDirectory();
+        if (argc > 2 && (std::string(argv[2]) == "prepared-accuracy" || std::string(argv[2]) == "prepared-publication"))
+        {
+            const auto result = preparedChecks(root, std::string(argv[2]) == "prepared-publication");
+            if (argc > 1)
+                std::ofstream(argv[1]) << result.dump(2) << '\n';
+            std::cout << result.dump(2) << std::endl;
+            return 0;
+        }
         if (argc > 2 && std::string(argv[2]) == "smoothing-control")
         {
             const auto result = smoothingControl(root);
