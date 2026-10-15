@@ -109,7 +109,26 @@ int runSuite(const juce::StringArray& args)
         const auto f4 = juce::KeyPress(juce::KeyPress::F4Key);
         check(keys->containsMapping(116, f4), "actual Grid starts with F4");
         click(w, "shortcuts.change:116:0");
-        wait([&] { return panel->hasKeyboardFocus(false); }, "foreground receipt gives key capture actual focus");
+        try
+        {
+            wait([&] { return panel->hasKeyboardFocus(false); }, "foreground receipt gives key capture actual focus");
+        }
+        catch (...)
+        {
+            auto* focused = juce::Component::getCurrentlyFocusedComponent();
+            Json facts{{"foreground", juce::Process::isForegroundProcess()},
+                       {"native_peer_focused", window.getPeer() && window.getPeer()->isFocused()},
+                       {"window_active", window.isActiveWindow()},
+                       {"panel_focused", panel->hasKeyboardFocus(false)},
+                       {"focused_id", focused ? focused->getComponentID().toStdString() : "<none>"},
+                       {"capture_visible", find(w, "shortcuts.capture")->isShowing()},
+                       {"labels", Json::array()}};
+            for (auto* child : panel->getChildren())
+                if (auto* label = dynamic_cast<juce::Label*>(child))
+                    facts["labels"].push_back(label->getText().toStdString());
+            std::cout << "FOCUS_FAILURE " << facts.dump() << std::endl;
+            throw;
+        }
         check(window.getPeer()->handleKeyPress(custom), "actual native peer delivers candidate key");
         check(!w.query()["playing"].get<bool>() && c.query()["tracks"] == tracks,
               "captured key does not play or edit session");
