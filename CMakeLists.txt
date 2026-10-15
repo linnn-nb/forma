@@ -589,6 +589,7 @@ set_tests_properties(tracktion_native_verified_export PROPERTIES TIMEOUT 60 FAIL
 
 # L5 native components depend on the L1 engine; the engine never depends on UI.
 add_library(ndaw_ui STATIC
+  src/v2/ui/SessionExit.cpp src/v2/ui/WorkspaceExit.cpp
   src/v2/ui/KeyboardSettings.cpp src/v2/ui/WorkspacePlaylists.cpp src/v2/ui/Workspace.cpp src/v2/ui/WorkspaceActions.cpp
   src/v2/ui/WorkspaceAgent.cpp src/v2/ui/WorkspaceLayout.cpp
   src/v2/ui/WorkspaceRefresh.cpp src/v2/ui/WorkspaceCommands.cpp src/v2/ui/WorkspaceEditing.cpp src/v2/ui/WorkspaceGrabber.cpp src/v2/ui/WorkspacePrint.cpp src/v2/ui/WorkspaceStems.cpp src/v2/ui/WorkspaceClipboard.cpp src/v2/ui/WorkspaceMidiClipboard.cpp src/v2/ui/WorkspaceMidiClipClipboard.cpp src/v2/ui/WorkspacePresentation.cpp src/v2/ui/WorkspaceAutomation.cpp src/v2/ui/WorkspaceRecording.cpp src/v2/ui/WorkspaceZoom.cpp src/v2/ui/WorkspaceZoomToggle.cpp)
@@ -1015,6 +1016,12 @@ target_sources(ndaw_keyboard_settings_tests PRIVATE tests/v2/KeyboardSettingsTes
 target_link_libraries(ndaw_keyboard_settings_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_keyboard_settings COMMAND ndaw_keyboard_settings_tests "${CMAKE_BINARY_DIR}/keyboard-settings-tests.json")
 set_tests_properties(forma_native_keyboard_settings PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_session_exit_tests PRODUCT_NAME "ndaw_session_exit_tests")
+target_sources(ndaw_session_exit_tests PRIVATE tests/v2/SessionExitTests.cpp)
+target_link_libraries(ndaw_session_exit_tests PRIVATE ndaw_ui)
+add_test(NAME forma_session_exit COMMAND ndaw_session_exit_tests "${CMAKE_BINARY_DIR}/session-exit-tests.json")
+set_tests_properties(forma_session_exit PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 # Production L1/GUI performance qualification with actual native plugins.
 juce_add_console_app(ndaw_performance_tests PRODUCT_NAME "ndaw_performance_tests")

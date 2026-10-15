@@ -1052,6 +1052,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
 }
 bool Workspace::perform(const InvocationInfo& invocation)
 {
+    if (exitPanel && exitPanel->isVisible())
+        return true;
     const auto id = invocation.commandID;
     if (id == 570)
     {

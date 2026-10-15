@@ -309,6 +309,8 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (exitPanel && exitPanel->isVisible())
+        return exitPanel->keyPressed(key);
     if (preferencesPanel && preferencesPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return preferencesPanel->keyPressed(key);
     if (audioImportPanel && audioImportPanel->isVisible())
@@ -678,6 +680,11 @@ void Workspace::resized()
     rejectButton.setButtonText(legacyView && !preview ? text("关闭报告") : text("取消"));
     status.setBounds(12, getHeight() - 27, getWidth() - 320, 24);
     recoveryIndicator.setBounds(getWidth() - 300, getHeight() - 27, 288, 24);
+    if (exitPanel && exitPanel->isVisible())
+    {
+        exitPanel->setBounds(getLocalBounds());
+        exitPanel->toFront(false);
+    }
 }
 } // namespace ndaw::desktop
 

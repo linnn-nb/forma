@@ -10,6 +10,8 @@
 #include "MixGroupEditor.h"
 #include "TrackCommentsPanel.h"
 #include "KeyboardSettings.h"
+#include "SessionExit.h"
+#include "SessionExitPanel.h"
 #include "Toolbar.h"
 #include "Transport.h"
 #include "Counters.h"
@@ -81,6 +83,7 @@ public:
     void showMemoryLocations(const std::string& markerID = {});
     void showSpotPlacement(const std::string& clipID);
     void showNewSession();
+    void requestExit(std::function<void()> completed);
     Json query() const;
     Json queryAudioDevices() const;
     Json queryRecovery() const;
@@ -143,6 +146,12 @@ public:
     }
 
 private:
+    void updateExit();
+    std::unique_ptr<SessionExit> sessionExit;
+    std::unique_ptr<SessionExitPanel> exitPanel;
+    std::function<void()> exitCompleted;
+    bool exitDispatchPending = false;
+    uint64_t exitGeneration = 0;
     // Bound buttons and floating panels unregister on destruction. The manager
     // must be constructed first and destroyed after every such component.
     juce::ApplicationCommandManager commandManager;

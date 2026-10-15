@@ -883,6 +883,7 @@ void Workspace::updateRealtime()
 }
 void Workspace::timerCallback()
 {
+    updateExit();
     ndaw::v2::Performance::Span measured("ui_tick");
     if (!frameActive || !commands.realtimeState().playing)
         updateRealtime();

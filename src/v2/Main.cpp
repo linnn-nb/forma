@@ -39,6 +39,13 @@ public:
     {
         window.reset();
     }
+    void systemRequestedQuit() override
+    {
+        if (window)
+            window->editor().requestExit([this] { quit(); });
+        else
+            quit();
+    }
 
 private:
     std::unique_ptr<ndaw::desktop::WorkspaceWindow> window;
