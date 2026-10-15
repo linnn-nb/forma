@@ -1,3 +1,5 @@
+2026-10-15 跨轨自动化：真实参数映射、源空缺/目标覆盖和单事务开发实现已接通，代码RelocationAutomation/ClipRelocation/Scope，测试RelocationAutomationTests/RelocationTests；WAV差0.030845超过2e-6，部分实现且声音验收失败，未对照Pro Tools实机，不称行为或声音对齐。本表继续仅为参考清单。
+
 2026-10-15 跨轨Grabber：稳定音频/MIDI Clip归属迁移、目标Playlist与完整/部分交叉淡化、编辑组完整性、预览/原UndoRedo/冷重开已接通，源码ClipRelocation/WorkspaceGrabber/UiState，测试RelocationTests/ProcessedMoveTests。关联多轨Comp和跨轨自动化跟随、实体键鼠/听评与Pro Tools实机行为对照未完成。状态：部分实现；无新外部依赖。此表仍为参考清单，不是完成度门槛；资格见CLIP_RELOCATION.md与P3证据。
 
 2026-10-15 Grabber：音频/MIDI多选水平共同移动、Edit组/关联Comp、名称区鼠标转发与主选顺序恢复已接同一L1；源码WorkspaceGrabber/ClipHeader/EditingModel，测试GrabberTests/ProcessedMoveTests，资格见GRABBER_WORKFLOW与P3证据。跨轨道迁移、实体键鼠/听评、复杂组合及Pro Tools实机行为对照未完成。状态：部分实现；无新增外部依赖。本表仍为工作流参考清单，不是完成度门槛。

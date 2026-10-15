@@ -1,3 +1,21 @@
+# P3 跨轨自动化：声音验收失败（2026-10-15）
+
+**当前12/13套分批通过，整体未通过。** 首批11/13、173.77秒，MIDI测试区分PCM与幅度越阈后1/1、21.84秒；总195.61秒，仍保留1项真正的自动化音频失败。12套最新通过JSON共3484检查；失败专项中完成的2559检查不累加成“6043项通过”。Release应用与13个目标构建exit0，固定本地deep/strict及证书指纹核验通过，非发行公证。
+
+开发实现：真实Volume/Pan/匹配插件参数跨轨映射，冻结全部源后统一源空缺/目标覆盖，保留点ID和完整未知原生属性。一Plan原Undo/Redo、保存/关闭/冷重开原历史；source/destination Scope、版本冲突、幂等与锁定沿用L1。GUI预览列出实际参数、轨道和时钟，显式显示音频资格限制；没有新SDK/引擎/RT代码或扩大MCP权限。正常人工直达编辑的最终交互仍须在声音资格后完善，不将每次预览视为最终专业流程。
+
+失败专项RelocationAutomationTests：原地音频、采样位移、MIDI/音乐时钟三场景，真实Volume/Pan/EQ及不同目标曲线；3份实际工程冷重开原UndoRedo、点身份/未知属性、Scope/人工冲突/缺失目标插件均有执行证据。transactions_and_roundtrip=passed；曲线精度仍使用参数跨度1e-7加两个实际float ULP，0个超限点，最大相对误差1.1920928955078125e-07。这部分通过不代表音频通过。
+
+**两份真实PCM24/48k/双声道/480000帧WAV对照最大差均为0.030845046043395996，超过原2e-6；专项/CTest仍失败，未跳过起音。** 来源准备5秒、每WAV10秒、专项180秒均未放宽。失败WAV从采样48001开始非零，两份相同起点，最大差位于48022；并非文件/界面播放替身。SDK VolumeAndPan默认平滑15ms，不同参数前历史是修复对照方向，未做控制实验宣称全部根因已解决。下一个专项处理实时/离线自动化声学一致性和既有流锁，不用烘媒体代替可编辑曲线。
+
+其它本批通过：实际界面Relocation 73项/3.98秒、ProcessedMove 747项/58.14秒（六种处理/FX组合，原配对/Take/原Undo/冷重开/真实WAV）；原持久历史、Scope/后台队列/MCP、命令工作区、真实导出、Grabber、交叉淡化与P1生产主链路。MIDI移动单项修正后1926项/21.83秒通过，1ns/精确采样/曲线标准保留。
+
+保留失败和修复：首次NormalisableRange比较/JSON比较编译失败和新target尚未配置；加入显式configure。最初计划渲染后失效，仅owner gain_db/pan即时读数变化；9f7524b排除这些显示值同时封定实际曲线hash/显式基值和revision。原Undo只差gain_db=-2.384185791015625e-7，测试只排除有曲线时的即时显示，显式基值仍严格比较。MIDI夹具漏name由4a65e61修正；原生现代历史损坏规则不变。MIDI首次回归1921项后幅度阈值起音失败，独立读取失败WAV：原/Undo首个非零均96000，3e-6越阈为96001/96000，移动后432000。3dacfcf保留阈值为独立测量并比较精确PCM/事件时序，不把随机FourOsc相位当调度或逐位音频回归。所有首次失败日志/JUnit/PCM测量保留，不以旧成功JSON替换失败。
+
+源8a3f9be/9f7524b/c0ba746，测试7141111/4a65e61/3dacfcf，限制提示44b7c9b。SDK仍17补丁/38文件SHA匹配此前重放审计，无新重放声明。唯一应用 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，可执行SHA256 `e66ee556cb9ad4f75d06fa3ef2e595dcb49ce8aaa700e45f6ef4d2244f086625`；无新DMG/应用副本。逐套当前结果/时间/SHA、两批JUnit、构建/验签、本次失败JSON和三份工程路径见本地build-v2-tracktion/p3-relocation-automation-current-results.json，操作[CLIP_RELOCATION.md](../../docs/CLIP_RELOCATION.md)。
+
+CUA本轮明确Mac锁定，实体键鼠/听评未执行。关联多轨Comp、多来源交换/共享曲线冲突资格、复杂时钟/采样率、第三方/离线ClipFX、旧读者/焦点/性能A/分析超时/长源/连续FX负载/耐久、Windows/视频/发行继续保留。完整P1/P3及产品未完成，不标goal complete。
+
 # P3 当前增量：跨轨道移动（2026-10-15）
 
 **32套7130项唯一检查/631.96秒，分批通过，非一次全绿。** 首批31/32、610.56秒，修正测试夹具后1/1、21.40秒；只计每套最新结果，不累加失败检查或前面的重复专项。Release应用和受影响目标均构建exit0；deep/strict及固定本地证书指纹核验通过，非发行公证。唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，可执行SHA256 `45e90a080a86ad3f25cb14aea36475a18518fd7678f7effcae959e3df4be1d1b`；无新DMG/应用副本，完整产品未完成。

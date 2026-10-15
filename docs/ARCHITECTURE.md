@@ -1,3 +1,7 @@
+原生自动化精度和实时约束尚未闭合：SDK VolumeAndPan平滑15ms，ParameterAutomationSource读流存在CriticalSection；它们与L1的事务/时钟映射分层验收，不能把调用成熟SDK等同于已满足无锁和采样级播放。当前没有添加SDK修补或第二播放引擎。
+
+2026-10-15 自动化迁移开发增量：L1 RelocationAutomation/message thread冻结全部实际源曲线，复用curve_edit采样/音乐切片，预计算源空缺和目标覆盖，再统一原生Undo写入。跨lane保留点ID和未知属性，主fader按角色、插入/发送按身份/槽/参数/NormalisableRange匹配。一Plan一事务；封定曲线/显式基值/Tempo/版本，排除有曲线时gain_db/pan即时读数，避免只读渲染误判冲突。无新Engine/SDK/RT代码。原生15ms平滑相关的WAV边界差异未达2e-6，保持发布阻断，不称该功能完成。
+
 2026-10-15 跨轨迁移：L1 ClipRelocation在message thread校验源/目标类型、锁定/冻结/Playlist、完整Edit组、媒体/状态SHA与两侧Scope；复用精确位置映射后原生Clip::moveTo重挂同一对象，仍一Plan一UndoManager事务。完整配对迁移前物化目标Main，部分迁移解除配对；UiState只读clipCache投影真实归属，不维护第二模型。GUI仅草稿/预览/提交；无新Engine/SDK/RT任务。只在单次校验按媒体路径复用SHA，跨阶段重新读取。关联Comp和跨轨曲线映射保持未完成，详见CLIP_RELOCATION.md。
 
 2026-10-15 Grabber：L5 WorkspaceGrabber只读真实事实，冻结多选对象和Edit组/关联Comp闭包，绘制共同采样位移草稿；L1沿用clip.move/midi.clip.move扩展、Scope、版本、媒体SHA、自动化跟随与一个UndoManager事务。隐藏成员几何限制草稿，MIDI预览复用原生映射。ClipHeader将原生名称区鼠标事件转到同一时间线；SelectionModel验证对象后保留已存引用顺序，重开不改变主选目标。GUI没有直接Edit写入，无新引擎/SDK/RT处理。水平移动与跨轨道迁移资格分开，操作GRABBER_WORKFLOW.md。

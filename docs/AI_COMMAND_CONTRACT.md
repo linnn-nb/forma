@@ -1,3 +1,5 @@
+2026-10-15 clips.relocate派生automation.tracks/transfers及automation_changes预览。仍仅human/local_gui独立停止事务，不扩Schema权限/MCP；真实源/目标参数身份、范围/步长/skew、曲线hash/显式基值、Tempo和revision封定，点跨lane保留ID/原属性。双侧轨道和完整时间Scope必需，不能把点区间冒充平滑全部声学足迹。committed仅表示工程提交，不能据此令audio_verified为真；真实WAV门槛失败，预览已警告，见CLIP_RELOCATION.md。
+
 2026-10-15 P3-CLIP-RELOCATE-01：新增human/local_gui独立停止态命令clips.relocate {moves:[{clip,from_track,to_track,position_samples}],state_hash}，1–64实际Clip、48k采样、共同位移；完整编辑组与源/目标Scope均须覆盖。实际预览绑定来源SHA、目标处理链/路由/Playlist、自动化策略和配对rehome/detach，接受后单原生事务，同ID而非复制删除。重试/冲突/Undo沿用现有契约；不扩大MCP或自动执行权限。641/642默认CmdCtrlOption↑/↓，每次都先确认；详见CLIP_RELOCATION.md。
 
 2026-10-15 Grabber不新增Agent命令或权限。GUI冻结真实对象/所有者/几何及会话revision，构建一组既有clip.move/midi.clip.move请求；L1重新扩展/去重组与Comp、封定真实媒体/事件哈希、校验版本Scope及全部成员，再作为一个Plan提交。小范围显示草稿并直接提交；>10操作或>128自动化点进入现有待确认流程。原生Undo/Redo及持久历史、幂等保持；不允许GUI或AI直接写Edit。测试GrabberTests.cpp与ProcessedMoveTests.cpp，操作GRABBER_WORKFLOW.md。
