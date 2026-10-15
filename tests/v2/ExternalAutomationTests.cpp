@@ -3,7 +3,43 @@
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
-namespace ndaw::v2 {class ParameterTestAccess{public:static juce::AudioPluginInstance& instance(Commands& c,const std::string& id){auto* p=dynamic_cast<te::ExternalPlugin*>(c.processor(id));if(!p||!p->getAudioPluginInstance())throw std::runtime_error("external instance absent");return *p->getAudioPluginInstance();}};}
+namespace ndaw::v2
+{
+class ParameterTestAccess
+{
+public:
+    static juce::AudioPluginInstance& instance(Commands& c, const std::string& id)
+    {
+        auto* p = dynamic_cast<te::ExternalPlugin*>(c.processor(id));
+        if (!p || !p->getAudioPluginInstance())
+            throw std::runtime_error("external instance absent");
+        return *p->getAudioPluginInstance();
+    }
+    static Json trace(Commands& c)
+    {
+        Json result = Json::array();
+        for (auto* plugin : te::getAllPlugins(*c.edit, true))
+            if (auto* external = dynamic_cast<te::ExternalPlugin*>(plugin))
+                if (auto* native = external->getAudioPluginInstance())
+                    if (auto p = external->getAutomatableParameterByID("0"))
+                    {
+                        te::AutomationIterator curve(*p);
+                        curve.setPosition(tracktion::TimePosition::fromSeconds(0));
+                        result.push_back({{"plugin", plugin->itemID.toString().toStdString()},
+                                          {"format", external->desc.pluginFormatName.toStdString()},
+                                          {"current", p->getCurrentValue()},
+                                          {"explicit", p->getCurrentExplicitValue()},
+                                          {"native", native->getParameters()[0]->getValue()},
+                                          {"curve_at_zero", curve.getCurrentValue()},
+                                          {"points", p->getCurve().getNumPoints()},
+                                          {"sample_rate", native->getSampleRate()},
+                                          {"block_size", native->getBlockSize()},
+                                          {"reading", c.edit->getAutomationRecordManager().isReadingAutomation()}});
+                    }
+        return result;
+    }
+};
+} // namespace ndaw::v2
 namespace {
 int checks=0;Json renders=Json::array(),live=Json::array();
 void check(bool ok,const char* why){if(!ok)throw std::runtime_error(why);++checks;std::cout<<"PASS "<<why<<std::endl;}
@@ -15,7 +51,7 @@ Json point(const std::string& track,const std::string& param,const std::string& 
 Json plugin(Commands& c,const std::string& tid){auto q=c.query();for(const auto& t:q["tracks"])if(t["id"]==tid)return t["plugins"][0];throw std::runtime_error("plugin absent");}
 Json lane(Commands& c,const std::string& tid,const std::string& param){auto q=c.automationQuery(tid);for(const auto& l:q["lanes"])if(l["parameter"]==param||l["id"]==param)return l;throw std::runtime_error("lane absent");}
 void fixture(const juce::File& file){juce::WavAudioFormat f;std::unique_ptr<juce::OutputStream> s=file.createOutputStream();auto w=f.createWriterFor(s,juce::AudioFormatWriterOptions{}.withSampleRate(48000).withNumChannels(2).withBitsPerSample(24));if(!w)throw std::runtime_error("fixture writer failed");juce::AudioBuffer<float> b(2,192000);for(int c=0;c<2;++c)for(int i=0;i<192000;++i)b.setSample(c,i,.05f*std::sin(2*juce::MathConstants<double>::pi*1000*i/48000));check(w->writeFromAudioSampleBuffer(b,0,192000),"real four second PCM fixture written");}
-juce::AudioBuffer<float> render(Commands& c,const juce::File& dir,const char* name){auto f=dir.getChildFile("ext-auto-"+juce::Uuid().toString()+".wav");auto r=c.render(f,0,192000);check(r["frames"]==192000&&r["render_ms"].get<double>()<=10000,"real external automation render meets fixed length and ten second budget");renders.push_back({{"case",name},{"receipt",r}});juce::AudioFormatManager fm;fm.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> rd(fm.createReaderFor(f));if(!rd)throw std::runtime_error("render unreadable");juce::AudioBuffer<float> b(2,192000);check(rd->read(&b,0,192000,0,true,true),"actual external automation PCM can be decoded");return b;}
+juce::AudioBuffer<float> render(Commands& c,const juce::File& dir,const char* name){auto f=dir.getChildFile("ext-auto-"+juce::Uuid().toString()+".wav");std::cout<<"TRACE before "<<name<<" "<<ParameterTestAccess::trace(c).dump()<<std::endl;auto r=c.render(f,0,192000);std::cout<<"TRACE after "<<name<<" "<<ParameterTestAccess::trace(c).dump()<<std::endl;check(r["frames"]==192000&&r["render_ms"].get<double>()<=10000,"real external automation render meets fixed length and ten second budget");renders.push_back({{"case",name},{"receipt",r}});juce::AudioFormatManager fm;fm.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> rd(fm.createReaderFor(f));if(!rd)throw std::runtime_error("render unreadable");juce::AudioBuffer<float> b(2,192000);check(rd->read(&b,0,192000,0,true,true),"actual external automation PCM can be decoded");return b;}
 std::string setup(Commands& c,const juce::File& source,const std::string& descriptor){run(c,Json::array({op("track.create",{{"name","Actual AU automation"},{"ref","$t"}}),op("clip.import",{{"track","$t"},{"path",source.getFullPathName().toStdString()},{"position_samples",0}}),op("plugin.external.insert",{{"track","$t"},{"descriptor",descriptor}})}));return c.query()["tracks"][0]["id"];}
 double delta(double rms){return 20*std::log10(rms/(.05/std::sqrt(2.)));}
 }
@@ -33,7 +69,7 @@ int main(int argc,char** argv){juce::ScopedJuceInitialiser_GUI gui;try{
  std::cout<<"AU requested step 48001 actual first change "<<first<<std::endl;check(first>=48001&&first<=48513,"actual AU step is not early and meets previously fixed 512 frame scheduling allowance");
  c.undo(curve["plan_id"]);settle();check(lane(c,tid,param)["points"].empty(),"whole external curve is removed by one Undo");auto dry=render(c,dir,"AU Undo curve");check(std::abs(delta(dry.getRMSLevel(0,19200,4800)))<.01,"external curve Undo restores actual flat DSP");c.redo();settle();check(lane(c,tid,param)["points"]==points,"Redo restores actual AU curve and stable IDs");
  auto saved=dir.getChildFile("external-auto.tracktionedit");c.save(saved);
- {Commands reopen(false);reopen.open(saved);check(lane(reopen,tid,param)["points"]==points,"save reopen preserves external normalized automation points");auto audio=render(reopen,dir,"AU reopened Read");check(std::abs(delta(audio.getRMSLevel(0,19200,4800))+6)<.01&&std::abs(delta(audio.getRMSLevel(0,96000,4800))+12)<.01,"reopened actual AU curve reproduces both DSP plateaus");}
+ {Commands reopen(false);reopen.open(saved);check(lane(reopen,tid,param)["points"]==points,"save reopen preserves external normalized automation points");auto audio=render(reopen,dir,"AU reopened Read");std::cout<<"TRACE reopened PCM dB "<<delta(audio.getRMSLevel(0,19200,4800))<<" "<<delta(audio.getRMSLevel(0,96000,4800))<<std::endl;check(std::abs(delta(audio.getRMSLevel(0,19200,4800))+6)<.01&&std::abs(delta(audio.getRMSLevel(0,96000,4800))+12)<.01,"reopened actual AU curve reproduces both DSP plateaus");}
  for(const char* mode:{"read","touch","latch","write"}){
   Commands device(true);auto t=setup(device,src,au);std::string pid=plugin(device,t)["id"],laneID=pid+"::0";
   run(device,Json::array({op("plugin.parameter",{{"plugin",pid},{"parameter","0"},{"value",.75}}),point(t,laneID,"$start",0,.75),point(t,laneID,"$end",191999,.75),op("automation.mode",{{"track",t},{"mode",mode}})}));
