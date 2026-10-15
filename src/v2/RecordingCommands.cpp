@@ -340,6 +340,10 @@ Json Commands::record(const juce::File& directory)
                 "recording currently requires Read automation; simultaneous automation writing is pending");
     releaseRollGraph();
     restoreInputAssignments();
+    // A queued arm/monitor update stops any current input recording before
+    // rebuilding its status. Drain it while stopped, not after new files open.
+    for (auto* input : edit->getAllInputDevices())
+        input->flushPendingRecordingStatus();
     Json targets = Json::array(), existing = Json::array();
     for (auto* t : te::getAudioTracks(*edit))
     {

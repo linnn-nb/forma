@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
-index c0675a3..315ed4c 100644
+index c0675a3..4268ce4 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.cpp
 @@ -190,6 +190,14 @@ bool InputDeviceInstance::isLivePlayEnabled (const Track& t) const
@@ -26,6 +26,35 @@ index c0675a3..315ed4c 100644
              handleDestinationChange (EditItemID::fromVar (v[IDs::targetID]),
                                       id == IDs::targetID);
  }
+@@ -247,6 +255,13 @@ void InputDeviceInstance::handleDestinationChange (EditItemID targetID, bool tra
+     recordStatusUpdater.triggerAsyncUpdate();
+ }
+ 
++void InputDeviceInstance::flushPendingRecordingStatus()
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    jassert (! context.transport.isRecording());
++    recordStatusUpdater.handleUpdateNowIfNeeded();
++}
++
+ void InputDeviceInstance::updateRecordingStatus()
+ {
+     // The below loop won't be called when the last destination has been removed but we need to make sure we rebuild the graph
+diff --git a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.h b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.h
+index b10abc6..e348c7d 100644
+--- a/modules/tracktion_engine/playback/devices/tracktion_InputDevice.h
++++ b/modules/tracktion_engine/playback/devices/tracktion_InputDevice.h
+@@ -87,6 +87,10 @@ class InputDeviceInstance   : protected juce::ValueTree::Listener
+ public:
+     struct Destination;
+ 
++    /** Dispatch queued destination recording changes on the message thread before
++        starting a new capture. The transport must still be stopped. */
++    void flushPendingRecordingStatus();
++
+     //==============================================================================
+     //==============================================================================
+     /** @internal */
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 index 55cefed..1d7f567 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
