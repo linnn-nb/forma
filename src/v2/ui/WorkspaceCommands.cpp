@@ -284,6 +284,8 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {536, "停止 Playlist 试听并返回", "Playlist", '0',
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
+        {580, "提升候选选段到目标 Playlist", "Playlist", 'u',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {537, "试听所选 Playlist", "Playlist", juce::KeyPress::returnKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {513, "切换 Punch 补录", "录音", 'p', juce::ModifierKeys::altModifier},
@@ -1033,9 +1035,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                          t.value("type", std::string{}) == "instrument"))
                         active = !facts.value("playing", false);
             }
-            if (id >= 515 && id <= 537)
+            if ((id >= 515 && id <= 537) || id == 580)
                 active = playlistPanel && playlistPanel->isVisible() && playlistPanel->canExecute(id) &&
-                         (id == 524 || id >= 532 || !facts.value("playing", false));
+                         (id == 524 || (id >= 532 && id <= 537) || !facts.value("playing", false));
             if (id == 513)
             {
                 info.setTicked(facts["transport_settings"].value("punch_enabled", false));
@@ -1491,7 +1493,7 @@ bool Workspace::perform(const InvocationInfo& invocation)
         invoke([&] { showPlaylists(); });
         return true;
     }
-    if (id >= 515 && id <= 537 && playlistPanel && playlistPanel->isVisible())
+    if (((id >= 515 && id <= 537) || id == 580) && playlistPanel && playlistPanel->isVisible())
     {
         playlistPanel->execute(id);
         commandManager.commandStatusChanged();

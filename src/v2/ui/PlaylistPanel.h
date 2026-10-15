@@ -80,12 +80,15 @@ public:
                                                       {531, "下一来源轨"},     {532, "试听来源选区"},
                                                       {533, "试听候选选段"},   {534, "上一段"},
                                                       {535, "下一段"},         {536, "停止试听 / 返回"},
-                                                      {537, "试听所选列表"}})
+                                                      {537, "试听所选列表"},   {580, "提升候选选段 ↑"}})
         {
             auto button = std::make_unique<juce::TextButton>(text(label));
             addAndMakeVisible(*button);
             buttons[id] = std::move(button);
         }
+        buttons.at(521)->setTooltip(text("将尚未登记的完整源片段登记为 Take；Loop/Punch Take 已登记，无需重复。"));
+        buttons.at(580)->setTooltip(
+            text("只提升候选清单所选段到当前 TARGET；原 Take 与目标区间外内容保留。多轨关联候选须整组处理。"));
         status.setComponentID("playlist.status");
     }
     void connect(juce::ApplicationCommandManager& manager)
@@ -197,7 +200,27 @@ public:
         if (id == 519)
             return !sourceClip.empty() && end > begin && data["target"] != source;
         if (id == 521)
-            return !sourceClip.empty();
+        {
+            if (selectedList().value("locked", false))
+                return false;
+            for (const auto& clip : selectedList()["clips"])
+                if (clip["id"] == sourceClip)
+                    return clip.value("take_id", std::string{}).empty() && !clip.value("locked", false);
+            return false;
+        }
+        if (id == 580)
+        {
+            const int row = draftList.getSelectedRow();
+            if (row < 0 || row >= int(draft.size()) || draft[size_t(row)]["source"] == data["target"])
+                return false;
+            for (const auto& segment : draft)
+                if (segment["track"] != track)
+                    return false; // Never partially accept a multi-track candidate.
+            for (const auto& list : data["items"])
+                if (list["id"] == data["target"])
+                    return !list.value("locked", false) && list.value("linked_set", std::string{}).empty();
+            return false;
+        }
         if (id == 525)
             return !sourceClip.empty() && end > begin && draft.size() < 64;
         if (id == 526)
@@ -369,6 +392,16 @@ public:
                           {"start_samples", begin},
                           {"end_samples", end}});
             }
+            if (id == 580)
+            {
+                const auto segment = draft[size_t(draftList.getSelectedRow())];
+                cmd = "playlist.promote";
+                a.update({{"source", segment["source"]},
+                          {"target", data["target"]},
+                          {"clip", segment["clip"]},
+                          {"start_samples", segment["start_samples"]},
+                          {"end_samples", segment["end_samples"]}});
+            }
             if (id == 521)
             {
                 cmd = "playlist.take.register";
@@ -391,6 +424,9 @@ public:
                 draftNotice.clear();
                 status.setText(text("候选已创建 · 原播放和目标保留 · 整份候选一次 Undo。"), juce::dontSendNotification);
             }
+            if (id == 580)
+                status.setText(text("选段已提升到 TARGET · 原 Take 保留 · 可一次撤销；未提交草稿已清空。"),
+                               juce::dontSendNotification);
             if (id == 529 || id == 530)
                 status.setText(text(id == 529 ? "整组已恢复原播放 · 可一次撤销" : "整组关联已解除 · 音频不变 · 可撤销"),
                                juce::dontSendNotification);
@@ -429,7 +465,7 @@ public:
         auto candidate = r.removeFromBottom(112);
         auto candidateTools = candidate.removeFromTop(32);
         candidateName.setBounds(candidateTools.removeFromLeft(200).reduced(2));
-        for (int id : {525, 526, 527, 528})
+        for (int id : {525, 526, 527, 528, 580})
             buttons.at(id)->setBounds(candidateTools.removeFromLeft(112).reduced(2));
         draftList.setBounds(candidate.reduced(0, 2));
         scroll.setBounds(r.removeFromBottom(14));
@@ -655,7 +691,8 @@ private:
     }
     void refreshStatus()
     {
-        status.setText(!data.is_null() && data.value("midi", false)
+        status.setText(!draftNotice.isEmpty() ? draftNotice
+                       : !data.is_null() && data.value("midi", false)
                            ? text("选择 Take → 用于播放；关闭面板后空格走带，钢琴卷帘继续编辑。拖选音符范围 → 提升到 "
                                   "TARGET，或加入候选并试听后创建 Comp。")
                        : !draftNotice.isEmpty() ? draftNotice
@@ -729,7 +766,7 @@ private:
                                     : key == juce::KeyPress::returnKey
                                         ? enterCommand
                                         : manager->getKeyMappings()->findCommandForKeyPress(key);
-                if (command >= 515 && command <= 537)
+                if ((command >= 515 && command <= 537) || command == 580)
                 {
                     manager->invokeDirectly(command, false);
                     return true;
