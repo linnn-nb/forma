@@ -444,11 +444,18 @@ int main(int argc, char** argv)
                 check(c.query()["tracks"][0]["clips"].empty() && migrated.size() == 2 && migrated[0]["id"] == left &&
                           migrated[1]["id"] == right,
                       "native reparent preserves both actual processed Clip identities and empties source");
-                check(native(c, left).getChildWithName("PLUGINS").isEquivalentTo(
-                          originalState.getChildWithName("PLUGINS")),
+                auto processors = [](const juce::ValueTree& state)
+                {
+                    juce::ValueTree result("PLUGIN_SNAPSHOT");
+                    for (const auto& child : state)
+                        if (child.hasType(te::IDs::PLUGIN))
+                            result.addChild(child.createCopy(), -1, nullptr);
+                    return result;
+                };
+                check(processors(native(c, left)).isEquivalentTo(processors(originalState)),
                       "native reparent retains complete real Clip FX state and IDs");
                 if (fx)
-                    check(originalState.getChildWithName("PLUGINS").getNumChildren() == 4,
+                    check(processors(originalState).getNumChildren() == 4,
                           "FX identity comparison contains all four real native processor states");
                 const auto migratedPairs = c.crossfades(destination);
                 check(c.crossfades(t).empty() && migratedPairs.size() == 1 &&

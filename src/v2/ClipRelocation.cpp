@@ -61,6 +61,7 @@ Json Commands::relocationChange(const Json& args) const
     require(moves.is_array() && !moves.empty() && moves.size() <= 64, "跨轨道移动需要1–64个实际片段");
     Json changes = Json::array(), nativeMoves = Json::array(), owners = Json::array();
     std::map<std::string, Json> selected;
+    std::map<std::string, std::string> mediaHashes;
     std::set<std::string> checkedOwners;
     const int64_t maximum = std::llround(te::Edit::maximumLength * timelineRate);
     std::optional<int64_t> common;
@@ -113,7 +114,35 @@ Json Commands::relocationChange(const Json& args) const
             }
         require(move["position_samples"].get<double>() >= 0 && move["position_samples"].get<double>() <= maximum,
                 "迁移位置越出工程范围");
-        auto before = timelineClipFacts(*clip);
+        Json before;
+        if (midi)
+            before = timelineClipFacts(*clip);
+        else
+        {
+            auto* audio = static_cast<te::WaveAudioClip*>(clip);
+            require(!audio->isGrouped() && !audio->effectsEnabled(), "此原生分组或离线ClipEffects尚不支持迁移");
+            before = audioClipQuery(*audio);
+            const auto file = audio->getOriginalFile();
+            const auto path = file.getFullPathName().toStdString();
+            if (!mediaHashes.contains(path))
+                mediaHashes[path] = mediaHash(file);
+            const auto p = audio->getPosition();
+            before.update(
+                {{"clip", clipID},
+                 {"kind", "audio"},
+                 {"track", id(*from)},
+                 {"start_samples", std::llround(p.getStart().inSeconds() * timelineRate)},
+                 {"length_samples", std::llround(p.getEnd().inSeconds() * timelineRate) -
+                                        std::llround(p.getStart().inSeconds() * timelineRate)},
+                 {"start_seconds", p.getStart().inSeconds()},
+                 {"end_seconds", p.getEnd().inSeconds()},
+                 {"start_beat", edit->tempoSequence.toBeats(p.getStart()).inBeats()},
+                 {"length_beats",
+                  (edit->tempoSequence.toBeats(p.getEnd()) - edit->tempoSequence.toBeats(p.getStart())).inBeats()},
+                 {"timebase", "samples"},
+                 {"default_reader", audio->canUseProxy()},
+                 {"media_hash", mediaHashes.at(path)}});
+        }
         const int64_t start = std::llround(clip->getPosition().getStart().inSeconds() * timelineRate);
         const int64_t position = move["position_samples"], delta = position - start;
         require(!common || *common == delta, "多选迁移必须保持共同采样位移");
@@ -131,7 +160,7 @@ Json Commands::relocationChange(const Json& args) const
         {
             auto* audio = static_cast<te::WaveAudioClip*>(clip);
             require(audioClipQuery(*audio).value("movable_audio", false), "此音频来源映射尚不支持迁移");
-            moveArgs["media_hash"] = mediaHash(audio->getOriginalFile());
+            moveArgs["media_hash"] = before["media_hash"];
             after = before;
             after["start_samples"] = position;
             if (position != start)

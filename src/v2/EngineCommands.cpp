@@ -907,6 +907,7 @@ Json Commands::preview(const Json& plan) const
             compiled = followAudioClipMoves(compiled);
         require(ops == compiled, "group targets or automation changed; rebuild the Plan with current members");
     }
+    Json relocationDiff = Json::array();
     std::set<std::string> refs;
     Json diff = Json::array();
     Json legacyDiff = Json::array();
@@ -1043,7 +1044,9 @@ Json Commands::preview(const Json& plan) const
         }
         if (cmd == "clips.relocate")
         {
-            require(a.at("state_hash") == relocationChange(a).at("state_hash"), "迁移预览已失效");
+            const auto change = relocationChange(a);
+            require(a.at("state_hash") == change.at("state_hash"), "迁移预览已失效");
+            relocationDiff.push_back(change);
         }
         else if (cmd == "export.stems.publish")
         {
@@ -1214,9 +1217,8 @@ Json Commands::preview(const Json& plan) const
                 {"playlist_changes", playlistDiff},
                 {"crossfade_changes", crossfadeMaintenancePreview(ops, timelineDiff)},
                 {"legacy_imports", legacyDiff}};
-    for (const auto& op : ops)
-        if (op["command"] == "clips.relocate")
-            result["relocation_changes"] = Json::array({relocationChange(op["args"])});
+    if (!relocationDiff.empty())
+        result["relocation_changes"] = std::move(relocationDiff);
     if (plan.contains("timeline_range_nudge"))
         result["timeline_range_nudge"] = plan["timeline_range_nudge"];
     if (plan.contains("clipboard_paste"))
