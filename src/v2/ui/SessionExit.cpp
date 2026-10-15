@@ -31,6 +31,7 @@ void SessionExit::prepare()
     commands.stop(); // Finalises real recording/automation through L1 before persistence.
     session = commands.sessionToken();
     revision = commands.querySummary()["revision"];
+    view = commands.uiState();
     deadline = juce::Time::getMillisecondCounterHiRes() + 30000;
     error.clear();
     receipt = nullptr;
@@ -40,7 +41,7 @@ bool SessionExit::current() const
     const auto q = commands.querySummary();
     return commands.sessionToken() == session && q["revision"] == revision && !q["playing"].get<bool>() &&
            !q["recording"].get<bool>() && !q["native_state_pending"].get<bool>() &&
-           q["object_pages_available"].get<bool>();
+           q["object_pages_available"].get<bool>() && commands.uiState() == view;
 }
 void SessionExit::snapshot()
 {
@@ -62,6 +63,8 @@ void SessionExit::save(const juce::File& file)
     try
     {
         prepare();
+        if (!file.hasFileExtension("tracktionedit"))
+            throw std::runtime_error("工程文件必须使用 .tracktionedit 扩展名");
         receipt = commands.save(file);
         if (!current() || receipt["revision"] != revision || !file.existsAsFile() ||
             receipt["sha256"] != Commands::mediaHash(file))

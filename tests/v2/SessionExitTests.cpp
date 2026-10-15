@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "ui/Workspace.h"
+#include "ui/WorkspaceWindow.h"
+#include "ui/SessionExit.h"
 #include "RecoveryStore.h"
 #include <fstream>
 #include <iostream>
@@ -122,14 +123,16 @@ int main(int argc, char** argv)
         const auto media = root.getChildFile("Source.wav");
         source(media);
         const auto originalHash = Commands::mediaHash(media);
-        Workspace w(false, std::make_unique<Storage>(root.getChildFile("prefs")));
-        w.setSize(1280, 900);
-        w.setVisible(true);
+        WorkspaceWindow window(
+            std::make_unique<Workspace>(false, std::make_unique<Storage>(root.getChildFile("prefs"))));
+        window.showReady();
+        auto& w = window.editor();
         auto& c = RecordingTestAccess::commands(w);
         run(c, "track.create", {{"name", "Exit source"}, {"ref", "$t"}});
         const std::string track = c.query()["tracks"][0]["id"];
         run(c, "clip.import",
             {{"track", track}, {"path", media.getFullPathName().toStdString()}, {"position_samples", 0}});
+        const auto beforeGain = c.query()["tracks"];
         const auto gain = run(c, "track.gain", {{"track", track}, {"db", -6}});
         const auto facts = c.query()["tracks"];
         const auto history = c.query()["history"];
@@ -158,8 +161,7 @@ int main(int argc, char** argv)
         c.open(copy);
         check(c.query()["tracks"] == facts, "full close-save reopens exact original track and clip state");
         c.undo(gain["plan_id"]);
-        check(c.query()["tracks"][0].at("gain_db").get<double>() != -6,
-              "full close-save preserves original native gain Undo");
+        check(c.query()["tracks"] == beforeGain, "full close-save preserves original native gain Undo");
         c.redo();
         check(c.query()["tracks"] == facts, "full close-save original Redo restores exact facts");
         const auto audio = root.getChildFile("After-Reopen.wav");

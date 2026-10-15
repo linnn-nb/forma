@@ -1,4 +1,5 @@
 #include "Workspace.h"
+#include "SessionExit.h"
 namespace ndaw::desktop
 {
 Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> storage)

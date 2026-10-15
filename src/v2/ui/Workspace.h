@@ -10,7 +10,6 @@
 #include "MixGroupEditor.h"
 #include "TrackCommentsPanel.h"
 #include "KeyboardSettings.h"
-#include "SessionExit.h"
 #include "SessionExitPanel.h"
 #include "Toolbar.h"
 #include "Transport.h"
@@ -44,6 +43,7 @@ class PerformanceTestAccess;
 } // namespace ndaw::v2
 namespace ndaw::desktop
 {
+class SessionExit;
 #include "../RoutingPanel.h"
 #include "../RecordingPanel.h"
 #include "../AudioDevicePanel.h"

@@ -22,6 +22,7 @@ private:
     uint64_t revision = 0;
     double deadline = 0;
     ndaw::v2::Json receipt = nullptr;
+    ndaw::v2::Json view = nullptr;
     bool current() const;
     void prepare();
     void fail(const std::string&);

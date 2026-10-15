@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "Workspace.h"
+#include "SessionExit.h"
 namespace ndaw::desktop
 {
 void Workspace::requestExit(std::function<void()> completed)
