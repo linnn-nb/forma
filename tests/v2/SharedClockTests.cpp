@@ -51,10 +51,30 @@ public:
     }
     static void confirm(Workspace& w, bool yes)
     {
-        if (yes)
-            w.acceptButton.onClick();
-        else
-            w.rejectButton.onClick();
+        auto& button = yes ? w.acceptButton : w.rejectButton;
+        if (w.pending.is_null() || !button.isShowing() || !button.isEnabled())
+            throw std::runtime_error("actual confirmation control is unavailable");
+        button.triggerClick();
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 500;
+        while (!w.pending.is_null() && juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        if (!w.pending.is_null())
+            throw std::runtime_error("confirmation did not finish within 500ms: " + w.status.getText().toStdString());
+    }
+    static void range(Workspace& w, const Json& tracks, int64_t first, int64_t last)
+    {
+        const auto deadline = juce::Time::getMillisecondCounterHiRes() + 500;
+        while (w.workspaceRevision != w.commands.querySummary()["revision"].get<uint64_t>() &&
+               juce::Time::getMillisecondCounterHiRes() < deadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        if (w.workspaceRevision != w.commands.querySummary()["revision"].get<uint64_t>())
+            throw std::runtime_error("fixture changes did not reach the actual displayed revision within 500ms");
+        // Consume the normal input's displayed version/session, never promote
+        // GUI ownership merely because a test queried the current model.
+        w.editArea.onRange({{"start_samples", first}, {"end_samples", last}}, tracks, w.workspaceRevision,
+                           w.workspaceSession, first);
+        if (w.selection.tracks != tracks || w.selection.range != Json{{"start_samples", first}, {"end_samples", last}})
+            throw std::runtime_error("actual range input was not adopted: " + w.status.getText().toStdString());
     }
     static juce::String preview(Workspace& w)
     {
@@ -272,8 +292,11 @@ int main(int argc, char** argv)
     try
     {
         Workspace w(false, std::make_unique<Storage>(dir.getChildFile("prefs")));
-        w.setVisible(true);
         w.setSize(1440, 900);
+        w.addToDesktop(0);
+        w.setVisible(true);
+        w.grabKeyboardFocus();
+        check(w.getPeer() != nullptr, "keyboard workflow has an actual native peer");
         auto& c = AudioDeviceTestAccess::owner(w);
         const auto media = dir.getChildFile("Stereo44100.wav");
         juce::WavAudioFormat wav;
@@ -746,10 +769,7 @@ int main(int argc, char** argv)
         check(c.automationEditBasis(source) == "auto", "GUI setting Undo restores legacy inference");
         check(w.keyPressed(beatKey), "GUI basis key reapplies after Undo");
         pump();
-        run(c,
-            Json::array({operation("session.range.set", {{"start_samples", 2 * 48000}, {"end_samples", 3 * 48000}})}));
-        c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", Json::array({source})}},
-                        c.sessionToken());
+        AudioDeviceTestAccess::range(w, Json::array({source}), 2 * 48000, 3 * 48000);
         pump();
         key(w, 'c');
         b = c.clipboard();
@@ -763,10 +783,7 @@ int main(int argc, char** argv)
         pump();
         w.uiCommands().invokeDirectly(editCommand::shuffle, false);
         pump();
-        run(c, Json::array({operation("session.range.set",
-                                      {{"start_samples", 9 * 48000}, {"end_samples", 9 * 48000 + 24000}})}));
-        c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", Json::array({target})}},
-                        c.sessionToken());
+        AudioDeviceTestAccess::range(w, Json::array({target}), 9 * 48000, 9 * 48000 + 24000);
         pump();
         auto* keys = w.uiCommands().getKeyMappings();
         const juce::KeyPress custom(
@@ -872,10 +889,7 @@ int main(int argc, char** argv)
             pump();
             w.uiCommands().invokeDirectly(editCommand::slip, false);
             pump();
-            run(c, Json::array(
-                       {operation("session.range.set", {{"start_samples", 2 * 48000}, {"end_samples", 3 * 48000}})}));
-            c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", Json::array({audioSource})}},
-                            c.sessionToken());
+            AudioDeviceTestAccess::range(w, Json::array({audioSource}), 2 * 48000, 3 * 48000);
             pump();
             key(w, 'c');
             const auto originalBuffer = c.clipboard();
@@ -906,10 +920,7 @@ int main(int argc, char** argv)
             pump();
             w.uiCommands().invokeDirectly(editCommand::shuffle, false);
             pump();
-            run(c, Json::array({operation("session.range.set",
-                                          {{"start_samples", 9 * 48000}, {"end_samples", 9 * 48000 + 24000}})}));
-            c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", Json::array({target})}},
-                            c.sessionToken());
+            AudioDeviceTestAccess::range(w, Json::array({target}), 9 * 48000, 9 * 48000 + 24000);
             pump();
             const auto bridgeBefore = persistentTracks(c);
             check(w.keyPressed(custom),
@@ -1034,10 +1045,7 @@ int main(int argc, char** argv)
         pump();
         AudioDeviceTestAccess::select(w, source);
         pump();
-        run(c,
-            Json::array({operation("session.range.set", {{"start_samples", 2 * 48000}, {"end_samples", 3 * 48000}})}));
-        c.updateUiState({{"object_selection", Json::array()}, {"selection_tracks", Json::array({source})}},
-                        c.sessionToken());
+        AudioDeviceTestAccess::range(w, Json::array({source}), 2 * 48000, 3 * 48000);
         pump();
         const auto demo = dir.getChildFile("SharedClockReady.tracktionedit");
         c.save(demo);
