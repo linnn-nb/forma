@@ -18,6 +18,12 @@ Json Commands::playbackPreparation() const
 {
     checkThread();
     validateWarpEdit(*edit);
+    if (warpRecoverySession != sessionID)
+    {
+        warpRecoverySession = sessionID;
+        warpRecoveryAttempts.clear();
+    }
+    std::set<std::string> activeWarpClips;
     Json items = Json::array();
     for (auto* t : te::getAudioTracks(*edit))
         for (auto* piece : t->getClips())
@@ -25,6 +31,7 @@ Json Commands::playbackPreparation() const
                 c && (c->getWarpTime() || c->state.getChildWithName("NDAW_ELASTIC").isValid() ||
                       clip_fx_window::exists(c->state)))
             {
+                bool recoveryAttempted = false;
                 bool failed = !c->getOriginalFile().existsAsFile();
                 if (!failed && clip_fx_window::exists(c->state))
                     failed = mediaHash(c->getOriginalFile()) !=
@@ -43,11 +50,33 @@ Json Commands::playbackPreparation() const
                 }
                 if (c->getWarpTime())
                 {
+                    const auto id = c->itemID.toString().toStdString();
+                    activeWarpClips.insert(id);
+                    const auto hash = c->getHash();
+                    if (const auto prior = warpRecoveryAttempts.find(id);
+                        prior != warpRecoveryAttempts.end() && prior->second != hash)
+                        warpRecoveryAttempts.erase(prior);
+                    recoveryAttempted = warpRecoveryAttempts.contains(id);
                     const auto provenance = c->state.getChildWithName("NDAW_WARP");
                     if (provenance.isValid() && !failed)
                         failed |= provenance["media_hash"].toString().toStdString() != mediaHash(c->getOriginalFile());
-                    const auto expected = te::RenderManager::getAudioFileForHash(
-                        edit->engine, edit->getTempDirectory(false), c->getHash());
+                    const auto expected =
+                        te::RenderManager::getAudioFileForHash(edit->engine, edit->getTempDirectory(false), hash);
+                    // A replaced/retired native source job can leave this Clip's
+                    // failure flag sticky. Admit one native attempt, after the
+                    // predecessor retires, with valid media/mapping and stopped
+                    // transport. Readiness still requires a real readable cache;
+                    // an owned failure is reported, never polled into more jobs.
+                    if (!failed && provenance.isValid() && c->hasSourceRenderFailed() &&
+                        !edit->getTransport().isPlaying() && !recoveryAttempted &&
+                        !engine.getRenderManager().isProxyBeingGenerated(expected) &&
+                        te::AudioFile(edit->engine, c->getOriginalFile()).isValid())
+                    {
+                        warpRecoveryAttempts[id] = hash;
+                        recoveryAttempted = true;
+                        c->markAsDirty();
+                        c->updateSourceFile();
+                    }
                     failed |= c->hasSourceRenderFailed() || !c->state.getChildWithName("NDAW_WARP").isValid();
                     pending |= c->isSourceRenderPending() || c->getCurrentSourceFile() != expected.getFile() ||
                                !expected.isValid();
@@ -56,9 +85,14 @@ Json Commands::playbackPreparation() const
                     items.push_back({{"clip", c->itemID.toString().toStdString()},
                                      {"state", failed ? "failed" : "preparing"},
                                      {"progress", c->getSourceRenderProgress()},
+                                     {"source_recovery_attempted", recoveryAttempted},
                                      {"original_media_available", c->getOriginalFile().existsAsFile()}});
             }
-    return {{"busy", !items.empty()}, {"items", items}, {"backend", "Tracktion offline SoundTouch proxy"}};
+    std::erase_if(warpRecoveryAttempts, [&](const auto& entry) { return !activeWarpClips.contains(entry.first); });
+    return {{"busy", !items.empty()},
+            {"items", items},
+            {"source_recovery_attempts", warpRecoveryAttempts.size()},
+            {"backend", "Tracktion offline SoundTouch proxy"}};
 }
 Json Commands::elasticChange(const Json& a) const
 {

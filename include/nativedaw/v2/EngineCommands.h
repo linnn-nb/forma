@@ -217,6 +217,10 @@ private:
     }
     mutable Json factCache = Json::object();
     mutable std::map<std::string, Json> processorCache;
+    // Runtime tickets only: one failed Warp-source recovery per active clip/hash
+    // in this Edit lifecycle. Never part of project state or the audio callback.
+    mutable std::string warpRecoverySession;
+    mutable std::map<std::string, te::HashCode> warpRecoveryAttempts;
     mutable uint64_t cachedFactsEpoch = UINT64_MAX;
     uint64_t factsEpoch = 0;
     mutable int observedTransportFlags = -1;

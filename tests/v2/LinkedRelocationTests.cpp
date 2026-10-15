@@ -342,6 +342,17 @@ int main(int argc, char** argv)
     const std::string profile = argc > 2 ? argv[2] : "plain";
     try
     {
+        const auto nativeFloat = [](const std::string& value, const std::string& id = "1234")
+        { return Json::array({"<PLUGIN type=\"delay\" id=\"" + id + "\" mix=\"" + value + "\"/>"}); };
+        check(semanticPlugins(nativeFloat("0.3499999940395355")) == semanticPlugins(nativeFloat("0.34999999403953552")),
+              "known native float comparison tolerates only equivalent XML spelling");
+        check(semanticPlugins(nativeFloat("0.3499999940395355")) != semanticPlugins(nativeFloat("0.3500000238418579")),
+              "one float ULP of actual parameter change is still rejected");
+        check(semanticPlugins(nativeFloat("0.35")) != semanticPlugins(nativeFloat("0.35", "1235")),
+              "native plugin identity remains strict");
+        check(semanticPlugins(Json::array({"<PLUGIN type=\"unknown\" opaque=\"1.0\"/>"})) !=
+                  semanticPlugins(Json::array({"<PLUGIN type=\"unknown\" opaque=\"1\"/>"})),
+              "unknown plugin state remains exact without blanket numeric normalisation");
         const std::set<std::string> profiles{"plain",      "plain-auto", "plain-fx", "elastic",
                                              "elastic-fx", "warp",       "warp-fx"};
         check(profiles.contains(profile), "actual supported compound test profile selected");

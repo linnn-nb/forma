@@ -489,6 +489,18 @@ int main(int argc, char** argv)
                             return !state["items"].empty() && state["items"][0]["state"] == "failed";
                         },
                         "real OS output limit delivers native Warp failure instead of source-copy success");
+                    const auto failed = c.playbackPreparation();
+                    check(failed["source_recovery_attempts"] == 1 &&
+                              failed["items"][0]["source_recovery_attempted"] == true,
+                          "real failed source gets exactly one bounded native recovery attempt");
+                    for (int poll = 0; poll < 12; ++poll)
+                    {
+                        pump();
+                        const auto stillFailed = c.playbackPreparation();
+                        check(stillFailed["source_recovery_attempts"] == 1 &&
+                                  stillFailed["items"][0]["state"] == "failed",
+                              "continued polling cannot silently restart a permanently failing source");
+                    }
                     check(!AudioDeviceTestAccess::clip(c, id).getCurrentSourceFile().existsAsFile(),
                           "failed partial Warp destination is removed, original is not substituted");
                     rejects([&] { c.play(); }, "failed Warp cannot be reported as successful playback");
