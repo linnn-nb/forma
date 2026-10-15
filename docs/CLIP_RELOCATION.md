@@ -23,3 +23,12 @@ L1 `clips.relocate {moves:[{clip,from_track,to_track,position_samples}],state_ha
 ProcessedMoveTests.cpp 覆盖普通/SoundTouch/Warp × 无 FX/四个实际内置 EQ、压缩、Delay、Reverb；同时迁移完整配对和拆开单侧，核对真实 PLUGIN 子节点身份/参数、源窗口、冷重开原历史及实际 WAV。来源准备 5 秒、单 WAV 10 秒、PCM 误差 2e-6 不变；专项分别 120/180 秒。结果、工程路径和当前批次见 ../evidence/P3/summary.md 与本地 build-v2-tracktion/p3-relocation-current-results.json。
 
 组件事件不是实体键鼠和听评验收。第三方 Clip FX、复杂 Tempo/曲线/关联 Comp、长源响应与连续 FX 负载、旧读者保护、旧键位焦点/性能 A/分析超时、Windows 和发行仍保留。此增量不代表完整 P1/P3 或产品完成。
+
+复现新增专项（已配置本机工具链时）：
+
+```sh
+cmake --build build-v2-tracktion --target NativeDAW ndaw_relocation_tests ndaw_processed_move_tests -j4
+ctest --test-dir build-v2-tracktion --parallel 1 -R '^(forma_native_relocation|forma_processed_move)$' --output-on-failure
+```
+
+本轮当前资格为32套7130项分批通过（首批31/32，MIDI旧夹具修正后1/1）；跨轨专项72项、处理移动747项。实体验收未执行，全部批次与失败边界见P3证据。

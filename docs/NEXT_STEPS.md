@@ -1,6 +1,6 @@
 # 下一步（2026-10-15）
 
-音频/MIDI跨轨道Grabber和相邻轨道快捷键已接通：实际预览后，同一Clip身份迁入目标处理链；完整配对随迁、部分迁移解除配对并保留淡化。原UndoRedo、保存冷重开、编辑组完整性、MIDI CC与真实WAV见[CLIP_RELOCATION.md](CLIP_RELOCATION.md)、[P3证据](../evidence/P3/summary.md)。完整P1/P3与产品未完成。
+音频/MIDI跨轨道Grabber和相邻轨道快捷键已接通：实际预览后，同一Clip身份迁入目标处理链；完整配对随迁、部分迁移解除配对并保留淡化。原UndoRedo、保存冷重开、编辑组完整性、MIDI CC与真实WAV见[CLIP_RELOCATION.md](CLIP_RELOCATION.md)、[P3证据](../evidence/P3/summary.md)。本轮32套7130项分批通过，首批31/32、MIDI旧夹具修正后1/1；完整P1/P3与产品未完成。
 
 1. **下一项：跨轨道自动化跟随。** 先明确参数映射、目标既有曲线冲突、源/目标区间及尾音Scope，用真实曲线/音频验证一Plan原Undo与冷重开。目前跟随开启且有轨道曲线时整笔拒绝；关闭跟随才明确保持所有轨道曲线不动，不假装实现映射。
 2. 关联多轨Comp整组迁移仍未完成。保持真实Take/Playlist/组身份、目标关联和配对恢复；当前拒绝跨轨，不拆散关联。

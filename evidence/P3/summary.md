@@ -1,3 +1,19 @@
+# P3 当前增量：跨轨道移动（2026-10-15）
+
+**32套7130项唯一检查/631.96秒，分批通过，非一次全绿。** 首批31/32、610.56秒，修正测试夹具后1/1、21.40秒；只计每套最新结果，不累加失败检查或前面的重复专项。Release应用和受影响目标均构建exit0；deep/strict及固定本地证书指纹核验通过，非发行公证。唯一应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，可执行SHA256 `45e90a080a86ad3f25cb14aea36475a18518fd7678f7effcae959e3df4be1d1b`；无新DMG/应用副本，完整产品未完成。
+
+跨轨专项72项/2.90秒：真实JUCE主体鼠标、异步预览Accept、注册CmdCtrlOption↑、音频/MIDI稳定归属、实际CC事件、混合Edit组漏选拒绝、两侧Scope、锁定/类型/版本/幂等、自动化跟随策略、同大小同mtime来源字节变化拒绝、真实保存冷重开及原UndoRedo。实际PCM24/48k/双声道/480000帧，垂直迁移PCM误差0.0；组件事件不是实体键鼠/硬件MIDI/听评。
+
+处理移动专项747项/62.18秒：普通/SoundTouch/Warp × 无FX/真实EQ、压缩、Delay、Reverb，完整配对迁移和单侧解除配对；核对实际PLUGIN子节点身份/参数、源窗口、配对ID和原Take。12份迁移工程实际冷重开原UndoRedo；真实WAV最大差1.1920928955078125e-07，原PCM2e-6、来源准备5秒、WAV10秒和专项120/180秒预算不改。
+
+失败保留：初次冷重开暴露目标Main仅为虚拟Playlist，已在提交事务内物化后迁配对；随后四FX检查错误地比较不存在的PLUGINS容器，现逐个核对实际PLUGIN子节点与全部四实例。两个初始失败批次p3-relocation-first、p3-relocation-playlist-fix的日志/JUnit保留；后续current和edge两次专项均通过。完整回归的旧MidiMove测试手改带历史校验XML后忽略Open失败，沿用前一个已移动Edit，导致第二个时钟用例超过1ns。dfe9b35先实测现代损坏拒绝，再把手改输入显式标为historyless旧格式；每次GUI Open都必须换session token，正常现代保存/重开仍保留原历史。单项21.39秒复测通过，1ns/精确采样/曲线预算不改；首批失败日志仍保留，不计旧成功JSON。
+
+源码9ddb196/92c9c58/19729dc，测试fd8e78b/07d997b/dfe9b35；命令P3-CLIP-RELOCATE-01，ClipRelocation/Scope/UiState/WorkspaceGrabber/RelocationDraft/EditWindow，测试RelocationTests/ProcessedMoveTests。无新依赖/Engine/SDK/RT工作；17补丁/38文件SHA匹配既有p3-processed-split-sdk-replay审计，不声称新重放。逐套结果/JSON SHA、JUnit、构建/验签与当前14份工程入口见本地build-v2-tracktion/p3-relocation-current-results.json。其余回归包含原CoreAudio停止静音、剪贴板/Shuffle、Playlist/交叉淡化、原生历史、权限/队列/MCP/真实导出与P1制作主链路；不扩大为实录听评或性能验收。
+
+操作[CLIP_RELOCATION.md](../../docs/CLIP_RELOCATION.md)：重新启动唯一应用，打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P3-Relocation-e7985159abdd427f9c7527b069456a54/Audio-Relocation.tracktionedit`。F8拖动名称/主体到兼容轨道，或CmdCtrlOption↑/↓请求相邻行；预览接受/拒绝，CmdZ/Redo，再保存重开。这里只是自有测试音源工程。
+
+CUA本轮明确Mac锁定，实体拖动/快捷键/试听未执行；用户先前手动窗口正常，不据连接故障推断App失败。跨轨自动化跟随存在曲线时、关联多轨Comp迁移仍未完成并明确拒绝；关闭跟随明确保持原轨道曲线。第三方/offline Clip FX、复杂Tempo/声道/采样率、旧键位焦点/性能A/分析超时、长源/连续FX负载/旧读者/耐久、Windows/视频/发行保留。下一项跨轨自动化跟随，不将本增量包装为完整P1/P3或产品。
+
 # P3 当前增量：多选 Grabber 共同移动（2026-10-15）
 
 **24套4359项唯一检查分两批通过，非一次全绿。** 首批23/24、556.53秒；回执修正后1/1、5.91秒，两批总562.44秒。只计每套最新JSON，诊断重复和失败检查不累加。源1f34abb/bb6d392，测试19b0431/a163775/c84a152。Release应用与24受影响目标构建exit0；deep/strict及固定本地证书指纹核验通过，非发行公证。唯一程序 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `d6f9c9e43adfdaed8fa3f4b213e504686e52115e9b43698913dfd8f40cbb2b45`；无新DMG/应用副本，完整产品未完成。
