@@ -1,3 +1,18 @@
+# 外部插件历史恢复的实际声音（2026-10-16）
+
+结论：`d292dc1`修复历史恢复把外部DSP写成显式基础值、却保留不同引擎当前值的失配。AUNBandEQ AU重开首段已恢复，Serum VST3亦验证原历史UndoRedo。增强专项87项/25.92秒与受影响14/14套/178.63秒分批通过，共15/15、1096次检查；未重跑全部28套或全仓，不据此宣称完整产品/所有插件/平台/实时性能通过。
+
+- 原问题已用读值与真实音频复现：重开前引擎current=0.75、explicit=0.8、native=0.8；current与首曲线点相同使SDK不重发，实际首段相对输入增益0dB而应−6dB。L1恢复显式值后改为令实际插件端点对齐 `parameter->getCurrentValue()`，保持基础值0.8、原曲线点与ID。全程message thread/ParameterWriteGuard，未改SDK、工程格式、命令/权限、Undo边界或实时回调。
+- 实际AUNBandEQ AU、Serum VST3完整原Read/Touch/Latch/Write范围保留；新增重开后的原始curve Plan Undo/Redo、曲线身份、单独explicit基础值与原生端点一致性检查。原120秒专项、单WAV10秒、0.01dB增益容差、请求48001帧至≤48513帧预算不变；实测首变化48128帧，按块调度，不称通用采样级自动化。
+- 87项/25.92秒；修复初版完整原范围亦已在22.56秒通过，最终资格使用增强版。16份实际WAV保留，独立stdlib PCM24解码逐文件核验双声道/48kHz/192000帧；AU重开/Redo两段相对输入增益约−5.99999075/−11.99998498dB，原Undo两段约+0.00001847dB，双声道均在原0.01dB内。这里是相对已知0.05峰值正弦源的增益，不是dBFS或听评。Serum用原静音≤3e-6/可听RMS>1e-4预算，不要求随机合成器逐位一致。源SHA保持。
+- `57bdf6f`诊断曾对Undo后的空曲线创建并定位AutomationIterator，实际SIGSEGV栈确认在测试trace；`7fbd7e7`改为空曲线返回null，未改生产或放宽断言。修正诊断后原声音失败3.53秒及current/native失配仍复现，日志保留。`6cf51a7`/`4641dd4`补原历史验证与可保留自有工程/文件；87项完整scope未被缩小。
+- 当前结果 `build-v2-tracktion/au-reopen-current-results.json`，专项JUnit `au-vst-reopen-current.xml`/日志、独立音频 `au-reopen-independent-pcm.json`；回归 `au-reopen-regression.xml`/日志。15套包括恢复、自动化音频/界面/读回、持久历史、AU/VST3音频、编辑器、私有状态、权限、队列、MCP、请求恢复、ProjectDocument和ProductionChain。各构建实际exit0后才测试；新输出时间与SHA核对，不沿用旧JSON。
+- 保留自有示例 `build-v2-tracktion/au-automation-demos/ndaw-ext-auto-12a2d5ea8d9a4dda97023e2feccc0c54/external-auto.tracktionedit`；同目录 `serum-auto.tracktionedit`、已知正弦源和16份WAV，按 `evidence/M1/external-automation-tests.json` 的renders回执找文件。保存现有工程并重启唯一App后可打开，CmdZ撤原曲线、ShiftCmdZ恢复，再播放/导出核查；这是验证用素材，不是音乐作品或新实体听评。
+- ProductionChain91项/12.66秒再次通过，Loop→Punch→Take/Comp→交叉淡化→真实导出→快捷键/原UndoRedo→保存重开/二次PCM差0；当前自有示例在 `build-v2-tracktion/P1-Production-Chain-b55f5113a3244b5ab2858527d3e20378/`。
+- 唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，engine源码d292dc1，二进制SHA `b203341e9bdeaa36587226180042c250ce7877b347c5bcaa5ec2c5f60df50c6b`；固定本地deep/strict通过，非发行公证。Tracktion18补丁及JUCE XML源/补丁哈希与前次审计一致，本轮无新SDK改动/重放。所有测试进程退出，无新DMG/tar/app副本；本轮未重新调用桌面工具或取得实体键鼠/听评资格，不推断当前锁屏状态。
+
+已知AU首段失败由本节明确资格替代。下一项回到P0快捷键编辑器的焦点旧失败；XML/参数恢复增量收口，旧性能A、分析超时、首Warp根因、长源/硬件/耐久、Windows/视频/环绕/发行与完整范围继续保留。
+
 # XML解析修复与原超时矩阵（2026-10-16）
 
 结论：锁定JUCE新增实体属性流式累积补丁，原AutomationMove、SharedClock、ObjectShuffle完整矩阵均已在原180/240/300秒内通过。28套首批26通过/2失败，Object输入修正后1/1通过，按各自最新结果27/28通过、通过suite11755次检查；不是一次全绿，也不是完整产品验收。**外部AU自动化保存重开后第一段实际电平失败，仍未解决。**

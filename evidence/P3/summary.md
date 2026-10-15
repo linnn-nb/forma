@@ -1,3 +1,14 @@
+# 外部自动化重开与原始历史音频（2026-10-16）
+
+结论：L1历史恢复将原生端点同步到引擎当前有效值，保留显式基础值和原曲线；已知AU重开首段增益错误已修。真实AUNBandEQ AU/Serum VST3的原始UndoRedo、保存重开、Read/Touch/Latch/Write及实际音频通过，未宣称全插件或完整产品资格。
+
+- 生产 `d292dc1`；诊断 `57bdf6f`/`7fbd7e7`，增强与保留 `6cf51a7`/`4641dd4`。原失配current0.75、explicit/native0.8在修正诊断后的3.53秒失败中确认；仅修改L1 native端点目标，不改格式/事务/SDK/RT。空曲线诊断曾SIGSEGV，guard后保留原声音失败，未放宽断言。
+- 完整增强专项87项/25.92秒，原120秒/单WAV10秒/0.01dB/512帧调度限不变；首次变化48128帧对请求48001帧。增强AU与Serum重开后的原始Plan Undo/Redo都验证实际声音与曲线/身份。受影响14/14/178.63秒，分批总15/15、1096项；不是全仓/原28套新全绿。
+- 独立stdlib解码16份实际PCM24/48k/双声道/192000帧WAV；AU重开和Redo增益−5.99999075/−11.99998498dB，Undo+0.00001847/+0.00001847dB，左右一致。均为相对已知输入的增益，不是dBFS/听评；Serum保留原静音与RMS预算，不求随机音色逐位一致。源SHA保持，记录 `build-v2-tracktion/au-reopen-independent-pcm.json`。
+- 自有AU/Serum工程、源和16份WAV在 `build-v2-tracktion/au-automation-demos/ndaw-ext-auto-12a2d5ea8d9a4dda97023e2feccc0c54/`。可在保存现有工程并重启唯一App后打开 `external-auto.tracktionedit`，原CmdZ/Redo及再次播放/导出；这是验证用正弦/音符素材。路径和每份回执见 `evidence/M1/external-automation-tests.json`，当前总索引 `build-v2-tracktion/au-reopen-current-results.json`，JUnit/失败日志同目录。
+- ProductionChain91项/12.66秒，完整受控录音制作链路重开二次导出PCM差0；当前示例在 `build-v2-tracktion/P1-Production-Chain-b55f5113a3244b5ab2858527d3e20378/`。实体键鼠/麦克风/听评未新执行，CoreAudio测试的原生通知由真实SDK API产生，不冒充人工操作。
+- App SHA `b203341e9bdeaa36587226180042c250ce7877b347c5bcaa5ec2c5f60df50c6b`，唯一路径 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；本地deep/strict非发行公证。SDK哈希未改、本轮无新重放，无DMG/tar/app副本。下一项复现P0 KeyboardSettings焦点旧失败；本参数恢复增量收口，其余完整产品差距保留。
+
 # 大历史属性解析与原完整矩阵（2026-10-16）
 
 结论：JUCE流式属性累积已落地，原三套时间门槛均通过；当前27/28套最新终态通过，剩余真实AU重开首段电平失败。XML增量收口，下一项修AU声音，不继续堆解析边界或把局部通过包装为完整产品。

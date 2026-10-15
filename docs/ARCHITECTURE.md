@@ -112,6 +112,8 @@ L1 `PlaylistEditing.cpp` 新增一次创建非活动Comp的原生事务，先验
 
 # 当前架构补充：增量历史（2026-10-13）
 
+2026-10-16：`PersistentHistory::applyBases`在L1/message thread/ParameterWriteGuard内恢复显式基础值后，把原生插件端点同步到引擎当前有效读值，不能再用基础值覆盖仍生效的曲线值。旧行为会使engine current=0.75、explicit/native=0.8，首个相同曲线值被缓存跳过；AUNBandEQ实际首段因此从应有−6dB变成0dB（相对已知输入）。曲线、显式基础值、事务/身份/日志格式保持，未新增命令、SDK补丁、实时路径或服务。真实AU/VST3及原UndoRedo/声音资格见VERIFICATION最新节，不推断所有插件兼容。
+
 2026-10-16：JUCE锁定版本新增 `juce-xml-attribute-stream.patch`，只修改 `XmlDocument::readQuotedString`。无实体的普通属性保留原路径；第一次实体后用临时MemoryOutputStream累积，再生成原String，避免反复扫描已增长的属性。写入采用实际UTF8字节长度，保留锁定解析器畸形数字实体的原始字节；实体展开、错误报告、项目校验、Undo日志/格式均未更改。解析继续在原非实时打开/状态载入路径，不引入线程/服务/实时分配。
 
 CMake核验锁定原/新源码SHA，补丁关闭Git换行转换以保留CRLF；从锁定归档单文件fresh apply、当前字节核对、reverse已实际执行。`XmlAttributeTests.cpp`的固定32768记录/2752643编码字节在实现前设定500ms解析和测试进程256MiB峰值预算；23种旧解析输入以UTF8原字节/错误/树结构做兼容性夹具，畸形输入旧行为并非新的格式接受保证。原工程哈希和解析语义哈希保持；全工作流资格以VERIFICATION最新终态为准，微基准不代表实时、磁盘冷Open或Pro Tools性能。
