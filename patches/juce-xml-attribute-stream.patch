@@ -1,23 +1,30 @@
 --- a/modules/juce_core/xml/juce_XmlDocument.cpp
 +++ b/modules/juce_core/xml/juce_XmlDocument.cpp
-@@ -353,6 +353,16 @@
+@@ -353,6 +353,23 @@
  void XmlDocument::readQuotedString (String& result)
  {
      auto quote = readNextChar();
 +    // Keep ordinary attributes on their existing path. Escaped history attributes
 +    // can be megabytes long: appending each entity to String scans its old tail.
 +    std::unique_ptr<MemoryOutputStream> expanded;
++    auto appendString = [&] (const String& text)
++    {
++        // Use the actual byte length: numeric errors may yield legacy non-Unicode
++        // bytes for which getNumBytesAsUTF8() computes a different encoded size.
++        const auto* utf8 = text.toRawUTF8();
++        expanded->write (utf8, std::strlen (utf8));
++    };
 +    auto append = [&] (auto start, auto end)
 +    {
 +        if (expanded != nullptr)
-+            *expanded << String (start, end);
++            appendString (String (start, end));
 +        else
 +            result.appendCharPointer (start, end);
 +    };
  
      while (! outOfData)
      {
-@@ -365,7 +375,15 @@
+@@ -365,7 +382,15 @@
  
          if (c == '&')
          {
@@ -25,16 +32,16 @@
 +            if (expanded == nullptr)
 +            {
 +                expanded = std::make_unique<MemoryOutputStream>();
-+                *expanded << result;
++                appendString (result);
 +            }
 +
 +            String entity;
 +            readEntity (entity);
-+            *expanded << entity;
++            appendString (entity);
          }
          else
          {
-@@ -377,14 +395,18 @@
+@@ -377,14 +402,18 @@
  
                  if (character == quote)
                  {
@@ -55,7 +62,7 @@
                      break;
                  }
  
-@@ -399,6 +421,9 @@
+@@ -399,6 +428,9 @@
              }
          }
      }
