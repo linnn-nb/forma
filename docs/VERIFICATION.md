@@ -1,3 +1,22 @@
+# 打开工程前的真实保存与取消保护（2026-10-16）
+
+结论：cc3d37b/5f5ae2b接通用户Open与工程文件拖入的保存卡片，1be9c38把原P1制作链路接到真实原生窗口和卡片按钮；70bea84修复新建工程面板遗漏恢复进度更新。最终6/6套331项、30.19秒通过，其中Open专项99项、完整链路94项。不是全仓、实体桌面/麦克风/听评或完整产品资格。
+
+- L5 requestOpenSession复用SessionExit的真实L1保存/恢复回执，在最终消息中重验当前session/revision、持久UI和文件；目标路径/SHA在请求时封定、切换前复核，重复Open/Quit不能换掉当前卡片的目标。相对路径、覆盖已有工程、取消、保存后人工编辑、目标改变/缺失和实际无效XML不得显示打开成功。无新引擎/SDK/服务/MCP权限；te::Edit仍仅L1/message thread修改。
+- GUI文件菜单/可改键CmdO、单个.tracktionedit拖入走保护入口；.ndaw沿用可撤销的追加导入预览。openSession保留为新进程初次装载/已验证回调的可信适配入口，不能作为普通GUI按钮替代路径。其余旧单测的可信装载不冒充新Open工作流；本次新99项与P1链路分别验证真正用户入口和实际保存通知。
+- 卡片显示目标文件名和全路径tooltip，主按钮完整另存保留Undo/Redo；恢复副本明确只保留当前状态/引用媒体。每次新请求建议新文件名，不覆盖此前备份。Esc在面板/路径框立即取消；保存/副本晚到回执不能重新切换。打开不是跨会话Undo，原工程和原Undo可在完整备份中重新打开。卡片暗化背景，当前真实工程仍可见；组件PNG已查看，无遮挡或文字溢出，不冒充OS桌面截图。
+- SessionOpenTests99项/3.33秒：真实PCM24源、原生WorkspaceWindow/按钮通知、完整备份/原UndoRedo/实际渲染、恢复payload/manifest解码、重复请求、现存目标拒绝覆盖、保存后人工改名/排队Escape、改变目标、实际损坏XML、恢复写入期间取消与真实OS目录阻断。5秒等待、500ms旧New按钮通知、10秒渲染预算未放宽。30秒总截止代码保留，真实超时/系统强制终止、实体录音/外部插件切换未测。
+- 两批红日志保留：session-open-regression.xml实际5/6；session-open-native-chain.xml实际1/2。旧New Session核心32轨录音/自动化/路由/恢复/PCM检查通过，UI却在原5秒时限失败；诊断同时显示面板“保存中”、实际服务busy=false/state=idle，问题不是恢复作业尚在运行。Workspace计时器漏了新建面板，只在工程变更时刷新，现仅面板可见时轮询真实服务状态，未恢复全界面重绘。原生peer补齐后单独仍失败，未把它冒充修复。New UI不再私调onClick，按真实按钮通知验证活动作业或已完成的真实回执和只读权限；核心“备份完成前不换工程”原断言保留，未接受idle/空回执作为成功。最终34项通过。
+- 当前6套：New34、Recovery31、Legacy21、Exit52、Open99、ProductionChain94。原P1 9秒输入/6个Take/15秒等待/120秒CTest不变，现经过“另存当前工程并打开”按钮后核对新session token、旧快捷键、原UndoRedo/交叉淡化及真实二次导出，PCM最大差0。本轮不重复原5次负载资格，不外推长期可靠性。
+- 独立stdlib解码Saved-Current.wav及P1两份导出：均48k/双声道/PCM24、完整data，分别48000与192000帧；原工程备份渲染Peak/RMS与真实回执符合，P1重开前后PCM逐字节一致。见session-open-independent-pcm.json。不是听评或True Peak独立复算。
+- 初次多目标构建中NativeDAW已完成，但新增测试目标未被旧Make识别而exit2；先显式CMake配置生成，再完整构建exit0后才测试，未跑旧程序当新证据。最终NativeDAW及六套目标构建exit0、本地deep/strict验签通过；唯一App SHA256 25016afe96d23fa6735aa123b91ed357b8b0123f6acf72f69116c0d058a789a1。无新增依赖/SDK字节/签名身份，本轮未另做SDK fresh replay；CMake保留原18补丁46文件审计。旧重复静态库链接警告保留，非发行公证。
+
+总索引`build-v2-tracktion/session-open-current-results.json`逐项记录JUnit、时长、JSON及mtime新鲜度；最终JUnit/log为session-open-qualified.xml/.log。自有测试音备份`build-v2-tracktion/SessionOpen-ddcfc7aca4644f418bc55d45697bd9af/Current-Full-History.tracktionedit`，可在保存现有工程并重启唯一App后，CmdO选择`build-v2-tracktion/SessionOpen-ddcfc7aca4644f418bc55d45697bd9af/Target.tracktionedit`，体验另存/恢复副本/返回；同目录Open-Review.png为生产组件渲染，非OS桌面截图。完整P1工程`build-v2-tracktion/P1-Production-Chain-0d6184c957f44f019092625b756b5ca3/P1-Production-Chain.tracktionedit`保留原历史与导出。无新DMG/tar/应用副本，未重启用户运行中工程；本轮不重复CUA超时，用户确认主界面可操作不等于本轮实体操作资格。
+
+增量收口。下一项：普通Save与Save As分离、工程文件写回前冲突检查与备份。当前仍每次Open/Exit确认、无精确脏状态跳过或丢弃入口；同步保存/目标hash读取的主线程响应、真实录音/私有插件退出、旧KeyboardSettings焦点、性能A/分析超时、硬件/PDC/长源/耐久/Windows/视频/环绕/发行保留。M2/M3冻结、M4/M5暂缓；完整范围未缩减。
+
+以下为历史资格；当前结果以上述新回执为准。
+
 # 录音提前停止、失败回执与原生撤销边界（2026-10-16）
 
 结论：7ab59be/b54b477/1a1771d修复已复现的输入设置异步更新提前停止录音、实际写盘线程失效未报错、失败Loop派生排序污染Undo三处问题。07dbd4d另修MIDI控制事件分页漏字段。受影响测试按各套最新终态分批13/13、879项通过；原P1链路原负载连续5次通过。不是全仓、全部历史短录音归因或完整产品资格。

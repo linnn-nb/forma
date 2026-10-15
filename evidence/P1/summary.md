@@ -1,3 +1,16 @@
+# P1 与工程切换当前证据（2026-10-16）
+
+当前cc3d37b/5f5ae2b用户Open保护、1be9c38原生窗口/实际卡片链路、70bea84新建面板进度修复；最终同批6/6套331项/30.19秒。New34、Recovery31、Legacy21、Exit52、Open99、ProductionChain94。不是完整产品或实体桌面/麦克风/听评资格。
+
+- P1原9秒双通道录音/6 Take/15秒等待/120秒CTest保持；重开现通过生产保存卡片实际按钮，验证新session、原快捷键/UndoRedo/交叉淡化与二次导出PCM差0。当前工程`build-v2-tracktion/P1-Production-Chain-0d6184c957f44f019092625b756b5ca3/P1-Production-Chain.tracktionedit`；非音乐作品。
+- Open99项覆盖真实原生peer/按钮通知、完整备份与原历史、可解码恢复副本、取消晚到回执、保存后人工修改、重复请求、目标变化/损坏、真实OS目录阻断。组件截图已查看，当前工程可见于暗化背景；不是OS桌面读取或听评。
+- 两批旧New Session UI失败保留：实际服务idle/busy=false、面板仍“保存中”。原生peer补齐后仍红，70bea84在可见新建面板更新真实服务进度后原五秒门槛通过；取消私调onClick，使用真实按钮通知及真实作业/回执。核心原“备份前不切换”及数值预算保持。
+- 新鲜JSON mtime及各套计数核验：`build-v2-tracktion/session-open-current-results.json`；JUnit/log为session-open-qualified.xml/.log。初次新增测试目标未显式CMake生成的exit2保留，后续配置和完整构建exit0才测试。实际失败不能用旧JSON覆盖。
+- 独立stdlib解码旧工程备份WAV与P1导出/重开WAV：48k/双声道/PCM24，48000/192000帧，完整data、SHA和非零RMS；P1 PCM相等。见session-open-independent-pcm.json。唯一App本地deep/strict通过，SHA256 25016afe96d23fa6735aa123b91ed357b8b0123f6acf72f69116c0d058a789a1；无新SDK字节/依赖/服务/包，非发行公证，用户现有进程未重启。
+- 亲手试：重启唯一App后CmdO选择工程，完整另存/恢复副本/返回；演示备份`build-v2-tracktion/SessionOpen-ddcfc7aca4644f418bc55d45697bd9af/Current-Full-History.tracktionedit`和同目录Target.tracktionedit，步骤及未验分支见docs/OPEN_SESSION_WORKFLOW.md。旧键位焦点、实体输入/PDC/耐久/性能A和完整目标缺口保留。
+
+下面保留上一增量的简要录音资格；当前P1套件已增强为94项，当前产品状态以本节和docs/VERIFICATION.md为准。
+
 # P1 当前证据（2026-10-16）
 
 录音可靠性三处修复及MIDI查询补验已完成；完整产品、实体麦克风/多设备/PDC/听评与长期稳定性未完成。逐轮旧摘要保留在Git历史，不继续累积本文件。

@@ -1,3 +1,5 @@
+2026-10-16 L5工程生命周期：requestTransition复用SessionExit/SessionExitPanel绑定一次本地动作，退出与用户Open共用L1保存/恢复及最终session/revision/UI/实际文件校验；Open另封定目标路径/内容hash。取消撤回generation，重复请求只展示原卡片，不替换回调或目标。GUI Open按钮/单工程拖入使用requestOpenSession，可信openSession只供新进程初始装载/已验证回调，后者仍调用同一L1 open。UI工作线程不持有Edit。新建面板可见时在既有5Hz计时器只更新服务进度和事实，不恢复全工程轮询重建。无新引擎/SDK/服务/权限；代码WorkspaceExit/WorkspaceRefresh/SessionExitPanel，实际资格见VERIFICATION.md。
+
 2026-10-16 录音生命周期：L1 RecordingCommands在停止态通过审计SDK入口排空InputDeviceInstance待处理的目的地状态，再打开原生捕获。原20Hz非RT检查实际目标上下文/Wave writer，丢失则走同一finish事务与failed回执；MIDI-only不依赖Wave writer。EditOrdering统一在Plan/Undo/Redo和录音完成/失败回滚前排空原生派生排序，不泵消息队列。原始录音文件保留；普通部分附件与Loop原子Playlist政策分开。MIDI分页/编辑复用L1内部MidiControllerFacts投影，身份遍历与页内JSON序列化分开，仍为原te::Edit事实。无新引擎/服务/IPC/Agent权限；18补丁46文件实际重放通过，数值和剩余RT缺口见VERIFICATION.md。
 
 2026-10-16 应用生命周期：L5 SessionExit只管理本地退出意图与回执绑定，Workspace在原计时器轮询，不引入新服务/引擎。Edit变更、录音结束、完整工程发布与恢复快照仍走L1；快照沿用现有I/O worker。Main正常退出请求经原生面板选择，最终消息再次核验session/revision、持久UI及真实文件，取消/失效/失败不释放应用。退出意图不保存、不属于工程Undo，也不注册为MCP工具。实际范围与未验分支见VERIFICATION.md。
