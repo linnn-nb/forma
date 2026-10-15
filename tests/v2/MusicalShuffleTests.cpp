@@ -48,8 +48,19 @@ public:
         // GUI ownership merely because a test queried the current model.
         w.editArea.onRange({{"start_samples", first}, {"end_samples", last}}, tracks, w.workspaceRevision,
                            w.workspaceSession, first);
-        if (w.selection.tracks != tracks || w.selection.range != Json{{"start_samples", first}, {"end_samples", last}})
-            throw std::runtime_error("actual range input was not adopted: " + w.status.getText().toStdString());
+        const Json expected{{"start_samples", first},
+                            {"end_samples", last},
+                            {"length_samples", last - first},
+                            {"timebase", "session_samples"},
+                            {"sample_rate", 48000}};
+        if (w.selection.tracks != tracks || w.selection.range != expected)
+            throw std::runtime_error("actual range input was not adopted: " +
+                                     Json{{"requested_tracks", tracks},
+                                          {"displayed_tracks", w.selection.tracks},
+                                          {"expected_range", expected},
+                                          {"displayed_range", w.selection.range}}
+                                         .dump() +
+                                     " / " + w.status.getText().toStdString());
     }
     static juce::String preview(Workspace& w)
     {
