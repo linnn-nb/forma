@@ -1,3 +1,5 @@
+2026-10-16 MIDI Punch：无新授权、依赖版本、服务或签名身份；复用 Tracktion 0d4d77c / JUCE 8.0.13 与原生 MIDI 节点，扩展现有审计补丁。19 补丁/47 文件已 fresh apply、逐字节匹配、reverse；hosted 非折返输出原点修复不代表物理端口/循环折返或全采样率资格。MIDI Comp/锁定/Promote/试听、外部原始流式捕获/崩溃恢复、实体输入/听评与长期录音待做。旧焦点、性能 A 15.84%>15%、分析超时、SDK 实时锁/分配、多设备/PDC/Windows/视频/环绕/发行差距保留；当前构建/测试见 VERIFICATION.md。
+
 2026-10-16 MIDI循环：无新增授权/依赖版本/服务。Tracktion仍锁定0d4d77c、JUCE37c894f/8.0.13，新增停止后原生MIDI循环补丁；19补丁/47文件实际fresh apply、逐字节匹配、reverse通过。当前11种受影响套最新终态分批1150项（原10/11、补3/3），本地deep/strict非发行公证。FourOsc随机相位的原2e-7逐位对照未通过，不作为工程一致性资格；原始输入/事件/工程和真实音频分别核验。MIDI来源仅Edit/历史内，MIDI Punch/锁定/Comp及外部原始流式捕获、实体键盘/听评、长录音/故障/PDC/RT、Windows、发行仍未完成。旧焦点、性能A15.84%>15%、分析超时等保留。当前证据见VERIFICATION.md、MIDI_LOOP_WORKFLOW.md与P1汇总；以下为历史。
 
 2026-10-16 Save/Save As：无新依赖/SDK字节/证书/服务；沿用实际18补丁46文件核对，本轮无新fresh replay。Release及所需目标构建exit0、本地deep/strict通过，非公证。分批9套562项；原批Open轮询红及后续四套补验均保留，不假称一次全绿或所有旧超时已证明根因。新CMake显式链接旧New测试的ndaw_ui依赖，避免源码头文件扫描漏WorkspaceWindow而不可复现链接。当前只在macOS实测普通写回/独立备份/OS写入故障/合作flock与跨目录PCM；Windows、掉电/发布后同步失败、任意忽略锁的强竞争、实体选择器/键鼠/私有插件仍未验。覆盖式另存、GUI播放中保存、脏状态与备份管理待完成；下一项MIDI循环录音（当前明确拒绝），旧性能/焦点/硬件/发行缺口保留。

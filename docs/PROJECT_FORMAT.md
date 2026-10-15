@@ -1,3 +1,5 @@
+2026-10-16 新增必需能力 midi.punch-capture v1：Edit 根 NDAW_MIDI_PUNCH_SOURCE 保留原始未折回时间/字节、捕获/补录/请求后卷边界、Tempo/设备与 SHA；Clip 的 NDAW_MIDI_PUNCH_TAKE 引用源 ID/SHA、捕获起点/长度和 full_capture/punch 窗口。完整原生 SEQUENCE 保留，窗口外事件不破坏性裁掉。当前、非活动与 Undo/Redo 闭包都声明该能力，Loop v1 指纹保持兼容。实际负例/冷重开资格见 VERIFICATION.md，不冒充外部原始 MIDI 文件或流式崩溃日志。
+
 2026-10-16 新增必需能力midi.loop-capture v1：NDAW_MIDI_LOOP_SOURCE在Edit根NDAW_MIDI_SOURCES内，Take的NDAW_MIDI_LOOP_TAKE保留schema/source_id/source_hash/pass/捕获长度。原始时间/字节和捕获Tempo/设备参与源校验；活动、非活动与历史单独含该语义也需保护封装。缺源/校验损坏/未知能力不能替换当前工程。普通MIDI无该语义时不强制此能力。详见MIDI_LOOP_WORKFLOW.md及本轮VERIFICATION。
 
 # Forma 工程格式与读取能力（2026-10-15）

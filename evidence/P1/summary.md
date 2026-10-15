@@ -1,59 +1,18 @@
-# MIDI 循环录音当前证据（2026-10-16）
+# MIDI Punch 当前验证（2026-10-16）
 
-结论：c663834接通真实MIDI/Instrument循环Take与L1历史。当前11种受影响套按最新终态分批通过，共1150项；原批10/11（131.33秒）和补验3/3（46.23秒）均保留，不是一次全仓全绿，也不是完整P1/产品或实体听评资格。
+结论：24f7f29 / c87f485 接通真实 MIDI / Instrument Punch。受影响回归同批 12/12、169.73 秒；新增读取负例后专项 1/1、24.67 秒。按各套最新终态共 1722 项，MIDI Punch 专项 497 项。不是全仓、完整 P1、实体输入或听评资格。
 
-- MIDI循环专项164项/16.91秒：非零1–4秒范围、圈内120→90 BPM、双MIDI输入目标、两整圈与尾圈、跨圈长音、CC/pitch wheel/SysEx，原Main不变。11条原始输入逐条与独立已知字节和相对调度时刻核对，256帧预算不变。六Take/原始来源、实际L/F12/Space/Option+[和]/Option+L/钢琴卷帘键/Save键、编辑与整笔UndoRedo、保存冷重开/原录音历史、全空no_events及混合音频+MIDI一笔录音均通过。
-- Edit根来源池、稳定源ID/SHA/原始未折回时间/Tempo/设备引用保留。MIDI来源非外部原始文件；files只列混合录音的真实WAV。midi.loop-capture v1在活动/非活动与历史单独含语义时均保护。未知版本、漏声明、现代工程/历史不一致、明确historyless夹具的源损坏/缺源，分别验证真实拒绝且当前会话/历史/版本不变。
-- 原SysEx重开指纹错误已定位：显示XML的15位时间与保存17位字符串不同。MidiControllerCommands指纹复用preciseEditXml后，真实音符/CC原值、整数样本端点和源校验保持，派生浮点预算1e-10。旧失败日志和原生SEQUENCE差异保留。
-- 原2e-7 PCM对照实测失败（一次最大差0.1291911602），未放宽预算。SDK MultiVoiceOscillator::start每次随机相位，因此测试分别报告工程/事件一致性、真实发声和不具逐位资格的PCM比较；最终原始测值在p1-midi-loop-tests.json。独立stdlib解码三份实际48k/双声道/PCM24/144000帧WAV，核对非零Peak/RMS、完整数据和SHA；不冒充True Peak独立测量或听评。
-- 首次测试枚举临时JSON生命周期错误、未等待实际MIDI配置完成、误用无默认键的Stop，后续编译字符串/JSON错误及保留现代历史的损坏夹具先触发历史拒绝均保留。现使用本地配置applied回执、Space、现代拒绝与明确historyless夹具，不伪造执行或放宽既定输入/等待预算。
-- 其余最新检查：MIDI普通录音62/原生界面23、音频Loop51、writer故障49、Punch124、Playlist227、P1制作链路98、CC186、ProjectDocument80、PersistentHistory86。原音频Loop→Punch→Comp→交叉淡化→导出、保存重开与PCM差0资格保持。
-- 唯一App和CLI构建exit0，本地deep/strict签名通过（非发行公证）；SDK19补丁/47文件从锁定原始提交fresh apply、字节匹配及reverse通过，无新依赖版本/服务/实时回调工作。App SHA d291fbad41914b4340b4842a4fa3b57b894ef0013a09aa0311a37d70dc654e6e。用户进程44913未重启，无新DMG/tar/应用副本。
+- 48k / 256 帧 hosted 原生输入/输出，非整块边界 96037–168119、120→90 Tempo、双 MIDI 目标、跨边界长音、CC / pitch wheel / SysEx，Off / Auto / On 三模式。原 Main、完整捕获 Take、三段 Punch 结果均保持可编辑；两侧原演奏与输入监听独立验证。原始 11 条消息及来源 SHA 保留。
+- 实际原生窗口/命令管理器验证 Punch/Record/Space、Take 前后切换、Playlist 面板和保存键；一笔 Undo/Redo、Redo-only 保存能力、冷重开原历史、真实合成器 5 秒 WAV 均通过。不是 OS 桌面按键或实体键盘资格。预卷提前停只留 Take、不替换原演奏；全空 no_events 不新建事务；混合音频/MIDI 一笔提交一份真实 WAV 与两份来源，一笔 Undo 保留 WAV 不变。
+- 已复现 hosted MIDI 在 Tempo / 处理拆块时提前约 128 帧：旧派发减去最后子段原点。审计 scrub-context 补丁改为非折返整设备块原点。本组原48 NoteOff=96032、录入74 NoteOn=96036、录入76 NoteOff=168114、原48恢复=168119，补录切点按原生时间戳 1 帧容差通过。原生 NoteOff 仍提前 0.0001 秒（48k约5帧）；输入捕获仍为256帧预算，不把它称零误差。循环折返输出保留旧逻辑，物理端口/其它采样率未外推。
+- 工程 `midi.punch-capture` v1 覆盖活动、非活动及 Undo/Redo；未知版本/漏声明、现代 Edit 与历史不一致、明确 historyless 导入夹具的源损坏/缺源分别拒绝，当前会话/历史/revision 不变。Loop v1 来源指纹不改变；完整原生 SEQUENCE/隐藏事件和原媒体保留。
+- 其余回归：普通 MIDI62、音频Loop51、MIDI Loop164、writer故障49、音频Punch124、Playlist227、Playlist试听98、P1制作链98、CC186、ProjectDocument80、PersistentHistory86。原音频 Loop→Punch→Take/Comp→交叉淡化→导出、保存重开、实际快捷键保持，二次导出 PCM 最大差0。
+- 独立 Python stdlib 解码四份实际 WAV：48k/PCM24，MIDI重开前后双声道240000帧，混合捕获单声道144000帧/RMS0.0249999762，P1双声道192000帧；完整data/SHA/Peak/RMS通过。FourOsc随机相位不作逐位PCM声明，非听评或True Peak独立复算。
+- NativeDAW、CLI及受影响目标构建 exit0；唯一App本地deep/strict验签通过，SHA256 `2d3f0f0ece8fb67aa6a1f1ceaa2d1d0fcba9c7ca80c2d26c0f31587f910c4cb9`。非发行公证。SDK19补丁/47文件从锁定提交fresh apply/字节匹配/reverse通过，无新依赖版本/服务/实时分配锁。SDK既有实时分配锁仍未资格。
+- 先前未等实际播放启动/渲染后context已退休导致的空观察、早期时序实测及编译失败日志保留于build；新增观察先分配原生停止态context并等待真实started，不替换生产信号或放宽等待/负载。最终日志以 `midi-punch-regression`、`midi-punch-qualified` 为准，失败不拿旧JSON充当通过。
 
-当前索引`build-v2-tracktion/midi-loop-current-results.json`；两批JUnit/log为midi-loop-regression和midi-loop-qualified，SDK为midi-loop-sdk-replay.json。演示工程`build-v2-tracktion/Midi-Loop-162b28409eda415c9bede4f0359e46db/MIDI-Loop.tracktionedit`（已知测试输入，非音乐作品）；组件快照`build-v2-tracktion/Midi-Loop-162b28409eda415c9bede4f0359e46db/MIDI-Takes.png`已查看，不是OS桌面截图。亲手操作见docs/MIDI_LOOP_WORKFLOW.md。
+索引：`build-v2-tracktion/midi-punch-current-results.json`，JUnit/log 同名前缀；SDK `midi-punch-timing-sdk-replay.json`，独立文件 `midi-punch-independent-files.json`。演示工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-f62c36dcc7904494bb2a9e09352362d0/auto/MIDI-Punch.tracktionedit`；同目录Punch.wav。关键组件快照 `evidence/P1/midi-punch-takes.png` 已查看，不是 OS 桌面截图。实际已知测试输入，不是音乐作品。
 
-未完成：MIDI Playlist锁定、Comp/Promote/分段试听、MIDI Punch、合并/覆盖/MPE/量化/Groove、短循环/空中间圈等更多边界；外部原始MIDI流式写盘/崩溃日志、长录音/4096圈以外/断连/过载/PDC、实体键盘/桌面键鼠/听评、Windows/完整发行等继续保留。桌面工具此前超时且用户确认主界面可操作，本轮未反复调用，不推断锁屏或应用故障。下一项MIDI Punch。以下为历史证据。
+亲手试：保存当前工程后重启唯一 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开上述工程；Option+L看Main/完整Take/Punch，Option+[和]切换，空格播放，CmdZ/ShiftCmdZ撤销重做、CmdS保存。新录入须选真实MIDI设备，待命/选区后Option+P、F12。详见 docs/MIDI_PUNCH_WORKFLOW.md。用户现有PID44913未重启，无新DMG/tar/应用副本；桌面工具此前超时，用户确认主界面可操作，本轮未再重复调用。
 
-# P1 与普通保存当前证据（2026-10-16）
-
-9aa7eb5/2736942普通Save/另存/旧版与P1真实Save键；ca93b11确切作业启动取消、保存前置检查/完整性能span。当前按各套最新终态分批9/9、562项；原批8/9和后续4/4均保留，不是一次全仓全绿或完整产品。
-
-- ProjectSave64项：实际文件、旧版SHA/原历史/冷重开、跨目录WAV、外部修改、真实OS文件大小失败/重试、实际第二描述符合作锁和原生/自定义Save键。备份独立，自动保存不覆盖，但不是文件系统不可变或任意非合作写入保护；Windows/实体选择器/听评未验。
-- P1音频链路98项/13.44秒，原9秒输入/6 Take/15秒等待/120秒CTest保持。真实保存卡片重开后UndoRedo再CmdS写回当前路径，最终二次导出PCM差0；工程`build-v2-tracktion/P1-Production-Chain-8a94ce4390ab454387daf492651c36e6/P1-Production-Chain.tracktionedit`。
-- Open原轮询等saving在82项后失败、现场终态缺失；现真实capture作业已启动/busy才在同消息线程发送生产Escape，晚到写入不切换旧工程。Open当前96项，原取消按钮用例仍保留，五秒预算未放宽，不用当前通过证明所有旧超时因果。
-- 当前New34/Recovery31/PersistentHistory86/Legacy21/Exit52/Open96/Save64/P1 98/ProjectDocument80；JSON mtime及JUnit索引`build-v2-tracktion/project-save-current-results.json`。旧编译File空赋值/string-Json错误及New测试漏显式UI链接的真实失败保留，修复完整构建exit0后才测。
-- 独立stdlib核对真实旧版SHA/0700目录、两份保存重开WAV和P1前后WAV：48k双声道PCM24，48000/192000帧、完整data/Peak/RMS、P1 PCM逐字节相等，见project-save-independent-files.json，不是听评/True Peak独立测量。
-- 唯一App本地deep/strict通过，SHA256 efb278a8aef0819d877f3754bece9767867dc25dc4eed8a6d2da87cef2e67177，无新SDK/依赖/服务/包，非公证，用户现有进程未重启。保存后重启可用CmdS/CmdShiftS，旧版在当前目录.forma-backups；演示`build-v2-tracktion/ProjectSave-ad308f5bcaf84b2aa0ee84e8b9b2c86b/core/Current.tracktionedit`。GUI负例文件被故意损坏，不作为演示。操作/限制见docs/SAVE_WORKFLOW.md、docs/VERIFICATION.md。
-
-当前MIDI循环仍明确未实现/未资格，下一项回到此P1缺口；其余全局未完成项见docs/NEXT_STEPS.md及docs/BACKLOG.md。以下为历史范围。
-
-# P1 与工程切换当前证据（2026-10-16）
-
-当前cc3d37b/5f5ae2b用户Open保护、1be9c38原生窗口/实际卡片链路、70bea84新建面板进度修复；最终同批6/6套331项/30.19秒。New34、Recovery31、Legacy21、Exit52、Open99、ProductionChain94。不是完整产品或实体桌面/麦克风/听评资格。
-
-- P1原9秒双通道录音/6 Take/15秒等待/120秒CTest保持；重开现通过生产保存卡片实际按钮，验证新session、原快捷键/UndoRedo/交叉淡化与二次导出PCM差0。当前工程`build-v2-tracktion/P1-Production-Chain-0d6184c957f44f019092625b756b5ca3/P1-Production-Chain.tracktionedit`；非音乐作品。
-- Open99项覆盖真实原生peer/按钮通知、完整备份与原历史、可解码恢复副本、取消晚到回执、保存后人工修改、重复请求、目标变化/损坏、真实OS目录阻断。组件截图已查看，当前工程可见于暗化背景；不是OS桌面读取或听评。
-- 两批旧New Session UI失败保留：实际服务idle/busy=false、面板仍“保存中”。原生peer补齐后仍红，70bea84在可见新建面板更新真实服务进度后原五秒门槛通过；取消私调onClick，使用真实按钮通知及真实作业/回执。核心原“备份前不切换”及数值预算保持。
-- 新鲜JSON mtime及各套计数核验：`build-v2-tracktion/session-open-current-results.json`；JUnit/log为session-open-qualified.xml/.log。初次新增测试目标未显式CMake生成的exit2保留，后续配置和完整构建exit0才测试。实际失败不能用旧JSON覆盖。
-- 独立stdlib解码旧工程备份WAV与P1导出/重开WAV：48k/双声道/PCM24，48000/192000帧，完整data、SHA和非零RMS；P1 PCM相等。见session-open-independent-pcm.json。唯一App本地deep/strict通过，SHA256 25016afe96d23fa6735aa123b91ed357b8b0123f6acf72f69116c0d058a789a1；无新SDK字节/依赖/服务/包，非发行公证，用户现有进程未重启。
-- 亲手试：重启唯一App后CmdO选择工程，完整另存/恢复副本/返回；演示备份`build-v2-tracktion/SessionOpen-ddcfc7aca4644f418bc55d45697bd9af/Current-Full-History.tracktionedit`和同目录Target.tracktionedit，步骤及未验分支见docs/OPEN_SESSION_WORKFLOW.md。旧键位焦点、实体输入/PDC/耐久/性能A和完整目标缺口保留。
-
-下面保留上一增量的简要录音资格；当前P1套件已增强为94项，当前产品状态以本节和docs/VERIFICATION.md为准。
-
-# P1 当前证据（2026-10-16）
-
-录音可靠性三处修复及MIDI查询补验已完成；完整产品、实体麦克风/多设备/PDC/听评与长期稳定性未完成。逐轮旧摘要保留在Git历史，不继续累积本文件。
-
-- 代码：7ab59be在停止态排空原生输入状态更新，b54b477核验实际目标/writer存活，1a1771d将录音派生排序留在原事务内；a82a8bd区分历史失败与新执行，07dbd4d统一CC分页/完整事实。
-- 原真实失败：loop-trace-repeat.log中本次输入推进440320帧（计数28160→468480），WAV仅2816/3072帧却报success；writer-stop-stack.log捕获updateRecordingStatus→stopRecording、global_recording=1。这条复现机制已修，其它未捕获调用栈的旧案例不全部归因。
-- writer故障专项49项/7.74秒：实际线程停止、输入继续；普通/Loop在44.81/27.79ms报failed，固定250ms上限未改；真实文件保留、Loop不改变原Playlist、人类原Undo/Redo可用、新录音恢复6个Take，保存冷重开及原历史通过。普通部分失败附件不冒充完整成功。
-- 原ProductionChainTests负载与断言保持，关闭原生诊断输出后连续5次/59.92秒通过；受影响回归再次91项通过。Loop→Punch→Take/Comp→两种交叉淡化→导出，实际快捷键/自定义Punch键、Undo/Redo、保存重开和重开后PCM最大差0。
-- 受影响10套曾9/10：MIDI控制事件分页漏CC新增字段。原失败断言保留，修复后MIDI/分页/CC三套3/3/14.10秒；持久事件分页及冷重开新增8项。按每套最新终态分批13/13、879项，不是一次全仓全绿。
-- 所有目标构建exit0后才测。计数取新鲜JSON、核对mtime；总索引`build-v2-tracktion/recording-current-results.json`包含各批红绿、每套项数/时间和App SHA。JUnit：writer-order-fixed.xml、recording-regression.xml（保留红）、recording-query-fixed.xml、recording-chain-repeat.xml。
-- 独立stdlib解码8份实际录音（失败及恢复）和2份最终导出；PCM24/48k/帧数/完整data/SHA/Peak/RMS符合，最终192000帧双声道PCM逐字节一致。输出recording-independent-pcm.json、recording-chain-independent-pcm.json。不等于人工听评或True Peak独立复算。
-- SDK锁定不变，18补丁/46文件fresh apply/逐字匹配/reverse实际通过：recording-sdk-replay.json。无第二引擎、固定IPC或新服务；SDK原录音队列RT分配/锁未资格。
-- 唯一`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`本地deep/strict通过，SHA256 e992fb954e19719d6d3fb93647b49c38836686d5b0218b5fd157b1c6c1805448，非发行公证。未重启用户现有工程，无新包。
-
-亲手试：保存当前工程后重启唯一App，打开自有测试音工程`build-v2-tracktion/P1-Production-Chain-8257e1b82bb740f8a2e8236170103a33/P1-Production-Chain.tracktionedit`。可试听、CmdZ/ShiftCmdZ、另存重开；同目录04-final.wav/05-reopened.wav是真实导出，非音乐作品。
-
-本轮没有重新执行实体桌面/麦克风/听评；旧KeyboardSettings焦点失败保留，用户确认主界面可操作。普通Open替换保存保护是下一项；完整范围与其余缺口见docs/NEXT_STEPS.md、docs/VERIFICATION.md、docs/BACKLOG.md。伸缩/Warp沿用既有真实SoundTouch集成与已测资格，见docs/ELASTIC_AUDIO.md、docs/WARP_WORKFLOW.md和evidence/P3/summary.md，本轮未重新做算法听评。
+下一项 MIDI Playlist 锁定/Comp/Promote/分段试听。短Punch/Loop、MPE/量化/Groove、合并覆盖、外部原始MIDI流式写盘/崩溃日志、复杂PDC/端口/耐久/听评，旧焦点、性能A15.84%>15%、分析超时、Windows/视频/环绕/发行与完整产品继续未完成。M2/M3冻结，M4/M5暂缓。历史增量与旧失败保留在 docs/VERIFICATION.md 和 Git 历史，当前资格以上述范围为准。

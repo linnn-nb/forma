@@ -1,3 +1,5 @@
+2026-10-16 MIDI Punch：Instrument/MIDI 轨真实捕获预卷、补录和后卷，保留原 Main 与完整 Take，生成只替换选区的 Punch Playlist；一笔 Undo、保存重开、原快捷键与真实合成器 WAV 已接通。Off/Auto/On 监听规则见 MIDI_PUNCH_WORKFLOW.md；MIDI Comp/锁定/Promote/分段试听及实体端口仍未完成，不代表完整 P1 或产品。当前测试以 VERIFICATION.md 为准。
+
 2026-10-16 MIDI循环录音增量：MIDI/Instrument原生输入分圈为可编辑Take，原Main与较短尾圈保留，沿用L/F12/Space、Option+[或]、Option+L及原Undo/保存历史。当前开放Take选择、重命名与目标；MIDI锁定、Comp/Promote/Punch等仍未完成。原始捕获在Edit内保留来源/时间/哈希，非外部原始MIDI写盘。真实资格、FourOsc随机相位和剩余范围见MIDI_LOOP_WORKFLOW.md及VERIFICATION.md，不代表完整P1/产品。
 
 2026-10-16 普通保存已接通：CmdS/工具栏保存写回已绑定的当前工程，外改冲突不覆盖；独立旧版先落盘再原子替换。CmdShiftS另存为创建新路径并使后续Save转向该路径，Save Copy/恢复副本不重绑，新建/恢复不继承旧目标。原UndoRedo不因保存增加步骤；文件副作用不伪称Undo。当前分批9套562项，P1音频链路98项含实际Save键/保存重开/PCM差0；范围见SAVE_WORKFLOW.md和VERIFICATION.md。覆盖式另存、GUI播放中保存、脏状态/备份管理和完整产品仍未完成。
