@@ -974,8 +974,15 @@ void PersistentHistory::applyBases(const juce::ValueTree& image, bool changedExt
                     if ((identified ? identified->paramID : juce::String(actual->getParameterIndex())) ==
                         parameter->paramID)
                     {
-                        if (actual->getValue() != float(value))
-                            actual->setValue(float(value));
+                        // The explicit base and currently rendered value are
+                        // distinct when automation is active. Restoring only
+                        // the base into DSP leaves its first curve plateau at
+                        // odds with the engine cache, which suppresses an equal
+                        // first automation value. Keep the native endpoint in
+                        // agreement with the current effective readout instead.
+                        const auto applied = parameter->getCurrentValue();
+                        if (actual->getValue() != applied)
+                            actual->setValue(applied);
                         break;
                     }
                 }
