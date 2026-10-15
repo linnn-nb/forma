@@ -260,6 +260,10 @@ int main(int argc, char** argv)
             compare(silence, render(c, folder), 0,
                     "actual original linked microphones phase null across the entire WAV");
             const auto before = state(c), originalA = list(c, a, takes[a]), originalB = list(c, b, takes[b]);
+            const auto originalSet = list(c, a, ids[a])["linked_set"];
+            std::map<std::string, std::string> originalPairs;
+            for (const auto& t : {a, b})
+                originalPairs[t] = c.crossfades(t)[0]["id"];
             const std::map<std::string, std::string> targets =
                 mode == 0   ? std::map<std::string, std::string>{{a, cc}, {b, d}}
                 : mode == 1 ? std::map<std::string, std::string>{{a, b}, {b, cc}}
@@ -344,17 +348,23 @@ int main(int argc, char** argv)
             for (const auto& t : {a, b})
             {
                 const auto current = list(c, targets.at(t), ids[t]);
-                check(current["active"] && current["origin_track"] == t && current["linked_tracks"].size() == 2,
+                check(current["active"] && current["origin_track"] == t && current["linked_tracks"].size() == 2 &&
+                          current["linked_set"] == originalSet,
                       "Comp Playlist identity, origin owner and complete new membership preserved");
                 for (const auto& clip : current["clips"])
                     check(clip["take_id"] == takeLineage[t] && clip["comp_origin_track"] == t &&
                               clip["take_origin_track"] == t,
                           "real Take lineage remains resolvable on its original track");
                 check(c.crossfades(targets.at(t)).size() == 1 &&
+                          c.crossfades(targets.at(t))[0]["id"] == originalPairs.at(t) &&
                           RecordingTestAccess::pairPlaylist(c, targets.at(t), c.crossfades(targets.at(t))[0]["id"]) ==
                               ids[t],
                       "crossfade record follows the same Comp Playlist and target");
             }
+            for (const auto& t : {a, b})
+                if (targets.at(a) != t && targets.at(b) != t)
+                    check(list(c, t, c.queryPlaylists(t)["active"])["clips"].empty(),
+                          "vacated source actually stays empty instead of replaying original cancelling Takes");
             check(list(c, a, takes[a]) == originalA && list(c, b, takes[b]) == originalB,
                   "both original Take Playlists retained exactly");
             compare(silence, render(c, folder), 0, "relocated microphones retain actual full-WAV phase null");
