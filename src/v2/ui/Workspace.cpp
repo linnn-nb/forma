@@ -816,6 +816,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     { return clipGestureTargets(id, mode); };
     editArea.onMoveSelection = [this](const Json& targets, int64_t delta, uint64_t revision, const std::string& session)
     { moveClipSelection(targets, delta, revision, session); };
+    editArea.onClipGestureError = [this](const std::string& error) { message(text(error)); };
     editArea.onContext = [this](std::string id)
     {
         if (!id.empty() && !selection.contains(id) && selection.range.is_null())
@@ -826,6 +827,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
         menu.addSeparator();
         menu.addCommandItem(&commandManager, editCommand::split);
         menu.addCommandItem(&commandManager, editCommand::spot);
+        menu.addCommandItem(&commandManager, editCommand::relocateUp);
+        menu.addCommandItem(&commandManager, editCommand::relocateDown);
         juce::PopupMenu trims;
         for (int command = editCommand::trimStartBack; command <= editCommand::trimEndForward; ++command)
             trims.addCommandItem(&commandManager, command);

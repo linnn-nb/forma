@@ -90,6 +90,7 @@ target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/PreparedAudioSources.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommands.cpp src/v2/MidiControllerCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
@@ -1180,3 +1181,9 @@ target_sources(ndaw_grabber_tests PRIVATE tests/v2/GrabberTests.cpp)
 target_link_libraries(ndaw_grabber_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_grabber COMMAND ndaw_grabber_tests "${CMAKE_BINARY_DIR}/p3-grabber-tests.json")
 set_tests_properties(forma_native_grabber PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_relocation_tests PRODUCT_NAME "ndaw_relocation_tests")
+target_sources(ndaw_relocation_tests PRIVATE tests/v2/RelocationTests.cpp)
+target_link_libraries(ndaw_relocation_tests PRIVATE ndaw_ui)
+add_test(NAME forma_native_relocation COMMAND ndaw_relocation_tests "${CMAKE_BINARY_DIR}/p3-relocation-tests.json")
+set_tests_properties(forma_native_relocation PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")

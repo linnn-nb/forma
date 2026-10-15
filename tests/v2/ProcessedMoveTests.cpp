@@ -419,6 +419,68 @@ int main(int argc, char** argv)
                 c.undo();
                 check(c.query()["tracks"][0]["clips"] == before,
                       "Grabber Undo restores paired source and exact previous state");
+                run(c, "track.create", {{"name", "Relocation destination"}, {"ref", "$destination"}});
+                const std::string destination = c.query()["tracks"].back()["id"];
+                run(c, "track.gain", {{"track", destination}, {"db", 0}});
+                const auto originalOwners = c.query()["tracks"];
+                Json relocations = Json::array();
+                for (const auto& piece : before)
+                    relocations.push_back({{"clip", piece["id"]},
+                                           {"from_track", t},
+                                           {"to_track", destination},
+                                           {"position_samples", piece["start_samples"].get<int64_t>() + 24000}});
+                const auto relocation =
+                    c.makePlan("human", Json::array({op("clips.relocate", {{"moves", relocations}})}));
+                const auto relocationPreview = c.preview(relocation);
+                check(relocationPreview["relocation_changes"][0]["clips"].size() == 2 &&
+                          c.query()["tracks"] == originalOwners,
+                      "actual cross-track preview seals both processed sources without writing Edit");
+                Scope sourceOnly;
+                sourceOnly.targets = {t};
+                rejects([&] { c.review(relocation, sourceOnly); },
+                        "processed relocation requires destination scope as well as source scope");
+                c.commit(relocation);
+                const auto migrated = c.query()["tracks"].back()["clips"];
+                check(c.query()["tracks"][0]["clips"].empty() && migrated.size() == 2 && migrated[0]["id"] == left &&
+                          migrated[1]["id"] == right,
+                      "native reparent preserves both actual processed Clip identities and empties source");
+                check(native(c, left).getChildWithName("PLUGINS").isEquivalentTo(
+                          originalState.getChildWithName("PLUGINS")),
+                      "native reparent retains complete real Clip FX state and IDs");
+                if (fx)
+                    check(originalState.getChildWithName("PLUGINS").getNumChildren() == 4,
+                          "FX identity comparison contains all four real native processor states");
+                const auto migratedPairs = c.crossfades(destination);
+                check(c.crossfades(t).empty() && migratedPairs.size() == 1 &&
+                          migratedPairs[0]["id"] == beforePair["id"] &&
+                          migratedPairs[0]["start_samples"].get<int64_t>() ==
+                              beforePair["start_samples"].get<int64_t>() + 24000,
+                      "complete paired crossfade follows stable clips into target Playlist with same identity");
+                aligned(reference, render(c, folder, 0, 240000), 24000);
+                const auto relocatedFile = folder.getChildFile("Relocated-Comp.tracktionedit");
+                c.save(relocatedFile);
+                {
+                    Commands cold(false, std::make_unique<Storage>(folder.getChildFile("relocation-cold")));
+                    cold.open(relocatedFile);
+                    check(cold.query()["tracks"].back()["clips"] == migrated &&
+                              cold.crossfades(destination) == migratedPairs,
+                          "relocated source/processing/pair survive actual cold native Open");
+                    aligned(reference, render(cold, folder, 0, 240000), 24000);
+                    cold.undo();
+                    check(cold.query()["tracks"] == originalOwners && cold.crossfades(t)[0] == beforePair,
+                          "cold original relocation Undo restores actual parent tracks and pair metadata");
+                    cold.redo();
+                    check(cold.query()["tracks"].back()["clips"] == migrated &&
+                              cold.crossfades(destination) == migratedPairs,
+                          "cold original relocation Redo restores complete processed target");
+                }
+                run(c, "track.mute", {{"track", t}, {"enabled", true}});
+                aligned(reference, render(c, folder, 0, 240000), 24000);
+                c.undo();
+                c.undo();
+                check(c.query()["tracks"] == originalOwners && list(c, t, take) == preserved,
+                      "original relocation Undo preserves original Take and restores all parent/processor state");
+                run(c, "track.delete", {{"track", destination}, {"connections", "reject"}});
                 auto stale =
                     c.makePlan("human", Json::array({op("clip.move", {{"clip", left}, {"position_samples", 78000}})}));
                 run(c, "clip.lock", {{"clip", left}, {"locked", true}});

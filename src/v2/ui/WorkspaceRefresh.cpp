@@ -766,6 +766,11 @@ void Workspace::refresh()
                 }
     }
     auto selectedAudio = selectedAudioClip();
+    if (!selectedAudio.is_null())
+        for (const auto& owner : facts["tracks"])
+            for (const auto& clip : owner["clips"])
+                if (clip["id"] == selectedClip)
+                    selected = owner["id"];
     if (selectedAudio.is_null())
     {
         selectedClip.clear();

@@ -430,6 +430,7 @@ Json Commands::registry()
                       {"live", true},
                       {"test", "M1-METER-01"}});
     registerClipCommands(result);
+    registerRelocationCommands(result);
     registerLegacyCommands(result);
     registerQueryCommands(result);
     registerAnalysisCommands(result);
@@ -699,7 +700,13 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
     {
         auto cmd = op.at("command").get<std::string>();
         auto& a = op.at("args");
-        if (cmd.starts_with("playlist."))
+        if (cmd == "clips.relocate")
+        {
+            const auto hash = relocationChange(a).at("state_hash");
+            require(!a.contains("state_hash") || a.at("state_hash") == hash, "迁移来源或目标已变化");
+            a["state_hash"] = hash;
+        }
+        else if (cmd.starts_with("playlist."))
         {
             const auto fingerprint =
                 cmd.starts_with("playlist.crossfade") ? crossfadeMediaFingerprint(a) : playlistMediaFingerprint(a);
@@ -932,6 +939,8 @@ Json Commands::preview(const Json& plan) const
             require(actor == "human" && cmd == "clip.copy" && clipboardEntry(a["clip"]),
                     "clipboard snapshot expired or unavailable to this actor");
         auto reg = registry();
+        if (cmd == "clips.relocate")
+            require(actor == "human" && ops.size() == 1, "跨轨道移动仅通过独立本地事务");
         if (cmd.starts_with("playlist.") || cmd == "transport.punch.set")
             require(actor == "human", "Playlist selection is a local GUI command");
         if (cmd.starts_with("track.freeze") || cmd == "track.unfreeze" || cmd.starts_with("track.bounce."))
@@ -1032,7 +1041,11 @@ Json Commands::preview(const Json& plan) const
                 }
             }
         }
-        if (cmd == "export.stems.publish")
+        if (cmd == "clips.relocate")
+        {
+            require(a.at("state_hash") == relocationChange(a).at("state_hash"), "迁移预览已失效");
+        }
+        else if (cmd == "export.stems.publish")
         {
             (void)stemExportChange(a);
         }
@@ -1201,6 +1214,9 @@ Json Commands::preview(const Json& plan) const
                 {"playlist_changes", playlistDiff},
                 {"crossfade_changes", crossfadeMaintenancePreview(ops, timelineDiff)},
                 {"legacy_imports", legacyDiff}};
+    for (const auto& op : ops)
+        if (op["command"] == "clips.relocate")
+            result["relocation_changes"] = Json::array({relocationChange(op["args"])});
     if (plan.contains("timeline_range_nudge"))
         result["timeline_range_nudge"] = plan["timeline_range_nudge"];
     if (plan.contains("clipboard_paste"))
@@ -1269,8 +1285,9 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
     // Stopping alone may retain a monitoring graph. Retire it before mutating an effect
     // (notably Delay length, whose SDK DSP can otherwise grow its buffer in process).
     for (const auto& op : plan.at("operations"))
-        if (op.at("command") == "session.import_legacy" || op.at("command").get<std::string>().starts_with("clip.") ||
-            op.at("command") == "track.pan_law" || op.at("command").get<std::string>().starts_with("automation.") ||
+        if (op.at("command") == "clips.relocate" || op.at("command") == "session.import_legacy" ||
+            op.at("command").get<std::string>().starts_with("clip.") || op.at("command") == "track.pan_law" ||
+            op.at("command").get<std::string>().starts_with("automation.") ||
             op.at("command").get<std::string>().starts_with("plugin.") ||
             op.at("command").get<std::string>().starts_with("send.") || op.at("command") == "track.output" ||
             op.at("command").get<std::string>().starts_with("track.freeze") || op.at("command") == "track.unfreeze" ||
@@ -1308,7 +1325,11 @@ Json Commands::commit(const Json& plan, bool accepted, const Scope& scope)
         {
             const auto cmd = op.at("command").get<std::string>();
             const auto& a = op.at("args");
-            if (cmd == "export.stems.publish")
+            if (cmd == "clips.relocate")
+            {
+                executeRelocation(a, objects);
+            }
+            else if (cmd == "export.stems.publish")
             {
                 executeStemExport(a, objects);
             }

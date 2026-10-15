@@ -63,6 +63,7 @@ Json Workspace::clipGestureTargets(const std::string& id, const std::string& mod
                                 "整组编辑不可用：成员已锁定、媒体缺失或编辑类型尚未支持");
                         target["start_samples"] = clip["start_samples"];
                         target["length_samples"] = clip["length_samples"];
+                        target["clip_kind"] = clip["kind"];
                     }
             require(found, "拖动成员已不存在，请重新选择");
         }
@@ -84,9 +85,13 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
             require(current["revision"] == revision && current["session_token"] == session &&
                         workspaceRevision == revision && workspaceSession == session,
                     "工程在拖动期间已变化，本次移动未提交");
-            require(targets.is_array() && !targets.empty() && targets.size() <= 64 && delta != 0,
+            const bool relocate =
+                std::any_of(targets.begin(), targets.end(), [](const Json& target)
+                            { return target.contains("to_track") && target["to_track"] != target["track"]; });
+            require(targets.is_array() && !targets.empty() && targets.size() <= 64 && (delta != 0 || relocate),
                     "没有可提交的共同移动");
             Json operations = Json::array();
+            Json relocations = Json::array();
             std::set<std::string> ids;
             for (const auto& target : targets)
             {
@@ -102,23 +107,33 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                                         clip["start_samples"] == target["start_samples"] &&
                                         clip["length_samples"] == target["length_samples"],
                                     "拖动成员已变化，本次移动未提交");
-                            operations.push_back(operation(
-                                clip["kind"] == "midi" ? "midi.clip.move" : "clip.move",
-                                {{"clip", id}, {"position_samples", clip["start_samples"].get<int64_t>() + delta}}));
+                            if (relocate)
+                                relocations.push_back(
+                                    {{"clip", id},
+                                     {"from_track", target["track"]},
+                                     {"to_track", target.at("to_track")},
+                                     {"position_samples", clip["start_samples"].get<int64_t>() + delta}});
+                            else
+                                operations.push_back(
+                                    operation(clip["kind"] == "midi" ? "midi.clip.move" : "clip.move",
+                                              {{"clip", id},
+                                               {"position_samples", clip["start_samples"].get<int64_t>() + delta}}));
                         }
                 require(found, "拖动成员已不存在，本次移动未提交");
             }
+            if (relocate)
+                operations = Json::array({operation("clips.relocate", {{"moves", relocations}})});
             auto plan = commands.makePlan("human", std::move(operations));
             plan["base_revision"] = revision;
             const auto preview = commands.preview(plan);
             size_t points = 0;
             for (const auto& change : preview["automation_changes"])
                 points += change["affected_points"].get<size_t>();
-            if (plan["operations"].size() > 10 || points > 128)
+            if (relocate || plan["operations"].size() > 10 || points > 128)
             {
                 pending = plan;
                 reportShowing = false;
-                juce::String summary = text("共同移动 · 请确认\n\n");
+                juce::String summary = text(relocate ? "跨轨道移动 · 请确认\n\n" : "共同移动 · 请确认\n\n");
                 const auto view = commands.uiState();
                 auto at = [&](int64_t p)
                 { return text(commands.formatTimelinePosition(p, view["main_time_scale"], view["timecode_fps"])); };
@@ -128,7 +143,18 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                             if (clip["id"] == target["id"])
                                 summary += text(track["name"].get<std::string>()) + " / " +
                                            text(clip["name"].get<std::string>()) + "  " + at(clip["start_samples"]) +
-                                           " → " + at(clip["start_samples"].get<int64_t>() + delta) + "\n";
+                                           " → " +
+                                           (relocate ? trackName(target.at("to_track")) + " / " : juce::String{}) +
+                                           at(clip["start_samples"].get<int64_t>() + delta) + "\n";
+                if (relocate)
+                {
+                    const auto& change = preview.at("relocation_changes").at(0);
+                    summary += text("\n片段进入目标轨道的处理链、发送与输出。轨道本身的路由保持。\n");
+                    summary += text(change["automation_policy"].get<std::string>()) + "\n";
+                    for (const auto& pair : change["crossfades"])
+                        summary += text(pair["action"] == "rehome" ? "完整交叉淡化配对随片段迁移\n"
+                                                                   : "不完整配对将解除，片段淡化保留\n");
+                }
                 summary += text("\n自动化受影响点数：") + juce::String(int(points)) +
                            text("\n接受后为一次 Undo；原媒体保持。\n");
                 previewText.setText(summary);

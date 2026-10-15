@@ -536,6 +536,9 @@ private:
     Json automationClipboardChanges(const Json&) const;
     void executeAutomationClipboard(const Json&, Json&);
     static void registerClipCommands(Json&);
+    static void registerRelocationCommands(Json&);
+    Json relocationChange(const Json&) const;
+    void executeRelocation(const Json&, Json&);
     Json audioClipQuery(te::WaveAudioClip&) const;
     Json validateClipPlan(const Json&) const;
     Json sidechainQuery(te::Plugin&) const;

@@ -80,6 +80,31 @@ void Workspace::commitTimeSelection(Json range, Json tracks, uint64_t revision, 
 }
 void Workspace::executeEditCommand(int id)
 {
+    if (id == editCommand::relocateUp || id == editCommand::relocateDown)
+    {
+        try
+        {
+            std::string anchor;
+            for (const auto& object : selection.objects)
+                if (object["kind"] == "clip")
+                    anchor = object["id"];
+            require(!anchor.empty(), "先选择完整片段，再跨轨道移动");
+            auto targets = clipGestureTargets(anchor, "move");
+            if (targets.empty())
+                return;
+            Json visible = Json::array();
+            for (const auto& track : facts["tracks"])
+                if (!track.value("edit_hidden", false))
+                    visible.push_back(track);
+            targets = RelocationDraft::targets(visible, targets, id == editCommand::relocateUp ? -1 : 1);
+            moveClipSelection(targets, 0, workspaceRevision, workspaceSession);
+        }
+        catch (const std::exception& error)
+        {
+            message(text(error.what()));
+        }
+        return;
+    }
     if (id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot || id == editCommand::grid)
     {
         const auto mode = id == editCommand::shuffle ? "shuffle"

@@ -91,7 +91,37 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
         const auto& a = op["args"];
         require(scope.commands.empty() || scope.commands.contains(cmd), "command not granted by permission allowlist");
         automatic &= Scope::defaultCommands().contains(cmd);
-        if (cmd == "export.stems.publish")
+        if (cmd == "clips.relocate")
+        {
+            automatic = false;
+            for (const auto& change : preview.at("relocation_changes"))
+            {
+                for (const auto& owner : change.at("owners"))
+                    if (!owner.at("plugins").empty() || !owner.at("sends").empty() ||
+                        owner.at("output").value("kind", std::string{}) == "track")
+                        full(); // Track/bus effects can extend beyond either clip's interval.
+                for (const auto& move : change.at("clips"))
+                {
+                    for (const char* side : {"from_track", "to_track"})
+                    {
+                        const std::string owner = move.at(side);
+                        object(owner, domainTrack(owner));
+                    }
+                    for (const char* side : {"before", "after"})
+                    {
+                        const auto& value = move.at(side);
+                        span(value.at("start_samples"), value.at("length_samples"));
+                        if (!value.value("plugins", Json::array()).empty())
+                            full();
+                    }
+                    impacts.push_back({{"command", cmd},
+                                       {"clip", move["clip"]},
+                                       {"source", move["from_track"]},
+                                       {"destination", move["to_track"]}});
+                }
+            }
+        }
+        else if (cmd == "export.stems.publish")
         {
             require(scope.targets.empty() && scope.mode != Permission::ScopedLowRisk,
                     "Stems external publication requires local preview and a full project scope");

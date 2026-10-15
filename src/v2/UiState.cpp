@@ -433,7 +433,42 @@ Json readUiState(const juce::ValueTree& metadata)
 Json Commands::uiState() const
 {
     checkThread();
-    return readUiState(metadata);
+    auto result = readUiState(metadata);
+    std::map<std::string, std::set<std::string>> owners;
+    for (auto& ref : result["object_selection"])
+    {
+        if (ref["kind"] == "clip" || ref["kind"] == "note")
+        {
+            const std::string clipID = ref["kind"] == "clip" ? ref["id"] : ref["clip"];
+            if (auto* clip = timelineClip(clipID); clip && clip->getTrack())
+            {
+                const std::string old = ref["track"], owner = clip->getTrack()->itemID.toString().toStdString();
+                owners[old].insert(owner);
+                ref["track"] = owner;
+            }
+        }
+        else if (ref["kind"] == "automation_point")
+        {
+            const auto owner = ref["track"].get<std::string>();
+            owners[owner].insert(owner);
+        }
+    }
+    Json tracks = Json::array();
+    std::set<std::string> seen;
+    for (const auto& track : result["selection_tracks"])
+    {
+        const auto old = track.get<std::string>();
+        if (owners.contains(old))
+        {
+            for (const auto& owner : owners.at(old))
+                if (seen.insert(owner).second)
+                    tracks.push_back(owner);
+        }
+        else if (seen.insert(old).second)
+            tracks.push_back(old);
+    }
+    result["selection_tracks"] = std::move(tracks);
+    return result;
 }
 Json prepareUiStatePatch(Json current, const Json& patch)
 {

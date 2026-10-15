@@ -14,6 +14,7 @@
 #include "TimeSelectionGesture.h"
 #include "GroupedClipDraft.h"
 #include "ClipHeader.h"
+#include "RelocationDraft.h"
 namespace ndaw::desktop
 {
 class EditWindow final : public juce::Component, private juce::ScrollBar::Listener
@@ -402,6 +403,7 @@ public:
     std::function<void(std::string, bool, bool)> onClipSelection;
     std::function<Json(const std::string&, const std::string&)> onLinkedClips;
     std::function<void(const Json&, int64_t, uint64_t, const std::string&)> onMoveSelection;
+    std::function<void(const std::string&)> onClipGestureError;
     std::function<Json(const std::string&, int64_t, const std::string&, uint64_t)> onMidiMoveExtent;
     std::function<Json(const std::string&, int64_t, int64_t, const std::string&, uint64_t)> onMidiTrimExtent;
     std::function<void(const std::string&)> onMarkerClick;
@@ -479,6 +481,9 @@ public:
     }
     juce::Rectangle<int> clipRect(const Json& c, int row) const
     {
+        if (!drag.is_null() && drag.contains("destination_rows") &&
+            drag["destination_rows"].contains(c.at("id").get<std::string>()))
+            row = drag["destination_rows"][c.at("id").get<std::string>()];
         const auto axis = coordinates();
         const int left = int(std::clamp(axis.pixelAt(c["start_samples"]), -1000000., 1000000.));
         const int right = int(std::clamp(
@@ -742,6 +747,12 @@ public:
     void paintOverChildren(juce::Graphics& g) override
     {
         zoomGesture.paint(g, coordinates(), rulerHeight(), getHeight() - 16);
+        if (!drag.is_null() && drag.contains("relocation_error"))
+        {
+            g.setColour(juce::Colour(0xffe79a8b));
+            g.drawText(text(drag["relocation_error"].get<std::string>()), timelineLeft() + 8, rulerHeight() + 4,
+                       getWidth() - timelineLeft() - 24, 24, juce::Justification::centredLeft);
+        }
     }
     void visibilityChanged() override
     {
@@ -1257,8 +1268,9 @@ public:
                                               : 0;
         if (mode == "move")
         {
-            dragStart = std::clamp(snapped(std::max(int64_t(0), start + raw - dragPoint), e.mods), int64_t(0),
-                                   maximum - length);
+            dragStart = e.x == dragX ? start
+                                     : std::clamp(snapped(std::max(int64_t(0), start + raw - dragPoint), e.mods),
+                                                  int64_t(0), maximum - length);
             dragEnd = dragStart + length;
         }
         else if (mode == "left")
@@ -1282,6 +1294,22 @@ public:
         GroupedClipDraft::constrain(facts, drag, dragStart, dragEnd);
         if (mode == "move")
         {
+            drag.erase("destination_targets");
+            drag.erase("destination_rows");
+            drag.erase("relocation_error");
+            const int rowDelta = rowAt(e.y) - drag["row"].get<int>();
+            if (rowDelta != 0 && drag.contains("linked"))
+                try
+                {
+                    drag["destination_targets"] = RelocationDraft::targets(facts["tracks"], drag["linked"], rowDelta);
+                    drag["destination_rows"] = Json::object();
+                    for (const auto& target : drag["destination_targets"])
+                        drag["destination_rows"][target["id"].get<std::string>()] = target["destination_row"];
+                }
+                catch (const std::exception& error)
+                {
+                    drag["relocation_error"] = error.what();
+                }
             try
             {
                 Json mapped = Json::object();
@@ -1339,7 +1367,7 @@ public:
             }
         }
         resized();
-        dragged = mode != "move" || std::abs(e.x - dragX) >= 3;
+        dragged = mode != "move" || std::abs(e.x - dragX) >= 3 || rowAt(e.y) != drag["row"].get<int>();
         repaint();
     }
     void mouseUp(const juce::MouseEvent&) override
@@ -1408,6 +1436,12 @@ public:
             return;
         }
         const auto& original = captured["clip"];
+        if (captured.contains("relocation_error"))
+        {
+            if (onClipGestureError)
+                onClipGestureError(captured["relocation_error"].get<std::string>());
+            return;
+        }
         if (mode == "fade_in" || mode == "fade_out")
         {
             const auto fadeIn = captured.value("preview_fade_in", original.value("fade_in_samples", int64_t(0)));
@@ -1423,14 +1457,15 @@ public:
                           captured["revision"]);
             return;
         }
-        if (dragStart == original["start_samples"] &&
+        if (!captured.contains("destination_targets") && dragStart == original["start_samples"] &&
             dragEnd == original["start_samples"].get<int64_t>() + original["length_samples"].get<int64_t>())
             return;
         if (mode == "move")
         {
             if (onMoveSelection && captured.contains("linked"))
-                onMoveSelection(captured["linked"], dragStart - original["start_samples"].get<int64_t>(),
-                                captured["revision"], captured["session"]);
+                onMoveSelection(captured.value("destination_targets", captured["linked"]),
+                                dragStart - original["start_samples"].get<int64_t>(), captured["revision"],
+                                captured["session"]);
             else
                 clipWrite(original["kind"] == "midi" ? "midi.clip.move" : "clip.move",
                           {{"clip", original["id"]}, {"position_samples", dragStart}}, captured["revision"]);

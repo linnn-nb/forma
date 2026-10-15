@@ -72,6 +72,10 @@ const std::vector<Entry>& entries()
         {editCommand::grid, "Grid 绝对网格", "编辑", juce::KeyPress::F4Key},
         {editCommand::selector, "Selector 时间选择", "编辑", juce::KeyPress::F7Key},
         {editCommand::grabber, "Grabber 片段移动", "编辑", juce::KeyPress::F8Key},
+        {editCommand::relocateUp, "片段移至上一轨道…", "编辑", juce::KeyPress::upKey,
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {editCommand::relocateDown, "片段移至下一轨道…", "编辑", juce::KeyPress::downKey,
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {editCommand::trim, "Trim 片段修剪", "编辑", juce::KeyPress::F6Key},
         {editCommand::smart, "Smart Tool（音频选区 / 移动 / 修剪 / 淡化）", "编辑", juce::KeyPress::numberPad7,
          juce::ModifierKeys::commandModifier},
@@ -740,6 +744,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.setTicked(facts.value("transport_settings", Json::object()).value("metronome_enabled", false));
             if (id == 45)
                 active = !facts.value("time_selection", Json(nullptr)).is_null();
+            if (id == editCommand::relocateUp || id == editCommand::relocateDown)
+                active = !mix && !facts.value("playing", false) && pending.is_null() && !selectedEditClips().empty();
             if (id == 1 || id == 2 || id == 3 || id == 4 || id == 5 || id == 41 || id == 84)
                 active = !facts.value("playing", false) && facts.value("parameter_capture", Json(nullptr)).is_null();
             if (id == 32)
@@ -1512,8 +1518,9 @@ bool Workspace::perform(const InvocationInfo& invocation)
         executeClipboardCommand(id);
         return true;
     }
-    if (editCommand::boundaryNudge(id) || id == editCommand::extendPrevious || id == editCommand::extendNext ||
-        id == editCommand::smart || id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
+    if (id == editCommand::relocateUp || id == editCommand::relocateDown || editCommand::boundaryNudge(id) ||
+        id == editCommand::extendPrevious || id == editCommand::extendNext || id == editCommand::smart ||
+        id == editCommand::shuffle || id == editCommand::slip || id == editCommand::spot ||
         (id >= editCommand::grid && id <= editCommand::split))
     {
         executeEditCommand(id);
