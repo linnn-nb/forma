@@ -102,9 +102,10 @@ int runSuite(const juce::StringArray& args)
             },
             "search exposes actual registered Grid action");
         click(w, "shortcuts.command:116");
-        const auto custom = juce::KeyPress(
-            'u', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
-            0);
+        const auto custom = juce::KeyPress(juce::KeyPress::F11Key,
+                                           juce::ModifierKeys::commandModifier | juce::ModifierKeys::ctrlModifier |
+                                               juce::ModifierKeys::shiftModifier,
+                                           0);
         check(keys->findCommandForKeyPress(custom) == 0, "candidate key is actually unassigned");
         const auto f4 = juce::KeyPress(juce::KeyPress::F4Key);
         check(keys->containsMapping(116, f4), "actual Grid starts with F4");

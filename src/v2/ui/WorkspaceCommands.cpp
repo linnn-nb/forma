@@ -186,9 +186,9 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {266, "Zoom Toggle 偏好…", "设置", 'e', cmd | shift | juce::ModifierKeys::altModifier},
         {268, "钢琴卷帘 · 音高显示放大", "缩放", juce::KeyPress::upKey,
-         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {269, "钢琴卷帘 · 音高显示缩小", "缩放", juce::KeyPress::downKey,
-         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | shift},
         {270, "钢琴卷帘 · 适配所选 / 全部音符", "缩放", 'f',
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {271, "钢琴卷帘 · 适配片段全部音符", "缩放", 'f',
@@ -1850,6 +1850,8 @@ bool Workspace::restoreShortcuts(const juce::XmlElement& xml)
              {286, 526, '2', three},
              {287, 529, '5', three},
              {272, 536, '0', three},
+             {268, 172, juce::KeyPress::upKey, juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+             {269, 173, juce::KeyPress::downKey, juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
              {520, 574, 'c',
               juce::ModifierKeys::commandModifier | juce::ModifierKeys::ctrlModifier |
                   juce::ModifierKeys::altModifier}})

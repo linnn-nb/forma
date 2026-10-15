@@ -1018,6 +1018,13 @@ target_link_libraries(ndaw_keyboard_settings_tests PRIVATE ndaw_ui)
 add_test(NAME forma_native_keyboard_settings COMMAND ndaw_keyboard_settings_tests "${CMAKE_BINARY_DIR}/keyboard-settings-tests.json")
 set_tests_properties(forma_native_keyboard_settings PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_workspace_shortcut_tests PRODUCT_NAME "ndaw_workspace_shortcut_tests")
+target_sources(ndaw_workspace_shortcut_tests PRIVATE tests/v2/WorkspaceShortcutTests.cpp)
+target_include_directories(ndaw_workspace_shortcut_tests PRIVATE src/v2)
+target_link_libraries(ndaw_workspace_shortcut_tests PRIVATE ndaw_ui)
+add_test(NAME forma_workspace_shortcuts COMMAND ndaw_workspace_shortcut_tests "${CMAKE_BINARY_DIR}/workspace-shortcuts-tests.json")
+set_tests_properties(forma_workspace_shortcuts PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_session_exit_tests PRODUCT_NAME "ndaw_session_exit_tests")
 target_sources(ndaw_session_exit_tests PRIVATE tests/v2/SessionExitTests.cpp)
 target_link_libraries(ndaw_session_exit_tests PRIVATE ndaw_ui)

@@ -270,15 +270,17 @@ int main(int argc, char** argv)
         invocation.originatingComponent = &typing;
         const auto typingView = c.uiState();
         check(!w.perform(invocation) && c.uiState() == typingView, "text input cannot trigger piano display shortcut");
-        check(w.uiCommands().getKeyMappings()->containsMapping(
-                  272, juce::KeyPress('0',
-                                      juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier |
-                                          juce::ModifierKeys::shiftModifier,
-                                      0)),
-              "reset pitch shortcut does not collide with existing all-rulers shortcut");
+        const juce::KeyPress reset(
+            'r', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
+            0);
+        check(w.uiCommands().getKeyMappings()->findCommandForKeyPress(reset) == 272,
+              "current reset pitch key resolves to its own command");
         // Geometry and keyboard mappings survive a native saved Edit, not just an in-memory test.
         auto* keys = w.uiCommands().getKeyMappings();
-        const juce::KeyPress custom('p', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
+        const juce::KeyPress custom(
+            juce::KeyPress::F11Key,
+            juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier, 0);
+        check(keys->findCommandForKeyPress(custom) == 0, "test customization uses an actually free key");
         keys->clearAllKeyPresses(268);
         keys->addKeyPress(268, custom);
         pump();
@@ -299,6 +301,8 @@ int main(int argc, char** argv)
             check(owner.query()["tracks"] == c.query()["tracks"], "save reopen preserves actual complete track facts");
             check(reopened.uiCommands().getKeyMappings()->containsMapping(268, custom),
                   "native file restores custom zoom shortcut");
+            check(reopened.uiCommands().getKeyMappings()->findCommandForKeyPress(custom) == 268,
+                  "restored custom zoom key resolves to the intended real command");
             check(reopened.uiCommands().getKeyMappings()->keyPressed(custom, n),
                   "restored shortcut dispatches actual native zoom");
             pump();
