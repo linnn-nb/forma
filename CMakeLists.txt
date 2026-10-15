@@ -509,7 +509,7 @@ set_tests_properties(tracktion_native_plugin_editors PROPERTIES TIMEOUT 90 FAIL_
 juce_add_console_app(ndaw_external_automation_tests PRODUCT_NAME "ndaw_external_automation_tests")
 target_sources(ndaw_external_automation_tests PRIVATE tests/v2/ExternalAutomationTests.cpp)
 target_link_libraries(ndaw_external_automation_tests PRIVATE ndaw_engine)
-add_test(NAME tracktion_external_plugin_automation COMMAND ndaw_external_automation_tests "${CMAKE_SOURCE_DIR}/evidence/M1/external-automation-tests.json")
+add_test(NAME tracktion_external_plugin_automation COMMAND ndaw_external_automation_tests "${CMAKE_SOURCE_DIR}/evidence/M1/external-automation-tests.json" "${CMAKE_BINARY_DIR}/au-automation-demos")
 set_tests_properties(tracktion_external_plugin_automation PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_private_state_tests PRODUCT_NAME "ndaw_private_state_tests")

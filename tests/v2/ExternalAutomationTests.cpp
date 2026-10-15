@@ -161,8 +161,9 @@ int main(int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI gui;
     try
     {
-        auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory)
-                       .getChildFile("ndaw-ext-auto-" + juce::Uuid().toString());
+        const auto parent = argc > 2 ? juce::File(juce::String::fromUTF8(argv[2]))
+                                     : juce::File::getSpecialLocation(juce::File::tempDirectory);
+        auto dir = parent.getChildFile("ndaw-ext-auto-" + juce::Uuid().toString());
         dir.createDirectory();
         auto src = dir.getChildFile("known.wav");
         fixture(src);
@@ -230,6 +231,21 @@ int main(int argc, char** argv)
             check(std::abs(delta(audio.getRMSLevel(0, 19200, 4800)) + 6) < .01 &&
                       std::abs(delta(audio.getRMSLevel(0, 96000, 4800)) + 12) < .01,
                   "reopened actual AU curve reproduces both DSP plateaus");
+            reopen.undo(curve["plan_id"]);
+            check(lane(reopen, tid, param)["points"].empty(), "original curve Undo remains available after reopen");
+            auto undone = render(reopen, dir, "AU reopened original Undo");
+            check(std::abs(delta(undone.getRMSLevel(0, 19200, 4800))) < .01 &&
+                      std::abs(delta(undone.getRMSLevel(0, 96000, 4800))) < .01,
+                  "reopened original Undo restores actual flat DSP in both regions");
+            reopen.redo();
+            check(lane(reopen, tid, param)["points"] == points,
+                  "reopened original Redo restores exact curve identities and values");
+            auto redone = render(reopen, dir, "AU reopened original Redo");
+            check(std::abs(delta(redone.getRMSLevel(0, 19200, 4800)) + 6) < .01 &&
+                      std::abs(delta(redone.getRMSLevel(0, 96000, 4800)) + 12) < .01,
+                  "reopened original Redo restores both actual automation plateaus");
+            check(std::abs(ParameterTestAccess::trace(reopen)[0]["explicit"].get<double>() - originalExplicit) < 1e-7,
+                  "reopened original Undo Redo leaves explicit automation base unchanged");
         }
         for (const char* mode : {"read", "touch", "latch", "write"})
         {
@@ -354,6 +370,9 @@ int main(int argc, char** argv)
                        {"au_step_requested_frame", 48001},
                        {"au_step_actual_frame", first},
                        {"au_plateau_db", {db1, db2}},
+                       {"fixture", dir.getFullPathName().toStdString()},
+                       {"source_sha256", hash},
+                       {"au_session", saved.getFullPathName().toStdString()},
                        {"live", live},
                        {"renders", renders},
                        {"scope", "actual AU/VST3 normalized Read curves and AU native notifications during CoreAudio "
@@ -367,7 +386,8 @@ int main(int argc, char** argv)
                 throw std::runtime_error("report write failed");
         }
         std::cout << result.dump(2) << std::endl;
-        dir.deleteRecursively();
+        if (argc <= 2)
+            dir.deleteRecursively();
         return 0;
     }
     catch (const std::exception& e)
