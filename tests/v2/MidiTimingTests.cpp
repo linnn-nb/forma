@@ -1,4 +1,5 @@
 #include "ProjectFixture.h"
+#include "OwnedEditFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -154,6 +155,14 @@ int onset(Commands& c, const juce::File& file)
     throw std::runtime_error("missing real instrument onset");
 }
 } // namespace
+void openNative(Workspace& w, Commands& c, const juce::File& file)
+{
+    const auto token = c.sessionToken();
+    w.openSession(file);
+    pump();
+    check(c.sessionToken() != token,
+          "native Open adopts the requested MIDI fixture rather than retaining the old Edit");
+}
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -199,6 +208,7 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = ndaw::v2::project_fixture::nativeXml(base);
+        discardDerivedFixtureHistory(*xml); // Explicit foreign fractional-event import.
         check(bool(xml), "owned native MIDI fixture parsed");
         auto *midi = byID(*xml, id), *first = byID(*xml, selected[0]), *second = byID(*xml, selected[1]);
         check(midi && first && second && first->hasTagName("NOTE"),
@@ -216,8 +226,7 @@ int main(int argc, char** argv)
         sequence->addChildElement(event.release());
         const auto imported = dir.getChildFile("Imported.tracktionedit");
         check(xml->writeTo(imported), "independent fractional-beat muted-note and real CC fixture saved");
-        w.openSession(imported);
-        pump();
+        openNative(w, c, imported);
         invoke(w, 10);
         auto* canvas = dynamic_cast<NoteCanvas*>(find(w, "midi.canvas"));
         check(canvas, "production piano roll is present");
@@ -287,8 +296,7 @@ int main(int argc, char** argv)
                     c.undo();
                     pump();
                     check(clip(c)["notes"] == originalNotes, "save retains MIDI timing Undo history");
-                    w.openSession(saved);
-                    pump();
+                    openNative(w, c, saved);
                     if (!sameSavedNotes(changed, clip(c)["notes"]) || clip(c)["controller_events"] != originalCC)
                         std::cerr << "REOPEN expected " << changed.dump() << " actual " << clip(c)["notes"].dump()
                                   << " expectedCC " << originalCC.dump() << " actualCC "
@@ -299,8 +307,7 @@ int main(int argc, char** argv)
                     check(byID(*savedXML, selected[0])->getStringAttribute("qualification_extra") ==
                               "retained-import-metadata",
                           "timing edit preserves unexposed imported note metadata");
-                    w.openSession(imported);
-                    pump();
+                    openNative(w, c, imported);
                     invoke(w, 10);
                     canvas->restoreSelection(Json(selected));
                     pump();
@@ -383,8 +390,7 @@ int main(int argc, char** argv)
         c.save(demo);
         c.undo();
         pump();
-        w.openSession(demo);
-        pump();
+        openNative(w, c, demo);
         check(w.uiCommands().getKeyMappings()->containsMapping(editCommand::nudgeForward, custom) &&
                   note(c, selected[0])["position_samples"] == 48480,
               "custom keyboard binding and actual MIDI timing survive native Open");

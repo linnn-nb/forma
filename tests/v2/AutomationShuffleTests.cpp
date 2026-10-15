@@ -1,4 +1,5 @@
 #include "ProjectFixture.h"
+#include "OwnedEditFixture.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include <fstream>
 #include <iostream>
@@ -176,6 +177,8 @@ int main(int argc, char** argv)
                 const auto referenceFile = folder.getChildFile("Reference-" + juce::String(curve) + ".tracktionedit");
                 reference.save(referenceFile);
                 auto referenceXml = ndaw::v2::project_fixture::nativeXml(referenceFile);
+                discardDerivedFixtureHistory(
+                    *referenceXml); // Explicit foreign-state import, never a modern Undo archive.
                 auto originalXml = ndaw::v2::project_fixture::nativeXml(beforeFile);
                 check(referenceXml && originalXml, "owned native reference sessions parsed");
                 auto findByID = [&](auto&& self, juce::XmlElement& root, const juce::String& id) -> juce::XmlElement*
@@ -432,6 +435,7 @@ int main(int argc, char** argv)
             const auto imported = folder.getChildFile("FractionalMetadata.tracktionedit");
             c.save(imported);
             auto xml = ndaw::v2::project_fixture::nativeXml(imported);
+            discardDerivedFixtureHistory(*xml); // Explicit foreign-state import, never a modern Undo archive.
             auto annotate = [&](auto&& self, juce::XmlElement& n) -> void
             {
                 if (n.hasTagName("POINT"))
@@ -471,6 +475,7 @@ int main(int argc, char** argv)
             // Inject 65537 genuine native points through an OWNED import fixture,
             // not a test double. Enforce the documented work budget atomically.
             auto denseXml = ndaw::v2::project_fixture::nativeXml(saved);
+            discardDerivedFixtureHistory(*denseXml); // Explicit foreign-state import, never a modern Undo archive.
             auto densify = [&](auto&& self, juce::XmlElement& n) -> bool
             {
                 if (n.getChildByName("POINT"))
