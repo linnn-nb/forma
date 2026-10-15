@@ -1,0 +1,67 @@
+--- a/modules/juce_core/xml/juce_XmlDocument.cpp
++++ b/modules/juce_core/xml/juce_XmlDocument.cpp
+@@ -353,6 +353,16 @@
+ void XmlDocument::readQuotedString (String& result)
+ {
+     auto quote = readNextChar();
++    // Keep ordinary attributes on their existing path. Escaped history attributes
++    // can be megabytes long: appending each entity to String scans its old tail.
++    std::unique_ptr<MemoryOutputStream> expanded;
++    auto append = [&] (auto start, auto end)
++    {
++        if (expanded != nullptr)
++            *expanded << String (start, end);
++        else
++            result.appendCharPointer (start, end);
++    };
+ 
+     while (! outOfData)
+     {
+@@ -365,7 +375,15 @@
+ 
+         if (c == '&')
+         {
+-            readEntity (result);
++            if (expanded == nullptr)
++            {
++                expanded = std::make_unique<MemoryOutputStream>();
++                *expanded << result;
++            }
++
++            String entity;
++            readEntity (entity);
++            *expanded << entity;
+         }
+         else
+         {
+@@ -377,14 +395,18 @@
+ 
+                 if (character == quote)
+                 {
+-                    result.appendCharPointer (start, input);
++                    append (start, input);
+                     ++input;
++
++                    if (expanded != nullptr)
++                        result = expanded->toUTF8();
++
+                     return;
+                 }
+ 
+                 if (character == '&')
+                 {
+-                    result.appendCharPointer (start, input);
++                    append (start, input);
+                     break;
+                 }
+ 
+@@ -399,6 +421,9 @@
+             }
+         }
+     }
++
++    if (expanded != nullptr)
++        result = expanded->toUTF8();
+ }
+ 
+ XmlElement* XmlDocument::readNextElement (const bool alsoParseSubElements)

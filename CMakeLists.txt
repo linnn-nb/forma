@@ -25,6 +25,19 @@ endif()
 if(NOT JUCE_AU_HASH STREQUAL "6e1ca5bccb7f133980ae8b4dc4183453b1770f700ae88ed95dca8e6a53f6fe12")
   message(FATAL_ERROR "JUCE AU source differs from the qualified pin and recorded patch")
 endif()
+# Preserve the pinned parser's data/error behavior while avoiding quadratic
+# String tail scans in large escaped persistent-history XML attributes.
+set(JUCE_XML_SOURCE "${juce_SOURCE_DIR}/modules/juce_core/xml/juce_XmlDocument.cpp")
+file(SHA256 "${JUCE_XML_SOURCE}" JUCE_XML_HASH)
+if(JUCE_XML_HASH STREQUAL "4dccbae81b15c113a1abe9acffec35f0231766e98d17f08c3d93d3e1b4a12cb8")
+  find_program(NDAW_PATCH_EXECUTABLE patch REQUIRED)
+  execute_process(COMMAND "${NDAW_PATCH_EXECUTABLE}" --batch --forward -p1 -i "${CMAKE_SOURCE_DIR}/patches/juce-xml-attribute-stream.patch"
+    WORKING_DIRECTORY "${juce_SOURCE_DIR}" COMMAND_ERROR_IS_FATAL ANY)
+  file(SHA256 "${JUCE_XML_SOURCE}" JUCE_XML_HASH)
+endif()
+if(NOT JUCE_XML_HASH STREQUAL "6b7d4a4853369b7289d2481cccdc5de3f3802a054af2453f48648dd1f0689392")
+  message(FATAL_ERROR "JUCE XML source differs from the qualified pin and recorded patch")
+endif()
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/.deps/json.hpp")
   file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/.deps")
   file(DOWNLOAD https://raw.githubusercontent.com/nlohmann/json/v3.11.3/single_include/nlohmann/json.hpp
