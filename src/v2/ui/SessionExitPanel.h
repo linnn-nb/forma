@@ -5,6 +5,24 @@ namespace ndaw::desktop
 {
 class SessionExitPanel final : public juce::Component
 {
+    class PathEditor final : public juce::TextEditor
+    {
+    public:
+        std::function<void()> cancel;
+        bool keyPressed(const juce::KeyPress& key) override
+        {
+            // TextEditor::onEscapeKey is posted asynchronously. Revoke the exit
+            // intent before an already queued authorisation can run instead.
+            if (key == juce::KeyPress::escapeKey)
+            {
+                if (cancel)
+                    cancel();
+                return true;
+            }
+            return juce::TextEditor::keyPressed(key);
+        }
+    };
+
 public:
     SessionExitPanel(std::function<void(const juce::File&)> save, std::function<void()> snapshot,
                      std::function<void()> cancel, std::function<void()> browse)
@@ -41,7 +59,7 @@ public:
         snapshotButton.onClick = std::move(snapshot);
         cancelAction = std::move(cancel);
         cancelButton.onClick = cancelAction;
-        path.onEscapeKey = cancelAction;
+        path.cancel = cancelAction;
         browseButton.onClick = std::move(browse);
     }
     void destination(const juce::File& file)
@@ -88,7 +106,7 @@ public:
 
 private:
     juce::Label title, detail, outcome;
-    juce::TextEditor path;
+    PathEditor path;
     juce::TextButton saveButton, snapshotButton, cancelButton, browseButton;
     std::function<void()> cancelAction;
 };
