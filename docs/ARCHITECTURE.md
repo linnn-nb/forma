@@ -1,3 +1,5 @@
+2026-10-15 零点Shuffle修复：L1 shuffleRangeOperations的append阶段对已有clip.delete调用同一normaliseClipDeletion，保证首次Plan与复编译都携带来源/存在性/媒体前置条件；split别名保留原有同Plan来源处理。严格operations相等、版本/Scope/锁定与幂等不变。未改GUI直接写入、L0/RT/SDK/引擎；界面仍经既有Selector范围与Delete命令。实际验证以当前VERIFICATION.md/P3汇总为准。
+
 2026-10-15 工程格式增量：L1 ProjectDocument 只封装同一原生 Edit，不引入第二工程。特殊处理能力由当前/非活动树和未打包增量历史保守推导，FORMA_PROJECT v1 根确保已有 EDIT-only 读者明确拒绝；简单工程保持原生根。内容 hash、必需能力/版本、历史闭包均先于新 Edit 初始化校验；恢复共享编码，原历史 codec/Undo/稳定身份保持。纯 XML/ValueTree/文件工作不进入实时路径，未增加 SDK/服务/依赖。协议、旧读者实际证据和限制见 PROJECT_FORMAT.md。
 
 2026-10-15 处理源/关联迁移增量：仍由 L1/message thread 冻结源曲线和原生处理窗口，一 Plan/UndoManager 迁移原 Clip/Playlist/Comp 身份。RelocationAutomation 仅在原生端点与声明样本精确相等时用整数 sampleDelta 合并共享区间，音乐和分数采样映射保持原精确校验；合并保留成员集合，排除自碰撞。Clip FX 纳入有状态尾随准备，不改变实际 DSP 或实时回调。

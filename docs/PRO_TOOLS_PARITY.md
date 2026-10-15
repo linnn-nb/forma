@@ -1,3 +1,5 @@
+本表继续作为交互与工作流参考，不是完成度门槛。2026-10-15：音频范围Shuffle从零点删除的合法Plan误拒已修，原Undo/重开/自定义Delete键通过本地native-peer回归；并非Pro Tools实机或全工作流对齐。代码EditGroupCommands，测试AutomationShuffleTests/GroupsWorkspaceTests；当前状态/边界见VERIFICATION.md、evidence/P3/summary.md，无新依赖。
+
 本表是 Pro Tools 交互与工作流参考清单，不是完成度门槛。2026-10-15：新增 Forma 自有工程读取能力保护，不构成 .ptx、AAX 或第三方生态兼容。代码 ProjectDocument/PersistentHistory/EngineCommands，测试 ProjectDocumentTests；实际格式、旧读者拒绝与迁移规则见 PROJECT_FORMAT.md、当前结果见 VERIFICATION.md。状态：部分实现，七类语义已登记，其它持久语义和任意历史版本认证待验；无新增依赖。以下为历史核验。
 
 本表仍是 Pro Tools 交互与工作流参考清单，不是完成度门槛。2026-10-15：关联 Comp 迁移新增普通/SoundTouch/Warp、四非默认原生 Clip FX 与 Volume/Pan Read 曲线的三场景组合验收。实现 RelocationAutomation/ElasticCommands/LinkedCompRelocation，测试 LinkedRelocationTests/WarpTests/WarpMixTests，操作和原 Undo/冷重开/PCM 证据见 LINKED_COMP_RELOCATION.md、evidence/P3/summary.md。状态：部分实现；复杂轨道 FX/PDC/路由/混合组、实体听评与 Pro Tools 实机对照未完成；无新增外部依赖，不称生态、性能或完整行为对齐。以下为历史核验。

@@ -1,3 +1,19 @@
+# 零点范围Shuffle与全帧音频（2026-10-15）
+
+**7套受影响测试按各自最新终态通过：原7/7（132.71秒）、native-peer强化1/1（13.68秒）、全帧强化1/1（49.60秒）。** 不是本轮全跑全部77套，不累加被替换的旧检查。应用及7个受影响目标先构建exit0再测试；之后只重建/运行加强的目标。详细命令、最新JSON新鲜度/SHA、三份JUnit、实际产物见本地 build-v2-tracktion/p3-shuffle-current-results.json。
+
+实际生产修复c72e8a4/EditGroupCommands：从零点删除已有音频并保留尾段时，复编译缺少makePlanImpl补入的source_present/source_reference_hash/media_hash，被严格比较误拒。现在编译器append阶段同样规范化已有删除对象，split别名保持原规则；版本/Scope/锁定/幂等、来源和媒体校验不减。无新GUI写入口、RT/SDK/依赖。
+
+声音318项/49.59秒：九曲线0/±.25/±.5/±.75/±1，真实EQ/音量/声像，原Undo/Redo/保存重开、分数时间/未知POINT字段与65537点拒绝。每对PCM24/48k双声道192000帧全比较，**头尾/切点排除=0**；最大差1.1920928955078125e-7＜原2e-5，曲线1.7881393432617188e-7＜原4e-7，原180秒不变。未编辑前缀另与原WAV对照，防止参考漂移。
+
+旧0.0291538未删：原失败差异集中在35985..35999、95985..95999，原/后WAV前47000帧逐位一致；参考16采样网格错误插值强曲线跳变。独立实际PCM对照 p3-shuffle-discontinuity-control.json 证明该参考问题，2b3e9ff补所有POINT相邻采样。之后九声音例通过却在后续零点Plan复验失败（p3-shuffle-discontinuity.xml），再修生产；8ba79c6收紧全帧，未改DSP/放宽预算。
+
+Groups146项/13.67秒包含c764682新增的两个实际native peer、Selector范围事件、默认Backspace从零点删除、单Undo/Redo保留尾段身份、保存冷重开原Undo、自定义Delete和重开后首次键执行。其它6套：组变换/范围、自动化跟随、离线删除、格式80项及上述音频。没有宣称OS键盘注入、麦克风或用户听评。
+
+应用 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `3d8ef94eb9db37e4abab56d1ba757cc622b6ce6c3f8a8bb065bfd7c8620065ce`；18补丁/44文件fresh apply/实际源码逐字匹配/reverse及固定本地签名deep/strict通过，非发行公证。没有新DMG/应用副本。已生成的零点示例 `/private/var/folders/wh/2_70b79j1vj9zll355w8g3g00000gn/T/ndaw_groups_tests/forma-groups-904eaa0f70924cd8b1001b9ec9c1179e/zero-start-shuffle/Before.tracktionedit` 位于测试临时目录，可能被系统清理；也可用任意≥2秒音频，Shuffle模式用Selector从零点选一秒后Delete，CmdZ/Redo，另存新文件重开。
+
+原MusicalShuffle/Delete预览、SharedClock/键路由、AutomationMove180秒、ObjectShuffle300秒四项本轮未重跑，继续未通过。下一项用真实范围输入/回执定位两处GUI失败；不把内部UI写入后的固定等待当用户动作。原性能A/分析/长源/真实录音听评/Windows/视频/发行及其它能力版本审计保持。完整产品未完成，以下为历史记录。
+
 # 工程读取能力与旧读者保护（2026-10-15）
 
 **本轮整体未通过：77套按最新终态72通过、5未通过。** 初始55/77，Scrub1/1，夹具修复16/22，局部再测0/2，真实Nudge控件复测1/1。只取各套最新结果，旧JSON不能覆盖失败；完整索引 build-v2-tracktion/p3-project-document-current-results.json，五批JUnit及失败日志均保留。并非全套一次通过，也不是完整产品。
