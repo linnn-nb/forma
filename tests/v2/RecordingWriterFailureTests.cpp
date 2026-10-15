@@ -215,8 +215,11 @@ void scenario(const juce::File& folder, bool loop)
         c.undo(failed["plan_id"]);
         check(c.query()["tracks"] == before, "normal partial failed attachment has one original Undo");
         c.redo();
-        check(c.query()["last_recording"]["state"] == "failed",
-              "Redo never changes failed partial attachment into success");
+        const auto status = c.query()["history"]["undo"].at("recording_status");
+        check(c.query()["last_recording"].is_null() && status["outcome"] == "failed" &&
+                  status["failure_code"] == "writer_unavailable" && status["evidence"] == "stored_history" &&
+                  status["audio_verified"] == false,
+              "reopened Redo preserves historical failure without forging a new execution or audio verification");
         c.undo(failed["plan_id"]);
     }
     c.undo(rename["plan_id"]);

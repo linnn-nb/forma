@@ -638,10 +638,34 @@ const Json& Commands::queryFacts() const
         catch (...)
         { /* Legacy or damaged descriptions cannot change Undo behavior. */
         }
-        return {{"plan_id", id},
-                {"actor", tx.getProperty("actor").toString().toStdString()},
-                {"source", tx.getProperty("source").toString().toStdString()},
-                {"commands", commands}};
+        Json result{{"plan_id", id},
+                    {"actor", tx.getProperty("actor").toString().toStdString()},
+                    {"source", tx.getProperty("source").toString().toStdString()},
+                    {"commands", commands}};
+        if (result["source"] == "native-recording")
+        {
+            Json status{{"outcome", "unknown"}, {"evidence", "stored_history"}, {"audio_verified", false}};
+            const auto saved = tx.getProperty("receipt").toString().toStdString();
+            // A bounded display summary, never a fresh execution or audio receipt.
+            // Oversized/invalid descriptions retain their original opaque data.
+            if (saved.size() <= 4 * 1024 * 1024)
+            {
+                const auto r = Json::parse(saved, nullptr, false);
+                if (r.is_object() && r.value("plan_id", Json(nullptr)) == id && r.contains("outcome") &&
+                    r["outcome"].is_string())
+                {
+                    const auto outcome = r["outcome"].get<std::string>();
+                    if (outcome == "failed" || outcome == "success" || outcome == "no_events")
+                        status["outcome"] = outcome;
+                    if (r.contains("error") && r["error"].is_string())
+                        status["error"] = r["error"].get<std::string>().substr(0, 2048);
+                    if (r.contains("failure_code") && r["failure_code"].is_string())
+                        status["failure_code"] = r["failure_code"].get<std::string>().substr(0, 128);
+                }
+            }
+            result["recording_status"] = std::move(status);
+        }
+        return result;
     };
     factCache = {
         {"session_token", sessionToken()},

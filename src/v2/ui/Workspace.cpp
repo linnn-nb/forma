@@ -992,6 +992,13 @@ juce::String Workspace::historyLabel(const Json& entry)
             return text("片段增益");
     }
     const auto source = entry.value("source", std::string{});
+    if (source == "native-recording")
+    {
+        const auto outcome = entry.value("recording_status", Json::object()).value("outcome", std::string("unknown"));
+        return text(outcome == "failed"    ? "录音失败 · 部分片段历史"
+                    : outcome == "success" ? "录音 · 历史附件"
+                                           : "录音历史 · 结果未核验");
+    }
     if (source == "plugin_state" || source == "plugin_state_poll")
         return text("插件状态修改");
     if (source == "gui-parameter" || source == "sdk-parameter" || source == "plugin_ui")
