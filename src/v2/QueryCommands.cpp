@@ -1,5 +1,6 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "NativePluginStates.h"
+#include "MidiControllerFacts.h"
 
 namespace ndaw::v2
 {
@@ -387,17 +388,9 @@ Json Commands::queryObjects(const Json& args) const
                                         {"length_samples", samples(end) - samples(begin)}};
                         });
         }
-        const auto& events = clip->getSequence().getControllerEvents();
+        const auto events = detail::midiControllerReferences(*clip);
         return page(size_t(events.size()),
-                    [&](size_t index)
-                    {
-                        auto& e = *events[int(index)];
-                        return Json{{"type", e.getType()},
-                                    {"raw_value", e.getControllerValue()},
-                                    {"metadata", e.getMetadata()},
-                                    {"source_beat", e.getBeatPosition().inBeats()},
-                                    {"position_samples", samples(e.getEditTime(*clip))}};
-                    });
+                    [&](size_t index) { return detail::midiControllerFact(*clip, events[index]); });
     }
     if (collection == "tempos")
     {

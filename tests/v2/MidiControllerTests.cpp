@@ -83,6 +83,31 @@ Json clip(Commands& c)
 {
     return c.query()["tracks"][0]["clips"][0];
 }
+void checkControllerPages(Commands& c)
+{
+    const auto expected = clip(c);
+    const auto snapshot = c.querySummary();
+    Json args{{"collection", "midi_controllers"},
+              {"target", expected["id"]},
+              {"session_token", snapshot["session_token"]},
+              {"base_revision", snapshot["revision"]},
+              {"limit", 1}};
+    Json items = Json::array();
+    for (size_t i = 0; i < expected["controller_events"].size(); ++i)
+    {
+        args["offset"] = i;
+        const auto page = c.queryObjects(args);
+        check(page["total"] == expected["controller_events"].size() && page["items"].size() == 1,
+              "persisted controller page respects its exact native count and one-item limit");
+        items.push_back(page["items"][0]);
+    }
+    check(items == expected["controller_events"],
+          "paged persisted CC identities, units and sample positions equal complete facts exactly");
+    args["offset"] = items.size();
+    const auto end = c.queryObjects(args);
+    check(end["items"].empty() && end["next_offset"].is_null() && c.querySummary() == snapshot,
+          "controller paging ends explicitly without changing revision or native state");
+}
 Json lane(Commands& c, int type = 11)
 {
     Json p = Json::array();
@@ -185,6 +210,7 @@ int main(int argc, char** argv)
             std::cerr << "EXPECTED " << p.dump() << " ACTUAL " << lane(c).dump() << " RECEIPT " << receipt.dump()
                       << std::endl;
         check(receipt["state"] == "committed" && lane(c) == p, "real CC commit returns inserted stable identities");
+        checkControllerPages(c);
         check(clip(c)["notes"] == notes, "CC commit retains exact note facts");
         auto messages = playback(c);
         check(messages.size() == 2 && messages[0]["value"] == 0 && messages[1]["value"] == 127,
@@ -203,6 +229,7 @@ int main(int argc, char** argv)
         check(lane(c).empty(), "reopened original Undo restores prior native MIDI");
         c.redo();
         check(lane(c) == p && playback(c) == messages, "reopened Redo restores exact production MIDI output");
+        checkControllerPages(c);
         auto bad = p;
         bad[1]["id"] = bad[0]["id"];
         rejects([&] { run(c, Json::array({op("midi.cc.replace", args(c, bad))})); },

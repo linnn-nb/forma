@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <juce_cryptography/juce_cryptography.h>
 #include <cctype>
+#include "MidiControllerFacts.h"
 namespace ndaw::v2
 {
 namespace
@@ -23,11 +24,7 @@ std::string prefix(te::MidiClip& clip)
 {
     return "cc:" + clip.itemID.toString().toStdString() + ":";
 }
-struct Event
-{
-    std::string key;
-    te::MidiControllerEvent* native;
-};
+using Event = detail::MidiControllerEventReference;
 std::vector<Event> events(te::MidiClip& clip)
 {
     std::vector<Event> result;
@@ -68,6 +65,17 @@ bool newKey(const std::string& id, const std::string& p)
            std::all_of(id.begin() + int(start.size()), id.end(), [](unsigned char c) { return std::isxdigit(c); });
 }
 } // namespace
+namespace detail
+{
+std::vector<MidiControllerEventReference> midiControllerReferences(te::MidiClip& clip)
+{
+    return events(clip);
+}
+Json midiControllerFact(te::MidiClip& clip, const MidiControllerEventReference& event)
+{
+    return facts(clip, event);
+}
+} // namespace detail
 void validateMidiControllerIDs(te::Edit& edit)
 {
     // Validate persisted metadata without hydrating MIDI playback lists during adoption.
