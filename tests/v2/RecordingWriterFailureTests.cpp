@@ -13,6 +13,10 @@ public:
     {
         return c.engine;
     }
+    static te::TransportControl& transport(Commands& c)
+    {
+        return c.edit->getTransport();
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -96,6 +100,25 @@ struct Feed
         worker.join();
     }
 };
+struct StopTrace : te::TransportControl::Listener
+{
+    te::TransportControl& transport;
+    StopTrace(te::TransportControl& t) : transport(t)
+    {
+        transport.addListener(this);
+    }
+    ~StopTrace() override
+    {
+        transport.removeListener(this);
+    }
+    void recordingAboutToStop(te::InputDeviceInstance&, te::EditItemID target) override
+    {
+        if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+            std::cout << "NATIVE_RECORD_STOP target=" << target.toString()
+                      << " global_recording=" << transport.isRecording() << '\n'
+                      << juce::SystemStats::getStackBacktrace() << std::endl;
+    }
+};
 void scenario(const juce::File& folder, bool loop)
 {
     folder.createDirectory();
@@ -131,11 +154,16 @@ void scenario(const juce::File& folder, bool loop)
     const std::string track = c.query()["tracks"][0]["id"];
     const auto rename = run(c, Json::array({op("track.rename", {{"track", track}, {"name", "Preserved human name"}})}));
     const auto before = c.query()["tracks"];
+    auto stopTrace = std::make_unique<StopTrace>(RecordingTestAccess::transport(c));
     const auto begin = c.record(folder);
     check(begin["state"] == "recording", "production native multitrack recording actually starts");
     const auto first = feed.frames.load();
     wait([&] { return feed.frames - first >= 24000; }, "real input records before fault injection");
     auto& writer = engine.getWaveInputRecordingThread();
+    if (!writer.isThreadRunning())
+        std::cout << "WRITER_ENDED_BEFORE_FAULT "
+                  << Json{{"active", c.query()["recording_capture"]}, {"last", c.query()["last_recording"]}}.dump()
+                  << std::endl;
     check(writer.isThreadRunning(), "actual native recording writer is running before fault");
     const auto stoppedAt = juce::Time::getMillisecondCounterHiRes();
     // Real thread fault injection, not a replacement writer or fake success result.
@@ -200,6 +228,7 @@ void scenario(const juce::File& folder, bool loop)
               (!loop || good["takes"].size() == 6),
           "healthy retry produces complete native clips and loop Takes");
     const auto captured = c.query()["tracks"];
+    stopTrace.reset();
     const auto saved = folder.getChildFile("Writer-Recovered.tracktionedit");
     c.save(saved);
     c.open(saved);
