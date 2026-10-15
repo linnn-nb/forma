@@ -1,4 +1,4 @@
-2026-10-15 当前：无新增付费/许可授权。依赖pin保持Tracktion 0d4d77c8c9defa6ec2aec6454f634e77bbd13f98、JUCE8.0.13；新增prepared-fader审计补丁，18份/44文件fresh apply、实际源码逐字比对、reverse通过。普通Read VolumeAndPan绕过可变自动化流，非RT准备快照，回调只读；其它插件ParameterAutomationSource仍有stream锁，EQ仍有filterLock，VCA/Modifier/录写/MIDI音量/停播监听回退原生路径。不能宣称整个引擎满足全部实时约束。21/22套通过；WAV尾音差0.0024923086166381836超原2e-6，发布阻断。实体键鼠/试听本增量未执行（此前CUA报告桌面锁定；用户曾手动确认窗口正常）。性能A、原180秒自动化矩阵、Master分析偶发超时、长源/连续FX负载、Windows/发行等原缺口保留。以下为历史记录。
+2026-10-15 当前无新增授权/依赖/SDK修改。Tracktion/JUCE pin与18补丁/44文件审计保持；本轮fresh apply、实际源码逐字比对、reverse通过。跨轨自动化显式2秒尾随已使两个EQ场景整段WAV差为0（原2e-6），23套受影响回归分批通过；这不是任意插件尾音保证。更长/共享/第三方尾音、VCA/Modifier/录写/MIDI音量/停播监听原SDK回退、其它参数流/EQ锁仍待资格。CUA本轮明确Mac锁定，实体键鼠和听评未执行；用户此前窗口正常，不据此认定App故障。关联Comp、多来源复杂组合、性能A/旧180秒自动化矩阵/分析超时/长源/连续FX/旧读者、Windows与发行仍保留。以下为历史记录。
 
 2026-10-15 跨轨拖放无新依赖、SDK修改或授权需求。实际普通/SoundTouch/Warp及四内置FX、完整/单侧交叉淡化、MIDI CC、原生历史已验证的范围见CLIP_RELOCATION.md；关联多轨Comp迁移和有轨道曲线时的跨轨自动化跟随仍未完成，当前整笔拒绝。CUA本轮明确Mac锁定，实体键鼠/试听未执行；用户此前手动窗口正常，不据桌面连接推断应用故障。旧焦点/性能A/分析超时/长源/连续FX负载、Windows/发行保留。
 

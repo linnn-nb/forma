@@ -1,4 +1,4 @@
-2026-10-15 原生推子更新：普通Read播放/离线渲染已接入采样级快照路径，自动化不再使用人工15ms平滑；人工操作和未资格模式保留原路径。逐采样矩阵、并发发布与64推子预算已实际执行。完整WAV误差从0.030845降至0.002492，差异转为片段结束后的EQ尾音，原2e-6门槛仍失败。本增量不称跨轨自动化声音资格完成；旧“起音失败”由本轮具体范围替代，完整产品差距仍保留。
+2026-10-15 当前：已加入显式自动化尾随（默认2秒），两个EQ场景整段WAV差0，原2e-6通过；23套受影响回归分批通过。固定范围不等于自动尾音检测，完整迁移能力仍未完成。设置/快捷键/冲突规则见[AUTOMATION_TAIL_WORKFLOW.md](AUTOMATION_TAIL_WORKFLOW.md)。
 
 # 跨轨道移动片段
 
@@ -10,7 +10,7 @@ Edit 的 Grabber 已接入跨轨道移动。按 F8，选中音频或 MIDI 片段
 
 自动化跟随已接入开发实现：冻结所有源曲线，保留移动点的稳定ID和未知原生属性；源区间留下边界锚，匹配目标区间被替换，外部曲线保留。主推子的音量/声像按参数ID匹配，其它插件按实际身份、槽位、参数ID、范围/步长/skew匹配；不匹配整笔拒绝，不创造参数。来源没有曲线时不清空目标其它曲线；关闭跟随时全部曲线留在原轨道。来源轨道的采样/音乐编辑时钟决定曲线映射。
 
-**声音保持验收未通过，功能仍未完成。** 原15ms平滑的因果对照已执行；普通Read原生推子改为逐采样快照后，主体PCM差1.1920928955078125e-7，整段差降到0.0024923086166381836，仍超过原2e-6。最大差位于片段结束后第2帧（源对齐144002）；参数恢复使目标EQ尾音不同。主体/尾音分窗仅用于定位，不代替完整WAV验收。下一项明确尾音范围、目标已有曲线及其它片段冲突和Scope；不跳过尾音、提高容差或烘媒体绕过。
+**固定范围的声音验证已通过，完整迁移能力仍未完成。** 初始15ms平滑误差0.030845，快照推子后仍有0.002492尾音差；现显式复制源自动化后续区间，默认2秒，两个实际EQ场景整段PCM差0（原2e-6）。来源片段外点保留，后续点以新身份/完整未知属性复制到目标；尾随结束恢复目标曲线，原生Undo与冷重开保持。目标范围内已有曲线会被替换，预览逐参数显示实际结束位置；未移动或同批移动片段与尾随区相交时整笔拒绝。选择仅片段会恢复立即还原目标参数的行为。更长/共享/第三方尾音仍可能不同，须试听或实际渲染核验。
 
 关联多轨Comp、原生grouped/offline ClipEffects、播放录音中迁移仍未资格；锁定、冻结、印刻和锁定Playlist拒绝。多来源交换/共享曲线冲突组合、复杂时钟/采样率仍须验证。
 
@@ -22,9 +22,9 @@ L1 `clips.relocate {moves:[{clip,from_track,to_track,position_samples}],state_ha
 
 代码：src/v2/NativeFader.cpp、NativeFader.h、RelocationAutomation.cpp、ClipRelocation.cpp、Scope.cpp、UiState.cpp、EngineCommands.cpp、ui/WorkspaceGrabber.cpp、RelocationDraft.h、EditWindow.h、WorkspaceEditing.cpp、WorkspaceCommands.cpp。
 
-## 自动化验收仍未通过
+## 已执行的自动化与音频验收
 
-RelocationAutomationTests.cpp覆盖原地音频、采样位移、MIDI/音乐时钟，真实Volume/Pan/EQ、目标已有曲线、未知点属性、原生求值器、Scope、人工冲突、冷重开和原UndoRedo。曲线预算为参数跨度1e-7加两个实际float ULP；PCM24/48k双声道480000帧，PCM2e-6、来源5秒、WAV10秒、专项180秒不改。收集后续状态证据不改变失败结果；最终CTest和失败JSON为准，见P3证据与本地p3-native-fader-current-results.json。
+RelocationAutomationTests.cpp覆盖原地音频、采样位移、MIDI/音乐时钟，真实Volume/Pan/EQ、目标已有曲线、未知点属性、原生求值器、Scope、人工冲突、冷重开和原UndoRedo。曲线预算为参数跨度1e-7加两个实际float ULP；PCM24/48k双声道480000帧，PCM2e-6、来源5秒、WAV10秒、专项180秒不改。本批两份完整WAV最大差0；统计按当前CTest与同批JSON，见P3证据与本地p3-tail-current-results.json。
 
 ## 此前已通过的跨轨资格
 

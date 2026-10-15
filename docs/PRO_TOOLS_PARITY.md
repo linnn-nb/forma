@@ -1,4 +1,4 @@
-本表是Pro Tools交互与工作流参考清单，不是完成度门槛。2026-10-15：普通Read原生VolumeAndPan已接采样级快照，真实SDK逐采样数值、并发发布和64推子预算有执行证据；不是Pro Tools行为/性能/全部插件精度对齐。跨轨自动化仍部分实现：状态/原Undo/冷重开已验，整段WAV尾音差0.0024923086166381836超过原2e-6。代码NativeFader/RelocationAutomation，测试RelocationAutomationTests，验收与原始结果见CLIP_RELOCATION.md及evidence/P3/summary.md；外部依赖无新增，实体听评/专有生态/平台等差距保留。以下保留历史核验。
+本表继续是Pro Tools交互/工作流参考清单，不是完成度门槛。2026-10-15：跨轨自动化增加明确尾随范围、源外点复制、目标/同批片段冲突、设置原Undo/冷重开与注册快捷键；两个真实EQ场景完整WAV差0，原2e-6通过，23套受影响回归分批通过。代码TimelineCommands/RelocationAutomation/Workspace，测试RelocationAutomationTests/RelocationTests/AutomationFollowTests，验收步骤见AUTOMATION_TAIL_WORKFLOW.md及P3证据。状态：部分实现；任意更长/共享/第三方尾音、实体听评、Pro Tools实机对照及专有生态/平台等差距仍保留；无新增外部依赖。以下保留历史核验。
 
 2026-10-15 跨轨Grabber：稳定音频/MIDI Clip归属迁移、目标Playlist与完整/部分交叉淡化、编辑组完整性、预览/原UndoRedo/冷重开已接通，源码ClipRelocation/WorkspaceGrabber/UiState，测试RelocationTests/ProcessedMoveTests。关联多轨Comp和跨轨自动化跟随、实体键鼠/听评与Pro Tools实机行为对照未完成。状态：部分实现；无新外部依赖。此表仍为参考清单，不是完成度门槛；资格见CLIP_RELOCATION.md与P3证据。
 
