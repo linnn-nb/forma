@@ -32,6 +32,9 @@ struct Interval
     double low, high, start, end, beatDelta;
     bool musical;
     double tailHigh = 0, tailEnd = 0;
+    double deltaSeconds = 0;
+    std::optional<int64_t> sampleDelta;
+    std::set<std::string> clips;
 };
 struct Lane
 {
@@ -82,14 +85,23 @@ Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked
         const double beats = tempo.toBeats(tracktion::TimePosition::fromSeconds(start)).inBeats() -
                              tempo.toBeats(tracktion::TimePosition::fromSeconds(low)).inBeats();
         const bool musical = basis == "beats";
+        const int64_t fromSample = clip["before"]["start_samples"], toSample = clip["after"]["start_samples"];
+        const bool sampleAligned =
+            low == start || (low == fromSample / timelineRate && start == toSample / timelineRate);
+        const double delta = sampleAligned ? (toSample - fromSample) / timelineRate : start - low;
         const double end = musical && low != start
                                ? tempo
                                      .toTime(tracktion::BeatPosition::fromBeats(
                                          tempo.toBeats(tracktion::TimePosition::fromSeconds(high)).inBeats() + beats))
                                      .inSeconds()
-                               : high + start - low;
+                               : high + delta;
         require(high > low && start >= 0 && end > start && end <= te::Edit::maximumLength, "跨轨自动化区间越界");
-        intervals.push_back({source, destination, low, high, start, end, beats, musical});
+        Interval interval{source, destination, low, high, start, end, beats, musical};
+        interval.deltaSeconds = delta;
+        if (sampleAligned)
+            interval.sampleDelta = toSample - fromSample;
+        interval.clips.insert(clip["clip"].get<std::string>());
+        intervals.push_back(std::move(interval));
     }
     std::sort(intervals.begin(), intervals.end(),
               [](const auto& a, const auto& b) { return std::tie(a.source, a.low) < std::tie(b.source, b.low); });
@@ -97,14 +109,16 @@ Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked
     for (const auto& r : intervals)
     {
         const bool sameSource = !merged.empty() && merged.back().source == r.source;
-        const bool sameMap = sameSource && merged.back().destination == r.destination &&
-                             merged.back().musical == r.musical &&
-                             (r.musical ? merged.back().beatDelta == r.beatDelta
-                                        : merged.back().start - merged.back().low == r.start - r.low);
+        const bool sameMap =
+            sameSource && merged.back().destination == r.destination && merged.back().musical == r.musical &&
+            (r.musical ? merged.back().beatDelta == r.beatDelta
+                       : (r.sampleDelta && merged.back().sampleDelta ? r.sampleDelta == merged.back().sampleDelta
+                                                                     : r.deltaSeconds == merged.back().deltaSeconds));
         if (sameSource && r.low < merged.back().high)
             require(sameMap, "同一共享自动化区间不能按不同映射分散到多个目标");
         if (sameMap && r.low <= merged.back().high)
         {
+            merged.back().clips.insert(r.clips.begin(), r.clips.end());
             if (r.high > merged.back().high)
             {
                 merged.back().high = r.high;
@@ -176,7 +190,8 @@ Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked
                                 clip->getPosition().getEnd().inSeconds() <= first,
                             "自动化尾随区与未移动片段相交，请先缩短尾随时长或调整选择");
             for (const auto& clip : clips)
-                if (clip["after"]["track"] == (sourceSide ? r.source : r.destination))
+                if (!r.clips.contains(clip["clip"].get<std::string>()) &&
+                    clip["after"]["track"] == (sourceSide ? r.source : r.destination))
                     require(last <= first || clip["after"]["start_seconds"].get<double>() >= last ||
                                 clip["after"]["end_seconds"].get<double>() <= first,
                             "同批移动的其它片段进入自动化尾随区，请缩短尾随时长或分开安排");
@@ -220,7 +235,7 @@ Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked
                         exterior.insert(point.id);
                 if (!r.musical || r.start == r.low)
                     for (auto& point : body)
-                        point.time += r.start - r.low;
+                        point.time += r.deltaSeconds;
                 std::map<std::string, std::string> copies;
                 for (auto& point : body)
                     if (exterior.contains(point.id))
