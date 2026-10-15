@@ -95,6 +95,86 @@ double rms(Commands& c, const juce::File& dir)
     check(reader->read(&audio, 0, 48000, 2048, true, true), "actual PCM render read");
     return audio.getRMSLevel(0, 0, 48000);
 }
+void verifyZeroStartShuffle(const juce::File& parent, const juce::File& source)
+{
+    const auto dir = parent.getChildFile("zero-start-shuffle");
+    check(dir.createDirectory().wasOk(), "zero-start Shuffle uses an owned test directory");
+    Workspace live(false, std::make_unique<Storage>(dir.getChildFile("prefs")));
+    live.setSize(1440, 900);
+    live.addToDesktop(0);
+    live.setVisible(true);
+    live.grabKeyboardFocus();
+    check(live.getPeer() != nullptr, "zero-start keyboard qualification has an actual native peer");
+    auto& owner = AudioDeviceTestAccess::owner(live);
+    owner.commit(
+        owner.makePlan("human", Json::array({op("track.create", {{"name", "Zero-start Shuffle"}, {"ref", "$t"}}),
+                                             op("clip.import", {{"track", "$t"},
+                                                                {"path", source.getFullPathName().toStdString()},
+                                                                {"position_samples", 0}})})));
+    const auto initial = dir.getChildFile("Before.tracktionedit");
+    owner.save(initial);
+    live.openSession(initial);
+    pump();
+    const std::string track = owner.query()["tracks"][0]["id"];
+    check(live.uiCommands().invokeDirectly(editCommand::shuffle, false), "native Shuffle mode command dispatches");
+    auto* timeline = dynamic_cast<EditWindow*>(find(live, "edit.timeline"));
+    check(timeline != nullptr, "actual timeline supplies zero-start range input");
+    timeline->onRange({{"start_samples", 0}, {"end_samples", 48000}}, Json::array({track}),
+                      owner.querySummary()["revision"].get<uint64_t>(), owner.sessionToken(), 0);
+    pump();
+    const auto before = owner.query()["tracks"][0]["clips"];
+    check(live.queryView()["selection_tracks"] == Json::array({track}) &&
+              owner.query()["time_selection"]["start_samples"] == 0,
+          "native range input updates the displayed owner and L1 range before Delete");
+    auto isTail = [](Commands& c)
+    {
+        const auto clips = c.query()["tracks"][0]["clips"];
+        return clips.size() == 1 && clips[0]["start_samples"] == 0 && clips[0]["length_samples"] == 48000 &&
+               clips[0]["source_offset_samples"] == 48000;
+    };
+    check(live.keyPressed(juce::KeyPress(juce::KeyPress::backspaceKey)),
+          "default Delete key dispatches at sample zero");
+    pump();
+    check(isTail(owner), "zero-start Delete commits the actual remaining source window at the start");
+    const auto after = owner.query()["tracks"][0]["clips"];
+    const auto saved = dir.getChildFile("After.tracktionedit");
+    owner.save(saved);
+    check(live.uiCommands().invokeDirectly(6, false), "original zero-start Delete Undo dispatches");
+    pump();
+    check(owner.query()["tracks"][0]["clips"] == before, "one native Undo restores the complete original clip");
+    check(live.uiCommands().invokeDirectly(7, false), "original zero-start Delete Redo dispatches");
+    pump();
+    check(owner.query()["tracks"][0]["clips"] == after, "native Redo preserves the actual split tail identity");
+    live.uiCommands().invokeDirectly(6, false);
+    pump();
+    const juce::KeyPress custom(
+        'k', juce::ModifierKeys::commandModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
+        0);
+    live.uiCommands().getKeyMappings()->addKeyPress(editCommand::remove, custom);
+    pump();
+    check(live.keyPressed(custom), "customized Delete key invokes zero-start Shuffle");
+    pump();
+    check(isTail(owner), "customized Delete commits real source-window geometry");
+    const auto customFile = dir.getChildFile("Custom.tracktionedit");
+    owner.save(customFile);
+    Workspace cold(false, std::make_unique<Storage>(dir.getChildFile("cold-prefs")));
+    cold.setSize(1440, 900);
+    cold.addToDesktop(0);
+    cold.setVisible(true);
+    cold.grabKeyboardFocus();
+    check(cold.getPeer() != nullptr, "zero-start keyboard qualification has an actual native peer");
+    cold.openSession(customFile);
+    pump();
+    auto& reopened = AudioDeviceTestAccess::owner(cold);
+    check(isTail(reopened) && cold.uiCommands().getKeyMappings()->containsMapping(editCommand::remove, custom),
+          "cold Open preserves the actual edit and customized Delete binding");
+    cold.uiCommands().invokeDirectly(6, false);
+    pump();
+    check(reopened.query()["tracks"][0]["clips"] == before, "cold original Undo restores zero-start source media");
+    check(cold.keyPressed(custom), "first customized Delete key after cold Open dispatches");
+    pump();
+    check(isTail(reopened), "first reopened customized Delete produces the real expected tail");
+}
 void editName(Workspace& w, const char* value)
 {
     auto* name = dynamic_cast<juce::TextEditor*>(find(w, "mix.group.name"));
@@ -586,6 +666,7 @@ int main(int argc, char** argv)
             fails([&] { owner.open(bad); }, "malformed group state rejected before adopting session");
             check(owner.query() == beforeBad, "rejected reopen preserves the actual current session");
         }
+        verifyZeroStartShuffle(dir, source);
         check(Commands::mediaHash(source) == hash, "group edits preserve original PCM hash");
         Json report{{"result", "passed"},
                     {"checks", checks},
