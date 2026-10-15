@@ -287,7 +287,7 @@ void Workspace::showNewSession()
                         newSessionPanel->setVisible(false);
                         grabKeyboardFocus();
                     },
-                    [this] { saveButton.triggerClick(); });
+                    [this] { chooseSaveSessionAs(); });
                 addChildComponent(*newSessionPanel);
             }
             newSessionRequested = false;
@@ -533,6 +533,50 @@ void Workspace::openLocalFile(const juce::File& f)
         openSession(f);
     else
         importAudio(f);
+}
+
+void Workspace::saveSession()
+{
+    if (!commands.projectFile()["named"].get<bool>())
+    {
+        chooseSaveSessionAs();
+        return;
+    }
+    invoke(
+        [&]
+        {
+            const auto saved = commands.saveCurrent();
+            sessionName = juce::File(text(saved.at("path").get<std::string>())).getFileName();
+            message(text(saved.at("state") == "unchanged" ? "工程已保存 · 无文件变化 · " : "工程已保存 · ") +
+                    sessionName +
+                    (saved.at("backup").is_null() ? juce::String{} : text(" · 旧版已保留于 .forma-backups")));
+        });
+}
+void Workspace::chooseSaveSessionAs()
+{
+    const auto session = commands.sessionToken();
+    choose(
+        true,
+        [this, session](const juce::File& file)
+        {
+            if (commands.sessionToken() != session)
+            {
+                message(text("工程已切换；未沿用旧的另存路径，请重新选择"));
+                return;
+            }
+            saveSessionAs(file);
+        },
+        "*.tracktionedit");
+}
+void Workspace::saveSessionAs(const juce::File& file)
+{
+    invoke(
+        [&]
+        {
+            commands.saveAs(file);
+            sessionName = file.getFileName();
+            message(text("已另存并切换保存路径 · ") + sessionName);
+        });
 }
 
 void Workspace::openSession(const juce::File& f)

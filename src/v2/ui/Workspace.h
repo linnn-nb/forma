@@ -84,6 +84,7 @@ public:
     void showSpotPlacement(const std::string& clipID);
     void showNewSession();
     void requestExit(std::function<void()> completed);
+    void saveSessionAs(const juce::File&);
     Json query() const;
     Json queryAudioDevices() const;
     Json queryRecovery() const;
@@ -149,6 +150,8 @@ public:
     }
 
 private:
+    void saveSession();
+    void chooseSaveSessionAs();
     void requestTransition(std::function<void()> completed, const juce::File& target = {});
     void updateExit();
     std::unique_ptr<SessionExit> sessionExit;
@@ -387,7 +390,7 @@ private:
     juce::Viewport editView, mixView, parameterView, routingView, groupView, autoView, recordView;
     juce::MenuBarComponent menu{this};
     juce::TextButton newTrack{text("新增轨道")}, importButton{text("导入音频")}, openButton{text("打开工程")},
-        saveButton{text("另存工程")}, exportButton{text("导出 WAV")}, editButton{"EDIT"}, mixButton{"MIX"},
+        saveButton{text("保存")}, exportButton{text("导出 WAV")}, editButton{"EDIT"}, mixButton{"MIX"},
         returnButton{"|<"}, stopButton{text("停止")}, playButton{text("播放")}, recordButton{text("● 录音")},
         followEditButton{text("自动化↔")}, rollButton{text("预后卷")}, metronomeButton{text("节拍器")},
         loopButton{text("循环")}, markerButton{text("Marker +")}, locationsButton{text("位置…")}, undoButton{"Undo"},

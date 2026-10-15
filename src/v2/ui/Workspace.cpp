@@ -479,24 +479,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     importButton.onClick = [this] { chooseAudioFiles(); };
     openButton.onClick = [this]
     { choose(false, [this](const auto& f) { requestOpenSession(f); }, "*.tracktionedit;*.ndaw"); };
-    saveButton.onClick = [this]
-    {
-        choose(
-            true,
-            [this](const auto& f)
-            {
-                invoke(
-                    [&]
-                    {
-                        const auto saved = commands.save(f);
-                        sessionName = f.getFileName();
-                        message(
-                            text("已另存工程 · ") + sessionName +
-                            (saved.value("protected_format", false) ? text(" · Forma 完整处理工程") : juce::String{}));
-                    });
-            },
-            "*.tracktionedit");
-    };
+    saveButton.onClick = [this] { saveSession(); };
     exportButton.onClick = [this] { chooseExport(false); };
     rangeButton.setComponentID("timeline.range.open");
     rangeButton.onClick = [this] { showTimelineRange(); };

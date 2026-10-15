@@ -27,7 +27,8 @@ const std::vector<Entry>& entries()
         {41, "新建工程…", "文件", 'n', cmd},
         {1, "导入音频…", "文件", 'i', cmd},
         {2, "打开工程…", "文件", 'o', cmd},
-        {3, "另存工程…", "文件", 's', cmd},
+        {3, "保存工程", "文件", 's', cmd},
+        {575, "另存为…", "文件", 's', cmd | shift},
         {4, "导出 WAV…", "文件", 'b', cmd | juce::ModifierKeys::altModifier},
         {44, "导出并检查 WAV…", "文件"},
         {45, "导出并检查时间选区…", "文件"},
@@ -754,7 +755,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 active = !facts.value("time_selection", Json(nullptr)).is_null();
             if (id == editCommand::relocateUp || id == editCommand::relocateDown)
                 active = !mix && !facts.value("playing", false) && pending.is_null() && !selectedEditClips().empty();
-            if (id == 1 || id == 2 || id == 3 || id == 4 || id == 5 || id == 41 || id == 84)
+            if (id == 1 || id == 2 || id == 3 || id == 4 || id == 5 || id == 41 || id == 84 || id == 575)
                 active = !facts.value("playing", false) && facts.value("parameter_capture", Json(nullptr)).is_null();
             if (id == 32)
                 active = bool(mcp);
@@ -1054,6 +1055,11 @@ bool Workspace::perform(const InvocationInfo& invocation)
 {
     if (exitPanel && exitPanel->isVisible())
         return true;
+    if (invocation.commandID == 575)
+    {
+        chooseSaveSessionAs();
+        return true;
+    }
     const auto id = invocation.commandID;
     if (id == 570)
     {

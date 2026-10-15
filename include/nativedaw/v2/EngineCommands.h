@@ -130,6 +130,11 @@ public:
     Json exportRequest(bool selection) const;
     Json renderRequest(const juce::File&, const Json&);
     Json save(const juce::File&);
+    // Save Copy never rebinds the document. Save As selects a new, absent path;
+    // ordinary Save replaces only the exact bytes last loaded/saved by this Edit.
+    Json saveAs(const juce::File&);
+    Json saveCurrent();
+    Json projectFile() const;
     Json recoveryStatus() const;
     Json recoveryControl(const std::string&, const Json&);
     void open(const juce::File&);
@@ -193,6 +198,8 @@ public:
     Json legacyReports() const;
 
 private:
+    juce::File projectPath;
+    std::string projectHash;
     void normaliseClipDeletion(Json&) const;
     void invalidateFacts();
     void changeListenerCallback(juce::ChangeBroadcaster*) override;

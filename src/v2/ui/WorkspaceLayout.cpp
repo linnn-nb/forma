@@ -17,6 +17,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(p, 1);
         addMenuCommand(p, 2);
         addMenuCommand(p, 3);
+        addMenuCommand(p, 575);
         addMenuCommand(p, 4);
         addMenuCommand(p, 566);
         addMenuCommand(p, 44);

@@ -3,6 +3,7 @@
 #include "ClipReferenceState.h"
 #include "NativeEditXml.h"
 #include "ProjectDocument.h"
+#include "ProjectFileStore.h"
 #include "MasterAnalysis.h"
 #include "StemExport.h"
 #include "AppPreferences.h"
@@ -21,6 +22,7 @@
 #include "EditOrdering.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <filesystem>
+#include <climits>
 namespace ndaw::v2
 {
 static_assert(OutputProbe::capacity == te::DeviceManager::maxNumChannelsPerDevice);
@@ -1989,6 +1991,34 @@ Json Commands::save(const juce::File& destination)
             {"protected_format", !requirements.empty()},
             {"required_capabilities", requirements}};
 }
+Json Commands::projectFile() const
+{
+    checkThread();
+    return {{"named", projectPath != juce::File{}},
+            {"path", projectPath.getFullPathName().toStdString()},
+            {"expected_sha256", projectHash}};
+}
+Json Commands::saveAs(const juce::File& destination)
+{
+    checkThread();
+    require(destination.hasFileExtension("tracktionedit"), "工程文件必须使用 .tracktionedit 扩展名");
+    auto result = save(destination);
+    projectPath = destination;
+    projectHash = result.at("sha256");
+    result["operation"] = "save_as";
+    result["state"] = "saved";
+    result["reversible"] = false;
+    return result;
+}
+Json Commands::saveCurrent()
+{
+    checkThread();
+    require(projectPath != juce::File{}, "工程尚未命名；请先另存为");
+    auto result =
+        project_files::replace(projectPath, projectHash, [this](const juce::File& staged) { return save(staged); });
+    projectHash = result.at("sha256");
+    return result;
+}
 void Commands::open(const juce::File& source)
 {
     checkThread();
@@ -1996,7 +2026,13 @@ void Commands::open(const juce::File& source)
     require(parameterCapture.is_null(), "finish native parameter gesture before opening");
     ParameterWriteGuard parameterGuard(*this);
     require(source.existsAsFile(), "Edit file missing");
-    auto xml = juce::XmlDocument::parse(source);
+    // Bind ordinary Save to the actual bytes parsed, not a later read of a path
+    // another process may have changed after loading.
+    require(source.getSize() <= INT_MAX, "Edit XML exceeds supported string size");
+    juce::MemoryBlock bytes;
+    require(source.loadFileAsData(bytes) && bytes.getSize() <= size_t(INT_MAX), "cannot read Edit file");
+    const auto openedHash = juce::SHA256(bytes.getData(), bytes.getSize()).toHexString().toStdString();
+    auto xml = juce::XmlDocument::parse(juce::String::createStringFromData(bytes.getData(), int(bytes.getSize())));
     require(bool(xml), "invalid Edit XML");
     auto document = project_document::read(*xml);
     auto loaded = std::move(document.edit);
@@ -2021,6 +2057,8 @@ void Commands::open(const juce::File& source)
     adoptEdit(std::move(candidate));
     edit->state.removeChild(reserve, nullptr);
     persistentHistory->install(std::move(archive));
+    projectPath = source;
+    projectHash = openedHash;
 }
 void validatePlaylists(te::Edit&);
 void validateCrossfades(te::Edit&);
@@ -2112,6 +2150,8 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     sessionID = juce::Uuid().toString().toStdString();
     edit->getParameterChangeHandler().setUserChangeListener(this);
     persistentHistory = std::make_unique<PersistentHistory>(*this);
+    projectPath = juce::File{};
+    projectHash.clear();
 }
 std::string Commands::sessionToken() const
 {

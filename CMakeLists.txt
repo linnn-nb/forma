@@ -105,6 +105,7 @@ target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommand
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp src/v2/LinkedCompRelocation.cpp src/v2/RelocationAutomation.cpp src/v2/NativeFader.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ProjectDocument.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
@@ -1028,6 +1029,12 @@ target_sources(ndaw_session_open_tests PRIVATE tests/v2/SessionOpenTests.cpp)
 target_link_libraries(ndaw_session_open_tests PRIVATE ndaw_ui)
 add_test(NAME forma_session_open COMMAND ndaw_session_open_tests "${CMAKE_BINARY_DIR}/session-open-tests.json")
 set_tests_properties(forma_session_open PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_project_save_tests PRODUCT_NAME "ndaw_project_save_tests")
+target_sources(ndaw_project_save_tests PRIVATE tests/v2/ProjectSaveTests.cpp)
+target_link_libraries(ndaw_project_save_tests PRIVATE ndaw_ui)
+add_test(NAME forma_project_save COMMAND ndaw_project_save_tests "${CMAKE_BINARY_DIR}/project-save-tests.json")
+set_tests_properties(forma_project_save PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 # Production L1/GUI performance qualification with actual native plugins.
 juce_add_console_app(ndaw_performance_tests PRODUCT_NAME "ndaw_performance_tests")
