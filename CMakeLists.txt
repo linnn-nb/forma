@@ -1076,6 +1076,13 @@ target_link_libraries(ndaw_recording_writer_failure_tests PRIVATE ndaw_engine)
 add_test(NAME forma_recording_writer_failure COMMAND ndaw_recording_writer_failure_tests "${CMAKE_BINARY_DIR}/recording-writer-failure-tests.json")
 set_tests_properties(forma_recording_writer_failure PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_midi_punch_recording_tests PRODUCT_NAME "ndaw_midi_punch_recording_tests")
+target_sources(ndaw_midi_punch_recording_tests PRIVATE tests/v2/MidiPunchRecordingTests.cpp)
+target_include_directories(ndaw_midi_punch_recording_tests PRIVATE src/v2)
+target_link_libraries(ndaw_midi_punch_recording_tests PRIVATE ndaw_ui)
+add_test(NAME forma_midi_punch_recording COMMAND ndaw_midi_punch_recording_tests "${CMAKE_BINARY_DIR}/p1-midi-punch-tests.json")
+set_tests_properties(forma_midi_punch_recording PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_punch_recording_tests PRODUCT_NAME "ndaw_punch_recording_tests")
 target_sources(ndaw_punch_recording_tests PRIVATE tests/v2/PunchRecordingTests.cpp)
 target_link_libraries(ndaw_punch_recording_tests PRIVATE ndaw_ui)

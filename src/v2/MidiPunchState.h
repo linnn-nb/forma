@@ -13,6 +13,8 @@ inline juce::ValueTree fragment(te::Edit& edit, te::MidiClip& clip, int64_t firs
     if (first < a || last > b || last <= first)
         throw std::runtime_error("MIDI Punch fragment exceeds native source window");
     auto state = te::ClipCopy::fromClip(clip).withNewItemID(edit).getState().createCopy();
+    if (first == a && last == b)
+        return state; // Keep untouched native floating endpoints/length verbatim.
     const double start = first == a ? p.getStart().inSeconds() : first / 48000.;
     const double end = last == b ? p.getEnd().inSeconds() : last / 48000.;
     state.setProperty(te::IDs::start, start, nullptr);

@@ -12,10 +12,32 @@ index 67376c2..312ffcc 100644
  
      //==============================================================================
 diff --git a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
-index 66062ce..29ae9ce 100644
+index 66062ce..fd70949 100644
 --- a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
-@@ -503,7 +503,7 @@ EditPlaybackContext::ScopedDeviceListReleaser::~ScopedDeviceListReleaser()
+@@ -392,6 +392,12 @@ struct EditPlaybackContext::NodePlaybackContext
+             }
+         }
+ 
++        // The player can split this device block at Tempo/processing boundaries.
++        // MIDI timestamps injected by those pieces are absolute Edit times; dispatch
++        // must subtract the device-block origin, not the final piece's SyncRange.
++        const auto midiTimeline = referenceSampleRangeToSplitTimelineRange (playHead, referenceSampleRange);
++        midiBlockOrigin = TimePosition::fromSamples (midiTimeline.timelineRange1.getStart(), getSampleRate());
++        midiBlockWraps = midiTimeline.isSplit;
+         scratchMidiBuffer.clear();
+ 
+         if (isUsingInterpolator || destNumSamples != (int) numSamplesToProcess)
+@@ -446,6 +452,8 @@ struct EditPlaybackContext::NodePlaybackContext
+     tracktion::graph::PlayHead playHead;
+     tracktion::graph::PlayHeadState playHeadState { playHead };
+     ProcessState processState { playHeadState, tempoSequence };
++    TimePosition midiBlockOrigin;
++    bool midiBlockWraps = false;
+ 
+ private:
+     juce::AudioBuffer<float> scratchAudioBuffer;
+@@ -503,7 +511,7 @@ EditPlaybackContext::ScopedDeviceListReleaser::~ScopedDeviceListReleaser()
  }
  
  //==============================================================================
@@ -24,7 +46,7 @@ index 66062ce..29ae9ce 100644
      : edit (tc.edit), transport (tc)
  {
      if (edit.isRendering())
-@@ -520,7 +520,7 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
+@@ -520,7 +528,7 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
          contextSyncroniser = std::make_unique<ContextSyncroniser>();
  
          // This ensures the referenceSampleRange of the new context has been synced
@@ -33,7 +55,7 @@ index 66062ce..29ae9ce 100644
  
          // Set the playhead position as early as possible so it doesn't revert to 0 in the TransportControl
          nodePlaybackContext->playHead.setPosition (toSamples (transport.getPosition(),
-@@ -689,6 +689,9 @@ void EditPlaybackContext::createNode()
+@@ -689,6 +697,9 @@ void EditPlaybackContext::createNode()
      cnp.readAheadTimeStretchNodes = engineBehaviour.enableReadAheadForTimeStretchNodes();
      cnp.insertOptionalLastStageNodeForDevice = insertOptionalLastStageNodeForDeviceCallback;
  
@@ -43,7 +65,7 @@ index 66062ce..29ae9ce 100644
      // Building the new graph initialises its plugins, so the old graph mustn't
      // still be processing them if that would re-run their initialise()
      nodePlaybackContext->clearNodeIfFormatChanged (cnp.sampleRate, cnp.blockSize);
-@@ -706,6 +709,11 @@ void EditPlaybackContext::setInsertOptionalLastStageNodeForDeviceCallback (std::
+@@ -706,6 +717,11 @@ void EditPlaybackContext::setInsertOptionalLastStageNodeForDeviceCallback (std::
      insertOptionalLastStageNodeForDeviceCallback = std::move (callback);
  }
  
@@ -55,6 +77,19 @@ index 66062ce..29ae9ce 100644
  void EditPlaybackContext::createPlayAudioNodes (TimePosition startTime)
  {
      createNode();
+@@ -999,7 +1015,11 @@ void EditPlaybackContext::fillNextNodeBlock (float* const* allChannels, int numC
+     nodePlaybackContext->process (allChannels, numChannels, numSamples);
+ 
+     // Dispatch any MIDI messages that have been injected in to the MidiOutputDeviceInstances by the Node
+-    auto editTime = nodePlaybackContext->processState.getSyncRange().start.time;
++    // Preserve existing loop-wrap dispatch until unlooped MIDI queue times are
++    // qualified. A non-wrapping block has one unambiguous device origin.
++    const auto editTime = nodePlaybackContext->midiBlockWraps
++                            ? nodePlaybackContext->processState.getSyncRange().start.time
++                            : nodePlaybackContext->midiBlockOrigin;
+     midiDispatcher.dispatchPendingMessagesForDevices (editTime);
+ }
+ 
 diff --git a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h
 index a852ebf..1430f7b 100644
 --- a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.h

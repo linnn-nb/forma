@@ -542,6 +542,8 @@ private:
                     const double elapsed = (visible.getX() - box.getX()) * owner.samplesPerPixel / 48000.;
                     if (c.value("kind", std::string{}) == "midi")
                     {
+                        juce::Graphics::ScopedSaveState midiWindow(g);
+                        g.reduceClipRegion(visible); // Hidden source notes never paint outside this playback window.
                         int low = 127, high = 0;
                         for (const auto& note : c["notes"])
                         {

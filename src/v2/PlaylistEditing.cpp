@@ -439,11 +439,20 @@ Json Commands::queryPlaylists(const std::string& id) const
                             {"gain_db", 0.0},
                             {"locked", bool(c.getProperty("ndaw_locked", false))},
                             {"take_id", str(c, "ndaw_take_id")}});
-                const auto origin = c.getChildWithName("NDAW_MIDI_LOOP_TAKE");
-                row["capture_source"] = origin.isValid() ? Json{{"id", str(origin, "source_id")},
-                                                                {"hash", str(origin, "source_hash")},
-                                                                {"pass", int(origin["pass"])}}
-                                                         : Json(nullptr);
+                auto origin = c.getChildWithName("NDAW_MIDI_LOOP_TAKE");
+                if (!origin.isValid())
+                    origin = c.getChildWithName("NDAW_MIDI_PUNCH_TAKE");
+                row["capture_source"] =
+                    origin.isValid() ? Json{{"id", str(origin, "source_id")}, {"hash", str(origin, "source_hash")}}
+                                     : Json(nullptr);
+                if (origin.hasType("NDAW_MIDI_PUNCH_TAKE"))
+                {
+                    row["capture_source"]["kind"] = "punch";
+                    row["capture_source"]["capture_start_samples"] = int64_t(origin["capture_start_samples"]);
+                    row["capture_source"]["window"] = str(origin, "window");
+                }
+                else if (origin.isValid())
+                    row["capture_source"]["pass"] = int(origin["pass"]);
                 item["clips"].push_back(std::move(row));
                 continue;
             }
