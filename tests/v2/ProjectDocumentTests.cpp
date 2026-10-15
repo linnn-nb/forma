@@ -15,6 +15,10 @@ public:
     {
         return w.commands;
     }
+    static std::pair<juce::ValueTree, Json> snapshot(Commands& c)
+    {
+        return c.recoverySnapshot();
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -102,6 +106,17 @@ void refuse(Commands& c, const juce::XmlElement& xml, juce::File dir, const std:
         error = e.what();
     }
     check(!error.empty(), "incompatible or damaged document is rejected by real L1 open");
+    const std::map<std::string, std::string> expected{{"Unknown-Capability", "future.required.engine"},
+                                                      {"Future-Envelope", "封装版本"},
+                                                      {"Future-Capability-Version", "v999"},
+                                                      {"Missing-Requirements", "能力声明"},
+                                                      {"Duplicate-Capability", "重复"},
+                                                      {"Payload-Checksum", "校验失败"},
+                                                      {"Undeclared-History-Only-Capability", "声明遗漏"},
+                                                      {"Future-Legacy-Metadata", "元数据版本"},
+                                                      {"Future-Inactive-Playlist", "audio.warp.mapping v999"}};
+    check(error.find(expected.at(name)) != std::string::npos,
+          "actual refusal identifies the intended incompatibility rather than an unrelated checksum or parse error");
     check(c.sessionToken() == token && c.query()["tracks"] == before,
           "failed open preserves current Edit and session identity");
     rejected.push_back({{"name", name}, {"path", path.getFullPathName().toStdString()}, {"error", error}});
@@ -220,11 +235,8 @@ int main(int argc, char** argv)
         const auto migrated = root.getChildFile("Migrated-Processed.tracktionedit");
         check(c.save(migrated)["protected_format"] && Commands::mediaHash(legacyFile) == legacyHash,
               "Save Copy migrates legacy processing without modifying original file");
-        const auto recovered = recovery::write(root.getChildFile("recovery"),
-                                               {legacy,
-                                                {{"id", juce::Uuid().toString().removeCharacters("-").toStdString()},
-                                                 {"revision", int64_t(juce::int64(meta["revision"]))},
-                                                 {"name", "Processed recovery"}}});
+        const auto snapshot = AudioDeviceTestAccess::snapshot(c);
+        const auto recovered = recovery::write(root.getChildFile("recovery"), {snapshot.first, snapshot.second});
         const auto loaded = recovery::read(root.getChildFile("recovery"), recovered["id"], recovered["sha256"]);
         project_document::Requirements actual;
         project_document::collect(loaded.state, actual);
