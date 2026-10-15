@@ -266,6 +266,16 @@ int main(int argc, char** argv)
         const std::string a = q[0]["clips"][0]["id"], b = q[1]["clips"][0]["id"], m = q[2]["clips"][0]["id"],
                           destination = q[3]["clips"][0]["id"];
         const std::string at = q[0]["id"], bt = q[1]["id"], mt = q[2]["id"], dt = q[3]["id"];
+        run(c, "midi.cc.replace",
+            {{"clip", m},
+             {"controller", 11},
+             {"state_hash", clip(c, m)["controller_state_hash"]},
+             {"points", Json::array({{{"id", "cc:" + m + ":new:" + juce::Uuid().toString().toStdString()},
+                                      {"source_beat", 0.0},
+                                      {"raw_value", 4096}},
+                                     {{"id", "cc:" + m + ":new:" + juce::Uuid().toString().toStdString()},
+                                      {"source_beat", 1.0},
+                                      {"raw_value", 12288}}})}});
         auto where = [&](const std::string& id)
         {
             for (const auto& t : all(c))
@@ -360,7 +370,8 @@ int main(int argc, char** argv)
         drop(m, destination);
         accept();
         const auto midiAfter = clip(c, m);
-        check(where(m) == dt && midiAfter["id"] == m && midiAfter["notes"] == midiBefore["notes"],
+        check(where(m) == dt && midiAfter["id"] == m && midiAfter["notes"] == midiBefore["notes"] &&
+                  midiAfter["controller_events"] == midiBefore["controller_events"],
               "pure vertical MIDI move retains actual sequence identities and event timing");
         const auto midiFile = root.getChildFile("MIDI-Relocation.tracktionedit");
         c.save(midiFile);
@@ -396,6 +407,45 @@ int main(int argc, char** argv)
         const auto human = all(c);
         rejects([&] { c.commit(stale); }, "human destination change rejects stale relocation Plan");
         check(all(c) == human, "conflict preserves human edit and all original clip owners");
+        c.undo();
+        run(c, "automation.point.add",
+            {{"track", at},
+             {"parameter", "volume"},
+             {"ref", "$source-volume"},
+             {"position_samples", 0},
+             {"value", -6.0},
+             {"curve", 0.0}});
+        run(c, "automation.point.add",
+            {{"track", bt},
+             {"parameter", "volume"},
+             {"ref", "$target-volume"},
+             {"position_samples", 0},
+             {"value", -3.0},
+             {"curve", 0.0}});
+        const auto automated = all(c);
+        rejects([&] { c.makePlan("human", Json::array({op("clips.relocate", {{"moves", moves}})})); },
+                "enabled automation follow refuses unqualified inter-track curve mapping atomically");
+        check(all(c) == automated, "refused follow policy does not move clips or alter curves");
+        run(c, "session.automation_follows_edit.set", {{"enabled", false}});
+        auto points = [&](const std::string& track)
+        {
+            Json result = Json::array();
+            const auto query = c.automationQuery(track);
+            for (const auto& lane : query["lanes"])
+                result.push_back(lane["points"]);
+            return result;
+        };
+        const auto sourcePoints = points(at), destinationPoints = points(bt);
+        const auto noFollow = c.makePlan("human", Json::array({op("clips.relocate", {{"moves", moves}})}));
+        check(c.preview(noFollow)["relocation_changes"][0]["automation_policy"] ==
+                  "track curves explicitly stay in place",
+              "preview declares exact user-selected automation policy");
+        c.commit(noFollow);
+        check(where(a) == bt && where(m) == dt && points(at) == sourcePoints && points(bt) == destinationPoints,
+              "explicit track automation policy preserves every real point identity, time and value");
+        c.undo();
+        check(where(a) == at && where(m) == mt && points(at) == sourcePoints && points(bt) == destinationPoints,
+              "one policy-bound Undo restores owners without rewriting unrelated curves");
         check(Commands::mediaHash(file) == hash, "relocation and recovery leave original media bytes unchanged");
         Json result{
             {"result", "passed"},

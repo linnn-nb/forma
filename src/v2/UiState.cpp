@@ -440,7 +440,9 @@ Json Commands::uiState() const
         if (ref["kind"] == "clip" || ref["kind"] == "note")
         {
             const std::string clipID = ref["kind"] == "clip" ? ref["id"] : ref["clip"];
-            if (auto* clip = timelineClip(clipID); clip && clip->getTrack())
+            if (auto* clip = edit->clipCache.findItem(te::EditItemID::fromString(juce::String(clipID)));
+                clip && clip->itemID.toString().toStdString() == clipID && clip->getTrack() &&
+                clip->state.getParent() == clip->getTrack()->state)
             {
                 const std::string old = ref["track"], owner = clip->getTrack()->itemID.toString().toStdString();
                 owners[old].insert(owner);

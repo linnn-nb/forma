@@ -269,8 +269,8 @@ void Commands::executeRelocation(const Json& args, Json& objects)
             if (parent != next)
             {
                 parent.removeChild(pair.state, &undo);
-                pair.state.setProperty("playlist", juce::String(playlistQuery(*target)["active"].get<std::string>()),
-                                       &undo);
+                const auto lists = ensurePlaylists(*target);
+                pair.state.setProperty("playlist", lists["active"], &undo);
                 next.addChild(pair.state, -1, &undo);
             }
         }
