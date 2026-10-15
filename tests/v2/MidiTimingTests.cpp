@@ -69,6 +69,19 @@ juce::Component* find(juce::Component& c, const juce::String& id)
             return q;
     return nullptr;
 }
+void setNudge(Workspace& w, Commands& c, const std::string& unit)
+{
+    const std::vector<std::string> units{"sample", "10ms", "100ms", "beat", "quarter-beat"};
+    const auto at = std::find(units.begin(), units.end(), unit);
+    auto* control = dynamic_cast<juce::ComboBox*>(find(w, "edit.nudge.value"));
+    check(control && control->isVisible() && control->isEnabled() && at != units.end(),
+          "actual native Nudge chooser is available");
+    control->setSelectedId(int(std::distance(units.begin(), at)) + 1, juce::sendNotificationAsync);
+    const auto deadline = juce::Time::getMillisecondCounterHiRes() + 500;
+    while (c.uiState()["nudge"] != unit && juce::Time::getMillisecondCounterHiRes() < deadline)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    check(c.uiState()["nudge"] == unit, "real Nudge control notification reaches L1 within fixed 500ms");
+}
 juce::XmlElement* byID(juce::XmlElement& x, const std::string& id)
 {
     if (x.getStringAttribute("id").toStdString() == id)
@@ -243,7 +256,7 @@ int main(int argc, char** argv)
         for (const std::string unit : {"sample", "10ms", "100ms", "beat", "quarter-beat"})
             for (int i = 0; i < 6; ++i)
             {
-                c.updateUiState({{"nudge", unit}}, c.sessionToken());
+                setNudge(w, c, unit);
                 pump();
                 const double amount = (i % 2 ? 1. : -1.) * (unit == "sample"  ? 1.
                                                             : unit == "10ms"  ? 480.
@@ -370,7 +383,7 @@ int main(int argc, char** argv)
                 "fractional sample command is explicitly rejected");
         rejects([&] { c.makePlan("agent:untrusted", Json::array({operation("midi.notes.time", args)})); },
                 "local timing command cannot expand frozen Agent permissions");
-        c.updateUiState({{"nudge", "10ms"}}, c.sessionToken());
+        setNudge(w, c, "10ms");
         pump();
         const juce::KeyPress custom(
             'n', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
