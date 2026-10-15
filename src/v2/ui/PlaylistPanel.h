@@ -130,7 +130,11 @@ public:
             source = data["active"];
         if (changed)
             updateName();
-        title.setText(text(data["track_name"].get<std::string>() + " · Playlists / Comp"), juce::dontSendNotification);
+        title.setText(text(data["track_name"].get<std::string>() +
+                           (data.value("midi", false) ? " · Playlists / Takes" : " · Playlists / Comp")),
+                      juce::dontSendNotification);
+        candidateName.setEnabled(!data.value("midi", false));
+        draftList.setEnabled(!data.value("midi", false));
         Json tracks = Json::array();
         for (const auto& list : data["items"])
             tracks.push_back({{"clips", list["clips"]}});
@@ -379,7 +383,9 @@ public:
                     updateName();
                 }
             refreshStatus();
-            status.setText(text("已提交 · 可 Undo / Redo。点列表名称选择，拖选波形后提升到 TARGET。"),
+            status.setText(text(data.value("midi", false)
+                                    ? "MIDI Take 已提交 · 可 Undo / Redo；关闭面板后空格走带。"
+                                    : "已提交 · 可 Undo / Redo。点列表名称选择，拖选波形后提升到 TARGET。"),
                            juce::dontSendNotification);
             if (id == 527)
             {
@@ -648,16 +654,19 @@ private:
     }
     void refreshStatus()
     {
-        status.setText(!draftNotice.isEmpty() ? draftNotice
-                       : end > begin
-                           ? text("选区 ") + juce::String(begin / 48000., 6) + " – " + juce::String(end / 48000., 6) +
-                                 text(" 秒 · 提升仅替换 TARGET 的这一区间，源 Take 保留")
-                           : text("点选列表；用于播放切换当前 Take，空格试听。拖选波形 → 提升选区；新建 Comp "
-                                  "复制当前列表并保留原播放。") +
-                                 (draft.empty()
-                                      ? juce::String{}
-                                      : text(" · 未提交候选 ") + juce::String(int(draft.size())) + text(" 段")),
-                       juce::dontSendNotification);
+        status.setText(
+            !data.is_null() && data.value("midi", false)
+                ? text(
+                      "选择 Take → 用于播放；关闭面板后空格走带，钢琴卷帘继续编辑。MIDI 锁定 / Comp / 分段试听待完成。")
+            : !draftNotice.isEmpty() ? draftNotice
+            : end > begin
+                ? text("选区 ") + juce::String(begin / 48000., 6) + " – " + juce::String(end / 48000., 6) +
+                      text(" 秒 · 提升仅替换 TARGET 的这一区间，源 Take 保留")
+                : text("点选列表；用于播放切换当前 Take，空格试听。拖选波形 → 提升选区；新建 Comp "
+                       "复制当前列表并保留原播放。") +
+                      (draft.empty() ? juce::String{}
+                                     : text(" · 未提交候选 ") + juce::String(int(draft.size())) + text(" 段")),
+            juce::dontSendNotification);
         if (auditionStatus.value("active", false) && auditionStatus.value("state", std::string{}) == "preparing")
         {
             const auto p = auditionStatus.value("preparation", Json::object());

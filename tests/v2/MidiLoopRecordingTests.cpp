@@ -353,6 +353,21 @@ int main(int argc, char** argv)
             check(source.getNumChildren() == 11 &&
                       source["source_hash"].toString().toStdString() == midi_loop::fingerprint(source),
                   "actual raw input messages retain bytes and checksum before folding");
+            const std::array<const char*, 11> knownBytes{"903c64", "803c00", "b00147",     "90405a", "804000", "e03849",
+                                                         "904350", "804300", "f07d1234f7", "904855", "804800"};
+            constexpr std::array<int64_t, 11> knownFrames{4800,   28800,  48000,  132000, 158400, 163200,
+                                                          168000, 192000, 196800, 297600, 312000};
+            for (int event = 0; event < source.getNumChildren(); ++event)
+            {
+                auto e = source.getChild(event);
+                check(e["bytes"].toString().removeCharacters(" ").toLowerCase() == knownBytes[event],
+                      "raw capture bytes independently equal known input including NoteOff, CC, pitch wheel and SysEx");
+                const auto relative =
+                    std::llround((double(e["time_seconds"]) - double(source.getChild(0)["time_seconds"])) * 48000.);
+                check(
+                    std::abs(relative - (knownFrames[event] - knownFrames[0])) <= 256,
+                    "raw relative input time matches independently scheduled events within original 256-frame budget");
+            }
             check(source["tempo_xml"].toString().contains("90"), "capture source retains original changing tempo map");
             const auto first = lists["items"][1]["clips"][0], second = lists["items"][2]["clips"][0];
             check(first["notes"].size() == 2 && second["notes"].size() == 2 && second["controller_count"] == 1 &&
@@ -412,6 +427,9 @@ int main(int argc, char** argv)
                   "real native Playlist component snapshot writes without desktop automation");
         }
         key(w, 524);
+        key(w, 145);
+        wait([&] { return visible(w, "midi.canvas") != nullptr; },
+             "registered MIDI editor key opens active Take in actual piano roll");
         const auto beforeBlocked = c.query()["tracks"];
         rejects(
             [&]
@@ -467,6 +485,16 @@ int main(int argc, char** argv)
                     native.removeChild(pool, nullptr);
                 project_document::Requirements requirements;
                 project_document::collect(native, requirements);
+                if (mode == 0)
+                {
+                    auto modern = project_document::write(native, requirements);
+                    rejectOpen(c, *modern, root.getChildFile("Modern-History-Disagreement.tracktionedit"),
+                               "saved Edit and history disagree");
+                }
+                // Explicit historyless import fixture tests source validation;
+                // modern external edits above must keep failing history validation.
+                auto meta = native.getChildWithName("NATIVEDAW");
+                meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);
                 auto bad = project_document::write(native, requirements);
                 rejectOpen(c, *bad,
                            root.getChildFile(mode ? "Missing-Source.tracktionedit" : "Corrupt-Source.tracktionedit"),
