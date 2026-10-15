@@ -1,3 +1,5 @@
+2026-10-16 录音修复：无新增依赖版本、服务、授权或证书需求。Tracktion仍0d4d77c，JUCE仍8.0.13/37c894f；扩展既有recording-status补丁含InputDevice.h，18补丁/46源码fresh apply→逐字匹配→reverse已执行。Release/本地deep/strict通过，非公证。原生输入排队更新提前停止的复现路径已有调用栈并修复，原P1链路连续5次通过；不把全部历史短录音归同因。分批13套879项资格见VERIFICATION.md；原10套中MIDI分页红项已由保留原断言的3套补验替代。旧键位设置foreground/native peer、桌面读取/实体制作听评、SDK录音队列RT分配/锁、复杂设备/PDC/耐久、性能A/分析超时及Windows/发行仍保留。普通Open替换工程缺少保存/取消保护是下一项。以下历史阻塞按当前资格更新，不把旧绿色回执覆盖新失败。
+
 2026-10-16 正常退出保护：无新增依赖、SDK变更、证书或授权需求；本地deep/strict通过，非发行公证。当前4套226项通过，但前批Loop Take失败（2048/2304帧原WAV）根因未明，保留为可靠性阻断；新增诊断，原负载最新重放通过不等于修复。快捷键foreground/native peer失败仍在，普通应用身份无效，已收口；桌面cgWindowNotFound不推断锁屏/崩溃。退出每次确认/Save仅另存、真实录音/插件/桌面选择器退出、30秒超时分支、Windows/发行及其它旧差距保持未完成。当前证据见VERIFICATION.md，以下为历史。
 
 2026-10-16 共享Warp取消修复：无新增授权、服务或依赖版本变更。Tracktion仍为0d4d77c，JUCE仍为37c894f/8.0.13；扩展既有warp补丁后18补丁/45源码已实际fresh apply/字节匹配/reverse。Release与固定本地deep/strict签名通过，非发行公证。两批15套1681项及真实WAV通过；键位设置foreground/peer焦点旧失败、实体制作/听评、未归因的其它首次Warp失败、性能A/分析超时、硬件/耐久/Windows/视频/环绕/发行仍未完成。桌面工具未找到窗口与用户确认主界面可操作分别保留，不推断锁屏/崩溃。当前证据以VERIFICATION.md及P3汇总为准；以下是历史。

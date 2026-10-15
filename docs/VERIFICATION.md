@@ -1,3 +1,23 @@
+# 录音提前停止、失败回执与原生撤销边界（2026-10-16）
+
+结论：7ab59be/b54b477/1a1771d修复已复现的输入设置异步更新提前停止录音、实际写盘线程失效未报错、失败Loop派生排序污染Undo三处问题。07dbd4d另修MIDI控制事件分页漏字段。受影响测试按各套最新终态分批13/13、879项通过；原P1链路原负载连续5次通过。不是全仓、全部历史短录音归因或完整产品资格。
+
+- 失败证据保留：原完整链路本次输入推进440320帧（计数28160→468480），但两份WAV实际只有2816/3072帧且回执success。新专项在故障注入前即发现writer已停止，message-thread调用栈为InputDeviceInstance::updateRecordingStatus→WaveInputDeviceInstance::stopRecording，transport仍报recording。见loop-trace-repeat、writer-stop-stack日志；它证明这条复现路径，不能归因未捕获调用栈的所有旧失败。
+- L1在停止态、原生文件打开前同步排空待处理的输入目的地状态；不泵消息队列、不加固定等待。录音中的20Hz检查实际目标上下文、文件引用和Wave writer存活；writer_unavailable/recording_target_lost均保持failed。已有500ms处理停滞预算不变；message thread阻塞时不保证实时发现。
+- 新RecordingWriterFailureTests实际停止原生写盘线程，音频回调继续；普通/Loop分别44.81/27.79ms返回failed，预先设定的250ms观测界限不变，注入本身分别3.02/2.11ms。故障文件保留，正常模式的部分片段可撤销；Loop原Playlist原子保留，不提交半组Take。新录音真实重启writer，Loop取得6个Take，原Undo/Redo及冷重开通过。不是物理麦克风/设备拔插或实际磁盘满资格。
+- 失败Loop刚附着片段所排队的ClipList排序，原先会在回滚后移动OUTPUTDEVICES子树并形成无名Undo。EditOrdering.h复用既有有界排序排空，在录音事务关闭/回滚前执行；不改事务名称或绕过untracked Undo保护。保留失败前后XML及原红日志writer-undo-trace。历史回执仅作为stored_history摘要，audio_verified=false，重开不伪造last_recording执行成功；UI明确显示部分失败录音历史。
+- 第一批49项通过；受影响10套实际9/10，MIDI因分页缺少CC身份/值/拍位置字段失败；07dbd4d统一事实投影，保留原失败断言，新加持久事件分页/重开检查，MIDI/分页/CC三套3/3补验通过。计数来自各套新鲜JSON并核对mtime，索引recording-current-results.json列出每批红绿及最终879项，不能称一次13套全绿。
+- 原ProductionChainTests的9秒双通道输入、6个Take、15秒等待与120秒CTest保持；关闭原生诊断日志后连续5次/59.92秒通过，之后受影响批次再次通过91项。覆盖Loop→Punch→Comp→两种交叉淡化→真实WAV、原键位/自定义Punch键、Undo/Redo/保存重开；重开二次导出PCM最大差0。8份故障/恢复录音与2份最终导出经独立stdlib解码：48k/PCM24，格式/帧数/完整data/SHA/Peak/RMS符合，最终192000帧双声道PCM完全一致。见recording-independent-pcm.json、recording-chain-independent-pcm.json；不是听评。
+- Release及所有所需目标构建exit0后才运行；ld重复静态库与旧QueryTests宏弃用警告保留。Tracktion pin不变，18补丁/46文件fresh apply→字节一致→reverse实际通过，见recording-sdk-replay.json。SDK日志仅FORMA_RECORD_TRACE=1时在原生文件关闭后的非实时路径输出；回调只加常数计数，无新增RT日志/分配/锁。既有SDK录音队列RT分配/锁未因此取得资格。
+- 唯一App固定本地deep/strict验签通过，SHA256 e992fb954e19719d6d3fb93647b49c38836686d5b0218b5fd157b1c6c1805448；非发行公证。不重启运行中用户工程、无新DMG/tar/应用副本。此轮没有重试已持续失败的桌面读取；用户确认主界面可操作，但本轮实体键鼠/原生选择器/麦克风/听评未新验，旧KeyboardSettings foreground/native peer失败继续保留。
+
+亲手试：保存当前工程后重启唯一App，用下面自有测试音工程试听和CmdZ/ShiftCmdZ、另存重开。它不是音乐作品。
+`build-v2-tracktion/P1-Production-Chain-8257e1b82bb740f8a2e8236170103a33/P1-Production-Chain.tracktionedit`
+
+下一项是普通Open替换工程前的保存/取消保护，继续复用退出持久化校验。其余性能A15.84%超15%、分析超时、读取能力全量、复杂路由/PDC/长源、硬件/耐久/Windows/视频/环绕/发行仍未完成；M2/M3冻结，M4/M5暂缓。
+
+以下为历史验证；当前资格以上述回执为准。
+
 # 正常退出前的真实保存（2026-10-16）
 
 结论：aeb435d已接通关闭窗口/应用退出→原生退出面板→L1停止录放→另存完整工程或保存恢复副本→最终回执复核→延后退出。当前4/4套226项/33.75秒通过，其中退出52项/2.61秒，P1完整受控链路91项/12.69秒。完整产品未完成；本轮曾发生Loop Take失败，最新重放通过不能证明根因已修。

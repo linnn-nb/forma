@@ -7,6 +7,7 @@
 - 新增持久音频/编辑语义须登记工程读取能力；保存覆盖当前/非活动/Undo/Redo，禁止靠旧读者忽略的字段防误读。实际格式与迁移规则见 docs/PROJECT_FORMAT.md。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。
 - 每个Plan一个UndoManager事务；actor/revision/幂等/权限/预览/回执保留。旁路人工参数变化由L1捕获。
+- 原生派生排序在原Plan/录音事务关闭或失败回滚前排空；录音目标/写盘线程失效必须failed，历史录音摘要不得冒充新执行。
 - 编译式Plan复验必须重复相同前置条件规范化；已有删除对象保留存在性/来源/媒体校验，split别名不冒充已有对象。独立音频参考须保留离散跳变两侧样本。
 - GUI只读facts并建草稿，src/v2/ui使用原生组件和ApplicationCommandManager。新代码遵守.clang-format（120列）。
 - 借用facts先查询再取引用，禁止跨L1提交持有子对象引用；workspaceRevision保护实际显示版本，不以外部查询推进GUI版本。
