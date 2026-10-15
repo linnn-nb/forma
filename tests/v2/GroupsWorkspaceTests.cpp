@@ -519,7 +519,7 @@ int main(int argc, char** argv)
         check(reopened.query()["mix_groups"][0]["enabled"] == false,
               "restored shortcut commits actual group enable state");
         const auto legacy = dir.getChildFile("LegacyGroups.tracktionedit");
-        auto legacyXML = juce::parseXML(dir.getChildFile("groups.tracktionedit"));
+        auto legacyXML = ndaw::v2::project_fixture::nativeXml(dir.getChildFile("groups.tracktionedit"));
         check(legacyXML != nullptr, "owned native groups XML available for migration verification");
         std::function<void(juce::XmlElement&)> downgrade = [&](juce::XmlElement& xml)
         {

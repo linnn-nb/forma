@@ -1,4 +1,5 @@
 #include "ProjectFixture.h"
+#include "OwnedEditFixture.h"
 #include "RecoveryStore.h"
 #include "ui/Workspace.h"
 #include <fstream>
@@ -424,6 +425,7 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = ndaw::v2::project_fixture::nativeXml(base);
+        discardDerivedFixtureHistory(*xml); // Owned foreign-event fixture, not a valid modern Undo archive.
         for (const auto& owner : query["tracks"])
             for (const auto& v : owner["clips"])
                 if (v["kind"] == "midi")
@@ -467,8 +469,10 @@ int main(int argc, char** argv)
             {step, "native"}, {ramp, "native"}, {constant, "samples"}, {constant, "native"}};
         auto open = [&](const juce::File& file)
         {
+            const auto token = c.sessionToken();
             w.openSession(file);
             pump();
+            check(c.sessionToken() != token, "GUI Open adopts the actual requested native fixture");
         };
         auto setBasis = [&](const std::string& basis)
         {

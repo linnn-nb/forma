@@ -1,4 +1,5 @@
 #include "ProjectFixture.h"
+#include "OwnedEditFixture.h"
 #include "ui/Workspace.h"
 #include <fstream>
 #include <iostream>
@@ -416,6 +417,7 @@ int main(int argc, char** argv)
         const auto base = dir.getChildFile("Base.tracktionedit");
         c.save(base);
         auto xml = ndaw::v2::project_fixture::nativeXml(base);
+        discardDerivedFixtureHistory(*xml); // Owned foreign-event fixture, not a valid modern Undo archive.
         for (const auto& id : {sm, lm})
         {
             auto* native = byID(*xml, id);
@@ -449,8 +451,10 @@ int main(int argc, char** argv)
         juce::File active = fixture;
         auto open = [&]
         {
+            const auto token = c.sessionToken();
             w.openSession(active);
             pump();
+            check(c.sessionToken() != token, "GUI Open adopts the actual requested native fixture");
         };
         auto setting = [&](const std::string& id, const std::string& basis)
         { return operation("track.automation_edit_basis.set", {{"track", id}, {"basis", basis}}); };

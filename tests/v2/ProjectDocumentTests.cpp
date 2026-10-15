@@ -94,7 +94,7 @@ void refuse(Commands& c, const juce::XmlElement& xml, juce::File dir, const std:
 {
     const auto path = dir.getChildFile(juce::String(name) + ".tracktionedit");
     check(xml.writeTo(path), "actual incompatible document writes in owned fixture");
-    const auto before = c.query()["tracks"];
+    const auto before = c.query();
     const auto token = c.sessionToken();
     std::string error;
     try
@@ -117,8 +117,11 @@ void refuse(Commands& c, const juce::XmlElement& xml, juce::File dir, const std:
                                                       {"Future-Inactive-Playlist", "audio.warp.mapping v999"}};
     check(error.find(expected.at(name)) != std::string::npos,
           "actual refusal identifies the intended incompatibility rather than an unrelated checksum or parse error");
-    check(c.sessionToken() == token && c.query()["tracks"] == before,
-          "failed open preserves current Edit and session identity");
+    const auto after = c.query();
+    check(c.sessionToken() == token && after["tracks"] == before["tracks"] && after["revision"] == before["revision"] &&
+              after["history"] == before["history"] && after["can_undo"] == before["can_undo"] &&
+              after["can_redo"] == before["can_redo"],
+          "failed open preserves current Edit, revision, history and session identity");
     rejected.push_back({{"name", name}, {"path", path.getFullPathName().toStdString()}, {"error", error}});
 }
 } // namespace
@@ -223,6 +226,14 @@ int main(int argc, char** argv)
         lists.addChild(playlist, -1, nullptr);
         inactive.getChildWithName("TRACK").addChild(lists, -1, nullptr);
         refuse(c, *preciseEditXml(inactive), root, "Future-Inactive-Playlist");
+        const auto plainAfterRefusals = c.query()["tracks"];
+        c.redo();
+        c.redo();
+        compare(pcm, render(c, root));
+        c.undo(split["plan_id"]);
+        c.undo(warp["plan_id"]);
+        check(c.query()["tracks"] == plainAfterRefusals,
+              "original Redo and Undo remain executable after all nine incompatible Open refusals");
         auto legacy = native.createCopy();
         auto meta = legacy.getChildWithName("NATIVEDAW");
         meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);
