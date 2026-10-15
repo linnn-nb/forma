@@ -62,6 +62,13 @@ public:
                 finish(0);
                 return;
             }
+            if (command == "inspect" && args.size() == 2)
+            {
+                commands->open(juce::File(args[1]));
+                std::cout << commands->query().dump(2) << "\n";
+                finish(0);
+                return;
+            }
             if ((command == "legacy-preview" && args.size() == 2) || (command == "legacy-import" && args.size() == 3))
             {
                 auto p = commands->makePlan("human", Json::array({{{"command", "session.import_legacy"},
@@ -105,7 +112,8 @@ public:
                 return;
             }
             std::cerr << "Usage: ndaw [probe|devices|commands|analyse AUDIO|render AUDIO OUTPUT.wav GAIN_DB|play AUDIO "
-                         "REPORT.json|legacy-preview OLD.ndaw|legacy-import OLD.ndaw NEW.tracktionedit]\n";
+                         "REPORT.json|inspect PROJECT|legacy-preview OLD.ndaw|legacy-import OLD.ndaw "
+                         "NEW.tracktionedit]\n";
             finish(2);
         }
         catch (const std::exception& e)
