@@ -249,6 +249,12 @@ public:
     }
     void initialise(const juce::String&) override
     {
+        // CTest starts the bundle executable directly, without LaunchServices
+        // promoting it to a normal foreground application. Activation alone
+        // cannot give that background process a key native window on macOS.
+#if JUCE_MAC
+        juce::Process::setDockIconVisible(true);
+#endif
         juce::MessageManager::callAsync(
             [this]
             {
