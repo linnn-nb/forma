@@ -1,3 +1,19 @@
+# 混合时间线范围与快捷键完整复验（2026-10-16）
+
+**原完整矩阵2/2通过：MusicalShuffle112.05秒/222项，SharedClock235.54秒/717项。** 143616个实际SDK曲线探针、原场景、全部数值/状态断言与各240秒时限不变；没有缩小工作负载。只改测试输入与检查，未改生产实现、应用二进制、SDK或依赖。结果索引 build-v2-tracktion/p3-native-range-current-results.json；两目标构建exit0后测试，最新JUnit p3-native-range-schema.xml。
+
+修正eed4702：原GUI段私写UI状态、固定90ms后发键，显示的轨道/范围可能仍旧；现在由时间线正常范围入口携带实际显示session/revision，等待真实项目刷新后输入，并核对显示范围/轨道。增加两个native peer，确认仅通过可见可用的实际按钮triggerClick，不私调onClick，不重发点击/强刷GUI兜底。500ms是轮询截止，不能抢占其中同步回调，不宣称所有提交低于500ms。
+
+1e78101修新增辅助误把五字段查询事实与两字段输入整体比较；现在校验端点/长度/时基/采样率。第一次Musical90.93秒辅助断言失败，Shared活跃时因确定同一错误显式SIGINT（-2），不是正常完成。p3-native-range-input-tests.log、p3-native-range-input-aborted.json和当时1秒sample完整保留，未计成功。随后真实2/2，不写成首次全绿。
+
+已走通混合源/目标的native musical Shuffle Delete/Cut/预览文本与接受/拒绝，普通音频剪贴板到mixed目标的桥接/冻结曲线、之后源修改不篡改旧Copy、native/sample共享曲线两种基准、版本/Scope/锁定/模糊时钟拒绝、原Undo/Redo/保存重开/自定义键、CC/SysEx/未知原字段和媒体哈希。最大归一曲线误差Musical1.7881393432617188e-7/Shared1.1920928955078125e-7，派生拍保存误差0；不扩大到报告limits列出的未资格组合。
+
+可打开音乐范围示例 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/musical-shuffle-demos/musical-shuffle-939e55a487d44bccb001e8c5a1ea917d/MusicalShuffleReady.tracktionedit` 或共享曲线示例 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/shared-clock-demos/shared-clock-c9d154fa6b15428aaa082d25a37b437a/SharedClockReady.tracktionedit`；工程/源音频是真实产物。native-peer事件、程序化按键与实际按钮回调不冒充桌面物理键盘、视觉、麦克风或用户听评。本轮没有重复桌面连接重试。
+
+应用 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，二进制SHA256仍 `3d8ef94eb9db37e4abab56d1ba757cc622b6ce6c3f8a8bb065bfd7c8620065ce`，固定本地deep/strict签名通过（非发行公证）。当前SDK实际diff与18补丁/44文件字节匹配；上轮fresh apply/reverse记录复用，本轮未重新重放。没有新DMG/应用副本。没有将单秒sample当基准：当时Open/PersistentHistory/HistoryDelta查找较重，是下轮定位线索，非完整归因。
+
+原AutomationMove180秒、ObjectShuffle300秒本轮未执行仍未通过；Shared距240秒约4.46秒余量不够宣称稳定。下一项定位真实历史回放/冷Open及其它热点，在原矩阵验证。原性能A/分析超时、实体P1制作/听评、其它能力版本、长源/硬件/Windows/视频/发行等仍在完整范围，M2/M3冻结，M4/M5暂缓。以下为历史资格。
+
 # 零点范围Shuffle与全帧音频（2026-10-15）
 
 **7套受影响测试按各自最新终态通过：原7/7（132.71秒）、native-peer强化1/1（13.68秒）、全帧强化1/1（49.60秒）。** 不是本轮全跑全部77套，不累加被替换的旧检查。应用及7个受影响目标先构建exit0再测试；之后只重建/运行加强的目标。详细命令、最新JSON新鲜度/SHA、三份JUnit、实际产物见本地 build-v2-tracktion/p3-shuffle-current-results.json。
