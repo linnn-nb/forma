@@ -435,9 +435,14 @@ int main(int argc, char** argv)
              {"value", -3.0},
              {"curve", 0.0}});
         const auto automated = all(c);
-        rejects([&] { c.makePlan("human", Json::array({op("clips.relocate", {{"moves", moves}})})); },
-                "enabled automation follow refuses unqualified inter-track curve mapping atomically");
-        check(all(c) == automated, "refused follow policy does not move clips or alter curves");
+        const auto followed = c.makePlan("human", Json::array({op("clips.relocate", {{"moves", moves}})}));
+        check(c.preview(followed)["relocation_changes"][0]["automation"]["transfers"].size() == 1 &&
+                  all(c) == automated,
+              "enabled automation follow previews the actual matched volume transfer without changing Edit");
+        c.commit(followed);
+        check(where(a) == bt && where(m) == dt, "enabled automation follows the actual mixed relocation");
+        c.undo();
+        check(all(c) == automated, "one original followed Undo restores both owners and curve base values");
         run(c, "session.automation_follows_edit.set", {{"enabled", false}});
         auto points = [&](const std::string& track)
         {
