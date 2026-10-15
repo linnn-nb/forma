@@ -17,6 +17,19 @@ public:
     {
         return c.edit->getTransport();
     }
+    static void traceUndo(Commands& c, const juce::File& folder)
+    {
+        auto& um = c.edit->getUndoManager();
+        std::cout << "UNDO_FAILURE "
+                  << Json{{"native_undo", um.getUndoDescription().toStdString()},
+                          {"native_redo", um.getRedoDescription().toStdString()},
+                          {"history", c.query()["history"]}}
+                         .dump()
+                  << std::endl;
+        c.edit->state.createXml()->writeTo(folder.getChildFile("failed-native-undo-before.xml"));
+        um.undo(); // Diagnostic only after the production Undo already failed; the test still fails.
+        c.edit->state.createXml()->writeTo(folder.getChildFile("failed-native-undo-after.xml"));
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -222,7 +235,15 @@ void scenario(const juce::File& folder, bool loop)
               "reopened Redo preserves historical failure without forging a new execution or audio verification");
         c.undo(failed["plan_id"]);
     }
-    c.undo(rename["plan_id"]);
+    try
+    {
+        c.undo(rename["plan_id"]);
+    }
+    catch (...)
+    {
+        RecordingTestAccess::traceUndo(c, folder);
+        throw;
+    }
     check(c.query()["tracks"][0]["name"] != "Preserved human name", "failure leaves original human Undo usable");
     c.redo();
     check(c.query()["tracks"] == before, "failure leaves original Redo exact");
