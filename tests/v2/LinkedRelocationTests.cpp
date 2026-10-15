@@ -42,6 +42,10 @@ public:
                 result.push_back(child.createXml()->toString().toStdString());
         return result;
     }
+    static void diagnostic(Commands& c, const juce::File& file)
+    {
+        c.edit->state.createXml()->writeTo(file);
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -50,6 +54,7 @@ int checks = 0, serial = 0;
 int renderFrames = 144000;
 double maxError = 0;
 Json renderFiles = Json::array(), comparisons = Json::array();
+Json pluginDifferences = Json::array(), lastPreparation = nullptr;
 void check(bool ok, const char* why)
 {
     if (!ok)
@@ -149,7 +154,13 @@ juce::AudioBuffer<float> render(Commands& c, juce::File folder, int first = 0)
     const auto deadline = juce::Time::getMillisecondCounterHiRes() + 5000;
     while (c.playbackPreparation()["busy"].get<bool>() && juce::Time::getMillisecondCounterHiRes() < deadline)
         juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
-    check(!c.playbackPreparation()["busy"].get<bool>(), "actual source ready within fixed five-second budget");
+    lastPreparation = c.playbackPreparation();
+    if (lastPreparation["busy"].get<bool>())
+    {
+        RecordingTestAccess::diagnostic(c, folder.getChildFile("Diagnostic-Edit.xml"));
+        std::cout << "PREPARATION FAILURE " << lastPreparation.dump() << " · " << folder.getFullPathName() << std::endl;
+    }
+    check(!lastPreparation["busy"].get<bool>(), "actual source ready within fixed five-second budget");
     auto file = folder.getChildFile("Render-" + juce::String(++serial) + ".wav");
     const auto receipt = c.render(file, first, first + renderFrames);
     renderFiles.push_back(
@@ -519,8 +530,14 @@ int main(int argc, char** argv)
                 check(state(cold) == after,
                       "actual cold Open retains active membership, parked material and origin references");
                 for (const auto& move : moves)
-                    check(RecordingTestAccess::plugins(cold, move["clip"]) == originalPlugins.at(move["clip"]),
+                {
+                    const auto actual = RecordingTestAccess::plugins(cold, move["clip"]);
+                    if (actual != originalPlugins.at(move["clip"]))
+                        pluginDifferences.push_back(
+                            {{"clip", move["clip"]}, {"original", originalPlugins.at(move["clip"])}, {"cold", actual}});
+                    check(actual == originalPlugins.at(move["clip"]),
                           "actual cold Open restores complete real Clip plugin state and IDs");
+                }
                 cold.undo(p["plan_id"]);
                 check(state(cold) == before, "cold original Undo restores both sources and every destination Playlist");
                 compare(silence, render(cold, folder), 0, "cold original Undo renders the original linked PCM");
@@ -559,6 +576,8 @@ int main(int argc, char** argv)
                     {"render_frames", renderFrames},
                     {"renders", renderFiles},
                     {"comparisons", comparisons},
+                    {"plugin_differences", pluginDifferences},
+                    {"last_preparation", lastPreparation},
                     {"cases", cases},
                     {"scope", "real native Edit, Workspace key/confirmation, PCM24 files and cold original UndoRedo; "
                               "no physical keyboard/microphone/listening claim"}};
@@ -569,8 +588,15 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        Json result{{"result", "failed"}, {"checks", checks},       {"error", e.what()},         {"cases", cases},
-                    {"profile", profile}, {"renders", renderFiles}, {"comparisons", comparisons}};
+        Json result{{"result", "failed"},
+                    {"checks", checks},
+                    {"error", e.what()},
+                    {"cases", cases},
+                    {"profile", profile},
+                    {"renders", renderFiles},
+                    {"comparisons", comparisons},
+                    {"plugin_differences", pluginDifferences},
+                    {"last_preparation", lastPreparation}};
         if (argc > 1)
             std::ofstream(argv[1]) << result.dump(2) << '\n';
         std::cerr << result.dump(2) << std::endl;
