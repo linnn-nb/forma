@@ -1,5 +1,5 @@
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-index 5cd2c92..11f24a4 100644
+index 5cd2c92..cae474f 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 @@ -99,24 +99,39 @@ class ProxyGeneratorJob  : public AudioProxyGenerator::GeneratorJob
@@ -179,10 +179,24 @@ index 5cd2c92..11f24a4 100644
  
      auto clipPos = getPosition();
  
-@@ -2487,6 +2542,59 @@ void AudioClipBase::cancelCurrentRender()
+@@ -2484,8 +2539,71 @@ void AudioClipBase::createNewProxyAsync()
+ 
+ void AudioClipBase::cancelCurrentRender()
+ {
++    TRACKTION_ASSERT_MESSAGE_THREAD
++
      if (renderJob != nullptr)
-         renderJob->cancelJob();
- }
+-        renderJob->cancelJob();
++    {
++        // Render jobs are shared by source/map hash. Detaching this clip must not
++        // cancel another clip's cache, or deliver a stale failure to this clip.
++        auto retiringJob = std::move (renderJob);
++        retiringJob->removeListener (this);
++
++        if (! retiringJob->hasListeners())
++            retiringJob->cancelJob();
++    }
++}
 +bool AudioClipBase::bindPreparedSourceRender (const AudioFile& source)
 +{
 +    TRACKTION_ASSERT_MESSAGE_THREAD
@@ -235,11 +249,10 @@ index 5cd2c92..11f24a4 100644
 +    preparedElasticProxy = file;
 +    stopTimer();
 +    return true;
-+}
+ }
  
  void AudioClipBase::timerCallback()
- {
-@@ -2544,8 +2652,10 @@ void AudioClipBase::timerCallback()
+@@ -2544,8 +2662,10 @@ void AudioClipBase::timerCallback()
      }
  
      // Proxy file exists — restart playback to use it
@@ -251,7 +264,7 @@ index 5cd2c92..11f24a4 100644
  
      Selectable::changed();
      edit.restartPlayback();
-@@ -2573,6 +2683,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
+@@ -2573,6 +2693,7 @@ void AudioClipBase::valueTreePropertyChanged (juce::ValueTree& tree, const juce:
  
                  if (! getWarpTime())
                  {
@@ -385,3 +398,17 @@ index 90077f6..fab7904 100644
               ^ static_cast<HashCode> (getIsReversed() * 768)
               ^ static_cast<HashCode> ((clipEffects == nullptr || ! canHaveEffects())  ? 0 : clipEffects->getHash());
  }
+diff --git a/modules/tracktion_engine/model/export/tracktion_RenderManager.h b/modules/tracktion_engine/model/export/tracktion_RenderManager.h
+index fb477d3..e768e02 100644
+--- a/modules/tracktion_engine/model/export/tracktion_RenderManager.h
++++ b/modules/tracktion_engine/model/export/tracktion_RenderManager.h
+@@ -65,6 +65,9 @@ public:
+         void addListener (Listener* l)                      { listeners.add (l); }
+         void removeListener (Listener* l)                   { listeners.remove (l); }
+ 
++        /** Message-thread ownership check; listeners retain the shared render's users. */
++        bool hasListeners() const                          { return ! listeners.isEmpty(); }
++
+         //==============================================================================
+         Engine& engine;
+         AudioFile proxy;
