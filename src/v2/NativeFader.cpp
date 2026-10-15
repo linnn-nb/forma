@@ -96,8 +96,13 @@ public:
     void capture(bool force = false)
     {
         std::lock_guard lock(captureMutex); // Never entered by process().
+        // Retired objects are no longer published. A reader entering after this
+        // zero observation can only acquire owned, so reclaim before allocating
+        // another version; otherwise a new reader could defeat the queue bound.
+        if (readers.load(std::memory_order_seq_cst) == 0)
+            retired.clear();
         const bool changed = dirty.exchange(false) || force;
-        if (changed && retired.size() >= 8 && readers.load(std::memory_order_seq_cst) != 0)
+        if (changed && retired.size() >= 8)
         {
             // Coalesce to the newest model revision instead of growing a queue
             // while an overloaded callback keeps old snapshots in use.
