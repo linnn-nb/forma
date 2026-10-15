@@ -1,4 +1,4 @@
-2026-10-15 clips.relocate派生automation.tracks/transfers及automation_changes预览。仍仅human/local_gui独立停止事务，不扩Schema权限/MCP；真实源/目标参数身份、范围/步长/skew、曲线hash/显式基值、Tempo和revision封定，点跨lane保留ID/原属性。双侧轨道和完整时间Scope必需，不能把点区间冒充平滑全部声学足迹。committed仅表示工程提交，不能据此令audio_verified为真；真实WAV门槛失败，预览已警告，见CLIP_RELOCATION.md。
+2026-10-15 当前契约：clips.relocate仍仅human/local_gui独立停止态Plan，双侧轨道及完整时间Scope；没有扩大MCP权限。真实参数ID/范围/曲线与显式基值/Tempo/revision绑定保持；普通Read原生推子读取非RT准备快照，不改变唯一Edit事实和一Plan一Undo事务。committed只表示实际工程提交，不能据此声明audio_verified；整段WAV尾音仍差0.0024923086166381836（门槛2e-6），预览明确“恢复目标参数时可能改变效果器尾音；音频保持验收尚未通过”。尾音与目标已有曲线/其它片段冲突、权限范围需下一项明确，禁止用快照推子资格扩大所有插件与模式。以下保留历史契约；详见CLIP_RELOCATION.md。
 
 2026-10-15 P3-CLIP-RELOCATE-01：新增human/local_gui独立停止态命令clips.relocate {moves:[{clip,from_track,to_track,position_samples}],state_hash}，1–64实际Clip、48k采样、共同位移；完整编辑组与源/目标Scope均须覆盖。实际预览绑定来源SHA、目标处理链/路由/Playlist、自动化策略和配对rehome/detach，接受后单原生事务，同ID而非复制删除。重试/冲突/Undo沿用现有契约；不扩大MCP或自动执行权限。641/642默认CmdCtrlOption↑/↓，每次都先确认；详见CLIP_RELOCATION.md。
 

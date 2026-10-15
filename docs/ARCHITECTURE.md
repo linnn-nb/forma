@@ -1,4 +1,4 @@
-原生自动化精度和实时约束尚未闭合：SDK VolumeAndPan平滑15ms，ParameterAutomationSource读流存在CriticalSection；它们与L1的事务/时钟映射分层验收，不能把调用成熟SDK等同于已满足无锁和采样级播放。当前没有添加SDK修补或第二播放引擎。
+2026-10-15 当前DSP增量：NativeFaderManager挂在同一EngineBehaviour，默认原生VolumeAndPan通过审计factory接入PreparedFader。每个Engine一个20ms非RT定时器；Edit/Tempo ValueTree变更只标dirty，非RT捕获原生曲线、拍时钟和参数，不建立第二事实模型。普通Read播放/离线渲染逐采样使用不可变快照，人工未自动化推子保持平滑；VCA、Modifier、录写、MIDI音量与停播监听走原SDK回退。回调使用已验证lock-free的指针/计数原子，既不复制shared_ptr也不析构快照；旧快照在非RT回收，最多8份retired加1份current，饱和时合并最新变更，不等待音频线程。SDK Plugin分派默认false，未启用宿主不受改变；18补丁/44文件受CMake及fresh replay审计。其它插件自动化流锁和EQ锁未解决，不能扩大为全引擎无锁。MasterAnalysis既有current()要求每次Edit生命周期随机sessionToken、revision及链hash，旧进程回执不能在新构建启动后冒充当前结果；本轮无新跨构建分析缓存。完整WAV尾音门槛仍失败，下一项尾音/冲突语义；历史说明中“未改SDK”仅指当时增量。
 
 2026-10-15 自动化迁移开发增量：L1 RelocationAutomation/message thread冻结全部实际源曲线，复用curve_edit采样/音乐切片，预计算源空缺和目标覆盖，再统一原生Undo写入。跨lane保留点ID和未知属性，主fader按角色、插入/发送按身份/槽/参数/NormalisableRange匹配。一Plan一事务；封定曲线/显式基值/Tempo/版本，排除有曲线时gain_db/pan即时读数，避免只读渲染误判冲突。无新Engine/SDK/RT代码。原生15ms平滑相关的WAV边界差异未达2e-6，保持发布阻断，不称该功能完成。
 
