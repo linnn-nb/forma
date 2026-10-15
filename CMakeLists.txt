@@ -56,7 +56,7 @@ if(NOT TE_HEAD STREQUAL "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98")
 endif()
 # Audited SDK fixes, ordered by source path for exact diff verification.
 set(TE_EXPECTED_DIFF "")
-foreach(TE_PATCH_NAME tracktion-midi-event-boundaries.patch tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-automation-readback.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch tracktion-audio-worker-priority.patch tracktion-persistent-freeze-cache.patch tracktion-warp-render-result.patch tracktion-elastic-windows.patch tracktion-prepared-source-lifetime.patch tracktion-prepared-fader-automation.patch)
+foreach(TE_PATCH_NAME tracktion-midi-loop-capture.patch tracktion-midi-event-boundaries.patch tracktion-serialization-parameters.patch tracktion-user-parameter-boundary.patch tracktion-automation-readback.patch tracktion-clip-order-boundary.patch tracktion-recording-status.patch tracktion-render-bus-only.patch tracktion-absolute-source-phase.patch tracktion-initial-midi-scan.patch tracktion-scrub-context.patch tracktion-four-osc-flush.patch tracktion-reverb-wet-tail.patch tracktion-audio-worker-priority.patch tracktion-persistent-freeze-cache.patch tracktion-warp-render-result.patch tracktion-elastic-windows.patch tracktion-prepared-source-lifetime.patch tracktion-prepared-fader-automation.patch)
   set(TE_PATCH "${CMAKE_SOURCE_DIR}/patches/${TE_PATCH_NAME}")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${TE_PATCH}")
   execute_process(COMMAND "${GIT_EXECUTABLE}" apply --check "${TE_PATCH}" WORKING_DIRECTORY "${TE_SOURCE}" RESULT_VARIABLE TE_PATCH_NEEDED ERROR_QUIET)
@@ -105,7 +105,7 @@ target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommand
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp src/v2/LinkedCompRelocation.cpp src/v2/RelocationAutomation.cpp src/v2/NativeFader.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ProjectDocument.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp src/v2/MidiLoopCapture.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
@@ -1062,6 +1062,13 @@ target_sources(ndaw_loop_recording_tests PRIVATE tests/v2/LoopRecordingTests.cpp
 target_link_libraries(ndaw_loop_recording_tests PRIVATE ndaw_ui)
 add_test(NAME forma_loop_recording COMMAND ndaw_loop_recording_tests "${CMAKE_BINARY_DIR}/p1-loop-recording-tests.json")
 set_tests_properties(forma_loop_recording PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_midi_loop_recording_tests PRODUCT_NAME "ndaw_midi_loop_recording_tests")
+target_sources(ndaw_midi_loop_recording_tests PRIVATE tests/v2/MidiLoopRecordingTests.cpp)
+target_include_directories(ndaw_midi_loop_recording_tests PRIVATE src/v2)
+target_link_libraries(ndaw_midi_loop_recording_tests PRIVATE ndaw_ui)
+add_test(NAME forma_midi_loop_recording COMMAND ndaw_midi_loop_recording_tests "${CMAKE_BINARY_DIR}/p1-midi-loop-tests.json")
+set_tests_properties(forma_midi_loop_recording PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_recording_writer_failure_tests PRODUCT_NAME "ndaw_recording_writer_failure_tests")
 target_sources(ndaw_recording_writer_failure_tests PRIVATE tests/v2/RecordingWriterFailureTests.cpp)

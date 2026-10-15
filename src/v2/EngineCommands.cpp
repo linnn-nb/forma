@@ -4,6 +4,7 @@
 #include "NativeEditXml.h"
 #include "ProjectDocument.h"
 #include "ProjectFileStore.h"
+#include "MidiLoopState.h"
 #include "MasterAnalysis.h"
 #include "StemExport.h"
 #include "AppPreferences.h"
@@ -2083,6 +2084,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     // This advances only the native allocator, not session facts or history.
     (void)candidate->createNewItemID();
     validatePlaylists(*candidate);
+    midi_loop::validate(*candidate);
     validateWarpEdit(*candidate);
     validateMidiControllerIDs(*candidate);
     validateCrossfades(*candidate);

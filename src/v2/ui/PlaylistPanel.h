@@ -173,6 +173,8 @@ public:
     {
         if (id == 524)
             return true;
+        if (!data.is_null() && data.value("midi", false))
+            return !source.empty() && (id == 517 || id == 518 || id == 523 || (id == 531 && data["tracks"].size() > 1));
         if (id == 536)
             return auditionStatus.value("active", false);
         if (data.is_null() || source.empty())
@@ -532,8 +534,27 @@ private:
                     g.setColour(juce::Colour(0xffa4d5cc));
                     const auto visible = box.getIntersection(lane);
                     const double elapsed = (visible.getX() - box.getX()) * owner.samplesPerPixel / 48000.;
-                    waves.draw(g, c, visible.reduced(0, 12), visible.getWidth() * owner.samplesPerPixel / 48000.,
-                               elapsed);
+                    if (c.value("kind", std::string{}) == "midi")
+                    {
+                        int low = 127, high = 0;
+                        for (const auto& note : c["notes"])
+                        {
+                            low = std::min(low, note["pitch"].get<int>());
+                            high = std::max(high, note["pitch"].get<int>());
+                        }
+                        for (const auto& note : c["notes"])
+                        {
+                            const auto begin = note["position_samples"].get<int64_t>();
+                            const auto end = begin + note["length_samples"].get<int64_t>();
+                            const float y = box.getY() + 24.f +
+                                            (high - note["pitch"].get<int>()) * 44.f / std::max(1, high - low + 1);
+                            g.fillRect(juce::Rectangle<float>(float(x(begin)), y,
+                                                              std::max(1.f, float(x(end) - x(begin))), 3.f));
+                        }
+                    }
+                    else
+                        waves.draw(g, c, visible.reduced(0, 12), visible.getWidth() * owner.samplesPerPixel / 48000.,
+                                   elapsed);
                     g.setColour(juce::Colours::white);
                     g.drawText(text(c["name"].get<std::string>()), box.withHeight(18).reduced(3, 0),
                                juce::Justification::centredLeft);

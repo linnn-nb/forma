@@ -110,7 +110,7 @@ const std::vector<Entry>& entries()
         {editCommand::remove, "删除选区 / 所选对象", "编辑", juce::KeyPress::backspaceKey},
         {111, "切换节拍器", "走带", juce::KeyPress::F9Key},
         {112, "循环切换预备拍", "走带", juce::KeyPress::F10Key},
-        {113, "循环播放 / 音频循环录音", "走带", 'l'},
+        {113, "循环播放 / 音频及 MIDI 循环录音", "走带", 'l'},
         {130, "在播放位置添加 Marker", "走带", 'm'},
         {131, "跳到上一个 Marker", "走带", juce::KeyPress::leftKey,
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
@@ -1028,7 +1028,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             {
                 active = false;
                 for (const auto& t : arrayField(facts, "tracks"))
-                    if (t["id"] == selected && t.value("type", std::string{}) == "audio")
+                    if (t["id"] == selected &&
+                        (t.value("type", std::string{}) == "audio" || t.value("type", std::string{}) == "midi" ||
+                         t.value("type", std::string{}) == "instrument"))
                         active = !facts.value("playing", false);
             }
             if (id >= 515 && id <= 537)

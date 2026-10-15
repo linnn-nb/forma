@@ -87,7 +87,8 @@ void validatePlaylists(te::Edit& edit)
 Json Commands::playlistQuery(te::AudioTrack& track) const
 {
     auto lists = track.state.getChildWithName("NDAW_PLAYLISTS");
-    if (!lists.isValid() && trackType(track) == "audio")
+    if (!lists.isValid() &&
+        (trackType(track) == "audio" || trackType(track) == "midi" || trackType(track) == "instrument"))
     {
         const auto id = "main:" + track.itemID.toString().toStdString();
         return {{"active", id},

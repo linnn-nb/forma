@@ -5,6 +5,7 @@
 #include "ElasticState.h"
 #include "ClipFxWindows.h"
 #include "NativeAudioFades.h"
+#include "MidiLoopState.h"
 namespace ndaw::v2
 {
 namespace
@@ -395,15 +396,19 @@ Json Commands::queryPlaylists(const std::string& id) const
 {
     checkThread();
     auto* t = track(id);
-    require(t && trackType(*t) == "audio", "Playlist requires an audio track");
+    require(t && (trackType(*t) == "audio" || trackType(*t) == "midi" || trackType(*t) == "instrument"),
+            "Playlist requires an audio, MIDI or instrument track");
     auto result = playlistQuery(*t);
     result["track"] = id;
     result["track_name"] = t->getName().toStdString();
+    result["midi"] = trackType(*t) != "audio";
     result["revision"] = revision;
     result["session_token"] = sessionToken();
     result["tracks"] = Json::array();
     for (auto* candidate : te::getAudioTracks(*edit))
-        if (trackType(*candidate) == "audio")
+        if ((trackType(*candidate) == "audio") == (trackType(*t) == "audio") &&
+            (trackType(*candidate) == "audio" || trackType(*candidate) == "midi" ||
+             trackType(*candidate) == "instrument"))
             result["tracks"].push_back(
                 {{"id", candidate->itemID.toString().toStdString()}, {"name", candidate->getName().toStdString()}});
     for (auto& item : result["items"])
@@ -419,6 +424,29 @@ Json Commands::queryPlaylists(const std::string& id) const
         item["clips"] = Json::array();
         for (auto c : clipsFor(*t, item["id"]))
         {
+            if (c.hasType(te::IDs::MIDICLIP))
+            {
+                auto row = midi_loop::summary(*edit, c);
+                row.update({{"id", str(c, "id")},
+                            {"name", str(c, "name")},
+                            {"kind", "midi"},
+                            {"path", ""},
+                            {"media_available", true},
+                            {"start_samples", frame(c, "start")},
+                            {"length_samples", frame(c, "length")},
+                            {"source_offset_seconds", double(c[te::IDs::offset])},
+                            {"speed_ratio", 1.0},
+                            {"gain_db", 0.0},
+                            {"locked", bool(c.getProperty("ndaw_locked", false))},
+                            {"take_id", str(c, "ndaw_take_id")}});
+                const auto origin = c.getChildWithName("NDAW_MIDI_LOOP_TAKE");
+                row["capture_source"] = origin.isValid() ? Json{{"id", str(origin, "source_id")},
+                                                                {"hash", str(origin, "source_hash")},
+                                                                {"pass", int(origin["pass"])}}
+                                                         : Json(nullptr);
+                item["clips"].push_back(std::move(row));
+                continue;
+            }
             const auto f = media(*edit, c);
             item["clips"].push_back(
                 {{"id", str(c, "id")},
@@ -462,7 +490,18 @@ Json Commands::queryPlaylists(const std::string& id) const
 std::string Commands::playlistMediaFingerprint(const Json& a) const
 {
     auto* t = track(a.at("track"));
-    require(t && trackType(*t) == "audio", "Playlist requires an audio track");
+    require(t && (trackType(*t) == "audio" || trackType(*t) == "midi" || trackType(*t) == "instrument"),
+            "Playlist requires an audio, MIDI or instrument track");
+    if (trackType(*t) != "audio")
+    {
+        Json content = Json::array();
+        for (const char* key : {"playlist", "source", "target"})
+            if (a.contains(key))
+                for (auto clip : clipsFor(*t, a.at(key)))
+                    content.push_back({str(clip, "id"), clip.createXml()->toString().toStdString()});
+        const auto bytes = content.dump();
+        return juce::SHA256(bytes.data(), bytes.size()).toHexString().toStdString();
+    }
     std::set<std::string> paths;
     for (const char* key : {"playlist", "source", "target"})
         if (a.contains(key))
@@ -589,7 +628,12 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         require(ops.size() == 1, "Playlist edits are standalone transactions");
         require(!edit->getTransport().isPlaying(), "stop playback before Playlist edits");
         auto* t = track(a["track"]);
-        require(t && trackType(*t) == "audio", "Playlist requires an audio track");
+        require(t && (trackType(*t) == "audio" || trackType(*t) == "midi" || trackType(*t) == "instrument"),
+                "Playlist requires an audio, MIDI or instrument track");
+        if (trackType(*t) != "audio")
+            require(cmd == "playlist.select" || cmd == "playlist.rename" || cmd == "playlist.target",
+                    "MIDI Playlist currently supports Take selection, rename and target; MIDI locking/Comp/editing "
+                    "requires qualification");
         require(a.at("media_fingerprint") == playlistMediaFingerprint(a), "Playlist media changed since planning");
         auto existing = [&](const char* key)
         {
@@ -655,10 +699,18 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                                     !bool(playlist_links::active(*member).getProperty("locked", false)),
                                 "A linked Comp member Playlist is locked");
                     if (cmd != "playlist.comp.detach")
+                    {
                         for (auto c : clipsFor(*member, dest))
-                            require(media(*edit, c).existsAsFile() &&
-                                        te::AudioFile(edit->engine, media(*edit, c)).isValid(),
-                                    "Linked Comp destination media is missing or unreadable");
+                        {
+                            if (c.hasType(te::IDs::MIDICLIP))
+                                require(c.getChildWithName(te::IDs::SEQUENCE).isValid(),
+                                        "MIDI Playlist sequence is missing");
+                            else
+                                require(media(*edit, c).existsAsFile() &&
+                                            te::AudioFile(edit->engine, media(*edit, c)).isValid(),
+                                        "Linked Comp destination media is missing or unreadable");
+                        }
+                    }
                     linkedTracks.push_back(member->itemID.toString().toStdString());
                 }
                 diff.push_back({{"command", cmd},

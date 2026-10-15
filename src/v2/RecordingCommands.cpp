@@ -160,8 +160,6 @@ Json Commands::recordingReadiness() const
             block("playlist_locked", "Active Playlist is locked", t);
         const auto q = recordingQuery(*t);
         const auto type = trackType(*t);
-        if (loop && type != "audio")
-            block("loop_midi_pending", "Loop MIDI recording is not yet qualified", t);
         auto* input = engine.getDeviceManager().findInputDeviceForID(juce::String(q["device"].get<std::string>()));
         const bool compatible = input && (type == "audio" ? input->getDeviceType() == te::InputDevice::waveDevice
                                                           : (type == "midi" || type == "instrument") &&
@@ -566,6 +564,7 @@ void Commands::finishRecordingCapture(bool unexpected)
     receipt["clips"] = Json::array();
     receipt["takes"] = Json::array();
     std::vector<std::pair<te::AudioTrack*, te::WaveAudioClip::Ptr>> loopClips;
+    std::vector<std::pair<te::AudioTrack*, te::MidiClip::Ptr>> midiLoops;
     auto& undo = edit->getUndoManager();
     initialiseMusicIDs(&undo);
     receipt["target_results"] = Json::array();
@@ -610,7 +609,9 @@ void Commands::finishRecordingCapture(bool unexpected)
                 else if (auto* m = dynamic_cast<te::MidiClip*>(c))
                 {
                     auto facts = midiQuery(*m);
-                    if (facts["notes"].empty() && facts["controller_events"].empty() && facts["sysex_count"] == 0)
+                    const bool midiLoop = receipt.value("mode", std::string{}) == "loop";
+                    if (!midiLoop && facts["notes"].empty() && facts["controller_events"].empty() &&
+                        facts["sysex_count"] == 0)
                     {
                         recordingError = "Native MIDI clip contains no events";
                         continue;
@@ -621,6 +622,8 @@ void Commands::finishRecordingCapture(bool unexpected)
                                                 {"events", facts}});
                     ++count;
                     c->state.setProperty("ndaw_origin", "recording", &undo);
+                    if (midiLoop)
+                        midiLoops.emplace_back(t, m);
                 }
             }
         receipt["target_results"].push_back({{"track", id(*t)},
@@ -641,12 +644,14 @@ void Commands::finishRecordingCapture(bool unexpected)
                     makePunchPlaylists(*target, *clip, receipt);
                 else
                     makeLoopPlaylists(*target, *clip, receipt);
+            for (const auto& [target, clip] : midiLoops)
+                makeMidiLoopPlaylists(*target, *clip, receipt);
             receipt["clips"] = Json::array();
             for (const auto& take : receipt["takes"])
                 receipt["clips"].push_back({{"id", take["clip"]},
                                             {"track", take["track"]},
-                                            {"kind", "audio"},
-                                            {"path", take["path"]},
+                                            {"kind", take.value("kind", "audio")},
+                                            {"path", take.value("path", "")},
                                             {"playlist", take["playlist"]}});
             for (auto& result : receipt["target_results"])
             {
@@ -690,6 +695,7 @@ void Commands::finishRecordingCapture(bool unexpected)
         undo.beginNewTransaction();
         receipt["clips"] = Json::array();
         receipt["takes"] = Json::array();
+        receipt.erase("midi_sources");
         for (auto& result : receipt["target_results"])
         {
             result["clips"] = 0;
@@ -709,7 +715,7 @@ void Commands::finishRecordingCapture(bool unexpected)
     receipt["outcome"] = recordingError.empty() ? (empty ? "no_events" : "success") : "failed";
     receipt["state"] = recordingError.empty() ? (empty ? "no_events" : "committed") : "failed";
     receipt["error"] = recordingError;
-    receipt["undo_scope"] = "Edit clips and Playlists only; recorded audio files are retained";
+    receipt["undo_scope"] = "Edit clips, Playlists and MIDI sources; recorded audio files are retained";
     auto& um = edit->getUndoManager();
     if (!receipt["clips"].empty())
     {

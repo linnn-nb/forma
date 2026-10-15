@@ -3,6 +3,7 @@
 #include <juce_cryptography/juce_cryptography.h>
 #include <cctype>
 #include "MidiControllerFacts.h"
+#include "NativeEditXml.h"
 namespace ndaw::v2
 {
 namespace
@@ -15,9 +16,10 @@ void require(bool ok, const char* why)
 }
 std::string digest(const juce::ValueTree& state)
 {
-    // Hash the portable XML representation: native var numeric types become strings
-    // after project reopening, while the saved event values remain the same.
-    const auto xml = state.createXml()->toString();
+    // Use the same full-precision representation as project persistence. SysEx
+    // times remain string attributes after loading; display-rounded XML would
+    // otherwise hash identical native event values differently after reopening.
+    const auto xml = preciseEditXml(state)->toString();
     return juce::SHA256(xml.toRawUTF8(), xml.getNumBytesAsUTF8()).toHexString().toStdString();
 }
 std::string prefix(te::MidiClip& clip)
