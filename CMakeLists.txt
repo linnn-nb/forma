@@ -1089,6 +1089,13 @@ target_link_libraries(ndaw_punch_recording_tests PRIVATE ndaw_ui)
 add_test(NAME forma_punch_recording COMMAND ndaw_punch_recording_tests "${CMAKE_BINARY_DIR}/p1-punch-tests.json")
 set_tests_properties(forma_punch_recording PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_midi_playlist_editing_tests PRODUCT_NAME "ndaw_midi_playlist_editing_tests")
+target_sources(ndaw_midi_playlist_editing_tests PRIVATE tests/v2/MidiPlaylistEditingTests.cpp)
+target_include_directories(ndaw_midi_playlist_editing_tests PRIVATE src/v2)
+target_link_libraries(ndaw_midi_playlist_editing_tests PRIVATE ndaw_ui)
+add_test(NAME forma_midi_playlist_editing COMMAND ndaw_midi_playlist_editing_tests "${CMAKE_BINARY_DIR}/p1-midi-playlist-tests.json")
+set_tests_properties(forma_midi_playlist_editing PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_playlist_editing_tests PRODUCT_NAME "ndaw_playlist_editing_tests")
 target_sources(ndaw_playlist_editing_tests PRIVATE tests/v2/PlaylistEditingTests.cpp)
 target_link_libraries(ndaw_playlist_editing_tests PRIVATE ndaw_ui)

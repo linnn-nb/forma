@@ -451,7 +451,8 @@ Json Commands::midiQuery(te::MidiClip& clip) const
              clip.state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN")["source_hash"].toString().toStdString()},
             {"midi_channel", clip.getMidiChannel().getChannelNumber()},
             {"looped", clip.isLooping()},
-            {"locked", bool(clip.state.getProperty("ndaw_locked", false))},
+            {"locked", bool(clip.state.getProperty("ndaw_locked", false)) ||
+                           activePlaylistLocked(*static_cast<te::AudioTrack*>(clip.getTrack()))},
             {"bulk_transform_available", transformRestriction(clip).empty()},
             {"bulk_transform_restriction", transformRestriction(clip)}};
 }

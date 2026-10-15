@@ -17,13 +17,13 @@ const std::vector<Entry>& entries()
     static const std::vector<Entry> list = {
         {283, "自动化跟随编辑", "编辑", 'a', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {284, "跨轨自动化尾随：仅片段", "编辑", '0',
-         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {285, "跨轨自动化尾随：0.5秒", "编辑", '1',
-         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {286, "跨轨自动化尾随：2秒", "编辑", '2',
-         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {287, "跨轨自动化尾随：5秒", "编辑", '5',
-         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {41, "新建工程…", "文件", 'n', cmd},
         {1, "导入音频…", "文件", 'i', cmd},
         {2, "打开工程…", "文件", 'o', cmd},
@@ -193,7 +193,7 @@ const std::vector<Entry>& entries()
          juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {271, "钢琴卷帘 · 适配片段全部音符", "缩放", 'f',
          shift | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
-        {272, "钢琴卷帘 · 恢复默认键高", "缩放", '0',
+        {272, "钢琴卷帘 · 恢复默认键高", "缩放", 'r',
          shift | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {273, "Tempo 标尺事件…", "音乐", 't', cmd | shift | juce::ModifierKeys::altModifier},
         {274, "Meter 标尺事件…", "音乐", 'm', cmd | shift | juce::ModifierKeys::altModifier},
@@ -253,7 +253,7 @@ const std::vector<Entry>& entries()
         {519, "提升选区到目标 Playlist", "Playlist", 'u',
          juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
         {520, "新建 Comp 候选", "Playlist", 'c',
-         cmd | juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
+         cmd | shift | juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
         {521, "登记源片段 Take", "Playlist", 'k', juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
         {522, "锁定 / 解锁 Playlist", "Playlist", 'l',
          juce::ModifierKeys::altModifier | juce::ModifierKeys::ctrlModifier},
@@ -1838,6 +1838,32 @@ bool Workspace::restoreShortcuts(const juce::XmlElement& xml)
                 if (mappings->findCommandForKeyPress(key) == 0)
                     mappings->addKeyPress(entry.id, key);
         }
+    // Migrate only exact ambiguous legacy defaults, preserving unique and
+    // independently customized mappings. The old map could execute another edit.
+    constexpr int three =
+        juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier;
+    for (auto [secondary, preferred, character, modifiers] : std::vector<std::tuple<int, int, int, int>>{
+             {284, 536, '0', three},
+             {285, 525, '1', three},
+             {286, 526, '2', three},
+             {287, 529, '5', three},
+             {272, 536, '0', three},
+             {520, 574, 'c',
+              juce::ModifierKeys::commandModifier | juce::ModifierKeys::ctrlModifier |
+                  juce::ModifierKeys::altModifier}})
+    {
+        const juce::KeyPress old(character, modifiers, 0);
+        const auto keys = mappings->getKeyPressesAssignedToCommand(secondary);
+        if (keys.contains(old) && mappings->getKeyPressesAssignedToCommand(preferred).contains(old))
+        {
+            mappings->removeKeyPress(secondary, keys.indexOf(old));
+            juce::ApplicationCommandInfo info(secondary);
+            getCommandInfo(secondary, info);
+            for (const auto& replacement : info.defaultKeypresses)
+                if (mappings->findCommandForKeyPress(replacement) == 0)
+                    mappings->addKeyPress(secondary, replacement);
+        }
+    }
     return true;
 }
 void Workspace::changeListenerCallback(juce::ChangeBroadcaster* source)

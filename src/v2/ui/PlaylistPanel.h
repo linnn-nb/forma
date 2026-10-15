@@ -130,9 +130,7 @@ public:
             source = data["active"];
         if (changed)
             updateName();
-        title.setText(text(data["track_name"].get<std::string>() +
-                           (data.value("midi", false) ? " · Playlists / Takes" : " · Playlists / Comp")),
-                      juce::dontSendNotification);
+        title.setText(text(data["track_name"].get<std::string>() + " · Playlists / Comp"), juce::dontSendNotification);
         candidateName.setEnabled(true);
         draftList.setEnabled(true);
         Json tracks = Json::array();
@@ -385,7 +383,7 @@ public:
                 }
             refreshStatus();
             status.setText(text(data.value("midi", false)
-                                    ? "MIDI Take 已提交 · 可 Undo / Redo；关闭面板后空格走带。"
+                                    ? "MIDI Playlist 已提交 · 可 Undo / Redo。"
                                     : "已提交 · 可 Undo / Redo。点列表名称选择，拖选波形后提升到 TARGET。"),
                            juce::dontSendNotification);
             if (id == 527)

@@ -254,9 +254,10 @@ int main(int argc, char** argv)
         Workspace w(false, std::make_unique<Storage>(root.getChildFile("prefs")));
         auto& c = RecordingTestAccess::commands(w);
         RecordingTestAccess::refresh(w);
-        const juce::KeyPress tailKey(
-            '1', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
-            0);
+        const juce::KeyPress tailKey('1',
+                                     juce::ModifierKeys::commandModifier | juce::ModifierKeys::ctrlModifier |
+                                         juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
+                                     0);
         check(w.keyPressed(tailKey), "registered tail shortcut dispatches through the real command target");
         check(c.editingOptions()["relocation_tail_samples"] == 24000, "shortcut commits actual half-second setting");
         const auto settings = root.getChildFile("Tail-settings.tracktionedit");

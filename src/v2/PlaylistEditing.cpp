@@ -791,16 +791,17 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
             for (size_t i = 1; i < ranges.size(); ++i)
                 require(ranges[i - 1].second <= ranges[i].first,
                         "Comp candidate segments overlap; remove or trim a choice first");
-            diff.push_back({{"command", cmd},
-                            {"track", a["track"]},
-                            {"name", a["name"]},
-                            {"segments", a["segments"]},
-                            {"playback_changed", false},
-                            {"target_changed", false},
-                            {"gaps", "silence"},
-                            {"source_playlists", "preserved"},
-                            {"clip_fx_policy", "independent native instances; complete source input, selected output "
-                                               "window; real chain preserved"}});
+            diff.push_back(
+                {{"command", cmd},
+                 {"track", a["track"]},
+                 {"name", a["name"]},
+                 {"segments", a["segments"]},
+                 {"playback_changed", false},
+                 {"target_changed", false},
+                 {"gaps", trackType(*t) == "audio" ? "silence" : "no scheduled MIDI; instrument releases may continue"},
+                 {"source_playlists", "preserved"},
+                 {"clip_fx_policy", "independent native instances; complete source input, selected output "
+                                    "window; real chain preserved"}});
         }
         if (cmd == "playlist.promote" || cmd == "playlist.take.register")
         {
