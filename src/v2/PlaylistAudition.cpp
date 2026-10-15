@@ -111,7 +111,9 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
         }
         qualifyPlugins(owner->pluginList);
         if (auto* output = owner->getOutput().getOutputDevice(false))
-            reachesDevice |= dynamic_cast<te::WaveOutputDevice*>(output) != nullptr && output->isEnabled();
+            reachesDevice |= (dynamic_cast<te::WaveOutputDevice*>(output) != nullptr ||
+                              dynamic_cast<te::MidiOutputDevice*>(output) != nullptr) &&
+                             output->isEnabled();
         const auto route = routingQuery(*owner);
         if (route["output"]["kind"] == "track")
             pending.push_back(route["output"]["target"]);
@@ -120,7 +122,7 @@ Json Commands::playlistAudition(const std::string& action, const Json& args)
                 for (const auto& target : send["targets"])
                     pending.push_back(target);
     }
-    require(reachesDevice, "audition source route does not reach an enabled audio output");
+    require(reachesDevice, "audition source route does not reach an enabled audio or MIDI output");
     require(state->included.size() <= 64, "audition source/parent route exceeds preparation budget");
     te::Edit::Options options{engine, prepared.first, edit->getProjectItemRef()};
     options.role = te::Edit::forRendering;
@@ -204,8 +206,11 @@ void Commands::startPreparedPlaylistAudition()
                                     const te::CreateNodeParams& params) -> std::unique_ptr<tracktion::graph::Node>
                         {
                             auto found = state->clips.find(track.itemID.toString().toStdString());
-                            return found == state->clips.end() ? nullptr
-                                                               : te::createNodeForAuditionClips(found->second, params);
+                            if (found == state->clips.end())
+                                return nullptr;
+                            if (!found->second.isEmpty() && dynamic_cast<te::MidiClip*>(found->second[0]))
+                                return te::createNodeForMidiPunchClips(found->second, params);
+                            return te::createNodeForAuditionClips(found->second, params);
                         };
                     });
                 context.setInsertOptionalLastStageNodeForDeviceCallback(

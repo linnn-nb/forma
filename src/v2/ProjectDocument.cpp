@@ -27,6 +27,8 @@ void add(Requirements& out, const std::string& id, int v)
 }
 void descriptor(const juce::String& type, juce::ValueTree node, Requirements& out, bool path = false)
 {
+    if (type == "NDAW_PLAYLISTS" && node.hasProperty("midi_edit_schema"))
+        add(out, "midi.playlist-editing", version(node["midi_edit_schema"]));
     if (type == "NDAW_MIDI_PUNCH_SOURCE" || type == "NDAW_MIDI_PUNCH_TAKE")
         add(out, "midi.punch-capture", node.hasProperty("schema") ? version(node["schema"]) : 1);
     if (type == "NDAW_MIDI_LOOP_SOURCE" || type == "NDAW_MIDI_LOOP_TAKE")
@@ -68,10 +70,11 @@ juce::String digest(const juce::XmlElement& xml)
 } // namespace
 const Requirements& supported()
 {
-    static const Requirements features{
-        {"audio.warp.mapping", 2},       {"audio.elastic.source", 1}, {"audio.elastic.proxy-window", 1},
-        {"audio.clipfx.full-input", 1},  {"audio.fade.inherited", 1}, {"midi.sample-origin", 1},
-        {"playlist.comp.provenance", 1}, {"midi.loop-capture", 1},    {"midi.punch-capture", 1}};
+    static const Requirements features{{"audio.warp.mapping", 2},         {"audio.elastic.source", 1},
+                                       {"audio.elastic.proxy-window", 1}, {"audio.clipfx.full-input", 1},
+                                       {"audio.fade.inherited", 1},       {"midi.sample-origin", 1},
+                                       {"playlist.comp.provenance", 1},   {"midi.loop-capture", 1},
+                                       {"midi.punch-capture", 1},         {"midi.playlist-editing", 1}};
     return features;
 }
 void collect(juce::ValueTree node, Requirements& out)

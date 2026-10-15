@@ -6,6 +6,7 @@
 #include "ClipFxWindows.h"
 #include "NativeAudioFades.h"
 #include "MidiLoopState.h"
+#include "MidiPlaylistState.h"
 namespace ndaw::v2
 {
 namespace
@@ -21,6 +22,9 @@ std::string str(juce::ValueTree s, const char* p)
 }
 int64_t frame(juce::ValueTree s, const char* p)
 {
+    if (s.hasType(te::IDs::MIDICLIP) && std::string_view(p) == "length")
+        return std::llround((double(s[te::IDs::start]) + double(s[te::IDs::length])) * 48000.) -
+               std::llround(double(s[te::IDs::start]) * 48000.);
     return std::llround(double(s.getProperty(p)) * 48000.);
 }
 std::string mainID(te::AudioTrack& t)
@@ -117,7 +121,12 @@ juce::ValueTree readyForSlice(te::Edit& edit, juce::ValueTree c)
 }
 void qualifySlice(te::Edit& edit, juce::ValueTree c)
 {
-    require(c.hasType(te::IDs::AUDIOCLIP), "Comp selection requires an audio clip");
+    if (c.hasType(te::IDs::MIDICLIP))
+    {
+        midi_playlist::qualify(c);
+        return;
+    }
+    require(c.hasType(te::IDs::AUDIOCLIP), "Comp selection requires an audio or MIDI clip");
     const bool elastic = processedElastic(c);
     for (const char* key :
          {"loopLength", "loopLengthBeats", "autoTempo", "autoPitch", "isReversed", "transpose", "groupID"})
@@ -160,6 +169,8 @@ void qualifySlice(te::Edit& edit, juce::ValueTree c)
 // Preserve source-anchored fades, using the same native graph support as Punch.
 juce::ValueTree sliced(te::Edit& edit, juce::ValueTree c, int64_t begin, int64_t end)
 {
+    if (c.hasType(te::IDs::MIDICLIP))
+        return midi_playlist::window(c, begin, end);
     require(!processedElastic(c) || elastic_state::descriptor(c).isValid(), "Elastic切片缺少完整处理来源");
     const auto start = frame(c, "start"), stop = start + frame(c, "length");
     if (begin == start && end == stop)
@@ -210,8 +221,9 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
     auto append = [&](te::AudioTrack& owner, const std::string& list, juce::ValueTree clip, int64_t begin, int64_t end)
     {
         qualifySlice(*edit, clip);
-        const auto path = media(*edit, clip).getFullPathName().toStdString();
-        if (!hashes.contains(path))
+        const bool midi = clip.hasType(te::IDs::MIDICLIP);
+        const auto path = midi ? std::string{} : media(*edit, clip).getFullPathName().toStdString();
+        if (!midi && !hashes.contains(path))
             hashes[path] = mediaHash(media(*edit, clip));
         begin = std::max(begin, first);
         end = std::min(end, last);
@@ -233,14 +245,16 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
         piece = te::ClipCopy::fromClipboardState(piece, false).withNewItemID(*edit).getState().createCopy();
         warp_state::remapIDs(piece, str(clip, "id"));
         elastic_state::remap(piece, str(clip, "id"));
-        piece.setProperty(te::IDs::source, juce::String(path), nullptr);
+        if (!midi)
+            piece.setProperty(te::IDs::source, juce::String(path), nullptr);
         tracks.at(id).addChild(piece, -1, nullptr);
-        sources.push_back({{"track", id},
-                           {"playlist", list},
-                           {"clip", str(clip, "id")},
-                           {"start_samples", begin},
-                           {"end_samples", end},
-                           {"media_hash", hashes.at(path)}});
+        auto evidence = midi ? midi_playlist::provenance(clip) : Json{{"media_hash", hashes.at(path)}};
+        evidence.update({{"track", id},
+                         {"playlist", list},
+                         {"clip", str(clip, "id")},
+                         {"start_samples", begin},
+                         {"end_samples", end}});
+        sources.push_back(std::move(evidence));
     };
     if (args.contains("segments"))
     {
@@ -249,7 +263,9 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
         for (const auto& segment : candidateSegments(args, true))
         {
             auto* owner = track(segment.at("track"));
-            require(owner && trackType(*owner) == "audio", "audition source track is missing");
+            require(owner && (trackType(*owner) == "audio" || trackType(*owner) == "midi" ||
+                              trackType(*owner) == "instrument"),
+                    "audition source track is missing");
             const int64_t begin = segment.at("start_samples"), end = segment.at("end_samples");
             for (const auto& prior : ranges[segment.at("track").get<std::string>()])
                 require(end <= prior.first || begin >= prior.second, "draft audition has overlapping pieces");
@@ -269,7 +285,9 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
     else
     {
         auto* owner = track(args.at("track"));
-        require(owner && trackType(*owner) == "audio", "audition requires an actual audio track");
+        require(owner &&
+                    (trackType(*owner) == "audio" || trackType(*owner) == "midi" || trackType(*owner) == "instrument"),
+                "audition requires an audio, MIDI or instrument track");
         auto list = listFor(*owner, args.at("playlist"));
         require(list.isValid(), "audition Playlist is missing");
         auto members = playlist_links::members(*edit, list);
@@ -281,7 +299,7 @@ std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& a
                     append(*member, str(item, "id"), clip, frame(clip, "start"),
                            frame(clip, "start") + frame(clip, "length"));
     }
-    require(!sources.empty(), "no actual audio in the requested Playlist audition range");
+    require(!sources.empty(), "no actual audio or MIDI in the requested Playlist audition range");
     require(snapshot.createXml()->toString().getNumBytesAsUTF8() <= 16 * 1024 * 1024,
             "Playlist audition snapshot exceeds 16 MiB preparation budget");
     return {snapshot,
@@ -438,7 +456,9 @@ Json Commands::queryPlaylists(const std::string& id) const
                             {"speed_ratio", 1.0},
                             {"gain_db", 0.0},
                             {"locked", bool(c.getProperty("ndaw_locked", false))},
-                            {"take_id", str(c, "ndaw_take_id")}});
+                            {"take_id", str(c, "ndaw_take_id")},
+                            {"comp_origin", str(c, "ndaw_comp_origin")},
+                            {"comp_origin_track", str(c, "ndaw_comp_origin_track")}});
                 auto origin = c.getChildWithName("NDAW_MIDI_LOOP_TAKE");
                 if (!origin.isValid())
                     origin = c.getChildWithName("NDAW_MIDI_PUNCH_TAKE");
@@ -507,7 +527,13 @@ std::string Commands::playlistMediaFingerprint(const Json& a) const
         for (const char* key : {"playlist", "source", "target"})
             if (a.contains(key))
                 for (auto clip : clipsFor(*t, a.at(key)))
-                    content.push_back({str(clip, "id"), clip.createXml()->toString().toStdString()});
+                    content.push_back({str(clip, "id"), midi_playlist::hash(clip)});
+        if (a.contains("segments"))
+            for (const auto& segment : candidateSegments(a))
+                for (auto clip : clipsFor(*t, segment.at("source")))
+                    if (str(clip, "id") == segment.at("clip").get<std::string>())
+                        content.push_back({str(clip, "id"), midi_playlist::hash(clip)});
+        content.push_back({"tempo", midi_playlist::hash(edit->tempoSequence.getState())});
         const auto bytes = content.dump();
         return juce::SHA256(bytes.data(), bytes.size()).toHexString().toStdString();
     }
@@ -615,6 +641,16 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         const auto& a = op["args"];
         if (!cmd.starts_with("playlist."))
         {
+            if (cmd.starts_with("midi."))
+            {
+                if (a.contains("track"))
+                    if (auto* t = track(a["track"]))
+                        require(!activePlaylistLocked(*t), "destination MIDI Playlist is locked");
+                if (a.contains("clip"))
+                    if (auto* c = midiClip(a["clip"]))
+                        if (auto* t = dynamic_cast<te::AudioTrack*>(c->getTrack()))
+                            require(!activePlaylistLocked(*t), "active MIDI Playlist is locked");
+            }
             // Even direct JSON and group-expanded edits must respect a locked active list.
             if (cmd.starts_with("clip.") || cmd.starts_with("timeline.clips."))
             {
@@ -640,9 +676,9 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         require(t && (trackType(*t) == "audio" || trackType(*t) == "midi" || trackType(*t) == "instrument"),
                 "Playlist requires an audio, MIDI or instrument track");
         if (trackType(*t) != "audio")
-            require(cmd == "playlist.select" || cmd == "playlist.rename" || cmd == "playlist.target",
-                    "MIDI Playlist currently supports Take selection, rename and target; MIDI locking/Comp/editing "
-                    "requires qualification");
+            require(cmd != "playlist.comp.linked.create" && cmd != "playlist.comp.restore" &&
+                        cmd != "playlist.comp.detach",
+                    "Linked multi-track MIDI Comp requires separate qualification");
         require(a.at("media_fingerprint") == playlistMediaFingerprint(a), "Playlist media changed since planning");
         auto existing = [&](const char* key)
         {
@@ -661,7 +697,8 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
             for (auto [id, segments] : grouped.items())
             {
                 auto* member = track(id);
-                require(member && !activePlaylistLocked(*member), "Linked Comp member is locked or already linked");
+                require(member && trackType(*member) == "audio" && !activePlaylistLocked(*member),
+                        "Linked Comp member must be unlocked audio");
                 for (const auto& segment : segments)
                 {
                     require(!bool(listFor(*member, segment["source"]).getProperty("locked", false)),
@@ -829,6 +866,9 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
     auto& t = *track(a["track"]);
     auto lists = ensurePlaylists(t);
     auto& um = edit->getUndoManager();
+    const bool midi = trackType(t) != "audio";
+    if (midi && cmd != "playlist.select" && cmd != "playlist.rename" && cmd != "playlist.target")
+        lists.setProperty("midi_edit_schema", 1, &um);
     if (cmd == "playlist.select")
     {
         for (auto [member, destination] : playlist_links::playback(*edit, t, listFor(t, a["playlist"])))
@@ -920,7 +960,8 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                     origin["source_clip"] = origin["clip"];
                     origin.erase("clip");
                     origin["revision"] = revision;
-                    origin["media_hash"] = mediaHash(media(*edit, c));
+                    origin.update(c.hasType(te::IDs::MIDICLIP) ? midi_playlist::provenance(c)
+                                                               : Json{{"media_hash", mediaHash(media(*edit, c))}});
                     inserted.setProperty("ndaw_comp_origin", juce::String(origin.dump()), nullptr);
                     inserted.setProperty("ndaw_comp_origin_track", t.itemID.toString(), nullptr);
                     candidate.addChild(inserted, -1, nullptr);
@@ -959,15 +1000,16 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                                 {"source_offset_samples", frame(c, "offset")},
                                 {"length_samples", frame(c, "length")},
                                 {"session_start_samples", frame(c, "start")},
-                                {"media_hash", mediaHash(media(*edit, c))},
                                 {"revision", revision}};
+                    origin.update(c.hasType(te::IDs::MIDICLIP) ? midi_playlist::provenance(c)
+                                                               : Json{{"media_hash", mediaHash(media(*edit, c))}});
                     list.setProperty("origin", juce::String(origin.dump()), nullptr);
                 }
                 list.addChild(newClip, -1, nullptr);
             }
         lists.addChild(list, -1, &um);
         objects.push_back({{"id", str(list, "id")}, {"kind", "playlist"}, {"track", a["track"]}});
-        if (cmd == "playlist.create" && a.contains("source"))
+        if (cmd == "playlist.create" && a.contains("source") && !midi)
             copyPlaylistCrossfades(t, a["source"], list, clipIDs, objects);
         return;
     }
@@ -994,15 +1036,15 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
         }
         auto inserted = sliced(*edit, copy(source), begin, end);
         inserted.setProperty("ndaw_locked", false, nullptr);
-        inserted.setProperty("ndaw_comp_origin",
-                             juce::String(Json({{"source_playlist", a["source"]},
-                                                {"source_clip", a["clip"]},
-                                                {"revision", revision},
-                                                {"start_samples", begin},
-                                                {"end_samples", end},
-                                                {"media_hash", mediaHash(media(*edit, source))}})
-                                              .dump()),
-                             nullptr);
+        auto origin = source.hasType(te::IDs::MIDICLIP) ? midi_playlist::provenance(source)
+                                                        : Json{{"media_hash", mediaHash(media(*edit, source))}};
+        origin.update({{"source_playlist", a["source"]},
+                       {"source_clip", a["clip"]},
+                       {"revision", revision},
+                       {"start_samples", begin},
+                       {"end_samples", end}});
+        inserted.setProperty("ndaw_comp_origin", juce::String(origin.dump()), nullptr);
+        inserted.setProperty("ndaw_comp_origin_track", t.itemID.toString(), nullptr);
         parent.addChild(inserted, -1, &um);
         objects.push_back({{"id", str(inserted, "id")}, {"kind", "clip"}, {"playlist", a["target"]}});
         if (active)

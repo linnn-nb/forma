@@ -562,6 +562,9 @@ Json Commands::midiClipClipboardChange(const std::string& cmd, const Json& a, si
     require(b && b->manifest["session_token"] == sessionToken() &&
                 b->manifest["kind"] == (timeline ? "timeline_clips" : "midi_clips"),
             "timeline clip clipboard expired");
+    for (const auto& id : (cmd.ends_with(".erase") ? b->manifest.at("tracks") : a.at("tracks")))
+        if (auto* t = track(id))
+            require(!activePlaylistLocked(*t), "timeline destination Playlist is locked");
     Json changes = Json::array(), automation = Json::array(), objectIntervals = Json::array();
     std::map<std::string, std::string> objectCurveBases;
     auto append = [&](te::Clip& c, Json after, bool clone = false)

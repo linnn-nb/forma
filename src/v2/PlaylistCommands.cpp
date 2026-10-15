@@ -29,6 +29,8 @@ void validatePlaylists(te::Edit& edit)
         if (!lists.isValid())
             continue;
         require(int(lists.getProperty("schema")) == 1, "unsupported Playlist schema");
+        require(!lists.hasProperty("midi_edit_schema") || int(lists["midi_edit_schema"]) == 1,
+                "unsupported MIDI Playlist editing schema");
         std::set<std::string> ids;
         for (auto list : lists)
         {
