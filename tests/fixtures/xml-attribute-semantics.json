@@ -1,0 +1,390 @@
+[
+  {
+    "error": "",
+    "input": "<EDIT value=\"\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": ""
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value='plain \"quoted\" text'/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "706c61696e202271756f746564222074657874"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"&amp;&quot;&apos;&lt;&gt;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "2622273c3e"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"&AMP;&QuOt;&APOS;&LT;&GT;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "2622273c3e"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"before&amp;middle&#34;after\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "6265666f7265266d6964646c65226166746572"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"&#65;&#x42;&#X43;&#10;&#x1F3B5;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "4142430af09f8eb5"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"中文 é é 🎵\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "e4b8ade6968720c3a92065cc8120f09f8eb5"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"raw\tline\r\nnext\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "726177096c696e650d0a6e657874"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"&amp;tail\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "267461696c"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"head&amp;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "6865616426"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"&amp;&amp;&amp;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "262626"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<?xml version='1.0'?><!-- comment --><EDIT ndaw:v='1' value='&lt;node&gt;'><CHILD/><![CDATA[x<y]]></EDIT>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "ndaw:v": {
+          "utf8_hex": "31"
+        },
+        "value": {
+          "utf8_hex": "3c6e6f64653e"
+        }
+      },
+      "children": [
+        {
+          "attributes": {},
+          "children": [],
+          "tag": "CHILD",
+          "text": {
+            "utf8_hex": ""
+          }
+        },
+        {
+          "attributes": {
+            "text": {
+              "utf8_hex": "783c79"
+            }
+          },
+          "children": [],
+          "tag": "",
+          "text": {
+            "utf8_hex": "783c79"
+          }
+        }
+      ],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "unmatched quotes",
+    "input": "<EDIT value=\"unterminated",
+    "parsed": false,
+    "tree": null
+  },
+  {
+    "error": "unmatched quotes",
+    "input": "<EDIT value=\"prefix&amp;unterminated",
+    "parsed": false,
+    "tree": null
+  },
+  {
+    "error": "unknown entity",
+    "input": "<EDIT value=\"a&unknown;b\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "61756e6b6e6f776e62"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "expected '=' after attribute 'missing'",
+    "input": "<EDIT value=\"a&missing\"/>",
+    "parsed": false,
+    "tree": null
+  },
+  {
+    "error": "illegal escape sequence",
+    "input": "<EDIT value=\"&#xGG;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "473b"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "illegal escape sequence",
+    "input": "<EDIT value=\"&#;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "263b"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "illegal escape sequence",
+    "input": "<EDIT value=\"&#123456789012345;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "f691a89434353b"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value='a&quot;b' other='tail'/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "other": {
+          "utf8_hex": "7461696c"
+        },
+        "value": {
+          "utf8_hex": "612262"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"&#0;x\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "78"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<EDIT value=\"a&amp;\" second=\"&lt;x&gt;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "second": {
+          "utf8_hex": "3c783e"
+        },
+        "value": {
+          "utf8_hex": "6126"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  },
+  {
+    "error": "",
+    "input": "<!DOCTYPE EDIT [<!ENTITY word 'solo &amp; mic'>]><EDIT value=\"&word;\"/>",
+    "parsed": true,
+    "tree": {
+      "attributes": {
+        "value": {
+          "utf8_hex": "736f6c6f"
+        }
+      },
+      "children": [],
+      "tag": "EDIT",
+      "text": {
+        "utf8_hex": ""
+      }
+    }
+  }
+]

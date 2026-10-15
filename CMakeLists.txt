@@ -1223,3 +1223,9 @@ target_sources(ndaw_history_lookup_tests PRIVATE tests/v2/HistoryLookupTests.cpp
 target_link_libraries(ndaw_history_lookup_tests PRIVATE ndaw_engine)
 add_test(NAME forma_history_lookup COMMAND ndaw_history_lookup_tests "${CMAKE_BINARY_DIR}/history-lookup-tests.json")
 set_tests_properties(forma_history_lookup PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
+juce_add_console_app(ndaw_xml_attribute_tests PRODUCT_NAME "ndaw_xml_attribute_tests")
+target_sources(ndaw_xml_attribute_tests PRIVATE tests/v2/XmlAttributeTests.cpp)
+target_link_libraries(ndaw_xml_attribute_tests PRIVATE ndaw_engine)
+add_test(NAME forma_xml_attributes COMMAND ndaw_xml_attribute_tests "${CMAKE_BINARY_DIR}/xml-attribute-tests.json" "${CMAKE_SOURCE_DIR}/tests/fixtures/xml-attribute-semantics.json")
+set_tests_properties(forma_xml_attributes PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
