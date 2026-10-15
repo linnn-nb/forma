@@ -219,7 +219,34 @@ Json Commands::relocationChange(const Json& args) const
                              {"to_track", intact ? selected.at(left)["to_track"] : Json(nullptr)}});
         }
     const auto automation = relocationAutomationChanges(changes);
-    const Json sealed{{"moves", moves},   {"native_moves", nativeMoves}, {"owners", owners},    {"pairs", pairs},
+    auto sealedOwners = owners;
+    for (auto& owner : sealedOwners)
+    {
+        owner["automation_state"] = Json::array();
+        for (auto* plugin : track(owner.at("id"))->pluginList)
+            for (auto* parameter : plugin->getAutomatableParameters())
+                if (parameter->getCurve().getNumPoints())
+                {
+                    const auto xml = parameter->getCurve().state.createXml()->toString();
+                    owner["automation_state"].push_back(
+                        {{"lane",
+                          parameter->getOwnerID().toString().toStdString() + "::" + parameter->paramID.toStdString()},
+                         {"base", parameter->getCurrentExplicitValue()},
+                         {"hash", juce::SHA256(xml.toRawUTF8(), xml.getNumBytesAsUTF8()).toHexString().toStdString()}});
+                }
+        if (auto* volume = track(owner.at("id"))->getVolumePlugin())
+            for (auto* parameter : volume->getAutomatableParameters())
+                if (parameter->getCurve().getNumPoints())
+                {
+                    // The native automation readout can change after a read-only
+                    // render. Curves/explicit bases and revision remain sealed.
+                    if (parameter->paramID == "volume")
+                        owner.erase("gain_db");
+                    if (parameter->paramID == "pan")
+                        owner.erase("pan");
+                }
+    }
+    const Json sealed{{"moves", moves},   {"native_moves", nativeMoves}, {"owners", sealedOwners}, {"pairs", pairs},
                       {"follow", follow}, {"automation", automation},    {"revision", revision}};
     const auto bytes = sealed.dump();
     return {{"command", "clips.relocate"},

@@ -336,6 +336,9 @@ int main(int argc, char** argv)
             juce::AudioBuffer<float> reference;
             if (!midi)
                 reference = render(c, folder);
+            const auto fresh = plan(c, Json::array({move(f.clip, f.a, f.b, start)}));
+            if (fresh["operations"][0]["args"]["state_hash"] != p["operations"][0]["args"]["state_hash"])
+                std::cerr << "Render preview diff " << Json::diff(preview, c.preview(fresh)).dump() << std::endl;
             const auto receipt = c.commit(p);
             check(receipt["state"] == "committed" &&
                       RecordingTestAccess::clip(c, f.clip)->getTrack()->itemID.toString().toStdString() == f.b,
