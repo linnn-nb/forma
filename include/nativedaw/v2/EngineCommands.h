@@ -471,6 +471,7 @@ private:
     void selectPlaylist(te::AudioTrack&, const std::string&);
     void makeLoopPlaylists(te::AudioTrack&, te::WaveAudioClip&, Json&);
     void makeMidiLoopPlaylists(te::AudioTrack&, te::MidiClip&, Json&);
+    void makeMidiPunchPlaylists(te::AudioTrack&, te::MidiClip&, Json&);
     juce::ValueTree ensurePlaylists(te::AudioTrack&);
     Json punchRange() const;
     void validatePunchCapture() const;

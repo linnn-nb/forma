@@ -2,6 +2,7 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include "PunchSignalGate.h"
 #include "TimelineState.h"
+#include "MidiPunchState.h"
 namespace ndaw::v2
 {
 namespace
@@ -40,11 +41,22 @@ void Commands::validatePunchCapture() const
     for (auto* t : te::getAudioTracks(*edit))
         if (bool(t->state.getProperty("ndaw_armed", false)))
         {
-            require(trackType(*t) == "audio", "MIDI Punch is not yet qualified");
+            const bool midi = trackType(*t) == "midi" || trackType(*t) == "instrument";
+            require(trackType(*t) == "audio" || midi, "Punch requires audio, MIDI or instrument tracks");
             for (auto* clip : t->getClips())
                 if (clip->getPosition().getStart().inSeconds() < end / 48000. &&
                     clip->getPosition().getEnd().inSeconds() > begin / 48000.)
                 {
+                    if (midi)
+                    {
+                        auto* performance = dynamic_cast<te::MidiClip*>(clip);
+                        require(performance != nullptr, "MIDI Punch target contains non-MIDI material");
+                        const auto facts = midiQuery(*performance);
+                        require(!facts["locked"].get<bool>(), "Punch intersects a locked MIDI clip");
+                        require(facts["sample_mapping_available"].get<bool>(),
+                                "Punch through looped/quantised/Groove/expressive MIDI is not qualified");
+                        continue;
+                    }
                     auto* wave = dynamic_cast<te::WaveAudioClip*>(clip);
                     require(wave != nullptr, "Punch target contains a non-audio clip");
                     const auto facts = audioClipQuery(*wave);
@@ -69,24 +81,85 @@ void Commands::preparePunchGraph(const Json& range)
     for (auto* t : te::getAudioTracks(*edit))
         if (bool(t->state.getProperty("ndaw_armed", false)))
             modes[t->itemID.toString().toStdString()] = recordingQuery(*t)["monitor"];
+    // Original MIDI windows use the native MIDI nodes, including boundary
+    // NoteOff/chase. No new MIDI filtering or message copying in the callback.
+    struct MidiSources
+    {
+        std::unique_ptr<te::Edit> edit;
+        std::map<std::string, juce::Array<te::Clip*>> clips;
+    };
+    auto midi = std::make_shared<MidiSources>();
+    auto snapshot = te::createEmptyEdit(engine);
+    snapshot.removeChild(snapshot.getChildWithName(te::IDs::TEMPOSEQUENCE), nullptr);
+    snapshot.addChild(edit->tempoSequence.getState().createCopy(), -1, nullptr);
+    std::set<std::string> midiTracks;
+    for (auto* t : te::getAudioTracks(*edit))
+        if (const auto id = t->itemID.toString().toStdString(); modes.contains(id) && trackType(*t) != "audio")
+        {
+            midiTracks.insert(id);
+            juce::ValueTree sourceTrack(te::IDs::TRACK);
+            sourceTrack.copyPropertiesFrom(t->state, nullptr);
+            if (modes.at(id) != "on")
+                for (auto* c : t->getClips())
+                {
+                    auto* notes = dynamic_cast<te::MidiClip*>(c);
+                    require(notes != nullptr, "MIDI Punch playback source must be MIDI");
+                    const auto a = samples(c->getPosition().getStart().inSeconds());
+                    const auto b = samples(c->getPosition().getEnd().inSeconds());
+                    auto append = [&](int64_t low, int64_t high)
+                    {
+                        if (high > low)
+                            sourceTrack.addChild(midi_punch::fragment(*edit, *notes, low, high), -1, nullptr);
+                    };
+                    if (b <= samples(begin) || a >= samples(end))
+                        append(a, b);
+                    else
+                    {
+                        append(a, std::min(b, samples(begin)));
+                        append(std::max(a, samples(end)), b);
+                    }
+                }
+            snapshot.addChild(sourceTrack, -1, nullptr);
+        }
+    if (!midiTracks.empty())
+    {
+        te::Edit::Options options{engine, snapshot, edit->getProjectItemRef()};
+        options.role = te::Edit::forRendering;
+        options.numAudioTracks = 0;
+        midi->edit = te::Edit::createEdit(std::move(options));
+        require(midi->edit != nullptr, "MIDI Punch source preparation failed");
+        for (auto* t : te::getAudioTracks(*midi->edit))
+            midi->clips[t->itemID.toString().toStdString()] = t->getClips();
+    }
     rollGate = std::make_shared<SelectionOutputGateState>();
     rollGate->startSeconds = first;
     rollGate->endSeconds = last;
     const auto gate = rollGate;
     edit->getTransport().prepareAuditionPlayback(
         tracktion::TimePosition::fromSeconds(first),
-        [modes, begin, end, first, last, gate](te::EditPlaybackContext& context)
+        [modes, begin, end, first, last, gate, midi, midiTracks](te::EditPlaybackContext& context)
         {
             context.clearNodes();
             context.setAuditionGraphCallback(
-                [modes, begin, end, first, last](te::CreateNodeParams& params)
+                [modes, begin, end, first, last, midi, midiTracks](te::CreateNodeParams& params)
                 {
                     params.transformTrackSignal =
-                        [modes, begin, end, first,
-                         last](te::AudioTrack& t, bool live, const te::CreateNodeParams& p,
-                               std::unique_ptr<tracktion::graph::Node> node) -> std::unique_ptr<tracktion::graph::Node>
+                        [modes, begin, end, first, last, midi, midiTracks](
+                            te::AudioTrack& t, bool live, const te::CreateNodeParams& p,
+                            std::unique_ptr<tracktion::graph::Node> node) -> std::unique_ptr<tracktion::graph::Node>
                     {
-                        auto found = modes.find(t.itemID.toString().toStdString());
+                        const auto id = t.itemID.toString().toStdString();
+                        auto found = modes.find(id);
+                        if (midiTracks.contains(id))
+                        {
+                            // MIDI Auto preserves the native armed live path during
+                            // pre/Punch/post; On is input-only. Off has no live node.
+                            if (live)
+                                return node;
+                            if (found->second == "on")
+                                return {};
+                            return te::createNodeForMidiPunchClips(midi->clips.at(id), p);
+                        }
                         if (found == modes.end() || (live && found->second == "on"))
                             return node;
                         const bool always = found->second == "on";

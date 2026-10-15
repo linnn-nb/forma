@@ -1,23 +1,40 @@
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_MidiInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_MidiInputDevice.cpp
-index 912a57e..1c9b495 100644
+index 912a57e..e26ee64 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_MidiInputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_MidiInputDevice.cpp
-@@ -1127,6 +1127,27 @@ public:
+@@ -857,6 +857,12 @@ public:
+                 if (dest->recordEnabled)
+                     params.targets.push_back (dest->targetID);
+ 
++        // Host continuous Punch captures pre/post roll too. Playback replacement
++        // is prepared separately; do not destructively trim this source at Punch-in.
++        if (const auto r = edit.state.getChildWithName ("NDAW_CAPTURE_RANGE"); r.isValid())
++            params.punchRange = { TimePosition::fromSeconds (double (r["start"])),
++                                 TimePosition::fromSeconds (double (r["end"])) };
++
+         for (auto targetID : params.targets)
+         {
+             auto recContext = std::make_unique<MidiRecordingContext> (context,
+@@ -1127,6 +1133,31 @@ public:
          auto& recorded = recContext->recorded;
          const bool wasPunchRecording = clipSlot ? false : edit.recordingPunchInOut;
  
 +        // Optional host provenance: preserve the engine-captured unlooped input
 +        // before channel conversion, pair repair and device/graph adjustment.
 +        const bool hostLoopTakes = isLooping && bool (edit.state.getProperty ("preserveLoopRecordingSource", false));
++        const auto hostCaptureRange = edit.state.getChildWithName ("NDAW_CAPTURE_RANGE");
++        const bool hostPunchCapture = wasPunchRecording && hostCaptureRange.isValid();
 +        juce::ValueTree captureSource;
-+        if (hostLoopTakes)
++        if (hostLoopTakes || hostPunchCapture)
 +        {
-+            captureSource = juce::ValueTree ("NDAW_MIDI_LOOP_SOURCE");
++            captureSource = juce::ValueTree (hostPunchCapture ? "NDAW_MIDI_PUNCH_SOURCE" : "NDAW_MIDI_LOOP_SOURCE");
 +            captureSource.setProperty ("schema", 1, nullptr);
 +            captureSource.setProperty ("start_seconds", recContext->punchRange.getStart().inSeconds(), nullptr);
 +            captureSource.setProperty ("end_seconds", unloopedEndTime.inSeconds(), nullptr);
-+            captureSource.setProperty ("loop_start_seconds", loopRange.getStart().inSeconds(), nullptr);
-+            captureSource.setProperty ("loop_end_seconds", loopRange.getEnd().inSeconds(), nullptr);
++            captureSource.setProperty (hostPunchCapture ? "punch_start_seconds" : "loop_start_seconds", loopRange.getStart().inSeconds(), nullptr);
++            captureSource.setProperty (hostPunchCapture ? "punch_end_seconds" : "loop_end_seconds", loopRange.getEnd().inSeconds(), nullptr);
++            if (hostPunchCapture)
++                captureSource.setProperty ("capture_end_seconds", hostCaptureRange["end"], nullptr);
 +            for (int i = 0; i < recorded.getNumEvents(); ++i)
 +            {
 +                const auto& message = recorded.getEventPointer (i)->message;
@@ -30,7 +47,7 @@ index 912a57e..1c9b495 100644
          recorded.updateMatchedPairs();
          auto channelToApply = mi.recordToNoteAutomation ? mi.getChannelToUse()
                                                          : applyChannel (recorded, mi.getChannelToUse());
-@@ -1136,6 +1157,8 @@ public:
+@@ -1136,6 +1167,8 @@ public:
              timeAdjustMs -= 1000.0 * tracktion::graph::sampleToTime (context.getLatencySamples(), edit.engine.getDeviceManager().getSampleRate());
  
          applyTimeAdjustment (recorded, timeAdjustMs);
@@ -39,16 +56,55 @@ index 912a57e..1c9b495 100644
  
          TimeRange recordedRange (recContext->punchRange.getStart(), unloopedEndTime);
          auto recordingStart = recordedRange.getStart();
-@@ -1143,7 +1166,7 @@ public:
+@@ -1143,7 +1176,46 @@ public:
  
          const bool createTakes = mi.recordingEnabled && ! (mi.mergeRecordings || mi.replaceExistingClips);
  
 -        if (isLooping && recordingEnd > loopRange.getEnd())
++        if (hostPunchCapture)
++        {
++            const double first = recordingStart.inSeconds();
++            const double last = std::min (recordingEnd.inSeconds(), double (hostCaptureRange["end"]));
++            juce::MidiMessageSequence sourceSequence;
++            if (last > first)
++                for (int i = 0; i < recorded.getNumEvents(); ++i)
++                {
++                    const auto& event = *recorded.getEventPointer (i);
++                    const auto& m = event.message;
++                    const double time = m.getTimeStamp();
++                    if (m.isNoteOn())
++                    {
++                        const double off = event.noteOffObject ? event.noteOffObject->message.getTimeStamp() : last;
++                        const double start = std::max (first, time), end = std::min (last, off);
++                        if (end > start)
++                        {
++                            sourceSequence.addEvent (juce::MidiMessage (m, start - first));
++                            sourceSequence.addEvent (juce::MidiMessage (juce::MidiMessage::noteOff (m.getChannel(), m.getNoteNumber()), end - first));
++                        }
++                    }
++                    else if (! m.isNoteOff() && time >= first && time < last)
++                        sourceSequence.addEvent (juce::MidiMessage (m, time - first));
++                }
++            sourceSequence.updateMatchedPairs();
++            if (sourceSequence.getNumEvents() > 0)
++                if (auto* clip = mi.addMidiAsTransaction (edit, clipOwner->getClipOwnerID(), nullptr,
++                                                        std::move (sourceSequence),
++                                                        { TimePosition::fromSeconds (first), TimePosition::fromSeconds (last) },
++                                                        MidiInputDevice::MergeMode::optional, channelToApply))
++                {
++                    clip->state.addChild (captureSource.createCopy(), -1, &edit.getUndoManager());
++                    createdClips.add (clip);
++                }
++            for (juce::ScopedLock sl (consumerLock); auto c : consumers)
++                c->discardRecordings (recContext->targetID);
++            return createdClips;
++        }
++
 +        if (isLooping && (recordingEnd > loopRange.getEnd() || hostLoopTakes))
          {
              juce::MidiMessageSequence replaceSequence;
              const auto loopLen = loopRange.getLength();
-@@ -1156,6 +1179,8 @@ public:
+@@ -1156,6 +1228,8 @@ public:
                  juce::MidiMessageSequence loopSequence;
                  const auto thisLoopStart = loopRange.getStart() + loopLen * loopNum;
                  const auto thisLoopEnd = (thisLoopStart + loopLen).inSeconds();
@@ -57,7 +113,7 @@ index 912a57e..1c9b495 100644
  
                  for (int i = 0; i < recorded.getNumEvents(); ++i)
                  {
-@@ -1176,7 +1201,7 @@ public:
+@@ -1176,7 +1250,7 @@ public:
                              else
                                  s = std::fmod (s - loopRange.getStart().inSeconds(), loopLen.inSeconds());
  
@@ -66,7 +122,7 @@ index 912a57e..1c9b495 100644
                                  e = loopLen.inSeconds();
                              else
                                  e = std::fmod (e - loopRange.getStart().inSeconds(), loopLen.inSeconds());
-@@ -1195,18 +1220,33 @@ public:
+@@ -1195,18 +1269,33 @@ public:
                      }
                  }
  

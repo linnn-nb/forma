@@ -34,8 +34,15 @@ std::string fingerprint(juce::ValueTree source)
            {"device_id", str(source, "device_id")},
            {"tempo_xml", str(source, "tempo_xml")},
            {"events", events}};
-    for (const char* key :
-         {"start_seconds", "end_seconds", "loop_start_seconds", "loop_end_seconds", "adjustment_seconds"})
+    const bool punch = source.hasType("NDAW_MIDI_PUNCH_SOURCE");
+    if (punch)
+        q["kind"] = "punch";
+    const std::vector<const char*> keys =
+        punch ? std::vector<const char*>{"start_seconds",     "end_seconds",         "punch_start_seconds",
+                                         "punch_end_seconds", "capture_end_seconds", "adjustment_seconds"}
+              : std::vector<const char*>{"start_seconds", "end_seconds", "loop_start_seconds", "loop_end_seconds",
+                                         "adjustment_seconds"};
+    for (const char* key : keys)
     {
         const auto value = double(source[key]);
         require(std::isfinite(value), "invalid MIDI capture range");
@@ -49,24 +56,32 @@ void validate(te::Edit& edit)
     std::map<std::string, juce::ValueTree> sources;
     for (auto source : edit.state.getChildWithName("NDAW_MIDI_SOURCES"))
     {
-        require(source.hasType("NDAW_MIDI_LOOP_SOURCE") && int(source["schema"]) == 1,
+        const bool punch = source.hasType("NDAW_MIDI_PUNCH_SOURCE");
+        require((source.hasType("NDAW_MIDI_LOOP_SOURCE") || punch) && int(source["schema"]) == 1,
                 "unsupported MIDI loop source schema");
         const auto id = str(source, "source_id");
         require(!id.empty() && sources.emplace(id, source).second, "duplicate MIDI capture source ID");
         require(str(source, "source_hash") == fingerprint(source), "MIDI capture source checksum mismatch");
-        require(double(source["loop_end_seconds"]) > double(source["loop_start_seconds"]) &&
-                    double(source["end_seconds"]) > double(source["loop_start_seconds"]),
-                "invalid MIDI loop source extent");
+        require(punch ? (double(source["punch_end_seconds"]) > double(source["punch_start_seconds"]) &&
+                         double(source["capture_end_seconds"]) >= double(source["punch_end_seconds"]) &&
+                         double(source["end_seconds"]) > double(source["start_seconds"]))
+                      : (double(source["loop_end_seconds"]) > double(source["loop_start_seconds"]) &&
+                         double(source["end_seconds"]) > double(source["loop_start_seconds"])),
+                "invalid MIDI capture source extent");
     }
     std::function<void(juce::ValueTree)> visit = [&](juce::ValueTree n)
     {
         if (n.hasType("PLUGIN"))
             return;
-        if (n.hasType("NDAW_MIDI_LOOP_TAKE"))
+        const bool punch = n.hasType("NDAW_MIDI_PUNCH_TAKE");
+        if (n.hasType("NDAW_MIDI_LOOP_TAKE") || punch)
         {
             const auto id = str(n, "source_id");
             require(int(n["schema"]) == 1 && sources.contains(id), "MIDI Take source is missing");
-            require(str(n, "source_hash") == str(sources.at(id), "source_hash") && int(n["pass"]) > 0 &&
+            require(str(n, "source_hash") == str(sources.at(id), "source_hash") &&
+                        (punch ? (sources.at(id).hasType("NDAW_MIDI_PUNCH_SOURCE") &&
+                                  (str(n, "window") == "punch" || str(n, "window") == "full_capture"))
+                               : (sources.at(id).hasType("NDAW_MIDI_LOOP_SOURCE") && int(n["pass"]) > 0)) &&
                         int64_t(n["length_samples"]) > 0,
                     "MIDI Take provenance is invalid");
         }

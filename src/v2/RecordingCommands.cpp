@@ -564,7 +564,7 @@ void Commands::finishRecordingCapture(bool unexpected)
     receipt["clips"] = Json::array();
     receipt["takes"] = Json::array();
     std::vector<std::pair<te::AudioTrack*, te::WaveAudioClip::Ptr>> loopClips;
-    std::vector<std::pair<te::AudioTrack*, te::MidiClip::Ptr>> midiLoops;
+    std::vector<std::pair<te::AudioTrack*, te::MidiClip::Ptr>> midiCaptures;
     auto& undo = edit->getUndoManager();
     initialiseMusicIDs(&undo);
     receipt["target_results"] = Json::array();
@@ -622,8 +622,8 @@ void Commands::finishRecordingCapture(bool unexpected)
                                                 {"events", facts}});
                     ++count;
                     c->state.setProperty("ndaw_origin", "recording", &undo);
-                    if (midiLoop)
-                        midiLoops.emplace_back(t, m);
+                    if (midiLoop || receipt.value("mode", std::string{}) == "punch")
+                        midiCaptures.emplace_back(t, m);
                 }
             }
         receipt["target_results"].push_back({{"track", id(*t)},
@@ -644,8 +644,11 @@ void Commands::finishRecordingCapture(bool unexpected)
                     makePunchPlaylists(*target, *clip, receipt);
                 else
                     makeLoopPlaylists(*target, *clip, receipt);
-            for (const auto& [target, clip] : midiLoops)
-                makeMidiLoopPlaylists(*target, *clip, receipt);
+            for (const auto& [target, clip] : midiCaptures)
+                if (receipt["mode"] == "punch")
+                    makeMidiPunchPlaylists(*target, *clip, receipt);
+                else
+                    makeMidiLoopPlaylists(*target, *clip, receipt);
             receipt["clips"] = Json::array();
             for (const auto& take : receipt["takes"])
                 receipt["clips"].push_back({{"id", take["clip"]},
@@ -668,7 +671,11 @@ void Commands::finishRecordingCapture(bool unexpected)
     {
         edit->state.removeChild(edit->state.getChildWithName("NDAW_CAPTURE_RANGE"), nullptr);
         if (auto* context = edit->getTransport().getCurrentPlaybackContext())
+        {
+            // Retire graph readers before releasing their detached MIDI source Edit.
+            context->clearNodes();
             context->setAuditionGraphCallback({});
+        }
         // Native transport is stopped; return to the requested idle monitor
         // policy instead of leaving the finite output gate muting live input.
         releaseRollGraph();

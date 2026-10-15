@@ -105,7 +105,7 @@ target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommand
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp src/v2/LinkedCompRelocation.cpp src/v2/RelocationAutomation.cpp src/v2/NativeFader.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ProjectDocument.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp src/v2/MidiLoopCapture.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp src/v2/MidiLoopCapture.cpp src/v2/MidiPunchCapture.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
