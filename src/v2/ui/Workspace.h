@@ -98,6 +98,9 @@ public:
     void prepareExternalPlugin(const std::string& descriptor);
     void insertExternalPlugin(const std::string& descriptor);
     Json queryAutomation(const std::string& target) const;
+    // User Open always reviews the current project before replacement. Direct
+    // adoption is for fresh startup and the verified transition callback only.
+    void requestOpenSession(const juce::File& f);
     void openSession(const juce::File& f);
     // Startup receives a fresh Workspace; project files must not enter audio import.
     void openLocalFile(const juce::File& f);
@@ -146,6 +149,7 @@ public:
     }
 
 private:
+    void requestTransition(std::function<void()> completed, const juce::File& target = {});
     void updateExit();
     std::unique_ptr<SessionExit> sessionExit;
     std::unique_ptr<SessionExitPanel> exitPanel;

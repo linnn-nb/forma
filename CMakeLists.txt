@@ -1023,6 +1023,12 @@ target_link_libraries(ndaw_session_exit_tests PRIVATE ndaw_ui)
 add_test(NAME forma_session_exit COMMAND ndaw_session_exit_tests "${CMAKE_BINARY_DIR}/session-exit-tests.json")
 set_tests_properties(forma_session_exit PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_session_open_tests PRODUCT_NAME "ndaw_session_open_tests")
+target_sources(ndaw_session_open_tests PRIVATE tests/v2/SessionOpenTests.cpp)
+target_link_libraries(ndaw_session_open_tests PRIVATE ndaw_ui)
+add_test(NAME forma_session_open COMMAND ndaw_session_open_tests "${CMAKE_BINARY_DIR}/session-open-tests.json")
+set_tests_properties(forma_session_open PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 # Production L1/GUI performance qualification with actual native plugins.
 juce_add_console_app(ndaw_performance_tests PRODUCT_NAME "ndaw_performance_tests")
 target_sources(ndaw_performance_tests PRIVATE tests/v2/PerformanceTests.cpp)

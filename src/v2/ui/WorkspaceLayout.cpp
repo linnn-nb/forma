@@ -294,8 +294,12 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 {
     if (files.isEmpty())
         return;
+    if (exitPanel && exitPanel->isVisible())
+        return;
     if (files.size() == 1 && juce::File(files[0]).hasFileExtension("json"))
         importCommandFile(juce::File(files[0]));
+    else if (files.size() == 1 && juce::File(files[0]).hasFileExtension("tracktionedit"))
+        requestOpenSession(juce::File(files[0]));
     else if (files.size() == 1 && juce::File(files[0]).hasFileExtension("ndaw"))
         importAudio(juce::File(files[0]));
     else

@@ -29,6 +29,8 @@ public:
     {
         setComponentID("exit.panel");
         setWantsKeyboardFocus(true);
+        title.setComponentID("exit.title");
+        detail.setComponentID("exit.detail");
         title.setText(text("退出前保留工程"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22));
         detail.setText(text("另存完整工程可保留编辑历史。恢复副本只保留当前状态，不复制媒体、不恢复Undo。\n"
@@ -66,6 +68,18 @@ public:
     {
         path.setText(file.getFullPathName(), false);
     }
+    void purpose(const juce::File& target)
+    {
+        opening = target != juce::File{};
+        title.setText(text(opening ? "打开其他工程前保留当前工程" : "退出前保留工程"), juce::dontSendNotification);
+        detail.setText((opening ? text("即将打开：") + target.getFileName() + "\n" : juce::String{}) +
+                           text("另存完整工程保留原Undo/Redo；恢复副本只保留当前状态，仍引用原媒体。\n"
+                                "先停止录放，写入并复核成功后继续；取消或失败保留当前工程，原文件不会被覆盖。"),
+                       juce::dontSendNotification);
+        detail.setTooltip(opening ? target.getFullPathName() : juce::String{});
+        saveButton.setButtonText(text(opening ? "另存当前工程并打开" : "另存完整工程并退出"));
+        snapshotButton.setButtonText(text(opening ? "保留恢复副本并打开" : "保留恢复副本并退出"));
+    }
     void update(const Json& status)
     {
         const auto state = status.value("state", "review");
@@ -75,8 +89,9 @@ public:
         browseButton.setEnabled(!busy);
         path.setEnabled(!busy);
         outcome.setText(text(state == "failed" ? status.value("error", "写入失败；窗口已保留")
-                             : busy            ? "正在等待实际写入回执；尚未退出"
-                                               : "请选择保存方式，或返回工程继续制作。"),
+                             : busy
+                                 ? (opening ? "正在等待实际写入回执；尚未切换工程" : "正在等待实际写入回执；尚未退出")
+                                 : "请选择保存方式，或返回工程继续制作。"),
                         juce::dontSendNotification);
     }
     bool keyPressed(const juce::KeyPress& key) override
@@ -109,5 +124,6 @@ private:
     PathEditor path;
     juce::TextButton saveButton, snapshotButton, cancelButton, browseButton;
     std::function<void()> cancelAction;
+    bool opening = false;
 };
 } // namespace ndaw::desktop

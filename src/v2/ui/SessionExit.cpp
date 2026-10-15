@@ -27,7 +27,7 @@ void SessionExit::fail(const std::string& why)
 void SessionExit::prepare()
 {
     if (phase != "review" && phase != "failed")
-        throw std::runtime_error("退出操作已在进行；请等待或返回工程");
+        throw std::runtime_error("当前保存操作已在进行；请等待或返回工程");
     commands.stop(); // Finalises real recording/automation through L1 before persistence.
     session = commands.sessionToken();
     revision = commands.querySummary()["revision"];
@@ -67,7 +67,7 @@ void SessionExit::save(const juce::File& file)
             throw std::runtime_error("工程文件必须使用 .tracktionedit 扩展名");
         receipt = commands.save(file);
         if (juce::Time::getMillisecondCounterHiRes() >= deadline)
-            throw std::runtime_error("保存已返回，但超过退出的30秒截止；文件保留，窗口不退出");
+            throw std::runtime_error("保存已返回，但超过30秒期限；文件保留，当前工程不关闭");
         if (!current() || receipt["revision"] != revision || !file.existsAsFile() ||
             receipt["sha256"] != Commands::mediaHash(file))
             throw std::runtime_error("保存回执与当前工程不一致；窗口已保留");
@@ -85,9 +85,9 @@ void SessionExit::poll()
     try
     {
         if (juce::Time::getMillisecondCounterHiRes() >= deadline)
-            throw std::runtime_error("退出前写入超过30秒；窗口保留，已开始的副本写入可能继续");
+            throw std::runtime_error("写入超过30秒；当前工程保留，已开始的副本写入可能继续");
         if (!current())
-            throw std::runtime_error("工程或录放状态已改变；请重新选择退出方式");
+            throw std::runtime_error("工程或录放状态已改变；请重新选择保存方式");
         auto r = commands.recoveryControl("session.recovery.start", Json::object());
         if (r.value("busy", false))
             return;
@@ -117,9 +117,9 @@ bool SessionExit::authorise()
     try
     {
         if (!current())
-            throw std::runtime_error("写入后工程已改变；请重新选择退出方式");
+            throw std::runtime_error("写入后工程已改变；请重新选择保存方式");
         if (juce::Time::getMillisecondCounterHiRes() >= deadline)
-            throw std::runtime_error("已超过退出的30秒截止；窗口已保留");
+            throw std::runtime_error("已超过30秒期限；当前工程已保留");
         if (receipt.contains("path"))
         {
             const juce::File file(juce::String(receipt["path"].get<std::string>()));
@@ -136,7 +136,7 @@ bool SessionExit::authorise()
                 throw std::runtime_error("恢复副本与当前工程不一致；窗口已保留");
         }
         if (juce::Time::getMillisecondCounterHiRes() >= deadline)
-            throw std::runtime_error("文件复核超过退出的30秒截止；窗口已保留");
+            throw std::runtime_error("文件复核超过30秒期限；当前工程已保留");
     }
     catch (const std::exception& e)
     {

@@ -477,7 +477,8 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
             });
     };
     importButton.onClick = [this] { chooseAudioFiles(); };
-    openButton.onClick = [this] { choose(false, [this](const auto& f) { openSession(f); }, "*.tracktionedit;*.ndaw"); };
+    openButton.onClick = [this]
+    { choose(false, [this](const auto& f) { requestOpenSession(f); }, "*.tracktionedit;*.ndaw"); };
     saveButton.onClick = [this]
     {
         choose(
