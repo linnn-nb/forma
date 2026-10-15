@@ -1,12 +1,12 @@
 # MIDI 循环录音（2026-10-16）
 
-MIDI / Instrument 轨复用 Tracktion 原生循环录音器。停止后，每圈成为独立、可编辑的 MIDI Take Playlist；原 Main 保留。当前仍是 P1 增量，MIDI Comp、Promote、MIDI Punch 未完成。
+MIDI / Instrument 轨复用 Tracktion 原生循环录音器。停止后，每圈成为独立、可编辑的 MIDI Take Playlist；原 Main 保留。当前仍是 P1 增量，MIDI Playlist 锁定、Comp、Promote、MIDI Punch 未完成。
 
 亲手操作：
 
 1. 保存现有工程后重启唯一的 Forma.app；新建 Instrument，选择真实 MIDI 输入（或 NativeDAW Keyboard），待命，按需要开启监听。
 2. 在时间标尺选至少两秒范围，按 L 开循环，F12 开始录音，演奏两圈以上，Space 停止。
-3. Option+L 打开 Playlists；用面板选择 Take，或使用「命令/快捷键」里的上一个/下一个 Take。面板绘制实际音符，不生成假波形。
+3. Option+L 打开 Playlists；用面板选择 Take，或使用 Option+[ / Option+] 切换上一个/下一个 Take。面板绘制实际音符，不生成假波形。
 4. 活动 Take 在原钢琴卷帘继续编辑。Cmd Z / Shift Cmd Z 撤销重做整次录音或之后的单项编辑；Cmd S 保存，Cmd Shift S 另存。关闭重开保留列表、原始输入来源和原历史。
 5. 导出选定区间 WAV；真实输入、原生合成器/外部乐器实际加载成功才可能发声。无需 AI 或联网。
 

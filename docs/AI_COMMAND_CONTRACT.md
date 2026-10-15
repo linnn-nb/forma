@@ -1,3 +1,5 @@
+2026-10-16 MIDI循环：本地录音命令复用L1录音事务，回执takes[].kind区分audio/midi，files只列真实音频文件，midi_sources列源ID/哈希/引擎未折回tap point，失败回滚清空未提交的来源声明。原Main保留，Loop/Take选择与之后编辑分别Undo；空输入no_events不创建成功事务。playlist.select/rename/target扩到MIDI/Instrument，实际原生SEQ参与版本/来源指纹；MIDI锁定/Comp等明确拒绝且界面禁用。无新增MCP写权限、AI结果或生产测试替身；契约/范围见MIDI_LOOP_WORKFLOW.md。
+
 2026-10-16 保存控制接口：可信本地L1 save/saveAs/saveCurrent分离；projectFile只读返回named/path/expected_sha256（已知版本，不表示已重新测量磁盘）。saveAs成功返回operation=save_as/state=saved/reversible=false并重绑；saveCurrent返回operation=save_current、真实path/sha256/revision/读取能力，state=saved和独立backup{path,sha256}，或相同图像state=unchanged/backup=null。异常不得当成功，发布后同步失败也不伪称完全回滚。文件保存/备份是不可由工程Undo撤销的副作用，原工程历史保留；Save Copy/退出副本不改变当前路径。绑定不从工程JSON恢复、不扩大Agent权限；本轮没有新增MCP工具，文件选择来自本地用户入口，另存选择器回调绑定会话。实际状态与测试见SAVE_WORKFLOW.md及VERIFICATION.md。
 
 2026-10-16 用户Open是本地生命周期动作，未新增MCP工具或放开高风险控制。保存卡片经原L1 stop/save/recovery，取消/旧版本/后续人工编辑/目标文件变化不得执行切换；实际L1 open成功后新session token及只读权限使旧Plan失效。打开不属于跨会话Undo，完整备份保留原历史，恢复副本明确不含Undo/媒体副本。卡片意图/目标hash不保存到工程，不是AI成功回执。可信C++初次装载适配器不构成外部Agent权限。New Session UI测试改为实际按钮通知，只有活动作业或完成且当前的真实回执才可接受，idle/空回执不代表成功。原参数Schema/actor/权限不变，见OPEN_SESSION_WORKFLOW.md与VERIFICATION.md。

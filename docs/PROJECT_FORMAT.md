@@ -1,3 +1,5 @@
+2026-10-16 新增必需能力midi.loop-capture v1：NDAW_MIDI_LOOP_SOURCE在Edit根NDAW_MIDI_SOURCES内，Take的NDAW_MIDI_LOOP_TAKE保留schema/source_id/source_hash/pass/捕获长度。原始时间/字节和捕获Tempo/设备参与源校验；活动、非活动与历史单独含该语义也需保护封装。缺源/校验损坏/未知能力不能替换当前工程。普通MIDI无该语义时不强制此能力。详见MIDI_LOOP_WORKFLOW.md及本轮VERIFICATION。
+
 # Forma 工程格式与读取能力（2026-10-15）
 
 含完整处理窗口或相关历史的工程现在使用版本化封装，原生 `te::Edit` 仍是唯一工程数据。已完成 80 项专项和迁移前真实 CLI 的四个文件对照；完整受影响回归以 `evidence/P3/summary.md` 为准。此增量不是完整产品或全部历史版本兼容认证。

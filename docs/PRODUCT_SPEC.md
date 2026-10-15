@@ -1,3 +1,5 @@
+2026-10-16 MIDI循环录音增量：MIDI/Instrument原生输入分圈为可编辑Take，原Main与较短尾圈保留，沿用L/F12/Space、Option+[或]、Option+L及原Undo/保存历史。当前开放Take选择、重命名与目标；MIDI锁定、Comp/Promote/Punch等仍未完成。原始捕获在Edit内保留来源/时间/哈希，非外部原始MIDI写盘。真实资格、FourOsc随机相位和剩余范围见MIDI_LOOP_WORKFLOW.md及VERIFICATION.md，不代表完整P1/产品。
+
 2026-10-16 普通保存已接通：CmdS/工具栏保存写回已绑定的当前工程，外改冲突不覆盖；独立旧版先落盘再原子替换。CmdShiftS另存为创建新路径并使后续Save转向该路径，Save Copy/恢复副本不重绑，新建/恢复不继承旧目标。原UndoRedo不因保存增加步骤；文件副作用不伪称Undo。当前分批9套562项，P1音频链路98项含实际Save键/保存重开/PCM差0；范围见SAVE_WORKFLOW.md和VERIFICATION.md。覆盖式另存、GUI播放中保存、脏状态/备份管理和完整产品仍未完成。
 
 2026-10-16 用户Open保护已接通：CmdO/文件菜单选择及单个工程文件拖入，先显示当前工程保存卡片，完整另存或真实恢复副本成功、状态与目标复核后才打开；取消/失败/交错编辑保留当前工程。卡片保留可见工程背景；旧.ndaw仍追加导入。新建工程面板的恢复进度卡死一并修复。最终受影响6套331项，P1链路94项含实际保护卡片/重开/原历史/PCM差0；详情与未验范围见VERIFICATION.md。普通Save、精确脏状态与完整产品仍未完成。

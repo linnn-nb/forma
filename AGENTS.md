@@ -18,6 +18,7 @@
 - 正常退出须有本次保存/恢复副本的成功回执，最终复核session/revision、持久UI状态与真实文件；取消/失败/交错编辑不得退出。
 - 用户Open/工程拖入须经requestOpenSession，复用同一保存/取消核验；openSession仅用于可信初次装载/已验证回调。可见服务面板须观察实际进度，不能等Edit revision变化才解锁。
 - 剪贴板保留完整选区静音、空轨和原始事件；未资格音乐时间/自动化映射整笔拒绝，禁止静默错位。
+- MIDI循环原始捕获放Edit根来源池；Take引用源ID/哈希/圈号，来源不冒充外部MIDI文件。状态指纹与保存共用精确XML，随机相位合成器不宣称逐位音频恢复。
 - 采样基MIDI保留绝对事件时间与完整原SEQ/时间/哈希；音乐基保留原拍事件。精确边界不以epsilon掩盖，未改原生端点保持原double。
 - 不虚构MIDI源固定帧上限；循环/量化/Groove/MPE及共享曲线歧义未资格即拒绝。CC真实14-bit存储与7-bit发送精度分开。
 - 自动化显示值和基础值分开；恢复外部参数时分别核验显式基础值、引擎当前值和原生DSP。重开核对实际曲线与声音，不只比较推子读数。
@@ -33,4 +34,4 @@
 - 每级只保留evidence/<级别>/summary.md和关键输出/截图；中间输出在忽略build。里程碑验收才打DMG，不制造源码tar包。
 - 付费、上传音频、系统安全修改、覆盖用户原媒体须授权；提交/推送现有公开仓库已授权。有效源媒体不得覆盖。
 
-文档入口：docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md及evidence/P1、P2、P3/summary.md。
+文档入口：docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md及evidence/P1、P2、P3/summary.md。

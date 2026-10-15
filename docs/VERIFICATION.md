@@ -1,3 +1,19 @@
+# MIDI 循环录音当前证据（2026-10-16）
+
+结论：c663834接通真实MIDI/Instrument循环Take与L1历史。当前11种受影响套按最新终态分批通过，共1150项；原批10/11（131.33秒）和补验3/3（46.23秒）均保留，不是一次全仓全绿，也不是完整P1/产品或实体听评资格。
+
+- MIDI循环专项164项/16.91秒：非零1–4秒范围、圈内120→90 BPM、双MIDI输入目标、两整圈与尾圈、跨圈长音、CC/pitch wheel/SysEx，原Main不变。11条原始输入逐条与独立已知字节和相对调度时刻核对，256帧预算不变。六Take/原始来源、实际L/F12/Space/Option+[和]/Option+L/钢琴卷帘键/Save键、编辑与整笔UndoRedo、保存冷重开/原录音历史、全空no_events及混合音频+MIDI一笔录音均通过。
+- Edit根来源池、稳定源ID/SHA/原始未折回时间/Tempo/设备引用保留。MIDI来源非外部原始文件；files只列混合录音的真实WAV。midi.loop-capture v1在活动/非活动与历史单独含语义时均保护。未知版本、漏声明、现代工程/历史不一致、明确historyless夹具的源损坏/缺源，分别验证真实拒绝且当前会话/历史/版本不变。
+- 原SysEx重开指纹错误已定位：显示XML的15位时间与保存17位字符串不同。MidiControllerCommands指纹复用preciseEditXml后，真实音符/CC原值、整数样本端点和源校验保持，派生浮点预算1e-10。旧失败日志和原生SEQUENCE差异保留。
+- 原2e-7 PCM对照实测失败（一次最大差0.1291911602），未放宽预算。SDK MultiVoiceOscillator::start每次随机相位，因此测试分别报告工程/事件一致性、真实发声和不具逐位资格的PCM比较；最终原始测值在p1-midi-loop-tests.json。独立stdlib解码三份实际48k/双声道/PCM24/144000帧WAV，核对非零Peak/RMS、完整数据和SHA；不冒充True Peak独立测量或听评。
+- 首次测试枚举临时JSON生命周期错误、未等待实际MIDI配置完成、误用无默认键的Stop，后续编译字符串/JSON错误及保留现代历史的损坏夹具先触发历史拒绝均保留。现使用本地配置applied回执、Space、现代拒绝与明确historyless夹具，不伪造执行或放宽既定输入/等待预算。
+- 其余最新检查：MIDI普通录音62/原生界面23、音频Loop51、writer故障49、Punch124、Playlist227、P1制作链路98、CC186、ProjectDocument80、PersistentHistory86。原音频Loop→Punch→Comp→交叉淡化→导出、保存重开与PCM差0资格保持。
+- 唯一App和CLI构建exit0，本地deep/strict签名通过（非发行公证）；SDK19补丁/47文件从锁定原始提交fresh apply、字节匹配及reverse通过，无新依赖版本/服务/实时回调工作。App SHA d291fbad41914b4340b4842a4fa3b57b894ef0013a09aa0311a37d70dc654e6e。用户进程44913未重启，无新DMG/tar/应用副本。
+
+当前索引`build-v2-tracktion/midi-loop-current-results.json`；两批JUnit/log为midi-loop-regression和midi-loop-qualified，SDK为midi-loop-sdk-replay.json。演示工程`build-v2-tracktion/Midi-Loop-162b28409eda415c9bede4f0359e46db/MIDI-Loop.tracktionedit`（已知测试输入，非音乐作品）；组件快照`build-v2-tracktion/Midi-Loop-162b28409eda415c9bede4f0359e46db/MIDI-Takes.png`已查看，不是OS桌面截图。亲手操作见MIDI_LOOP_WORKFLOW.md。
+
+未完成：MIDI Playlist锁定、Comp/Promote/分段试听、MIDI Punch、合并/覆盖/MPE/量化/Groove、短循环/空中间圈等更多边界；外部原始MIDI流式写盘/崩溃日志、长录音/4096圈以外/断连/过载/PDC、实体键盘/桌面键鼠/听评、Windows/完整发行等继续保留。桌面工具此前超时且用户确认主界面可操作，本轮未反复调用，不推断锁屏或应用故障。下一项MIDI Punch。以下为历史证据。
+
 # 普通保存与另存为（2026-10-16）
 
 结论：9aa7eb5/2736942接通CmdS普通保存、CmdShiftS另存为和真实旧版备份；ca93b11补齐整次保存测量及快照作业启动观察。受影响按各套最新终态分批9/9、562项通过，P1音频链路98项已实际用CmdS写回当前工程；不是一次全仓全绿、实体输入/听评或完整产品资格。

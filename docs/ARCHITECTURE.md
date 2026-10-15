@@ -1,3 +1,5 @@
+2026-10-16 MIDI循环：L0停止后的applyRecording保留未折回输入并分圈；L1 MidiLoopCapture把原生TAKES转成同一Edit的Playlist/Clip/Note，一笔Undo。Edit根NDAW_MIDI_SOURCES持有原始时间/字节、Tempo XML、设备及调整值的SHA；Take引用来源和圈号。无第二引擎/服务，回调无新增工作。MIDI/Instrument面板显示真实音符；只开放选择/重命名/目标，锁定/Comp待资格。工程必需能力midi.loop-capture v1覆盖活动/非活动/历史；CC指纹改用与保存一致的preciseEditXml，避免SysEx显示精度造成重开伪变更。实测范围见MIDI_LOOP_WORKFLOW.md和VERIFICATION.md。
+
 2026-10-16 L1工程文件生命周期：Commands的projectPath/projectHash只记录实际装载/保存的外部文件上下文，不是第二工程/编辑模型。open绑定同一批解析字节；saveAs新建并重绑，saveCurrent版本复核后调用原save序列化；Save Copy不重绑，adopt新/恢复Edit清空绑定。ProjectFileStore只做非RT存储发布，通过一次同步L1 producer取图像；不持有Edit，不新增服务。合作非阻塞锁、独立旧版、私有暂存、fsync/原子替换/最终核验后才更新已知版本。SessionExit新增真实快照请求启动进度观察，未接到音频线程。实际资格、锁/同步限制与副作用语义见SAVE_WORKFLOW.md和VERIFICATION.md。
 
 2026-10-16 L5工程生命周期：requestTransition复用SessionExit/SessionExitPanel绑定一次本地动作，退出与用户Open共用L1保存/恢复及最终session/revision/UI/实际文件校验；Open另封定目标路径/内容hash。取消撤回generation，重复请求只展示原卡片，不替换回调或目标。GUI Open按钮/单工程拖入使用requestOpenSession，可信openSession只供新进程初始装载/已验证回调，后者仍调用同一L1 open。UI工作线程不持有Edit。新建面板可见时在既有5Hz计时器只更新服务进度和事实，不恢复全工程轮询重建。无新引擎/SDK/服务/权限；代码WorkspaceExit/WorkspaceRefresh/SessionExitPanel，实际资格见VERIFICATION.md。

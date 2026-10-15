@@ -1,9 +1,9 @@
 # 下一步（2026-10-16）
 
-普通Save/Save As和独立旧版已接通，P1音频链路98项包含重开后实际CmdS写回与PCM差0。当前按各套最新终态分批9/9、562项，原批8/9红与后续4/4补验保留；不是完整产品。索引`build-v2-tracktion/project-save-current-results.json`。
+MIDI循环Take增量已提交c663834，当前11种受影响测试最新终态分批1150项，MIDI专项164项。原10/11红与补3/3保留；真实事件/工程恢复与FourOsc随机相位的音频逐位一致性分开，后者未资格。索引`build-v2-tracktion/midi-loop-current-results.json`；不是完整P1/产品。
 
-1. **下一项回到P1：MIDI循环录音。** 当前`RecordingCommands.cpp::recordingReadiness`仍以loop_midi_pending拒绝MIDI/乐器循环。先核验锁定Tracktion的原生MIDI循环捕获、跨圈Note/CC时序和合并模式，明确非破坏Take/Playlist模型，再接到相同L1事务、原Undo/Redo、保存冷重开和注册快捷键；真实hosted输入与实体键盘资格分开，不移除拒绝条件冒充支持。随后再处理MIDI Punch等未验范围。
-2. 保存增量收口：当前版本复核/合作非阻塞锁、真实独立旧版、原子替换及GUI键已验；覆盖式另存、GUI播放中保存、精确脏状态/未保存标记/丢弃入口、备份浏览/保留策略、真实发布后同步失效/断电、任意非合作强竞争、Windows、私有插件/实体选择器/键鼠/听评仍待完成。旧Open saving轮询超时未捕获当时终态，不由新观察点通过外推全因果证明。
-3. 原录音/writer/Loop Undo、MIDI分页、共享Warp与项目能力保护的资格保留；其它历史失败不可一概归因。旧KeyboardSettings焦点、性能A15.84%超15%、分析超时、读取能力全量、长源/复杂路由/PDC/多设备/RT录音队列/耐久/视频/环绕/发行继续保留；M2/M3冻结，M4/M5暂缓，完整目标不缩减。
+1. **下一项P1：MIDI Punch。** 保留现有音频Punch行为规格，先确定跨入/跨出长音、CC/SysEx、预后卷与原Main/Take的非破坏规则，再接原L1事务、实际时间边界、Undo/保存冷重开与注册快捷键。不得仅取消audio-only拒绝；测试源和实体键盘资格分开。
+2. MIDI循环本增量收口：当前Take选择/重命名/目标可用，MIDI Playlist锁定/Comp/Promote/分段试听未实现。短循环、精确原始NoteOff圈末/空中间圈、合并覆盖/MPE/量化/Groove、长捕获/4096圈以外、外部原始MIDI流式日志/崩溃、断连/过载/复杂PDC仍须单独实现或验证，不无限追加本轮边界。
+3. 保存、Open和退出增量保留原资格及差距：覆盖式另存/精确脏标记与丢弃/备份管理、播放中保存、断电/非合作文件竞争、Windows、实体选择器/输入/听评未验。旧KeyboardSettings焦点、性能A15.84%超15%、分析超时、全量读取能力、RT SDK分配锁/队列、多设备/耐久/视频/环绕/发行等保留；M2/M3冻结，M4/M5暂缓，完整目标不缩减。
 
-唯一App`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`本地deep/strict非发行公证；保存现有工程后重启，CmdS保存、CmdShiftS另存，旧版在当前工程目录.forma-backups。未重启用户现有进程，无新DMG/tar/应用副本。自有演示和具体步骤见SAVE_WORKFLOW.md、OPEN_SESSION_WORKFLOW.md。
+唯一App`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`本地deep/strict非发行公证；用户现有进程未重启，无新应用副本/DMG/tar。保存后重启，按MIDI_LOOP_WORKFLOW.md用L/F12/Space、Option+[和]、Option+L、钢琴卷帘和CmdS亲手试；演示路径见本轮VERIFICATION。实际来源为明确测试输入，非音乐作品。
