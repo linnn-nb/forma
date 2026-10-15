@@ -156,15 +156,21 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
                 : r.end + tail;
         require(r.tailHigh <= te::Edit::maximumLength && r.tailEnd <= te::Edit::maximumLength,
                 "自动化尾随区越出工程范围，请缩短尾随时长");
-        for (auto* owner : {source, destination})
+        for (const bool sourceSide : {true, false})
         {
-            const double first = owner == source ? r.high : r.end;
-            const double last = owner == source ? r.tailHigh : r.tailEnd;
+            auto* owner = sourceSide ? source : destination;
+            const double first = sourceSide ? r.high : r.end;
+            const double last = sourceSide ? r.tailHigh : r.tailEnd;
             for (auto* clip : owner->getClips())
                 if (!moving.contains(clip->itemID.toString().toStdString()))
                     require(last <= first || clip->getPosition().getStart().inSeconds() >= last ||
                                 clip->getPosition().getEnd().inSeconds() <= first,
                             "自动化尾随区与未移动片段相交，请先缩短尾随时长或调整选择");
+            for (const auto& clip : clips)
+                if (clip["after"]["track"] == (sourceSide ? r.source : r.destination))
+                    require(last <= first || clip["after"]["start_seconds"].get<double>() >= last ||
+                                clip["after"]["end_seconds"].get<double>() <= first,
+                            "同批移动的其它片段进入自动化尾随区，请缩短尾随时长或分开安排");
         }
         for (auto* plugin : source->pluginList)
             for (auto* parameter : plugin->getAutomatableParameters())

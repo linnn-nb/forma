@@ -686,6 +686,26 @@ int main(int argc, char** argv)
                             "tail continuation rejects actual untouched source or target neighbour overlap");
                     c.undo();
                 }
+                run(c, "track.create", {{"name", "No source curves"}, {"type", "audio"}});
+                const std::string extraTrack = c.query()["tracks"][2]["id"];
+                run(c, "clip.import",
+                    {{"track", extraTrack},
+                     {"path", f.media.getFullPathName().toStdString()},
+                     {"position_samples", 168000},
+                     {"ref", "$arrival"}});
+                const std::string arrival = c.query()["tracks"][2]["clips"][0]["id"];
+                rejects(
+                    [&]
+                    { plan(c, Json::array({move(f.clip, f.a, f.b, start), move(arrival, extraTrack, f.b, 168000)})); },
+                    "same-batch arrival without source automation cannot bypass the tail collision check");
+                c.undo();
+                c.undo();
+                Scope limited;
+                limited.targets = {f.a, f.b};
+                const auto configPlan =
+                    c.makePlan("human", Json::array({op("session.relocation_tail.set", {{"samples", 24000}})}));
+                rejects([&] { c.review(configPlan, limited); },
+                        "track-only grants cannot authorize a global tail setting");
                 run(c, "session.relocation_tail.set", {{"samples", 0}});
                 const auto dry = c.preview(plan(c, Json::array({move(f.clip, f.a, f.b, start)})));
                 check(dry["relocation_changes"][0]["automation"]["transfers"][0]["tail_seconds"] == 0.,
