@@ -542,10 +542,25 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         for (const auto& change : validateHierarchyPlan(ops))
             if (change["command"] == "track.delete")
                 for (const auto& deleted : change["deleted_tracks"])
+                {
                     if (auto* t = track(deleted["id"]))
                         for (auto list : t->state.getChildWithName("NDAW_PLAYLISTS"))
                             require(str(list, "linked_set").empty(),
                                     "Detach linked Comp before deleting a member track or its folder");
+                    const std::string removed = deleted["id"];
+                    for (auto* owner : te::getAudioTracks(*edit))
+                        for (auto candidate : owner->state.getChildWithName("NDAW_PLAYLISTS"))
+                            if (!str(candidate, "linked_set").empty())
+                            {
+                                require(str(candidate, "origin_track") != removed,
+                                        "Linked Comp references this source track; detach it before deletion");
+                                for (auto clip : playlist_links::active(*owner) == candidate ? owner->state : candidate)
+                                    if (te::Clip::isClipState(clip))
+                                        require(str(clip, "ndaw_comp_origin_track") != removed &&
+                                                    str(clip, "ndaw_take_origin_track") != removed,
+                                                "Linked Comp references this source track; detach it before deletion");
+                            }
+                }
     for (const auto& op : ops)
     {
         const std::string cmd = op["command"];

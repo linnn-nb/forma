@@ -363,8 +363,22 @@ int main(int argc, char** argv)
             }
             for (const auto& t : {a, b})
                 if (targets.at(a) != t && targets.at(b) != t)
+                {
                     check(list(c, t, c.queryPlaylists(t)["active"])["clips"].empty(),
                           "vacated source actually stays empty instead of replaying original cancelling Takes");
+                    bool referenced = false;
+                    try
+                    {
+                        c.makePlan("human",
+                                   Json::array({op("track.delete", {{"track", t}, {"connections", "disconnect"}})}));
+                    }
+                    catch (const std::exception& e)
+                    {
+                        referenced = std::string(e.what()).find("references this source track") != std::string::npos;
+                    }
+                    check(referenced,
+                          "deleting a vacated origin cannot remove Takes still referenced by the relocated Comp");
+                }
             check(list(c, a, takes[a]) == originalA && list(c, b, takes[b]) == originalB,
                   "both original Take Playlists retained exactly");
             compare(silence, render(c, folder), 0, "relocated microphones retain actual full-WAV phase null");
