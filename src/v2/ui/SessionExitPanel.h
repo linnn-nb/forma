@@ -41,6 +41,7 @@ public:
         snapshotButton.onClick = std::move(snapshot);
         cancelAction = std::move(cancel);
         cancelButton.onClick = cancelAction;
+        path.onEscapeKey = cancelAction;
         browseButton.onClick = std::move(browse);
     }
     void destination(const juce::File& file)

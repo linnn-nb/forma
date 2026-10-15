@@ -154,6 +154,9 @@ int main(int argc, char** argv)
         w.requestExit([&] { ++exits; });
         auto* path = dynamic_cast<juce::TextEditor*>(find(w, "exit.path"));
         check(path != nullptr, "production save destination editor exists");
+        check(path->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)) && !find(w, "exit.panel")->isVisible(),
+              "destination TextEditor Escape uses the same immediate cancellation before bubbling");
+        w.requestExit([&] { ++exits; });
         path->setText("relative.tracktionedit", false);
         click(w, "exit.save");
         check(exits == 0 && find(w, "exit.panel")->isShowing(), "relative save path cannot authorise exit");
