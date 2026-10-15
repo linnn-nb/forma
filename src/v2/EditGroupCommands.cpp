@@ -340,6 +340,10 @@ Json Commands::shuffleRangeOperations(const Json& request) const
     std::map<std::string, std::string> hashes;
     auto append = [&](const std::string& command, Json args)
     {
+        // Recompilation must seal the same existing-object deletion evidence
+        // as makePlanImpl. Split aliases acquire their source later in the Plan.
+        if (command == "clip.delete" && !args.at("clip").get<std::string>().starts_with("$"))
+            normaliseClipDeletion(args);
         // Reserve the final range/cursor edits in the same native Undo transaction.
         if (operations.size() >= 62)
             throw std::runtime_error("entire Shuffle range exceeds 64-operation budget; select fewer tracks/clips");
