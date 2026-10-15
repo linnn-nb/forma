@@ -1,3 +1,26 @@
+# 处理源、自动化与关联 Comp 迁移（2026-10-15）
+
+**40 套受影响测试按各自最新终态通过，11869 次断言；3/3、36/37、1/1 三批合计 643.57 秒，不是一次全绿。P1 完整制作链路 91 项、重开导出 PCM 差 0。** 先确认 Release 应用和30个测试目标构建 exit0；37项批次中的旧 WarpMix 断言仍要求拆分拒绝，与已有完整处理窗口拆分相冲突。55b3e79 将它替换为实际新 Clip/精确相邻窗口/完整 WAV/原 UndoRedo，单目标重建 exit0、83项复测通过；拆分与重做 PCM 差0。其它39套不重复跑、不累计旧断言。三批 JUnit 和 fresh JSON 按每套最新终态核对；完整结果/格式/SHA 索引为本地 `build-v2-tracktion/p3-linked-comp-current-results.json`。
+
+| 关联处理组合 | 本次断言次数 | 完整10秒WAV最大差（预算2e-6） |
+| --- | --- | --- |
+| plain-auto | 532 | 1.19209289550781e-07 |
+| plain-fx | 610 | 9.5367431640625e-07 |
+| elastic | 538 | 3.57627868652344e-07 |
+| elastic-fx | 616 | 1.19209289550781e-06 |
+| warp | 538 | 2.38418579101562e-07 |
+| warp-fx | 616 | 9.5367431640625e-07 |
+
+每组合三个实际工程：分离目标＋1000采样、A/B→B/C＋目标原素材、A/B交换。两路相反极性 PCM24/48k/双声道实际媒体；真实 Volume/Pan 曲线、EQ 880Hz/+4dB、压缩 threshold 0.1/ratio 0.25、Delay150ms/feedback−6dB/mix0.35、Reverb wet0.12。源 Take/原媒体SHA、稳定 Clip/插件/Playlist/Set/配对身份、目标恢复、版本/Scope/幂等和原 Undo/冷重开均验。输出逐帧包含尾随，不跳过局部切点；5秒准备/10秒渲染/180秒专项/2e-6误差预算保持。短夹具不等于长源/专业听感/硬件或全插件资格。
+
+实际修复：RelocationAutomation 对声明样本与原生端点严格相等的共同位移使用整数映射合并，保留分数/音乐基精确校验，合并成员不再自碰撞，Clip FX 纳入状态尾随。ElasticCommands 在 L1/message thread 停止态按会话/活动Clip/hash最多一次原生恢复，真实缓存未就绪仍拒绝播放/录音/导出；WarpTests 157项含实际 OS 写盘失败及持续轮询不会重试。首作业失败调用链尚未证明，保留原失败记录。插件冷重开比较只按锁定原生 float 字段的实际精度解码，1 ULP、ID、未知/opaque状态、顺序仍严格校验。
+
+P1 制作链路本次91项/12.48秒，Loop/Punch真实原生写盘→Take/Comp→交叉淡化→WAV→保存重开/原历史/注册快捷键，PCM差0；输入为受控双通道原生设备接口，**不代表实体麦克风或听评已验收**。可打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-377351f70f2d4f498005e901c2ebf45b/P1-Production-Chain.tracktionedit`；操作与处理迁移见 [LINKED_COMP_RELOCATION.md](../../docs/LINKED_COMP_RELOCATION.md)。
+
+应用 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，二进制 SHA256 `efbca469a7eb2bff98ffb375411a162c8a2b47556cded001f829ae0a5ae897d6`，固定本地 deep/strict/身份指纹通过（非公证）。应用来源 e131a34，后续55b3e79仅加强测试；无SDK/依赖/RT改动。18补丁/44源码 fresh apply/逐字匹配/reverse已重新运行通过。无新DMG/副本。首次映射误拒、非默认FX冷XML拼写、Warp真实准备失败、旧WarpMix拒绝断言、编译const错误及调试启动受阻等日志保留，旧成功JSON不覆盖失败。
+
+桌面工具本轮明确 Mac 锁定，用户报告窗口正常；实体操作/声音未验。原性能A/180秒矩阵/分析超时、旧读者/长源/复杂组与路由/第三方/多声道、Windows/耐久/发行继续保留，完整P1/P3及产品未完成。剩余组合收录BACKLOG，下一项为原生工程能力版本声明/旧读者保护。以下为历史资格，不能自动扩大。
+
 # P3 关联 Comp 整组迁移（2026-10-15）
 
 **31套最新结果分批通过，8047项唯一检查，467.30秒。** Release应用和27个测试目标本轮构建exit0后单进程运行。首批31套结果保留；随后只加强新专项的Set/配对ID和源实际留空断言，测试目标重建exit0、单项复测取最新结果。随后d6444e3增加已记录来源的删除保护，应用与3相关目标重建exit0，关联迁移/Playlist/层级3套复测。当前31套按每套最新终态统计；其它28套复用首批，不伪称最后提交后全批复跑。之前新专项初测不累加检查。

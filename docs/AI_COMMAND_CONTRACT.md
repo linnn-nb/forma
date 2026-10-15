@@ -1,3 +1,7 @@
+2026-10-15 关联处理源增量不增加 Agent 权限或命令。clips.relocate 仍为停止态独立 Plan，Scope/版本/来源 hash/幂等/原 Undo 契约保持。声明采样位移的共享曲线区间只在精确匹配原生端点时合并，不用容差覆盖不确定映射；Clip FX 后续曲线仍显示在变更范围内。
+
+本地 playbackPreparation 返回真实 busy/items，并新增 source_recovery_attempts；失败项给出 source_recovery_attempted。它们是原生源缓存准备票据，不是编辑或完成回执；最多一次恢复后仍不可读则 failed，未经实际缓存验证不能显示播放/导出成功。未新增 MCP 工具，未改变外部确认策略。
+
 2026-10-15 clips.relocate的linked_comp预览包含整组Playlist成员、源空列表ID、目标原播放列表、暂存片段、恢复引用及状态hash；仍human/local_gui、停止态、独立Plan。所有片段须完整、一对一目标和相同采样位移；作用包含整条播放列表切换，需双侧轨道及完整时间授权，未扩大MCP/自动执行。原生Clip对象迁移、描述符重挂、成员/几何/配对和来源标记保持一Undo事务；版本/幂等/锁定与媒体验证沿用。新Take/Comp分别记录来源轨道，缺标记返回null，不把当前轨道伪装成原Take位置。工程committed不是音频验证；实际范围与差距见LINKED_COMP_RELOCATION.md。
 
 2026-10-15 P3-CLIP-RELOCATE-01：新增human/local_gui独立停止态命令clips.relocate {moves:[{clip,from_track,to_track,position_samples}],state_hash}，1–64实际Clip、48k采样、共同位移；完整编辑组与源/目标Scope均须覆盖。实际预览绑定来源SHA、目标处理链/路由/Playlist、自动化策略和配对rehome/detach，接受后单原生事务，同ID而非复制删除。重试/冲突/Undo沿用现有契约；不扩大MCP或自动执行权限。641/642默认CmdCtrlOption↑/↓，每次都先确认；详见CLIP_RELOCATION.md。

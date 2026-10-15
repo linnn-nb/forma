@@ -1,3 +1,11 @@
+# 处理源与关联迁移当前验证（2026-10-15）
+
+40 套受影响测试按各自最新终态通过，11869 次断言；3/3、36/37、1/1 三批合计 643.57 秒，不是一次全绿。P1 完整制作链路 91 项、重开导出 PCM 差 0。 六处理组合/18工程的完整10秒WAV最大差 1.19209289550781e-06≤2e-6；WarpMix83项含真实拆分/原UndoRedo，拆分PCM差0；Warp157项包括真实永久写盘失败与一次恢复上限。所有原预算不变。应用与30目标构建exit0；18 SDK补丁/44文件实际fresh apply/逐字匹配/reverse、本地deep/strict/身份指纹通过，非发行公证。
+
+代码 RelocationAutomation.cpp、ElasticCommands.cpp、EngineCommands.h；测试 LinkedRelocationTests.cpp、WarpTests.cpp、WarpMixTests.cpp、ProductionChainTests.cpp。第一批3/3，广泛批次36/37，旧拒绝断言更新后1/1；只按每套最新 fresh JSON＋CTest终态统计，失败不删除。逐套结果、实际WAV/工程及SHA：本地 build-v2-tracktion/p3-linked-comp-current-results.json；详情 [P3证据](../evidence/P3/summary.md)，操作 [关联Comp迁移](LINKED_COMP_RELOCATION.md)。
+
+首 Warp 作业失败根因未证明。桌面工具报 Mac 锁定，用户报告可操作；实体键鼠/麦克风/听评未执行。旧性能A/焦点/180秒自动化/分析超时、旧读者/复杂路由/长源/硬件/Windows/发行保持未完成。此轮不代表完整P1/P3或产品完成。以下为历史记录。
+
 # P3 关联 Comp 整组迁移（2026-10-15）
 
 **31套最新结果分批通过，8047项唯一检查，467.30秒。** Release应用和27个测试目标本轮构建exit0后单进程运行。首批31套结果保留；随后只加强新专项的Set/配对ID和源实际留空断言，测试目标重建exit0、单项复测取最新结果。随后d6444e3增加已记录来源的删除保护，应用与3相关目标重建exit0，关联迁移/Playlist/层级3套复测。当前31套按每套最新终态统计；其它28套复用首批，不伪称最后提交后全批复跑。之前新专项初测不累加检查。

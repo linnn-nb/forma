@@ -1,7 +1,7 @@
 # Forma Studio 工程规则
 
 - 线程目标：按docs/ARCHITECTURE.md构建Tracktion开源AI-native DAW；Pro Tools作为界面和工作流参考。
-- 当前P3：关联Comp整组跨轨迁移已接L1与原生预览；源留空、目标原列表保留为非活动、Comp/Playlist/Clip/Take/配对身份保留。31套受影响回归分批通过，新增283检查，真实PCM差2.38418579e-07≤2e-6；实体操作/听评未执行。下一项处理源、自动化与关联迁移组合资格；完整差距见docs/LINKED_COMP_RELOCATION.md、docs/BACKLOG.md和evidence/P3/summary.md。SDK18补丁/44文件保持，未改RT/DSP。
+- 当前工程任务与资格以 docs/NEXT_STEPS.md、docs/VERIFICATION.md 和 evidence/P3/summary.md 为准；处理源/共享自动化/关联迁移仍按实际测过的场景开放，不推断完整产品或全部插件资格。
 - 按当前P级清单推进；M2/M3冻结，M4/M5暂缓，AI入口不占据制作主界面。同项两轮边界工作即收口进BACKLOG。
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。

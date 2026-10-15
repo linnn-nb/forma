@@ -1,3 +1,5 @@
+2026-10-15：关联 Comp 与实际音量/声像曲线、四个非默认 Clip FX 的跨轨组合已加入资格，见 [LINKED_COMP_RELOCATION.md](LINKED_COMP_RELOCATION.md)。Warp 源失败最多一次停止态原生恢复，永久写盘失败不会反复创建作业。完整听感/长源/硬件资格保持待验。
+
 2026-10-15 补充：处理窗口复制/粘贴已有专项资格，见[PROCESSED_CLIPBOARD.md](PROCESSED_CLIPBOARD.md)及当前P3证据；下文旧复制限制仅由受测范围替代。
 
 2026-10-15 补充：SoundTouch/Warp与原生Clip FX来源/Comp支持完整输入窗口拆分；右侧实际新Clip/插件与锚点身份独立，原映射/原Take与源淡化保留。1207专项真实WAV、冷重开原Undo与自定义键路由通过，操作[PROCESSED_CLIP_SPLIT.md](PROCESSED_CLIP_SPLIT.md)。既有移动/Trim保持；无新伸缩算法。复制/粘贴/缺失媒体删除、复杂联动、旧读者/长源/听评和完整Elastic Audio仍未完成。
@@ -8,7 +10,7 @@
 
 ## 选型与许可证
 
-核验日期：2026-10-14。本轮再次查阅原作者资料，87项回归通过；现有2.1pre版本与范围保持：
+核验日期：2026-10-14，2026-10-15 再查原作者 [SoundTouch 说明](https://soundtouch.surina.net/README.html) 与 [Rubber Band 许可](https://breakfastquay.com/rubberband/license.html)。当前继续复用已锁定的 SoundTouch 2.1pre，未升级依赖，未把上游新版本当作本机集成版本；早期线性伸缩 87 项资格保留：
 
 | 候选 | 官方来源与许可证 | 本轮处理 |
 | --- | --- | --- |

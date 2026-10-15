@@ -1,3 +1,7 @@
+2026-10-15 处理源/关联迁移增量：仍由 L1/message thread 冻结源曲线和原生处理窗口，一 Plan/UndoManager 迁移原 Clip/Playlist/Comp 身份。RelocationAutomation 仅在原生端点与声明样本精确相等时用整数 sampleDelta 合并共享区间，音乐和分数采样映射保持原精确校验；合并保留成员集合，排除自碰撞。Clip FX 纳入有状态尾随准备，不改变实际 DSP 或实时回调。
+
+Warp 准备的恢复票据仅在 Commands 运行时存在：会话 token＋活动 Clip ID＋原生处理 hash，每种状态最多一次；只在停止态、原媒体/映射有效、前作业退出后调用原生 markAsDirty/updateSourceFile。第二次失败保持真实 failed，读取轮询不能无限重试；实际可读缓存仍是播放/录音/导出的前提。票据按活动对象清理，不进入工程事实/Undo；没有新增引擎、服务、SDK 补丁或推理/IPC 路径。初始失败调用链尚未证明，不能宣称根因已解决。资格见 LINKED_COMP_RELOCATION.md 与 P3 证据。
+
 2026-10-15 关联迁移：LinkedCompRelocation是L1派生变更/执行辅助，不建立第二项目或引擎。预览冻结完整活动组及目标原列表，分阶段准备空列表、停放目标素材、整体移动描述符，再原生Clip::moveTo，最终更新活动/恢复引用、成员和几何；重叠或交换不依赖边移边枚举。源/目标所有写入在message thread的一Plan一Undo内。Clip的Comp选段来源与Take来源使用不同元数据，复制保留，旧缺标记事实返回null。L5只查询和显示真实切换；Scope覆盖整条播放列表。L0/SDK/RT/DSP不改，18补丁/44文件仍审计。资格与边界见LINKED_COMP_RELOCATION.md。
 
 2026-10-15 尾随增量只改L1/原生UI，不改L0处理器、SDK或RT路径：TimelineCommands在message thread保存RELOCATION_OPTIONS；RelocationAutomation对冻结来源曲线计算片段迁移与显式后续复制，检查源/目标/同批最终几何冲突，仍一Plan一Undo事务。目标尾随区已有点在预览中明确替换，源外点用新身份复制并保留未知属性。GUI只选设置/建草稿/显示实际范围，不直接写Edit。测量缓存继续由既有revision/chain hash失效。默认2秒是可修改制作范围，不是DSP尾音上界；资格见AUTOMATION_TAIL_WORKFLOW.md。
