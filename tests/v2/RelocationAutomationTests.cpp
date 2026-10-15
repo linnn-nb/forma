@@ -23,6 +23,7 @@ namespace
 int checks = 0, serial = 0;
 double worst = 0, pcmError = 0;
 Json pcmResults = Json::array();
+Json curveFailures = Json::array();
 void check(bool v, const char* why)
 {
     if (!v)
@@ -363,8 +364,17 @@ int main(int argc, char** argv)
             {
                 double error = std::abs(value(c, probe.track, probe.lane, probe.time) - probe.want);
                 worst = std::max(worst, error / probe.span);
-                check(error <= probe.span * 1e-7 + 2 * std::numeric_limits<float>::epsilon() * probe.span,
-                      "native automation iterator matches frozen source or exterior within existing curve budget");
+                const double ulp = std::abs(double(std::nextafter(float(probe.want), INFINITY)) - float(probe.want));
+                if (error <= probe.span * 1e-7 + 2 * ulp)
+                    check(true, "native automation iterator obeys the unchanged span budget plus two float ULP");
+                else
+                {
+                    curveFailures.push_back({{"lane", probe.lane},
+                                             {"time", probe.time},
+                                             {"error", error},
+                                             {"tolerance", probe.span * 1e-7 + 2 * ulp}});
+                    std::cout << "FAIL CURVE actual " << error << std::endl;
+                }
             }
             if (!midi)
                 aligned(reference, render(c, folder), int(start - 48000));
@@ -417,9 +427,12 @@ int main(int argc, char** argv)
         bool audioPassed = true;
         for (const auto& measured : pcmResults)
             audioPassed &= measured["passed"].get<bool>();
-        Json result{{"result", audioPassed ? "passed" : "failed"},
+        Json result{{"result", audioPassed && curveFailures.empty() ? "passed" : "failed"},
                     {"checks", checks},
-                    {"engineering_state", "passed"},
+                    {"transactions_and_roundtrip", "passed"},
+                    {"curve_failures", curveFailures},
+                    {"curve_tolerance_parameter_span", 1e-7},
+                    {"additional_float_ulp", 2},
                     {"pcm_comparisons", pcmResults},
                     {"max_relative_curve_error", worst},
                     {"max_pcm_error", pcmError},
@@ -429,7 +442,7 @@ int main(int argc, char** argv)
         if (argc > 1)
             std::ofstream(argv[1]) << result.dump(2) << '\n';
         std::cout << result.dump(2) << std::endl;
-        return audioPassed ? 0 : 1;
+        return audioPassed && curveFailures.empty() ? 0 : 1;
     }
     catch (const std::exception& e)
     {
