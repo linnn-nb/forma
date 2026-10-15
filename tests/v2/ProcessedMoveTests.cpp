@@ -487,6 +487,42 @@ int main(int argc, char** argv)
                 c.undo();
                 check(c.query()["tracks"] == originalOwners && list(c, t, take) == preserved,
                       "original relocation Undo preserves original Take and restores all parent/processor state");
+                const auto partial = c.makePlan(
+                    "human",
+                    Json::array({op("clips.relocate",
+                                    {{"moves", Json::array({{{"clip", left},
+                                                             {"from_track", t},
+                                                             {"to_track", destination},
+                                                             {"position_samples", before[0]["start_samples"]}}})}})}));
+                check(c.preview(partial)["relocation_changes"][0]["crossfades"][0]["action"] == "detach",
+                      "single crossfade member preview explicitly detaches pair without changing its fades");
+                c.commit(partial);
+                const auto partialOwners = c.query()["tracks"];
+                check(partialOwners[0]["clips"].size() == 1 && partialOwners[0]["clips"][0]["id"] == right &&
+                          partialOwners.back()["clips"].size() == 1 && partialOwners.back()["clips"][0]["id"] == left &&
+                          c.crossfades(t).empty() && c.crossfades(destination).empty(),
+                      "partial relocation changes actual parent and removes both invalid pair references");
+                check(processors(native(c, left)).isEquivalentTo(processors(originalState)),
+                      "partial relocation preserves every real native Clip processor identity and setting");
+                aligned(reference, render(c, folder, 0, 240000), 0);
+                const auto partialFile = folder.getChildFile("Relocated-Partial.tracktionedit");
+                c.save(partialFile);
+                {
+                    Commands cold(false, std::make_unique<Storage>(folder.getChildFile("partial-cold")));
+                    cold.open(partialFile);
+                    check(cold.query()["tracks"] == partialOwners && cold.crossfades(t).empty() &&
+                              cold.crossfades(destination).empty(),
+                          "partial relocation cold Open has the real owners and no invalid crossfade pairing");
+                    cold.undo();
+                    check(cold.query()["tracks"] == originalOwners && cold.crossfades(t)[0] == beforePair,
+                          "cold original partial Undo restores exact source owners and complete crossfade");
+                    cold.redo();
+                    check(cold.query()["tracks"] == partialOwners && cold.crossfades(t).empty(),
+                          "cold original partial Redo restores the explicit split ownership");
+                }
+                c.undo();
+                check(c.query()["tracks"] == originalOwners && list(c, t, take) == preserved,
+                      "partial relocation Undo retains original source Take and complete owner state");
                 run(c, "track.delete", {{"track", destination}, {"connections", "reject"}});
                 auto stale =
                     c.makePlan("human", Json::array({op("clip.move", {{"clip", left}, {"position_samples", 78000}})}));

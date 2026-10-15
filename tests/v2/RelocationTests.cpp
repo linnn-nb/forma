@@ -389,6 +389,18 @@ int main(int argc, char** argv)
         RecordingTestAccess::refresh(w);
         Json moves = Json::array({{{"clip", a}, {"from_track", at}, {"to_track", bt}, {"position_samples", 72000}},
                                   {{"clip", m}, {"from_track", mt}, {"to_track", dt}, {"position_samples", 120000}}});
+        run(c, "group.create",
+            {{"id", "relocation-group"},
+             {"name", "Mixed relocation group"},
+             {"members", Json::array({at, mt})},
+             {"enabled", true},
+             {"edit", true},
+             {"mute", false},
+             {"solo", false}});
+        const auto grouped = all(c);
+        rejects([&] { c.makePlan("human", Json::array({op("clips.relocate", {{"moves", Json::array({moves[0]})}})})); },
+                "incomplete overlapping mixed Edit group refuses the entire relocation");
+        check(all(c) == grouped, "rejected incomplete group leaves every actual owner unchanged");
         auto plan = c.makePlan("human", Json::array({op("clips.relocate", {{"moves", moves}})}));
         Scope denied;
         denied.targets = {at, mt};
