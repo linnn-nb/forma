@@ -357,6 +357,18 @@ int main(int argc, char** argv)
                 auto a = render(reopened, dir, "VST3 reopened automation");
                 check(a.getMagnitude(0, 12000, 24000) <= 3e-6 && a.getRMSLevel(0, 96000, 24000) > 1e-4,
                       "reopened real VST3 retains silent and audible automation regions");
+                reopened.undo(plan["plan_id"]);
+                check(lane(reopened, t, l)["points"].empty(),
+                      "original VST3 curve Undo remains available after reopen");
+                auto undone = render(reopened, dir, "VST3 reopened original Undo");
+                check(undone.getRMSLevel(0, 12000, 24000) > 1e-4,
+                      "reopened VST3 original Undo restores actual earlier audible MIDI");
+                reopened.redo();
+                check(lane(reopened, t, l)["points"] == prior,
+                      "reopened VST3 original Redo preserves exact native curve IDs and values");
+                auto redone = render(reopened, dir, "VST3 reopened original Redo");
+                check(redone.getMagnitude(0, 12000, 24000) <= 3e-6 && redone.getRMSLevel(0, 96000, 24000) > 1e-4,
+                      "reopened VST3 original Redo restores actual silent and audible automation regions");
             }
             instrument.undo(plan["plan_id"]);
             settle();
