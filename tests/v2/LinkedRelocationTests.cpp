@@ -26,6 +26,14 @@ public:
     {
         return c.audioClip(clip);
     }
+    static std::string pairPlaylist(Commands& c, const std::string& track, const std::string& pair)
+    {
+        return c.track(track)
+            ->state.getChildWithName("NDAW_CROSSFADES")
+            .getChildWithProperty("id", juce::String(pair))["playlist"]
+            .toString()
+            .toStdString();
+    }
 };
 } // namespace ndaw::v2
 namespace
@@ -342,7 +350,9 @@ int main(int argc, char** argv)
                     check(clip["take_id"] == takeLineage[t] && clip["comp_origin_track"] == t &&
                               clip["take_origin_track"] == t,
                           "real Take lineage remains resolvable on its original track");
-                check(c.crossfades(targets.at(t)).size() == 1 && c.crossfades(targets.at(t))[0]["playlist"] == ids[t],
+                check(c.crossfades(targets.at(t)).size() == 1 &&
+                          RecordingTestAccess::pairPlaylist(c, targets.at(t), c.crossfades(targets.at(t))[0]["id"]) ==
+                              ids[t],
                       "crossfade record follows the same Comp Playlist and target");
             }
             check(list(c, a, takes[a]) == originalA && list(c, b, takes[b]) == originalB,
