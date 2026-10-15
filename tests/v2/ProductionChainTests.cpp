@@ -215,6 +215,14 @@ int main(int argc, char** argv)
         c.stop();
         pump(60);
         const auto loop = c.query()["last_recording"];
+        if (loop["state"] != "committed" || loop["mode"] != "loop" || loop["takes"].size() != 6)
+            std::cout << "LOOP_FAILURE "
+                      << Json{{"receipt", loop},
+                              {"feed_begin", begin},
+                              {"feed_frames", feed.frames.load()},
+                              {"position_samples", c.query()["position_samples"]}}
+                             .dump()
+                      << std::endl;
         check(loop["state"] == "committed" && loop["mode"] == "loop" && loop["takes"].size() == 6,
               "Loop creates real multi-track Take receipts, not one overwritten clip");
         const auto loopTracks = c.query()["tracks"];

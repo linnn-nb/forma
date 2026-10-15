@@ -187,6 +187,18 @@ int main(int argc, char** argv)
               "human edit after write blocks final exit without erasing the newer edit");
         exit.request();
         exit.snapshot();
+        ready(exit);
+        const auto mode = c.uiState()["edit_mode"] == "grid" ? "slip" : "grid";
+        c.updateUiState({{"edit_mode", mode}}, c.sessionToken());
+        check(!exit.authorise(), "persisted UI change after write blocks exit even without an engineering revision");
+        exit.request();
+        const auto altered = root.getChildFile("Altered-after-write.tracktionedit");
+        exit.save(altered);
+        check(exit.status()["state"] == "ready" && altered.replaceWithText("<broken/>"),
+              "actual close-save succeeds before external file corruption injection");
+        check(!exit.authorise(), "actual file checksum change after successful save prevents final exit");
+        exit.request();
+        exit.snapshot();
         run(c, "track.rename", {{"track", track}, {"name", "Human while waiting"}});
         exit.poll();
         check(exit.status()["state"] == "failed" && !exit.authorise(),

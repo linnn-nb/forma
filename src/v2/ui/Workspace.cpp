@@ -931,6 +931,10 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
 Workspace::~Workspace()
 {
     stopTimer();
+    ++exitGeneration;
+    exitCompleted = {};
+    exitPanel.reset();
+    sessionExit.reset();
     frameClock = {};
     commands.removeChangeListener(this);
     commandQueue.onCardsChanged({});
