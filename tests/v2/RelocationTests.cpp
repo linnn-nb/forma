@@ -446,6 +446,31 @@ int main(int argc, char** argv)
         c.undo();
         check(where(a) == at && where(m) == mt && points(at) == sourcePoints && points(bt) == destinationPoints,
               "one policy-bound Undo restores owners without rewriting unrelated curves");
+        const auto mediaPlan = c.makePlan("human", Json::array({op("clips.relocate", {{"moves", moves}})}));
+        juce::MemoryBlock original;
+        check(file.loadFileAsData(original) && original.getSize() > 100,
+              "own PCM source bytes are available for actual media-fault injection");
+        const auto time = file.getLastModificationTime();
+        auto altered = original;
+        static_cast<unsigned char*>(altered.getData())[altered.getSize() - 17] ^= 1;
+        check(file.replaceWithData(altered.getData(), altered.getSize()) && file.setLastModificationTime(time),
+              "actual same-size PCM byte mutation retains original modification time");
+        auto restore = [&]
+        {
+            if (!file.replaceWithData(original.getData(), original.getSize()) || !file.setLastModificationTime(time))
+                throw std::runtime_error("could not restore own media-fault fixture");
+        };
+        try
+        {
+            rejects([&] { c.preview(mediaPlan); },
+                    "media bytes changed at same size/time invalidate actual sealed relocation");
+        }
+        catch (...)
+        {
+            restore();
+            throw;
+        }
+        restore();
         check(Commands::mediaHash(file) == hash, "relocation and recovery leave original media bytes unchanged");
         Json result{
             {"result", "passed"},
