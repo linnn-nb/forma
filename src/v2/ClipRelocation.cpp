@@ -99,13 +99,11 @@ Json Commands::relocationChange(const Json& args) const
                 for (auto* plugin : owner->pluginList)
                     for (auto* parameter : plugin->getAutomatableParameters())
                         hasCurves |= parameter->getCurve().getNumPoints() != 0;
-                require(!follow || !hasCurves,
-                        "自动化跟随已开：跨轨道曲线映射尚未资格，本次迁移未执行；关闭跟随才会明确保留原轨道曲线");
                 owners.push_back({{"id", id(*owner)},
                                   {"name", owner->getName().toStdString()},
                                   {"type", trackType(*owner)},
                                   {"playlist", playlistQuery(*owner)["active"]},
-                                  {"automation", hasCurves ? "track curves remain in place" : "no track curves"}});
+                                  {"automation", hasCurves ? "actual track curves" : "no track curves"}});
                 const auto& snapshot = query();
                 for (const auto& actual : snapshot["tracks"])
                     if (actual["id"] == id(*owner))
@@ -220,24 +218,29 @@ Json Commands::relocationChange(const Json& args) const
                              {"action", intact ? "rehome" : "detach"},
                              {"to_track", intact ? selected.at(left)["to_track"] : Json(nullptr)}});
         }
-    const Json sealed{{"moves", moves},   {"native_moves", nativeMoves}, {"owners", owners}, {"pairs", pairs},
-                      {"follow", follow}, {"revision", revision}};
+    const auto automation = relocationAutomationChanges(changes);
+    const Json sealed{{"moves", moves},   {"native_moves", nativeMoves}, {"owners", owners},    {"pairs", pairs},
+                      {"follow", follow}, {"automation", automation},    {"revision", revision}};
     const auto bytes = sealed.dump();
-    return {
-        {"command", "clips.relocate"},
-        {"clips", changes},
-        {"owners", owners},
-        {"crossfades", pairs},
-        {"native_moves", nativeMoves},
-        {"automation_policy", follow ? "follow enabled; no curves present" : "track curves explicitly stay in place"},
-        {"routing_policy", "destination track processing/output; no track routing rewrite"},
-        {"state_hash", juce::SHA256(bytes.data(), bytes.size()).toHexString().toStdString()}};
+    return {{"command", "clips.relocate"},
+            {"clips", changes},
+            {"owners", owners},
+            {"crossfades", pairs},
+            {"native_moves", nativeMoves},
+            {"automation", automation},
+            {"automation_policy", follow ? (automation["transfers"].empty()
+                                                ? "follow enabled; no source curves present"
+                                                : "move frozen source curves; overwrite matching destination intervals")
+                                         : "track curves explicitly stay in place"},
+            {"routing_policy", "destination track processing/output; no track routing rewrite"},
+            {"state_hash", juce::SHA256(bytes.data(), bytes.size()).toHexString().toStdString()}};
 }
 void Commands::executeRelocation(const Json& args, Json& objects)
 {
     const auto change = relocationChange(args);
     require(args.at("state_hash") == change["state_hash"], "迁移预览已失效，请重新规划");
     auto& undo = edit->getUndoManager();
+    executeRelocationAutomation(change["automation"], objects);
     // Perform the existing precision-specific source move while it still has
     // its original owner, then reparent the SAME Clip state and identity.
     for (const auto& op : change["native_moves"])

@@ -96,6 +96,15 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
             automatic = false;
             for (const auto& change : preview.at("relocation_changes"))
             {
+                for (const auto& track : change["automation"]["tracks"])
+                    for (const auto& lane : track["lanes"])
+                        for (const char* side : {"before", "after"})
+                            for (const auto& point : lane[side])
+                            {
+                                const double at = point["time_seconds"];
+                                span(int64_t(std::floor(at * timelineRate)), 1);
+                                span(int64_t(std::ceil(at * timelineRate)), 1);
+                            }
                 for (const auto& owner : change.at("owners"))
                     if (!owner.at("plugins").empty() || !owner.at("sends").empty() ||
                         owner.at("output").value("kind", std::string{}) == "track")

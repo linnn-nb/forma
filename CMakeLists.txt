@@ -90,7 +90,7 @@ target_sources(ndaw_engine PRIVATE src/v2/RollTime.cpp src/v2/EditGroupCommands.
 target_sources(ndaw_engine PRIVATE src/v2/PlaylistCommands.cpp src/v2/PlaylistEditing.cpp src/v2/PlaylistAudition.cpp src/v2/PreparedAudioSources.cpp src/v2/CrossfadeEditing.cpp src/v2/PunchCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommands.cpp src/v2/MidiControllerCommands.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
-target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp src/v2/RelocationAutomation.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")

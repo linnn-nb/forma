@@ -538,6 +538,8 @@ private:
     static void registerClipCommands(Json&);
     static void registerRelocationCommands(Json&);
     Json relocationChange(const Json&) const;
+    Json relocationAutomationChanges(const Json&) const;
+    void executeRelocationAutomation(const Json&, Json&);
     void executeRelocation(const Json&, Json&);
     Json audioClipQuery(te::WaveAudioClip&) const;
     Json validateClipPlan(const Json&) const;

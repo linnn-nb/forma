@@ -150,7 +150,16 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                 {
                     const auto& change = preview.at("relocation_changes").at(0);
                     summary += text("\n片段进入目标轨道的处理链、发送与输出。轨道本身的路由保持。\n");
-                    summary += text(change["automation_policy"].get<std::string>()) + "\n";
+                    const auto policy = change["automation_policy"].get<std::string>();
+                    summary += text(policy == "track curves explicitly stay in place"
+                                        ? "自动化跟随关闭：保留所有原轨道曲线\n"
+                                        : (change["automation"]["transfers"].empty()
+                                               ? "自动化跟随开启：来源没有曲线，目标曲线保留\n"
+                                               : "自动化跟随开启：移动源曲线，替换匹配目标区间；区间外保留\n"));
+                    for (const auto& transfer : change["automation"]["transfers"])
+                        summary += trackName(transfer["from_track"]) + " → " + trackName(transfer["to_track"]) + " · " +
+                                   text(transfer["parameter"].get<std::string>()) + " · " +
+                                   text(transfer["clock"].get<std::string>()) + "\n";
                     for (const auto& pair : change["crossfades"])
                         summary += text(pair["action"] == "rehome" ? "完整交叉淡化配对随片段迁移\n"
                                                                    : "不完整配对将解除，片段淡化保留\n");

@@ -1174,7 +1174,10 @@ Json Commands::preview(const Json& plan) const
     const auto clipDiff = validateClipPlan(ops);
     validateRecordingPlan(ops);
     const auto playlistDiff = validatePlaylistPlan(ops);
-    const auto automationDiff = validateAutomationPlan(ops);
+    auto automationDiff = validateAutomationPlan(ops);
+    for (const auto& relocation : relocationDiff)
+        for (const auto& track : relocation["automation"]["tracks"])
+            automationDiff.push_back(track);
     validateRoutingPlan(ops, trackDiff);
     const auto midiDiff = validateMusicPlan(ops);
     Json timelineDiff = Json::array(), musicDiff = Json::array();
