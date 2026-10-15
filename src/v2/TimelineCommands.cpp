@@ -54,6 +54,20 @@ private:
 void Commands::registerTimelineCommands(Json& registry)
 {
     registry.push_back(
+        {{"id", "session.relocation_tail.set"},
+         {"schema",
+          {{"type", "object"},
+           {"properties", {{"samples", {{"type", "integer"}, {"minimum", 0}, {"maximum", 1440000}}}}},
+           {"required", {"samples"}},
+           {"additionalProperties", false}}},
+         {"permission", "edit"},
+         {"risk", "low"},
+         {"reversible", true},
+         {"live", false},
+         {"tool_visibility", "local_gui"},
+         {"test", "P3-RELOCATION-TAIL-01"},
+         {"units", {{"samples", "source automation continuation at 48000 Hz; not automatic tail detection"}}}});
+    registry.push_back(
         {{"id", "track.automation_edit_basis.set"},
          {"schema",
           {{"type", "object"},
@@ -150,6 +164,19 @@ Json readTimelineState(const juce::ValueTree& metadata)
 }
 Json readEditingOptions(const juce::ValueTree& metadata)
 {
+    int64_t tail = 96000;
+    bool hasTail = false;
+    for (const auto& child : metadata)
+        if (child.hasType("RELOCATION_OPTIONS"))
+        {
+            require(!hasTail && child.getNumChildren() == 0 && child.getNumProperties() == 2 &&
+                        child.hasProperty("schema") && child.hasProperty("tail_samples") &&
+                        savedSample(child.getProperty("schema")) == 1,
+                    "invalid saved relocation options");
+            hasTail = true;
+            tail = savedSample(child.getProperty("tail_samples"));
+            require(tail >= 0 && tail <= 1440000, "invalid saved automation tail");
+        }
     juce::ValueTree state;
     for (const auto& child : metadata)
         if (child.hasType("EDIT_OPTIONS"))
@@ -159,7 +186,7 @@ Json readEditingOptions(const juce::ValueTree& metadata)
         }
     // Earlier qualified range edits always followed automation. Preserve that behaviour.
     if (!state.isValid())
-        return {{"schema", 1}, {"automation_follows_edit", true}};
+        return {{"schema", 1}, {"automation_follows_edit", true}, {"relocation_tail_samples", tail}};
     require(state.getNumChildren() == 0 && state.getNumProperties() == 2 && state.hasProperty("schema") &&
                 state.hasProperty("automation_follows_edit"),
             "invalid saved editing options fields");
@@ -167,7 +194,7 @@ Json readEditingOptions(const juce::ValueTree& metadata)
     const auto enabled = savedSample(state.getProperty("automation_follows_edit"));
     require(enabled == 0 || enabled == 1, "invalid saved automation follows edit flag");
     // Canonical persisted 0/1 integers survive Tracktion XML's string representation.
-    return {{"schema", 1}, {"automation_follows_edit", enabled == 1}};
+    return {{"schema", 1}, {"automation_follows_edit", enabled == 1}, {"relocation_tail_samples", tail}};
 }
 Json readShuffleOptions(const juce::ValueTree& metadata)
 {
@@ -257,6 +284,16 @@ Json Commands::validateTimelinePlan(const Json& ops) const
             require(mapping != original, "Shuffle mapping is already selected");
             changes.push_back({{"operation_index", index}, {"command", cmd}, {"before", original}, {"after", mapping}});
         }
+        else if (cmd == "session.relocation_tail.set")
+        {
+            require(ops.size() == 1 && !edit->getTransport().isPlaying(), "stop before a standalone tail option edit");
+            const auto& value = op.at("args").at("samples");
+            require(value.is_number_integer() && value.get<int64_t>() >= 0 && value.get<int64_t>() <= 1440000,
+                    "automation tail must be 0–30 seconds at 48000 Hz");
+            const auto original = editingOptions().at("relocation_tail_samples").get<int64_t>();
+            require(original != value, "automation tail is already selected");
+            changes.push_back({{"operation_index", index}, {"command", cmd}, {"before", original}, {"after", value}});
+        }
         else if (cmd == "session.automation_follows_edit.set")
         {
             require(ops.size() == 1, "editing option must be a standalone transaction");
@@ -316,6 +353,12 @@ void Commands::executeTimelineOperation(const std::string& cmd, const Json& args
         auto state = metadata.getOrCreateChildWithName("SHUFFLE_OPTIONS", undo);
         state.setProperty("schema", 1, undo);
         state.setProperty("mapping", juce::String(args.at("mapping").get<std::string>()), undo);
+    }
+    else if (cmd == "session.relocation_tail.set")
+    {
+        auto state = metadata.getOrCreateChildWithName("RELOCATION_OPTIONS", undo);
+        state.setProperty("schema", 1, undo);
+        state.setProperty("tail_samples", juce::int64(args.at("samples").get<int64_t>()), undo);
     }
     else if (cmd == "session.automation_follows_edit.set")
     {

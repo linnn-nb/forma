@@ -253,6 +253,27 @@ int main(int argc, char** argv)
         const auto hash = Commands::mediaHash(file);
         Workspace w(false, std::make_unique<Storage>(root.getChildFile("prefs")));
         auto& c = RecordingTestAccess::commands(w);
+        RecordingTestAccess::refresh(w);
+        const juce::KeyPress tailKey(
+            '1', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
+            0);
+        check(w.keyPressed(tailKey), "registered tail shortcut dispatches through the real command target");
+        check(c.editingOptions()["relocation_tail_samples"] == 24000, "shortcut commits actual half-second setting");
+        const auto settings = root.getChildFile("Tail-settings.tracktionedit");
+        c.save(settings);
+        {
+            Commands cold(false, std::make_unique<Storage>(root.getChildFile("tail-cold")));
+            cold.open(settings);
+            check(cold.editingOptions()["relocation_tail_samples"] == 24000, "tail setting survives actual cold Open");
+            cold.undo();
+            check(cold.editingOptions()["relocation_tail_samples"] == 96000,
+                  "cold original Undo restores default continuation");
+            cold.redo();
+            check(cold.editingOptions()["relocation_tail_samples"] == 24000,
+                  "cold original Redo restores persisted setting");
+        }
+        c.undo();
+        check(c.editingOptions()["relocation_tail_samples"] == 96000, "live Undo restores two-second setting");
         c.commit(c.makePlan(
             "human",
             Json::array(

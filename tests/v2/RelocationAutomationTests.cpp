@@ -668,6 +668,30 @@ int main(int argc, char** argv)
             const auto clipBefore = RecordingTestAccess::clip(c, f.clip)->state.createCopy();
             const auto originalHash = Commands::mediaHash(f.media);
             const int64_t start = kind == 0 ? 48000 : 192000;
+            if (kind == 0)
+            {
+                check(c.editingOptions()["relocation_tail_samples"] == 96000,
+                      "default two-second continuation is explicit engineering state, not detected tail length");
+                for (const auto& invalid : {Json(-1), Json(1440001), Json(0.5)})
+                    rejects([&] { run(c, "session.relocation_tail.set", {{"samples", invalid}}); },
+                            "negative, excessive and fractional tail settings reject without a transaction");
+                for (const auto& owner : {f.a, f.b})
+                {
+                    run(c, "clip.import",
+                        {{"track", owner},
+                         {"path", f.media.getFullPathName().toStdString()},
+                         {"position_samples", 168000},
+                         {"ref", "$neighbour"}});
+                    rejects([&] { plan(c, Json::array({move(f.clip, f.a, f.b, start)})); },
+                            "tail continuation rejects actual untouched source or target neighbour overlap");
+                    c.undo();
+                }
+                run(c, "session.relocation_tail.set", {{"samples", 0}});
+                const auto dry = c.preview(plan(c, Json::array({move(f.clip, f.a, f.b, start)})));
+                check(dry["relocation_changes"][0]["automation"]["transfers"][0]["tail_seconds"] == 0.,
+                      "explicit zero-tail mode exposes clip-only restoration, without claiming tail preservation");
+                c.undo();
+            }
             const auto p = plan(c, Json::array({move(f.clip, f.a, f.b, start)}));
             const auto preview = c.preview(p);
             check(preview["automation_changes"].size() == 2 &&
@@ -731,9 +755,13 @@ int main(int argc, char** argv)
                 for (double time : {.125, .5, 7.0, 8.0})
                     for (const auto& track : {f.a, f.b})
                     {
+                        if (track == f.b && time >= dest && time < end)
+                            continue; // This is now inside the explicitly previewed continuation range, tested above.
                         const auto lane = track == f.a ? source : target;
                         probes.push_back({track, lane, time, value(c, track, lane, time), span});
                     }
+                for (double time : {end + .125, end + .5})
+                    probes.push_back({f.b, target, time, value(c, f.b, target, time), span});
             }
             juce::AudioBuffer<float> reference;
             if (!midi)
@@ -745,6 +773,27 @@ int main(int argc, char** argv)
             check(receipt["state"] == "committed" &&
                       RecordingTestAccess::clip(c, f.clip)->getTrack()->itemID.toString().toStdString() == f.b,
                   "real native clip and all matching automation commit together");
+            int copied = 0;
+            for (const auto& transfer : preview["relocation_changes"][0]["automation"]["tracks"])
+                for (const auto& lane : transfer["lanes"])
+                    for (const auto& point : lane["after"])
+                        if (point.contains("copy_origin_point"))
+                        {
+                            const std::string origin = point["copy_origin_point"];
+                            auto* source = RecordingTestAccess::parameter(c, f.a, point["copy_origin_lane"]);
+                            auto* target = RecordingTestAccess::parameter(c, f.b, lane["lane"]);
+                            const auto oldPoint =
+                                source->getCurve().state.getChildWithProperty("ndaw_id", juce::String(origin));
+                            const auto newPoint =
+                                target->getCurve().state.getChildWithProperty("ndaw_copied_from", juce::String(origin));
+                            check(oldPoint.isValid() && newPoint.isValid() &&
+                                      oldPoint["ndaw_id"] != newPoint["ndaw_id"] &&
+                                      newPoint["opaque_relocation"].toString() == "preserve exact text",
+                                  "continuation copies retain opaque metadata with a new ID and preserve the exterior "
+                                  "source ID");
+                            ++copied;
+                        }
+            check(copied >= 3, "all three real parameter lanes copy exterior continuation points");
             for (const auto& moved : transported)
             {
                 auto* target = RecordingTestAccess::parameter(c, f.b, moved.lane);

@@ -142,7 +142,8 @@ int main(int argc, char** argv)
     try
     {
         Commands c(false);
-        check(c.editingOptions() == Json({{"schema", 1}, {"automation_follows_edit", true}}),
+        check(c.editingOptions() ==
+                  Json({{"schema", 1}, {"automation_follows_edit", true}, {"relocation_tail_samples", 96000}}),
               "legacy missing options defaults to previously qualified follow-on behaviour");
         check(c.query()["editing_options"] == c.querySummary()["editing_options"],
               "full and summary facts expose the same persisted option");

@@ -16,6 +16,14 @@ const std::vector<Entry>& entries()
     constexpr int cmd = juce::ModifierKeys::commandModifier, shift = juce::ModifierKeys::shiftModifier;
     static const std::vector<Entry> list = {
         {283, "自动化跟随编辑", "编辑", 'a', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {284, "跨轨自动化尾随：仅片段", "编辑", '0',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+        {285, "跨轨自动化尾随：0.5秒", "编辑", '1',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+        {286, "跨轨自动化尾随：2秒", "编辑", '2',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
+        {287, "跨轨自动化尾随：5秒", "编辑", '5',
+         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {41, "新建工程…", "文件", 'n', cmd},
         {1, "导入音频…", "文件", 'i', cmd},
         {2, "打开工程…", "文件", 'o', cmd},
@@ -889,6 +897,13 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.setTicked(commands.shuffleOptions()["mapping"] ==
                                (id == editCommand::shuffleNative ? "native" : "samples"));
             }
+            if (id >= 284 && id <= 287)
+            {
+                active = !facts.value("playing", false) && pending.is_null() &&
+                         commands.querySummary().value("object_pages_available", false);
+                constexpr int64_t tails[] = {0, 24000, 96000, 240000};
+                info.setTicked(commands.editingOptions()["relocation_tail_samples"] == tails[id - 284]);
+            }
             if (id == 283)
             {
                 active = !facts.value("playing", false) && pending.is_null() &&
@@ -1143,6 +1158,20 @@ bool Workspace::perform(const InvocationInfo& invocation)
                     "human", Json::array({operation("session.shuffle.mapping.set", {{"mapping", mapping}})})));
                 message(text(mapping == "native" ? "Shuffle 原基准：音频按采样，MIDI按拍 · 可撤销"
                                                  : "Shuffle 采样模式：公共秒位移 · 可撤销"));
+            });
+        return true;
+    }
+    if (id >= 284 && id <= 287)
+    {
+        invoke(
+            [&]
+            {
+                if (!pending.is_null())
+                    throw std::runtime_error("先接受或取消当前编辑预览");
+                constexpr int64_t tails[] = {0, 24000, 96000, 240000};
+                commands.commit(commands.makePlan(
+                    "human", Json::array({operation("session.relocation_tail.set", {{"samples", tails[id - 284]}})})));
+                message(text("跨轨自动化尾随已设置 · 可撤销 · 随工程保存"));
             });
         return true;
     }

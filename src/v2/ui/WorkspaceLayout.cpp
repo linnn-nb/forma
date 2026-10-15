@@ -32,6 +32,10 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
     {
         addMenuCommand(p, 108);
         addMenuCommand(p, 283);
+        juce::PopupMenu tail;
+        for (int id = 284; id <= 287; ++id)
+            addMenuCommand(tail, id);
+        p.addSubMenu(text("跨轨自动化尾随"), tail);
         addMenuCommand(p, 42);
         for (int id : {149, 150, 151})
             addMenuCommand(p, id);

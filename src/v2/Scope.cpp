@@ -97,7 +97,7 @@ Json Commands::assessScope(const Json& plan, const Scope& scope, const Json& pre
             for (const auto& change : preview.at("relocation_changes"))
             {
                 if (!change["automation"]["transfers"].empty())
-                    full(); // Native smoothing can carry audible changes beyond the edited point interval.
+                    full(); // Effect tails and native fallback paths can outlive the copied continuation window.
                 for (const auto& track : change["automation"]["tracks"])
                     for (const auto& lane : track["lanes"])
                         for (const char* side : {"before", "after"})

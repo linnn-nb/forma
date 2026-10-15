@@ -31,6 +31,7 @@ struct Interval
     std::string source, destination;
     double low, high, start, end, beatDelta;
     bool musical;
+    double tailHigh = 0, tailEnd = 0;
 };
 struct Lane
 {
@@ -43,6 +44,7 @@ struct Lane
         Interval range;
         std::string source;
         std::vector<Point> body;
+        std::map<std::string, std::string> copies;
     };
     std::vector<Incoming> incoming;
 };
@@ -50,7 +52,13 @@ struct Lane
 Json Commands::relocationAutomationChanges(const Json& clips) const
 {
     checkThread();
-    Json result{{"tracks", Json::array()}, {"transfers", Json::array()}, {"affected_points", 0}, {"derived_points", 0}};
+    Json result{
+        {"tracks", Json::array()},
+        {"transfers", Json::array()},
+        {"affected_points", 0},
+        {"derived_points", 0},
+        {"tail_policy", "copy source continuation; retain exterior source points; restore destination after tail"},
+        {"tail_samples", editingOptions().at("relocation_tail_samples")}};
     if (!editingOptions()["automation_follows_edit"].get<bool>())
         return result;
     edit->tempoSequence.toBeats(tracktion::TimePosition::fromSeconds(0));
@@ -124,10 +132,40 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
         }
         return lanes.at(lane);
     };
-    for (const auto& r : merged)
+    std::set<std::string> moving;
+    for (const auto& clip : clips)
+        moving.insert(clip.at("clip").get<std::string>());
+    for (auto& r : merged)
     {
         auto* source = track(r.source);
         auto* destination = track(r.destination);
+        // Fader-only tracks have no processor memory. For other chains this is
+        // an explicit, editable continuation window, not a detected tail bound.
+        bool stateful = false;
+        for (auto* owner : {source, destination})
+            for (auto* plugin : owner->pluginList)
+                stateful |= dynamic_cast<te::VolumeAndPanPlugin*>(plugin) == nullptr;
+        const double tail = stateful ? result["tail_samples"].get<int64_t>() / timelineRate : 0.;
+        r.tailHigh = r.high + tail;
+        r.tailEnd =
+            r.musical && r.start != r.low
+                ? tempo
+                      .toTime(tracktion::BeatPosition::fromBeats(
+                          tempo.toBeats(tracktion::TimePosition::fromSeconds(r.tailHigh)).inBeats() + r.beatDelta))
+                      .inSeconds()
+                : r.end + tail;
+        require(r.tailHigh <= te::Edit::maximumLength && r.tailEnd <= te::Edit::maximumLength,
+                "自动化尾随区越出工程范围，请缩短尾随时长");
+        for (auto* owner : {source, destination})
+        {
+            const double first = owner == source ? r.high : r.end;
+            const double last = owner == source ? r.tailHigh : r.tailEnd;
+            for (auto* clip : owner->getClips())
+                if (!moving.contains(clip->itemID.toString().toStdString()))
+                    require(last <= first || clip->getPosition().getStart().inSeconds() >= last ||
+                                clip->getPosition().getEnd().inSeconds() <= first,
+                            "自动化尾随区与未移动片段相交，请先缩短尾随时长或调整选择");
+        }
         for (auto* plugin : source->pluginList)
             for (auto* parameter : plugin->getAutomatableParameters())
             {
@@ -156,16 +194,28 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
                 auto& from = load(r.source, *parameter);
                 auto& to = load(r.destination, *target);
                 const double tolerance = (parameter->valueRange.end - parameter->valueRange.start) * relativeError;
-                auto body =
-                    r.musical && r.start != r.low
-                        ? musicalMoveSlice(from.before, tempo, r.low, r.start, adjacentTimelineSample(r.end, true),
-                                           tolerance)
-                        : startSlice(from.before, r.low, adjacentTimelineSample(r.high, true), tolerance, r.start == 0);
+                auto body = r.musical && r.start != r.low
+                                ? musicalMoveSlice(from.before, tempo, r.low, r.start,
+                                                   adjacentTimelineSample(r.tailEnd, true), tolerance)
+                                : startSlice(from.before, r.low, adjacentTimelineSample(r.tailHigh, true), tolerance,
+                                             r.start == 0);
+                std::set<std::string> exterior;
+                for (const auto& point : from.before)
+                    if (point.time >= r.high && !point.id.empty())
+                        exterior.insert(point.id);
                 if (!r.musical || r.start == r.low)
                     for (auto& point : body)
                         point.time += r.start - r.low;
+                std::map<std::string, std::string> copies;
+                for (auto& point : body)
+                    if (exterior.contains(point.id))
+                    {
+                        const auto token = "copy:" + point.id + ":" + Json({r.low, r.start}).dump();
+                        copies.emplace(token, point.id);
+                        point.id = token; // Deterministic preview token, never written to the Edit.
+                    }
                 from.outgoing.push_back(r);
-                to.incoming.push_back({r, key(*parameter), std::move(body)});
+                to.incoming.push_back({r, key(*parameter), std::move(body), std::move(copies)});
                 result["transfers"].push_back({{"from_track", r.source},
                                                {"to_track", r.destination},
                                                {"from_lane", key(*parameter)},
@@ -176,7 +226,11 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
                                                {"source_start_seconds", r.low},
                                                {"source_end_seconds", r.high},
                                                {"start_seconds", r.start},
-                                               {"end_seconds", r.end}});
+                                               {"end_seconds", r.tailEnd},
+                                               {"clip_end_seconds", r.end},
+                                               {"source_clip_end_seconds", r.high},
+                                               {"source_tail_end_seconds", r.tailHigh},
+                                               {"tail_seconds", r.tailEnd - r.end}});
             }
     }
     std::map<std::string, Json> tracks;
@@ -192,9 +246,10 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
         std::sort(lane.incoming.begin(), lane.incoming.end(),
                   [](const auto& a, const auto& b) { return a.range.start < b.range.start; });
         for (size_t i = 1; i < lane.incoming.size(); ++i)
-            require(lane.incoming[i].range.start >= lane.incoming[i - 1].range.end,
+            require(lane.incoming[i].range.start >= lane.incoming[i - 1].range.tailEnd,
                     "多个来源在同一目标参数区间重叠，一条曲线无法同时表示它们");
         std::map<std::string, std::string> origins;
+        std::map<std::string, std::pair<std::string, std::string>> copied;
         for (auto& incoming : lane.incoming)
         {
             if (lane.after.empty())
@@ -204,11 +259,14 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
                                       : std::vector<Point>{};
             if (!prefix.empty())
                 prefix.back().curve = 0;
-            auto suffix = startSlice(lane.after, r.end, std::max(r.end, lane.after.back().time), tolerance, false);
+            auto suffix =
+                startSlice(lane.after, r.tailEnd, std::max(r.tailEnd, lane.after.back().time), tolerance, false);
             incoming.body.back().curve = 0;
             for (const auto& point : incoming.body)
-                if (!point.id.empty())
+                if (!point.id.empty() && !incoming.copies.contains(point.id))
                     require(origins.emplace(point.id, incoming.source).second, "跨轨迁移重复了源自动化点身份");
+            for (const auto& [token, id] : incoming.copies)
+                copied.emplace(token, std::pair{incoming.source, id});
             prefix.insert(prefix.end(), incoming.body.begin(), incoming.body.end());
             prefix.insert(prefix.end(), suffix.begin(), suffix.end());
             lane.after = std::move(prefix);
@@ -226,9 +284,18 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
             require(std::isfinite(time) && time >= 0 && time >= previous && time <= te::Edit::maximumLength,
                     "跨轨自动化结果时间无效");
             previous = time;
+            const std::string token = point["id"];
+            if (copied.contains(token))
+            {
+                point["id"] = "";
+                point["copy_origin_lane"] = copied.at(token).first;
+                point["copy_origin_point"] = copied.at(token).second;
+            }
             const std::string pointID = point["id"];
             if (pointID.empty())
+            {
                 ++derived[lane.track];
+            }
             else
             {
                 require(surviving.emplace(pointID, point).second, "跨轨结果存在重复自动化点身份");
@@ -269,6 +336,15 @@ Json Commands::relocationAutomationChanges(const Json& clips) const
 void Commands::executeRelocationAutomation(const Json& change, Json& objects)
 {
     std::map<std::pair<std::string, std::string>, juce::ValueTree> originals;
+    for (const auto& transfer : change["transfers"])
+    {
+        auto* parameter = automationParameter(transfer["from_track"], transfer["from_lane"]);
+        require(parameter != nullptr, "尾随来源参数已不存在");
+        for (const auto& point : parameter->getCurve().state)
+            originals.emplace(
+                std::pair{transfer["from_lane"].get<std::string>(), point["ndaw_id"].toString().toStdString()},
+                point.createCopy());
+    }
     for (const auto& track : change["tracks"])
         for (const auto& lane : track["lanes"])
         {
@@ -291,12 +367,21 @@ void Commands::executeRelocationAutomation(const Json& change, Json& objects)
             {
                 const std::string id = point["id"],
                                   origin = point.value("origin_lane", lane["lane"].get<std::string>());
-                auto child = id.empty() ? juce::ValueTree(te::IDs::POINT) : originals.at({origin, id});
+                auto child = point.contains("copy_origin_lane")
+                                 ? originals
+                                       .at({point["copy_origin_lane"].get<std::string>(),
+                                            point["copy_origin_point"].get<std::string>()})
+                                       .createCopy()
+                             : id.empty() ? juce::ValueTree(te::IDs::POINT)
+                                          : originals.at({origin, id});
                 child.setProperty(te::IDs::t, point["time_seconds"].get<double>(), nullptr);
                 child.setProperty(te::IDs::v, point["native_value"].get<float>(), nullptr);
                 child.setProperty(te::IDs::c, point["curve"].get<float>(), nullptr);
                 if (id.empty())
                     child.setProperty("ndaw_id", juce::Uuid().toString(), nullptr);
+                if (point.contains("copy_origin_point"))
+                    child.setProperty("ndaw_copied_from", juce::String(point["copy_origin_point"].get<std::string>()),
+                                      nullptr);
                 curve.state.addChild(child, -1, undo);
             }
             attachCurve(curve, undo);
