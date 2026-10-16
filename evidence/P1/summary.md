@@ -1,3 +1,11 @@
+# P1 历史边界增量（2026-10-16，当前）
+
+P1-HISTORY-RUNTIME-01：运行时游标/SDK写入信息与编辑delta分离，Loop/Punch等仍原Undo；新增schema3/history.runtime-boundary v1，旧1/2先原始验证再内存迁移。源码e12d438，唯一App/CLI构建与本地验签通过，未公证。
+
+最终9套665项（8/8+1/1两批）；实际两份工程另152项（重复基础107+新增45），独立原始文件/PCM135项，整段PCM差0≤2e-6。9/22原Plan、完整非runtime delta和源文件哈希保留，迁移后raw STEP稳定。证据history-runtime-qualification.json；完整范围/失败与迁移兼容限制见VERIFICATION.md、PROJECT_FORMAT.md。
+
+GUI工具取窗失败/列应用超时，旧PID90105未重启，不宣称OS桌面通过；无新物理捕获或听评。演示在build-v2-tracktion/P1-History-3800f5f275c8，须用重启后的新版打开。下一项CLI stdout，OS拖选仍待验，完整P1/产品与其它架构差距保留。以下旧状态以本段为准。
+
 # 当前：中文输入法快捷键与设备就绪（2026-10-16）
 
 真实OS的来源8启动/0停止、Grid冲突重分配/键位Undo、实际保存/进程冷开和原音频UndoRedo已验；真实CoreAudio512→480→512完成后查询和播放/保存/Undo均恢复。L5用当前原生键盘布局后备匹配，精确自定义键优先，不改写保存数据；L1只发布设备facts，不加Undo/revision。当前12种最新终态1011项，最终UI9/9、69.69秒；不是一次12/12或完整P1/产品。

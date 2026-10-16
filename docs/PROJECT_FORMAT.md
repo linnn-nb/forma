@@ -1,3 +1,11 @@
+# 工程格式与读取能力
+
+2026-10-16 当前：新增 `history.runtime-boundary v1`，对应持久历史 schema3；**新版所有正常工程保存（包括简单音频工程）均使用保护封装**，旧版须明确拒绝。仍读取 schema1/2 与无历史旧工程；原文件原封装、原STEP/BLOCK SHA、完整原始delta链先验证，通过后才在内存迁移，另存或普通保存时才写新格式。普通Save沿用独立旧版备份，不覆盖源媒体。
+
+schema3的完整current_hash仍包含实际原生Edit的所有属性。仅编辑历史排除四个明确位置：Edit根的 `lastSignificantChange`、`modifiedBy`、`appVersion`（SDK flush/时间元数据），以及Edit直接TRANSPORT的 `position`。它们保存为当前状态，Undo/Redo保持当前游标；Loop范围/模式、Punch、预备拍、节拍器与所有未知/插件同名字段继续参与原编辑delta。schema3若包含上述运行时delta会拒绝，不能借迁移忽略损坏。
+
+旧历史完整校验后，只有原生NATIVEDAW/PARAMETER_BASES/BASE.value及其明确历史镜像按classic locale正确舍入为binary64，避免读回1 ULP造成伪编辑；不泛化转换插件数据，不改原始源文件或原Hash来掩盖损坏。实现HistoryRuntime.h、PersistentHistory、ProjectDocument；资格与实际演示见VERIFICATION.md首节。下面旧“简单工程原生裸写/schema1/2”描述由本段替代。
+
 2026-10-16 Tempo/Meter 与插件跟随策略没有新持久化格式：使用原生 MIDI start/length/offset、SEQUENCE 和插件 remapOnTempoChange，沿用现有采样源 origin、CC 稳定键、关联 layout 与原历史。当前/非活动及原 Undo/Redo 均由已有读取能力校验；没有伪造可写的曲线 timeBase 字段。每个原生曲线的 timeBase 是 SDK 构造常量；面板设置的是插件级跟随开关。
 
 2026-10-16 MIDI关联移动/迁移沿用midi.linked-comp v1的采样布局与完整成员/restore记录，不新增schema；目的NDAW_PLAYLISTS补齐midi_link_schema=1及midi_edit_schema=1。原Take留在源轨，转移的Comp/Clip保留原有origin_track等来源字段；原轨留空Playlist而非删除。采样移动沿用midi.sample-origin v1，CC/Pitch的既有ndaw_cc_key在改b之前固化；历史Undo可移除首次新增键，源池/原SEQ哈希算法不改。当前/非活动/原历史均由既有能力闭包保护。
@@ -50,6 +58,7 @@
 | audio.fade.inherited | 1 | NDAW_FADE_ORIGIN；含多层/准备输出坐标的继承包络 |
 | midi.sample-origin | 1 | NDAW_SAMPLE_MIDI_ORIGIN 的原事件/采样时间来源 |
 | playlist.comp.provenance | 1 | Take/Comp 来源轨道及迁移的 Playlist 来源 |
+| history.runtime-boundary | 1 | PERSISTENT_HISTORY schema3；运行时状态与编辑delta分开 |
 
 清单是保守闭包，不承诺数学上的最小集合。例如对旧 Warp 原生锚点的历史属性变更，完整上下文不在单个增量中时要求当前完整映射能力2；不靠猜测降低要求。`NATIVEDAW` 元数据版本目前支持到2，未知未来版本拒绝。
 
@@ -57,7 +66,7 @@
 
 L1 保存先 flush 原生状态、捕获已校验的增量历史，再扫描当前原生树（包括非活动 Playlist）及保留的完整未打包 delta。读取属性变更路径及 BEFORE/AFTER、添加/移除子树，覆盖 Undo 和 Redo 两侧；不解析插件 opaque 属性中的伪 XML 或提示文本，不生成第二份工程模型，也不重建200份完整历史工程。
 
-载入先解码封装并检查当前状态；PersistentHistory 仍使用原有 schema1/2 读取、校验和与 delta 链验证，同时计算全部历史需求。能力覆盖检查通过后才停止旧 Transport、初始化和接管新 Edit。能力不授予 Agent、扩展或插件任何新权限。
+载入先解码封装并检查当前状态；PersistentHistory支持schema1/2原始校验后迁移及schema3完整哈希/编辑链验证，同时计算全部历史需求。能力覆盖检查通过后才停止旧 Transport、初始化和接管新 Edit。能力不授予 Agent、扩展或插件任何新权限。
 
 恢复快照继续明确 `undo_restored=false`：它保存当前实际状态及完整处理描述，不假称含原编辑历史。恢复文件的原有 manifest SHA/字节数/版本与目录权限检查保留，封装检查不能替代它们。
 

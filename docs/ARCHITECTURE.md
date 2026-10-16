@@ -1,3 +1,5 @@
+2026-10-16 历史边界：L1 PersistentHistory用schema3编辑投影，当前运行时状态仍属于唯一te::Edit，保存时合入完整current_hash，回放不重置游标。HistoryRuntime只处理明确根/TRANSPORT字段及显式BASE数字，不扫描插件opaque数据；原schema1/2先原始校验再迁移。ProjectDocument声明history.runtime-boundary v1，旧读者拒绝；没有新引擎、服务、SDK或RT操作。详情见PROJECT_FORMAT.md、VERIFICATION.md首节。
+
 2026-10-16：L5 ShortcutKeys在真实原生键事件上经macOS当前布局取得基础键，先匹配原字面绑定，再做后备；Workspace、Playlist名称编辑器与快捷键捕获共用，缺原生事件证据不猜键。不改Edit/命令注册表或保存键位语义，Carbon调用只在message thread。L1 AudioDeviceCommands的no-op/图准备/终态失效facts并发通知，工程revision仍只在设备申请时变化一次，设备控制不新增Undo。无新引擎/服务/SDK字节/RT工作。持久镜像仍吸收TRANSPORT位置与SDK时间戳，作为明确未完成边界单独修复，不能以回执相同掩盖。
 
 2026-10-16 P1来源选择：仅L5 PlaylistPanel/ClipHeader新增真实来源标题控件和局部Space/Return处理；稳定ID绑定实际facts，选择/滚动只改UI草稿，不直接写Edit或工程历史。停止试听后重新取事实，禁止跨状态变化保留JSON引用；原有波形鼠标事件仍转交Canvas。Comp/Promote/淡化沿用原L1/Undo，录音/渲染仍唯一Tracktion引擎。无新命令/schema/权限/SDK/服务/RT工作。真实麦克风/冷开与native peer资格分开，见VERIFICATION.md首节。

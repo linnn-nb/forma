@@ -1,3 +1,5 @@
+2026-10-16：history.retention.schema=3描述本地编辑历史格式，不是新的Agent计划/权限版本。GUI与AI的原Undo/Redo保持当前播放头；Loop/Punch等编辑设置仍跟随事务。运行时位置与SDK最后写入信息随当前工程保存，不追加到旧Plan；旧文件原始完整性先验证，格式能力与兼容限制见PROJECT_FORMAT.md。命令ID/schema、actor/revision/确认/幂等及恢复回执边界不变。
+
 2026-10-16 关联共享曲线：`clips.relocate` 的真实 transfer 预览增加 source_tempo_follows / destination_tempo_follows，保留目标插件设置，差异先展示再由用户接受。Playlist 恢复只切换片段；轨道自动化仍共享，整笔迁移Undo才恢复曲线。普通MIDI整组移动仍经原编译闭包与automation.clips.move派生操作，不增加工具或权限。
 
 迁移状态封定排除插件参数瞬时 current_value/display；它们会随只读自动化回读改变。显式基础值、实际参数定义、完整曲线、来源/目标、路由和revision仍封定，真实人工参数改动继续使旧Plan失效。GUI新建轨道依据成功回执的实际track ID绑定选区，经L1 UI状态保存，不能清空选择后猜对象。

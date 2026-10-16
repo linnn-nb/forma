@@ -1,0 +1,165 @@
+{
+  "result": "verified_increment",
+  "date": "2026-10-16",
+  "production_commit": "e12d438",
+  "requirement": "P1-HISTORY-RUNTIME-01",
+  "scope": "seek/play/stop/save and restored Undo/Redo separate current runtime from edit history; existing v1/v2 validate before migration; not complete P1/product or OS desktop qualification",
+  "history": {
+    "schema": 3,
+    "required_capability": "history.runtime-boundary v1",
+    "saved_runtime_paths": [
+      "EDIT.lastSignificantChange",
+      "EDIT.modifiedBy",
+      "EDIT.appVersion",
+      "EDIT/TRANSPORT.position"
+    ],
+    "original_data_validation_before_migration": true,
+    "unknown_and_opaque_fields_retained": true,
+    "parameter_base_read": "explicit BASE.value paths only, classic locale correctly rounded binary64 after original integrity validation",
+    "old_reader": "newly saved plain projects also require schema3; unsupported capability rejected"
+  },
+  "tests": {
+    "distinct_latest_suites": 9,
+    "checks": 665,
+    "batches": [
+      {
+        "junit": "build-v2-tracktion/history-runtime-final.xml",
+        "passed": 8,
+        "total": 8,
+        "seconds": 101.69
+      },
+      {
+        "junit": "build-v2-tracktion/history-runtime-save.xml",
+        "passed": 1,
+        "total": 1,
+        "seconds": 3.21
+      }
+    ],
+    "reports": [
+      {
+        "name": "tracktion_session_recovery",
+        "checks": 52,
+        "report": "evidence/M1/session-recovery-tests.json",
+        "sha256": "2cb866632fb009008df3573dac51b310730da9522871efbc9eb565d049b899fe"
+      },
+      {
+        "name": "forma_persistent_native_history",
+        "checks": 86,
+        "report": "build-v2-tracktion/persistent-history-tests.json",
+        "sha256": "11202ebc6231e8b5f4589ed19d98a953fdc8aa27e4fcc5a4fff4662735e995ee"
+      },
+      {
+        "name": "forma_history_runtime_boundary",
+        "checks": 107,
+        "report": "build-v2-tracktion/history-runtime-tests.json",
+        "sha256": "438de4f5de20133669ae9e8d2d54f2eb01093f6cff7fd55417d77693fc325b52"
+      },
+      {
+        "name": "tracktion_request_recovery",
+        "checks": 63,
+        "report": "evidence/M2/recovery-tests.json",
+        "sha256": "e9074dfa7f48e91c566e0869039fd7e9644cba3802b7106d86e0c98625055679"
+      },
+      {
+        "name": "forma_native_transport_controls",
+        "checks": 17,
+        "report": "evidence/U/transport-tests.json",
+        "sha256": "0c982a09afd0d5a264e944a9bc9aec10551c1674bb095346f298da742a2b0719"
+      },
+      {
+        "name": "forma_playlist_audition",
+        "checks": 98,
+        "report": "build-v2-tracktion/playlist-audition-tests.json",
+        "sha256": "9d40c49fd3cabb3d79393e3e3a2570cbaaa4771d2a2c5d3fc69422b9bf2f53f5"
+      },
+      {
+        "name": "forma_production_chain",
+        "checks": 98,
+        "report": "build-v2-tracktion/p1-production-chain-tests.json",
+        "sha256": "ff394c208b648bb7ec0f44230bccbf3d436e576381149f374773a70babca117d"
+      },
+      {
+        "name": "forma_project_document",
+        "checks": 80,
+        "report": "build-v2-tracktion/p3-project-document-tests.json",
+        "sha256": "d10f3f4ddace1172d663a11634bc14af5321c77d7ae811cc5fbe98c62bd37463"
+      },
+      {
+        "name": "forma_project_save",
+        "checks": 64,
+        "report": "build-v2-tracktion/project-save-tests.json",
+        "sha256": "5b4bef3bb6c3f7b6aa4225f421d36be7621e0e9799187fc5fe99947d37577b31"
+      }
+    ],
+    "existing_projects": {
+      "checks": 152,
+      "includes_repeated_baseline_checks": 107,
+      "additional_checks": 45,
+      "original_plan_counts": [
+        9,
+        22
+      ],
+      "report": "build-v2-tracktion/history-runtime-existing-tests.json",
+      "report_sha256": "addbb5e5076c49475b96c7d8b23ba0e4da5de7cb289bb840954e21b28f30d9cc"
+    },
+    "independent": {
+      "checks": 135,
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-History-3800f5f275c8/independent-verification.json",
+      "sha256": "1849ea859257db11bfb2534d27ccc9133a2b8f51b5cc6423631fa28c88ec448f",
+      "pcm_max_error": 0.0,
+      "tolerance": 2e-06
+    }
+  },
+  "app": {
+    "path": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "sha256": "4e2cd73a3789f8606d5a53a9fa54aeb4fa1c38798ef683c1dc0ca6d36561dd33",
+    "codesign_deep_strict_exit": 0,
+    "notarized": false,
+    "running_instance": "existing PID90105 not restarted; no observation timeout treated as a terminal process"
+  },
+  "demonstrations": [
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-History-3800f5f275c8/Warp-Comp-Migrated.tracktionedit",
+      "sha256": "7d706acc2849e8f2e46e55c06a111ffb6319485e863e825e6860826d790bfddf",
+      "original_plans": 9
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-History-3800f5f275c8/Microphone-Comp-Migrated.tracktionedit",
+      "sha256": "f1ce8e5138129f8f4a848ad9312280dd1a84f6cb937b2d24b159e9dd321c6b90",
+      "original_plans": 22
+    }
+  ],
+  "build_logs": [
+    "history-runtime-final-build.log",
+    "history-runtime-save-build.log",
+    "history-runtime-signing.log"
+  ],
+  "preserved_failures": [
+    {
+      "log": "history-runtime-red.log",
+      "reason": "original seek rewrites old step"
+    },
+    {
+      "log": "history-runtime-full-build.log",
+      "reason": "new test writer stream type compile error, corrected"
+    },
+    {
+      "log": "history-runtime-regression.log",
+      "result": "4/5",
+      "reason": "cold Undo then Save still appended SDK modifiedBy and BASE rounding echo; fixed without loosening assertions"
+    },
+    {
+      "log": "history-runtime-second.log",
+      "result": "SIGSEGV",
+      "reason": "new identifier array had cross-TU global initialization order; replaced with function-local static; actual macOS crash log inspected"
+    }
+  ],
+  "limitations": [
+    "GUI tool returned cgWindowNotFound, then app inventory timed out; no OS desktop validation or forced restart this turn",
+    "no new physical microphone, hardware MIDI or human listening qualification",
+    "CLI stdout JSON log contamination remains next task; OS waveform drag/local Comp selection pending",
+    "performance A15.84%>15%, analysis timeout, RT SDK locks/allocations, all reader closure, PDC/hardware latency/multidevice/endurance remain",
+    "Windows/video/surround/release/full architecture unfinished; M2/M3 frozen and M4/M5 deferred"
+  ],
+  "privacy": "all audio, actual project files and raw runtime data remain local; only source and compact qualification are committed"
+}

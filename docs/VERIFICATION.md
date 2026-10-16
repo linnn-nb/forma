@@ -1,3 +1,25 @@
+# 持久历史与运行时状态分离（2026-10-16，当前）
+
+结论：P1-HISTORY-RUNTIME-01已在明确范围验证。定位、原生播放/停止、保存及冷开后的原Undo/Redo不再把播放头、SDK时间/最后写入信息追加到旧步骤；循环/Punch/预备拍/节拍器继续可撤销。**受影响9套最新终态665项通过**：主批8/8、101.69秒，保存补批1/1、3.21秒；不是一次9/9或完整产品验收。
+
+| 需求与状态 | 代码/测试 | 核验范围 |
+| --- | --- | --- |
+| 历史边界：已验证 | PersistentHistory.cpp、HistoryRuntime.h；HistoryRuntimeTests107项 | 12次定位/SDK时间戳/保存，每个STEP完整原文与SHA稳定；真实本地Undo、进程内新引擎冷开、Redo-only保存、再开原Redo、原生Hosted PCM播放与停止、全48000帧立体声重导。不是新硬件录音/听评或OS桌面动作。 |
+| 兼容与完整性：已验证所列格式 | ProjectDocument.cpp、PersistentHistory；ProjectDocumentTests80项、PersistentHistoryTests86项 | 新schema3及history.runtime-boundary v1；旧schema1/2先原始SHA/链验证再迁移。损坏旧STEP、改current、正确SHA但链不回到当前、schema3混入runtime、未知未来能力均拒绝并保留当前会话。未知编辑字段、opaque插件同名属性和结构删除/恢复保留。 |
+| 保存与现有流程：已验证受影响套 | ProjectSaveTests64、SessionRecovery52、RequestRecovery63、TransportWorkspace17、PlaylistAudition98、ProductionChain98 | 普通Save/独立旧版、跨目录另存、实际写入故障、原快捷键分派与原生录音/Comp/淡化/WAV链回归。程序化native GUI/受控输入与真实OS/物理麦克风资格分开。 |
+| 旧实际工程迁移：已验证 | 本地existing资格152项（含重复基础107，新增45）及独立审计135项 | Warp Comp的9原Plan、麦克风Comp的22原Plan和全部非运行时delta/原生编辑树保留。迁移后seek/原UndoRedo/save的STEP字节/SHA保持，旧源文件哈希不变；原媒体未改或上传。 |
+| OS桌面：未执行 | 桌面工具cgWindowNotFound，随后列应用超时 | 既有PID90105仍运行，未将超时当退出或强行重启。磁盘唯一新版App已构建签名，但不能称已加载到旧进程；波形拖选/局部Comp仍待定位。 |
+
+根因与实现：监听所有属性会把TRANSPORT.position和lastSignificantChange混入旧事务；冷Undo保存又暴露SDK flush的modifiedBy/appVersion，以及BASE.value字符串解析1 ULP造成的伪变化。现在只在明确原生根/TRANSPORT路径分离四字段，保存完整current_hash仍绑定它们；BASE及明确历史镜像只在原始完整性通过后正确舍入，不改插件数据。详见PROJECT_FORMAT.md。所有正常新保存都保护封装，旧读者必须拒绝，不宣称继续可用旧版打开新文件。
+
+独立读取原始文件共135项：全部31原Plan与完整解包编辑delta、未知字段、raw STEP SHA/稳定性、实际保存位置核验；整段立体声PCM误差0，既定2e-6预算不变。它是文件/音频审计，不是GUI或人工听评。演示：build-v2-tracktion/P1-History-3800f5f275c8/{Warp-Comp-Migrated,Microphone-Comp-Migrated}.tracktionedit；使用新版重新启动后再打开，现有旧进程无法读新能力。
+
+构建NativeDAW/ndaw及受影响目标exit0；最终二进制SHA256 `4e2cd73a3789f8606d5a53a9fa54aeb4fa1c38798ef683c1dc0ca6d36561dd33`，本地deep/strict验签exit0，非发行公证。唯一App路径不变，无新DMG/tar/应用副本，无新SDK字节/依赖/服务/RT操作。
+
+失败保留：原代码seek即改历史；首次完整构建测试Writer流类型错误已修；第一批4/5，冷Undo保存差异未放宽断言而定位modifiedBy及BASE；随后新全局Identifier数组在初始化阶段SIGSEGV，实际macOS崩溃栈确认后改函数局部静态，最终构建/9套通过。无失败沿用旧成功报告。
+
+证据：evidence/P1/history-runtime-qualification.json；本地history-runtime-final.xml/.log、history-runtime-save.xml/.log、history-runtime-existing.log和P1-History-3800f5f275c8/independent-verification.json。代码提交e12d438。下一项CLI stdout JSON污染，随后处理OS拖选/局部Comp资格；其它既定性能、RT、设备/听评、读取能力、Windows/视频/环绕/发行和完整架构差距保留。M2/M3冻结，M4/M5暂缓。以下旧“当前/下一项/未完成历史差异”以本节和NEXT_STEPS为准。
+
 # 来源快捷键与设备就绪发布（2026-10-16，当前）
 
 结论：中文输入法下来源试听的真实启动/停止、冲突重分配/键位Undo、保存与进程冷开已验证；设备完成后主界面不再停在“准备中”。当前12种最新通过套共 **1011项**：最终UI批次9/9、69.69秒，另3套未改Engine的故障/插件/查询回归沿用本轮通过终态。不是一次12/12批次、完整P1/产品或所有输入法资格。

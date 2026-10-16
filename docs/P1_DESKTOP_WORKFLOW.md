@@ -1,3 +1,9 @@
+# 历史与播放头（2026-10-16）
+
+新版保存格式要求支持schema3的Forma；旧文件会先核验再迁移，原媒体保留。唯一新版App已构建并本地签名；本轮桌面工具未取得窗口，因此没有重启仍在运行的旧进程，也没有宣称新版OS桌面验收。
+
+可用新版打开 `build-v2-tracktion/P1-History-3800f5f275c8/Warp-Comp-Migrated.tracktionedit` 或同目录 `Microphone-Comp-Migrated.tracktionedit`，移动播放头后CmdZ/ShiftCmdZ应仅撤销/重做最近编辑，保持当前播放头；CmdS、关闭重开后再试。前者保留9个原Plan，后者22个；不是新录音或音乐作品。原生引擎/文件/音频资格见VERIFICATION.md首节，OS拖选仍待验。
+
 # 当前新增：来源试听快捷键与设备状态
 
 打开唯一Forma.app及`build-v2-tracktion/P1-Interaction-ee8f59f4ed41/Input-Layout-Verified.tracktionedit`。OptionL打开Playlist，点真实来源片段标题；CtrlShiftOption8开始、0停止并返回原播放头。本机中文输入法已实际执行，保存并实际重启后仍有效；原CmdZ/ShiftCmdZ可撤重做最后交叉淡化，22步音频历史保留。真实录音沿用上轮，不是本轮新录或人工听评。
