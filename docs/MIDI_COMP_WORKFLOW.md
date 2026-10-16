@@ -1,3 +1,5 @@
+2026-10-16 MIDI关联Comp：点击任一成员会选择完整成员闭包；F8拖动，逗号/句号按Nudge单位整组横移。停止录放后，Command+Control+Option+↑/↓请求移至相邻可见轨道，或向兼容轨拖放；松手看预览，接受后是一笔原Undo。MIDI只进入midi/instrument；迁移保留Playlist/Clip ID与原Take，源轨留空，目标原播放保留为可整组恢复的非活动列表。音乐时基保留源拍与拍长度，采样时基移事件绝对时间；相同采样位移后对应窗口不同则整笔拒绝，不静默改时基。自定义Nudge、保存重开/原UndoRedo、实际音符/CC/Pitch与WAV见P1-MIDI-LINKED-MOVE-01、VERIFICATION.md。Tempo改图与全部新关联自动化组合尚未资格。
+
 2026-10-16 MIDI关联移动专项预算（执行前）：同一48k/256生产hosted Loop音乐时基/Punch采样时基录入，两轨四个实际片段；整组横移48000帧跨Tempo点，原生事件独立分段Tempo算术误差≤1采样，音乐源NOTE double保持，原来源SHA/完整布局与原UndoRedo/冷重开严格恢复。真实时间线选中/拖动、Nudge自定义键保存重开及迁移预览确认一起验证；6秒实际WAV≤10秒，UI/取消/回执5秒，每例CTest120秒，保留原录音15秒预算。迁移保持Playlist/Clip ID，目标原播放留存可恢复；不资格Tempo改图、实体输入/听评或RT性能。
 
 2026-10-16 NOTE精度专项预算（执行前）：原生NOTE b/l读回误差0 ULP；16个有限binary64数值向量（含次正规数和负零）；活动/非活动列表、属性和结构Undo/Redo、schema1历史、三次保存冷开、实际恢复快照（I/O 5秒）均保持原double位。四个48k/256循环输出用例须同时保持完整native Clip XML一致及既定1采样输出预算。插件/来源不透明数据与原文件字节不改；失败保留，不放宽容差。

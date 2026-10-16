@@ -1,3 +1,25 @@
+# MIDI 关联 Comp 移动 / 迁移当前验证（2026-10-16）
+
+结论：a2494c3/496c0a9接通完整MIDI关联闭包与原生移动/迁移；0c2d1bc保留采样重映射时的旧CC/Pitch身份，8ebf880接通实际Grabber，368c702补齐拍号保护。最终16/16、8296项通过，231.31秒；不是完整P1/产品、实体输入/端口/听评、全部新关联曲线组合或RT性能资格。
+
+- **P1-MIDI-LINKED-MOVE-01**：两轨实际hosted录音（48k/256），Loop音乐时基324项、Punch采样时基315项。两成员四片段横移48000帧跨120/90BPM点；原生窗口、全部Note/CC/Pitch由独立分段Tempo算术核对，≤1采样，完整SEQ/SysEx保留，音乐源NOTE double不变。源捕获误差256帧、UI5秒、录音15秒、单WAV10秒、CTest每例120秒预算保持。
+- 单锚点在没有普通Edit组时也编译完整闭包；首规/重编译均校验原位置、相同采样位移、完整成员及映射后对应范围。丢操作/丢编译封套、单轨Scope、远端锁定等整笔拒绝。混合采样/音乐窗口在跨Tempo后不同则明确拒绝；同一Tempo段内对齐移动及midi/instrument双向交换已实测。没有放开独立修剪/音符编辑或将半组降为普通片段。
+- `clips.relocate`沿用一个原Plan/Undo；稳定Playlist/Clip整体迁移，源轨留空Playlist，目标原演奏保留为非活动恢复列表。分离目标、相邻源/目标重叠和MIDI/instrument交换、恢复/恢复Undo、幂等、原Undo/Redo与冷文件重开均执行。目的容器补齐既有MIDI读取标记，原Take/来源轨仍保留；路由本身不改写，声音进入目的实际处理链。
+- 原生窗口中实际鼠标选完整闭包、Grabber草稿不改Edit/松手提交、Nudge自定义CmdShiftF9、原Undo/Redo键及真实冷开GUI恢复键图均通过。相邻轨命令642先显示`plan.accept`，异步按钮通知后核对真实revision与归属，再保存冷开/原历史。键先验实际命令ID；没有固定睡眠、重发或私调回调冒充接受。该资格是原生窗口程序化输入，不是OS实体键鼠/前台验证；旧KeyboardSettings前台失败保留。用户PID44913未重启，也未重试桌面连接。
+- CC/Pitch原临时ID取决于事件内容；修改采样映射前，在同一原Undo事务固化全部旧键（先枚举重复项序号，再写入既有ndaw_cc_key）。查询仍只读，原始来源及原SEQ不改，首次键写入可随Undo移除；普通采样MIDI/Tempo与移动回归1190/1926项通过。没有新增工具、权限、schema、引擎、服务、SDK或RT回调工作。
+- 拍号分母改动原先可绕过Tempo保护，现同样拒绝关联MIDI改图，真实4/8负例检查当前工程保持。Tempo/Meter对活动及非活动Playlist的完整映射尚待实现；解除关联不代表非活动映射已获资格，不能只更新layout或删守卫。
+- 独立Python从九个实际工程核对18个成员/34个片段的完整布局、成员/恢复引用；四份原始录音来源与捕获字段一致，独立复算SHA保持。四份移动/迁移WAV为双声道/48k/PCM24/288000帧且两声道非零。音频制作链另两份192000帧WAV data逐字相同。随机相位FourOsc不作PCM逐位恢复或主观质量声明；C++冷开还严格比较完整原生MIDI/非活动/来源XML与原Undo/Redo。
+- 最终其余检查：持久历史86、采样MIDI1190、普通移动1926、精度300、单轨MIDI Playlist155、原关联Loop/Punch209/204、音频Playlist227、完整音频制作链98、Grabber179、普通迁移79、格式80、音频关联迁移328、迁移自动化2596。全部来自本次final JUnit和新报告，不用前一通过遮盖失败。
+- NativeDAW/CLI与相关目标构建exit0，本地deep/strict签名通过；唯一App SHA256 `d6bd3f8a3a6986dd5ac74e7b8ccd8948a734e53240252651412fd960ed6bd757`，非发行公证。20份SDK补丁/50文件沿用配置审计，本轮无SDK字节改动或额外fresh replay，无新DMG/tar/App副本。
+
+证据：evidence/P1/midi-linked-move-qualification.json；build-v2-tracktion/midi-linked-move-final.xml/.log、midi-linked-move-loop/punch.json、midi-linked-move-independent-final.log。早期红项保留于midi-linked-move-first.xml/.log、midi-linked-move-compiler.xml/.log和midi-linked-move-identities.xml/.log：编译入口漏MIDI、CC身份漂移及Grabber仍读通用锁均按实测修复；独立键图校验初版未注册命令造成的测试失败也保留，已修正测试注册而非放宽标准。原先grabber两例637项和14套回归通过在Meter守卫改动后全部重跑，final才是当前资格。
+
+亲手试：先保存当前工程并重启唯一Forma.app，打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-5f1d7cf98a7240d2873ea75a59e80ad4/Linked-MIDI-GUI-Relocated.tracktionedit`（音乐时基）或 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-9dee20dceff347a8b548b3f4c7e619d6/Linked-MIDI-GUI-Relocated.tracktionedit`（采样时基）。在Edit点任一关联片段，F8拖动，逗号/句号Nudge；Command+Control+Option+↑/↓跨轨，先预览再接受。Option+L可看原Take/候选和整组恢复，CmdZ/ShiftCmdZ、CmdS后关开继续编辑。演示保留已确认的相邻迁移与四轨原演奏；input为hosted测试引用且待命关闭，新录须换实际设备。
+
+自动复验：先构建`ndaw_midi_linked_comp_tests`并确认exit0，再运行`ctest --test-dir build-v2-tracktion -R '^forma_midi_linked_move_' --output-on-failure`。使用自有macOS原生测试窗口和独立工程，不接管用户会话。
+
+下一项：统一Tempo/Meter的活动/非活动MIDI Playlist重映射，并补关联MIDI与真实音量/插件曲线完整组合。实体端口/监听/听评、长时/其它设备、混合音频/MIDI家族、MPE/循环/量化/Groove、旧焦点/性能A15.84%>15%/分析/RT SDK锁分配/Windows/视频/环绕/发行仍未完成。M2/M3冻结、M4/M5暂缓，完整架构不缩减。
+
 # MIDI NOTE 精度当前验证（2026-10-16）
 
 结论：570c6ad 修复原生 NOTE b/l 在字符串读回时的末位漂移，c9e1fcf 将完整 Clip XML 一致性恢复为严格断言。最终17套2971项通过：精度与循环输出5/5（11.91秒），受影响回归12/12（199.43秒）。范围是本机原生数值保存/历史/恢复及hosted制作链，不是完整P1、所有SDK数字字段、实体MIDI/听评或实时性能资格。

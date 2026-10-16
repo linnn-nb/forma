@@ -1,3 +1,5 @@
+2026-10-16 MIDI整组移动/迁移复用human的midi.clip.move与clips.relocate，无新工具/权限。首次和重编译都必须展开全部关联片段/已有Edit组，来源/目标Scope完整，位置单位仍48k工程采样；混合时基造成对应目标窗口不同则整笔拒绝。迁移预览含稳定Playlist、源留空、目标原播放保留和目标实际路由/处理链；确认后单原Undo。旧CC/Pitch临时ID在采样重映射之前于同一事务持久化，重试不重复，原始捕获Hash不变。测试P1-MIDI-LINKED-MOVE-01，当前结果见VERIFICATION.md。
+
 2026-10-16 NOTE精确读取是L1载入修复，没有新增命令、工具、权限或域事务。原Plan/Undo/Redo不变，当前树及历史中的原生音符位置b/长度l在完整性校验后精确解码，避免SDK字符串转double时末位漂移；不转换插件参数或原始来源中的数字文本。文件失败仍先拒绝，不覆盖当前Edit；恢复仍不宣称恢复Undo。测试P1-MIDI-PRECISION-01，实际资格见VERIFICATION.md。
 
 2026-10-16 新增playlist.comp.linked.promote，仅local_gui/human，参数track/segments/targets/media_fingerprint；targets由L1真实TARGET自动封定，调用者提供时须完全相等，commit重编译/版本/全部对象Scope仍复核。preview列每轨source/target/replaced_clips/start/end，整组一事务，来源和外侧保持。GUI580多轨匹配区间使用此入口，原单轨promote保留；MCP冻结且权限未扩张。测试P1-MIDI-LINKED-COMP-01，边界见MIDI_COMP_WORKFLOW.md/VERIFICATION.md。

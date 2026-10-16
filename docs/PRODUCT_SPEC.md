@@ -1,3 +1,5 @@
+2026-10-16：MIDI关联Comp可整组Grabber/Nudge和跨轨预览迁移，原Clip/Playlist与Take保留，目标原播放列表可整组恢复。音乐/采样时基各按原生映射；跨Tempo后的对应窗口不一致时整笔解释拒绝。自定义Nudge键可保存重开，原Undo/Redo保持。当前实际资格见VERIFICATION.md；Tempo改图、更多关联自动化组合、物理制作和完整P1仍待完成。
+
 2026-10-16：修复MIDI音符位置/长度保存重开后的末位漂移；原生播放缓存、非活动Playlist、Undo/Redo和实际恢复快照的NOTE b/l精度均已专项验证。操作仍为常规编辑、CmdZ/ShiftCmdZ、CmdS和重开，不新增按钮。严格Clip XML和1采样输出预算保持；不等于全部插件/所有数值字段或完整P1已验。当前完整测试见VERIFICATION.md。
 
 2026-10-16：两轨录得Loop/Punch支持MIDI关联候选、整组选用/恢复/解除与匹配区间整组局部采用（原Main或关联TARGET），原Take及范围外演奏保留；实际GUI键、原Undo/Redo、冷重开与两声道FourOsc通过。10套1555项，仅本资格范围，不是完整P1/产品；整组移动/Tempo、NOTE精度和实体制作待做。

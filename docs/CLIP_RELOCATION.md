@@ -1,3 +1,5 @@
+2026-10-16 MIDI关联Comp：点击任一成员会选择完整成员闭包；F8拖动，逗号/句号按Nudge单位整组横移。停止录放后，Command+Control+Option+↑/↓请求移至相邻可见轨道，或向兼容轨拖放；松手看预览，接受后是一笔原Undo。MIDI只进入midi/instrument；迁移保留Playlist/Clip ID与原Take，源轨留空，目标原播放保留为可整组恢复的非活动列表。音乐时基保留源拍与拍长度，采样时基移事件绝对时间；相同采样位移后对应窗口不同则整笔拒绝，不静默改时基。自定义Nudge、保存重开/原UndoRedo、实际音符/CC/Pitch与WAV见P1-MIDI-LINKED-MOVE-01、VERIFICATION.md。Tempo改图与全部新关联自动化组合尚未资格。
+
 2026-10-15 当前：关联Comp整组跨轨迁移已接通，源留空Playlist、目标原播放列表保留为非活动；不是把成员拆散成普通片段。分离目标/相邻重叠/交换、原生身份、原Undo/冷重开及真实PCM已验。新语义和边界见[LINKED_COMP_RELOCATION.md](LINKED_COMP_RELOCATION.md)，下文旧“关联Comp拒绝”由该具体范围替代；复杂联动及实体听评仍待验。
 
 2026-10-15 当前：已加入显式自动化尾随（默认2秒），两个EQ场景整段WAV差0，原2e-6通过；23套受影响回归分批通过。固定范围不等于自动尾音检测，完整迁移能力仍未完成。设置/快捷键/冲突规则见[AUTOMATION_TAIL_WORKFLOW.md](AUTOMATION_TAIL_WORKFLOW.md)。

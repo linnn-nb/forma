@@ -1,3 +1,5 @@
+2026-10-16 MIDI关联移动/迁移沿用midi.linked-comp v1的采样布局与完整成员/restore记录，不新增schema；目的NDAW_PLAYLISTS补齐midi_link_schema=1及midi_edit_schema=1。原Take留在源轨，转移的Comp/Clip保留原有origin_track等来源字段；原轨留空Playlist而非删除。采样移动沿用midi.sample-origin v1，CC/Pitch的既有ndaw_cc_key在改b之前固化；历史Undo可移除首次新增键，源池/原SEQ哈希算法不改。当前/非活动/原历史均由既有能力闭包保护。
+
 2026-10-16 NOTE b/l冷读精度已修复：NativeMidiNumbers仅处理真实原生MIDI路径及历史镜像，保留正确舍入的binary64（专项0 ULP，含次正规数/负零）；先核验原文档/历史SHA/链和能力，再解码，未知或损坏数字拒绝后保留当前会话。插件、原始来源、origin数据不转换；没有新字段/能力/格式版本，也不更新旧Hash以掩盖问题。已验活动/非活动、现代属性和结构Undo/Redo、schema1历史、三次冷开、实际恢复；恢复快照仍undo_restored=false。只据此资格NOTE b/l，未外推全部SDK数值字段。下面带日期的差异记录是修复前状态，当前完整结果见VERIFICATION.md。
 
 2026-10-16 新增midi.linked-comp v1：NDAW_PLAYLISTS.midi_link_schema=1，MIDI关联PLAYLIST.linked_schema=2；布局字段明确工程采样start_samples/length_samples/source_offset_samples及原time_basis，完整linked_members/restore_playlist保持；音频成员schema1仍为秒。能力收集覆盖当前/非活动/Undo/Redo，包含属性变化路径的marker或成员schema；Redo-only保存冷开原Redo已验，未知v2/漏声明拒绝。未改SEQ/来源哈希算法或修复NOTE b/l 1–2 ULP冷读差异，不能把本资格写成原生浮点完全恢复。
