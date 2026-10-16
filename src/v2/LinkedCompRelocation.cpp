@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "PlaylistLinks.h"
+#include "NativeEditXml.h"
 namespace ndaw::v2
 {
 namespace
@@ -15,7 +16,7 @@ std::string id(te::AudioTrack& t)
 }
 std::string hash(juce::ValueTree state)
 {
-    const auto xml = state.createXml()->toString();
+    const auto xml = preciseEditXml(state)->toString();
     return juce::SHA256(xml.toRawUTF8(), xml.getNumBytesAsUTF8()).toHexString().toStdString();
 }
 } // namespace
@@ -51,7 +52,10 @@ Json Commands::linkedCompRelocationChanges(const Json& moves) const
                 require(destination.empty() || destination == next, "一个关联Comp Playlist不能拆散到多个轨道");
                 destination = next;
             }
-            require(trackType(*track(destination)) == "audio", "关联Comp Playlist需要音频目标轨道");
+            const auto type = trackType(*track(destination));
+            require(int(candidate.getProperty("linked_schema")) == 2 ? (type == "midi" || type == "instrument")
+                                                                     : type == "audio",
+                    "关联Comp Playlist目标轨道类型不匹配");
             require(sources.insert(id(*owner)).second && destinations.insert(destination).second,
                     "多个关联Comp Playlist不能占用同一目标轨道");
             const auto vacancy = "vacated:" + playlist_links::value(candidate, "id") + ":" + std::to_string(revision);
@@ -188,6 +192,11 @@ void Commands::finishLinkedCompRelocation(const Json& groups, Json& objects)
             auto* target = track(member["to_track"]);
             auto lists = ensurePlaylists(*target);
             auto list = lists.getChildWithProperty("id", juce::String(member["playlist"].get<std::string>()));
+            if (int(list.getProperty("linked_schema")) == 2)
+            {
+                lists.setProperty("midi_edit_schema", 1, undo);
+                lists.setProperty("midi_link_schema", 1, undo);
+            }
             lists.setProperty("active", list["id"], undo);
             list.setProperty("restore_playlist", juce::String(member["restore_playlist"].get<std::string>()), undo);
             list.setProperty("linked_members", juce::String(members.dump()), undo);

@@ -445,8 +445,8 @@ void Commands::refreshLinkedCompLayouts(const Json& ops)
 {
     std::set<std::string> sets;
     for (const auto& op : ops)
-        if (op.at("command") == "clip.move")
-            if (auto* clip = audioClip(op.at("args").at("clip")))
+        if (op.at("command") == "clip.move" || op.at("command") == "midi.clip.move")
+            if (auto* clip = timelineClip(op.at("args").at("clip")))
                 if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
                 {
                     const auto list = playlist_links::active(*owner);
@@ -633,14 +633,14 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
     std::map<std::string, int64_t> moves;
     std::set<std::string> movedSets;
     for (const auto& op : ops)
-        if (op.at("command") == "clip.move")
-            if (auto* clip = audioClip(op.at("args").at("clip")))
+        if (op.at("command") == "clip.move" || op.at("command") == "midi.clip.move")
+            if (auto* clip = timelineClip(op.at("args").at("clip")))
                 if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
                     if (!str(playlist_links::active(*owner), "linked_set").empty())
                         require(moves.emplace(op.at("args").at("clip"), op.at("args").at("position_samples")).second,
                                 "duplicate linked Comp move in one transaction");
     for (const auto& [id, position] : moves)
-        if (auto* clip = audioClip(id))
+        if (auto* clip = timelineClip(id))
             if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
             {
                 const auto list = playlist_links::active(*owner);
@@ -648,12 +648,14 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                 if (set.empty() || !movedSets.insert(set).second)
                     continue;
                 const auto delta = position - std::llround(clip->getPosition().getStart().inSeconds() * 48000.);
+                Json expectedRanges;
                 for (auto [member, candidate] : playlist_links::members(*edit, list))
                 {
                     require(playlist_links::active(*member) == candidate && !activePlaylistLocked(*member, true),
                             "linked Comp member is inactive or locked");
                     require(Json::parse(str(candidate, "linked_layout")) == playlist_links::layout(*member, candidate),
                             "linked Comp geometry changed outside its transaction");
+                    Json ranges = Json::array();
                     for (auto* piece : member->getClips())
                     {
                         const auto peer = piece->itemID.toString().toStdString();
@@ -662,6 +664,21 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                                             std::llround(piece->getPosition().getStart().inSeconds() * 48000.) ==
                                         delta,
                                 "move must include every linked Comp piece with the same sample offset");
+                        if (int(candidate.getProperty("linked_schema")) == 2)
+                        {
+                            const auto mapped =
+                                midiClipMoveChange({{"clip", peer}, {"position_samples", moves.at(peer)}}, false)
+                                    .at("after");
+                            ranges.push_back(Json::array({mapped.at("start_samples"), mapped.at("length_samples")}));
+                        }
+                    }
+                    if (int(candidate.getProperty("linked_schema")) == 2)
+                    {
+                        std::sort(ranges.begin(), ranges.end());
+                        if (expectedRanges.is_null())
+                            expectedRanges = ranges;
+                        require(ranges == expectedRanges, "linked MIDI time bases produce different destination "
+                                                          "ranges; align time bases before moving");
                     }
                 }
             }
@@ -707,7 +724,8 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                 if (a.contains("clip"))
                     if (auto* c = midiClip(a["clip"]))
                         if (auto* t = dynamic_cast<te::AudioTrack*>(c->getTrack()))
-                            require(!activePlaylistLocked(*t), "active MIDI Playlist is locked");
+                            require(!activePlaylistLocked(*t, cmd == "midi.clip.move"),
+                                    "active MIDI Playlist is locked");
             }
             // Even direct JSON and group-expanded edits must respect a locked active list.
             if (cmd.starts_with("clip.") || cmd.starts_with("timeline.clips."))

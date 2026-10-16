@@ -453,6 +453,8 @@ Json Commands::midiQuery(te::MidiClip& clip) const
             {"looped", clip.isLooping()},
             {"locked", bool(clip.state.getProperty("ndaw_locked", false)) ||
                            activePlaylistLocked(*static_cast<te::AudioTrack*>(clip.getTrack()))},
+            {"move_locked", bool(clip.state.getProperty("ndaw_locked", false)) ||
+                                activePlaylistLocked(*static_cast<te::AudioTrack*>(clip.getTrack()), true)},
             {"bulk_transform_available", transformRestriction(clip).empty()},
             {"bulk_transform_restriction", transformRestriction(clip)}};
 }

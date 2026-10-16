@@ -63,7 +63,7 @@ Json Commands::editGroupClipSelection(const std::string& id, bool wholeLinkedCom
         // at each piece. Process newly reached sets too; never widen ordinary groups
         // recursively merely because an overlapping unlinked clip is longer.
         for (size_t i = 0; i < result.size(); ++i)
-            if (auto* clip = audioClip(result[i].at("id")))
+            if (auto* clip = timelineClip(result[i].at("id")))
                 if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
                 {
                     const auto list = playlist_links::active(*owner);
