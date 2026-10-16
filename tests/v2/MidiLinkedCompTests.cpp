@@ -36,6 +36,7 @@ public:
                                     {"track", q["track"]},
                                     {"follows_tempo", follows},
                                     {"timebase", lane["timebase"]},
+                                    {"explicit_value", lane["explicit_value"]},
                                     {"points", lane["points"]}});
                 }
         }
@@ -65,6 +66,26 @@ public:
     static Json readiness(Commands& c)
     {
         return c.recordingReadiness();
+    }
+    static std::pair<double, double> range(Commands& c, const std::string& id)
+    {
+        const auto p = c.timelineClip(id)->getPosition();
+        return {p.getStart().inSeconds(), p.getEnd().inSeconds()};
+    }
+    static double value(Commands& c, const std::string& track, const std::string& lane, double time)
+    {
+        te::AutomationIterator it(*c.automationParameter(track, lane));
+        it.setPosition(tracktion::TimePosition::fromSeconds(time));
+        return it.getCurrentValue();
+    }
+    static double span(Commands& c, const std::string& track, const std::string& lane)
+    {
+        const auto* p = c.automationParameter(track, lane);
+        return p->valueRange.end - p->valueRange.start;
+    }
+    static std::string tip(Commands& c)
+    {
+        return c.history.at(c.historyCursor - 1);
     }
     static Commands& commands(ndaw::desktop::Workspace& w)
     {
@@ -411,12 +432,14 @@ void refuse(Commands& c, const juce::XmlElement& xml, const juce::File& file)
 } // namespace
 #include "MidiLinkedMoveChecks.h"
 #include "MidiPlaylistTempoChecks.h"
+#include "MidiLinkedCurveChecks.h"
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
     const bool punch = argc > 2 && std::string(argv[2]) == "punch";
     const bool moving = argc > 3 && std::string(argv[3]) == "move";
     const bool tempo = argc > 3 && std::string(argv[3]) == "tempo";
+    const bool automation = argc > 3 && std::string(argv[3]) == "automation";
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile("MIDI-Linked-" + juce::Uuid().toString());
     root.createDirectory();
     result = {{"root", root.getFullPathName().toStdString()},
@@ -525,7 +548,7 @@ int main(int argc, char** argv)
             run(c, "track.arm", {{"track", tracks[n]}, {"enabled", false}});
             run(c, "playlist.select", {{"track", tracks[n]}, {"playlist", main[n]}});
         }
-        if ((moving || tempo) && punch)
+        if ((moving || tempo || automation) && punch)
             for (int n = 0; n < 2; ++n)
             {
                 std::set<std::string> lists{sources[n][0], sources[n][1], main[n]};
@@ -617,6 +640,8 @@ int main(int argc, char** argv)
             testLinkedMidiMoves(w, root, tracks, linked, punch);
         if (tempo)
             testMidiPlaylistTempo(w, root, tracks, linked, punch);
+        if (automation)
+            testLinkedMidiCurves(w, root, tracks, linked, punch);
         run(c, "playlist.lock", {{"track", tracks[1]}, {"playlist", linked.at(tracks[1])}, {"locked", true}});
         rejects([&] { run(c, "playlist.comp.restore", {{"track", tracks[0]}, {"playlist", linked.at(tracks[0])}}); },
                 "locked partner prevents a half-restored set");
@@ -839,6 +864,10 @@ int main(int argc, char** argv)
             result["scope"] = "real hosted recorded MIDI; active/inactive linked Playlist Tempo/Meter remap, native "
                               "GUI, original Undo/Redo/cold history and volume/EQ curves; not physical MIDI, "
                               "listening, all processed sources or full P1";
+        if (automation)
+            result["scope"] = "recorded two-track MIDI linked Comp movement/migration with actual volume/EQ curves, "
+                              "shared native automation, preview policies, original Undo/Redo, cold files and native "
+                              "GUI keys; not physical input, human listening, all plugins or full P1";
     }
     catch (const std::exception& e)
     {

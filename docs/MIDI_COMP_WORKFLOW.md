@@ -69,3 +69,5 @@ Punch组合演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW
 关联布局以工程采样记载，原音符/控制器/来源仍是完整原生MIDI；独立内容/边界编辑仍受关联保护；整组移动/跨轨和Tempo/Meter映射已按当前专项开放，未资格来源/混合家族明确拒绝。原生NOTE末位精度已按本文开头专项预算修复，当前完整回归见VERIFICATION.md。
 
 当前多轨演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-3649a9ec21ac4d98a6a652634a6f0d71/MIDI-Linked-Comp.tracktionedit`，Punch版本`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-28324383957d4ac3875be8d00ec2cdda/MIDI-Linked-Comp.tracktionedit`。原始音符均为已知输入测试，FourOsc可直接试听，非实体键盘或用户听评。重建ndaw_midi_linked_comp_tests后运行`ctest --test-dir build-v2-tracktion -R '^forma_midi_linked_comp_' --output-on-failure`，两例各120秒截止。
+
+2026-10-16 关联共享自动化专项预算（执行前）：48k/256真实hosted两轨Loop音乐/Punch采样Comp；音量与原生EQ含曲线/阶跃，整组跨Tempo横移、显式不同曲线编辑时基、跟随开关、目标有原演奏/原曲线的迁移、相邻重叠归属的GUI确认。独立冻结源值按分段Tempo反算，曲线误差沿用4e-7原生参数范围；事件1采样、UI5秒、捕获15秒、WAV10秒、每例CTest120秒，不放宽预算。覆盖原UndoRedo/冷重开与源SHA；默认2秒尾随冲突应拒绝，用户显式选片段范围后可执行。目标插件Tempo策略保持并在预览说明差异；Playlist共用轨道曲线，恢复原播放不伪称恢复自动化。非实体设备/听评/全插件或RT资格。

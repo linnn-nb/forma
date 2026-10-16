@@ -166,13 +166,23 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                                                ? "自动化跟随开启：来源没有曲线，目标曲线保留\n"
                                                : "自动化跟随开启：移动源曲线，替换匹配目标区间；区间外保留\n"));
                     for (const auto& transfer : change["automation"]["transfers"])
+                    {
                         summary += trackName(transfer["from_track"]) + " → " + trackName(transfer["to_track"]) + " · " +
                                    text(transfer["parameter"].get<std::string>()) + " · " +
-                                   text(transfer["clock"].get<std::string>()) + text(" · 尾随 ") +
-                                   juce::String(transfer["tail_seconds"].get<double>(), 3) + " s → " +
-                                   at(std::llround(transfer["end_seconds"].get<double>() * 48000)) + "\n";
+                                   text(transfer["clock"] == "beats" ? "按小节/拍移动" : "按采样移动") +
+                                   text(" · 尾随 ") + juce::String(transfer["tail_seconds"].get<double>(), 3) +
+                                   " s → " + at(std::llround(transfer["end_seconds"].get<double>() * 48000)) + "\n";
+                        if (transfer["source_tempo_follows"] != transfer["destination_tempo_follows"])
+                            summary +=
+                                text("  速度图策略不同：来源") +
+                                text(transfer["source_tempo_follows"].get<bool>() ? "跟随速度" : "保持秒位置") +
+                                text("，目标") +
+                                text(transfer["destination_tempo_follows"].get<bool>() ? "跟随速度" : "保持秒位置") +
+                                text("。之后修改Tempo时使用目标插件策略；可先在自动化面板调整。\n");
+                    }
                     if (!change["automation"]["transfers"].empty())
                         summary += text("尾随区复制源自动化并替换对应目标曲线，原轨道区间外点保留。\n"
+                                        "播放列表共用轨道自动化；恢复原播放列表不还原迁移曲线，Undo可整笔恢复。\n"
                                         "尾随长度不是自动检测结果；恢复参数仍可能改变更长尾音，请试听验证。\n");
                     for (const auto& pair : change["crossfades"])
                         summary += text(pair["action"] == "rehome" ? "完整交叉淡化配对随片段迁移\n"

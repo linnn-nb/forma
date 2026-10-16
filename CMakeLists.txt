@@ -1152,6 +1152,8 @@ foreach(MIDI_LINKED_MODE loop punch)
   set_tests_properties(forma_midi_linked_move_${MIDI_LINKED_MODE} PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
   add_test(NAME forma_midi_playlist_tempo_${MIDI_LINKED_MODE} COMMAND ndaw_midi_linked_comp_tests "${CMAKE_BINARY_DIR}/midi-playlist-tempo-${MIDI_LINKED_MODE}.json" "${MIDI_LINKED_MODE}" tempo)
   set_tests_properties(forma_midi_playlist_tempo_${MIDI_LINKED_MODE} PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+  add_test(NAME forma_midi_linked_automation_${MIDI_LINKED_MODE} COMMAND ndaw_midi_linked_comp_tests "${CMAKE_BINARY_DIR}/midi-linked-automation-${MIDI_LINKED_MODE}.json" "${MIDI_LINKED_MODE}" automation)
+  set_tests_properties(forma_midi_linked_automation_${MIDI_LINKED_MODE} PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 endforeach()
 
 juce_add_console_app(ndaw_playlist_editing_tests PRODUCT_NAME "ndaw_playlist_editing_tests")

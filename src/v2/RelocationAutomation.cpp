@@ -246,21 +246,24 @@ Json Commands::relocationAutomationChanges(const Json& clips, const Json& linked
                     }
                 from.outgoing.push_back(r);
                 to.incoming.push_back({r, key(*parameter), std::move(body), std::move(copies)});
-                result["transfers"].push_back({{"from_track", r.source},
-                                               {"to_track", r.destination},
-                                               {"from_lane", key(*parameter)},
-                                               {"to_lane", key(*target)},
-                                               {"parameter", parameter->paramID.toStdString()},
-                                               {"plugin", identity(*plugin)},
-                                               {"clock", r.musical ? "beats" : "samples"},
-                                               {"source_start_seconds", r.low},
-                                               {"source_end_seconds", r.high},
-                                               {"start_seconds", r.start},
-                                               {"end_seconds", r.tailEnd},
-                                               {"clip_end_seconds", r.end},
-                                               {"source_clip_end_seconds", r.high},
-                                               {"source_tail_end_seconds", r.tailHigh},
-                                               {"tail_seconds", r.tailEnd - r.end}});
+                result["transfers"].push_back(
+                    {{"from_track", r.source},
+                     {"to_track", r.destination},
+                     {"from_lane", key(*parameter)},
+                     {"to_lane", key(*target)},
+                     {"parameter", parameter->paramID.toStdString()},
+                     {"source_tempo_follows", parameter->automatableEditElement.remapOnTempoChange.get()},
+                     {"destination_tempo_follows", target->automatableEditElement.remapOnTempoChange.get()},
+                     {"plugin", identity(*plugin)},
+                     {"clock", r.musical ? "beats" : "samples"},
+                     {"source_start_seconds", r.low},
+                     {"source_end_seconds", r.high},
+                     {"start_seconds", r.start},
+                     {"end_seconds", r.tailEnd},
+                     {"clip_end_seconds", r.end},
+                     {"source_clip_end_seconds", r.high},
+                     {"source_tail_end_seconds", r.tailHigh},
+                     {"tail_seconds", r.tailEnd - r.end}});
             }
     }
     std::map<std::string, Json> tracks;
