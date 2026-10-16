@@ -43,7 +43,7 @@ int runDesktop(const juce::StringArray& args)
         {
             WorkspaceWindow window(
                 std::make_unique<Workspace>(false, std::make_unique<Storage>(root.getChildFile("prefs"))));
-            window.setName("Forma · Keyboard Desktop Check");
+            window.setName("Forma - Keyboard Desktop Check");
             auto& w = window.editor();
             auto& c = AudioDeviceTestAccess::owner(w);
             c.commit(c.makePlan("human", Json::array({operation(
@@ -79,7 +79,7 @@ int runDesktop(const juce::StringArray& args)
         {
             WorkspaceWindow window(
                 std::make_unique<Workspace>(false, std::make_unique<Storage>(root.getChildFile("cold-prefs"))));
-            window.setName("Forma · Keyboard Reopen Check");
+            window.setName("Forma - Keyboard Reopen Check");
             auto& w = window.editor();
             auto& c = AudioDeviceTestAccess::owner(w);
             const auto token = c.sessionToken();

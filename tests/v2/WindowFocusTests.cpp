@@ -54,11 +54,22 @@ juce::Component* find(juce::Component& component, const juce::String& id)
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    const auto report = [&](const Json& result)
+    {
+        if (argc > 1)
+        {
+            std::ofstream out(argv[1]);
+            out << result.dump(2) << '\n';
+            if (!out)
+                throw std::runtime_error("focus report write failed");
+        }
+    };
     const auto folder = juce::File::getSpecialLocation(juce::File::tempDirectory)
                             .getChildFile("forma-window-focus-" + juce::Uuid().toString());
     folder.createDirectory();
     try
     {
+        report({{"result", "running"}, {"checks", 0}});
         const auto source = folder.getChildFile("source.wav");
         juce::WavAudioFormat format;
         std::unique_ptr<juce::OutputStream> output = source.createOutputStream();
@@ -131,10 +142,19 @@ int main(int argc, char** argv)
         check(w.hasKeyboardFocus(false), "queued native parent focus returns to editor");
 
         const std::string clip = c.query()["tracks"][0]["clips"][0]["id"];
-        c.updateUiState({{"object_selection", Json::array({{{"id", clip}, {"track", track}, {"kind", "clip"}}})},
-                         {"selection_tracks", Json::array({track})}},
-                        c.sessionToken());
+        // The previous separation range encloses a new join and correctly selects Crossfade,
+        // not the per-clip fade field whose focus this test exercises.
+        c.commit(c.makePlan("human", Json::array({operation("session.range.clear", Json::object())})));
         pump();
+        auto* select = dynamic_cast<juce::Button*>(find(w, "clip.select:" + text(clip)));
+        check(select && select->isShowing() && select->isEnabled(), "actual clip header is available for selection");
+        select->triggerClick();
+        const auto selectionDeadline = juce::Time::getMillisecondCounterHiRes() + 1000;
+        while (w.queryView()["object_selection"].empty() &&
+               juce::Time::getMillisecondCounterHiRes() < selectionDeadline)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        check(!w.queryView()["object_selection"].empty() && w.queryView()["object_selection"][0]["id"] == clip,
+              "asynchronous real clip header selection reached L1 before opening its fade field");
         w.uiCommands().invokeDirectly(280, false);
         pump();
         auto* input = dynamic_cast<juce::TextEditor*>(find(w, "clip.fades.in_ms"));
@@ -210,15 +230,12 @@ int main(int argc, char** argv)
                           {"checks", checks},
                           {"scope", "production WorkspaceWindow and actual Edit/Undo/key map on native peers; physical "
                                     "startup requires desktop verification"}};
-        if (argc > 1)
-        {
-            std::ofstream out(argv[1]);
-            out << result.dump(2) << '\n';
-        }
+        report(result);
         std::cout << result.dump(2) << std::endl;
     }
     catch (const std::exception& error)
     {
+        report({{"result", "failed"}, {"checks", checks}, {"error", error.what()}});
         std::cerr << "FAIL " << error.what() << std::endl;
         return 1;
     }
