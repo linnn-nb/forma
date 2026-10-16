@@ -1,3 +1,13 @@
+# P1 当前：真实麦克风与OS桌面制作链路（2026-10-16）
+
+Loop→Punch→Take/候选Comp→两处50ms等功率交叉淡化→GUI导出→实际进程冷开→原Undo/Redo→重导已执行。一轨内置麦克风48k/512、监听关闭，原录音持续写盘且哈希保持；三份WAV为48k/双声道/PCM24/192000帧，淡化范围外PCM误差0，冷重导PCM完全相同。完整文件保留22步历史/全部8个Playlist。不是完整P1/产品、多轨或听评/硬件延迟资格。
+
+真实来源标题现为原生可访问控件，选择不写Edit；native peer测试另验Space/Return不泄漏到走带。7套最新终态899项（首批5/6，fixture修正后补2/2），独立只读审计108项，构建exit0/本地deep strict验签通过。失败和首次脚本路径错误日志保留，无新SDK字节或包。
+
+精简资格：`desktop-chain-qualification.json`；代码`PlaylistPanel.h`、`ClipHeader.h`、`PlaylistEditingTests.cpp`、`scripts/verify_p1_desktop.py`；亲手试与本地工程见`docs/P1_DESKTOP_WORKFLOW.md`，完整范围/失败见`docs/VERIFICATION.md`首节。真实麦克风WAV不提交、不上传。
+
+原用户Warp Comp已恢复：完整tracks/9步历史、播放头77385、输入关闭、外置耳机48k512；旧进程已重启，不能沿用历史“PID44913未动”说法。未观察到的来源试听快捷键、OS波形拖选、设备查询缓存与CLI stdout污染入BACKLOG；人工听评、实体MIDI、多设备/PDC/长时/RT/性能/Windows/发行等缺口保持。以下为历史资格。
+
 # 关联 Comp 共享自动化当前验证（2026-10-16）
 
 结论：录得的多轨 MIDI Comp 已与实际音量/EQ曲线共同验证整组移动、跨轨迁移、原历史、冷重开与原生GUI；同时修复自动化读数造成的迁移预览误失效，以及新建轨道仍绑定旧选轨。最终 **24/24 套、19057 项通过，342.36秒**。这是所列P1增量，不是完整产品、实体输入/听评或全插件/RT资格。

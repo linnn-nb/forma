@@ -1,3 +1,28 @@
+# P1 真实麦克风桌面链路当前验证（2026-10-16）
+
+结论：一轨内置麦克风经真实OS桌面完成 **Loop→Punch→候选Comp→两处交叉淡化→WAV→进程冷重开→原Undo/Redo→重导**。新增Playlist真实来源标题的可访问/本地键盘选择。受影响7套最新终态 **899项**，独立文件审计 **108项**；这是明确范围的P1增量，完整P1、产品、人工听评和硬件延迟仍未验收。
+
+| 需求与状态 | 实现 | 实际验收与证据 |
+| --- | --- | --- |
+| P1-SOURCE-CAPTION，已验证所列范围 | `ui/PlaylistPanel.h`、`ClipHeader.h` | 真正的来源列表名/片段标题成为原生控件；选择只改草稿，不写Edit/工程历史。native peer测试验证Space/Return本地处理；OS桌面实际AX选择Punch来源，再CtrlOptionU采用。不是波形指针拖选已验。 |
+| P1-DESKTOP-CAPTURE，已验证单轨48k/512 | 既有`RecordingCommands`、原生Tracktion writer/Playlist与L1 | 真实MacBook Pro麦克风→外置耳机，监听关闭；4秒Loop录出697301帧连续PCM24/单声道、3整圈+121301帧末圈；1–3秒Punch、前后卷各0.5秒，另录140245帧。两次录音分别原CmdZ/ShiftCmdZ核对完整tracks/原Plan。 |
+| P1-DESKTOP-COMP，已验证所列来源 | 既有`PlaylistEditing`、`PlaylistPanel` | 从Take 1新建非活动Comp，指定TARGET/用于播放，采用Punch内1–3秒，保留两侧原Take；创建/采用各一笔原Undo/Redo。原8个Main/Take/Punch/Comp与源树保留。 |
+| P1-DESKTOP-FADE/EXPORT，已验证 | 既有`Crossfade`、`CrossfadePanel`、原生渲染/持久历史 | CmdF/CmdReturn在48000、144000样本接缝各建50ms等功率交叉淡化；原撤销重做、完整保存退出、新进程打开、原第二淡化Undo/Redo、真实另存WAV均执行。三份导出48k/双声道/PCM24/192000帧；淡化区间外误差0，冷重导PCM逐字节相同。 |
+
+独立审计：`scripts/verify_p1_desktop.py`只读真实query回执、工程与WAV，不生成或注入执行。原始两WAV哈希及Peak/RMS按独立PCM24解码核验；源文件未改。最终工程22步原历史，原始/非活动Take树保持。快捷键、面板选择、文件选择器和退出均实际操作；来源试听按钮出现位置前进并自动返回，未取得人工听评。
+
+当前回归：window focus29、MIDI Playlist155、Playlist239、audition98、crossfade101、production chain98、Grabber179，总899。首批5/6、60.79秒，Playlist夹具在创建native peer前访问null handler而SIGSEGV；修正夹具顺序/前台后补2/2、22.98秒。7种最新通过用例时间合计78.01秒，不冒称一次7/7全绿。编译缺text导入及独立脚本相对/绝对路径首红均保留，未放宽任何数值/时间预算。
+
+NativeDAW及7目标构建exit0；修正fixture后测试目标重构exit0，生产App不变。本地deep/strict验签exit0；唯一App二进制SHA256 `3fa397951030b38340b18fbac38749f7fcdb9eae5df4cf12571efd9ed7cd3c51`，非发行公证。无SDK字节、新依赖、权限、服务、L1命令/schema或RT工作；沿用20补丁/50文件配置核对，不声称本轮fresh replay。
+
+用户工程恢复：旧PID44913的CmdQ直接退出，未出现新版保存审查，不能沿用旧“原进程未重启”声明。随后从测试前完整文件恢复并严格核对Warp Comp tracks/9步原历史；本轮结束又经新版原生Open保存保护恢复同一工程，播放头77385样本、输入关闭、外置耳机48k/512、停止/未待命。最终P1工程另存保留，未覆盖用户原文件；当前只保留生产进程29998，无测试进程。
+
+证据：`evidence/P1/desktop-chain-qualification.json`、`build-v2-tracktion/p1-caption-final.xml/.log`、`p1-caption-qualification-extra.xml/.log`、`p1-desktop-independent.json/.log`及`p1-desktop-independent-first.*`；原生夹具崩溃报告保留于本机DiagnosticReports。真实录音和原始query仅留忽略的build，不上传音频。操作与工程路径见`P1_DESKTOP_WORKFLOW.md`。
+
+待查：CtrlShiftOption8来源试听本轮无执行回执；波形指针拖选OS资格未通过，不由native回归替代；设备面板verified但query_session缓存仍preparing；CLI有“Cleaning up temp files..”混入JSON stdout。设备实际配置恢复已核对，查询缓存不伪记verified。多轨多设备/实体MIDI/人工听评、物理延迟/PDC/长时/断连/过载、性能A15.84%>15%、分析超时、RT SDK锁分配、Windows/视频/环绕/发行继续保留。M2/M3冻结、M4/M5暂缓。
+
+以下为历史批次；其“未重启”“下一项”和范围以本节及NEXT_STEPS.md更新。
+
 # 快捷键编辑器当前验证（2026-10-16）
 
 结论：打开快捷键面板后可直接搜索，按键捕获在实际前台/native peer/组件焦点就绪后开始；保存重开后的按键实际调用通过。当前 **4/4套、180项、7.90秒**，另有 **17项真实OS桌面操作检查**。仅关闭本环境的快捷键增量，不宣称完整P0/P1/产品或历史环境超时根因已证明。

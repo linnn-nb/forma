@@ -1,3 +1,5 @@
+2026-10-16 P1来源选择：仅L5 PlaylistPanel/ClipHeader新增真实来源标题控件和局部Space/Return处理；稳定ID绑定实际facts，选择/滚动只改UI草稿，不直接写Edit或工程历史。停止试听后重新取事实，禁止跨状态变化保留JSON引用；原有波形鼠标事件仍转交Canvas。Comp/Promote/淡化沿用原L1/Undo，录音/渲染仍唯一Tracktion引擎。无新命令/schema/权限/SDK/服务/RT工作。真实麦克风/冷开与native peer资格分开，见VERIFICATION.md首节。
+
 2026-10-16 快捷键焦点：仅L5补实际前台/本窗口native peer/组件焦点的有界交接，显示面板后延后搜索聚焦，捕获原1秒预算保持，取消/隐藏停止。键位仍经既有L1 UI子树保存，独立键位Undo/Redo不污染Edit工程历史；无新命令/权限/schema/SDK/RT路径。当前原生及OS桌面资格见VERIFICATION.md首节。
 
 2026-10-16 关联Comp共享自动化增量复用既有L1曲线搬运/迁移器，无新引擎/SDK/RT处理。迁移封定使用显式参数与完整曲线，排除瞬时显示读数；源/目标插件Tempo策略作为事实进入预览并沿用目标设置。原生检查器在待确认时展开预览、隐藏冲突的插件控件；GUI只发命令和订阅事实。新轨道选择绑定命令回执真实ID，独立GUI回归使用自有偏好目录。实际范围见VERIFICATION.md首节。

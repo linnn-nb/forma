@@ -1,0 +1,445 @@
+{
+  "result": "passed_with_explicit_scope",
+  "date": "2026-10-16",
+  "feature_commits": [
+    "50986d2",
+    "26277e0"
+  ],
+  "independent_audit_commit": "cd2d484",
+  "scope": "一轨真实麦克风/外置耳机48k512、4秒Loop与1–3秒Punch、候选Comp、两处50ms交叉淡化、GUI导出、进程冷开原Undo/Redo与重导；不是完整P1/产品、人工听评、硬件延迟或耐久资格",
+  "platform": {
+    "machine": "Apple Silicon arm64",
+    "os": "macOS 26.6.2 (25G83)",
+    "tracktion_commit": "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98",
+    "juce_commit": "37c894f83d379179b2070d437ccd0f1cd9af9576",
+    "juce_version": "8.0.13",
+    "new_sdk_bytes": false,
+    "sdk_audit": "沿用20份补丁/50文件配置审计；本轮无fresh重放"
+  },
+  "app": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "executable_sha256": "3fa397951030b38340b18fbac38749f7fcdb9eae5df4cf12571efd9ed7cd3c51",
+    "local_deep_strict_signature_exit": 0,
+    "notarized": false,
+    "unique_app_only": true
+  },
+  "builds": [
+    {
+      "log": "build-v2-tracktion/p1-caption-final-build.log",
+      "exit_code": 0,
+      "scope": "NativeDAW及7个受影响测试目标"
+    },
+    {
+      "log": "build-v2-tracktion/p1-caption-native-fixture-build.log",
+      "exit_code": 0,
+      "scope": "修正原生测试夹具后重构Playlist测试；生产App不变"
+    }
+  ],
+  "automated": {
+    "suites": [
+      {
+        "name": "forma_native_window_focus",
+        "checks": 29,
+        "seconds": 3.8747,
+        "report": "evidence/U/window-focus-tests.json",
+        "report_sha256": "3aea058173896f66e797defc504444982032c94febeeb5bf03bd67ff129bb7a7",
+        "junit": "build-v2-tracktion/p1-caption-final.xml"
+      },
+      {
+        "name": "forma_midi_playlist_editing",
+        "checks": 155,
+        "seconds": 22.0323,
+        "report": "build-v2-tracktion/p1-midi-playlist-tests.json",
+        "report_sha256": "b974f594be0a8d5f8cfaad651031023e693a8266d2b54de0a36d69467e344b5c",
+        "junit": "build-v2-tracktion/p1-caption-final.xml"
+      },
+      {
+        "name": "forma_playlist_editing",
+        "checks": 239,
+        "seconds": 17.3614,
+        "report": "build-v2-tracktion/p1-playlist-editing-tests.json",
+        "report_sha256": "00bbe52c34a6e19bb2ea1f7fdbef1d4f54f412c8fd649f15bf42ed0b4321feb1",
+        "junit": "build-v2-tracktion/p1-caption-qualification-extra.xml"
+      },
+      {
+        "name": "forma_playlist_audition",
+        "checks": 98,
+        "seconds": 8.12967,
+        "report": "build-v2-tracktion/playlist-audition-tests.json",
+        "report_sha256": "afb7481f830e0219a01a79c44f65623e6c678b22f8db9724ceb06bff4ee05a70",
+        "junit": "build-v2-tracktion/p1-caption-final.xml"
+      },
+      {
+        "name": "forma_crossfade",
+        "checks": 101,
+        "seconds": 9.03031,
+        "report": "build-v2-tracktion/crossfade-tests.json",
+        "report_sha256": "6d95de39053cb402563c03db58b1c6012ea1cbdd570582ae716ab32628295d3e",
+        "junit": "build-v2-tracktion/p1-caption-final.xml"
+      },
+      {
+        "name": "forma_production_chain",
+        "checks": 98,
+        "seconds": 11.9652,
+        "report": "build-v2-tracktion/p1-production-chain-tests.json",
+        "report_sha256": "6e49a86717d7511e1a238dae75667b21860cb75779dbf447d35c091830d60430",
+        "junit": "build-v2-tracktion/p1-caption-final.xml"
+      },
+      {
+        "name": "forma_native_grabber",
+        "checks": 179,
+        "seconds": 5.61199,
+        "report": "build-v2-tracktion/p3-grabber-tests.json",
+        "report_sha256": "1e4067d2f330f046a21883dfd1e90b416ea84e5b17e210a704a0663cce7e7e51",
+        "junit": "build-v2-tracktion/p1-caption-qualification-extra.xml"
+      }
+    ],
+    "distinct_latest_suites": 7,
+    "checks": 899,
+    "latest_case_seconds_sum": 78.00557,
+    "batches": [
+      {
+        "log": "build-v2-tracktion/p1-caption-final.log",
+        "passed": 5,
+        "total": 6,
+        "seconds": 60.79,
+        "failure": "Playlist夹具在native peer创建前访问null accessibility handler，SIGSEGV"
+      },
+      {
+        "log": "build-v2-tracktion/p1-caption-qualification-extra.log",
+        "passed": 2,
+        "total": 2,
+        "seconds": 22.98,
+        "replaces": "forma_playlist_editing并补验forma_native_grabber"
+      }
+    ],
+    "not_a_single_all_green_batch": true
+  },
+  "desktop": {
+    "root": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Desktop-20261016-13f8270c",
+    "input": "MacBook Pro麦克风",
+    "output": "外置耳机",
+    "sample_rate": 48000,
+    "buffer_frames": 512,
+    "monitoring": "off",
+    "actions": "工程变更经真实原生GUI/OS快捷键；MCP仅query_session只读存证",
+    "recordings": [
+      {
+        "mode": "loop",
+        "receipt": "loop-recorded.json",
+        "plan_id": "eabc17baf9b049ce919bab2edb24ac0b",
+        "files": [
+          {
+            "analyser": "libebur128 1.2.6",
+            "audio_verified": true,
+            "channels": 1,
+            "frames": 697301,
+            "lufs_i": -29.40460751240117,
+            "media_hash": "92c8a4349060d4f84073463124053dd5833f3541871823578bf3cdd6929fbf9f",
+            "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Desktop-20261016-13f8270c/Recordings/Take-d2d03ca532054ff9a9140611237fbef4-1013.wav",
+            "pcm_bits": 24,
+            "peak": 0.4153255224227905,
+            "peak_dbfs": -7.632227599482989,
+            "rms": 0.03282160262776219,
+            "sample_rate": 48000.0,
+            "true_peak_dbtp": -7.631169975728055
+          }
+        ],
+        "end_samples": 123904
+      },
+      {
+        "mode": "punch",
+        "receipt": "punch-recorded.json",
+        "plan_id": "82b8b91148bc4c9badfb968d5763f729",
+        "files": [
+          {
+            "analyser": "libebur128 1.2.6",
+            "audio_verified": true,
+            "channels": 1,
+            "frames": 140245,
+            "lufs_i": -43.43195429553185,
+            "media_hash": "cc693423dac2bd71f4e208ce56f09970c2047f91f3cc9f74c4005fb3215ca077",
+            "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Desktop-20261016-13f8270c/Recordings/Take-6596160ac96042b0aa34e925064875c3-1013.wav",
+            "pcm_bits": 24,
+            "peak": 0.0685955286026001,
+            "peak_dbfs": -23.274083856858333,
+            "rms": 0.009022642173630581,
+            "sample_rate": 48000.0,
+            "true_peak_dbtp": -23.274083856858333
+          }
+        ],
+        "end_samples": 167872
+      }
+    ],
+    "loop_complete_passes": 3,
+    "loop_partial_frames": 121301,
+    "punch_range_samples": [
+      48000,
+      144000
+    ],
+    "pre_post_roll_samples": 24000,
+    "observed_os_shortcuts": [
+      "L循环",
+      "F12录音",
+      "Space停止",
+      "Option+[切换来源",
+      "CtrlShiftOptionCmdC候选Comp",
+      "CtrlOptionT设目标",
+      "CtrlOptionP用于播放",
+      "CtrlOptionU采用来源",
+      "CtrlOptionW关闭Playlist",
+      "ShiftR解除待命",
+      "OptionP切换Punch",
+      "CmdF交叉淡化",
+      "CmdReturn应用淡化",
+      "CmdZ撤销",
+      "ShiftCmdZ重做",
+      "ShiftCmdS另存",
+      "OptionCmdB导出",
+      "CmdQ退出保存审查",
+      "CmdO打开工程"
+    ],
+    "source_caption": "原生标题AX选择已执行；Space/Return本地处理另由native peer自动化验证，不冒充物理OS按键",
+    "audition": "真实来源试听按钮使位置前进并自动返回；CtrlShiftOption8未观察到执行；没有人工听评",
+    "fresh_process_reopen": {
+      "project": "P1-Microphone-Comp-Final.tracktionedit",
+      "query": "final-cold-open.json",
+      "undo": "final-cold-undone.json",
+      "redo": "final-cold-redone.json",
+      "same_tracks": true,
+      "retained_steps": 22,
+      "same_final_pcm": true
+    },
+    "restoration": {
+      "old_pid_44913": "旧运行二进制CmdQ直接退出，未显示新版保存审查；从测试前完整保存文件恢复，不声称原进程一直保留",
+      "original_full_file": "Original-Warp-Comp.tracktionedit",
+      "original_sha256": "825f2e6f4b2316b9433210e95d61760216a1cdce635b1c1cd644f2ad81fba03c",
+      "tracks_exact": true,
+      "history_exact": true,
+      "position_samples": 77385,
+      "audio_actual": {
+        "buffer_frames": 512,
+        "input": "",
+        "input_channels": [],
+        "open": true,
+        "output": "外置耳机",
+        "output_channels": [
+          0,
+          1
+        ],
+        "running": true,
+        "sample_rate": 48000.0,
+        "type": "CoreAudio"
+      },
+      "native_ui_device_receipt": "已核验 · 实际设备、采样率、缓冲与通道一致",
+      "query_device_state": "preparing",
+      "query_state_caveat": "面板verified，query_session缓存仍preparing，作为待修项",
+      "test_processes_remaining": 0,
+      "current_production_pid": 29998
+    }
+  },
+  "independent_audit": {
+    "result": "passed",
+    "checks": 108,
+    "assertions": [
+      "loop-ready: successful read-only execution receipt",
+      "loop-recorded: successful read-only execution receipt",
+      "loop-undone: successful read-only execution receipt",
+      "loop-redone: successful read-only execution receipt",
+      "loop-recorded: original Undo restores complete track facts",
+      "loop-recorded: original Redo restores complete track facts",
+      "loop-recorded: same original Plan crosses Undo/Redo",
+      "loop-recorded: exactly one engineering transaction",
+      "punch-ready: successful read-only execution receipt",
+      "punch-recorded: successful read-only execution receipt",
+      "punch-undone: successful read-only execution receipt",
+      "punch-redone: successful read-only execution receipt",
+      "punch-recorded: original Undo restores complete track facts",
+      "punch-recorded: original Redo restores complete track facts",
+      "punch-recorded: same original Plan crosses Undo/Redo",
+      "punch-recorded: exactly one engineering transaction",
+      "comp-before: successful read-only execution receipt",
+      "comp-created: successful read-only execution receipt",
+      "comp-undone: successful read-only execution receipt",
+      "comp-redone: successful read-only execution receipt",
+      "comp-created: original Undo restores complete track facts",
+      "comp-created: original Redo restores complete track facts",
+      "comp-created: same original Plan crosses Undo/Redo",
+      "comp-created: exactly one engineering transaction",
+      "promote-before: successful read-only execution receipt",
+      "promote-applied: successful read-only execution receipt",
+      "promote-undone: successful read-only execution receipt",
+      "promote-redone: successful read-only execution receipt",
+      "promote-applied: original Undo restores complete track facts",
+      "promote-applied: original Redo restores complete track facts",
+      "promote-applied: same original Plan crosses Undo/Redo",
+      "promote-applied: exactly one engineering transaction",
+      "fade-before: successful read-only execution receipt",
+      "fade1-applied: successful read-only execution receipt",
+      "fade1-undone: successful read-only execution receipt",
+      "fade1-redone: successful read-only execution receipt",
+      "fade1-applied: original Undo restores complete track facts",
+      "fade1-applied: original Redo restores complete track facts",
+      "fade1-applied: same original Plan crosses Undo/Redo",
+      "fade1-applied: exactly one engineering transaction",
+      "creating a candidate Comp leaves original playback active",
+      "loop: real writer committed",
+      "loop: one continuous capture file",
+      "Take-d2d03ca532054ff9a9140611237fbef4-1013.wav: media remains inside the owned test directory",
+      "Take-d2d03ca532054ff9a9140611237fbef4-1013.wav: actual PCM24/48k format, channel and frame count",
+      "Take-d2d03ca532054ff9a9140611237fbef4-1013.wav: bounded independent decoding",
+      "Take-d2d03ca532054ff9a9140611237fbef4-1013.wav: complete PCM data",
+      "Take-d2d03ca532054ff9a9140611237fbef4-1013.wav: independently decoded nonzero audio",
+      "loop: original media hash remains unchanged",
+      "loop: independent peak/RMS agree with recording receipt within one PCM24 LSB",
+      "punch: real writer committed",
+      "punch: one continuous capture file",
+      "Take-6596160ac96042b0aa34e925064875c3-1013.wav: media remains inside the owned test directory",
+      "Take-6596160ac96042b0aa34e925064875c3-1013.wav: actual PCM24/48k format, channel and frame count",
+      "Take-6596160ac96042b0aa34e925064875c3-1013.wav: bounded independent decoding",
+      "Take-6596160ac96042b0aa34e925064875c3-1013.wav: complete PCM data",
+      "Take-6596160ac96042b0aa34e925064875c3-1013.wav: independently decoded nonzero audio",
+      "punch: original media hash remains unchanged",
+      "punch: independent peak/RMS agree with recording receipt within one PCM24 LSB",
+      "Loop retains three complete takes and one exact continuous-source partial take",
+      "Punch uses the declared 1–3s range and 0.5s pre/post roll",
+      "Comp promotes only the actual Punch selection, keeping Take 1 on both sides",
+      "Comp pieces reference captured originals instead of synthesized substitutes",
+      "final-before-restart: successful read-only execution receipt",
+      "final-cold-open: successful read-only execution receipt",
+      "final-cold-undone: successful read-only execution receipt",
+      "final-cold-redone: successful read-only execution receipt",
+      "cold open has a new actual session token",
+      "cold file open and original Redo restore complete final track facts",
+      "cold original Undo removes only the second crossfade",
+      "cold Undo/Redo retains the original second-fade Plan",
+      "two actual equal-power 50ms crossfades have the declared geometry",
+      "crossfades extend real source handles without slipping source time",
+      "01-hard-cut.wav: media remains inside the owned test directory",
+      "01-hard-cut.wav: actual PCM24/48k format, channel and frame count",
+      "01-hard-cut.wav: bounded independent decoding",
+      "01-hard-cut.wav: complete PCM data",
+      "01-hard-cut.wav: independently decoded nonzero audio",
+      "02-final.wav: media remains inside the owned test directory",
+      "02-final.wav: actual PCM24/48k format, channel and frame count",
+      "02-final.wav: bounded independent decoding",
+      "02-final.wav: complete PCM data",
+      "02-final.wav: independently decoded nonzero audio",
+      "03-cold-final.wav: media remains inside the owned test directory",
+      "03-cold-final.wav: actual PCM24/48k format, channel and frame count",
+      "03-cold-final.wav: bounded independent decoding",
+      "03-cold-final.wav: complete PCM data",
+      "03-cold-final.wav: independently decoded nonzero audio",
+      "cold re-export PCM is byte-for-byte equal to final export",
+      "crossfades actually change audio PCM",
+      "outside declared crossfades PCM stays within the original 2e-7 budget",
+      "P1-Microphone-Comp-Final.tracktionedit: actual Edit payload exists",
+      "actual final project stores all 22 original history steps",
+      "final saved project bytes remain unchanged through cold Undo/Redo and re-export",
+      "saved file retains all eight Main/Take/Punch/Comp containers",
+      "Exit-Punch.tracktionedit: actual Edit payload exists",
+      "Take 1: complete inactive source tree preserved in actual file",
+      "Take 2: complete inactive source tree preserved in actual file",
+      "Take 3: complete inactive source tree preserved in actual file",
+      "Take 4: complete inactive source tree preserved in actual file",
+      "Punch Take 5: complete inactive source tree preserved in actual file",
+      "original-running-query: successful read-only execution receipt",
+      "original-restored-verified: successful read-only execution receipt",
+      "user Warp Comp complete track facts and nine-step original history restored",
+      "user playhead restored; transport and recording stopped",
+      "original physical audio configuration restored (native UI separately reports verified)",
+      "Original-Warp-Comp.tracktionedit: actual Edit payload exists",
+      "preserved original full project has its pre-test byte hash"
+    ],
+    "files": {
+      "Recordings/Take-d2d03ca532054ff9a9140611237fbef4-1013.wav": {
+        "sha256": "92c8a4349060d4f84073463124053dd5833f3541871823578bf3cdd6929fbf9f",
+        "pcm_sha256": "947325b97d0c1f5ed638b2f85f7fc43063fa8dd086352193b7612e41a681d816",
+        "frames": 697301,
+        "channels": 1,
+        "sample_rate": 48000,
+        "pcm_bits": 24,
+        "peak": 0.4153255224227905,
+        "rms": 0.03282160262784023
+      },
+      "Recordings/Take-6596160ac96042b0aa34e925064875c3-1013.wav": {
+        "sha256": "cc693423dac2bd71f4e208ce56f09970c2047f91f3cc9f74c4005fb3215ca077",
+        "pcm_sha256": "810689cc5cc4849c53f9ae3ae033bca7a20b3eff203dc7ecf74e75f6c73556d1",
+        "frames": 140245,
+        "channels": 1,
+        "sample_rate": 48000,
+        "pcm_bits": 24,
+        "peak": 0.0685955286026001,
+        "rms": 0.009022642173630581
+      },
+      "01-hard-cut.wav": {
+        "sha256": "e0168f455d03ea2a560b7e50400dbaedca0b4a17de8d6e1b3db64e9f46d765a7",
+        "pcm_sha256": "3f8545e8686e2898f30c78d481c3df1b430bfb3456662323cdf9148f509929ef",
+        "frames": 192000,
+        "channels": 2,
+        "sample_rate": 48000,
+        "pcm_bits": 24,
+        "peak": 0.12786436080932617,
+        "rms": 0.012437475763848222
+      },
+      "02-final.wav": {
+        "sha256": "e534541da276eb3f5fdf430e065f18a14ad438c2c3807c683adf105259461f72",
+        "pcm_sha256": "a77eb27a42c04470cce5d4286d02cc14478c93ef2b340f447ade5911e3110c75",
+        "frames": 192000,
+        "channels": 2,
+        "sample_rate": 48000,
+        "pcm_bits": 24,
+        "peak": 0.12786436080932617,
+        "rms": 0.01244132380364228
+      },
+      "03-cold-final.wav": {
+        "sha256": "f69416edafc0bead9b8c8c36fda4a105a34a445a4fecd211a06d36a3d1413be4",
+        "pcm_sha256": "a77eb27a42c04470cce5d4286d02cc14478c93ef2b340f447ade5911e3110c75",
+        "frames": 192000,
+        "channels": 2,
+        "sample_rate": 48000,
+        "pcm_bits": 24,
+        "peak": 0.12786436080932617,
+        "rms": 0.01244132380364228
+      },
+      "P1-Microphone-Comp-Final.tracktionedit": {
+        "sha256": "f3a523e65c80571b3195e3c5bedbfbd491137110cf532ae14d35056715daa1fb"
+      },
+      "Exit-Punch.tracktionedit": {
+        "sha256": "7d907ca262799eb29e0af8e7345ba49768d02256aa6335180dbd39317f0847ee"
+      },
+      "Original-Warp-Comp.tracktionedit": {
+        "sha256": "825f2e6f4b2316b9433210e95d61760216a1cdce635b1c1cd644f2ad81fba03c"
+      }
+    },
+    "outside_fades_max_error": 0.0,
+    "outside_fades_tolerance": 2e-07,
+    "device_query_state": "preparing",
+    "scope": "read-only independent audit of actual OS desktop/microphone files and receipts; not a UI driver, listening, hardware latency, endurance or complete P1 qualification"
+  },
+  "preserved_failures": [
+    {
+      "log": "build-v2-tracktion/p1-caption-qualified-build.log",
+      "cause": "测试缺text命名导入；补导入后通过"
+    },
+    {
+      "log": "build-v2-tracktion/p1-caption-final.xml",
+      "cause": "上述原生peer测试夹具SIGSEGV；修正fixture顺序/前台后通过，不放宽保护或时限"
+    },
+    {
+      "log": "build-v2-tracktion/p1-desktop-independent-first.log",
+      "report": "build-v2-tracktion/p1-desktop-independent-first.json",
+      "cause": "审计脚本混合相对/绝对路径；统一root.resolve后108项通过，媒体未改"
+    }
+  ],
+  "remaining": [
+    "来源试听修饰数字快捷键OS分派",
+    "波形拖选的OS桌面资格（native测试另通过）",
+    "query_session设备状态缓存失效",
+    "CLI日志污染JSON stdout",
+    "人工听评/多设备多轨/物理MIDI/硬件往返延迟/长时/PDC/断连过载",
+    "性能A15.84%>15%、分析超时、RT SDK锁分配",
+    "Windows/视频/环绕/发行与完整架构；M2/M3冻结、M4/M5暂缓"
+  ],
+  "privacy": "真实麦克风WAV、工程和原始query只保留本地忽略build；提交代码和精简资格/哈希，不上传音频"
+}
