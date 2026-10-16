@@ -630,7 +630,10 @@ private:
                         auto& b = *captions.at(key);
                         b.setButtonText(label);
                         b.setTitle(text(list["name"].get<std::string>()) + text(" · ") + label);
-                        b.setBounds(bounds.getIntersection(getLocalBounds()));
+                        auto visible = getLocalBounds();
+                        if (!clipID.empty())
+                            visible.removeFromLeft(200); // Horizontal scrolling cannot cover the list-name gutter.
+                        b.setBounds(bounds.getIntersection(visible));
                         b.setVisible(!b.getBounds().isEmpty());
                     };
                     caption("playlist.source.list:" + listID, {}, text(list["name"].get<std::string>()),

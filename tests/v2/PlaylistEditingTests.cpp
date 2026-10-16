@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
+using ndaw::desktop::text;
 namespace ndaw::v2
 {
 class RecordingTestAccess
@@ -170,11 +171,22 @@ public:
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    const auto report = [&](const Json& value)
+    {
+        if (argc > 1)
+        {
+            std::ofstream out(argv[1]);
+            out << value.dump(2) << '\n';
+            if (!out)
+                throw std::runtime_error("Playlist report write failed");
+        }
+    };
     const auto root = juce::File::getSpecialLocation(juce::File::tempDirectory)
                           .getChildFile("forma-playlist-" + juce::Uuid().toString());
     root.createDirectory();
     try
     {
+        report({{"result", "running"}, {"checks", 0}});
         auto a = fixture(root, "original.wav", .1f), b = fixture(root, "alternate.wav", .25f);
         const auto hashA = Commands::mediaHash(a), hashB = Commands::mediaHash(b);
         ndaw::desktop::Workspace workspace(false, std::make_unique<Storage>(root.getChildFile("prefs")));
@@ -407,6 +419,46 @@ int main(int argc, char** argv)
         pump();
         auto* lanes = find(workspace, "playlist.lanes");
         check(lanes != nullptr, "actual waveform lanes exist");
+        auto* sourceName = dynamic_cast<juce::TextEditor*>(find(workspace, "playlist.name"));
+        auto* sourceRow = dynamic_cast<juce::Button*>(find(workspace, "playlist.source.list:" + text(take)));
+        auto* sourceCaption = dynamic_cast<juce::Button*>(
+            find(workspace, "playlist.source.clip:" + text(take) + ":" + text(sourceBefore[0]["id"])));
+        auto* sourcePromote = dynamic_cast<juce::Button*>(find(workspace, "ui.command:519"));
+        check(sourceName && sourceRow && sourceCaption && sourcePromote && sourceRow->getWantsKeyboardFocus() &&
+                  sourceCaption->getWantsKeyboardFocus(),
+              "real Playlist names and clip captions expose keyboard-focusable native controls");
+        const auto captionFacts = c.query();
+        workspace.addToDesktop(juce::ComponentPeer::windowIsTemporary);
+        workspace.setVisible(true);
+        juce::Process::makeForegroundProcess();
+        workspace.toFront(true);
+        sourceRow->grabKeyboardFocus();
+        wait([&] { return workspace.getPeer()->isFocused() && sourceRow->hasKeyboardFocus(false); },
+             "actual source row owns native keyboard focus");
+        check(workspace.getPeer()->handleKeyPress(juce::KeyPress(juce::KeyPress::spaceKey)),
+              "native Space is consumed by the focused source row");
+        wait([&] { return sourceName->getText() == text(item(c, t, take)["name"]) && !sourcePromote->isEnabled(); },
+             "native Space selects the actual list without inventing a clip range");
+        check(sourceRow->getAccessibilityHandler() && sourceCaption->getAccessibilityHandler(),
+              "visible native source controls expose actual accessibility handlers");
+        check(sourceRow->getAccessibilityHandler()->getRole() == juce::AccessibilityRole::button &&
+                  sourceCaption->getAccessibilityHandler()->getActions().invoke(juce::AccessibilityActionType::press),
+              "actual accessible source caption supports a native press action");
+        wait([&] { return sourcePromote->isEnabled(); },
+             "asynchronous caption selection enables complete actual source-window promotion");
+        check(sourceName->getText() == text(item(c, t, take)["name"]) &&
+                  c.query()["tracks"] == captionFacts["tracks"] && c.query()["revision"] == captionFacts["revision"] &&
+                  c.query()["history"] == captionFacts["history"],
+              "source caption selects the real Take without switching playback or editing engineering history");
+        sourceCaption->grabKeyboardFocus();
+        wait([&] { return sourceCaption->hasKeyboardFocus(false); }, "actual source clip caption owns keyboard focus");
+        check(workspace.getPeer()->handleKeyPress(juce::KeyPress(juce::KeyPress::returnKey)),
+              "native Return is consumed by the focused source clip");
+        wait([&] { return sourcePromote->isEnabled(); }, "native Return selects the actual complete clip window");
+        check(!c.query()["playing"].get<bool>() && c.query()["revision"] == captionFacts["revision"] &&
+                  c.query()["tracks"] == captionFacts["tracks"],
+              "local source activation does not leak Space/Return to transport or alter the Edit");
+        workspace.removeFromDesktop();
         auto chooseRangeFrom = [&](const std::string& playlist, int64_t begin, int64_t end)
         {
             auto snapshot = lists(c, t);
@@ -508,16 +560,13 @@ int main(int argc, char** argv)
             {"pcm_max_error", maxError},
             {"fixture", root.getFullPathName().toStdString()},
             {"scope", "actual Tracktion render and native component commands; physical UI/listening separate"}};
-        if (argc > 1)
-        {
-            std::ofstream out(argv[1]);
-            out << summary.dump(2);
-        }
+        report(summary);
         std::cout << summary.dump(2) << std::endl;
         return 0;
     }
     catch (const std::exception& e)
     {
+        report({{"result", "failed"}, {"checks", checks}, {"error", e.what()}});
         std::cerr << "FAIL " << e.what() << "\nFixture " << root.getFullPathName() << std::endl;
         return 1;
     }
