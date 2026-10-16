@@ -101,7 +101,7 @@ struct Feed
         int64_t frame = 0, block = 0;
     };
     std::array<Event, 4096> events{};
-    std::atomic<int> count{0};
+    std::atomic<int> count{0}, voicedBlocks{0};
     std::atomic<bool> done{false}, overflow{false};
     std::atomic<int64_t> lastFrame{-1};
     std::atomic<te::EditPlaybackContext*> context{nullptr}, observed{nullptr};
@@ -126,6 +126,8 @@ struct Feed
                               const auto block = ph->referenceSamplePositionToTimelinePositionUnlooped(
                                                      ph->getReferenceSampleRange().getEnd()) -
                                                  256;
+                              if (audio.getMagnitude(0, 256) > 1e-5f)
+                                  voicedBlocks.fetch_add(1, std::memory_order_relaxed);
                               for (const auto e : midi)
                               {
                                   const auto m = e.getMessage();
@@ -166,6 +168,24 @@ struct Feed
         return rows;
     }
 };
+Json sampleFacts(Commands& c)
+{
+    const auto q = c.query();
+    const auto& track = q["tracks"][0];
+    const auto& clip = track["clips"][0];
+    Json notes = Json::array();
+    for (const auto& note : clip["notes"])
+        notes.push_back({{"id", note.at("id")},
+                         {"pitch", note.at("pitch")},
+                         {"velocity", note.at("velocity")},
+                         {"position_samples", note.at("position_samples")},
+                         {"length_samples", note.at("length_samples")}});
+    return {{"track", track["id"]},
+            {"clip", clip["id"]},
+            {"start_samples", clip["start_samples"]},
+            {"length_samples", clip["length_samples"]},
+            {"notes", notes}};
+}
 struct Note
 {
     int pitch;
@@ -178,6 +198,7 @@ void observe(Commands& c, ndaw::desktop::Workspace& w, Feed& feed, int64_t lengt
     wait([&] { return feed.observed.load() == nullptr; }, "observer drains on actual callback progress");
     feed.count = 0;
     feed.lastFrame = -1;
+    feed.voicedBlocks = 0;
     c.seek(start);
     feed.context = RecordingTestAccess::prepare(c);
     check(feed.context.load() != nullptr, "actual native graph is allocated before play");
@@ -203,6 +224,8 @@ void observe(Commands& c, ndaw::desktop::Workspace& w, Feed& feed, int64_t lengt
     const auto rows = feed.data();
     result[phase] = rows;
     check(!feed.overflow, "bounded native MIDI observer did not overflow");
+    result["voiced_blocks"][phase] = feed.voicedBlocks.load();
+    check(feed.voicedBlocks > 0, "paired production instrument generates actual audio during loop playback");
     int64_t maximumOnError = 0, maximumOffError = 0;
     bool allMatched = true;
     for (int pass = 0; pass < 8; ++pass)
@@ -237,6 +260,10 @@ void observe(Commands& c, ndaw::desktop::Workspace& w, Feed& feed, int64_t lengt
             }
     result["maximum_errors"][phase] = {{"on_frames", maximumOnError}, {"off_frames", maximumOffError}};
     check(allMatched, "every actual loop note event occurs once within the fixed one-frame budget");
+    const auto inRange = std::count_if(
+        rows.begin(), rows.end(), [&](const Json& row)
+        { return row["frame"].get<int64_t>() >= start && row["frame"].get<int64_t>() < start + 8 * length; });
+    check(inRange == 64, "eight complete passes contain exactly 64 note events without duplicates or leaks");
     for (const auto& row : rows)
         if (row["frame"].get<int64_t>() < start + 8 * length)
             check(row["offset"].get<int>() >= 0 && row["offset"].get<int>() < 256,
@@ -306,6 +333,19 @@ int main(int argc, char** argv)
                                                {"velocity", 80},
                                                {"position_samples", start + note.on},
                                                {"length_samples", note.length}}));
+        ops.push_back(op("track.create", {{"name", "Loop Audition"}, {"type", "instrument"}, {"ref", "$i"}}));
+        ops.push_back(op("track.gain", {{"track", "$i"}, {"db", -18.0}}));
+        ops.push_back(op("midi.clip.create", {{"track", "$i"},
+                                              {"name", "Audible boundary notes"},
+                                              {"ref", "$sound"},
+                                              {"position_samples", start},
+                                              {"length_samples", length + 512}}));
+        for (const auto& note : notes)
+            ops.push_back(op("midi.note.add", {{"clip", "$sound"},
+                                               {"pitch", note.pitch},
+                                               {"velocity", 80},
+                                               {"position_samples", start + note.on},
+                                               {"length_samples", note.length}}));
         ops.push_back(op("session.range.set", {{"start_samples", start}, {"end_samples", start + length}}));
         c.commit(c.makePlan("human", ops));
         key(w, 113);
@@ -320,12 +360,23 @@ int main(int argc, char** argv)
         observe(c, w, feed, length, notes, "initial");
         const auto file = root.getChildFile("Loop-Output.tracktionedit");
         const auto originalXml = RecordingTestAccess::clipXml(c);
+        const auto original = sampleFacts(c);
         result["save"] = c.saveAs(file);
         c.open(file);
         result["clip_before_save"] = originalXml;
         result["clip_after_open"] = RecordingTestAccess::clipXml(c);
-        check(RecordingTestAccess::clipXml(c) == originalXml && c.query()["transport_settings"]["loop_enabled"],
-              "actual file reopen preserves native notes and enabled loop");
+        result["native_xml_equal"] = RecordingTestAccess::clipXml(c) == originalXml;
+        result["sample_facts_before"] = original;
+        result["sample_facts_after"] = sampleFacts(c);
+        check(sampleFacts(c) == original && c.query()["transport_settings"]["loop_enabled"],
+              "actual file reopen preserves IDs, integer note geometry, values and enabled loop");
+        key(w, 6);
+        wait([&] { return !c.query()["transport_settings"]["loop_enabled"].get<bool>(); },
+             "original loop Undo survives actual file reopen");
+        key(w, 7);
+        wait([&] { return c.query()["transport_settings"]["loop_enabled"].get<bool>(); },
+             "original loop Redo survives actual file reopen");
+        check(sampleFacts(c) == original, "reopened original Undo/Redo retains every integer MIDI note fact");
         observe(c, w, feed, length, notes, "reopened");
         result["result"] = "passed";
         result["scope"] =

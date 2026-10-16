@@ -12,32 +12,43 @@ index 67376c2..312ffcc 100644
  
      //==============================================================================
 diff --git a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
-index 66062ce..fd70949 100644
+index 66062ce..4eddfaf 100644
 --- a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
-@@ -392,6 +392,12 @@ struct EditPlaybackContext::NodePlaybackContext
+@@ -179,7 +179,11 @@ struct EditPlaybackContext::NodePlaybackContext
+                 const auto syncRange = processState.getSyncRange();
+                 const auto editTime = syncRange.start.time;
+                 editPlaybackContext.edit.updateModifierTimers (editTime, static_cast<int> (getNumSamples (syncRange)));
+-                editPlaybackContext.midiDispatcher.masterTimeUpdate (editTime);
++                // MIDI output queues use one continuous clock across loop folds.
++                const auto midiTime = TimePosition::fromSamples (
++                    playHead.referenceSamplePositionToTimelinePositionUnlooped (
++                        playHead.getReferenceSampleRange().getStart()), getSampleRate());
++                editPlaybackContext.midiDispatcher.masterTimeUpdate (midiTime);
+ 
+                #if TRACKTION_ENABLE_ABLETON_LINK
+                 editPlaybackContext.edit.getAbletonLink().syncronise (editTime);
+@@ -392,6 +396,11 @@ struct EditPlaybackContext::NodePlaybackContext
              }
          }
  
 +        // The player can split this device block at Tempo/processing boundaries.
-+        // MIDI timestamps injected by those pieces are absolute Edit times; dispatch
-+        // must subtract the device-block origin, not the final piece's SyncRange.
-+        const auto midiTimeline = referenceSampleRangeToSplitTimelineRange (playHead, referenceSampleRange);
-+        midiBlockOrigin = TimePosition::fromSamples (midiTimeline.timelineRange1.getStart(), getSampleRate());
-+        midiBlockWraps = midiTimeline.isSplit;
++        // MIDI output uses unlooped times; subtract the complete device-block
++        // origin rather than the last Tempo/loop subrange's SyncRange.
++        midiBlockOrigin = TimePosition::fromSamples (
++            playHead.referenceSamplePositionToTimelinePositionUnlooped (referenceSampleRange.getStart()), getSampleRate());
          scratchMidiBuffer.clear();
  
          if (isUsingInterpolator || destNumSamples != (int) numSamplesToProcess)
-@@ -446,6 +452,8 @@ struct EditPlaybackContext::NodePlaybackContext
+@@ -446,6 +455,7 @@ struct EditPlaybackContext::NodePlaybackContext
      tracktion::graph::PlayHead playHead;
      tracktion::graph::PlayHeadState playHeadState { playHead };
      ProcessState processState { playHeadState, tempoSequence };
 +    TimePosition midiBlockOrigin;
-+    bool midiBlockWraps = false;
  
  private:
      juce::AudioBuffer<float> scratchAudioBuffer;
-@@ -503,7 +511,7 @@ EditPlaybackContext::ScopedDeviceListReleaser::~ScopedDeviceListReleaser()
+@@ -503,7 +513,7 @@ EditPlaybackContext::ScopedDeviceListReleaser::~ScopedDeviceListReleaser()
  }
  
  //==============================================================================
@@ -46,7 +57,7 @@ index 66062ce..fd70949 100644
      : edit (tc.edit), transport (tc)
  {
      if (edit.isRendering())
-@@ -520,7 +528,7 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
+@@ -520,7 +530,7 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
          contextSyncroniser = std::make_unique<ContextSyncroniser>();
  
          // This ensures the referenceSampleRange of the new context has been synced
@@ -55,7 +66,7 @@ index 66062ce..fd70949 100644
  
          // Set the playhead position as early as possible so it doesn't revert to 0 in the TransportControl
          nodePlaybackContext->playHead.setPosition (toSamples (transport.getPosition(),
-@@ -689,6 +697,9 @@ void EditPlaybackContext::createNode()
+@@ -689,6 +699,9 @@ void EditPlaybackContext::createNode()
      cnp.readAheadTimeStretchNodes = engineBehaviour.enableReadAheadForTimeStretchNodes();
      cnp.insertOptionalLastStageNodeForDevice = insertOptionalLastStageNodeForDeviceCallback;
  
@@ -65,7 +76,7 @@ index 66062ce..fd70949 100644
      // Building the new graph initialises its plugins, so the old graph mustn't
      // still be processing them if that would re-run their initialise()
      nodePlaybackContext->clearNodeIfFormatChanged (cnp.sampleRate, cnp.blockSize);
-@@ -706,6 +717,11 @@ void EditPlaybackContext::setInsertOptionalLastStageNodeForDeviceCallback (std::
+@@ -706,6 +719,11 @@ void EditPlaybackContext::setInsertOptionalLastStageNodeForDeviceCallback (std::
      insertOptionalLastStageNodeForDeviceCallback = std::move (callback);
  }
  
@@ -77,16 +88,13 @@ index 66062ce..fd70949 100644
  void EditPlaybackContext::createPlayAudioNodes (TimePosition startTime)
  {
      createNode();
-@@ -999,7 +1015,11 @@ void EditPlaybackContext::fillNextNodeBlock (float* const* allChannels, int numC
+@@ -999,7 +1017,8 @@ void EditPlaybackContext::fillNextNodeBlock (float* const* allChannels, int numC
      nodePlaybackContext->process (allChannels, numChannels, numSamples);
  
      // Dispatch any MIDI messages that have been injected in to the MidiOutputDeviceInstances by the Node
 -    auto editTime = nodePlaybackContext->processState.getSyncRange().start.time;
-+    // Preserve existing loop-wrap dispatch until unlooped MIDI queue times are
-+    // qualified. A non-wrapping block has one unambiguous device origin.
-+    const auto editTime = nodePlaybackContext->midiBlockWraps
-+                            ? nodePlaybackContext->processState.getSyncRange().start.time
-+                            : nodePlaybackContext->midiBlockOrigin;
++    // Both graph pieces queue in the same unlooped clock, including a loop fold.
++    const auto editTime = nodePlaybackContext->midiBlockOrigin;
      midiDispatcher.dispatchPendingMessagesForDevices (editTime);
  }
  

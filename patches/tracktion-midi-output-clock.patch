@@ -1,0 +1,71 @@
+diff --git a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp
+index 6cc64fa..cd7ef96 100644
+--- a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp
++++ b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp
+@@ -668,12 +668,14 @@ void MidiOutputDeviceInstance::mergeInMidiMessages (const MidiMessageArray& sour
+     midiMessages.sortByTimestamp();
+ }
+ 
+-void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlaying, bool isDragging, TimeRange editTimeRange)
++void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlaying, bool isDragging, TimeRange editTimeRange,
++                                                                 TimePosition playoutTime)
+ {
+     auto& midiOut = getMidiOutput();
+ 
+     if (shouldSendMidiTimecode)
+     {
++        const auto firstClockMessage = midiMessages.size();
+         if (midiOut.sendTimecode)
+             timecodeGenerator->addMessages (isPlaying, isDragging,
+                                             &edit.getTransport(), midiMessages,
+@@ -685,6 +687,12 @@ void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlayin
+                                              &edit.getTransport(), midiMessages,
+                                              editTimeRange.getStart(),
+                                              editTimeRange.getLength());
++
++        // Generators append offsets relative to this graph piece. Do not retime
++        // any messages already queued by an earlier piece of the device block.
++        const auto offset = (playoutTime + midiOut.getDeviceDelay()).inSeconds();
++        for (int i = firstClockMessage; i < midiMessages.size(); ++i)
++            midiMessages[i].addToTimeStamp (offset);
+     }
+ }
+ 
+diff --git a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h
+index fe61020..3ed631f 100644
+--- a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h
++++ b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h
+@@ -145,7 +145,7 @@ public:
+     MidiOutputDevice& getMidiOutput() const noexcept     { return static_cast<MidiOutputDevice&> (owner); }
+ 
+     void mergeInMidiMessages (const MidiMessageArray&, TimePosition editTime);
+-    void addMidiClockMessagesToCurrentBlock (bool isPlaying, bool isDragging, TimeRange streamTime);
++    void addMidiClockMessagesToCurrentBlock (bool isPlaying, bool isDragging, TimeRange editTime, TimePosition playoutTime);
+     MidiMessageArray& getPendingMessages() { return midiMessages; }
+ 
+     // For MidiOutputDevices that aren't connected to a physical piece of hardware,
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp
+index 580821b..855620a 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp
+@@ -55,14 +55,17 @@ void MidiOutputDeviceInstanceInjectingNode::process (ProcessContext& pc)
+     assert (! timelineSampleRange.isSplit);
+     const auto editTimeRange = tracktion::timeRangeFromSamples (timelineSampleRange.timelineRange1, sampleRate);
+ 
+-    // Add MIDI clock for the current time to the device to be dispatched
+-    deviceInstance.addMidiClockMessagesToCurrentBlock (playHead.isPlaying(), playHead.isUserDragging(), editTimeRange);
++    // Musical clock contents follow the folded Edit, while all queued timestamps
++    // use a continuous playout clock so two pieces of a wrapping block coexist.
++    const auto midiTime = TimePosition::fromSamples (
++        playHead.referenceSamplePositionToTimelinePositionUnlooped (pc.referenceSampleRange.getStart()), sampleRate);
++    deviceInstance.addMidiClockMessagesToCurrentBlock (playHead.isPlaying(), playHead.isUserDragging(), editTimeRange, midiTime);
+ 
+     if (sourceBuffers.midi.isEmpty() && ! sourceBuffers.midi.isAllNotesOff)
+         return;
+ 
+     // Merge in the MIDI from the current block to the device to be dispatched
+-    deviceInstance.mergeInMidiMessages (sourceBuffers.midi, editTimeRange.getStart());
++    deviceInstance.mergeInMidiMessages (sourceBuffers.midi, midiTime);
+ }
+ 
+ } // namespace tracktion::inline engine
