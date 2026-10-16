@@ -306,26 +306,32 @@ Json facts(Commands& c)
 {
     const auto q = c.query();
     Json rows = Json::array();
-    for (const auto& track : q["tracks"])
+    for (const auto& track : q.at("tracks"))
     {
         Json clips = Json::array();
-        for (const auto& clip : track["clips"])
+        for (const auto& clip : track.at("clips"))
         {
             Json notes = Json::array();
-            for (const auto& note : clip["notes"])
-                notes.push_back({{"id", note["id"]},
-                                 {"pitch", note["pitch"]},
-                                 {"velocity", note["velocity"]},
-                                 {"position_samples", note["position_samples"]},
-                                 {"length_samples", note["length_samples"]}});
-            clips.push_back({{"id", clip["id"]},
-                             {"start", clip["start_samples"]},
-                             {"length", clip["length_samples"]},
+            for (const auto& note : clip.at("notes"))
+                notes.push_back({{"id", note.at("id")},
+                                 {"pitch", note.at("pitch")},
+                                 {"velocity", note.at("velocity")},
+                                 {"position_samples", note.at("position_samples")},
+                                 {"length_samples", note.at("length_samples")}});
+            Json controllers = Json::array();
+            for (const auto& event : clip.at("controller_events"))
+                controllers.push_back({{"id", event.at("id")},
+                                       {"type", event.at("type")},
+                                       {"raw_value", event.at("raw_value")},
+                                       {"position_samples", event.at("position_samples")}});
+            clips.push_back({{"id", clip.at("id")},
+                             {"start", clip.at("start_samples")},
+                             {"length", clip.at("length_samples")},
                              {"notes", notes},
-                             {"controllers", clip["controller_count"]},
-                             {"sysex", clip["sysex_count"]}});
+                             {"controllers", controllers},
+                             {"sysex", clip.at("sysex_count")}});
         }
-        rows.push_back({{"id", track["id"]}, {"playlists", track["playlists"]}, {"clips", clips}});
+        rows.push_back({{"id", track.at("id")}, {"playlists", track.at("playlists")}, {"clips", clips}});
     }
     return rows;
 }
@@ -470,7 +476,10 @@ int main(int argc, char** argv)
         Json args{{"track", tracks[0]}, {"name", "Linked recorded Comp"}, {"segments", segments}};
         const auto before = facts(c);
         auto plan = c.makePlan("human", Json::array({op("playlist.comp.linked.create", args)}));
-        check(c.preview(plan)["playlist_changes"][0]["linked_tracks"].size() == 2 && facts(c) == before,
+        const auto preview = c.preview(plan);
+        result["initial_preview"] = preview;
+        result["preview_state_diff"] = Json::diff(before, facts(c));
+        check(preview["playlist_changes"][0]["linked_tracks"].size() == 2 && facts(c) == before,
               "linked preview reports both actual tracks without changing playback or TARGET");
         Scope limited;
         limited.targets = {tracks[0]};
