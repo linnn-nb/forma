@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "PersistentHistory.h"
+#include "HistoryRuntime.h"
 #include "NativeEditXml.h"
 #include "NativeMidiNumbers.h"
 #include "NativePluginStates.h"
@@ -156,6 +157,7 @@ juce::ValueTree PersistentHistory::capture()
 {
     Commands::ParameterWriteGuard guard(owner);
     auto copy = withoutHistory(owner.edit->state);
+    history_runtime::project(copy);
     juce::ValueTree values("PARAMETER_BASES");
     // The pinned SDK enumerates ClipTrack plugins, then audio clip plugins
     // again. Only repeated references to the same native instance are aliases.
@@ -196,7 +198,19 @@ juce::ValueTree PersistentHistory::capture()
 }
 juce::ValueTree PersistentHistory::normalise(juce::ValueTree n)
 {
-    if (n.hasType("NATIVEDAW"))
+    if (n.hasType(te::IDs::EDIT) && !n.getParent().isValid())
+    {
+        n = n.createCopy();
+        for (const auto& name : history_runtime::rootProperties())
+            n.removeProperty(name, nullptr);
+    }
+    else if (n.hasType(te::IDs::TRANSPORT) && n.getParent().hasType(te::IDs::EDIT) &&
+             !n.getParent().getParent().isValid())
+    {
+        n = n.createCopy();
+        n.removeProperty(te::IDs::position, nullptr);
+    }
+    else if (n.hasType("NATIVEDAW"))
     {
         n = n.createCopy();
         n.removeProperty("revision", nullptr);
@@ -272,7 +286,8 @@ void PersistentHistory::parameterTouched(te::AutomatableParameter& p)
 }
 void PersistentHistory::valueTreePropertyChanged(juce::ValueTree& n, const juce::Identifier& property)
 {
-    if (excluded(n) || (n.hasType("NATIVEDAW") && property == juce::Identifier("revision")))
+    if (excluded(n) || history_runtime::property(observed, n, property) ||
+        (n.hasType("NATIVEDAW") && property == juce::Identifier("revision")))
         return;
     mark((property == te::IDs::id || property == juce::Identifier("ndaw_id") || property == juce::Identifier("plan_id"))
              ? n.getParent()
@@ -561,7 +576,7 @@ Json PersistentHistory::status() const
         bytes += size_t(step.data.getNumBytesAsUTF8());
     for (const auto& [_, block] : blocks)
         bytes += size_t(block.data.getNumBytesAsUTF8());
-    return {{"schema", 2},
+    return {{"schema", 3},
             {"retained_steps", steps.size()},
             {"maximum_steps", maximumSteps},
             {"maximum_bytes", maximumBytes},
@@ -572,6 +587,7 @@ Json PersistentHistory::status() const
 project_document::Requirements PersistentHistory::requirements() const
 {
     project_document::Requirements result;
+    result["history.runtime-boundary"] = 1;
     project_document::collect(mirror, result);
     for (const auto& step : steps)
         project_document::collect(step.delta, result);
@@ -585,9 +601,11 @@ juce::ValueTree PersistentHistory::save()
     require(steps.size() == owner.history.size(), "persistent history boundary is missing");
     require(status()["encoded_bytes"].get<size_t>() <= maximumBytes, "one transaction exceeds 32 MiB history budget");
     auto saved = mirror.createCopy();
+    // Persist the actual cursor/change time, but never make them Undo actions.
+    history_runtime::overlay(observed, saved);
     auto currentData = serialise(saved);
     juce::ValueTree archive("PERSISTENT_HISTORY");
-    archive.setProperty("schema", 2, nullptr);
+    archive.setProperty("schema", 3, nullptr);
     archive.setProperty("cursor", int(owner.historyCursor), nullptr);
     archive.setProperty("discarded", juce::int64(discarded), nullptr);
     archive.setProperty("current_hash", juce::String(digest(currentData)), nullptr);
@@ -627,7 +645,7 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
     result.current = withoutHistory(current);
     resolveSources(result.current, file);
     const int schema = int(archive["schema"]), cursor = int(archive["cursor"]);
-    require(schema == 1 || schema == 2, "invalid persistent history schema");
+    require(schema == 1 || schema == 2 || schema == 3, "invalid persistent history schema");
     size_t total = 0;
     std::set<std::string> ids;
     auto validateID = [&](const juce::ValueTree& step)
@@ -735,6 +753,22 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
     project_document::validate(result.requirements);
     require(cursor >= 0 && size_t(cursor) <= result.deltas.size(), "invalid persistent history cursor");
     result.cursor = size_t(cursor);
+    // v3 hashes still bind the complete saved Edit, including its runtime
+    // values. Only the replay chain is an editing-state projection. Legacy
+    // chains must pass their original, unfiltered validation before migration.
+    auto projectArchive = [&]
+    {
+        history_runtime::project(result.current);
+        for (auto delta : result.deltas)
+        {
+            auto original = schema == 3 ? delta.createCopy() : juce::ValueTree{};
+            history_runtime::projectDelta(delta);
+            if (schema == 3)
+                require(delta.isEquivalentTo(original), "runtime property in v3 edit history");
+        }
+    };
+    if (schema == 3)
+        projectArchive();
     // Validate every stored path/structural operation on one detached Edit before adoption.
     auto validation = result.current.createCopy();
     for (size_t i = result.cursor; i > 0; --i)
@@ -747,11 +781,17 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
     const auto b = juce::ValueTree::fromXml(*preciseEditXml(result.current));
     if (!a.isEquivalentTo(b))
         throw std::runtime_error("persistent delta chain does not restore current Edit: " + mismatch(a, b));
+    if (schema < 3)
+        projectArchive();
     // Validate the untouched serialized bytes first. Native NOTE construction
     // and restored property actions must then see correctly rounded doubles.
     native_midi_numbers::prepareEdit(result.current);
+    history_runtime::prepareBases(result.current);
     for (auto delta : result.deltas)
+    {
         native_midi_numbers::prepareDelta(delta);
+        history_runtime::prepareDeltaBases(delta);
+    }
     highWater(result.current, result.highestID);
     return result;
 }
@@ -912,7 +952,17 @@ void PersistentHistory::restore(const juce::ValueTree& delta, bool forward)
                                         plugin->state)
                                     curve.clear(nullptr);
                 }
+    juce::ValueTree runtime("EDIT");
+    for (const auto& name : history_runtime::rootProperties())
+        history_runtime::copyProperty(observed, runtime, name);
+    for (auto child : observed)
+        if (child.hasType(te::IDs::TRANSPORT))
+        {
+            auto value = child.createCopy();
+            runtime.addChild(value, -1, nullptr);
+        }
     history_delta::apply(observed, delta, forward, reconcile);
+    history_runtime::overlay(runtime, observed);
     for (const auto& id : opaque)
         if (auto* plugin = findPlugin(*owner.edit, id))
         {

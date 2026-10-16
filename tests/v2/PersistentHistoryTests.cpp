@@ -631,7 +631,7 @@ void legacySong(const juce::File& source, const juce::File& dir)
     auto saved = ndaw::v2::project_fixture::nativeXml(file);
     auto history =
         juce::ValueTree::fromXml(*saved).getChildWithName("NATIVEDAW").getChildWithName("PERSISTENT_HISTORY");
-    check(int(history["schema"]) == 2, "explicit Save Copy converts schema1 into schema2");
+    check(int(history["schema"]) == 3, "explicit Save Copy converts schema1 into checked runtime-separated schema3");
     c.open(file);
     pump();
     const auto reopenedIdentities = PerformanceTestAccess::nativeIdentities(c);

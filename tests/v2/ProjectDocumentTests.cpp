@@ -145,8 +145,9 @@ int main(int argc, char** argv)
         const std::string clip = c.query()["tracks"][0]["clips"][0]["id"];
         const auto plain = root.getChildFile("Simple.tracktionedit");
         const auto plainReceipt = c.save(plain);
-        check(!plainReceipt["protected_format"].get<bool>() && juce::parseXML(plain)->hasTagName("EDIT"),
-              "simple native project remains readable by established native readers");
+        check(plainReceipt["protected_format"].get<bool>() && juce::parseXML(plain)->hasTagName("FORMA_PROJECT") &&
+                  plainReceipt["required_capabilities"]["history.runtime-boundary"] == 1,
+              "simple project declares its runtime-separated history so older readers cannot mis-replay it");
         auto anchors = c.warpClip(clip)["anchors"];
         anchors.insert(
             anchors.begin() + 1,

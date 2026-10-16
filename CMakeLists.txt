@@ -383,6 +383,13 @@ target_link_libraries(ndaw_persistent_history_tests PRIVATE ndaw_ui)
 add_test(NAME forma_persistent_native_history COMMAND ndaw_persistent_history_tests "${CMAKE_BINARY_DIR}/persistent-history-tests.json")
 set_tests_properties(forma_persistent_native_history PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
+juce_add_console_app(ndaw_history_runtime_tests PRODUCT_NAME "ndaw_history_runtime_tests")
+target_sources(ndaw_history_runtime_tests PRIVATE tests/v2/HistoryRuntimeTests.cpp)
+target_include_directories(ndaw_history_runtime_tests PRIVATE src/v2)
+target_link_libraries(ndaw_history_runtime_tests PRIVATE ndaw_engine)
+add_test(NAME forma_history_runtime_boundary COMMAND ndaw_history_runtime_tests "${CMAKE_BINARY_DIR}/history-runtime-tests.json")
+set_tests_properties(forma_history_runtime_boundary PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+
 juce_add_console_app(ndaw_audio_import_tests PRODUCT_NAME "ndaw_audio_import_tests")
 target_sources(ndaw_audio_import_tests PRIVATE tests/v2/AudioImportDestinationTests.cpp)
 target_include_directories(ndaw_audio_import_tests PRIVATE src/v2)

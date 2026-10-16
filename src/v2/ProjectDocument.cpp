@@ -78,12 +78,19 @@ const Requirements& supported()
         {"audio.warp.mapping", 2},       {"audio.elastic.source", 1}, {"audio.elastic.proxy-window", 1},
         {"audio.clipfx.full-input", 1},  {"audio.fade.inherited", 1}, {"midi.sample-origin", 1},
         {"playlist.comp.provenance", 1}, {"midi.loop-capture", 1},    {"midi.punch-capture", 1},
-        {"midi.playlist-editing", 1},    {"midi.linked-comp", 1}};
+        {"midi.playlist-editing", 1},    {"midi.linked-comp", 1},     {"history.runtime-boundary", 1}};
     return features;
 }
 void collect(juce::ValueTree node, Requirements& out)
 {
-    if (node.hasType("PLUGIN") || node.hasType("PERSISTENT_HISTORY"))
+    if (node.hasType("PERSISTENT_HISTORY"))
+    {
+        const auto schema = version(node["schema"]);
+        if (schema >= 3)
+            add(out, "history.runtime-boundary", schema - 2);
+        return; // Encoded entries are checked by PersistentHistory, not opaque text traversal.
+    }
+    if (node.hasType("PLUGIN"))
         return;
     descriptor(node.getType().toString(), node, out);
     if (node.hasType("CHANGE"))
