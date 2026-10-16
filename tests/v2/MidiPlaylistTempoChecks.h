@@ -113,8 +113,7 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
 {
     auto& c = RecordingTestAccess::commands(w);
     const auto original = tempoFrame(c);
-    auto added = run(c, "plugin.insert",
-                     {{"track", tracks[0]}, {"type", te::EqualiserPlugin::xmlTypeName}, {"ref", "$mapped-eq"}});
+    auto added = run(c, "plugin.insert", {{"track", tracks[0]}, {"type", te::EqualiserPlugin::xmlTypeName}});
     Json points = Json::array();
     for (const auto& t : tracks)
     {

@@ -757,7 +757,10 @@ Json Commands::validateMusicPlan(const Json& operations) const
             const auto previousSequence = seq;
             seq = sequence();
             if (midiTempo)
+            {
                 diff.back()["midi_remap"] = midiTempo->preview(seq);
+                diff.back()["automation_remap"] = midiTempo->automationPreview(seq);
+            }
             for (auto& [_, c] : clips)
                 if (!c.beats)
                 {
@@ -820,7 +823,10 @@ Json Commands::validateMusicPlan(const Json& operations) const
             const auto previousSequence = seq;
             seq = sequence();
             if (midiTempo)
-                diff.push_back({{"command", cmd}, {"after", a}, {"midi_remap", midiTempo->preview(seq)}});
+                diff.push_back({{"command", cmd},
+                                {"after", a},
+                                {"midi_remap", midiTempo->preview(seq)},
+                                {"automation_remap", midiTempo->automationPreview(seq)}});
             for (auto& [_, c] : clips)
                 if (!c.beats)
                 {

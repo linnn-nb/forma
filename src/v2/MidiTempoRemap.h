@@ -15,6 +15,7 @@ public:
         return rows.empty();
     }
     nlohmann::json preview(const Sequence&) const;
+    nlohmann::json automationPreview(const Sequence&) const;
     void apply(const Sequence&) const;
 
 private:
@@ -32,9 +33,17 @@ private:
         bool changed = false;
     };
     std::vector<Change> prepare(const Sequence&) const;
+    struct Curve
+    {
+        juce::ValueTree live, original;
+        std::string parameter;
+        bool musical = false, remap = false;
+    };
+    std::vector<juce::ValueTree> prepareCurves(const Sequence&) const;
     tracktion::engine::Edit& edit;
     Sequence before;
     std::string tempoHash;
     std::vector<Row> rows;
+    std::vector<Curve> curves;
 };
 } // namespace ndaw::v2::midi_tempo

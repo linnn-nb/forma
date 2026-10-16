@@ -132,6 +132,72 @@ Snapshot::Snapshot(te::Edit& e, const Sequence& sequence) : edit(e), before(sequ
                 for (auto state : list)
                     append(state, list, false);
     }
+    std::set<te::Plugin*> visited;
+    auto appendCurves = [&](te::Track& track)
+    {
+        for (auto* plugin : track.pluginList)
+            if (visited.insert(plugin).second)
+                for (auto* parameter : plugin->getAutomatableParameters())
+                {
+                    auto& curve = parameter->getCurve();
+                    if (!curve.getNumPoints())
+                        continue;
+                    juce::MemoryOutputStream encoded;
+                    curve.state.writeToStream(encoded);
+                    bytes += encoded.getDataSize();
+                    require(bytes <= 64 * 1024 * 1024, "MIDI and automation Tempo preparation exceeds 64 MiB");
+                    curves.push_back(
+                        {curve.state, curve.state.createCopy(),
+                         parameter->getOwnerID().toString().toStdString() + "::" + parameter->paramID.toStdString(),
+                         curve.timeBase == te::AutomationCurve::TimeBase::beats,
+                         parameter->automatableEditElement.remapOnTempoChange.get()});
+                }
+    };
+    for (auto* track : te::getAllTracks(edit))
+        appendCurves(*track);
+    appendCurves(*edit.getMasterTrack());
+}
+std::vector<juce::ValueTree> Snapshot::prepareCurves(const Sequence& destination) const
+{
+    thread();
+    std::vector<juce::ValueTree> result;
+    for (const auto& curve : curves)
+    {
+        auto after = curve.original.createCopy();
+        if (!curve.musical && curve.remap)
+            for (auto point : after)
+            {
+                const double raw = point[te::IDs::t], beat = beats(before, raw), mapped = seconds(destination, beat);
+                require(std::isfinite(raw) && std::isfinite(mapped) && mapped >= 0 && mapped <= te::Edit::maximumLength,
+                        "automation Tempo position outside native bounds");
+                if (mapped != seconds(before, beat))
+                    point.setProperty(te::IDs::t, mapped, nullptr);
+            }
+        result.push_back(after);
+    }
+    return result;
+}
+Json Snapshot::automationPreview(const Sequence& destination) const
+{
+    const auto after = prepareCurves(destination);
+    Json result = Json::array();
+    for (size_t i = 0; i < curves.size(); ++i)
+    {
+        Json oldPoints = Json::array(), newPoints = Json::array();
+        for (auto p : curves[i].original)
+            oldPoints.push_back(curves[i].musical ? sample(seconds(before, double(p[te::IDs::t])))
+                                                  : sample(double(p[te::IDs::t])));
+        for (auto p : after[i])
+            newPoints.push_back(curves[i].musical ? sample(seconds(destination, double(p[te::IDs::t])))
+                                                  : sample(double(p[te::IDs::t])));
+        result.push_back({{"parameter", curves[i].parameter},
+                          {"policy", curves[i].musical ? "native_beats"
+                                     : curves[i].remap ? "native_tempo_remap"
+                                                       : "fixed_seconds"},
+                          {"before_samples", oldPoints},
+                          {"after_samples", newPoints}});
+    }
+    return result;
 }
 std::vector<Snapshot::Change> Snapshot::prepare(const Sequence& destination) const
 {
@@ -249,6 +315,7 @@ Json Snapshot::preview(const Sequence& destination) const
 void Snapshot::apply(const Sequence& destination) const
 {
     const auto changes = prepare(destination);
+    const auto mappedCurves = prepareCurves(destination);
     auto& undo = edit.getUndoManager();
     for (size_t i = 0; i < rows.size(); ++i)
     {
@@ -272,6 +339,8 @@ void Snapshot::apply(const Sequence& destination) const
         if (const auto set = text(row.list, "linked_set"); !set.empty() && sets.insert(set).second)
             for (auto [track, list] : playlist_links::members(edit, row.list))
                 list.setProperty("linked_layout", juce::String(playlist_links::layout(*track, list).dump()), &undo);
+    for (size_t i = 0; i < curves.size(); ++i)
+        properties(curves[i].live, mappedCurves[i], undo);
     validatePlaylists(edit);
 }
 } // namespace ndaw::v2::midi_tempo
