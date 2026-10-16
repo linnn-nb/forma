@@ -1,8 +1,13 @@
 #include <nativedaw/v2/EngineCommands.h>
 #include <nativedaw/v2/PluginScanning.h>
+#include "CliOutput.h"
 #include <iostream>
 #include <fstream>
 using namespace ndaw::v2;
+namespace
+{
+cli::Output* output = nullptr; // Owned by main, including full JUCE shutdown.
+}
 // The device qualifier uses the same JUCE application lifecycle and message loop as the desktop app.
 class ConsoleApplication final : public juce::JUCEApplication, private juce::Timer
 {
@@ -25,16 +30,24 @@ public:
         {
             args = getCommandLineParameterArray();
             const auto command = args.isEmpty() ? juce::String("probe") : args[0];
+            const auto accepts = [&](const char* name, int count) { return command == name && args.size() == count; };
+            if (!(args.isEmpty() || accepts("commands", 1) || accepts("probe", 1) || accepts("devices", 1) ||
+                  accepts("analyse", 2) || accepts("inspect", 2) || accepts("legacy-preview", 2) ||
+                  accepts("legacy-import", 3) || accepts("render", 4) || accepts("play", 3) ||
+                  accepts("plugin-discover", 1) || accepts("plugin-scan", 3) ||
+                  (accepts("plugin-scan", 4) && args[3] == "--force")))
+            {
+                usage();
+                return;
+            }
             if (command == "commands")
             {
-                std::cout << Commands::registry().dump(2) << "\n";
-                finish(0);
+                complete(Commands::registry(), 0);
                 return;
             }
             if (command == "analyse" && args.size() == 2)
             {
-                std::cout << Commands::analyse(juce::File(args[1])).dump(2) << "\n";
-                finish(0);
+                complete(Commands::analyse(juce::File(args[1])), 0);
                 return;
             }
             if ((command == "plugin-discover" && args.size() == 1) ||
@@ -44,29 +57,26 @@ public:
                 auto result = command == "plugin-discover" ? library.discover()
                                                            : library.scan(args[1].toStdString(), args[2].toStdString(),
                                                                           args.size() == 4 && args[3] == "--force");
-                std::cout << result.dump(2) << "\n";
                 const std::string state = result["status"];
-                finish(state == "succeeded" || state == "verified" || state == "cached_verified_scan" ? 0 : 1);
+                complete(result,
+                         state == "succeeded" || state == "verified" || state == "cached_verified_scan" ? 0 : 1);
                 return;
             }
             commands = std::make_unique<Commands>(command == "play" || command == "devices");
             if (command == "devices")
             {
-                std::cout << commands->deviceStatus().dump(2) << "\n";
-                finish(0);
+                complete(commands->deviceStatus(), 0);
                 return;
             }
             if (command == "probe")
             {
-                std::cout << commands->query().dump(2) << "\n";
-                finish(0);
+                complete(commands->query(), 0);
                 return;
             }
             if (command == "inspect" && args.size() == 2)
             {
                 commands->open(juce::File(args[1]));
-                std::cout << commands->query().dump(2) << "\n";
-                finish(0);
+                complete(commands->query(), 0);
                 return;
             }
             if ((command == "legacy-preview" && args.size() == 2) || (command == "legacy-import" && args.size() == 3))
@@ -76,30 +86,33 @@ public:
                 auto preview = commands->preview(p);
                 if (command == "legacy-preview")
                 {
-                    std::cout << preview.dump(2) << "\n";
-                    finish(0);
+                    complete(preview, 0);
                     return;
                 }
                 if (juce::File(args[2]).exists())
                     throw std::runtime_error("destination exists; choose a new path");
                 auto receipt = commands->commit(p), save = commands->save(juce::File(args[2]));
-                std::cout << Json{{"receipt", receipt}, {"save", save}, {"reports", commands->legacyReports()}}.dump(2)
-                          << "\n";
-                finish(0);
+                complete(Json{{"receipt", receipt}, {"save", save}, {"reports", commands->legacyReports()}}, 0);
                 return;
             }
             if ((command == "render" && args.size() == 4) || (command == "play" && args.size() == 3))
             {
+                double gain = -12.;
+                if (command == "render")
+                {
+                    const auto text = args[3].toStdString();
+                    size_t consumed = 0;
+                    gain = std::stod(text, &consumed);
+                    if (consumed != text.size() || !std::isfinite(gain))
+                        throw std::runtime_error("GAIN_DB must be one finite number");
+                }
                 auto p = commands->makePlan(
                     "human",
                     Json::array(
                         {{{"command", "track.create"}, {"args", {{"name", "Imported audio"}, {"ref", "$audio"}}}},
                          {{"command", "clip.import"},
                           {"args", {{"track", "$audio"}, {"path", args[1].toStdString()}, {"position_samples", 0}}}},
-                         {{"command", "track.gain"},
-                          {"args",
-                           {{"track", "$audio"},
-                            {"db", args.size() == 4 ? std::stod(args[3].toStdString()) : -12.0}}}}}));
+                         {{"command", "track.gain"}, {"args", {{"track", "$audio"}, {"db", gain}}}}}));
                 auto preview = commands->preview(p), receipt = commands->commit(p);
                 if (command == "play")
                 {
@@ -107,14 +120,10 @@ public:
                     return;
                 }
                 auto result = commands->render(juce::File(args[2]), 0, commands->query().at("length_samples"));
-                std::cout << Json{{"preview", preview}, {"receipt", receipt}, {"render", result}}.dump(2) << "\n";
-                finish(0);
+                complete(Json{{"preview", preview}, {"receipt", receipt}, {"render", result}}, 0);
                 return;
             }
-            std::cerr << "Usage: ndaw [probe|devices|commands|analyse AUDIO|render AUDIO OUTPUT.wav GAIN_DB|play AUDIO "
-                         "REPORT.json|inspect PROJECT|legacy-preview OLD.ndaw|legacy-import OLD.ndaw "
-                         "NEW.tracktionedit]\n";
-            finish(2);
+            usage();
         }
         catch (const std::exception& e)
         {
@@ -128,15 +137,26 @@ public:
     }
 
 private:
-    void finish(int result)
+    void usage()
     {
+        const std::string text =
+            "Usage: ndaw [probe|devices|commands|analyse AUDIO|render AUDIO OUTPUT.wav GAIN_DB|play AUDIO REPORT.json|"
+            "inspect PROJECT|legacy-preview OLD.ndaw|legacy-import OLD.ndaw NEW.tracktionedit|plugin-discover|"
+            "plugin-scan FORMAT PATH [--force]]";
+        std::cerr << text << '\n';
+        complete({{"status", "failed"}, {"code", "usage"}, {"error", text}}, 2);
+    }
+    void complete(Json value, int result)
+    {
+        stopTimer();
+        output->result(std::move(value), result);
         setApplicationReturnValue(result);
         quit();
     }
     void fail(const std::exception& e)
     {
-        std::cerr << Json{{"status", "failed"}, {"error", e.what()}}.dump() << "\n";
-        finish(1);
+        std::cerr << "ndaw: " << e.what() << '\n';
+        complete({{"status", "failed"}, {"error", e.what()}}, 1);
     }
     void timerCallback() override
     {
@@ -172,8 +192,7 @@ private:
             report.close();
             if (!report)
                 throw std::runtime_error("report write failed");
-            std::cout << result.dump(2) << "\n";
-            finish(passed ? 0 : 1);
+            complete(result, passed ? 0 : 1);
         }
         catch (const std::exception& e)
         {
@@ -186,4 +205,21 @@ private:
     double began = 0;
     bool started = false;
 };
-START_JUCE_APPLICATION(ConsoleApplication)
+JUCE_CREATE_APPLICATION_DEFINE(ConsoleApplication)
+JUCE_MAIN_FUNCTION
+{
+    try
+    {
+        cli::Output channel;
+        output = &channel;
+        juce::JUCEApplicationBase::createInstance = &juce_CreateApplication;
+        const auto result = juce::JUCEApplicationBase::main(JUCE_MAIN_FUNCTION_ARGS);
+        output = nullptr;
+        return channel.finish(result);
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "ndaw: " << error.what() << '\n';
+        return 74;
+    }
+}
