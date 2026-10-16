@@ -1,3 +1,5 @@
+2026-10-16 多轨专项预算（执行前）：同一48k/256生产hosted输入实际同步录入两轨原Main，再分别跑Loop与Punch，真实来源/CC/Pitch/SysEx进入关联候选、整组选用/恢复与分段试听、原Main及已关联TARGET的整组局部采用；GUI范围1帧、输入256帧、UI5秒、捕获15秒、渲染10秒、CTest每例120秒。原Undo/Redo、幂等/权限/锁定负例、Redo-only与冷重开/格式能力、实际键与WAV同时验证。原生NOTE末位、实体设备/听评/RT资源不由此推断，未执行不报通过。
+
 # MIDI Playlist / Comp
 
 MIDI 和 Instrument 使用同一组原生 Playlist 命令与快捷键。候选保留原播放列表、目标列表和来源；Promote 只替换选中的工程区间，两侧原演奏保留。结果仍为原生 MIDI，钢琴卷帘可继续编辑。当前真实验证以 VERIFICATION.md 为准，不能把代码接通当成完整 P1。

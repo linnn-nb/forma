@@ -1003,7 +1003,7 @@ Json Commands::preview(const Json& plan) const
             const auto& type = schema.at("properties").at(it.key()).at("type");
             require((type == "string" && it->is_string()) || (type == "integer" && it->is_number_integer()) ||
                         (type == "number" && it->is_number()) || (type == "boolean" && it->is_boolean()) ||
-                        (type == "array" && it->is_array()),
+                        (type == "array" && it->is_array()) || (type == "object" && it->is_object()),
                     "parameter type mismatch");
             const auto& property = schema.at("properties").at(it.key());
             if (it->is_number())
