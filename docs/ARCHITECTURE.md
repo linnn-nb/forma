@@ -1,3 +1,5 @@
+2026-10-16 短Loop：L1 RecordingCommands按当前设备采样率/缓冲校验范围并返回loop_capture_constraints，Audio/MIDI Take构建只保留有效正范围。既有scrub-context补丁在原生Transport/message thread对本产品连续源策略放开两秒门槛，仍限制单块最多一次折返和原生50采样门槛；无新增RT回调工作或引擎。MIDI v1来源数字指纹在非RT用classic-locale标准读取原XML，保留原SHA算法/字节/版本，修复JUCE显示解析的末位误差。RecordingPanel读取同一阈值，实际125/128/500/512ms混合录音/空圈/隔离乐器/历史/保存资格见MIDI_LOOP_WORKFLOW.md与VERIFICATION.md。
+
 2026-10-16 Punch/候选与默认键：P1-MIDI-PUNCH-COMP-03使用同一production hosted捕获、原L1 Promote/Undo与原生试听组合，完整来源/事件/历史及真实WAV已执行，不增加引擎、SDK或实时处理。L5注册表的琴键268/269改CtrlOptionShift↑/↓，轨高172/173原键保持；restoreShortcuts只迁移双方确实重复的旧默认，规范化仍经L1 UI子树保存。实际几何/保存迁移41项通过，OS前台捕获失败保留；边界见VERIFICATION.md。
 
 2026-10-16 录音候选局部采用：L5 PlaylistPanel 的命令580只冻结所选草稿段并调用既有L1 playlist.promote；不直接写Edit。新按钮与可改键受实际候选/目标锁定、单轨、关联状态和试听/播放守卫约束；提交沿用一Plan一原UndoManager事务及revision失效。521按事实禁止重复登记自动Take。候选导航沿用原生试听，无新引擎/SDK/服务/实时处理；当前完整来源/声音/持久化资格见MIDI_COMP_WORKFLOW.md和VERIFICATION.md。

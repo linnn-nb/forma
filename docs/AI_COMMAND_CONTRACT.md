@@ -1,3 +1,5 @@
+2026-10-16 本地recordingReadiness新增只读loop_capture_constraints：device_sample_rate、buffer_frames、range_device_frames、minimum_device_frames，单位是实际设备样本，不是工程固定48k采样。minimum=max(51,buffer+1)，录音前严格复核；没有扩大Agent录音/文件写权限或新增MCP工具。MIDI v1原始来源Hash算法/字段不变，XML数字标准读取修复不重写来源或伪造新录音成功。Playlist仍独立Plan，声音隔离的track.mute与Take选择分别提交；每项原Undo不混同文件副作用。实际回执/范围见VERIFICATION.md。
+
 2026-10-16 Punch候选组合没有新Agent命令、权限或参数：实际完整Take/原始来源进入既有playlistAudition与playlist.promote，保存重开保留原Plan/Undo，CC/SysEx完整SEQ和来源SHA不变。默认键268/269与172/173分离只影响L5分派及原UI键图，不新增Edit事务或MCP能力；OS前台失败不得绕过保护或用旧成功回执。P1-MIDI-PUNCH-COMP-03与U-P0-SHORTCUT-02的真实终态见VERIFICATION.md。
 
 2026-10-16 录音候选：GUI命令580映射原playlist.promote，参数为既有track/source/target/clip/start_samples/end_samples，源于所选候选段；保留human身份、实际session/revision、媒体/完整MIDI状态校验、权限与原幂等/Undo。没有新增MCP权限或域命令。接受后的版本通知清空未提交草稿；试听、定位和文件写入不伪称可撤销编辑。GUI521只为尚无take_id且未锁定的源片段启用，L1重复登记拒绝仍保留。P1-MIDI-TAKE-02代码/测试/操作见MIDI_COMP_WORKFLOW.md。

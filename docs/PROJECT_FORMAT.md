@@ -1,3 +1,5 @@
+2026-10-16 短Loop不引入新持久字段/能力：既有midi.loop-capture v1的正长度Take、空SEQUENCE、源圈号/时间/SHA和原历史保持。新验收覆盖125/128/500/512ms、空中间圈、精确原始NoteOff圈末和Redo-only冷重开。来源Hash的数字算法不变；XML17位字符串经标准正确舍入读回，修复原JUCE var显示解析造成的末位Hash误差。原Main完整精确XML与整数样本/身份严格比较，三项派生拍数差异单列；具体证据见VERIFICATION.md。
+
 2026-10-16 Punch Take局部候选组合实测200项：完整NDAW_MIDI_PUNCH_SOURCE/TAKE、原Punch Playlist/CC/SysEx、窗口和原Undo/Redo冷重开保持。沿用midi.punch-capture v1、midi.playlist-editing v1及Comp来源能力，不新增格式。两组旧重复琴键默认只在真实读取的键图双方都重复时迁移，并持久化规范图；唯一自定义与明确解绑的真实Save/Open已有专项，未把未提交草稿保存为工程对象。
 
 2026-10-16 录音候选局部提升没有新增格式/能力：仍使用midi.playlist-editing v1、原Loop来源与Comp provenance。新增专项实际保存并冷重开普通登记Take、录得Loop来源、接受窗口/完整SEQ和原Undo/Redo；源树比较按活动列表在轨道下的实际片段与非活动存储片段统一取只读快照，精确XML比较不混用加载前后var类型。GUI自定义键580随原UI子树保存，未提交候选草稿不保存；证据见VERIFICATION.md。
