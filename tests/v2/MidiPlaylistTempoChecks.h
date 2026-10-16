@@ -1,0 +1,250 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Included after the recorded MIDI and whole-group GUI helpers.
+namespace
+{
+double midiNumber(juce::var v)
+{
+    return v.isString() ? std::stod(v.toString().toStdString()) : double(v);
+}
+double originalBeat(double seconds)
+{
+    return seconds <= 2 ? seconds * 2 : 4 + (seconds - 2) * 1.5;
+}
+double mappedSeconds(double beat, double bpm, bool eighth = false)
+{
+    const double scale = eighth ? .5 : 1.;
+    return scale * (beat <= 4 ? beat * 60 / bpm : 4 * 60 / bpm + (beat - 4) * 2 / 3);
+}
+Json midiRows(Commands& c)
+{
+    Json result = Json::object();
+    const auto root = RecordingTestAccess::state(c);
+    for (auto track : root)
+        if (track.hasType("TRACK"))
+        {
+            auto append = [&](juce::ValueTree clip, const std::string& playlist)
+            {
+                if (!clip.hasType("MIDICLIP"))
+                    return;
+                Json events = Json::array();
+                for (auto event : clip.getChildWithName("SEQUENCE"))
+                    if (event.hasType("NOTE") || event.hasType("CONTROL") || event.hasType("SYSEX"))
+                        events.push_back({{"kind", event.getType().toString().toStdString()},
+                                          {"beat", midiNumber(event[event.hasType("SYSEX") ? "time" : "b"])},
+                                          {"length", event.hasType("NOTE") ? midiNumber(event["l"]) : 0},
+                                          {"xml", preciseEditXml(event)->toString().toStdString()}});
+                result[clip["id"].toString().toStdString()] = {{"track", track["id"].toString().toStdString()},
+                                                               {"playlist", playlist},
+                                                               {"start", midiNumber(clip["start"])},
+                                                               {"length", midiNumber(clip["length"])},
+                                                               {"offset", midiNumber(clip["offset"])},
+
+                                                               {"basis", int(clip.getProperty("sync", 0))},
+                                                               {"events", events}};
+            };
+            const auto lists = track.getChildWithName("NDAW_PLAYLISTS");
+            for (auto clip : track)
+                append(clip, lists["active"].toString().toStdString());
+            for (auto list : lists)
+                for (auto clip : list)
+                    append(clip, list["id"].toString().toStdString());
+        }
+    return result;
+}
+void checkMidiMap(Commands& c, const Json& before, double bpm, bool eighth = false)
+{
+    const auto after = midiRows(c);
+    check(before.size() == after.size(), "Tempo mapping retains every active and inactive MIDI identity");
+    // Compute event anchors independently from the actual mapped native seconds.
+    auto nextBeat = [&](double seconds)
+    {
+        const double s = seconds / (eighth ? .5 : 1.);
+        return s <= 4 * 60 / bpm ? s * bpm / 60 : 4 + (s - 4 * 60 / bpm) * 1.5;
+    };
+    for (const auto& [id, a] : before.items())
+    {
+        const auto& b = after.at(id);
+        const bool musical = a.at("basis") == int(te::Clip::syncBarsBeats);
+        const double first = a["start"], end = first + a["length"].get<double>(),
+                     source = first - a["offset"].get<double>();
+        const double newFirst = musical ? mappedSeconds(originalBeat(first), bpm, eighth) : first;
+        const double newEnd = musical ? mappedSeconds(originalBeat(end), bpm, eighth) : end;
+        const double newSource = musical ? mappedSeconds(originalBeat(source), bpm, eighth) : source;
+        check(std::abs(b.at("start").get<double>() - newFirst) * 48000 <= 1 &&
+                  std::abs((b.at("start").get<double>() + b.at("length").get<double>()) - newEnd) * 48000 <= 1 &&
+                  std::abs((b.at("start").get<double>() - b.at("offset").get<double>()) - newSource) * 48000 <= 1,
+              "independent arithmetic maps each active/inactive window and source anchor in its declared time basis");
+        check(a.at("events").size() == b.at("events").size(),
+              "Tempo remap never drops full-sequence notes, CC/Pitch or SysEx outside a Comp window");
+        const double content = nextBeat(newSource);
+        for (size_t n = 0; n < a.at("events").size(); ++n)
+        {
+            const auto& old = a.at("events")[n];
+            const auto& now = b.at("events")[n];
+            const double from = originalBeat(source) + old.at("beat").get<double>();
+            const double to = from + old.at("length").get<double>();
+            auto oldSeconds = [](double beat) { return mappedSeconds(beat, 120); };
+            const double expectedStart = musical ? mappedSeconds(from, bpm, eighth) : oldSeconds(from);
+            const double expectedEnd = musical ? mappedSeconds(to, bpm, eighth) : oldSeconds(to);
+            const double actualStart = mappedSeconds(content + now.at("beat").get<double>(), bpm, eighth);
+            const double actualEnd =
+                mappedSeconds(content + now.at("beat").get<double>() + now.at("length").get<double>(), bpm, eighth);
+            check(old.at("kind") == now.at("kind") && std::abs(actualStart - expectedStart) * 48000 <= 1 &&
+                      std::abs(actualEnd - expectedEnd) * 48000 <= 1,
+                  "independent Tempo arithmetic validates every complete note/controller/SysEx event before and after "
+                  "mapping");
+            if (musical)
+                check(
+                    old.at("xml") == now.at("xml"),
+                    "musical source event XML stays exact, including unknown attributes and complete note expressions");
+        }
+    }
+}
+Json tempoFrame(Commands& c)
+{
+    auto state = RecordingTestAccess::state(c);
+    return {{"native", RecordingTestAccess::native(c)},
+            {"tempo", preciseEditXml(state.getChildWithName("TEMPOSEQUENCE"))->toString().toStdString()},
+            {"curves", RecordingTestAccess::curves(c)}};
+}
+void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
+                           const std::array<std::string, 2>& tracks, const std::map<std::string, std::string>& linked,
+                           bool samples)
+{
+    auto& c = RecordingTestAccess::commands(w);
+    const auto original = tempoFrame(c);
+    auto added = run(c, "plugin.insert",
+                     {{"track", tracks[0]}, {"type", te::EqualiserPlugin::xmlTypeName}, {"ref", "$mapped-eq"}});
+    Json points = Json::array();
+    for (const auto& t : tracks)
+    {
+        const auto q = c.automationQuery(t);
+        for (const auto& lane : q["lanes"])
+            if (lane["parameter"] == "volume" || lane["parameter"] == "Low-pass gain")
+                for (int n = 0; n < 2; ++n)
+                    points.push_back(
+                        op("automation.point.add",
+                           {{"track", t},
+                            {"parameter", lane["id"]},
+                            {"position_samples", n ? 130000 : 62000},
+                            {"value", lane["parameter"] == "volume"
+                                          ? -18.0
+                                          : std::clamp(lane["explicit_value"].get<double>() +
+                                                           (n ? .05 : 0.) * (lane["maximum"].get<double>() -
+                                                                             lane["minimum"].get<double>()),
+                                                       lane["minimum"].get<double>(), lane["maximum"].get<double>())},
+                            {"curve", 0.0},
+                            {"ref", "$map-point-" + std::to_string(points.size())}}));
+    }
+    check(points.size() == 6, "real volume and EQ parameter lanes enumerate before adding actual curves");
+    auto curveReceipt = run(c, points);
+    const auto baseline = tempoFrame(c), rows = midiRows(c);
+    check(rows.size() > 4, "actual inactive Main/Take/Comp clips participate, beyond the four active pieces");
+    auto plan = c.makePlan("human", Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 100.0}})}));
+    auto preview = c.preview(plan);
+    check(preview.at("midi_changes")[0].at("midi_remap").size() == rows.size() && tempoFrame(c) == baseline,
+          "real preflight reports every active/inactive MIDI window without modifying the Edit");
+    Scope limited;
+    limited.targets = {tracks[0]};
+    rejects([&] { c.review(plan, limited); }, "global Tempo mapping cannot bypass a one-track permission scope");
+    run(c, "playlist.lock", {{"track", tracks[1]}, {"playlist", linked.at(tracks[1])}, {"locked", true}});
+    rejects([&] { c.makePlan("human", Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 100.0}})})); },
+            "affected locked remote Playlist refuses Tempo before any native write");
+    c.undo();
+    check(tempoFrame(c) == baseline, "locked rejection preserves native source, automation and complete linked state");
+    plan = c.makePlan("human", Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 100.0}})}));
+    auto receipt = c.commit(plan);
+    checkMidiMap(c, rows, 100);
+    const auto changed = tempoFrame(c), changedRows = midiRows(c);
+    check(c.commit(plan)["replayed"] == true && tempoFrame(c) == changed,
+          "Tempo retry does not remap already mapped source events twice");
+    const auto curves = RecordingTestAccess::curves(c), oldCurves = baseline["curves"];
+    check(curves.size() == 3, "both real volume lanes and actual EQ lane remain present");
+    for (size_t i = 0; i < curves.size(); ++i)
+        for (size_t n = 0; n < curves[i]["points"].size(); ++n)
+        {
+            auto& old = oldCurves[i]["points"][n];
+            auto& now = curves[i]["points"][n];
+            const int64_t expected =
+                oldCurves[i]["follows_tempo"] == true
+                    ? std::llround(mappedSeconds(originalBeat(old["position_samples"].get<double>() / 48000), 100) *
+                                   48000)
+                    : old["position_samples"].get<int64_t>();
+            check(now["id"] == old["id"] && now["native_value"] == old["native_value"] &&
+                      std::abs(now["position_samples"].get<int64_t>() - expected) <= 1,
+                  "actual volume/EQ curve IDs and values follow the native Tempo policy with independently computed "
+                  "times");
+        }
+    const auto file = root.getChildFile("MIDI-Playlists-Tempo.tracktionedit");
+    c.save(file);
+    linkedMoveRender(c, root.getChildFile("Tempo-Mapped.wav"));
+    {
+        Commands cold(false, std::make_unique<Storage>(root.getChildFile("tempo-cold")));
+        cold.open(file);
+        check(tempoFrame(cold) == changed,
+              "actual cold file load preserves all native MIDI/Playlist state and actual volume/EQ curves");
+        cold.undo(receipt["plan_id"]);
+        check(tempoFrame(cold) == baseline,
+              "one cold original Undo restores every active/inactive MIDI clip and all curves");
+        cold.redo();
+        check(tempoFrame(cold) == changed, "one cold original Redo restores full Tempo mapping and curves");
+    }
+    c.undo(receipt["plan_id"]);
+    check(tempoFrame(c) == baseline, "warm Tempo Undo restores full original map and native states");
+    auto tiny = run(c, "tempo.set", {{"position_samples", 0}, {"bpm", 120.001}});
+    checkMidiMap(c, rows, 120.001);
+    check(tempoFrame(c) != baseline,
+          "sub-millisecond Tempo changes are applied instead of silently skipped by the SDK threshold");
+    c.undo(tiny["plan_id"]);
+    check(tempoFrame(c) == baseline, "tiny Tempo mapping is one exact original Undo");
+    auto meter = run(c, "meter.set", {{"position_samples", 0}, {"numerator", 4}, {"denominator", 8}});
+    checkMidiMap(c, rows, 120, true);
+    const auto meterState = tempoFrame(c);
+    const auto meterFile = root.getChildFile("MIDI-Playlists-Meter.tracktionedit");
+    c.save(meterFile);
+    c.undo(meter["plan_id"]);
+    check(tempoFrame(c) == baseline, "Meter Undo restores all original MIDI and native automation");
+    const auto redoFile = root.getChildFile("MIDI-Playlists-Map-Redo.tracktionedit");
+    c.save(redoFile);
+    {
+        Commands cold(false, std::make_unique<Storage>(root.getChildFile("meter-cold")));
+        cold.open(redoFile);
+        check(tempoFrame(cold) == baseline, "Redo-only mapping save opens at its genuine original state");
+        cold.redo();
+        check(tempoFrame(cold) == meterState,
+              "cold original Redo restores Meter mapping across active and inactive Playlists");
+        cold.undo();
+        check(tempoFrame(cold) == baseline, "cold original Meter Undo retains all source identities and native curves");
+    }
+    RecordingTestAccess::refresh(w);
+    key(w, 273);
+    auto* choice = dynamic_cast<juce::ComboBox*>(visible(w, "music.event.choice"));
+    check(choice, "actual native Tempo event panel opens from its registered shortcut");
+    choice->setSelectedId(2, juce::sendNotificationSync);
+    auto* bpm = dynamic_cast<juce::TextEditor*>(visible(w, "music.event.bpm"));
+    check(bpm, "actual event BPM field is available");
+    bpm->setText("100");
+    key(w, 275);
+    wait([&] { return c.query()["music"]["tempos"][0]["bpm"] == 100; },
+         "actual native Apply key commits Tempo remapping");
+    checkMidiMap(c, rows, 100);
+    const auto guiFile = root.getChildFile("MIDI-Playlists-GUI-Tempo.tracktionedit");
+    c.save(guiFile);
+    key(w, 6);
+    wait([&] { return tempoFrame(c) == baseline; }, "actual GUI Undo key restores the full Tempo transaction");
+    c.undo(curveReceipt["plan_id"]);
+    c.undo(added["plan_id"]);
+    check(tempoFrame(c) == original,
+          "Tempo qualification leaves every original recorded source and inactive Playlist unchanged");
+    RecordingTestAccess::refresh(w);
+    result["tempo_mapping"] = {{"basis", samples ? "samples" : "beats"},
+                               {"mapped_file", file.getFullPathName().toStdString()},
+                               {"meter_file", meterFile.getFullPathName().toStdString()},
+                               {"redo_file", redoFile.getFullPathName().toStdString()},
+                               {"gui_file", guiFile.getFullPathName().toStdString()},
+                               {"before", baseline},
+                               {"mapped", changed},
+                               {"before_rows", rows},
+                               {"mapped_rows", changedRows}};
+}
+} // namespace

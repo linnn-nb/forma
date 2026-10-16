@@ -13,6 +13,34 @@ namespace ndaw::v2
 class RecordingTestAccess
 {
 public:
+    static juce::ValueTree state(Commands& c)
+    {
+        return c.edit->state.createCopy();
+    }
+    static Json curves(Commands& c)
+    {
+        Json rows = Json::array();
+        for (auto* t : te::getAudioTracks(*c.edit))
+        {
+            const auto q = c.automationQuery(t->itemID.toString().toStdString());
+            for (const auto& lane : q["lanes"])
+                if (!lane["points"].empty())
+                {
+                    bool follows = false;
+                    for (auto* p : t->pluginList)
+                        for (auto* a : p->getAutomatableParameters())
+                            if (a->getOwnerID().toString().toStdString() + "::" + a->paramID.toStdString() ==
+                                lane["id"].get<std::string>())
+                                follows = a->automatableEditElement.remapOnTempoChange;
+                    rows.push_back({{"id", lane["id"]},
+                                    {"track", q["track"]},
+                                    {"follows_tempo", follows},
+                                    {"timebase", lane["timebase"]},
+                                    {"points", lane["points"]}});
+                }
+        }
+        return rows;
+    }
     static void refresh(ndaw::desktop::Workspace& w)
     {
         w.refresh();
@@ -382,11 +410,13 @@ void refuse(Commands& c, const juce::XmlElement& xml, const juce::File& file)
 }
 } // namespace
 #include "MidiLinkedMoveChecks.h"
+#include "MidiPlaylistTempoChecks.h"
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
     const bool punch = argc > 2 && std::string(argv[2]) == "punch";
     const bool moving = argc > 3 && std::string(argv[3]) == "move";
+    const bool tempo = argc > 3 && std::string(argv[3]) == "tempo";
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile("MIDI-Linked-" + juce::Uuid().toString());
     root.createDirectory();
     result = {{"root", root.getFullPathName().toStdString()},
@@ -495,7 +525,7 @@ int main(int argc, char** argv)
             run(c, "track.arm", {{"track", tracks[n]}, {"enabled", false}});
             run(c, "playlist.select", {{"track", tracks[n]}, {"playlist", main[n]}});
         }
-        if (moving && punch)
+        if ((moving || tempo) && punch)
             for (int n = 0; n < 2; ++n)
             {
                 std::set<std::string> lists{sources[n][0], sources[n][1], main[n]};
@@ -573,13 +603,20 @@ int main(int argc, char** argv)
                      {"length_samples", 100}});
             },
             "linked member cannot be edited independently");
-        rejects([&] { run(c, "tempo.event.create", {{"beat_position", 8.0}, {"bpm", 110.0}}); },
-                "unqualified Tempo remapping explicitly refuses a linked MIDI set");
-        rejects([&] { run(c, "meter.set", {{"position_samples", 0}, {"numerator", 4}, {"denominator", 8}}); },
-                "unqualified Meter denominator remapping cannot bypass linked MIDI timing protection");
+        const auto nativeBeforeMap = RecordingTestAccess::native(c);
+        auto mapChange = run(c, "tempo.event.create", {{"beat_position", 8.0}, {"bpm", 110.0}});
+        c.undo(mapChange["plan_id"]);
+        check(RecordingTestAccess::native(c) == nativeBeforeMap,
+              "one Undo restores all active and inactive MIDI after a Tempo event");
+        mapChange = run(c, "meter.set", {{"position_samples", 0}, {"numerator", 4}, {"denominator", 8}});
+        c.undo(mapChange["plan_id"]);
+        check(RecordingTestAccess::native(c) == nativeBeforeMap,
+              "one Undo restores all MIDI and linked layouts after Meter denominator mapping");
         check(facts(c) == active, "rejected independent timing edits preserve all linked members");
         if (moving)
             testLinkedMidiMoves(w, root, tracks, linked, punch);
+        if (tempo)
+            testMidiPlaylistTempo(w, root, tracks, linked, punch);
         run(c, "playlist.lock", {{"track", tracks[1]}, {"playlist", linked.at(tracks[1])}, {"locked", true}});
         rejects([&] { run(c, "playlist.comp.restore", {{"track", tracks[0]}, {"playlist", linked.at(tracks[0])}}); },
                 "locked partner prevents a half-restored set");
@@ -798,6 +835,10 @@ int main(int argc, char** argv)
                 "two actual hosted MIDI recorders, complete linked sample/musical movement and migration, "
                 "native timeline gestures, saved custom keys, original Undo/Redo and cold native XML; "
                 "real synth PCM; not Tempo-map editing, physical MIDI, listening, RT performance or full P1";
+        if (tempo)
+            result["scope"] = "real hosted recorded MIDI; active/inactive linked Playlist Tempo/Meter remap, native "
+                              "GUI, original Undo/Redo/cold history and volume/EQ curves; not physical MIDI, "
+                              "listening, all processed sources or full P1";
     }
     catch (const std::exception& e)
     {
