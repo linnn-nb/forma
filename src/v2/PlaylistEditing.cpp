@@ -711,11 +711,11 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         const auto& a = op["args"];
         if (!cmd.starts_with("playlist."))
         {
-            if (cmd.starts_with("tempo."))
+            if (cmd.starts_with("tempo.") || cmd.starts_with("meter."))
                 for (auto* owner : te::getAudioTracks(*edit))
                     for (auto list : owner->state.getChildWithName("NDAW_PLAYLISTS"))
                         require(int(list.getProperty("linked_schema", 1)) != 2,
-                                "Detach MIDI linked Comp before changing Tempo");
+                                "Detach MIDI linked Comp before changing Tempo or Meter");
             if (cmd.starts_with("midi."))
             {
                 if (a.contains("track"))

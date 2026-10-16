@@ -575,6 +575,8 @@ int main(int argc, char** argv)
             "linked member cannot be edited independently");
         rejects([&] { run(c, "tempo.event.create", {{"beat_position", 8.0}, {"bpm", 110.0}}); },
                 "unqualified Tempo remapping explicitly refuses a linked MIDI set");
+        rejects([&] { run(c, "meter.set", {{"position_samples", 0}, {"numerator", 4}, {"denominator", 8}}); },
+                "unqualified Meter denominator remapping cannot bypass linked MIDI timing protection");
         check(facts(c) == active, "rejected independent timing edits preserve all linked members");
         if (moving)
             testLinkedMidiMoves(w, root, tracks, linked, punch);
