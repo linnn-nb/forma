@@ -10,7 +10,7 @@ public:
     {
         for (auto* c : std::initializer_list<juce::Component*>{
                  &modeTitle, &mode, &laneTitle, &lane, &value, &canvas, &point, &position, &pointValue, &curve,
-                 &positionTitle, &valueTitle, &curveTitle, &add, &apply, &remove, &clear, &explanation})
+                 &positionTitle, &valueTitle, &curveTitle, &add, &apply, &remove, &clear, &tempoPolicy, &explanation})
             addAndMakeVisible(c);
         modeTitle.setText(text("MODE · 轨道自动化"), juce::dontSendNotification);
         laneTitle.setText(text("LANE · 实际参数"), juce::dontSendNotification);
@@ -28,6 +28,17 @@ public:
         remove.setComponentID("automation.point.delete");
         clear.setComponentID("automation.clear");
         canvas.setComponentID("automation.canvas");
+        tempoPolicy.setComponentID("automation.tempo_policy");
+        tempoPolicy.addItem(text("速度图：保持秒位置（此插件）"), 1);
+        tempoPolicy.addItem(text("速度图：跟随速度（此插件）"), 2);
+        tempoPolicy.setTooltip(
+            text("影响同一插件全部参数曲线；切换时点不移动，之后修改 Tempo 时生效。可撤销并随工程保存。"));
+        tempoPolicy.onChange = [this]
+        {
+            if (canToggleTempoPolicy() && tempoPolicy.getSelectedId() > 0 &&
+                currentLane().value("tempo_follows", false) != (tempoPolicy.getSelectedId() == 2))
+                setTempoPolicy(tempoPolicy.getSelectedId() == 2);
+        };
         mode.onChange = [this]
         {
             if (!facts.is_null() && mode.getText().toLowerCase().toStdString() != facts["mode"].get<std::string>())
@@ -216,10 +227,26 @@ public:
         add.setBounds(10, 480, w, 28);
         remove.setBounds(10, 519, w / 2 - 4, 28);
         clear.setBounds(14 + w / 2, 519, w / 2 - 4, 28);
-        explanation.setBounds(10, 556, w, 94);
+        tempoPolicy.setBounds(10, 556, w, 28);
+        explanation.setBounds(10, 590, w, 60);
+    }
+    bool canToggleTempoPolicy() const
+    {
+        return !playing && !gesture && !facts.is_null() && facts["capture"].is_null() && !currentLane().is_null() &&
+               currentLane().value("tempo_policy_configurable", false);
+    }
+    void toggleTempoPolicy()
+    {
+        if (canToggleTempoPolicy())
+            setTempoPolicy(!currentLane().value("tempo_follows", false));
     }
 
 private:
+    void setTempoPolicy(bool enabled)
+    {
+        edit("automation.plugin_tempo.set",
+             {{"track", facts["track"]}, {"parameter", currentLane()["id"]}, {"enabled", enabled}}, revision);
+    }
     std::optional<double> number(juce::TextEditor& field)
     {
         try
@@ -272,6 +299,8 @@ private:
     {
         auto l = currentLane();
         bool valid = !l.is_null();
+        tempoPolicy.setEnabled(canToggleTempoPolicy());
+        tempoPolicy.setSelectedId(valid ? (l.value("tempo_follows", false) ? 2 : 1) : 0, juce::dontSendNotification);
         value.setEnabled(live());
         bool editable = valid && !playing;
         for (auto* c : std::initializer_list<juce::Component*>{&add, &clear, &position, &pointValue, &curve})
@@ -467,7 +496,7 @@ private:
     bool playing = false, gesture = false;
     int64_t playhead = 0, end = 480000;
     juce::Label modeTitle, laneTitle, explanation, positionTitle, valueTitle, curveTitle;
-    juce::ComboBox mode, lane, point;
+    juce::ComboBox mode, lane, point, tempoPolicy;
     juce::Slider value;
     Canvas canvas;
     juce::TextEditor position, pointValue, curve;

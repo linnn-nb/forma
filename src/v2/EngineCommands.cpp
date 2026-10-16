@@ -995,6 +995,8 @@ Json Commands::preview(const Json& plan) const
         if (cmd.starts_with("tempo.event.") || cmd.starts_with("meter.event.") || cmd == "transport.roll.set" ||
             cmd == "location.recall" || cmd.starts_with("location.roll."))
             require(actor == "human", "ruler editing is local GUI only during U phase");
+        if (cmd == "automation.plugin_tempo.set")
+            require(actor == "human", "plugin Tempo policy is local human only during P1");
         const auto& schema = entry->at("schema");
         for (const auto& key : schema.at("required"))
             require(a.contains(key.get<std::string>()), "missing parameter");

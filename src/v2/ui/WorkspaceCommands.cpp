@@ -15,6 +15,8 @@ const std::vector<Entry>& entries()
 {
     constexpr int cmd = juce::ModifierKeys::commandModifier, shift = juce::ModifierKeys::shiftModifier;
     static const std::vector<Entry> list = {
+        {647, "切换所选插件自动化跟随速度", "自动化", juce::KeyPress::F10Key,
+         cmd | shift | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {283, "自动化跟随编辑", "编辑", 'a', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {284, "跨轨自动化尾随：仅片段", "编辑", '0',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
@@ -545,6 +547,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                 info.addDefaultKeypress(
                     id == editCommand::nudgeBack ? juce::KeyPress::numberPadSubtract : juce::KeyPress::numberPadAdd, 0);
             bool active = true;
+            if (id == 647)
+                active = autoInspector && automation.canToggleTempoPolicy();
             try
             {
                 if (id >= 500 && id <= 504)
@@ -1065,6 +1069,12 @@ bool Workspace::perform(const InvocationInfo& invocation)
         return true;
     }
     const auto id = invocation.commandID;
+    if (id == 647)
+    {
+        if (autoInspector && automation.canToggleTempoPolicy())
+            automation.toggleTempoPolicy();
+        return true;
+    }
     if (id == 570)
     {
         invoke([&] { showPreferences(); });

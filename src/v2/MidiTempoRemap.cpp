@@ -150,7 +150,8 @@ Snapshot::Snapshot(te::Edit& e, const Sequence& sequence) : edit(e), before(sequ
                         {curve.state, curve.state.createCopy(),
                          parameter->getOwnerID().toString().toStdString() + "::" + parameter->paramID.toStdString(),
                          curve.timeBase == te::AutomationCurve::TimeBase::beats,
-                         parameter->automatableEditElement.remapOnTempoChange.get()});
+                         parameter->automatableEditElement.remapOnTempoChange.get(),
+                         bool(track.state.getProperty("ndaw_locked", false))});
                 }
     };
     for (auto* track : te::getAllTracks(edit))
@@ -173,6 +174,7 @@ std::vector<juce::ValueTree> Snapshot::prepareCurves(const Sequence& destination
                 if (mapped != seconds(before, beat))
                     point.setProperty(te::IDs::t, mapped, nullptr);
             }
+        require(!curve.locked || after.isEquivalentTo(curve.original), "Tempo changes automation on a locked track");
         result.push_back(after);
     }
     return result;

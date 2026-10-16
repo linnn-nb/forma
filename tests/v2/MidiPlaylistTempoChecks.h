@@ -137,6 +137,84 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
     }
     check(points.size() == 6, "real volume and EQ parameter lanes enumerate before adding actual curves");
     auto curveReceipt = run(c, points);
+    const auto fixedCurves = RecordingTestAccess::curves(c);
+    std::string eqLane, volumeLane;
+    const auto parameterFacts = c.automationQuery(tracks[0]);
+    for (const auto& lane : parameterFacts["lanes"])
+    {
+        if (lane["parameter"] == "Low-pass gain")
+            eqLane = lane["id"];
+        if (lane["parameter"] == "volume")
+            volumeLane = lane["id"];
+    }
+    check(!eqLane.empty() && !volumeLane.empty(), "actual volume and EQ lane IDs resolve");
+    auto policyPlan =
+        c.makePlan("human", Json::array({op("automation.plugin_tempo.set",
+                                            {{"track", tracks[0]}, {"parameter", eqLane}, {"enabled", true}})}));
+    const auto policyPreview = c.preview(policyPlan);
+    check(policyPreview["automation_changes"][0]["affected"].size() > 1 &&
+              policyPreview["automation_changes"][0]["before"] == false &&
+              policyPreview["automation_changes"][0]["after"] == true,
+          "policy preview honestly reports all actual parameters of its plugin");
+    auto eqPolicy = c.commit(policyPlan);
+    RecordingTestAccess::bind(w, root, tracks[0]);
+    auto* autoTab = dynamic_cast<juce::Button*>(visible(w, "inspector.automation"));
+    check(autoTab, "actual automation inspector tab is available");
+    autoTab->triggerClick();
+    wait([&] { return visible(w, "automation.tempo_policy") != nullptr; },
+         "real automation inspector opens after its actual click notification");
+    auto follows = [&](const std::string& laneID)
+    {
+        const auto q = c.automationQuery(tracks[0]);
+        for (const auto& lane : q["lanes"])
+            if (lane["id"] == laneID)
+                return lane["tempo_follows"].get<bool>();
+        throw std::runtime_error("actual lane disappeared");
+    };
+    key(w, 647);
+    wait([&] { return follows(volumeLane); }, "registered native key changes the selected plugin's real Tempo policy");
+    key(w, 6);
+    wait([&] { return !follows(volumeLane); }, "actual Undo key restores the real plugin policy");
+    key(w, 7);
+    wait([&] { return follows(volumeLane); }, "actual Redo key restores the real plugin policy");
+    auto* laneBox = dynamic_cast<juce::ComboBox*>(visible(w, "automation.lane"));
+    check(laneBox, "real parameter lane selector is visible");
+    const auto laneFacts = c.automationQuery(tracks[0])["lanes"];
+    for (int i = 0; i < int(laneFacts.size()); ++i)
+        if (laneFacts[i]["id"] == eqLane)
+            laneBox->setSelectedId(i + 1, juce::sendNotificationSync);
+    auto* policyBox = dynamic_cast<juce::ComboBox*>(visible(w, "automation.tempo_policy"));
+    wait([&] { return policyBox && policyBox->getSelectedId() == 2; },
+         "native selector reflects the queried EQ plugin policy");
+    policyBox->setSelectedId(1, juce::sendNotificationSync);
+    wait([&] { return !follows(eqLane); }, "real inspector selector commits through the unified command layer");
+    key(w, 6);
+    wait([&] { return follows(eqLane); }, "selector policy edit has one real Undo transaction");
+    const auto policyCurves = RecordingTestAccess::curves(c);
+    int enabledCurves = 0;
+    for (size_t i = 0; i < policyCurves.size(); ++i)
+    {
+        enabledCurves += policyCurves[i]["follows_tempo"] == true;
+        check(policyCurves[i]["points"] == fixedCurves[i]["points"],
+              "changing policy alone does not move or rewrite curve points");
+    }
+    check(enabledCurves == 2, "real volume and EQ follow Tempo while the other track stays fixed in seconds");
+    rejects(
+        [&]
+        {
+            c.makePlan("human",
+                       Json::array({op("automation.plugin_tempo.set",
+                                       {{"track", tracks[0]}, {"parameter", "nonexistent::air"}, {"enabled", true}})}));
+        },
+        "invented plugin parameter cannot set a Tempo policy");
+    rejects(
+        [&]
+        {
+            c.makePlan("agent:test",
+                       Json::array({op("automation.plugin_tempo.set",
+                                       {{"track", tracks[0]}, {"parameter", eqLane}, {"enabled", true}})}));
+        },
+        "agent cannot expand the local-only policy permission");
     const auto baseline = tempoFrame(c), rows = midiRows(c);
     check(rows.size() > 4, "actual inactive Main/Take/Comp clips participate, beyond the four active pieces");
     auto plan = c.makePlan("human", Json::array({op("tempo.set", {{"position_samples", 0}, {"bpm", 100.0}})}));
@@ -231,6 +309,8 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
     c.save(guiFile);
     key(w, 6);
     wait([&] { return tempoFrame(c) == baseline; }, "actual GUI Undo key restores the full Tempo transaction");
+    c.undo();
+    c.undo(eqPolicy["plan_id"]);
     c.undo(curveReceipt["plan_id"]);
     c.undo(added["plan_id"]);
     check(tempoFrame(c) == original,

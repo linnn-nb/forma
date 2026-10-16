@@ -151,6 +151,9 @@ void Commands::registerAutomationCommands(Json& registry)
     registry.back()["tool_visibility"] = "local_gui";
     registry.back()["test"] = "U-P0-SHUFFLE-AUTOMATION-01";
     registry.back()["units"] = {{"start_samples", "48000 Hz session samples"}, {"end_samples", "exclusive"}};
+    add("automation.plugin_tempo.set", {{"track", string}, {"parameter", string}, {"enabled", {{"type", "boolean"}}}});
+    registry.back()["tool_visibility"] = "local_gui";
+    registry.back()["test"] = "P1-MIDI-PLAYLIST-TEMPO";
     add("automation.range.paste", {{"clipboard", string},
                                    {"source_track", string},
                                    {"track", string},
@@ -249,6 +252,8 @@ Json Commands::automationLaneQuery(te::AutomatableParameter& a) const
             {"explicit_value", toValue(a, a.getCurrentExplicitValue())},
             {"display", a.getCurrentValueAsStringWithLabel().toStdString()},
             {"timebase", curve.timeBase == te::AutomationCurve::TimeBase::time ? "samples" : "beats"},
+            {"tempo_follows", a.automatableEditElement.remapOnTempoChange.get()},
+            {"tempo_policy_configurable", a.getPlugin() != nullptr},
             {"recording", a.isCurrentlyRecording()}};
 }
 Json Commands::automationPointQuery(te::AutomatableParameter& a, int index) const
@@ -421,6 +426,24 @@ Json Commands::validateAutomationPlan(const Json& operations) const
         }
         const std::string parameter = resolved(track, args.at("parameter"));
         require(tracks.at(track).contains(parameter), "automation target removed or unavailable");
+        if (cmd == "automation.plugin_tempo.set")
+        {
+            require(operations.size() == 1, "plugin Tempo policy requires a standalone Plan");
+            auto* parameter = automationParameter(track, args.at("parameter"));
+            auto* plugin = parameter ? parameter->getPlugin() : nullptr;
+            require(plugin != nullptr, "plugin Tempo policy requires an enumerated plugin parameter");
+            require(!bool(domainTrack(track)->state.getProperty("ndaw_locked", false)), "automation track is locked");
+            Json affected = Json::array();
+            for (auto* p : plugin->getAutomatableParameters())
+                affected.push_back({{"parameter", laneID(*p)}, {"points", p->getCurve().getNumPoints()}});
+            changes.push_back({{"command", cmd},
+                               {"track", track},
+                               {"plugin", plugin->itemID.toString().toStdString()},
+                               {"before", parameter->automatableEditElement.remapOnTempoChange.get()},
+                               {"after", args.at("enabled")},
+                               {"affected", affected}});
+            continue;
+        }
         auto& lane = tracks.at(track).at(parameter);
         if (args.contains("position_samples"))
             validPosition(args.at("position_samples"));
@@ -486,6 +509,13 @@ void Commands::executeAutomationOperation(const std::string& cmd, const Json& ar
     }
     auto* a = automationParameter(args.at("track"), args.at("parameter"));
     require(a != nullptr, "automation parameter disappeared");
+    if (cmd == "automation.plugin_tempo.set")
+    {
+        auto* plugin = a->getPlugin();
+        require(plugin != nullptr, "automation plugin disappeared");
+        plugin->state.setProperty(te::IDs::remapOnTempoChange, args.at("enabled").get<bool>(), &edit->getUndoManager());
+        return;
+    }
     auto& curve = a->getCurve();
     auto* um = &edit->getUndoManager();
     require(um->perform(new CurveBaseAction(*a)), "automation base transaction preparation failed");
