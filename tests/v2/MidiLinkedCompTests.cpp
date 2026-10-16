@@ -331,7 +331,15 @@ Json facts(Commands& c)
                              {"controllers", controllers},
                              {"sysex", clip.at("sysex_count")}});
         }
-        rows.push_back({{"id", track.at("id")}, {"playlists", track.at("playlists")}, {"clips", clips}});
+        Json links = Json::array();
+        const auto playlists = c.queryPlaylists(track.at("id"));
+        for (const auto& list : playlists.at("items"))
+            links.push_back({{"id", list.at("id")},
+                             {"linked_set", list.at("linked_set")},
+                             {"linked_tracks", list.at("linked_tracks")},
+                             {"restore_playlist", list.at("restore_playlist")}});
+        rows.push_back(
+            {{"id", track.at("id")}, {"playlists", track.at("playlists")}, {"links", links}, {"clips", clips}});
     }
     return rows;
 }
@@ -567,6 +575,12 @@ int main(int argc, char** argv)
                   "grouped edits preserve complete actual raw MIDI source evidence");
 
         // Apply a smaller range to an already-linked inactive TARGET set.
+        run(c, "playlist.target", {{"track", tracks[0]}, {"playlist", linked.at(tracks[0])}});
+        const auto halfTarget = facts(c);
+        rejects([&] { run(c, "playlist.comp.linked.promote", promote); },
+                "linked TARGET closure rejects a partner still aimed at another Playlist");
+        check(facts(c) == halfTarget, "incomplete linked TARGET selection edits neither member");
+        c.undo();
         for (const auto& t : tracks)
             run(c, "playlist.target", {{"track", t}, {"playlist", linked.at(t)}});
         Json nested = Json::array();
@@ -650,6 +664,19 @@ int main(int argc, char** argv)
         check(facts(c) == guiMade && std::abs(c.query()["position_samples"].get<int64_t>() - 25000) <= 1,
               "group audition changes no Playlist and returns to the exact saved location");
         key(w, 523);
+        const auto guiActive = facts(c);
+        key(w, 530);
+        wait(
+            [&]
+            {
+                for (const auto& t : tracks)
+                    if (!playlists(c, t)["items"].back()["linked_set"].get<std::string>().empty())
+                        return false;
+                return true;
+            },
+            "native detach key removes the entire MIDI set linkage");
+        key(w, 6);
+        wait([&] { return facts(c) == guiActive; }, "one Undo restores all detached MIDI member identities");
         key(w, 529);
         wait([&]
              { return playlists(c, tracks[0])["active"] == main[0] && playlists(c, tracks[1])["active"] == main[1]; },
@@ -669,6 +696,11 @@ int main(int argc, char** argv)
             check(target["clips"].size() == 3 &&
                       target["clips"][1]["capture_source"]["id"] == source["clips"][0]["capture_source"]["id"],
                   "GUI target middle actually references the selected recorded source on each track");
+            const auto middle = target.at("clips").at(1);
+            check(std::abs(middle.at("start_samples").get<int64_t>() - 60037) <= 1 &&
+                      std::abs(middle.at("start_samples").get<int64_t>() + middle.at("length_samples").get<int64_t>() -
+                               84037) <= 1,
+                  "actual GUI target boundaries satisfy the fixed one-frame selection budget");
         }
         key(w, 6);
         wait([&] { return facts(c) == beforeGuiAccept; }, "one GUI Undo restores all grouped TARGET changes");
