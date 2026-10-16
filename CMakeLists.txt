@@ -105,6 +105,7 @@ target_sources(ndaw_engine PRIVATE src/v2/ElasticCommands.cpp src/v2/WarpCommand
 target_sources(ndaw_engine PRIVATE src/v2/AppPreferences.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ClipRelocation.cpp src/v2/LinkedCompRelocation.cpp src/v2/RelocationAutomation.cpp src/v2/NativeFader.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ProjectDocument.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/NativeMidiNumbers.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp src/v2/MidiLoopCapture.cpp src/v2/MidiPunchCapture.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
 target_include_directories(ndaw_engine PUBLIC include .deps
@@ -1096,6 +1097,13 @@ foreach(LOOP_OUTPUT_LENGTH 6000 6144)
     set_tests_properties(forma_midi_loop_output_${LOOP_OUTPUT_LENGTH}_${LOOP_OUTPUT_TEMPO} PROPERTIES TIMEOUT 60 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
   endforeach()
 endforeach()
+
+juce_add_console_app(ndaw_native_midi_precision_tests PRODUCT_NAME "ndaw_native_midi_precision_tests")
+target_sources(ndaw_native_midi_precision_tests PRIVATE tests/v2/NativeMidiPrecisionTests.cpp)
+target_include_directories(ndaw_native_midi_precision_tests PRIVATE src/v2)
+target_link_libraries(ndaw_native_midi_precision_tests PRIVATE ndaw_engine)
+add_test(NAME forma_native_midi_precision COMMAND ndaw_native_midi_precision_tests "${CMAKE_BINARY_DIR}/native-midi-precision.json")
+set_tests_properties(forma_native_midi_precision PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_recording_writer_failure_tests PRODUCT_NAME "ndaw_recording_writer_failure_tests")
 target_sources(ndaw_recording_writer_failure_tests PRIVATE tests/v2/RecordingWriterFailureTests.cpp)

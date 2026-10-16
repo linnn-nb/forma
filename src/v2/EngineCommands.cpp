@@ -15,6 +15,7 @@
 #include "PluginEditorWindows.h"
 #include "NativePluginStates.h"
 #include "PersistentHistory.h"
+#include "NativeMidiNumbers.h"
 #include "SessionRecovery.h"
 #include "SidechainGraph.h"
 #include "TrackPrint.h"
@@ -2059,6 +2060,7 @@ void Commands::open(const juce::File& source)
     auto loaded = std::move(document.edit);
     auto archive = PersistentHistory::read(loaded, source);
     project_document::validate(archive.requirements, document.declared);
+    native_midi_numbers::prepareEdit(loaded);
     stop();
     auto info = loaded.getChildWithName("NATIVEDAW");
     info.removeChild(info.getChildWithName("PERSISTENT_HISTORY"), nullptr);

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "PersistentHistory.h"
 #include "NativeEditXml.h"
+#include "NativeMidiNumbers.h"
 #include "NativePluginStates.h"
 #include <juce_cryptography/juce_cryptography.h>
 
@@ -746,6 +747,11 @@ PersistentHistory::Archive PersistentHistory::read(juce::ValueTree current, cons
     const auto b = juce::ValueTree::fromXml(*preciseEditXml(result.current));
     if (!a.isEquivalentTo(b))
         throw std::runtime_error("persistent delta chain does not restore current Edit: " + mismatch(a, b));
+    // Validate the untouched serialized bytes first. Native NOTE construction
+    // and restored property actions must then see correctly rounded doubles.
+    native_midi_numbers::prepareEdit(result.current);
+    for (auto delta : result.deltas)
+        native_midi_numbers::prepareDelta(delta);
     highWater(result.current, result.highestID);
     return result;
 }
