@@ -791,6 +791,11 @@ int main(int argc, char** argv)
         result["scope"] = "two actual hosted MIDI recorders, original Undo/Redo and cold history, real native panel "
                           "keys and synth PCM; "
                           "not physical input, exact native NOTE floating bytes, listening, linked moves or full P1";
+        if (moving)
+            result["scope"] =
+                "two actual hosted MIDI recorders, complete linked sample/musical movement and migration, "
+                "native timeline gestures, saved custom keys, original Undo/Redo and cold native XML; "
+                "real synth PCM; not Tempo-map editing, physical MIDI, listening, RT performance or full P1";
     }
     catch (const std::exception& e)
     {
