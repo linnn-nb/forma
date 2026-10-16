@@ -1,0 +1,422 @@
+{
+  "result": "verified_increment_with_remaining_gaps",
+  "date": "2026-10-16",
+  "production_commits": [
+    "52ca269",
+    "f0845a4"
+  ],
+  "fixture_commit": "64d146d",
+  "scope": "macOS当前中文输入法下真实来源试听启动/停止、冲突重分配和键位Undo、实际进程冷开/原工程UndoRedo；CoreAudio准备状态从pending到verified的查询/GUI发布。不是完整P1/产品、全部输入法或OS波形拖选资格。",
+  "architecture": {
+    "new_edit_commands_or_schemas": false,
+    "new_sdk_bytes": false,
+    "new_runtime_services": false,
+    "new_RT_work": false,
+    "native_platform_framework": "macOS Carbon keyboard-layout translation, message thread only",
+    "literal_binding_priority": true,
+    "saved_key_rewrite": false,
+    "native_event_absent": "literal key retained"
+  },
+  "app": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "executable_sha256": "079412a0540701cc273a3d96ad95759335640b594ea238d7ed0e96392055500c",
+    "codesign_deep_strict_exit": 0,
+    "local_identity": "F28B79FBF4F06DD95DA1A6C2B859EDE2AE84BA8F",
+    "notarized": false,
+    "only_production_app": true
+  },
+  "builds": [
+    {
+      "log": "build-v2-tracktion/p1-interaction-build-final.log",
+      "exit": 0,
+      "scope": "initial NativeDAW/ndaw CLI/affected targets"
+    },
+    {
+      "log": "build-v2-tracktion/p1-input-layout-build.log",
+      "exit": 0,
+      "scope": "final layout adapter NativeDAW and 8 UI tests"
+    },
+    {
+      "log": "build-v2-tracktion/p1-input-layout-focus-build.log",
+      "exit": 0,
+      "scope": "current focus suite relink"
+    }
+  ],
+  "tests": {
+    "distinct_latest_suites": 12,
+    "checks": 1011,
+    "case_seconds_sum": 101.59326,
+    "suites": [
+      {
+        "name": "tracktion_native_audio_devices",
+        "checks": 61,
+        "seconds": 10.6594,
+        "junit": "p1-input-layout-final.xml",
+        "report": "evidence/M1/audio-device-tests.json",
+        "report_sha256": "d2b2a196646e89c2769280c706533dc0d0cb669beb5219821a072dafe42ced55"
+      },
+      {
+        "name": "tracktion_audio_device_failure_recovery",
+        "checks": 13,
+        "seconds": 9.27173,
+        "junit": "p1-interaction-final.xml",
+        "report": "evidence/M1/audio-device-fault-tests.json",
+        "report_sha256": "4d6a9488b78c41212255c5b05951fbd98a11afdfca7491c39337a8c492c2b2cb"
+      },
+      {
+        "name": "tracktion_audio_devices_with_native_plugins",
+        "checks": 54,
+        "seconds": 15.7163,
+        "junit": "p1-interaction-final.xml",
+        "report": "evidence/M1/audio-device-plugin-tests.json",
+        "report_sha256": "a08fa14a7665e6c42485562fe720d24f66cea0d529a967e408727dcb6ffe5f24"
+      },
+      {
+        "name": "tracktion_paged_project_queries",
+        "checks": 54,
+        "seconds": 6.93021,
+        "junit": "p1-interaction-final.xml",
+        "report": "evidence/M2/query-tests.json",
+        "report_sha256": "16260b62f6ad4e163ea85691d12117aa8b7e72f66cd07ef706dab5b84413ff63"
+      },
+      {
+        "name": "forma_native_ui_navigation",
+        "checks": 73,
+        "seconds": 4.52378,
+        "junit": "p1-input-layout-final.xml",
+        "report": "evidence/U/navigation-tests.json",
+        "report_sha256": "5f834c9564af77724d7a8fad0723344d37ed2760c553a978f5a0163f25681fbe"
+      },
+      {
+        "name": "forma_native_zoom_toggle",
+        "checks": 135,
+        "seconds": 7.87133,
+        "junit": "p1-input-layout-final.xml",
+        "report": "evidence/U/zoom-toggle-tests.json",
+        "report_sha256": "8985c8451e27da46c18cedc406a54cb01a6bbe1776a1e54fdf9d8c0c8c6c0beb"
+      },
+      {
+        "name": "forma_native_window_focus",
+        "checks": 31,
+        "seconds": 4.63514,
+        "junit": "p1-input-layout-final.xml",
+        "report": "evidence/U/window-focus-tests.json",
+        "report_sha256": "7636b7ac40dd3c97f0fbb74bad71856e00b67665caa870f024f117ecbd09a403"
+      },
+      {
+        "name": "forma_native_keyboard_settings",
+        "checks": 93,
+        "seconds": 1.74854,
+        "junit": "p1-input-layout-final.xml",
+        "report": "build-v2-tracktion/keyboard-settings-tests.json",
+        "report_sha256": "9dd79d4076c1e1b1194d6e0ef5b25c0e71a325e4b62f72bd178bf87051ccc527"
+      },
+      {
+        "name": "forma_workspace_shortcuts",
+        "checks": 62,
+        "seconds": 1.89292,
+        "junit": "p1-input-layout-final.xml",
+        "report": "build-v2-tracktion/workspace-shortcuts-tests.json",
+        "report_sha256": "175e80658691502b2030aefd81cc80cd20d0b3dcfc2c98aeab57cac2cfedec21"
+      },
+      {
+        "name": "forma_playlist_editing",
+        "checks": 239,
+        "seconds": 16.9114,
+        "junit": "p1-input-layout-final.xml",
+        "report": "build-v2-tracktion/p1-playlist-editing-tests.json",
+        "report_sha256": "a63ab365da236a092311e4741f54f08fa807aee76952c93eee6bdd2ef9e588a3"
+      },
+      {
+        "name": "forma_playlist_audition",
+        "checks": 98,
+        "seconds": 8.41321,
+        "junit": "p1-input-layout-final.xml",
+        "report": "build-v2-tracktion/playlist-audition-tests.json",
+        "report_sha256": "177fbcd128729aaf74401268c53bf56a95e4bb5016cef92771988a5984ca61a9"
+      },
+      {
+        "name": "forma_production_chain",
+        "checks": 98,
+        "seconds": 13.0193,
+        "junit": "p1-input-layout-final.xml",
+        "report": "build-v2-tracktion/p1-production-chain-tests.json",
+        "report_sha256": "71d49313ee49aa82a87335b8b9db15c79b10011d4d2bd06e3010b124a9b2e941"
+      }
+    ],
+    "final_UI_batch": {
+      "junit": "build-v2-tracktion/p1-input-layout-final.xml",
+      "passed": 9,
+      "total": 9,
+      "seconds": 69.69
+    },
+    "unchanged_engine_cases": "device fault 13, actual AU/VST3 reconfiguration 54, paged queries 54 passed in p1-interaction-final.xml; Engine unchanged after 52ca269",
+    "single_12_of_12_batch": false
+  },
+  "desktop": {
+    "root": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Interaction-ee8f59f4ed41",
+    "reuse": "previous real microphone capture; no new physical recording or listening claim",
+    "native_input_evidence": {
+      "captured_before_fix": "CtrlShiftOption8 -> *; 4 -> ¥; 0 -> 0 under current input method",
+      "source_start_stop": "real OS CtrlShiftOption8 starts; immediate CtrlShiftOption0 stops within the same 0.943s desktop batch and returns position168384",
+      "after_cold_start_stop": "same start/stop after actual process cold reopen, 1.024s desktop batch, returns position168384",
+      "key_conflict": "Grid capture displays ctrl+shift+option+8 and existing source audition owner; actual Reassign invokes Grid, local key Undo restores F4 and source8",
+      "all_changes_through_native_UI": true,
+      "MCP": "read-only query_session receipts only"
+    },
+    "device_completions": [
+      {
+        "name": "device-480",
+        "revision": 39,
+        "position_samples": 168384,
+        "configuration": {
+          "actor": "human",
+          "actual": {
+            "buffer_frames": 480,
+            "input": "",
+            "input_channels": [],
+            "open": true,
+            "output": "外置耳机",
+            "output_channels": [
+              0,
+              1
+            ],
+            "running": true,
+            "sample_rate": 48000.0,
+            "type": "CoreAudio"
+          },
+          "before": {
+            "buffer_frames": 512,
+            "input": "",
+            "input_channels": [],
+            "open": true,
+            "output": "外置耳机",
+            "output_channels": [
+              0,
+              1
+            ],
+            "running": true,
+            "sample_rate": 48000.0,
+            "type": "CoreAudio"
+          },
+          "configuration_ms": 58.50479167699814,
+          "engine_format": {
+            "buffer_frames": 480,
+            "sample_rate": 48000.0
+          },
+          "graph_prepared": true,
+          "id": "e7376fc11c0a43fb87d51ceb734ac9f7",
+          "preferences_saved": true,
+          "preparation_ms": 580.2684999704361,
+          "requested": {
+            "base_setup_hash": "a340f72d5956a4cb7160cbef7cf45f3d678ef1e5b66e5242ea1baee32eb605dd",
+            "buffer_frames": 480,
+            "input": "",
+            "input_channels": [],
+            "output": "外置耳机",
+            "output_channels": [
+              0,
+              1
+            ],
+            "sample_rate": 48000.0,
+            "type": "CoreAudio"
+          },
+          "reversible": false,
+          "revision": 39,
+          "rollback": null,
+          "settle_ms": 500,
+          "state": "verified",
+          "timeout_ms": 5000,
+          "unchanged": false,
+          "undo_scope": "device configuration is outside Edit Undo"
+        }
+      },
+      {
+        "name": "device-512-restored",
+        "revision": 40,
+        "position_samples": 168384,
+        "configuration": {
+          "actor": "human",
+          "actual": {
+            "buffer_frames": 512,
+            "input": "",
+            "input_channels": [],
+            "open": true,
+            "output": "外置耳机",
+            "output_channels": [
+              0,
+              1
+            ],
+            "running": true,
+            "sample_rate": 48000.0,
+            "type": "CoreAudio"
+          },
+          "before": {
+            "buffer_frames": 480,
+            "input": "",
+            "input_channels": [],
+            "open": true,
+            "output": "外置耳机",
+            "output_channels": [
+              0,
+              1
+            ],
+            "running": true,
+            "sample_rate": 48000.0,
+            "type": "CoreAudio"
+          },
+          "configuration_ms": 59.38779166340828,
+          "engine_format": {
+            "buffer_frames": 512,
+            "sample_rate": 48000.0
+          },
+          "graph_prepared": true,
+          "id": "7484a9708f9e450da458f564d49ead5c",
+          "preferences_saved": true,
+          "preparation_ms": 585.9838750064373,
+          "requested": {
+            "base_setup_hash": "2abe03f871f5c9555abc869f42d79eae423953a11434491e99ff3fe6eacbfdca",
+            "buffer_frames": 512,
+            "input": "",
+            "input_channels": [],
+            "output": "外置耳机",
+            "output_channels": [
+              0,
+              1
+            ],
+            "sample_rate": 48000.0,
+            "type": "CoreAudio"
+          },
+          "reversible": false,
+          "revision": 40,
+          "rollback": null,
+          "settle_ms": 500,
+          "state": "verified",
+          "timeout_ms": 5000,
+          "unchanged": false,
+          "undo_scope": "device configuration is outside Edit Undo"
+        }
+      }
+    ],
+    "cold": {
+      "project": "Input-Layout-Verified.tracktionedit",
+      "sha256": "e4c02e155918358feeaf75b2fcf10151d5025f0020bd0045019c734b6328caff",
+      "retained_steps": 22,
+      "fresh_process_session": true,
+      "original_undo_redo": true,
+      "same_track_facts": true
+    },
+    "mouse": {
+      "status": "unverified",
+      "observed": "two coordinate scales and caption/offset clicks produced no AX selection change; AX caption actions and OS keys work",
+      "not_claimed": "No OS waveform drag, local promotion or new Comp was qualified; native tests are separate."
+    },
+    "restored_user": {
+      "name": "Warp Comp",
+      "tracks_equal": true,
+      "original_plan_entries": 9,
+      "position_samples": 77385,
+      "transport_stopped": true,
+      "output": "外置耳机",
+      "sample_rate": 48000,
+      "buffer_frames": 512,
+      "input": "off",
+      "main_controls": "play/save/Undo enabled in final native AX state",
+      "PID": 90105,
+      "no_test_processes": true
+    }
+  },
+  "independent": {
+    "checks": 244,
+    "result": "passed_with_explicit_runtime_history_difference",
+    "report": "build-v2-tracktion/P1-Interaction-ee8f59f4ed41/independent-verification.json",
+    "report_sha256": "0716594f9656e7594bee27cf01bd265e8d4cd577ba147d9e04ab26807447713a",
+    "comparisons": [
+      {
+        "name": "comp",
+        "steps": 22,
+        "non_runtime_delta_data_equal": true,
+        "raw_step_hash_changes": [
+          20,
+          21
+        ],
+        "runtime_seek_appended_to_original_step": []
+      },
+      {
+        "name": "original",
+        "steps": 9,
+        "non_runtime_delta_data_equal": true,
+        "raw_step_hash_changes": [
+          8
+        ],
+        "runtime_seek_appended_to_original_step": [
+          {
+            "step": 8,
+            "before": {
+              "position": "0"
+            },
+            "after": {
+              "position": "1.6121875000000001"
+            }
+          }
+        ]
+      }
+    ],
+    "saved_literal_keys": {
+      "532": "ctrl + shift + option + 8",
+      "536": "ctrl + shift + option + 0",
+      "116": "F4"
+    },
+    "microphone_sources": [
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Desktop-20261016-13f8270c/Recordings/Take-d2d03ca532054ff9a9140611237fbef4-1013.wav",
+        "sha256": "92c8a4349060d4f84073463124053dd5833f3541871823578bf3cdd6929fbf9f"
+      },
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Desktop-20261016-13f8270c/Recordings/Take-6596160ac96042b0aa34e925064875c3-1013.wav",
+        "sha256": "cc693423dac2bd71f4e208ce56f09970c2047f91f3cc9f74c4005fb3215ca077"
+      }
+    ],
+    "remaining_issue": "Persistent mirror includes SDK lastSignificantChange and a declared transport seek in existing steps. Raw delta digests/encoded_bytes are not claimed identical; no other delta data excluded."
+  },
+  "cleanup": {
+    "removed_rebuildable_test_executables": 168,
+    "removed_bytes": 5778969960,
+    "manifest": "build-v2-tracktion/P1-Interaction-ee8f59f4ed41/rebuildable-binary-cleanup.json",
+    "preserved": "all sources, media, projects, logs, evidence and unique production App",
+    "current_free_bytes": 6110171136
+  },
+  "preserved_failures": [
+    {
+      "log": "build-v2-tracktion/p1-interaction-build.log",
+      "cause": "wrong ndaw_cli_v2 target name after NativeDAW built; later correct ndaw build exit0"
+    },
+    {
+      "log": "build-v2-tracktion/p1-interaction-final.xml",
+      "result": "9/12 passed",
+      "cause": "old hidden audio-settings button fixture, history encoded-byte equality, native open-focus check"
+    },
+    {
+      "log": "build-v2-tracktion/p1-interaction-shortcuts-final.xml",
+      "result": "1/2 passed",
+      "cause": "focus fixture lacked actual foreground ownership"
+    },
+    {
+      "log": "build-v2-tracktion/p1-interaction-focus-role.xml",
+      "cause": "open focus still failed; latest implementation/current native role and session checks passed31 in final batch"
+    },
+    {
+      "artifact": "desktop-key-observations.json",
+      "cause": "US shifted-character substitution did not fit current Chinese input method; f0845a4 replaces it with actual native layout fallback"
+    }
+  ],
+  "remaining": [
+    "persistent history absorbs TRANSPORT position/SDK timestamps into existing steps; audio editing delta and original Plan IDs verified, raw history hashes/byte counts not claimed identical",
+    "OS waveform coordinate drag pending, cause not resolved; user unavailable for manual test",
+    "CLI log pollution of JSON stdout",
+    "all keyboard layouts/input methods and system-reserved shortcuts not qualified",
+    "performance A15.84%>15%, analysis timeout, RT SDK locks/allocations, hardware latency/PDC/multidevice/endurance/listening/physical MIDI",
+    "Windows/video/surround/release and full architecture incomplete; M2/M3 frozen, M4/M5 deferred"
+  ],
+  "privacy": "microphone audio, project files and raw runtime queries remain local ignored build; only code and compact qualification uploaded"
+}

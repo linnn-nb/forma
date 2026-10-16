@@ -1,3 +1,28 @@
+# 来源快捷键与设备就绪发布（2026-10-16，当前）
+
+结论：中文输入法下来源试听的真实启动/停止、冲突重分配/键位Undo、保存与进程冷开已验证；设备完成后主界面不再停在“准备中”。当前12种最新通过套共 **1011项**：最终UI批次9/9、69.69秒，另3套未改Engine的故障/插件/查询回归沿用本轮通过终态。不是一次12/12批次、完整P1/产品或所有输入法资格。
+
+| 项目与状态 | 实现与测试 | 实际范围 |
+| --- | --- | --- |
+| P1-INPUT-LAYOUT：已验证当前输入法 | `ui/MacShortcutKeys.mm`、`ShortcutKeys.h`、`WorkspaceLayout.cpp`、`PlaylistPanel.h`、`KeyboardSettings.cpp`；`NativeShiftKeyChecks.h`/`WorkspaceShortcutTests.cpp`、键位/Playlist测试 | 本机CtrlShiftOption8实际字符为*，4为¥，0仍是0。当前原生事件经系统布局取得基础键；先保留精确已有绑定，再做后备匹配。无原生事件/布局证据就保留原键，不重写保存键位。Windows与其它键盘布局未由此实测。 |
+| P1-DEVICE-PUBLISH：已验证所列设备 | `AudioDeviceCommands.cpp`；`DevicePublicationChecks.h`、设备/故障/实际插件测试 | no-op、新图准备和verified/failed阶段失效facts缓存并发变更通知，不加工程revision/Undo。旧问题不仅查询滞后，还会让播放/保存/Undo持续禁用。真实GUI外置耳机48k、512→480→512均从pending恢复，查询也返回verified，无audio_preparing残留。 |
+| P1-INPUT-DESKTOP：已验证所列操作 | 正式唯一App、实际OS键和原生面板；只读query回执 | 8启动/0立即停止并回到168384样本；Grid捕获正确提示来源试听冲突，实际重新分配后该键调用Grid，键位Undo恢复F4/来源8。另存、实际进程退出/冷开后8/0仍有效，原最后淡化CmdZ/ShiftCmdZ执行，完整轨道事实/22原Plan入口保留。使用上轮真实麦克风文件，本轮未新录或人工听评。 |
+| P1-MOUSE-DESKTOP：待实测 | 原生程序化Playlist/Grabber另已测 | 两种坐标尺度、标题/窗口偏移点击均无可核验选择响应；AX标题和OS按键可用。尚未区分应用命中路径与桌面坐标工具，未宣称OS拖选、局部采用或新Comp通过。用户暂不便测试，不重复请求参与。 |
+
+最终各套：CoreAudio61、故障13、实际AU/VST3设备重配54、分页查询54、导航73、Zoom Toggle135、窗口焦点31、键位93、快捷键62、Playlist239、试听98、完整音频链98。后备匹配的纯解析向量与实际Cocoa/OS输入资格分开；字面自定义键优先、真实Save/Open、原工程Undo/Redo也测。设备自动化只开已有授权输入，不以配置冒充新麦克风录音；故障驱动是测试替身，不冒充拔线。
+
+保留失败：初次聚合构建用了不存在的ndaw_cli_v2目标，NativeDAW已构建，后改正确ndaw；首批9/12，旧设备夹具找隐藏按钮、误比较历史encoded_bytes、原生焦点未通过。设备改真实注册菜单命令14；历史改核对完整轨道/原Plan及实际UndoRedo；焦点夹具采用正常Mac应用角色并严格检查真实前台/新session，最终31项通过，未放宽生产焦点守卫或5秒预算。仅美式Shift替换在实际输入法下导致0停止无回执，已由f0845a4的当前布局适配替代，不能把原型当通过。
+
+**未关闭的历史差距**：独立读取实际工程，Comp全部原生TRACK树相同，22个原Plan ID及全部非时间戳delta相同；原始两WAV哈希保持。SDK lastSignificantChange使两步raw SHA改变、encoded_bytes68660→68990；用户Warp恢复定位0→77385样本也被持久镜像追加进原第9步，encoded_bytes33987→34201。独立复核逐字段解释这些差异，未改原文件或忽略其它编辑数据；但运行时位置/时间戳混入原Step仍待修，不宣称原始历史逐字/摘要完全相同。用户完整轨道事实与9个Plan入口、播放头、停止态已恢复。
+
+NativeDAW/CLI及受影响目标构建exit0；当前唯一App二进制SHA256 `079412a0540701cc273a3d96ad95759335640b594ea238d7ed0e96392055500c`，本地deep/strict验签通过，非发行公证。使用系统Carbon键盘布局API，无新第三方依赖、SDK字节、引擎、服务、命令/schema/权限或实时路径工作；20补丁/50文件沿用配置核对，本轮无fresh replay声明。
+
+磁盘一度仅余约109MiB，导致桌面图像和写文件失败。按既有清理授权仅移除168个不在运行的可重建CMake测试程序，共5778969960字节（约5.38GiB）；全部源码、媒体、工程、日志/证据和唯一App保留。未删录音/用户素材/SDK，未新增DMG/tar。
+
+证据：`evidence/P1/input-device-qualification.json`；本地`build-v2-tracktion/p1-input-layout-final.xml/.log`、`p1-interaction-final.xml/.log`及`P1-Interaction-ee8f59f4ed41/independent-verification.json`（244项、明确运行时历史差异）、`desktop-key-observations.json`、清理清单；所有前述失败日志保留。冷开演示`P1-Interaction-ee8f59f4ed41/Input-Layout-Verified.tracktionedit`保留原22步，不上传真实音频。实际操作见P1_DESKTOP_WORKFLOW.md首节。
+
+下一项：修复持久历史的运行时属性收集边界，再修CLI stdout；鼠标OS资格保留待定位。性能A15.84%>15%、分析超时、全读取能力、RT SDK锁分配、多设备/物理MIDI/延迟PDC/耐久/听评、Windows/视频/环绕/发行与完整架构未完成。M2/M3冻结、M4/M5暂缓。以下为历史，旧“下一项/状态/未重启”等以本节和NEXT_STEPS.md为准。
+
 # P1 真实麦克风桌面链路当前验证（2026-10-16）
 
 结论：一轨内置麦克风经真实OS桌面完成 **Loop→Punch→候选Comp→两处交叉淡化→WAV→进程冷重开→原Undo/Redo→重导**。新增Playlist真实来源标题的可访问/本地键盘选择。受影响7套最新终态 **899项**，独立文件审计 **108项**；这是明确范围的P1增量，完整P1、产品、人工听评和硬件延迟仍未验收。

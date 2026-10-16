@@ -1,3 +1,13 @@
+# 当前新增：来源试听快捷键与设备状态
+
+打开唯一Forma.app及`build-v2-tracktion/P1-Interaction-ee8f59f4ed41/Input-Layout-Verified.tracktionedit`。OptionL打开Playlist，点真实来源片段标题；CtrlShiftOption8开始、0停止并返回原播放头。本机中文输入法已实际执行，保存并实际重启后仍有效；原CmdZ/ShiftCmdZ可撤重做最后交叉淡化，22步音频历史保留。真实录音沿用上轮，不是本轮新录或人工听评。
+
+CtrlShiftK搜索Grid→更改→按CtrlShiftOption8，会准确提示已分配给“试听来源选区”；在此独立工程中重新分配后可实际调用Grid，使用面板“撤销键位更改”恢复F4/来源8。常规工程Undo不撤键位；字面自定义绑定优先，键位不会按固定美式字符重写。
+
+视图→音频设备设置，选择设备实际提供的缓冲/通道后应用；准备中主控件禁用，实际verified后自动恢复，查询也同步。已实际外置耳机48k、512→480→512核验；这不是往返延迟测量。设备设置不属于工程Undo。
+
+OS波形拖选仍无可核验坐标响应，未记通过。原生历史还收集运行时定位/SDK时间戳，raw摘要/编码大小不保证相同，见VERIFICATION.md首节及BACKLOG；不能用22步仍在来宣称全部持久历史语义已完成。以下是上轮制作链路操作。
+
 # P1 真实麦克风制作链路
 
 本机一轨48k/512的短录音链路已实际完成；用户听评、多设备/多轨、物理MIDI与长时稳定性未验。当前代码/测试/失败映射见[验证记录](VERIFICATION.md)，精简结果见`evidence/P1/desktop-chain-qualification.json`。

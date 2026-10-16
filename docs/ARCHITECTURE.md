@@ -1,3 +1,5 @@
+2026-10-16：L5 ShortcutKeys在真实原生键事件上经macOS当前布局取得基础键，先匹配原字面绑定，再做后备；Workspace、Playlist名称编辑器与快捷键捕获共用，缺原生事件证据不猜键。不改Edit/命令注册表或保存键位语义，Carbon调用只在message thread。L1 AudioDeviceCommands的no-op/图准备/终态失效facts并发通知，工程revision仍只在设备申请时变化一次，设备控制不新增Undo。无新引擎/服务/SDK字节/RT工作。持久镜像仍吸收TRANSPORT位置与SDK时间戳，作为明确未完成边界单独修复，不能以回执相同掩盖。
+
 2026-10-16 P1来源选择：仅L5 PlaylistPanel/ClipHeader新增真实来源标题控件和局部Space/Return处理；稳定ID绑定实际facts，选择/滚动只改UI草稿，不直接写Edit或工程历史。停止试听后重新取事实，禁止跨状态变化保留JSON引用；原有波形鼠标事件仍转交Canvas。Comp/Promote/淡化沿用原L1/Undo，录音/渲染仍唯一Tracktion引擎。无新命令/schema/权限/SDK/服务/RT工作。真实麦克风/冷开与native peer资格分开，见VERIFICATION.md首节。
 
 2026-10-16 快捷键焦点：仅L5补实际前台/本窗口native peer/组件焦点的有界交接，显示面板后延后搜索聚焦，捕获原1秒预算保持，取消/隐藏停止。键位仍经既有L1 UI子树保存，独立键位Undo/Redo不污染Edit工程历史；无新命令/权限/schema/SDK/RT路径。当前原生及OS桌面资格见VERIFICATION.md首节。
