@@ -347,7 +347,7 @@ index 930a0b8..5de633f 100644
      EditItemID getItemID() const                            { return editItemID; }
  
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp
-index f802efb..b9af2c4 100644
+index f802efb..3fc6dad 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp
 @@ -32,13 +32,30 @@ MidiNode::MidiNode (std::vector<juce::MidiMessageSequence> sequences,
@@ -397,12 +397,12 @@ index f802efb..b9af2c4 100644
 +    }
 +}
 +
-+void MidiNode::releasePedals (MidiMessageArray& dest, double time, bool isPlaying)
++void MidiNode::releasePlaybackState (MidiMessageArray& dest, double time, bool isPlaying)
 +{
-+    if (pedalState->heldChannels() == 0)
++    if (pedalState->heldChannels() == 0 && ! pedalState->keys.areAnyNotesActive())
 +        return;
-+    ActiveNoteList noKeys;
-+    MidiNodeHelpers::createNoteOffs (noKeys, dest, midiSourceID, time, isPlaying, pedalState->sustainChannels, pedalState->sostenutoChannels);
++    MidiNodeHelpers::createNoteOffs (pedalState->keys, dest, midiSourceID, time, isPlaying,
++                                     pedalState->sustainChannels, pedalState->sostenutoChannels);
 +    pedalState->reset();
  }
  
@@ -420,13 +420,13 @@ index f802efb..b9af2c4 100644
  
      if (timelineRange.isEmpty())
 +    {
-+        releasePedals (pc.buffers.midi, 0.0, false);
++        releasePlaybackState (pc.buffers.midi, 0.0, false);
          return;
 +    }
  
      if (shouldBeMutedDelegate && shouldBeMutedDelegate())
 +    {
-+        releasePedals (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
++        releasePlaybackState (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
          return;
 +    }
  
@@ -438,7 +438,7 @@ index f802efb..b9af2c4 100644
              || sectionEditTime.getStart().inBeats() >= editRange.getEnd())
 -           return;
 +        {
-+            releasePedals (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
++            releasePlaybackState (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
 +            return;
 +        }
  
@@ -450,7 +450,7 @@ index f802efb..b9af2c4 100644
              || sectionEditTime.getStart().inSeconds() >= editRange.getEnd())
 -           return;
 +        {
-+            releasePedals (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
++            releasePlaybackState (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
 +            return;
 +        }
  
@@ -479,7 +479,7 @@ index f802efb..b9af2c4 100644
      if (! getPlayHeadState().isContiguousWithPreviousBlock() || localTime.getStart() <= 0.00001 || shouldCreateMessagesForTime)
      {
 -        MidiNodeHelpers::createMessagesForTime (pc.buffers.midi, sequence, localTime.getStart(),
-+        releasePedals (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
++        releasePlaybackState (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
 +        const auto* chase = pedalChases[currentSequence].get();
 +        const bool preparedChase = ! useMPEChannelMode && chase->hasPedals();
 +        const auto beforeChase = pc.buffers.midi.size();
@@ -515,7 +515,7 @@ index f802efb..b9af2c4 100644
 +    if (! lastBlockOfLoop && sectionEditRange.getEnd() >= editRange.getEnd())
 +    {
 +        const auto endTime = (editRange.getEnd() - sectionEditRange.getStart() - durationOfOneSample) * secondsPerTimeBase;
-+        releasePedals (pc.buffers.midi, juce::jmax (0.0, endTime), getPlayHead().isPlaying());
++        releasePlaybackState (pc.buffers.midi, juce::jmax (0.0, endTime), getPlayHead().isPlaying());
 +    }
 +
 +    // Keep generated releases on the actual last sample, before the next loop's
@@ -534,7 +534,7 @@ index f802efb..b9af2c4 100644
     #if TRACKTION_SANITY_CHECK_MIDI_BUFFERS
      MidiNodeHelpers::sanityCheckMidiBuffer (pc.buffers.midi, localTime.getLength());
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h
-index ce6bef3..f4790ba 100644
+index ce6bef3..ef9372d 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h
 +++ b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h
 @@ -13,6 +13,9 @@ namespace tracktion::inline engine {
@@ -555,16 +555,16 @@ index ce6bef3..f4790ba 100644
 +    std::vector<std::shared_ptr<const MidiPedalChase>> pedalChases;
 +    MidiMessageArray preparedMidiStorage;
 +    bool installPreparedMidiStorage = false;
-+    void releasePedals (MidiMessageArray&, double, bool);
++    void releasePlaybackState (MidiMessageArray&, double, bool);
 +
      double sampleRate = 44100.0;
      int currentIndex = 0;
      MPESourceID midiSourceID = createUniqueMPESourceID();
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h b/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h
-index 34fe8dd..e4551b0 100644
+index 34fe8dd..2ab01b4 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h
 +++ b/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h
-@@ -12,6 +12,262 @@
+@@ -12,6 +12,276 @@
  
  namespace tracktion::inline engine {
  
@@ -573,13 +573,27 @@ index 34fe8dd..e4551b0 100644
 +struct MidiPedalState
 +{
 +    uint32_t sustainChannels = 0, sostenutoChannels = 0;
++    ActiveNoteList keys;
 +
 +    void observe (const juce::MidiMessage& m) noexcept
 +    {
++        if (m.isNoteOn())
++        {
++            keys.startNote (m.getChannel(), m.getNoteNumber());
++            return;
++        }
++        if (m.isNoteOff())
++        {
++            keys.clearNote (m.getChannel(), m.getNoteNumber());
++            return;
++        }
 +        if (! m.isController())
 +            return;
 +        const auto bit = uint32_t (1) << m.getChannel();
 +        const auto controller = m.getControllerNumber();
++        if (controller == 120 || controller == 123)
++            for (int note = 0; note < 128; ++note)
++                keys.clearNote (m.getChannel(), note);
 +        if (controller == 121) // Reset All Controllers releases both pedals.
 +        {
 +            sustainChannels &= ~bit;
@@ -596,7 +610,7 @@ index 34fe8dd..e4551b0 100644
 +    }
 +
 +    uint32_t heldChannels() const noexcept { return sustainChannels | sostenutoChannels; }
-+    void reset() noexcept { sustainChannels = sostenutoChannels = 0; }
++    void reset() noexcept { sustainChannels = sostenutoChannels = 0; keys.reset(); }
 +};
 +
 +// Prepared MIDI-1 pedal chase. Only construction allocates. A seek retriggers
@@ -827,7 +841,7 @@ index 34fe8dd..e4551b0 100644
  namespace MidiNodeHelpers
  {
      inline void createMessagesForTime (MidiMessageArray& destBuffer,
-@@ -21,7 +277,8 @@ namespace MidiNodeHelpers
+@@ -21,7 +291,8 @@ namespace MidiNodeHelpers
                                         LiveClipLevel& clipLevel,
                                         bool useMPEChannelMode,
                                         MPESourceID midiSourceID,
@@ -837,7 +851,7 @@ index 34fe8dd..e4551b0 100644
      {
          if (useMPEChannelMode)
          {
-@@ -37,6 +294,18 @@ namespace MidiNodeHelpers
+@@ -37,6 +308,18 @@ namespace MidiNodeHelpers
          }
          else
          {
@@ -856,7 +870,7 @@ index 34fe8dd..e4551b0 100644
              {
                  controllerMessagesScratchBuffer.clearQuick();
  
-@@ -79,9 +348,10 @@ namespace MidiNodeHelpers
+@@ -79,9 +362,10 @@ namespace MidiNodeHelpers
  
      inline void createNoteOffs (MidiMessageArray& destination, const juce::MidiMessageSequence& sourceSequence,
                                  MPESourceID midiSourceID,
@@ -869,7 +883,7 @@ index 34fe8dd..e4551b0 100644
  
          for (int i = 0; i < sourceSequence.getNumEvents(); ++i)
          {
-@@ -105,10 +375,13 @@ namespace MidiNodeHelpers
+@@ -105,10 +389,13 @@ namespace MidiNodeHelpers
  
          for (int i = 1; i <= 16; ++i)
          {
@@ -886,7 +900,7 @@ index 34fe8dd..e4551b0 100644
  
                  // NB: Some buggy plugins seem to fail to respond to note-ons if they are preceded
                  // by an all-notes-off, so avoid this while playing.
-@@ -128,9 +401,10 @@ namespace MidiNodeHelpers
+@@ -128,9 +415,10 @@ namespace MidiNodeHelpers
      inline void createNoteOffs (ActiveNoteList& activeNoteList,
                                  MidiMessageArray& destination,
                                  MPESourceID midiSourceID,
@@ -899,7 +913,7 @@ index 34fe8dd..e4551b0 100644
  
          // First send note-off events for currently playing notes
          activeNoteList.iterate ([&] (int channel, int noteNumber)
-@@ -143,10 +417,13 @@ namespace MidiNodeHelpers
+@@ -143,10 +431,13 @@ namespace MidiNodeHelpers
          // Send controller off events for used channels
          for (int i = 1; i <= 16; ++i)
          {

@@ -42,7 +42,8 @@ struct Harness
         head.setReferenceSampleRange({0, blockSize});
         head.play();
     }
-    std::unique_ptr<tracktion::graph::Node> node(bool notes = true, int release = -1, bool extraNote = false)
+    std::unique_ptr<tracktion::graph::Node> node(bool notes = true, int release = -1, bool extraNote = false,
+                                                 bool withPedal = true)
     {
         juce::MidiMessageSequence seq;
         auto add = [&](int frame, juce::MidiMessage m)
@@ -60,7 +61,8 @@ struct Harness
             add(700, juce::MidiMessage::noteOn(channel, 62, juce::uint8(72)));
             add(1800, juce::MidiMessage::noteOff(channel, 62));
         }
-        add(500, juce::MidiMessage::controllerEvent(channel, pedal, 64));
+        if (withPedal)
+            add(500, juce::MidiMessage::controllerEvent(channel, pedal, 64));
         if (release >= 0)
             add(1200, juce::MidiMessage::controllerEvent(channel, release == 121 ? 121 : pedal,
                                                          release == 121 ? 0 : release));
@@ -155,6 +157,21 @@ int main(int argc, char** argv)
             for (const int channel : {1, 16})
                 for (const int pedal : {64, 66})
                 {
+                    {
+                        Harness h(beats, channel, pedal);
+                        h.player.setNode(h.node(true, -1, false, false));
+                        h.until(800);
+                        h.head.stop();
+                        h.process();
+                        result["observations"].push_back(h.record("no-pedal physical key Stop"));
+                        check(std::count_if(h.messages.begin(), h.messages.end(),
+                                            [&](const Json& m)
+                                            {
+                                                return m.value("kind", "") == "off" && m.value("pitch", -1) == 60 &&
+                                                       std::abs(m["frame"].get<int64_t>() - 800) <= 1;
+                                            }) == 1,
+                              "ordinary held key is released on actual stopped native callback without any pedal");
+                    }
                     {
                         Harness h(beats, channel, pedal);
                         h.head.setPosition(2048);

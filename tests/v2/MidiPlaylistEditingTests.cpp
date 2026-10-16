@@ -536,7 +536,7 @@ int main(int argc, char** argv)
             check(started, "actual native graph starts before its completion is observed");
             if (stopSample >= 0)
             {
-                Json stopped = Json::array();
+                Json stopped = Json::array(), stoppedNotes = Json::array();
                 for (int block = 0; block < 4; ++block)
                 {
                     juce::AudioBuffer<float> audio(0, 256);
@@ -550,10 +550,16 @@ int main(int argc, char** argv)
                                                {"value", m.getControllerValue()},
                                                {"offset", raw.samplePosition},
                                                {"block", block}});
+                        else if (m.isNoteOnOrOff())
+                            stoppedNotes.push_back({{"kind", m.isNoteOn() ? "on" : "off"},
+                                                    {"pitch", m.getNoteNumber()},
+                                                    {"offset", raw.samplePosition},
+                                                    {"block", block}});
                     }
                     pump();
                 }
-                result["stop_output"].push_back({{"audition", audition}, {"messages", stopped}});
+                result["stop_output"].push_back(
+                    {{"audition", audition}, {"messages", stopped}, {"notes", stoppedNotes}});
                 check(!c.realtimeState().playing && !c.playlistAuditionStatus().value("active", false),
                       "actual production Stop/cancel ends its running transport");
                 for (const int pedal : {64, 66})
@@ -949,6 +955,43 @@ int main(int argc, char** argv)
                           maps->findCommandForKeyPress(info.defaultKeypresses[0]) == id,
                       "all six migrated commands have distinct working replacement keys");
             }
+        }
+        {
+            const auto before = c.query()["tracks"];
+            std::vector<std::string> plans;
+            const auto created =
+                run(c, "playlist.create",
+                    {{"track", m}, {"source", alts[1]}, {"name", "No-pedal Stop control"}, {"role", "comp"}});
+            plans.push_back(created["plan_id"]);
+            const auto selected = run(c, "playlist.select", {{"track", m}, {"playlist", created["objects"][0]["id"]}});
+            plans.push_back(selected["plan_id"]);
+            for (int type : {64, 66})
+            {
+                const auto clip = c.query()["tracks"][1]["clips"][0];
+                Json points = Json::array();
+                for (const auto& e : clip["controller_events"])
+                    if (e["type"] == type)
+                        points.push_back({{"id", e["id"]}, {"source_beat", e["source_beat"]}, {"raw_value", 0}});
+                const auto receipt = run(c, "midi.cc.replace",
+                                         {{"clip", clip["id"]},
+                                          {"controller", type},
+                                          {"state_hash", clip["controller_state_hash"]},
+                                          {"points", points}});
+                plans.push_back(receipt["plan_id"]);
+            }
+            observe({}, false, 60000);
+            const auto notes = result["stop_output"].back()["notes"];
+            check(std::any_of(notes.begin(), notes.end(),
+                              [](const Json& n)
+                              {
+                                  return n["kind"] == "off" && n["pitch"] == 60 && n["block"] == 0 &&
+                                         n["offset"].get<int>() >= 0 && n["offset"].get<int>() < 256;
+                              }),
+                  "production Stop emits physical NoteOff for a held ordinary key without any pedal");
+            for (auto i = plans.rbegin(); i != plans.rend(); ++i)
+                c.undo(*i);
+            check(c.query()["tracks"] == before,
+                  "original Undo removes complete no-pedal test setup without changing sources");
         }
         isolatedSostenutoAudio(root);
         result["result"] = "passed";
