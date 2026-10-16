@@ -18,6 +18,7 @@ KeyboardSettings::KeyboardSettings(juce::ApplicationCommandManager& m, std::func
     title.setText(text("快捷键"), juce::dontSendNotification);
     title.setFont(juce::FontOptions(22));
     search.setComponentID("shortcuts.search");
+    search.setTitle(text("搜索快捷键"));
     search.setTextToShowWhenEmpty(text("搜索操作名称、分类或按键"), juce::Colour(0xff8293a4));
     search.onTextChange = [this] { rebuildList(); };
     list.setComponentID("shortcuts.commands");
@@ -256,7 +257,7 @@ void KeyboardSettings::beginCapture(int index)
     captureSession = session();
     captureSnapshot = snapshot();
     captureTitle.setText(text(index < 0 ? "添加按键" : "更改按键"), juce::dontSendNotification);
-    captureMessage.setText(text("现在按下要分配的组合键。Escape 取消。"), juce::dontSendNotification);
+    captureMessage.setText(text("正在准备按键捕获…"), juce::dontSendNotification);
     accept.setEnabled(false);
     accept.setButtonText(text("应用"));
     bindingViewport.setVisible(false);
@@ -266,27 +267,57 @@ void KeyboardSettings::beginCapture(int index)
     getTopLevelComponent()->toFront(true);
     if (!juce::Process::isForegroundProcess())
         juce::Process::makeForegroundProcess();
+    requestFocus(FocusTarget::capture);
+    repaint();
+}
+void KeyboardSettings::requestFocus(FocusTarget target)
+{
+    focusTarget = target;
     focusDeadline = juce::Time::getMillisecondCounterHiRes() + 1000;
     startTimer(10);
-    repaint();
+    if (target == FocusTarget::capture)
+        timerCallback();
 }
 void KeyboardSettings::timerCallback()
 {
-    if (!capturing || !isShowing())
+    if (focusTarget == FocusTarget::none || !isShowing())
     {
+        focusTarget = FocusTarget::none;
         stopTimer();
         return;
     }
-    if (juce::Process::isForegroundProcess())
+    auto* peer = getPeer();
+    if (juce::Process::isForegroundProcess() && peer && peer->isFocused() &&
+        !isCurrentlyBlockedByAnotherModalComponent())
     {
-        stopTimer();
-        grabKeyboardFocus();
-        return;
+        const auto target = focusTarget;
+        if (target == FocusTarget::capture)
+            grabKeyboardFocus();
+        else if (auto* focused = juce::Component::getCurrentlyFocusedComponent();
+                 !focused || focused == this || !isParentOf(focused))
+            search.grabKeyboardFocus();
+        auto* actual = juce::Component::getCurrentlyFocusedComponent();
+        const bool ready =
+            target == FocusTarget::capture ? hasKeyboardFocus(false) : actual && actual != this && isParentOf(actual);
+        if (ready)
+        {
+            focusTarget = FocusTarget::none;
+            stopTimer();
+            if (target == FocusTarget::capture && !candidate.isValid())
+                captureMessage.setText(text("现在按下要分配的组合键。Escape 取消。"), juce::dontSendNotification);
+            return;
+        }
     }
     if (juce::Time::getMillisecondCounterHiRes() >= focusDeadline)
     {
-        cancelCapture();
-        status.setText(text("窗口未取得键盘焦点，请重新点击更改。"), juce::dontSendNotification);
+        const bool captureTimedOut = focusTarget == FocusTarget::capture;
+        focusTarget = FocusTarget::none;
+        stopTimer();
+        if (captureTimedOut)
+        {
+            cancelCapture();
+            status.setText(text("窗口未取得键盘焦点，请重新点击更改。"), juce::dontSendNotification);
+        }
     }
 }
 bool KeyboardSettings::keyPressed(const juce::KeyPress& key)
@@ -317,6 +348,7 @@ bool KeyboardSettings::keyPressed(const juce::KeyPress& key)
 }
 void KeyboardSettings::cancelCapture()
 {
+    focusTarget = FocusTarget::none;
     stopTimer();
     capturing = false;
     capture.setVisible(false);
@@ -408,7 +440,9 @@ void KeyboardSettings::changeListenerCallback(juce::ChangeBroadcaster*)
 }
 void KeyboardSettings::visibilityChanged()
 {
-    if (!isVisible())
+    if (!isShowing())
         cancelCapture();
+    else if (!capturing)
+        requestFocus(FocusTarget::search);
 }
 } // namespace ndaw::desktop

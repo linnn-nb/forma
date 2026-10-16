@@ -18,6 +18,17 @@ public:
 namespace
 {
 int checks = 0;
+Json focusFailure = nullptr;
+void report(const juce::StringArray& args, const Json& result)
+{
+    if (!args.isEmpty())
+    {
+        std::ofstream out(args[0].toStdString());
+        out << result.dump(2) << '\n';
+        if (!out)
+            throw std::runtime_error("keyboard test report write failed");
+    }
+}
 void check(bool ok, const char* why)
 {
     if (!ok)
@@ -80,6 +91,7 @@ int runSuite(const juce::StringArray& args)
         juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("forma-keys-" + juce::Uuid().toString());
     try
     {
+        report(args, {{"result", "running"}, {"checks", 0}});
         WorkspaceWindow window(std::make_unique<Workspace>(false, std::make_unique<Storage>(folder)));
         auto& w = window.editor();
         auto& c = AudioDeviceTestAccess::owner(w);
@@ -93,7 +105,14 @@ int runSuite(const juce::StringArray& args)
         auto* panel = dynamic_cast<KeyboardSettings*>(find(w, "shortcuts.panel"));
         check(panel && panel->isShowing(), "actual shortcut panel is visible");
         auto* search = dynamic_cast<juce::TextEditor*>(find(w, "shortcuts.search"));
-        search->setText("Grid", true);
+        wait([&] { return search->hasKeyboardFocus(false); }, "opening the panel focuses its real native search field");
+        check(juce::Process::isForegroundProcess() && window.getPeer()->isFocused(),
+              "search focus is backed by the actual foreground native peer");
+        for (const char ch : std::string("Grid"))
+            check(window.getPeer()->handleKeyPress(
+                      juce::KeyPress(juce::CharacterFunctions::toUpperCase(juce::juce_wchar(ch)), 0, ch)),
+                  "native peer routes typed search characters without a private TextEditor callback");
+        wait([&] { return search->getText() == "Grid"; }, "immediate native typing actually filters the command list");
         wait(
             [&]
             {
@@ -128,6 +147,7 @@ int runSuite(const juce::StringArray& args)
                 if (auto* label = dynamic_cast<juce::Label*>(child))
                     facts["labels"].push_back(label->getText().toStdString());
             std::cout << "FOCUS_FAILURE " << facts.dump() << std::endl;
+            focusFailure = facts;
             throw;
         }
         check(window.getPeer()->handleKeyPress(custom), "actual native peer delivers candidate key");
@@ -184,8 +204,14 @@ int runSuite(const juce::StringArray& args)
               "stale capture cannot override newer map");
         wait([&] { return !find(w, "shortcuts.undo")->isEnabled(); }, "local Undo cannot overwrite foreign setting");
         click(w, "shortcuts.close");
-        check(w.keyPressed(custom) && w.queryView()["edit_mode"] == "grid",
-              "new shortcut executes real Grid in workspace");
+        check(keys->findCommandForKeyPress(custom) == 116, "actual remapped key resolves to Grid before dispatch");
+        check(window.getPeer()->handleKeyPress(juce::KeyPress(juce::KeyPress::F2Key)),
+              "native peer dispatches actual Slip before Grid check");
+        wait([&] { return w.queryView()["edit_mode"] == "slip"; },
+             "native Slip establishes a real changed-state control");
+        check(window.getPeer()->handleKeyPress(custom), "native peer dispatches the user's remapped key");
+        wait([&] { return w.queryView()["edit_mode"] == "grid"; },
+             "remapped key actually changes the workspace to Grid");
         const auto saved = folder.getChildFile("keys.tracktionedit");
         wait(
             [&]
@@ -222,15 +248,12 @@ int runSuite(const juce::StringArray& args)
                     {"checks", checks},
                     {"scope", "actual native peer capture, command registry, key Undo/Redo, conflicts and L1 "
                               "save/reopen; no audio/hardware claim"}};
-        if (!args.isEmpty())
-        {
-            std::ofstream out(args[0].toStdString());
-            out << result.dump(2);
-        }
+        report(args, result);
         std::cout << result.dump(2) << std::endl;
     }
     catch (const std::exception& e)
     {
+        report(args, {{"result", "failed"}, {"checks", checks}, {"error", e.what()}, {"focus", focusFailure}});
         std::cerr << "FAIL " << e.what() << std::endl;
         return 1;
     }

@@ -24,6 +24,13 @@ private:
     void selectedRowsChanged(int) override;
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void timerCallback() override;
+    enum class FocusTarget
+    {
+        none,
+        search,
+        capture
+    };
+    void requestFocus(FocusTarget);
     void rebuildList();
     void rebuildBindings();
     bool editable() const;
@@ -51,6 +58,7 @@ private:
     juce::KeyPress candidate;
     bool capturing = false;
     double focusDeadline = 0;
+    FocusTarget focusTarget = FocusTarget::none;
     std::string captureSession;
     juce::String captureSnapshot;
     struct HistoryEntry
