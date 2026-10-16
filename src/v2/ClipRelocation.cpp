@@ -225,6 +225,15 @@ Json Commands::relocationChange(const Json& args) const
     auto sealedOwners = owners;
     for (auto& owner : sealedOwners)
     {
+        // Read-only native automation updates the displayed value while a user
+        // reviews the card. Seal the explicit parameter value, schema and full
+        // curves, rather than invalidating the Plan on an automation readout.
+        for (auto& plugin : owner["plugins"])
+            for (auto& parameter : plugin["parameters"])
+            {
+                parameter.erase("current_value");
+                parameter.erase("display");
+            }
         owner["automation_state"] = Json::array();
         for (auto* plugin : track(owner.at("id"))->pluginList)
             for (auto* parameter : plugin->getAutomatableParameters())

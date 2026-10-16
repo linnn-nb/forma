@@ -310,12 +310,15 @@ void Workspace::refreshInspector()
     auto p = selectedProcessor();
     const bool fullFXInput = clipFXInspector && !owner.is_null() && owner.contains("clip_fx") &&
                              owner["clip_fx"].value("full_input_window", false);
-    const auto category = text(fullFXInput       ? "CLIP FX / 来源效果选段"
-                               : clipFXInspector ? "CLIP FX / 片段效果"
-                                                 : "INSPECTOR / 轨道检查器");
+    const auto category = text(!pending.is_null() ? "REVIEW / 变更预览"
+                               : fullFXInput      ? "CLIP FX / 来源效果选段"
+                               : clipFXInspector  ? "CLIP FX / 片段效果"
+                                                  : "INSPECTOR / 轨道检查器");
     inspectorCategory.setTooltip(
         fullFXInput ? text("保留完整来源的效果输入历史；只输出当前选段。参数修改作用于此片段副本。") : juce::String{});
-    const auto name = owner.is_null() ? text("未选择轨道") : text(owner["name"].get<std::string>());
+    const auto name = !pending.is_null() ? text("接受前核对变更")
+                      : owner.is_null()  ? text("未选择轨道")
+                                         : text(owner["name"].get<std::string>());
     inspectorCategory.setText(category, juce::dontSendNotification);
     inspectorName.setText(name, juce::dontSendNotification);
     inspectorName.setTooltip(name);

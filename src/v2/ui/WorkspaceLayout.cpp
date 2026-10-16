@@ -629,10 +629,7 @@ void Workspace::resized()
     }
     const bool preview = !pending.is_null();
     clipsList.setVisible(commands.uiState()["clips_list"].get<bool>() && !preview && !reportShowing);
-    const bool legacyView =
-        reportShowing ||
-        (preview && (pending["operations"][0]["command"] == "track.delete" ||
-                     pending["operations"][0]["command"].get<std::string>().starts_with("midi.notes.")));
+    const bool legacyView = reportShowing || preview;
     int bottom = getHeight() - 41 - (preview ? 220 : clipsList.isVisible() ? 194 : 0);
     bool externalState = stateStatus.isVisible();
     bool recovering = stateRetryButton.isVisible();
@@ -681,6 +678,8 @@ void Workspace::resized()
         recoveryPanel->setBounds(getLocalBounds());
     previewText.setVisible(preview || legacyView);
     acceptButton.setVisible(preview);
+    acceptButton.setButtonText(
+        text(preview && pending["operations"][0]["command"] == "clips.relocate" ? "接受迁移" : "接受计划"));
     rejectButton.setVisible(preview || legacyView);
     rejectButton.setButtonText(legacyView && !preview ? text("关闭报告") : text("取消"));
     status.setBounds(12, getHeight() - 27, getWidth() - 320, 24);

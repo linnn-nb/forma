@@ -83,6 +83,14 @@ public:
         const auto* p = c.automationParameter(track, lane);
         return p->valueRange.end - p->valueRange.start;
     }
+    static std::string status(ndaw::desktop::Workspace& w)
+    {
+        return w.status.getText().toStdString();
+    }
+    static Json pending(ndaw::desktop::Workspace& w)
+    {
+        return w.pending;
+    }
     static std::string tip(Commands& c)
     {
         return c.history.at(c.historyCursor - 1);

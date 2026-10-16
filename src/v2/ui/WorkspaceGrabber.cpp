@@ -134,6 +134,18 @@ void Workspace::moveClipSelection(const Json& targets, int64_t delta, uint64_t r
                 pending = plan;
                 reportShowing = false;
                 juce::String summary = text(relocate ? "跨轨道移动 · 请确认\n\n" : "共同移动 · 请确认\n\n");
+                if (relocate)
+                {
+                    const auto& automation = preview.at("relocation_changes").at(0).at("automation");
+                    const auto different =
+                        std::count_if(automation["transfers"].begin(), automation["transfers"].end(), [](const Json& t)
+                                      { return t["source_tempo_follows"] != t["destination_tempo_follows"]; });
+                    if (different)
+                        summary +=
+                            juce::String(int(different)) +
+                            text("项自动化的速度图策略与来源不同。\n"
+                                 "迁移后采用目标插件策略；目标现有设置保持。可先取消，在自动化面板调整后再迁移。\n\n");
+                }
                 const auto view = commands.uiState();
                 auto at = [&](int64_t p)
                 { return text(commands.formatTimelinePosition(p, view["main_time_scale"], view["timecode_fps"])); };

@@ -222,6 +222,9 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
         },
         "actual Nudge and any real confirmation commit the complete native curves once");
     checkLinkedCurveProbes(c, nudgeProbes);
+    const auto nudged = tempoFrame(c);
+    const auto nudgeFile = root.getChildFile("Linked-MIDI-Automation-Nudge.tracktionedit");
+    linkedCurveCold(c, nudgeFile, baseline, nudged, RecordingTestAccess::tip(c));
     key(w, 6);
     wait([&] { return tempoFrame(c) == baseline; }, "actual Undo key restores Nudge and all shared curves");
 
@@ -321,6 +324,8 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
     check(report && report->getText().contains(juce::String::fromUTF8("速度图策略不同")) &&
               report->getText().contains(juce::String::fromUTF8("恢复原播放列表不还原迁移曲线")),
           "visible native preview explains Tempo policy differences and shared Playlist automation before acceptance");
+    check(report->getHeight() >= 400 && visible(w, "plugin.insert") == nullptr,
+          "review uses the full native inspector height and hides conflicting plugin controls");
     const auto screenshot = root.getChildFile("Linked-Curve-Migration-Preview.png");
     {
         juce::FileOutputStream stream(screenshot);
@@ -330,9 +335,19 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
     }
     check(tempoFrame(c) == beforeRelocation, "visible migration preview has no hidden native writes");
     const auto version = c.querySummary()["revision"];
+    result["gui_accept_plan"] = RecordingTestAccess::pending(w);
     accept->triggerClick();
-    wait([&] { return c.querySummary()["revision"] != version; },
-         "actual asynchronous acceptance commits migration once");
+    try
+    {
+        wait([&] { return c.querySummary()["revision"] != version; },
+             "actual asynchronous acceptance commits migration once");
+    }
+    catch (const std::exception&)
+    {
+        result["gui_accept_status"] = RecordingTestAccess::status(w);
+        result["gui_failed_state_restored"] = tempoFrame(c) == beforeRelocation;
+        throw std::runtime_error("actual acceptance failed: " + RecordingTestAccess::status(w));
+    }
     checkLinkedCurveProbes(c, adjacentProbes);
     const auto guiMoved = tempoFrame(c);
     const auto guiFile = root.getChildFile("Linked-MIDI-Automation-GUI.tracktionedit");
@@ -346,6 +361,8 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
           "qualification restores all initial recorded MIDI, source hashes, plugins, curves and editing settings");
     RecordingTestAccess::refresh(w);
     result["linked_automation"] = {{"basis", samples ? "samples" : "beats"},
+                                   {"nudged", nudged},
+                                   {"nudge_file", nudgeFile.getFullPathName().toStdString()},
                                    {"before", baseline},
                                    {"moved", moved},
                                    {"moved_file", movedFile.getFullPathName().toStdString()},
