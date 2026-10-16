@@ -1,8 +1,103 @@
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_LoopingMidiNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_LoopingMidiNode.cpp
-index c30ac44..e1c4350 100644
+index c30ac44..7d23add 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_LoopingMidiNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_LoopingMidiNode.cpp
-@@ -1160,7 +1160,8 @@ public:
+@@ -503,7 +503,8 @@ namespace MidiHelpers
+                                        juce::Range<int> channelNumbers,
+                                        LiveClipLevel& clipLevel,
+                                        bool useMPEChannelMode, MPESourceID midiSourceID,
+-                                       juce::Array<juce::MidiMessage>& controllerMessagesScratchBuffer)
++                                       juce::Array<juce::MidiMessage>& controllerMessagesScratchBuffer,
++                                       const MidiPedalChase* pedalChase = nullptr)
+     {
+         if (useMPEChannelMode)
+         {
+@@ -528,6 +529,18 @@ namespace MidiHelpers
+         }
+         else
+         {
++            if (pedalChase && pedalChase->hasPedals())
++            {
++                controllerMessagesScratchBuffer.clearQuick();
++                for (int i = channelNumbers.getStart(); i < channelNumbers.getEnd(); ++i)
++                    chocMidiHelpers::createControllerUpdatesForTime (sourceSequence, (uint8_t) i, time, controllerMessagesScratchBuffer);
++                for (const auto& m : controllerMessagesScratchBuffer)
++                    if (! m.isController() || (m.getControllerNumber() != 64 && m.getControllerNumber() != 66))
++                        destBuffer.addMidiMessage (m, 0.0, midiSourceID);
++                if (! clipLevel.isMute())
++                    pedalChase->append (destBuffer, time, channelNumbers, clipLevel.getGain(), midiSourceID);
++                return;
++            }
+             {
+                 controllerMessagesScratchBuffer.clearQuick();
+ 
+@@ -707,7 +720,6 @@ struct EventGenerator   : public MidiGenerator
+                                 bool useMPEChannelMode, MPESourceID midiSourceID,
+                                 juce::Array<juce::MidiMessage>& controllerMessagesScratchBuffer) override
+     {
+-        thread_local MidiMessageArray scratchBuffer, cleanedBufferToMerge;
+         scratchBuffer.clear();
+         cleanedBufferToMerge.clear();
+ 
+@@ -717,7 +729,8 @@ struct EventGenerator   : public MidiGenerator
+                                             channelNumbers,
+                                             clipLevel,
+                                             useMPEChannelMode, midiSourceID,
+-                                            controllerMessagesScratchBuffer);
++                                            controllerMessagesScratchBuffer,
++                                            usePreparedPedalChase ? pedalChase.get() : nullptr);
+ 
+         // This isn't quite right as there could be notes that are turned on in the original buffer after the scratch buffer?
+         for (const auto& e : scratchBuffer)
+@@ -796,6 +809,9 @@ struct EventGenerator   : public MidiGenerator
+         return currentIndex >= sequence.events.size();
+     }
+ 
++    std::unique_ptr<MidiPedalChase> pedalChase;
++    bool usePreparedPedalChase = false;
++    MidiMessageArray scratchBuffer, cleanedBufferToMerge;
+     const choc::midi::Sequence& sequence;
+     const std::vector<std::pair<size_t, size_t>>& noteOffMap;
+     size_t currentIndex = 0;
+@@ -839,6 +855,27 @@ public:
+ 
+         noteOffMap.reserve (maxNumNoteOns);
+         currentSequence.events.reserve (maxNumEvents);
++
++        juce::MidiMessageSequence prepared;
++        for (const auto& e : currentSequence)
++            prepared.addEvent (toMidiMessage (e));
++        prepared.updateMatchedPairs();
++        generator.pedalChase = std::make_unique<MidiPedalChase> (prepared);
++        generator.usePreparedPedalChase = generator.pedalChase->hasPedals();
++        if (generator.usePreparedPedalChase)
++        {
++            prepareMidiChaseStorage (generator.scratchBuffer, generator.pedalChase->getReserveMessages());
++            prepareMidiChaseStorage (generator.cleanedBufferToMerge, generator.pedalChase->getReserveMessages());
++        }
++    }
++
++    int getChaseReserveMessages() const
++    {
++        return generator.pedalChase->hasPedals() ? generator.pedalChase->getReserveMessages() : 0;
++    }
++    int getChaseControllerReserve() const
++    {
++        return generator.pedalChase->hasPedals() ? generator.pedalChase->getControllerReserve() : 32;
+     }
+ 
+     void createMessagesForTime (MidiMessageArray& destBuffer,
+@@ -909,6 +946,9 @@ public:
+ 
+         MidiHelpers::createNoteOffMap (noteOffMap, currentSequence);
+ 
++        // Prepared chase describes the initial, unlooped transformed sequence.
++        // Dynamic clip-loop/variant regeneration retains the existing SDK path.
++        generator.usePreparedPedalChase = generator.pedalChase && offsetBeats == 0.0 && currentSequenceIndex == 0;
+         cachedSequenceOffset = offsetBeats;
+     }
+ 
+@@ -1160,7 +1200,8 @@ public:
  
      void initialise (std::shared_ptr<ActiveNoteList> noteListToUse,
                       bool clipPropertiesHaveChanged, size_t lastSequencesHash,
@@ -12,7 +107,7 @@ index c30ac44..e1c4350 100644
      {
          if (isInitialised())
              return;
-@@ -1171,6 +1172,8 @@ public:
+@@ -1171,6 +1212,8 @@ public:
          activeNoteList = noteListToUse ? std::move (noteListToUse)
                                         : std::make_shared<ActiveNoteList>();
  
@@ -21,7 +116,20 @@ index c30ac44..e1c4350 100644
          const EditBeatRange clipRangeRaw { editRange.getStart().inBeats(), editRange.getEnd().inBeats() };
          const ClipBeatRange loopRangeRaw { loopRange.getStart().inBeats(), loopRange.getEnd().inBeats() };
  
-@@ -1198,6 +1201,14 @@ public:
+@@ -1184,6 +1227,12 @@ public:
+ 
+         auto cachingGenerator = std::make_unique<CachingMidiEventGenerator> (std::move (sequences),
+                                                                              std::move (quantisation), std::move (groove), grooveStrength);
++        if (const int reserve = cachingGenerator->getChaseReserveMessages(); reserve > 0)
++        {
++            prepareMidiChaseStorage (preparedMidiStorage, reserve);
++            installPreparedMidiStorage = true;
++        }
++        controllerMessagesScratchBuffer.ensureStorageAllocated (cachingGenerator->getChaseControllerReserve());
+         auto loopedGenerator = std::make_unique<LoopedMidiEventGenerator> (std::move (cachingGenerator),
+                                                                            activeNoteList, clipRangeRaw, loopRangeRaw);
+         generator = std::make_unique<OffsetMidiEventGenerator> (std::move (loopedGenerator),
+@@ -1198,6 +1247,14 @@ public:
          return activeNoteList;
      }
  
@@ -36,7 +144,19 @@ index c30ac44..e1c4350 100644
      void processSection (MidiMessageArray& destBuffer, choc::buffer::FrameCount numSamples,
                           BeatRange sectionEditBeatRange,
                           TimeRange sectionEditTimeRange,
-@@ -1223,12 +1234,11 @@ public:
+@@ -1209,6 +1266,11 @@ public:
+                          bool isContiguousWithPreviousBlock,
+                          bool lastBlockOfLoop)
+     {
++        if (installPreparedMidiStorage)
++        {
++            destBuffer.swapWith (preparedMidiStorage);
++            installPreparedMidiStorage = false;
++        }
+         const auto secondsPerBeat = sectionEditTimeRange.getLength() / sectionEditBeatRange.getLength().inBeats();
+         const auto blockStartBeatRelativeToClip = sectionEditBeatRange.getStart() - (editRange.getStart() + *dynamicOffsetBeats);
+ 
+@@ -1223,12 +1285,11 @@ public:
  
          if (clipIntersection.isEmpty())
          {
@@ -54,7 +174,7 @@ index c30ac44..e1c4350 100644
  
              return;
          }
-@@ -1258,20 +1268,22 @@ public:
+@@ -1258,20 +1319,22 @@ public:
          if (! isContiguousWithPreviousBlock
              || blockStartBeatRelativeToClip <= 0.00001_bd)
          {
@@ -82,7 +202,7 @@ index c30ac44..e1c4350 100644
              shouldCreateMessagesForTime = false;
  
              // Ensure generator is initialised
-@@ -1310,6 +1322,7 @@ public:
+@@ -1310,6 +1373,7 @@ public:
                  e.multiplyVelocity (volScale);
                  const auto eventTimeSeconds = blockBeatPosition * secondsPerBeat.inSeconds();
                  destBuffer.addMidiMessage (e, eventTimeSeconds, midiSourceID);
@@ -90,7 +210,7 @@ index c30ac44..e1c4350 100644
  
                  // Update note list
                  if (e.isNoteOn())
-@@ -1322,11 +1335,10 @@ public:
+@@ -1322,11 +1386,10 @@ public:
          }
  
          if (lastBlockOfLoop)
@@ -106,7 +226,7 @@ index c30ac44..e1c4350 100644
  
          if (isLastBlockOfClip)
          {
-@@ -1335,11 +1347,10 @@ public:
+@@ -1335,11 +1398,10 @@ public:
              // If the section ends right at the end of the clip, we need to nudge the note-offs back so they get played in this buffer
              auto eventTimeSeconds = (endOfClipBeats.inBeats() - beatDurationOfOneSample) * secondsPerBeat.inSeconds();
  
@@ -122,15 +242,17 @@ index c30ac44..e1c4350 100644
          }
      }
  
-@@ -1365,6 +1376,7 @@ public:
+@@ -1365,6 +1427,9 @@ public:
  
  private:
      std::shared_ptr<ActiveNoteList> activeNoteList;
 +    std::shared_ptr<MidiPedalState> pedalState;
++    MidiMessageArray preparedMidiStorage;
++    bool installPreparedMidiStorage = false;
      std::unique_ptr<MidiGenerator> generator;
      std::shared_ptr<BeatDuration> dynamicOffsetBeats;
  
-@@ -1421,6 +1433,8 @@ LoopingMidiNode::LoopingMidiNode (std::vector<juce::MidiMessageSequence> sequenc
+@@ -1421,6 +1486,8 @@ LoopingMidiNode::LoopingMidiNode (std::vector<juce::MidiMessageSequence> sequenc
                                                                     grooveStrength);
  }
  
@@ -139,7 +261,7 @@ index c30ac44..e1c4350 100644
  const std::shared_ptr<ActiveNoteList>& LoopingMidiNode::getActiveNoteList() const
  {
      return generatorAndNoteList->getActiveNoteList();
-@@ -1437,11 +1451,10 @@ void LoopingMidiNode::setDynamicOffsetBeats (BeatDuration newOffset)
+@@ -1437,11 +1504,10 @@ void LoopingMidiNode::setDynamicOffsetBeats (BeatDuration newOffset)
  
  void LoopingMidiNode::killActiveNotes (MidiMessageArray& dest, double timestampForNoteOffs)
  {
@@ -155,7 +277,7 @@ index c30ac44..e1c4350 100644
  }
  
  //==============================================================================
-@@ -1463,6 +1476,7 @@ void LoopingMidiNode::prepareToPlay (const tracktion::graph::PlaybackInitialisat
+@@ -1463,6 +1529,7 @@ void LoopingMidiNode::prepareToPlay (const tracktion::graph::PlaybackInitialisat
      }
  
      std::shared_ptr<ActiveNoteList> activeNoteList;
@@ -163,7 +285,7 @@ index c30ac44..e1c4350 100644
      bool clipPropertiesHaveChanged = false;
      size_t lastSequencesHash = 0;
  
-@@ -1470,12 +1484,13 @@ void LoopingMidiNode::prepareToPlay (const tracktion::graph::PlaybackInitialisat
+@@ -1470,12 +1537,13 @@ void LoopingMidiNode::prepareToPlay (const tracktion::graph::PlaybackInitialisat
      {
          midiSourceID = oldNode->midiSourceID;
          activeNoteList = oldNode->generatorAndNoteList->getActiveNoteList();
@@ -178,7 +300,7 @@ index c30ac44..e1c4350 100644
  }
  
  bool LoopingMidiNode::isReadyToProcess()
-@@ -1487,7 +1502,10 @@ void LoopingMidiNode::process (ProcessContext& pc)
+@@ -1487,7 +1555,10 @@ void LoopingMidiNode::process (ProcessContext& pc)
  {
      SCOPED_REALTIME_CHECK
      if (shouldBeMutedDelegate && shouldBeMutedDelegate())
@@ -189,7 +311,7 @@ index c30ac44..e1c4350 100644
  
      const auto isPlaying = getPlayHead().isPlaying();
  
-@@ -1496,16 +1514,16 @@ void LoopingMidiNode::process (ProcessContext& pc)
+@@ -1496,16 +1567,16 @@ void LoopingMidiNode::process (ProcessContext& pc)
          if (mute != wasMute)
          {
              wasMute = mute;
@@ -225,10 +347,10 @@ index 930a0b8..5de633f 100644
      EditItemID getItemID() const                            { return editItemID; }
  
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp
-index f802efb..5472a7b 100644
+index f802efb..b9af2c4 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.cpp
-@@ -32,6 +32,7 @@ MidiNode::MidiNode (std::vector<juce::MidiMessageSequence> sequences,
+@@ -32,13 +32,30 @@ MidiNode::MidiNode (std::vector<juce::MidiMessageSequence> sequences,
        clipLevel (liveClipLevel),
        editItemID (editItemIDToUse),
        shouldBeMutedDelegate (std::move (shouldBeMuted)),
@@ -236,7 +358,30 @@ index f802efb..5472a7b 100644
        wasMute (liveClipLevel.isMute())
  {
      // -1 from the channel numbers end here as Range end is exclusive
-@@ -56,7 +57,24 @@ void MidiNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo
+     jassert (channelNumbers.getStart() > 0 && (channelNumbers.getEnd() - 1) <= 16);
+ 
++    int storage = 0, controllers = 32;
+     for (auto& s : ms)
++    {
+         s.updateMatchedPairs();
++        auto chase = std::make_shared<MidiPedalChase> (s);
++        if (! useMPE && chase->hasPedals())
++        {
++            storage = std::max (storage, chase->getReserveMessages());
++            controllers = std::max (controllers, chase->getControllerReserve());
++        }
++        pedalChases.push_back (std::move (chase));
++    }
++    if (storage != 0)
++    {
++        prepareMidiChaseStorage (preparedMidiStorage, storage);
++        installPreparedMidiStorage = true;
++    }
++    controllerMessagesScratchBuffer.ensureStorageAllocated (controllers);
+ 
+     controllerMessagesScratchBuffer.ensureStorageAllocated (32);
+ }
+@@ -56,7 +73,24 @@ void MidiNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo
      sampleRate = info.sampleRate;
  
      if (info.nodeGraphToReplace != nullptr)
@@ -262,8 +407,22 @@ index f802efb..5472a7b 100644
  }
  
  bool MidiNode::isReadyToProcess()
-@@ -73,7 +91,10 @@ void MidiNode::process (ProcessContext& pc)
+@@ -67,13 +101,24 @@ bool MidiNode::isReadyToProcess()
+ void MidiNode::process (ProcessContext& pc)
+ {
+     SCOPED_REALTIME_CHECK
++    if (installPreparedMidiStorage)
++    {
++        pc.buffers.midi.swapWith (preparedMidiStorage);
++        installPreparedMidiStorage = false;
++    }
+     const auto timelineRange = getTimelineSampleRange();
+ 
+     if (timelineRange.isEmpty())
++    {
++        releasePedals (pc.buffers.midi, 0.0, false);
          return;
++    }
  
      if (shouldBeMutedDelegate && shouldBeMutedDelegate())
 +    {
@@ -273,7 +432,7 @@ index f802efb..5472a7b 100644
  
      if (ms.size() > 0 && timelineRange.getStart() < lastStart)
          if (++currentSequence >= ms.size())
-@@ -88,7 +109,10 @@ void MidiNode::process (ProcessContext& pc)
+@@ -88,7 +133,10 @@ void MidiNode::process (ProcessContext& pc)
          if (sectionEditTime.isEmpty()
              || sectionEditTime.getEnd().inBeats() <= editRange.getStart()
              || sectionEditTime.getStart().inBeats() >= editRange.getEnd())
@@ -285,7 +444,7 @@ index f802efb..5472a7b 100644
  
          const auto secondsPerBeat = getEditTimeRange().getLength().inSeconds() / sectionEditTime.getLength().inBeats();
  
-@@ -103,7 +127,10 @@ void MidiNode::process (ProcessContext& pc)
+@@ -103,7 +151,10 @@ void MidiNode::process (ProcessContext& pc)
          if (sectionEditTime.isEmpty()
              || sectionEditTime.getEnd().inSeconds() <= editRange.getStart()
              || sectionEditTime.getStart().inSeconds() >= editRange.getEnd())
@@ -297,7 +456,7 @@ index f802efb..5472a7b 100644
  
          processSection (pc,
                          { sectionEditTime.getStart().inSeconds(), sectionEditTime.getEnd().inSeconds() },
-@@ -129,14 +156,24 @@ void MidiNode::processSection (Node::ProcessContext& pc,
+@@ -129,17 +180,34 @@ void MidiNode::processSection (Node::ProcessContext& pc,
          if (mute != wasMute)
          {
              wasMute = mute;
@@ -319,11 +478,32 @@ index f802efb..5472a7b 100644
 +    const auto firstNewMessage = pc.buffers.midi.size();
      if (! getPlayHeadState().isContiguousWithPreviousBlock() || localTime.getStart() <= 0.00001 || shouldCreateMessagesForTime)
      {
+-        MidiNodeHelpers::createMessagesForTime (pc.buffers.midi, sequence, localTime.getStart(),
 +        releasePedals (pc.buffers.midi, 0.0, getPlayHead().isPlaying());
-         MidiNodeHelpers::createMessagesForTime (pc.buffers.midi, sequence, localTime.getStart(),
++        const auto* chase = pedalChases[currentSequence].get();
++        const bool preparedChase = ! useMPEChannelMode && chase->hasPedals();
++        const auto beforeChase = pc.buffers.midi.size();
++        MidiNodeHelpers::createMessagesForTime (pc.buffers.midi, sequence,
++                                                preparedChase ? std::max (0.0, localTime.getStart()) : localTime.getStart(),
                                                  channelNumbers, clipLevel, useMPEChannelMode, midiSourceID,
-                                                 controllerMessagesScratchBuffer);
-@@ -193,13 +230,25 @@ void MidiNode::processSection (Node::ProcessContext& pc,
+-                                                controllerMessagesScratchBuffer);
++                                                controllerMessagesScratchBuffer, chase);
++        if (preparedChase && localTime.getStart() < 0.0)
++            for (int i = beforeChase; i < pc.buffers.midi.size(); ++i)
++                pc.buffers.midi[i].addToTimeStamp (-localTime.getStart() * secondsPerTimeBase);
+         shouldCreateMessagesForTime = false;
+     }
+ 
+@@ -179,7 +247,7 @@ void MidiNode::processSection (Node::ProcessContext& pc,
+ 
+             eventTime -= localTime.getStart();
+ 
+-            if (eventTime >= 0.0)
++            if (eventTime >= 0.0 && meh->message.getTimeStamp() >= 0.0)
+             {
+                 juce::MidiMessage m (meh->message);
+                 m.multiplyVelocity (volScale);
+@@ -193,13 +261,25 @@ void MidiNode::processSection (Node::ProcessContext& pc,
          }
      }
  
@@ -354,33 +534,37 @@ index f802efb..5472a7b 100644
     #if TRACKTION_SANITY_CHECK_MIDI_BUFFERS
      MidiNodeHelpers::sanityCheckMidiBuffer (pc.buffers.midi, localTime.getLength());
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h
-index ce6bef3..f13ddeb 100644
+index ce6bef3..f4790ba 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h
 +++ b/modules/tracktion_engine/playback/graph/tracktion_MidiNode.h
-@@ -13,6 +13,8 @@ namespace tracktion::inline engine {
+@@ -13,6 +13,9 @@ namespace tracktion::inline engine {
  /** A Node that plays MIDI data from a MidiMessageSequence,
      at a specific MIDI channel.
  */
 +struct MidiPedalState;
++class MidiPedalChase;
 +
  class MidiNode final    : public tracktion::graph::Node,
                            public TracktionEngineNode
  {
-@@ -45,6 +47,9 @@ private:
+@@ -45,6 +48,12 @@ private:
      EditItemID editItemID;
      std::function<bool()> shouldBeMutedDelegate = nullptr;
  
 +    std::shared_ptr<MidiPedalState> pedalState;
++    std::vector<std::shared_ptr<const MidiPedalChase>> pedalChases;
++    MidiMessageArray preparedMidiStorage;
++    bool installPreparedMidiStorage = false;
 +    void releasePedals (MidiMessageArray&, double, bool);
 +
      double sampleRate = 44100.0;
      int currentIndex = 0;
      MPESourceID midiSourceID = createUniqueMPESourceID();
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h b/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h
-index 34fe8dd..4933e6a 100644
+index 34fe8dd..e4551b0 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h
 +++ b/modules/tracktion_engine/playback/graph/tracktion_MidiNodeHelpers.h
-@@ -12,6 +12,37 @@
+@@ -12,6 +12,262 @@
  
  namespace tracktion::inline engine {
  
@@ -415,10 +599,264 @@ index 34fe8dd..4933e6a 100644
 +    void reset() noexcept { sustainChannels = sostenutoChannels = 0; }
 +};
 +
++// Prepared MIDI-1 pedal chase. Only construction allocates. A seek retriggers
++// voices; it cannot reconstruct an instrument's private oscillator/envelope state.
++class MidiPedalChase
++{
++public:
++    explicit MidiPedalChase (const juce::MidiMessageSequence& sequence)
++    {
++        bool hasPedalEvent = false;
++        for (const auto* event : sequence)
++            if (event->message.isController() &&
++                (event->message.getControllerNumber() == 64 || event->message.getControllerNumber() == 66))
++                hasPedalEvent = true;
++        if (! hasPedalEvent)
++            return;
++        std::array<int, 2048> keys;
++        keys.fill (-1);
++        std::array<std::vector<int>, 16> alive;
++        std::array<bool, 16> sustain {}, sostenuto {};
++        std::array<int, 16> rise;
++        rise.fill (-1);
++        auto close = [&] (int ch, double time)
++        {
++            auto& a = alive[(size_t) ch];
++            a.erase (std::remove_if (a.begin(), a.end(), [&] (int index)
++            {
++                auto& voice = voices[(size_t) index];
++                if (! voice.down && ! sustain[(size_t) ch] && ! voice.latched)
++                {
++                    voice.end = time;
++                    return true;
++                }
++                return false;
++            }), a.end());
++        };
++        for (int i = 0; i < sequence.getNumEvents(); ++i)
++        {
++            const auto& m = sequence.getEventPointer (i)->message;
++            const int ch = m.getChannel() - 1;
++            if (ch < 0 || ch >= 16)
++                continue;
++            const auto c = (size_t) ch;
++            const auto time = m.getTimeStamp();
++            if (m.isNoteOn())
++            {
++                keys[c * 128 + (size_t) m.getNoteNumber()] = (int) voices.size();
++                alive[c].push_back ((int) voices.size());
++                voices.push_back ({time, infinity, infinity, i, std::numeric_limits<int>::max(),
++                                   m.getChannel(), m.getNoteNumber(), m.getVelocity(), true, false});
++            }
++            else if (m.isNoteOff())
++            {
++                auto& index = keys[c * 128 + (size_t) m.getNoteNumber()];
++                if (index >= 0)
++                {
++                    auto& voice = voices[(size_t) index];
++                    voice.down = false;
++                    voice.keyEnd = time;
++                    voice.keyEndOrder = i;
++                    index = -1;
++                    close (ch, time);
++                }
++            }
++            else if (m.isController())
++            {
++                const auto cc = m.getControllerNumber();
++                if (cc == 64)
++                {
++                    containsPedals = true;
++                    sustain[c] = m.getControllerValue() >= 64;
++                    pedals[c][0].push_back ({time, m.getControllerValue(), -1});
++                    close (ch, time);
++                }
++                else if (cc == 66)
++                {
++                    containsPedals = true;
++                    const bool on = m.getControllerValue() >= 64;
++                    if (on && ! sostenuto[c])
++                    {
++                        rise[c] = i;
++                        for (auto index : alive[c])
++                            if (voices[(size_t) index].down)
++                                voices[(size_t) index].latched = true;
++                    }
++                    if (! on)
++                        for (auto index : alive[c])
++                            voices[(size_t) index].latched = false;
++                    sostenuto[c] = on;
++                    pedals[c][1].push_back ({time, m.getControllerValue(), rise[c]});
++                    close (ch, time);
++                }
++                else if (cc == 121)
++                {
++                    sustain[c] = sostenuto[c] = false;
++                    pedals[c][0].push_back ({time, 0, -1});
++                    pedals[c][1].push_back ({time, 0, -1});
++                    for (auto index : alive[c])
++                        voices[(size_t) index].latched = false;
++                    close (ch, time);
++                }
++                else if (cc == 120 || cc == 123)
++                {
++                    for (auto index : alive[c])
++                    {
++                        auto& voice = voices[(size_t) index];
++                        voice.down = false;
++                        voice.keyEnd = time;
++                        voice.keyEndOrder = i;
++                        if (cc == 120)
++                            voice.end = time;
++                    }
++                    for (int key = 0; key < 128; ++key)
++                        keys[c * 128 + (size_t) key] = -1;
++                    if (cc == 120)
++                        alive[c].clear();
++                    else
++                        close (ch, time);
++                }
++            }
++        }
++        for (size_t i = 1; i < voices.size(); ++i)
++            jassert (voices[i - 1].start <= voices[i].start);
++        while (leaves < voices.size())
++            leaves *= 2;
++        maxEnds.assign (leaves * 2, -infinity);
++        for (size_t i = 0; i < voices.size(); ++i)
++            maxEnds[leaves + i] = voices[i].end;
++        for (size_t i = leaves; --i > 0;)
++            maxEnds[i] = std::max (maxEnds[i * 2], maxEnds[i * 2 + 1]);
++        reserveMessages = sequence.getNumEvents() + 3 * (int) std::min (voices.size(), size_t (2048)) + 128;
++        controllerReserve = sequence.getNumEvents() + 32;
++    }
++
++    bool hasPedals() const noexcept { return containsPedals; }
++    int getReserveMessages() const noexcept { return reserveMessages; }
++    int getControllerReserve() const noexcept { return controllerReserve; }
++
++    void append (MidiMessageArray& dest, double time, juce::Range<int> channels,
++                 float gain, MPESourceID source) const
++    {
++        std::array<int, 2048> selected;
++        selected.fill (-1);
++        collect (1, 0, leaves, time, selected);
++        for (int channel = channels.getStart(); channel < channels.getEnd(); ++channel)
++        {
++            const auto c = (size_t) (channel - 1);
++            const auto* damper = before (pedals[c][0], time);
++            const auto* latch = before (pedals[c][1], time);
++            const auto latched = [&] (const Voice& v)
++            {
++                return latch && latch->value >= 64 && v.startOrder < latch->riseOrder && v.keyEndOrder > latch->riseOrder;
++            };
++            if (damper)
++                dest.addMidiMessage (juce::MidiMessage::controllerEvent (channel, 64, damper->value), 0.0, source);
++            if (latch && latch->value < 64)
++                dest.addMidiMessage (juce::MidiMessage::controllerEvent (channel, 66, latch->value), 0.0, source);
++            for (bool captured : {true, false})
++            {
++                if (! captured && latch && latch->value >= 64)
++                    dest.addMidiMessage (juce::MidiMessage::controllerEvent (channel, 66, latch->value), 0.0, source);
++                for (int key = 0; key < 128; ++key)
++                    if (const int index = selected[c * 128 + (size_t) key]; index >= 0)
++                    {
++                        const auto& v = voices[(size_t) index];
++                        if (latched (v) != captured)
++                            continue;
++                        auto on = juce::MidiMessage::noteOn (channel, key, (juce::uint8) v.velocity);
++                        on.multiplyVelocity (gain);
++                        dest.addMidiMessage (on, 0.0, source);
++                    }
++            }
++            // Physical releases happen after the pedal's rising edge. The synth
++            // holds the reconstructed voice, while native ActiveNoteList stays accurate.
++            for (int key = 0; key < 128; ++key)
++                if (const int index = selected[c * 128 + (size_t) key]; index >= 0)
++                    if (voices[(size_t) index].keyEnd < time)
++                        dest.addMidiMessage (juce::MidiMessage::noteOff (channel, key), 0.0, source);
++        }
++    }
++
++private:
++    static constexpr double infinity = std::numeric_limits<double>::infinity();
++    struct Voice
++    {
++        double start, keyEnd, end;
++        int startOrder, keyEndOrder, channel, pitch, velocity;
++        bool down, latched;
++    };
++    struct PedalPoint { double time; int value, riseOrder; };
++    std::vector<Voice> voices;
++    std::array<std::array<std::vector<PedalPoint>, 2>, 16> pedals;
++    std::vector<double> maxEnds;
++    size_t leaves = 1;
++    int reserveMessages = 0, controllerReserve = 0;
++    bool containsPedals = false;
++
++    static const PedalPoint* before (const std::vector<PedalPoint>& points, double time) noexcept
++    {
++        const auto it = std::lower_bound (points.begin(), points.end(), time,
++                                         [] (const PedalPoint& p, double t) { return p.time < t; });
++        return it == points.begin() ? nullptr : &*std::prev (it);
++    }
++    void collect (size_t index, size_t first, size_t last, double time, std::array<int, 2048>& selected) const noexcept
++    {
++        if (first >= voices.size() || maxEnds[index] <= time || voices[first].start >= time)
++            return;
++        if (last - first == 1)
++        {
++            const auto& v = voices[first];
++            selected[(size_t) (v.channel - 1) * 128 + (size_t) v.pitch] = (int) first;
++            return;
++        }
++        const auto mid = (first + last) / 2;
++        collect (index * 2, first, mid, time, selected);
++        collect (index * 2 + 1, mid, last, time, selected);
++    }
++};
++
++inline void prepareMidiChaseStorage (MidiMessageArray& storage, int capacity)
++{
++    const auto placeholder = juce::MidiMessage::controllerEvent (1, 64, 0);
++    for (int i = 0; i < capacity; ++i)
++        storage.addMidiMessage (placeholder, 0.0, {});
++    storage.clear();
++}
++
  namespace MidiNodeHelpers
  {
      inline void createMessagesForTime (MidiMessageArray& destBuffer,
-@@ -79,9 +110,10 @@ namespace MidiNodeHelpers
+@@ -21,7 +277,8 @@ namespace MidiNodeHelpers
+                                        LiveClipLevel& clipLevel,
+                                        bool useMPEChannelMode,
+                                        MPESourceID midiSourceID,
+-                                       juce::Array<juce::MidiMessage>& controllerMessagesScratchBuffer)
++                                       juce::Array<juce::MidiMessage>& controllerMessagesScratchBuffer,
++                                       const MidiPedalChase* pedalChase = nullptr)
+     {
+         if (useMPEChannelMode)
+         {
+@@ -37,6 +294,18 @@ namespace MidiNodeHelpers
+         }
+         else
+         {
++            if (pedalChase && pedalChase->hasPedals())
++            {
++                controllerMessagesScratchBuffer.clearQuick();
++                for (int i = channelNumbers.getStart(); i < channelNumbers.getEnd(); ++i)
++                    sourceSequence.createControllerUpdatesForTime (i, time, controllerMessagesScratchBuffer);
++                for (const auto& m : controllerMessagesScratchBuffer)
++                    if (! m.isController() || (m.getControllerNumber() != 64 && m.getControllerNumber() != 66))
++                        destBuffer.addMidiMessage (m, 0.0, midiSourceID);
++                if (! clipLevel.isMute())
++                    pedalChase->append (destBuffer, time, channelNumbers, clipLevel.getGain(), midiSourceID);
++                return;
++            }
+             {
+                 controllerMessagesScratchBuffer.clearQuick();
+ 
+@@ -79,9 +348,10 @@ namespace MidiNodeHelpers
  
      inline void createNoteOffs (MidiMessageArray& destination, const juce::MidiMessageSequence& sourceSequence,
                                  MPESourceID midiSourceID,
@@ -431,7 +869,7 @@ index 34fe8dd..4933e6a 100644
  
          for (int i = 0; i < sourceSequence.getNumEvents(); ++i)
          {
-@@ -105,10 +137,13 @@ namespace MidiNodeHelpers
+@@ -105,10 +375,13 @@ namespace MidiNodeHelpers
  
          for (int i = 1; i <= 16; ++i)
          {
@@ -448,7 +886,7 @@ index 34fe8dd..4933e6a 100644
  
                  // NB: Some buggy plugins seem to fail to respond to note-ons if they are preceded
                  // by an all-notes-off, so avoid this while playing.
-@@ -128,9 +163,10 @@ namespace MidiNodeHelpers
+@@ -128,9 +401,10 @@ namespace MidiNodeHelpers
      inline void createNoteOffs (ActiveNoteList& activeNoteList,
                                  MidiMessageArray& destination,
                                  MPESourceID midiSourceID,
@@ -461,7 +899,7 @@ index 34fe8dd..4933e6a 100644
  
          // First send note-off events for currently playing notes
          activeNoteList.iterate ([&] (int channel, int noteNumber)
-@@ -143,10 +179,13 @@ namespace MidiNodeHelpers
+@@ -143,10 +417,13 @@ namespace MidiNodeHelpers
          // Send controller off events for used channels
          for (int i = 1; i <= 16; ++i)
          {

@@ -1,8 +1,56 @@
 diff --git a/modules/tracktion_engine/midi/tracktion_MidiList.cpp b/modules/tracktion_engine/midi/tracktion_MidiList.cpp
-index bee04fb..ec16a36 100644
+index bee04fb..74b6699 100644
 --- a/modules/tracktion_engine/midi/tracktion_MidiList.cpp
 +++ b/modules/tracktion_engine/midi/tracktion_MidiList.cpp
-@@ -1897,6 +1897,13 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+@@ -353,7 +353,7 @@ static double getNoteEdgeTime (const MidiClip& clip, MidiList::TimeBase tb, cons
+ 
+ static void addToSequence (juce::MidiMessageSequence& seq, const MidiClip& clip, MidiList::TimeBase tb,
+                            const MidiNote& note, int channelNumber, const MidiNote* nextOverlappingNote,
+-                           const GrooveTemplate* grooveTemplate)
++                           const GrooveTemplate* grooveTemplate, bool preservePreClipTiming = false)
+ {
+     jassert (channelNumber < 17); // SysEx?
+ 
+@@ -368,24 +368,33 @@ static void addToSequence (juce::MidiMessageSequence& seq, const MidiClip& clip,
+     if (nextOverlappingNote != nullptr)
+         upTime = std::min (upTime, getNoteEdgeTime (clip, tb, *nextOverlappingNote, MidiNote::startEdge, grooveTemplate));
+ 
+-    if (upTime > downTime && upTime > 0.0)
++    if (upTime > downTime && (upTime > 0.0 || preservePreClipTiming))
+     {
+-        seq.addEvent (juce::MidiMessage::noteOn (channelNumber, note.getNoteNumber(), (uint8_t) note.getVelocity()), std::max (0.0, downTime));
++        seq.addEvent (juce::MidiMessage::noteOn (channelNumber, note.getNoteNumber(), (uint8_t) note.getVelocity()),
++                      preservePreClipTiming ? downTime : std::max (0.0, downTime));
+         seq.addEvent (juce::MidiMessage::noteOff (channelNumber, note.getNoteNumber(), static_cast<uint8_t> (note.getNoteOffVelocity())), upTime);
+     }
+ }
+ 
+ static void addToSequence (juce::MidiMessageSequence& seq, const MidiClip& clip, MidiList::TimeBase tb,
+-                           const MidiControllerEvent& controller, int channelNumber)
++                           const MidiControllerEvent& controller, int channelNumber, bool preservePreClipTiming = false)
+ {
+     const auto time = [&]
+                       {
+                           switch (tb)
+                           {
+                               case MidiList::TimeBase::beatsRaw:  return controller.getBeatPosition().inBeats();
+-                              case MidiList::TimeBase::beats:     return std::max (0_bp, controller.getEditBeats (clip) - toDuration (clip.getStartBeat())).inBeats();
++                              case MidiList::TimeBase::beats:
++                              {
++                                  const auto relative = controller.getEditBeats (clip) - toDuration (clip.getStartBeat());
++                                  return (preservePreClipTiming ? relative : std::max (0_bp, relative)).inBeats();
++                              }
+                               case MidiList::TimeBase::seconds:   [[ fallthrough ]];
+-                              default:                            return std::max (0_tp, controller.getEditTime (clip) - toDuration (clip.getPosition().getStart())).inSeconds();
++                              default:
++                              {
++                                  const auto relative = controller.getEditTime (clip) - toDuration (clip.getPosition().getStart());
++                                  return (preservePreClipTiming ? relative : std::max (0_tp, relative)).inSeconds();
++                              }
+                           }
+                       }();
+ 
+@@ -1897,6 +1906,13 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
      auto lastNoteBeat  = timeBase == TimeBase::beatsRaw ? list.getLastBeatNumber() + overlapAllowance
                                                          : toPosition (ts.toBeats (clip.getPosition().getEnd())   - midiStartBeat + overlapAllowance);
  
@@ -16,7 +64,18 @@ index bee04fb..ec16a36 100644
      auto& notes = list.getNotes();
      const auto numNotes = notes.size();
  
-@@ -1912,19 +1919,23 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+@@ -1907,24 +1923,35 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+ 
+     // Do controllers first in case they send and program or bank change messages
+     auto& controllerEvents = list.getControllerEvents();
++    const bool pedalChase = ! generateMPE && std::any_of (controllerEvents.begin(), controllerEvents.end(),
++        [] (const auto* e) { return e->getType() == 64 || e->getType() == 66; });
++    const auto isPedalHistory = [] (int type)
++    {
++        return type == 64 || type == 66 || type == 120 || type == 121 || type == 123;
++    };
+ 
+     {
          // Add cumulative controller events that are off the start
          juce::Array<int> doneControllers;
  
@@ -31,7 +90,8 @@ index bee04fb..ec16a36 100644
 +            auto e = controllerEvents.getUnchecked (i);
  
 -            if (beat < firstNoteBeat)
-+            if (e->getBeatPosition() < firstEventBeat && ! doneControllers.contains (e->getType()))
++            if (e->getBeatPosition() < firstEventBeat && ! doneControllers.contains (e->getType())
++                && ! (pedalChase && isPedalHistory (e->getType())))
              {
 -                if (! doneControllers.contains (e->getType()))
 -                {
@@ -48,16 +108,31 @@ index bee04fb..ec16a36 100644
      }
  
      // Add the real controller events:
-@@ -1932,7 +1943,7 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+@@ -1932,8 +1959,8 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
      {
          auto beat = e->getBeatPosition();
  
 -        if (beat >= firstNoteBeat && beat < lastNoteBeat)
-+        if (beat >= firstEventBeat && beat < lastEventBeat)
-             addToSequence (destSequence, clip, timeBase, *e, channelNumber);
+-            addToSequence (destSequence, clip, timeBase, *e, channelNumber);
++        if (beat < lastEventBeat && (beat >= firstEventBeat || (pedalChase && isPedalHistory (e->getType()))))
++            addToSequence (destSequence, clip, timeBase, *e, channelNumber, pedalChase && isPedalHistory (e->getType()));
      }
  
-@@ -1985,7 +1996,7 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+     // Then the note events
+@@ -1968,8 +1995,10 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
+                 }
+             }
+ 
+-            if (thisNoteEnd > firstNoteBeat)
+-                addToSequence (destSequence, clip, timeBase, note, channelNumber, nextOverlappingNote, grooveTemplate);
++            // Earlier physical releases can still sound under a pedal. Preserve
++            // playback-only negative times for prepared chase, never rewrite NOTE.
++            if (thisNoteEnd > firstNoteBeat || pedalChase)
++                addToSequence (destSequence, clip, timeBase, note, channelNumber, nextOverlappingNote, grooveTemplate, pedalChase);
+         }
+     }
+     else
+@@ -1985,7 +2014,7 @@ juce::MidiMessageSequence MidiList::createDefaultPlaybackMidiSequence (const Mid
      {
          auto beat = e->getBeatPosition();
  

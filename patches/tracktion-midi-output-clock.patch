@@ -1,8 +1,53 @@
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp
-index 6cc64fa..cd7ef96 100644
+index 6cc64fa..942dc48 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.cpp
-@@ -668,12 +668,14 @@ void MidiOutputDeviceInstance::mergeInMidiMessages (const MidiMessageArray& sour
+@@ -489,6 +489,19 @@ void MidiOutputDevice::sendNoteOffMessages()
+     }
+ }
+ 
++void MidiOutputDevice::requestChannelNoteOffs (uint32_t channels)
++{
++    if (isConnectedToExternalController())
++        return;
++    for (int channel = 1; channel <= 16; ++channel)
++        if ((channels & (uint32_t (1) << channel)) != 0)
++        {
++            fireMessage (juce::MidiMessage::controllerEvent (channel, 64, 0));
++            fireMessage (juce::MidiMessage::controllerEvent (channel, 66, 0));
++            fireMessage (juce::MidiMessage::allNotesOff (channel));
++        }
++}
++
+ void MidiOutputDevice::sendMessageNow (const juce::MidiMessage& message)
+ {
+     // juce::MidiOutput isn't thread safe, so serialise sends here as this
+@@ -629,6 +642,7 @@ MidiOutputDeviceInstance::~MidiOutputDeviceInstance()
+ 
+ juce::String MidiOutputDeviceInstance::prepareToPlay (TimePosition, bool shouldSendMidiTC)
+ {
++    playbackChannels.store (0, std::memory_order_release);
+     if (getMidiOutput().outputDevice == nullptr)
+         return TRANS("Couldn't open the MIDI port");
+ 
+@@ -655,6 +669,7 @@ bool MidiOutputDeviceInstance::start()
+ 
+ void MidiOutputDeviceInstance::stop()
+ {
++    getMidiOutput().requestChannelNoteOffs (playbackChannels.load (std::memory_order_acquire));
+     if (playing)
+     {
+         playing = false;
+@@ -664,16 +679,23 @@ void MidiOutputDeviceInstance::stop()
+ 
+ void MidiOutputDeviceInstance::mergeInMidiMessages (const MidiMessageArray& source, TimePosition editTime)
+ {
++    uint32_t channels = 0;
++    for (const auto& m : source)
++        if (m.isNoteOnOrOff() || m.isController())
++            channels |= uint32_t (1) << m.getChannel();
++    playbackChannels.fetch_or (channels, std::memory_order_release);
+     midiMessages.mergeFromWithOffset (source, (editTime + getMidiOutput().getDeviceDelay()).inSeconds());
      midiMessages.sortByTimestamp();
  }
  
@@ -18,7 +63,7 @@ index 6cc64fa..cd7ef96 100644
          if (midiOut.sendTimecode)
              timecodeGenerator->addMessages (isPlaying, isDragging,
                                              &edit.getTransport(), midiMessages,
-@@ -685,6 +687,12 @@ void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlayin
+@@ -685,6 +707,12 @@ void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlayin
                                               &edit.getTransport(), midiMessages,
                                               editTimeRange.getStart(),
                                               editTimeRange.getLength());
@@ -32,10 +77,21 @@ index 6cc64fa..cd7ef96 100644
  }
  
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h
-index fe61020..3ed631f 100644
+index fe61020..71e7a05 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h
 +++ b/modules/tracktion_engine/playback/devices/tracktion_MidiOutputDevice.h
-@@ -145,7 +145,7 @@ public:
+@@ -61,6 +61,10 @@ public:
+     void fireMessage (const juce::MidiMessage&);
+     void sendNoteOffMessages();
+ 
++    // Non-realtime Stop/graph retirement. A logical output may defer this to
++    // its next callback; channels are those actually accepted from its graph.
++    virtual void requestChannelNoteOffs (uint32_t channels);
++
+     TimeDuration getDeviceDelay() const noexcept;
+ 
+     int getPreDelayMs() const noexcept                  { return preDelayMillisecs; }
+@@ -145,7 +149,7 @@ public:
      MidiOutputDevice& getMidiOutput() const noexcept     { return static_cast<MidiOutputDevice&> (owner); }
  
      void mergeInMidiMessages (const MidiMessageArray&, TimePosition editTime);
@@ -44,6 +100,14 @@ index fe61020..3ed631f 100644
      MidiMessageArray& getPendingMessages() { return midiMessages; }
  
      // For MidiOutputDevices that aren't connected to a physical piece of hardware,
+@@ -159,6 +163,7 @@ private:
+ 
+     double sampleRate = 0, audioAdjustmentDelay = 0;
+     bool playing = false, shouldSendMidiTimecode = false;
++    std::atomic<uint32_t> playbackChannels { 0 };
+ 
+     MidiMessageArray midiMessages;
+ 
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp
 index 580821b..855620a 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_MidiOutputDeviceInstanceInjectingNode.cpp
@@ -69,3 +133,86 @@ index 580821b..855620a 100644
  }
  
  } // namespace tracktion::inline engine
+diff --git a/modules/tracktion_engine/playback/tracktion_HostedAudioDevice.cpp b/modules/tracktion_engine/playback/tracktion_HostedAudioDevice.cpp
+index 340ae15..f8ce4fa 100644
+--- a/modules/tracktion_engine/playback/tracktion_HostedAudioDevice.cpp
++++ b/modules/tracktion_engine/playback/tracktion_HostedAudioDevice.cpp
+@@ -272,8 +272,37 @@ public:
+         return new HostedMidiOutputDeviceInstance (*this, epc);
+     }
+ 
+-    void processBlock (juce::MidiBuffer& midi)
++    void requestChannelNoteOffs (uint32_t channels) override
++    {
++        pendingReleaseChannels.fetch_or (channels, std::memory_order_release);
++    }
++
++    void beginBlock()
++    {
++        releaseAtStart = pendingReleaseChannels.exchange (0, std::memory_order_acq_rel);
++        if (releaseAtStart != 0)
++            toSend.removeIf ([&] (const auto& m)
++            {
++                return m.getChannel() > 0 && (releaseAtStart & (uint32_t (1) << m.getChannel())) != 0;
++            });
++    }
++
++    void processBlock (juce::MidiBuffer& midi, int frames)
+     {
++        const auto releaseChannels = [&] (uint32_t channels, int frame)
++        {
++            for (int channel = 1; channel <= 16; ++channel)
++                if ((channels & (uint32_t (1) << channel)) != 0)
++                {
++                    midi.addEvent (juce::MidiMessage::controllerEvent (channel, 64, 0), frame);
++                    midi.addEvent (juce::MidiMessage::controllerEvent (channel, 66, 0), frame);
++                    midi.addEvent (juce::MidiMessage::allNotesOff (channel), frame);
++                }
++        };
++        // Requests predating this callback precede a newly started graph.
++        // Never inject output resets into the incoming MIDI input buffer.
++        releaseChannels (releaseAtStart, 0);
++        releaseAtStart = 0;
+         for (auto m : toSend)
+         {
+             auto t = m.getTimeStamp() * audioIf.parameters.sampleRate;
+@@ -281,6 +310,9 @@ public:
+         }
+ 
+         toSend.clear();
++        // A Stop arriving during this callback follows its already rendered
++        // events. Both cases are bounded by this one output buffer.
++        releaseChannels (pendingReleaseChannels.exchange (0, std::memory_order_acq_rel), std::max (0, frames - 1));
+     }
+ 
+     void sendMessageNow (const juce::MidiMessage& message) override
+@@ -311,6 +343,9 @@ private:
+ 
+     HostedAudioDeviceInterface& audioIf;
+     MidiMessageArray toSend;
++    std::atomic<uint32_t> pendingReleaseChannels { 0 };
++    uint32_t releaseAtStart = 0;
++    static_assert (std::atomic<uint32_t>::is_always_lock_free);
+ 
+     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HostedMidiOutputDevice)
+ };
+@@ -410,6 +445,10 @@ void HostedAudioDeviceInterface::prepareToPlay (double sampleRate, int blockSize
+ 
+ void HostedAudioDeviceInterface::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+ {
++    for (auto& output : midiOutputs)
++        if (auto hostedOutput = dynamic_cast<HostedMidiOutputDevice*> (output.get()))
++            hostedOutput->beginBlock();
++
+     if (inputLatencyProcessor)
+     {
+         inputLatencyProcessor->writeAudio (toBufferView (buffer));
+@@ -433,7 +472,7 @@ void HostedAudioDeviceInterface::processBlock (juce::AudioBuffer<float>& buffer,
+ 
+     for (auto& output : midiOutputs)
+         if (auto hostedOutput = dynamic_cast<HostedMidiOutputDevice*> (output.get()))
+-            hostedOutput->processBlock (midi);
++            hostedOutput->processBlock (midi, buffer.getNumSamples());
+ }
+ 
+ bool HostedAudioDeviceInterface::isHostedMidiInputDevice (const MidiInputDevice& d)

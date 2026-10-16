@@ -26,7 +26,7 @@ struct Harness
     tracktion::graph::NodePlayer player;
     choc::buffer::ChannelArrayBuffer<float> audio{choc::buffer::Size::create(2, blockSize)};
     tracktion::MidiMessageArray midi;
-    Json events = Json::array();
+    Json events = Json::array(), messages = Json::array();
     const bool beats;
     const int channel, pedal;
     bool muted = false;
@@ -42,7 +42,7 @@ struct Harness
         head.setReferenceSampleRange({0, blockSize});
         head.play();
     }
-    std::unique_ptr<tracktion::graph::Node> node(bool notes = true, int release = -1)
+    std::unique_ptr<tracktion::graph::Node> node(bool notes = true, int release = -1, bool extraNote = false)
     {
         juce::MidiMessageSequence seq;
         auto add = [&](int frame, juce::MidiMessage m)
@@ -54,6 +54,11 @@ struct Harness
         {
             add(37, juce::MidiMessage::noteOn(channel, 60, juce::uint8(91)));
             add(1010, juce::MidiMessage::noteOff(channel, 60));
+        }
+        if (extraNote)
+        {
+            add(700, juce::MidiMessage::noteOn(channel, 62, juce::uint8(72)));
+            add(1800, juce::MidiMessage::noteOff(channel, 62));
         }
         add(500, juce::MidiMessage::controllerEvent(channel, pedal, 64));
         if (release >= 0)
@@ -89,6 +94,19 @@ struct Harness
         {
             const auto offset = std::llround(m.getTimeStamp() * rate);
             check(offset >= 0 && offset < count, "native event remains in its actual process buffer");
+            Json wire{{"frame", reference + offset}, {"channel", m.getChannel()}};
+            if (m.isNoteOnOrOff())
+            {
+                wire["kind"] = m.isNoteOn() ? "on" : "off";
+                wire["pitch"] = m.getNoteNumber();
+            }
+            else if (m.isController())
+            {
+                wire["kind"] = "cc";
+                wire["controller"] = m.getControllerNumber();
+                wire["value"] = m.getControllerValue();
+            }
+            messages.push_back(wire);
             if (m.isController())
                 events.push_back({{"controller", m.getControllerNumber()},
                                   {"value", m.getControllerValue()},
@@ -114,11 +132,9 @@ struct Harness
     }
     Json record(const char* scenario) const
     {
-        return {{"scenario", scenario},
-                {"path", beats ? "beatsRaw/LoopingMidiNode" : "seconds/MidiNode"},
-                {"channel", channel},
-                {"pedal", pedal},
-                {"events", events}};
+        return {{"scenario", scenario}, {"path", beats ? "beatsRaw/LoopingMidiNode" : "seconds/MidiNode"},
+                {"channel", channel},   {"pedal", pedal},
+                {"events", events},     {"messages", messages}};
     }
 };
 } // namespace
@@ -139,6 +155,42 @@ int main(int argc, char** argv)
             for (const int channel : {1, 16})
                 for (const int pedal : {64, 66})
                 {
+                    {
+                        Harness h(beats, channel, pedal);
+                        h.head.setPosition(2048);
+                        h.process();
+                        result["observations"].push_back(h.record("seek into released-key pedal voice"));
+                        for (const char* kind : {"on", "off"})
+                            check(std::count_if(h.messages.begin(), h.messages.end(),
+                                                [&](const Json& m)
+                                                {
+                                                    return m.value("kind", "") == kind && m.value("pitch", -1) == 60 &&
+                                                           std::abs(m["frame"].get<int64_t>()) <= 1;
+                                                }) == 1,
+                                  "released-key pedal voice is retriggered and physically released at the exact seek "
+                                  "sample");
+                    }
+                    if (pedal == 66)
+                    {
+                        Harness h(beats, channel, pedal);
+                        h.player.setNode(h.node(true, -1, true));
+                        h.head.setPosition(800);
+                        h.process();
+                        result["observations"].push_back(h.record("sostenuto capture ordering"));
+                        int onCaptured = -1, latch = -1, onLater = -1;
+                        for (int i = 0; i < int(h.messages.size()); ++i)
+                        {
+                            const auto& m = h.messages[i];
+                            if (m.value("kind", "") == "on" && m.value("pitch", -1) == 60)
+                                onCaptured = i;
+                            if (m.value("kind", "") == "on" && m.value("pitch", -1) == 62)
+                                onLater = i;
+                            if (m.value("controller", -1) == 66 && m.value("value", -1) >= 64)
+                                latch = i;
+                        }
+                        check(onCaptured >= 0 && onCaptured < latch && latch < onLater,
+                              "sostenuto chase latches only originally captured keys before adding later keys");
+                    }
                     {
                         Harness h(beats, channel, pedal);
                         h.until(clipEnd + blockSize);

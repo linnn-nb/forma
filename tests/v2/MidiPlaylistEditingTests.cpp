@@ -189,6 +189,106 @@ void render(Commands& c, const juce::File& file)
     check(r->read(&pcm, 0, 240000, 0, true, true) && pcm.getMagnitude(0, 0, 240000) > 1e-4,
           "Comp actually produces synth PCM; random oscillator phase is not bitwise compared");
 }
+void isolatedSostenutoAudio(const juce::File& root)
+{
+    Commands c(false, std::make_unique<Storage>(root.getChildFile("isolated-prefs")));
+    run(c, Json::array(
+               {op("track.create", {{"name", "Sostenuto audible verification"}, {"type", "instrument"}, {"ref", "$t"}}),
+                op("track.gain", {{"track", "$t"}, {"db", -18}}),
+                op("midi.clip.create", {{"track", "$t"},
+                                        {"ref", "$c"},
+                                        {"name", "Released before Comp entry"},
+                                        {"position_samples", 0},
+                                        {"length_samples", 240000}}),
+                op("midi.note.add", {{"clip", "$c"},
+                                     {"pitch", 69},
+                                     {"velocity", 91},
+                                     {"position_samples", 12000},
+                                     {"length_samples", 12000}})}));
+    auto clip = c.query()["tracks"][0]["clips"][0];
+    const std::string track = c.query()["tracks"][0]["id"], clipID = clip["id"];
+    Json points = Json::array();
+    for (auto [beat, value] : std::vector<std::pair<double, int>>{{.75, 127}, {6.5, 0}})
+        points.push_back({{"id", "cc:" + clipID + ":new:" + juce::Uuid().toString().toStdString()},
+                          {"source_beat", beat},
+                          {"raw_value", value << 7}});
+    run(c, "midi.cc.replace",
+        {{"clip", clipID}, {"controller", 66}, {"state_hash", clip["controller_state_hash"]}, {"points", points}});
+    const std::string original = lists(c, track)["active"];
+    const auto made = run(
+        c, "playlist.comp.create",
+        {{"track", track},
+         {"name", "Sostenuto cut-in"},
+         {"segments",
+          Json::array({{{"source", original}, {"clip", clipID}, {"start_samples", begin}, {"end_samples", end}}})}});
+    const std::string comp = made["objects"][0]["id"];
+    run(c, "playlist.select", {{"track", track}, {"playlist", comp}});
+    const auto source = item(c, track, original);
+    auto audio = [&](Commands& owner, const char* name, bool audible)
+    {
+        const auto file = root.getChildFile(name);
+        const auto receipt = owner.render(file, begin, begin + 48000);
+        check(receipt["audio_verified"] && receipt["frames"] == 48000 && receipt["render_ms"].get<double>() < 10000,
+              "isolated real native synth WAV meets original format, length and ten-second budget");
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(new juce::FileInputStream(file), true));
+        check(reader && reader->numChannels == 2 && reader->sampleRate == 48000 && reader->lengthInSamples == 48000,
+              "independent decoder verifies isolated pedal render");
+        juce::AudioBuffer<float> pcm(2, 48000);
+        check(reader->read(&pcm, 0, 48000, 0, true, true), "isolated actual PCM decodes");
+        const auto peak = pcm.getMagnitude(0, 48000);
+        const auto rms = pcm.getRMSLevel(0, 4800, 38400);
+        result["isolated_sostenuto_audio"].push_back({{"file", file.getFullPathName().toStdString()},
+                                                      {"peak", peak},
+                                                      {"rms", rms},
+                                                      {"audible_expected", audible},
+                                                      {"receipt", receipt}});
+        check(audible ? rms > 1e-4f : peak <= 1e-7f,
+              "actual synth sustains the chased released key, while no-pedal control remains silent");
+    };
+    audio(c, "Isolated-Sostenuto.wav", true);
+    const std::string noPedalSource = create(c, track, original);
+    run(c, "playlist.select", {{"track", track}, {"playlist", noPedalSource}});
+    clip = c.query()["tracks"][0]["clips"][0];
+    const auto beforeCC = c.query()["tracks"];
+    points = Json::array();
+    for (const auto& e : clip["controller_events"])
+        if (e["type"] == 66)
+            points.push_back({{"id", e["id"]}, {"source_beat", e["source_beat"]}, {"raw_value", 0}});
+    const auto ccOff = run(
+        c, "midi.cc.replace",
+        {{"clip", clip["id"]}, {"controller", 66}, {"state_hash", clip["controller_state_hash"]}, {"points", points}});
+    const auto afterCC = c.query()["tracks"];
+    c.undo(ccOff["plan_id"]);
+    check(c.query()["tracks"] == beforeCC, "one original CC Undo restores entire no-pedal source copy");
+    c.redo();
+    check(c.query()["tracks"] == afterCC, "CC Redo restores exact control copy without editing hidden Comp events");
+    const auto noPedal = run(
+        c, "playlist.comp.create",
+        {{"track", track},
+         {"name", "No-pedal control"},
+         {"segments",
+          Json::array(
+              {{{"source", noPedalSource}, {"clip", clip["id"]}, {"start_samples", begin}, {"end_samples", end}}})}});
+    run(c, "playlist.select", {{"track", track}, {"playlist", comp}});
+    const auto off = run(c, "playlist.select", {{"track", track}, {"playlist", noPedal["objects"][0]["id"]}});
+    audio(c, "Isolated-No-Pedal.wav", false);
+    c.undo(off["plan_id"]);
+    audio(c, "Isolated-Undo.wav", true);
+    check(item(c, track, original) == source, "isolated Comp/CC comparison preserves original source Take exactly");
+    const auto file = root.getChildFile("Sostenuto-Comp.tracktionedit");
+    c.saveAs(file);
+    Commands cold(false, std::make_unique<Storage>(root.getChildFile("isolated-cold-prefs")));
+    cold.open(file);
+    check(lists(cold, track) == lists(c, track), "cold reopen preserves complete isolated pedal Take and Comp");
+    audio(cold, "Isolated-Reopened.wav", true);
+    cold.redo();
+    audio(cold, "Isolated-Reopened-Redo.wav", false);
+    cold.undo(off["plan_id"]);
+    check(item(cold, track, original) == source,
+          "original comparison Undo after cold reopen preserves original source");
+}
+
 void rejectOpen(Commands& c, const juce::XmlElement& xml, const juce::File& file, const char* expected)
 {
     check(xml.writeTo(file), "owned negative reader fixture is written");
@@ -246,6 +346,11 @@ int main(int argc, char** argv)
                                                  {"velocity", 80},
                                                  {"position_samples", 24000},
                                                  {"length_samples", 192000}}));
+            setup.push_back(op("midi.note.add", {{"clip", cr},
+                                                 {"pitch", 54},
+                                                 {"velocity", 85},
+                                                 {"position_samples", 12000},
+                                                 {"length_samples", 24000}}));
             setup.push_back(op("midi.note.add", {{"clip", cr},
                                                  {"pitch", 50},
                                                  {"velocity", 75},
@@ -367,7 +472,7 @@ int main(int argc, char** argv)
                   "actual MIDI Comp windows have exact non-block sample geometry");
         }
         // Native hosted MIDI event output through the same production playback graph.
-        auto observe = [&](Json request, bool audition)
+        auto observe = [&](Json request, bool audition, int64_t stopSample = -1)
         {
             Json events = Json::array();
             double peak = 0;
@@ -416,12 +521,53 @@ int main(int argc, char** argv)
                     }
                 }
                 pump();
+                if (started && stopSample >= 0 && c.query()["position_samples"].get<int64_t>() >= stopSample)
+                {
+                    if (audition)
+                        c.playlistAudition("stop");
+                    else
+                        c.stop();
+                    break;
+                }
                 if (started && (audition ? !c.playlistAuditionStatus().value("active", false)
                                          : c.query()["position_samples"].get<int64_t>() > 240000))
                     break;
             }
             check(started, "actual native graph starts before its completion is observed");
-            if (audition)
+            if (stopSample >= 0)
+            {
+                Json stopped = Json::array();
+                for (int block = 0; block < 4; ++block)
+                {
+                    juce::AudioBuffer<float> audio(0, 256);
+                    juce::MidiBuffer midi;
+                    player.process(audio, midi);
+                    for (const auto& raw : midi)
+                    {
+                        const auto m = raw.getMessage();
+                        if (m.isController())
+                            stopped.push_back({{"controller", m.getControllerNumber()},
+                                               {"value", m.getControllerValue()},
+                                               {"offset", raw.samplePosition},
+                                               {"block", block}});
+                    }
+                    pump();
+                }
+                result["stop_output"].push_back({{"audition", audition}, {"messages", stopped}});
+                check(!c.realtimeState().playing && !c.playlistAuditionStatus().value("active", false),
+                      "actual production Stop/cancel ends its running transport");
+                for (const int pedal : {64, 66})
+                    check(std::any_of(stopped.begin(), stopped.end(),
+                                      [&](const Json& m)
+                                      {
+                                          return m["controller"] == pedal && m["value"] == 0 && m["block"] == 0 &&
+                                                 m["offset"].get<int>() >= 0 && m["offset"].get<int>() < 256;
+                                      }),
+                          "actual production Stop/cancel emits held pedal off into device MIDI output");
+                check(c.query()["tracks"] == before && c.query()["revision"] == rev,
+                      "production Stop/cancel preserves complete project facts and original revision");
+            }
+            else if (audition)
             {
                 check(c.playlistAuditionStatus()["state"] == "completed" && c.playlistAuditionStatus()["end_reached"],
                       "native audition completes at actual callback boundary");
@@ -442,13 +588,93 @@ int main(int argc, char** argv)
                                           std::abs(e["frame"].get<int64_t>() - frame) <= 1;
                                });
         };
+        observe({}, false, 60000);
+        observe({{"track", m}, {"playlist", alts[1]}, {"start_samples", begin}, {"end_samples", end}}, true, 80000);
+        {
+            const auto beforeRestart = c.query()["tracks"], revision = c.query()["revision"];
+            const auto startAudition = [&]
+            {
+                c.playlistAudition("start", {{"track", m},
+                                             {"playlist", alts[1]},
+                                             {"start_samples", begin},
+                                             {"end_samples", end},
+                                             {"base_revision", c.query()["revision"]},
+                                             {"session_token", c.sessionToken()}});
+                pump();
+            };
+            const auto untilFirstNote = [&]
+            {
+                Json wire = Json::array();
+                bool found = false;
+                const auto deadline = juce::Time::getMillisecondCounterHiRes() + 5000;
+                for (int block = 0; block < 512 && !found && juce::Time::getMillisecondCounterHiRes() < deadline;
+                     ++block)
+                {
+                    juce::AudioBuffer<float> audio(0, 256);
+                    juce::MidiBuffer midi;
+                    player.process(audio, midi);
+                    for (const auto raw : midi)
+                    {
+                        const auto msg = raw.getMessage();
+                        if (msg.isController() || msg.isNoteOnOrOff())
+                        {
+                            check(raw.samplePosition >= 0 && raw.samplePosition < 256,
+                                  "rapid-restart actual output remains in its real device buffer");
+                            wire.push_back(
+                                {{"kind", msg.isController() ? "cc"
+                                          : msg.isNoteOn()   ? "on"
+                                                             : "off"},
+                                 {"key", msg.isController() ? msg.getControllerNumber() : msg.getNoteNumber()},
+                                 {"value", msg.isController() ? msg.getControllerValue() : 0},
+                                 {"frame", block * 256 + raw.samplePosition}});
+                            found |= msg.isNoteOn() && msg.getNoteNumber() == 60;
+                        }
+                    }
+                    pump();
+                }
+                check(found, "actual first note arrives within unchanged five-second restart budget");
+                return wire;
+            };
+            startAudition();
+            untilFirstNote();
+            c.playlistAudition("stop");
+            startAudition(); // Intentionally no audio callback between Stop and Start.
+            const auto wire = untilFirstNote();
+            result["rapid_restart"] = wire;
+            int panic = -1, note = -1;
+            for (int i = 0; i < int(wire.size()); ++i)
+            {
+                if (wire[i]["kind"] == "cc" && wire[i]["key"] == 123)
+                    panic = i;
+                if (wire[i]["kind"] == "on" && wire[i]["key"] == 60)
+                    note = i;
+            }
+            check(panic >= 0 && note > panic,
+                  "old graph release precedes new first note when audition restarts before the next callback");
+            c.playlistAudition("stop");
+            juce::AudioBuffer<float> audio(0, 256);
+            juce::MidiBuffer midi;
+            player.process(audio, midi);
+            pump();
+            check(c.query()["tracks"] == beforeRestart && c.query()["revision"] == revision,
+                  "rapid native audition restart preserves project and original revision");
+        }
         const auto played = observe({}, false);
         check(has(played, "off", 48, begin - 5) && has(played, "on", 60, begin) && has(played, "off", 60, end - 5) &&
                   has(played, "on", 48, end),
               "real MIDI promotes held notes with native five-frame NoteOff rule and one-frame event budget");
         check(std::none_of(played.begin(), played.end(),
-                           [](const Json& e) { return e["kind"] == "on" && e["pitch"] == 50; }),
-              "hidden original note inside replacement does not play");
+                           [](const Json& e)
+                           {
+                               return e["kind"] == "on" && e["pitch"] == 50 && e["frame"].get<int64_t>() >= begin &&
+                                      e["frame"].get<int64_t>() < end;
+                           }),
+              "hidden original note is never triggered inside the replaced Comp window");
+        check(has(played, "on", 50, end) && has(played, "off", 50, end),
+              "resumed Main restores its own source pedal context at entry, including already released keys");
+        check(has(played, "on", 66, begin) && has(played, "off", 66, begin) && has(played, "on", 54, end) &&
+                  has(played, "off", 54, end),
+              "actual Comp chases released pedal voices older than the half-beat note padding");
         for (const int pedal : {64, 66})
             for (const int64_t boundary : {begin, end})
             {
@@ -724,6 +950,7 @@ int main(int argc, char** argv)
                       "all six migrated commands have distinct working replacement keys");
             }
         }
+        isolatedSostenutoAudio(root);
         result["result"] = "passed";
         result["scope"] =
             "native hosted MIDI/audio graph and native peer command inputs; no physical MIDI or listening claim";
