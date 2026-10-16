@@ -1,3 +1,5 @@
+2026-10-16 MIDI踏板增量：L0原生MidiNode/LoopingMidiNode跟踪实际输出的CC64/66，状态只在播放路径读写，非实时准备共享到替换图；固定两个通道掩码，不新增服务、引擎或IPC。L1仍是唯一Edit写入口，所有CC/Comp/历史沿用原Plan；不改持久源或工程格式。SDK新增审计patch，21补丁55文件fresh apply/逐字节/reverse通过；全局RT分配/锁资格未由此获得。范围见MIDI_COMP_WORKFLOW.md及VERIFICATION.md首节。
+
 2026-10-16 CLI进程边界：主函数先保留不继承的结果描述符，将普通stdout转到stderr，再进入原JUCEApplication生命周期；仅一次结果在引擎完整关闭后写私有输出。CLI继续经L1操作独立本地Edit，MCP仍是运行中Edit的入口，没有新服务/SDK字节或RT处理。P1历史schema3已补实桌面冷开/CmdZ/Redo/CmdS资格，详见VERIFICATION.md首节。
 
 2026-10-16 历史边界：L1 PersistentHistory用schema3编辑投影，当前运行时状态仍属于唯一te::Edit，保存时合入完整current_hash，回放不重置游标。HistoryRuntime只处理明确根/TRANSPORT字段及显式BASE数字，不扫描插件opaque数据；原schema1/2先原始校验再迁移。ProjectDocument声明history.runtime-boundary v1，旧读者拒绝；没有新引擎、服务、SDK或RT操作。详情见PROJECT_FORMAT.md、VERIFICATION.md首节。

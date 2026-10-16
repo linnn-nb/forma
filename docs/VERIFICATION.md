@@ -1,3 +1,24 @@
+# MIDI Comp踏板释放增量（2026-10-16，当前）
+
+生产与测试提交 **18dff95**；P1-MIDI-PEDAL-01仍为部分实现。最终9/9 CTest通过，67.80秒，共2204个检查（仅此最终批次，不累加重跑）；不是完整P1、听评、RT或产品验收。
+
+| 实际执行 | 最终结果 | 资格 |
+|---|---|---|
+| forma_midi_pedal_boundaries | 704项，0.86秒 | 两原生播放节点、通道1/16、CC64/66；已松按键/纯CC片段、63关闭/121重设、8圈、源ID保持图替换、原生kill、LiveClipLevel和delegate mute、seek；实际消息在缓冲内，边界≤1采样 |
+| forma_midi_pedal_take_comp | 201项，12.50秒 | 真实hosted输入录得15条事件，四踏板原始字节各一次；Take/局部Comp/原UndoRedo/保存冷开/自定义native peer键/实际FourOsc WAV |
+| forma_midi_take_workflow / forma_midi_punch_comp | 各200项，12.93 / 9.91秒 | 原Loop/Punch→Take/Comp链路受影响回归，来源/原历史及WAV检查，不冒充实体键盘 |
+| forma_midi_playlist_editing | 159项，21.26秒 | 两Comp切点48037/144119的CC64/66关闭各一次，实际输出48036/144118，1采样预算；完整源/原Undo/冷开/键位/WAV |
+| 四个forma_midi_loop_output | 各185项 | 6000/6144帧、固定/变化Tempo，8圈真实音符派发、完整Clip XML、保存冷开；事件≤1采样，原NoteOff提前5采样预算不变 |
+| 锁定SDK重新应用 | 21补丁/55文件一致，reverse还原 | 在原pin逐文件构造干净源，逐份apply/check、对照最终字节、反向还原；CMake exact diff audit通过 |
+
+根因分开：默认seconds/MidiNode仅在循环/静音关闭控制器，正常Clip末尾漏关；beatsRaw/LoopingMidiNode只记仍按住的键，键先松开便丢掉仍保持的踏板。现在独立跟踪实际CC/chase输出，区别CC64/66，原source ID与掩码共享到准备图；持久SEQ、来源、Edit/Plan/Undo格式不改。秒路径固定10us循环末偏移会舍入到缓冲外，改最后真实采样；片段静音及跳离在缓冲起点释放。新增内存只在非实时构造/准备，未由此宣称整个SDK已RT安全。
+
+初始红测试46项后失败：48036没有CC64关闭回执。保留首次编译不完整SDK析构/新增fixture误用dbGain ID、原生循环缓冲外、beat seek缓冲末与测试hex空格解码失败；均已定位后重建/重跑，未放宽既定容差或改原来源。日志及报告在 `build-v2-tracktion/Pedal-Comp-c50e713a02f5`；本地精简入口 `evidence/P1/midi-pedal-qualification.json`（忽略产物）。复验先构建六个受影响目标exit0，再用 `ctest --test-dir build-v2-tracktion -R '^forma_midi_(pedal_boundaries|playlist_editing|pedal_take_comp|take_workflow|punch_comp|loop_output_)' --output-on-failure`。
+
+唯一App仍 `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，二进制SHA256 `1a143302d04d14110f5db18168e8064801e62d94f008f0f0dec9eaa84b4b826e`，本地deep/strict通过，未公证。无DMG/tar/应用副本；当前61601仍旧进程，不称已运行新代码。只读运行回执确认用户Warp Comp/2片段/9原Plan/r28/77385/停止，未被测试替换。新演示与亲手步骤见MIDI_COMP_WORKFLOW.md首节。
+
+未完成：踏板保持但键已松的旧音追逐、CC66锁存顺序、GUI Stop/取消输出回执；同通道重叠、实体端口/其它插件/半踏板/MPE/听评/全RT/Windows不由此推断。无用户音频上传；OS拖选及其它旧差距保留。
+
 # CLI回执与历史实桌面补验（2026-10-16，当前）
 
 CLI-JSON-01已收口：真实缺陷是失败/用法结果仅在stderr，stdout为空。**修复前普通probe及六个真实Serum查询已是纯JSON，SDK启动/清理日志也已在stderr**，此前“Cleaning up混入stdout”未在分流复现，不能照搬为已证根因。现补统一错误回执，并在JUCE启动前保留不继承的私有结果描述符，将普通stdout转stderr；关闭Engine后才交付一份JSON。L1命令/MCP/音频引擎/SDK/RT路径不变，CLI仍读取磁盘而非现场Edit。

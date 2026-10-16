@@ -1,3 +1,5 @@
+2026-10-16 P1-MIDI-PEDAL-01（部分）：MIDI Comp的CC64/CC66切点和循环释放已修，原Take/Comp/UndoRedo/保存重开/可改键及真实WAV有自动回归。踏板持续旧音的入点重建、CC66锁存追逐、生产Stop实际输出/实体MIDI/听评仍待补，不将完整SEQ或原生kill当作完整踏板工作流。代码/验收对应见MIDI_COMP_WORKFLOW.md与VERIFICATION.md首节。
+
 2026-10-16 增量：本地CLI补齐错误JSON回执、严格参数和诊断流隔离，真实渲染/旧工程导入/6个Serum/短设备播放已验。历史schema3补实桌面另存、原CmdZ/Redo、CmdS备份和实际新进程打开；九原Plan/完整轨道/播放头已恢复。OS坐标拖选仍未资格，完整产品未完成；详情见CLI.md、VERIFICATION.md首节。
 
 2026-10-16 当前增量：定位/播放/保存不再把运行时游标及SDK保存信息追加到已有编辑历史；保存重开后原Undo/Redo仍改声音和Loop/Punch设置，保持当前播放头。旧schema1/2校验后内存迁移，新的保存使用history.runtime-boundary v1保护格式；不是完整P1/产品资格，见PROJECT_FORMAT.md和VERIFICATION.md首节。

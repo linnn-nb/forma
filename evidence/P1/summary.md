@@ -1,3 +1,11 @@
+# 当前：MIDI踏板释放（2026-10-16）
+
+P1-MIDI-PEDAL-01 / 代码18dff95：修复seconds/beat两原生路径的切点/循环漏关，独立CC64/66、真实缓冲采样偏移、准备图源ID/状态保持；原媒体/SEQ/Plan/Undo格式不改。最终9/9、67.80秒、2204项；详细表、失败与固定预算见VERIFICATION.md首节。21补丁55文件fresh apply/逐字节/reverse通过。
+
+真实hosted录入四踏板消息后Take/Comp、原UndoRedo/冷开/可改native peer键/真实WAV已执行；不是实体MIDI或听评。演示 `build-v2-tracktion/MIDI-Take-Workflow-5dc9b28c04d448529c4ef42e61974c2b/MIDI-Take-Workflow.tracktionedit`，重启唯一App后打开，Option+L/Space/CmdZ/ShiftCmdZ/CmdS，局部采用CmdShiftF11。
+
+唯一App/CLI已重建，本地deep strict通过，SHA256 1a143302d04d14110f5db18168e8064801e62d94f008f0f0dec9eaa84b4b826e，未公证；当前61601仍旧进程，用户Warp Comp/2片段/9原Plan/77385/停止已只读核验保留。无新包/应用副本。完整P1/产品未完成；下一轮踏板旧音追逐、CC66锁存顺序与生产Stop回执，其它架构/性能/RT/设备/平台/发布差距保持。本地精简报告 midi-pedal-qualification.json，原始日志在 `build-v2-tracktion/Pedal-Comp-c50e713a02f5`。
+
 # CLI与P1历史桌面补验（2026-10-16，当前）
 
 CLI生产修复ce78075、回归fc32fba：统一错误JSON、严格参数、独立结果fd/诊断流及关闭后交付。原普通probe/6Serum stdout本来已纯JSON，原SDK日志在stderr；实际红项是错误结果stdout为空，已复现并修复。真实CLI136项/CTest1/1，6真实Serum复验141项（重复136+新增5），原SHA保持；真实WAV全样本增益误差1.19294e-7≤2e-6。另有5.2秒真实CoreAudio短播放，48k512扬声器、253440输出帧、XRUN0；不外推大型工程性能。

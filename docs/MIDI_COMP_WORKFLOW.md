@@ -1,3 +1,13 @@
+## 踏板跨切点（2026-10-16，部分实现）
+
+已修复“按键先松开、踏板仍保持”时切点漏发关闭消息：CC64 / CC66 分别记录实际发出的状态，片段末尾和循环末尾在最后一个真实采样释放；静音及跳离片段在下一缓冲起点释放。图重建保留原 MIDI source ID 和踏板状态，不修改源 SEQUENCE 或捕获来源。开关阈值依据 [MIDI Association](https://midi.org/midi-1-0-control-change-messages)；原始 14-bit 存储与实际 7-bit 消息仍分开。
+
+演示工程（已录得的已知 MIDI 测试演奏，不是音乐作品）：`build-v2-tracktion/MIDI-Take-Workflow-5dc9b28c04d448529c4ef42e61974c2b/MIDI-Take-Workflow.tracktionedit`。先正常退出并重启唯一 Forma.app，再打开工程，选 Recorded Keys，Option+L 看原 Take 与局部 Comp；Space 播放、CmdZ / ShiftCmdZ 撤销重做，CmdS 保存。局部采用在此工程自定义为 CmdShiftF11，源 Take / 原捕获保留；hosted 输入是测试设备，新录音须选真实设备。工程和 WAV 可直接独立检查。
+
+P1-MIDI-PEDAL-01 → `patches/tracktion-midi-pedal-boundaries.patch`、`tests/v2/MidiPedalBoundaryTests.cpp`、`MidiPlaylistEditingTests.cpp`、`MidiTakeWorkflowTests.cpp`；最终9套2204项/67.80秒。原生两路径、1/16通道、8圈、控制器单独片段、原生kill/两种mute/seek/图替换，以及真实hosted输入→Take/Comp→原Undo/冷开/自定义键/WAV均已执行；预算48k/256、事件1采样、UI5秒、录入15秒、单WAV10秒保持。
+
+**尚未完成：** 切入源中“按键已松、踏板仍保持”的旧音重建，以及 CC66 的追逐锁存顺序；当前保留完整 SEQ 不等于已恢复这些声音。GUI Stop/取消后的实际控制器输出回执、同通道重叠片段、半踏板音色、MPE/RPN/NRPN、实体 MIDI、其它乐器和听评不从本轮推断通过。原生kill测试不冒充实体停止或听评。下一轮补前两项与生产停止回执；完整P1/产品仍未完成。
+
 # 关联 Comp 与共享自动化（2026-10-16）
 
 选中任一关联 MIDI Comp 成员后，移动和 Nudge 会处理完整关联集；「自动化跟随编辑」开启时同时搬运所选区间的实际轨道曲线。当前数值/声音资格限于 VERIFICATION.md 首节列出的原生音量/EQ、采样/音乐时基与制作链，不推断全部第三方插件或实体设备。
