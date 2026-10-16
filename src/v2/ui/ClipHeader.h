@@ -9,6 +9,11 @@ class ClipHeader final : public juce::TextButton
 {
 public:
     std::function<void(int, const juce::MouseEvent&)> pointer;
+    std::function<bool(const juce::KeyPress&)> localKey;
+    bool keyPressed(const juce::KeyPress& key) override
+    {
+        return (localKey && localKey(key)) || juce::TextButton::keyPressed(key);
+    }
     void mouseDown(const juce::MouseEvent& e) override
     {
         forward(0, e);

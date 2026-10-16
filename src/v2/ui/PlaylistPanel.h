@@ -2,6 +2,7 @@
 #pragma once
 #include "Waveforms.h"
 #include "PanelTextEditor.h"
+#include "ClipHeader.h"
 namespace ndaw::desktop
 {
 class PlaylistPanel final : public juce::Component
@@ -535,11 +536,114 @@ private:
     {
         PlaylistPanel& owner;
         Waveforms waves;
+        std::map<std::string, std::unique_ptr<ClipHeader>> captions;
         bool dragging = false;
         int64_t anchor = 0, first = 0, last = 0;
         explicit Canvas(PlaylistPanel& p) : owner(p), waves([this] { repaint(); })
         {
             setWantsKeyboardFocus(true);
+        }
+        void choose(const std::string& listID, const std::string& clipID)
+        {
+            if (owner.auditionStatus.value("active", false))
+                owner.updateAudition(owner.audition("stop", Json::object()));
+            // Resolve current facts after stopping audition; captions never retain a JSON reference.
+            if (owner.data.is_null())
+                return;
+            int row = 0;
+            for (const auto& list : owner.data["items"])
+            {
+                if (list["id"] != listID)
+                {
+                    ++row;
+                    continue;
+                }
+                int64_t begin = 0, end = 0;
+                if (!clipID.empty())
+                {
+                    const auto clip = std::find_if(list["clips"].begin(), list["clips"].end(),
+                                                   [&](const auto& c) { return c["id"] == clipID; });
+                    if (clip == list["clips"].end())
+                        return;
+                    begin = (*clip)["start_samples"];
+                    end = begin + (*clip)["length_samples"].template get<int64_t>();
+                }
+                owner.source = listID;
+                owner.sourceClip = clipID;
+                owner.begin = begin;
+                owner.end = end;
+                dragging = false;
+                owner.updateName();
+                owner.refreshStatus();
+                const int top = 26 + row * 106, visible = owner.view.getViewHeight();
+                if (top < owner.view.getViewPositionY())
+                    owner.view.setViewPosition(owner.view.getViewPositionX(), top);
+                else if (top + 106 > owner.view.getViewPositionY() + visible)
+                    owner.view.setViewPosition(owner.view.getViewPositionX(), top + 106 - visible);
+                repaint();
+                return;
+            }
+        }
+        void syncCaptions()
+        {
+            std::set<std::string> retained;
+            if (!owner.data.is_null())
+            {
+                int row = 0;
+                for (const auto& list : owner.data["items"])
+                {
+                    const std::string listID = list["id"];
+                    auto caption = [&](const std::string& key, const std::string& clipID, const juce::String& label,
+                                       juce::Rectangle<int> bounds)
+                    {
+                        retained.insert(key);
+                        if (!captions.contains(key))
+                        {
+                            auto b = std::make_unique<ClipHeader>();
+                            b->setComponentID(text(key));
+                            b->setWantsKeyboardFocus(true);
+                            b->setTooltip(
+                                text("选择来源；片段名选择完整播放窗口。Tab 聚焦，空格 / Return 选择；波形仍可拖选。"));
+                            b->onClick = [this, listID, clipID] { choose(listID, clipID); };
+                            b->localKey = [button = b.get()](const juce::KeyPress& key)
+                            {
+                                if (key == juce::KeyPress::spaceKey || key == juce::KeyPress::returnKey)
+                                {
+                                    button->triggerClick();
+                                    return true;
+                                }
+                                return false;
+                            };
+                            b->pointer = [this](int phase, const juce::MouseEvent& event)
+                            {
+                                const auto local = event.getEventRelativeTo(this);
+                                if (phase == 0)
+                                    mouseDown(local);
+                                else if (phase == 1)
+                                    mouseDrag(local);
+                                else if (phase == 2)
+                                    mouseUp(local);
+                            };
+                            addAndMakeVisible(*b);
+                            captions.emplace(key, std::move(b));
+                        }
+                        auto& b = *captions.at(key);
+                        b.setButtonText(label);
+                        b.setTitle(text(list["name"].get<std::string>()) + text(" · ") + label);
+                        b.setBounds(bounds.getIntersection(getLocalBounds()));
+                        b.setVisible(!b.getBounds().isEmpty());
+                    };
+                    caption("playlist.source.list:" + listID, {}, text(list["name"].get<std::string>()),
+                            {4, 32 + row * 106, 190, 24});
+                    for (const auto& c : list["clips"])
+                        caption("playlist.source.clip:" + listID + ":" + c["id"].get<std::string>(), c["id"],
+                                text(c["name"].get<std::string>()),
+                                {int(x(c["start_samples"])) + 2, 48 + row * 106,
+                                 std::max(1, int(c["length_samples"].get<int64_t>() / owner.samplesPerPixel) - 4), 20});
+                    ++row;
+                }
+            }
+            std::erase_if(captions, [&](const auto& entry) { return !retained.contains(entry.first); });
         }
         double x(int64_t sample) const
         {
@@ -696,6 +800,7 @@ private:
         void scrollBarMoved(juce::ScrollBar*, double start) override
         {
             owner.offset = start;
+            syncCaptions();
             repaint();
         }
     };
@@ -771,6 +876,7 @@ private:
         offset = std::clamp(offset, 0., std::max(0., duration - visible));
         scroll.setRangeLimits(0., double(duration));
         scroll.setCurrentRange(offset, visible, juce::dontSendNotification);
+        canvas.syncCaptions();
         canvas.repaint();
     }
     class NameEditor : public juce::TextEditor
