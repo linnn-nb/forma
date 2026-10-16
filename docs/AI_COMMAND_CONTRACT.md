@@ -1,3 +1,5 @@
+2026-10-16 NOTE精确读取是L1载入修复，没有新增命令、工具、权限或域事务。原Plan/Undo/Redo不变，当前树及历史中的原生音符位置b/长度l在完整性校验后精确解码，避免SDK字符串转double时末位漂移；不转换插件参数或原始来源中的数字文本。文件失败仍先拒绝，不覆盖当前Edit；恢复仍不宣称恢复Undo。测试P1-MIDI-PRECISION-01，实际资格见VERIFICATION.md。
+
 2026-10-16 新增playlist.comp.linked.promote，仅local_gui/human，参数track/segments/targets/media_fingerprint；targets由L1真实TARGET自动封定，调用者提供时须完全相等，commit重编译/版本/全部对象Scope仍复核。preview列每轨source/target/replaced_clips/start/end，整组一事务，来源和外侧保持。GUI580多轨匹配区间使用此入口，原单轨promote保留；MCP冻结且权限未扩张。测试P1-MIDI-LINKED-COMP-01，边界见MIDI_COMP_WORKFLOW.md/VERIFICATION.md。
 
 2026-10-16 Loop输出修复仅L0时钟调度，无新增Agent工具/参数/权限、L1域命令或持久字段。Loop/音符仍经原human Plan，原Undo/Redo和实际文件重开共享同一Edit；实际命令键与输出资格、原生精度差距见MIDI_LOOP_OUTPUT.md及VERIFICATION.md。

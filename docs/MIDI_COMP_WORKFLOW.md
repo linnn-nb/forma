@@ -50,6 +50,6 @@ Punch组合演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW
 
 多轨操作：来源轨道下拉或“下一来源”切换，每轨同一区间拖选后“加入候选”；“创建关联Comp”保留原播放，“用于播放/恢复整组原播放/解除Comp关联”处理完整成员。试听草稿所选范围会包括其它成员的匹配段。点候选行、“提升候选选段”一次改各轨当前TARGET；想改已关联TARGET，须先在各轨设置对应成员目标。任何不完整或锁定配对都会解释失败。L1权限仅human/local_gui，未开Agent越权入口。
 
-关联布局以工程采样记载，原音符/控制器/来源仍是完整原生MIDI；当前关联内容/位置独立编辑和Tempo改图需先解除关联。整组移动/跨轨/Tempo重映射、混合音频/MIDI家族等继续纳入范围，不伪称已完成。原生NOTE末位精度差异继续修复。
+关联布局以工程采样记载，原音符/控制器/来源仍是完整原生MIDI；当前关联内容/位置独立编辑和Tempo改图需先解除关联。整组移动/跨轨/Tempo重映射、混合音频/MIDI家族等继续纳入范围，不伪称已完成。原生NOTE末位精度已按本文开头专项预算修复，当前完整回归见VERIFICATION.md。
 
 当前多轨演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-3649a9ec21ac4d98a6a652634a6f0d71/MIDI-Linked-Comp.tracktionedit`，Punch版本`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-28324383957d4ac3875be8d00ec2cdda/MIDI-Linked-Comp.tracktionedit`。原始音符均为已知输入测试，FourOsc可直接试听，非实体键盘或用户听评。重建ndaw_midi_linked_comp_tests后运行`ctest --test-dir build-v2-tracktion -R '^forma_midi_linked_comp_' --output-on-failure`，两例各120秒截止。

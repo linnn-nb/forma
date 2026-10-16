@@ -1,3 +1,5 @@
+2026-10-16：修复MIDI音符位置/长度保存重开后的末位漂移；原生播放缓存、非活动Playlist、Undo/Redo和实际恢复快照的NOTE b/l精度均已专项验证。操作仍为常规编辑、CmdZ/ShiftCmdZ、CmdS和重开，不新增按钮。严格Clip XML和1采样输出预算保持；不等于全部插件/所有数值字段或完整P1已验。当前完整测试见VERIFICATION.md。
+
 2026-10-16：两轨录得Loop/Punch支持MIDI关联候选、整组选用/恢复/解除与匹配区间整组局部采用（原Main或关联TARGET），原Take及范围外演奏保留；实际GUI键、原Undo/Redo、冷重开与两声道FourOsc通过。10套1555项，仅本资格范围，不是完整P1/产品；整组移动/Tempo、NOTE精度和实体制作待做。
 
 2026-10-16：修复短Loop回放折返块的MIDI输出错位。四种圈长/Tempo组合、保存重开后的实际输出与原Loop Undo/Redo键已验证，另一轨实际FourOsc可试听；17套3516项通过。NOTE b/l冷读有1–2 ULP差异未解决，物理输出/监听/完整P1仍待验；操作MIDI_LOOP_OUTPUT.md，当前证据VERIFICATION.md。

@@ -1,3 +1,5 @@
+2026-10-16 NOTE精度：L1 NativeMidiNumbers在打开/恢复的离线ValueTree上，将明确的原生MIDICLIP/SEQUENCE/NOTE b/l按classic locale正确舍入为double；支持活动/非活动Playlist和历史属性/结构镜像。原文件封装、历史SHA和delta链先校验，再转换，之后才构造SDK对象；不在实时路径工作，不遍历插件、原始来源和origin等不透明分支。没有第二套模型、SDK补丁或新服务。16数值向量/三次冷开/真实恢复及四个循环输出严格XML已通过，完整结果见VERIFICATION.md。
+
 2026-10-16 MIDI关联：L1复用音频关联容器/整组选用与恢复，新增原子linked.promote并在makePlan封定完整TARGET映射/来源/恢复成员；一笔原Undo，L5草稿只提交同范围全部成员。midi.linked-comp v1与成员schema2以明确采样布局保护当前/非活动/原历史，音频schema1保持。无新引擎/服务/SDK/RT工作；实际两轨Loop/Punch、声音与持久化见MIDI_COMP_WORKFLOW.md/VERIFICATION.md。关联MIDI独立移动/Tempo暂明确拒绝，NOTE末位缺口保持。
 
 2026-10-16 MIDI输出折返：注入节点、整块dispatch与MidiNoteDispatcher计时器使用原生未折回播放采样时钟，音乐/时码内容保持折回位置，时码只偏移本段新消息；scrub-context与新增midi-output-clock审计补丁共20份50文件，pin不变。未新增RT分配/锁/等待、引擎/服务/IPC或持久格式。实际512事件的1帧资格及NOTE末位读回缺口见MIDI_LOOP_OUTPUT.md、VERIFICATION.md；不外推物理MIDI/实时输入监听/时码/PDC/性能。

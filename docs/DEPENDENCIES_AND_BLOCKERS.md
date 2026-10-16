@@ -1,3 +1,5 @@
+2026-10-16 NOTE精度修复无新依赖、SDK字节、授权、服务或证书；沿用Tracktion/JUCE pin和现有20份SDK审计补丁。NativeDAW/CLI和受影响测试已构建，本地deep/strict签名通过；非发行公证。四个完整Clip XML严格冷开和300项精度专项通过，未重新声称物理MIDI/听评/RT资源资格。MIDI关联整组移动/Tempo、旧焦点/性能A/分析/Windows/发行等缺口保持，当前批次见VERIFICATION.md。
+
 2026-10-16 MIDI关联：无新依赖/授权/证书/SDK修改，20补丁50文件fresh重放/逐字/reverse通过。10套1555项含两轨真实hosted Loop/Punch与实际多轨声音/历史；实体MIDI/监听/听评未验。关联状态独立编辑和Tempo改图明确拒绝；下一步NOTE精确读取与整组移动/Tempo资格，旧焦点/性能A/分析/RT/Windows/发行缺口保持。
 
 2026-10-16 Loop输出：同一SDK/JUCE pin，新增midi-output-clock补丁与原scrub-context协作，20份/50文件已fresh apply/逐字/reverse，无新依赖/授权/证书。17套3516项通过，仅hosted回放输出与实际FourOsc声音；NOTE b/l 1–2 ULP冷读未修，物理端口/实时输入监听折返/时码/PDC/RT资源待验。旧焦点/性能A/分析/Windows/视频/环绕/发行等缺口保留。
