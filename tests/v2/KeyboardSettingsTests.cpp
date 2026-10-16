@@ -19,6 +19,7 @@ namespace
 {
 int checks = 0;
 Json focusFailure = nullptr;
+Json initialActivation = nullptr;
 void report(const juce::StringArray& args, const Json& result)
 {
     if (!args.isEmpty())
@@ -101,6 +102,13 @@ int runSuite(const juce::StringArray& args)
         const auto tracks = c.query()["tracks"];
         const auto originalUndo = c.query()["history"];
         window.showReady();
+        initialActivation = {{"foreground", juce::Process::isForegroundProcess()},
+                             {"native_peer_focused", window.getPeer() && window.getPeer()->isFocused()}};
+        std::cout << "INITIAL_ACTIVATION " << initialActivation.dump() << std::endl;
+        juce::Process::makeForegroundProcess();
+        window.toFront(true);
+        wait([&] { return juce::Process::isForegroundProcess() && window.getPeer() && window.getPeer()->isFocused(); },
+             "actual application and native window are foreground before a user opens settings");
         w.uiCommands().invokeDirectly(108, false);
         auto* panel = dynamic_cast<KeyboardSettings*>(find(w, "shortcuts.panel"));
         check(panel && panel->isShowing(), "actual shortcut panel is visible");
@@ -246,6 +254,7 @@ int runSuite(const juce::StringArray& args)
         window.setVisible(false);
         Json result{{"result", "passed"},
                     {"checks", checks},
+                    {"initial_activation", initialActivation},
                     {"scope", "actual native peer capture, command registry, key Undo/Redo, conflicts and L1 "
                               "save/reopen; no audio/hardware claim"}};
         report(args, result);
@@ -253,13 +262,18 @@ int runSuite(const juce::StringArray& args)
     }
     catch (const std::exception& e)
     {
-        report(args, {{"result", "failed"}, {"checks", checks}, {"error", e.what()}, {"focus", focusFailure}});
+        report(args, {{"result", "failed"},
+                      {"checks", checks},
+                      {"error", e.what()},
+                      {"focus", focusFailure},
+                      {"initial_activation", initialActivation}});
         std::cerr << "FAIL " << e.what() << std::endl;
         return 1;
     }
     folder.deleteRecursively();
     return 0;
 }
+#include "KeyboardDesktopChecks.h"
 class TestApplication final : public juce::JUCEApplication
 {
 public:
@@ -281,7 +295,8 @@ public:
         juce::MessageManager::callAsync(
             [this]
             {
-                setApplicationReturnValue(runSuite(getCommandLineParameterArray()));
+                const auto args = getCommandLineParameterArray();
+                setApplicationReturnValue(args.contains("--desktop") ? runDesktop(args) : runSuite(args));
                 quit();
             });
     }
