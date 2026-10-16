@@ -197,8 +197,8 @@ Json Commands::expandMixGroupFlags(const Json& ops) const
     {
         // Comp links exist independently of user-created Edit/Mix groups.
         for (const auto& op : ops)
-            if (op.at("command") == "clip.move")
-                if (auto* clip = audioClip(op.at("args").at("clip")))
+            if (op.at("command") == "clip.move" || op.at("command") == "midi.clip.move")
+                if (auto* clip = timelineClip(op.at("args").at("clip")))
                     if (auto* owner = dynamic_cast<te::AudioTrack*>(clip->getTrack()))
                         if (!playlist_links::value(playlist_links::active(*owner), "linked_set").empty())
                             return expandEditGroupEdits(ops);
