@@ -1,3 +1,5 @@
+2026-10-16 新增playlist.comp.linked.promote，仅local_gui/human，参数track/segments/targets/media_fingerprint；targets由L1真实TARGET自动封定，调用者提供时须完全相等，commit重编译/版本/全部对象Scope仍复核。preview列每轨source/target/replaced_clips/start/end，整组一事务，来源和外侧保持。GUI580多轨匹配区间使用此入口，原单轨promote保留；MCP冻结且权限未扩张。测试P1-MIDI-LINKED-COMP-01，边界见MIDI_COMP_WORKFLOW.md/VERIFICATION.md。
+
 2026-10-16 Loop输出修复仅L0时钟调度，无新增Agent工具/参数/权限、L1域命令或持久字段。Loop/音符仍经原human Plan，原Undo/Redo和实际文件重开共享同一Edit；实际命令键与输出资格、原生精度差距见MIDI_LOOP_OUTPUT.md及VERIFICATION.md。
 
 2026-10-16 本地recordingReadiness新增只读loop_capture_constraints：device_sample_rate、buffer_frames、range_device_frames、minimum_device_frames，单位是实际设备样本，不是工程固定48k采样。minimum=max(51,buffer+1)，录音前严格复核；没有扩大Agent录音/文件写权限或新增MCP工具。MIDI v1原始来源Hash算法/字段不变，XML数字标准读取修复不重写来源或伪造新录音成功。Playlist仍独立Plan，声音隔离的track.mute与Take选择分别提交；每项原Undo不混同文件副作用。实际回执/范围见VERIFICATION.md。

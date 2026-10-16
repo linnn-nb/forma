@@ -1,3 +1,5 @@
+2026-10-16：两轨录得Loop/Punch支持MIDI关联候选、整组选用/恢复/解除与匹配区间整组局部采用（原Main或关联TARGET），原Take及范围外演奏保留；实际GUI键、原Undo/Redo、冷重开与两声道FourOsc通过。10套1555项，仅本资格范围，不是完整P1/产品；整组移动/Tempo、NOTE精度和实体制作待做。
+
 2026-10-16：修复短Loop回放折返块的MIDI输出错位。四种圈长/Tempo组合、保存重开后的实际输出与原Loop Undo/Redo键已验证，另一轨实际FourOsc可试听；17套3516项通过。NOTE b/l冷读有1–2 ULP差异未解决，物理输出/监听/完整P1仍待验；操作MIDI_LOOP_OUTPUT.md，当前证据VERIFICATION.md。
 
 2026-10-16：支持设备缓冲约束内的Audio/MIDI短Loop；实际125/128/500/512ms混合录音、空Take、原始圈末NoteOff、录得音符编辑、原Undo/Redo、保存冷重开/改视图后CmdS与隔离乐器导出已验证。录音面板显示当前设备阈值，替代固定两秒提示；修复来源指纹XML读回末位误差。14种受影响套分批2093项通过，不是完整P1/产品、实体输入/听评或实时性能资格；最短257帧实际捕获及更多设备尚待验。操作见MIDI_LOOP_WORKFLOW.md，当前证据见VERIFICATION.md。

@@ -1,3 +1,5 @@
+2026-10-16 本表仅作交互/工作流参考。通用能力新增MIDI两轨关联候选、整组选用/恢复/解除和整组局部采用，参考v1/现音频关联行为，在Tracktion生产路径Loop/Punch实际录入、GUI键、声音与冷历史已验；不声称Pro Tools实机行为/音质/性能对齐。代码PlaylistEditing/PlaylistLinks/PlaylistPanel/ProjectDocument，测试MidiLinkedCompTests，状态部分实现；整组移动/Tempo、NOTE精度/物理端口/完整P1待做，证据VERIFICATION.md。
+
 2026-10-16 本表仍仅作交互/工作流参考：Forma短Loop实际回放MIDI折返时序已在48k/256四例、初始/重开各8圈测过，共512事件、派发≤1帧；不声称Pro Tools实机行为或性能对齐。实现原生EditPlaybackContext/MidiOutputDeviceInstanceInjectingNode及审计补丁，测试MidiLoopOutputTests，证据VERIFICATION.md。状态部分实现；NOTE精度、物理端口/监听/时码与完整P1未完成。
 
 2026-10-16 本表继续作为交互/工作流参考，非完成度门槛。Forma在Tracktion生产路径实测125/128/500/512ms Audio/MIDI短Loop、空Take与来源/原历史恢复，录音最低范围由设备缓冲和原生单块折返约束决定；不据此声称Pro Tools模式/音质/性能对齐。代码RecordingCommands/MidiLoopCapture/PlaylistCommands/RecordingPanel及scrub-context审计补丁，测试ShortLoopRecordingTests，回执见VERIFICATION.md与evidence/P1/summary.md。状态：部分实现；实时折返MIDI输出、物理设备/听评与完整P1待验，无新外部依赖。

@@ -1,10 +1,10 @@
 # 下一步（2026-10-16）
 
-786469f接通循环折返的连续MIDI输出时钟：四例初始/重开512事件≤1帧；当前17套3516项、音频完整制作链PCM最大差0。原生NOTE b/l 1–2 ULP冷读仍未修，不称完整P1/产品或实体输出/性能达标。当前证据VERIFICATION.md，操作MIDI_LOOP_OUTPUT.md；短圈捕获上轮资格保持。
+MIDI关联增量已接通：7275c71/9ddc670/ede4fd7/c01a4b1，两轨真实Loop/Punch→关联候选→整组选用/恢复/解除/试听→原Main和已关联TARGET局部采用→原Undo/Redo/冷重开/导出；当前10套1555项。不是完整P1/产品，具体范围见VERIFICATION.md、MIDI_COMP_WORKFLOW.md。
 
-1. **下一项P1：MIDI多轨关联Comp。** 现L1明确拒绝，按既有音频关联/v1规格和真实Loop/Punch来源补齐；整组来源/目标、选择/锁定、分段试听/局部采用、单事务UndoRedo、保存冷重开与实际快捷键一起验，不能只复制单轨界面或绕过L1。
-2. 修复通用NOTE b/l精确读回：当前实际Xml末位改变1–2 ULP，输出轨整数样本和事件保持，不等于原生完整精度；须覆盖当前/非活动/Undo/Redo与原始来源保护，不全局强转不透明字符串或更新Hash掩盖。
-3. 本输出增量收口；物理USB/DIN、实时输入监听折返、MIDI Clock/MTC、PDC/变速/反向/多重折返、其它速率/缓冲、长时/断连/过载/听评仍待验。257帧只预检、MIDI流式原始日志/崩溃恢复、更多空圈/控制器/MPE/Groove/量化/覆盖保持未完成。
-4. P0 KeyboardSettings前台捕获旧失败仍保留，本轮未重复桌面请求或计入通过；旧性能A15.84%>15%、分析超时、保存管理/读取能力全量/RT SDK锁分配、Windows/视频/环绕/发行等差距保持。M2/M3冻结、M4/M5暂缓，完整架构不缩减。
+1. **下一项：修复NOTE b/l精确读回。** 已知四个真实工程冷开改变1–2 ULP；当前关联布局和音符整数采样保持不等于原生精度保持。须覆盖当前/非活动/Undo/Redo与原始来源，正确读原数值，不全局转换不透明字符串或更新Hash掩盖。保留失败证据和既定输出1帧预算。
+2. 然后推进MIDI关联整组移动/跨轨迁移/Tempo重映射，按v1/音频关联规格、完整成员闭包/来源时基/原历史/实际输出与按键一起验证。当前关联中独立MIDI编辑和Tempo改图明确拒绝，解除关联可继续；不能通过取消保护假装支持。音频/MIDI混合家族、循环/量化/Groove/MPE及嵌套表达仍待资格。
+3. 本多轨基础增量收口。实体USB/DIN/输入监听折返、MIDI Clock/MTC/PDC/变速/反向/多重折返/其它速率与缓冲、长时/断连/过载/听评，257帧最短实际捕获、MIDI流式原始日志/崩溃等继续保留。
+4. 旧KeyboardSettings前台失败、性能A15.84%>15%、分析超时、保存管理/读取能力全量/RT SDK锁分配、Windows/视频/环绕/发行仍未完成。M2/M3冻结、M4/M5暂缓，完整架构范围不缩减。
 
-唯一App：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，本地签名非发行公证。用户PID44913未重启，无新包；本机演示工程见MIDI_LOOP_OUTPUT.md，先保存当前工程，再重启新构建试听。自动化hosted端口不是实体设备；查看MIDI输出须选实际端口。
+唯一App：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，本地签名非发行公证。用户PID44913保持未重启，无新包。先保存现有工程再重启，打开MIDI_COMP_WORKFLOW.md末尾多轨演示，两轨Linked Keys L/R、Option+L，选来源、同范围加入候选、整组选用/恢复/局部采用，CmdZ/ShiftCmdZ、CmdS。待命已关，hosted引用不是实体设备。

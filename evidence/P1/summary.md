@@ -1,20 +1,20 @@
-# Loop 折返 MIDI 输出当前验证（2026-10-16）
+# MIDI 多轨关联 Comp 当前验证（2026-10-16）
 
-结论：786469f 修复实际回放在同一设备块内折返后的 MIDI 派发错位；ed912d9 建立专项。当前17套、3516项通过（新专项4/4，10.25秒；受影响回归13/13，215.24秒）。不是全仓、完整P1/产品、物理端口、监听延迟或实时资源资格。
+结论：7275c71 / 9ddc670 接通两轨 MIDI 关联候选与原子整组局部采用，ede4fd7 / c01a4b1 补齐真实录音/控制器事实和关联身份、解除键与 TARGET 闭包验证。当前10套1555项通过：最后专项Loop208/Punch203与音频制作链98共3/3、39.56秒，受影响7/7、118.93秒。不是完整P1/产品、全部MIDI类型/物理设备/听评/RT性能资格。
 
-- **P1-MIDI-LOOP-OUTPUT-01**：48k/256、起点37、6000/6144帧圈长，恒速/0.127拍改90BPM四例；每例初始8圈、实际文件重开后8圈。四音符覆盖圈头/圈尾/跨尾/Tempo附近；输出轨严格核对64事件/阶段与全部身份、整数位置/长度、音高/力度，重开后原Loop Undo/Redo仍执行，L/Space/Undo/Redo键先核对实际命令归属。
-- 修复前6000帧的真实输出出现5920帧等越界缓冲内偏移，事件偏差可达5888帧。Node注入、设备整块dispatch和物理输出计时器改用同一个未折回播放时钟；音乐位置/时码内容仍用折回工程时间。时码追加偏移只转本段新消息，不重定时已排队的前段。无新引擎/服务/IPC，也无新增分配、锁或等待；已有SDK实时锁/分配仍未资格。
-- 当前四例×两阶段独立重算512个实际输出事件，全部一一匹配且无重复/遗漏；最大派发误差1帧，偏移全在[0,256)。普通NoteOff原生提前约5帧，折返主动释放在最后1帧，按真实LoopingMidiNode两条路径分别预定，不放宽1帧派发预算或改原始捕获时间。UI/完成5秒、CTest60秒、观察槽4096保持。
-- 并行FourOsc轨实际输出非零音频，每阶段184–188个有声设备块，仅作发声/试听依据；不从随机相位PCM起音推断MIDI事件，不作逐位音频一致性或用户听评声明。
-- **未解决的精度差异**：四例重开后输出轨NOTE b/l有1–2 ULP变化；前后完整精确Clip XML及各字段差异原样保存。整数音符事实与实际输出时序保持，原Loop Undo/Redo已验；这不是来源池Hash修复，也不能写成所有原生音符浮点字节保持。原严格XML断言失败保留，新专项明确按采样时序资格；通用精确读取继续在BACKLOG，当前/非活动/历史须整体修复。
-- 受影响回归：历史86、Scrub543、MIDI时间映射324、原MIDILoop169、四个短圈508、MIDIPunch497、Loop候选200、Punch候选200、MIDI Comp155、音频完整制作链98，另新输出736，共3516。Loop→Punch→Take/Comp→交叉淡化→WAV链重开最大PCM差0；独立stdlib读取两份真实48k/PCM24/双声道/192000帧文件，data逐字节相同。
-- SDK/JUCE pin未变，无新依赖/许可/证书。20补丁/50源码fresh apply、逐字比对与reverse通过。NativeDAW/CLI和受影响目标实际重新编译/链接exit0，唯一App本地deep/strict签名通过，SHA256 `757247e951d3866bfa386a1310be58a24ffcaeb6dc819f062e73828908c8e76f`；非签名发行/公证。用户PID44913保持，未新建DMG/tar/App副本或再次请求桌面读取。
-- 原first-build缺播放头头文件、初次观察未等待设备配置、81无默认键、普通/折返NoteOff期望混淆，以及精确XML失败分别保留在忽略build日志；真正旧生产错位在policy-baseline的6000两例中独立保留。证据聚合器首次将本地JUnit时间误当UTC，修正时区后按批次起止核验每份新鲜JSON；没有重跑已通过套来覆盖红项。
+- **P1-MIDI-LINKED-COMP-01**：同一48k/256生产hosted输入实际录得两轨原Main，再各跑Loop/Punch；两份真实原始来源、Note/CC/Pitch/SysEx进入多源关联候选。保持原播放与 TARGET，整组选用/恢复、局部采用至原Main与已关联TARGET、整组解除与原Undo/Redo，均已执行。取整样本的关联布局不是把原生音符改为整数拍；原NOTE b/l末位问题保留。
+- L1沿用playlist.comp.linked.create/select/restore/detach，新增local_gui/human的playlist.comp.linked.promote。makePlan从真实Edit封定各轨TARGET到targets对象，重编译必须仍一致；来源、目标、所有受影响/恢复成员和Tempo进入完整指纹。预览列出每个目标替换，一Plan一原UndoManager事务。原音频单轨promote共用实际校验，整组提交后一次更新关联布局；无新SDK/引擎/服务/实时处理或MCP权限。
+- 两轨需同属音频或MIDI/Instrument家族，显式同一区间配对，不静默补轨；64来源片段是原事务资源预算。匹配范围错误、来源缺失、另一轨锁定、单轨权限、伪造TARGET、某轨仍指向其它TARGET均原子拒绝。接口重试不重复创建，候选创建/整组局部采用均可一次Undo/Redo，原Take、区间外内容和两份原始输入保留。
+- GUI真实来源选择器/音符区域拖选→下一来源→加入候选→创建关联Comp→整组试听→用于播放/恢复/解除→提升匹配区间，均经实际已归属的可改键执行。整组试听实际图处理并发出FourOsc PCM，停止回到25000采样且不改Playlist；解除后一次Undo恢复全组身份。所选TARGET中间段真实引用所选录音来源，拖选两端固定≤1帧；不是只比ID变化。最后实际T缩放后CmdS写入新文件版本。
+- **格式**：midi.linked-comp v1保护当前、非活动及原Undo/Redo；NDAW_PLAYLISTS.midi_link_schema=1、MIDI成员linked_schema=2，布局明确start_samples/length_samples/source_offset_samples/time_basis。音频保留schema1秒布局。Redo-only实际保存/冷开原Redo/Undo、非活动关联TARGET编辑后的读回/选用、最终冷开原局部采用Undo/Redo均通过；未来v2和漏声明在替换当前工程前拒绝。关联身份/完整成员/restore Playlist和所有整数音符/控制器事实严格比较，不只看列表数。
+- 独立Python从两个CmdS最终文件复算4份原始来源SHA（Loop/Punch各2）、解析4组共8个成员的实际片段几何，与持久布局/完整成员匹配。另解码6份实际乐器WAV（双声道/48k/PCM24/144000帧，左右均实际非零）和2份音频制作链WAV（192000帧）；后两份data逐字节相同，原制作链PCM最大差0。随机相位FourOsc不作逐位恢复或主观质量声明。
+- 当前检查：Loop关联208、Punch关联203；原音频关联/编辑227、试听98、单轨MIDI Comp155、Loop/Punch候选200/200、工程格式80、持久历史86、完整音频制作链98，共1555。最后两项新测试强化之后采用最新JSON；旧成功不替代失败JUnit。首次编译的字符串/JSON比较错误和早期取错controller_count字段造成的无效测试JSON均保留，修正为真实controller_events与checked字段访问；预览前后实际差异为空。
+- NativeDAW/CLI和相关目标构建exit0，本地deep/strict签名通过；唯一App SHA256 `52de4ff4af39dbbacbcf3f66be213b4dc6fb1b6c7d4caece119e9b4512da115a`，未发行公证。无新依赖/SDK字节，20审计补丁50文件fresh apply/逐字/reverse通过。用户PID44913未重启，无新DMG/tar/App副本或桌面重试。
 
-当前证据：`evidence/P1/loop-output-qualification.json`，完整新JSON/原始事件与精度XML在build-v2-tracktion/midi-loop-output-*.json，JUnit为loop-output-fixed / loop-output-regressions，早期红项为loop-output-before / ready / baseline / policy-baseline / aligned-baseline，SDK为loop-output-sdk-replay.json。独立复核输出loop-output-independent-corrected.log。详见MIDI_LOOP_OUTPUT.md。
+证据：evidence/P1/midi-linked-qualification.json；build-v2-tracktion/midi-linked-final.xml与midi-linked-regressions.xml、midi-linked-comp-loop/punch.json、midi-linked-independent.log、midi-linked-sdk-replay.json。早期红项为midi-linked-first/preview及tests-build，前一通过为midi-linked-facts；均在忽略build保留。
 
-亲手试：保存当前工程并重启唯一Forma.app，打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-9711c757c867421fbbb6c57cdb885f42/Loop-Output.tracktionedit`。选Loop Audition实际FourOsc轨，T水平放大约6次看125ms范围，Space循环试听；L切换Loop，CmdZ/ShiftCmdZ恢复原设置，CmdS保存并重开。另一个MIDI输出轨若端口不存在须选实际端口；hosted测试端口不冒充用户硬件。此演示不要求安装外部插件或网络。
+亲手试：保存当前工程、重启唯一Forma.app，打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-3649a9ec21ac4d98a6a652634a6f0d71/MIDI-Linked-Comp.tracktionedit`。两轨Linked Keys L/R可直接试听，Option+L查看原Main、录得Take和关联候选；选择关联候选行，用“试听所选列表”听整组，或CtrlOptionP整组选用；CtrlOptionShift0停止试听，恢复/解除按钮均有可改键。跨来源轨道以同一范围加入候选后，CtrlOptionShiftU整组提升到各轨TARGET；CmdZ/ShiftCmdZ和CmdS。输入是测试引用且待命已关，新录须换实际设备。Punch演示 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-28324383957d4ac3875be8d00ec2cdda/MIDI-Linked-Comp.tracktionedit`。
 
-下一项P1是MIDI多轨关联Comp，沿用v1/音频关联行为与真实Loop/Punch来源，整组预览/局部采用/Undo/保存/键盘一起实现。物理USB/DIN/实时输入监听折返、MIDI Clock/MTC、PDC/变速/其它设备与负载/长时/听评、257帧实际捕获，以及原快捷键前台、性能A15.84%>15%、分析超时、RT SDK锁分配、Windows/视频/环绕/发行等仍待做。M2/M3冻结、M4/M5暂缓，完整架构范围不缩减。
+下一项：修复原生NOTE b/l精确读回，再推进MIDI关联整组移动、跨轨迁移和Tempo重映射。当前关联状态拒绝独立MIDI内容/几何编辑，Tempo变更须先解除关联；不让工程失去完整可读状态。音频/MIDI混合家族、循环/量化/Groove/MPE来源、私有/复杂路由试听、实体输入/端口/监听/听评与长期资源仍待验。旧焦点、性能A15.84%>15%、分析超时、RT SDK锁分配、Windows/视频/环绕/发行缺口保留；M2/M3冻结、M4/M5暂缓，完整架构不缩减。
 
 历史验证见docs/VERIFICATION.md和Git历史。
