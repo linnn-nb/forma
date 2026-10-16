@@ -67,6 +67,7 @@ int runDesktop(const juce::StringArray& args)
                     if (!xml)
                         return false;
                     xml->removeAttribute("formaCommands");
+                    xml->removeAttribute("formaNativeShiftKeys");
                     return xml->toString() == w.uiCommands().getKeyMappings()->createXml(false)->toString();
                 },
                 "actual mapping notification reached L1 before the real file save");

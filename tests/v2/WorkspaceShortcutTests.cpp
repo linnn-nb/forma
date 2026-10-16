@@ -80,11 +80,13 @@ void persistMap(Workspace& w, Commands& c)
             if (!xml)
                 return false;
             xml->removeAttribute("formaCommands");
+            xml->removeAttribute("formaNativeShiftKeys");
             return xml->toString() == w.uiCommands().getKeyMappings()->createXml(false)->toString();
         },
         "actual map notification reaches L1 before save");
 }
 } // namespace
+#include "NativeShiftKeyChecks.h"
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -115,6 +117,7 @@ int main(int argc, char** argv)
                                                      {"length_samples", 12000}}),
                          operation("track.create", {{"name", "Other audio"}, {"ref", "$a"}})})));
         window.showReady();
+        qualifyNativeShiftKeys(w, c, root);
         auto* maps = w.uiCommands().getKeyMappings();
         for (int i = 0; i < w.uiCommands().getNumCommands(); ++i)
         {
