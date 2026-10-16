@@ -233,7 +233,7 @@ Json pass(Commands& c, const std::string& track, int n)
             return p;
     throw std::runtime_error("expected recorded pass missing");
 }
-void render(Commands& c, const juce::File& file, int64_t length)
+void render(Commands& c, const juce::File& file, int64_t length, bool sound = true)
 {
     const auto r = c.render(file, 37, 37 + length);
     check(r["audio_verified"] && r["frames"] == length && r["render_ms"].get<double>() < 10000,
@@ -243,8 +243,15 @@ void render(Commands& c, const juce::File& file, int64_t length)
     check(rd && rd->sampleRate == 48000 && rd->numChannels == 2 && rd->lengthInSamples == length,
           "independent decoder verifies actual short WAV format and exact duration");
     juce::AudioBuffer<float> pcm(2, int(length));
-    check(rd->read(&pcm, 0, int(length), 0, true, true) && pcm.getMagnitude(0, 0, int(length)) > 1e-4,
-          "selected recorded Take and audio input produce actual nonzero PCM");
+    check(rd->read(&pcm, 0, int(length), 0, true, true), "actual rendered short PCM decodes");
+    const auto peak = pcm.getMagnitude(0, 0, int(length));
+    check(sound ? peak > 1e-4 : peak < 1e-6,
+          "isolated native synth produces recorded note or measured empty-Take silence as requested");
+    result["renders"].push_back({{"path", file.getFullPathName().toStdString()},
+                                 {"expected_sound", sound},
+                                 {"peak", peak},
+                                 {"frames", length},
+                                 {"receipt", r}});
 }
 } // namespace
 int main(int argc, char** argv)
@@ -321,6 +328,9 @@ int main(int argc, char** argv)
             const auto ready = RecordingTestAccess::readiness(c);
             check(!ready["ready"].get<bool>() && ready["loop_capture_constraints"]["minimum_device_frames"] == 257,
                   "buffer-bound preflight reports actual native minimum instead of two seconds");
+            check(ndaw::desktop::recordingReadinessText(ready).contains("257") &&
+                      !ndaw::desktop::recordingReadinessText(ready).contains(juce::String::fromUTF8("两秒")),
+                  "production recording panel explains actual device minimum for unsafe range");
             rejects([&] { c.record(root); }, "unsafe single/multi-wrap-per-buffer recording is genuinely refused");
         }
         run(c, "session.range.set", {{"start_samples", 37}, {"end_samples", 294}});
@@ -446,10 +456,12 @@ int main(int argc, char** argv)
         check(c.query()["tracks"] == recorded && Commands::mediaHash(audio) == audioHash,
               "recording Redo preserves stable IDs and actual source file");
         run(c, "playlist.select", {{"track", track}, {"playlist", first["id"]}});
+        run(c, "track.mute", {{"track", c.query()["tracks"][1]["id"]}, {"enabled", true}});
         RecordingTestAccess::bind(w, root, track);
         key(w, 512);
         wait([&] { return playlists(c, track)["active"] == empty["id"]; },
              "actual next-Take shortcut selects real empty loop");
+        render(c, root.getChildFile("Empty-Take.wav"), length, false);
         key(w, 511);
         wait([&] { return playlists(c, track)["active"] == first["id"]; },
              "actual previous-Take shortcut restores recorded note");

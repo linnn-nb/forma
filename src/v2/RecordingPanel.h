@@ -15,7 +15,7 @@ inline juce::String recordingReadinessText(const Json& ready)
         {"native_state", "先处理插件状态回执"},
         {"clock_unavailable", "音频设备尚未打开或运行"},
         {"punch_setup", "Punch 范围或片段不可录入（详细原因见录音回执）"},
-        {"loop_range", "循环录音需要至少两秒的循环范围"},
+        {"loop_range", "先设置有效的循环范围"},
         {"loop_midi_pending", "MIDI 循环录音尚未接通"},
         {"automation_mode", "录音轨道需使用 Read 自动化"},
         {"input_unavailable", "待命输入缺失、停用或声道未启用"},
@@ -26,6 +26,14 @@ inline juce::String recordingReadinessText(const Json& ready)
     auto message = found == labels.end() ? text(first["message"].get<std::string>()) : text(found->second);
     if (code == "punch_setup")
         message = text("Punch：") + text(first["message"].get<std::string>());
+    if (code == "loop_range")
+    {
+        const auto limits = ready.value("loop_capture_constraints", Json(nullptr));
+        if (!limits.is_null() && limits["range_device_frames"] < limits["minimum_device_frames"])
+            message = text("循环录音至少需要 ") + juce::String(limits["minimum_device_frames"].get<int>()) +
+                      text(" 个设备采样\n当前音频缓冲：") + juce::String(limits["buffer_frames"].get<int>()) +
+                      text(" 帧；请扩大循环范围");
+    }
     if (!first["name"].get<std::string>().empty())
         message += text("：") + text(first["name"].get<std::string>());
     if (ready["blockers_total"].get<size_t>() > 1)
@@ -72,7 +80,7 @@ public:
         punchMode.onClick = [this] { this->write("transport.punch.set", {{"enabled", punchMode.getToggleState()}}); };
         playlist.setTextWhenNothingSelected(text("Playlist / Take"));
         loopMode.setClickingTogglesState(true);
-        loopMode.setTooltip(text("使用循环标尺范围（至少两秒）；每轮成为独立 Take，连续原录音保留。快捷键 L"));
+        loopMode.setTooltip(text("使用循环标尺范围；最短长度随音频设备缓冲变化。每轮独立 Take，连续源保留。快捷键 L"));
         loopMode.onClick = [this] { this->write("transport.loop.set", {{"enabled", loopMode.getToggleState()}}); };
         playlist.onChange = [this]
         {
