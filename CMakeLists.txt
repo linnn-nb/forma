@@ -131,6 +131,14 @@ target_link_libraries(ndaw PRIVATE ndaw_engine)
 # Test reports are ignored artifacts; a fresh checkout must provide their parents.
 file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/evidence/M0" "${CMAKE_SOURCE_DIR}/evidence/M1" "${CMAKE_SOURCE_DIR}/evidence/M2" "${CMAKE_SOURCE_DIR}/evidence/M3")
 enable_testing()
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_executable(ndaw_cli_output_probe tests/v2/CliOutputProbe.cpp)
+target_include_directories(ndaw_cli_output_probe PRIVATE src/v2 .deps)
+add_test(NAME forma_cli_json_protocol
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/v2/cli_protocol_tests.py"
+    --cli "$<TARGET_FILE:ndaw>" --output-probe "$<TARGET_FILE:ndaw_cli_output_probe>"
+    --report "${CMAKE_BINARY_DIR}/cli-protocol-tests.json")
+set_tests_properties(forma_cli_json_protocol PROPERTIES TIMEOUT 90 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 juce_add_console_app(ndaw_analysis_resource_tests PRODUCT_NAME "ndaw_analysis_resource_tests")
 target_sources(ndaw_analysis_resource_tests PRIVATE tests/v2/AnalysisResourceTests.cpp)
 target_link_libraries(ndaw_analysis_resource_tests PRIVATE ndaw_engine ndaw_ebur128)
