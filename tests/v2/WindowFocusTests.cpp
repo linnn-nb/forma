@@ -54,6 +54,11 @@ juce::Component* find(juce::Component& component, const juce::String& id)
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+#if JUCE_MAC
+    // This console test must adopt the same normal application role as Forma
+    // before asserting Cocoa foreground ownership, including after another peer.
+    juce::Process::setDockIconVisible(true);
+#endif
     const auto report = [&](const Json& result)
     {
         if (argc > 1)
@@ -192,9 +197,19 @@ int main(int argc, char** argv)
         const auto state = c.query()["tracks"];
         auto* tempo = dynamic_cast<juce::TextEditor*>(find(w, "music.bpm"));
         check(tempo != nullptr, "real persistent Tempo field found");
+        juce::Process::makeForegroundProcess();
+        window.toFront(true);
+        const auto focusDeadline = juce::Time::getMillisecondCounterHiRes() + 5000;
+        while ((!juce::Process::isForegroundProcess() || !window.getPeer()->isFocused()) &&
+               juce::Time::getMillisecondCounterHiRes() < focusDeadline)
+            pump();
+        check(juce::Process::isForegroundProcess() && window.getPeer()->isFocused(),
+              "project-open focus check owns the actual foreground native peer");
         tempo->grabKeyboardFocus();
+        const auto beforeOpen = c.sessionToken();
         w.openLocalFile(saved);
         pump();
+        check(c.sessionToken() != beforeOpen, "focus check observes a successful new project session receipt");
         check(c.query()["tracks"] == state && keys->findCommandForKeyPress(separate) == 124,
               "saved real edit and custom shortcut survive reopening");
         check(w.hasKeyboardFocus(false), "successful project reopen ends the old text input focus");
