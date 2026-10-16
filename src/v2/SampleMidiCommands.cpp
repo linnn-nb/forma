@@ -1,4 +1,5 @@
 #include "SampleMidiMap.h"
+#include "MidiControllerFacts.h"
 namespace ndaw::v2
 {
 namespace
@@ -38,6 +39,7 @@ void Commands::applySampleMidiProjection(te::MidiClip& clip, const Json& project
         targets.push_back(target);
     }
     auto& undo = edit->getUndoManager();
+    detail::persistMidiControllerIdentities(clip, undo);
     if (!clip.state.getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN").isValid())
         clip.state.addChild(sample_midi::makeOrigin(sourceSequence, projection, sourceClip, sourceTempoHash), -1,
                             &undo);

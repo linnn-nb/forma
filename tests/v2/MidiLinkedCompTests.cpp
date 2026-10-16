@@ -30,7 +30,8 @@ public:
                     state.addChild(node.createCopy(), -1, nullptr);
             rows.push_back(preciseEditXml(state)->toString().toStdString());
         }
-        rows.push_back(preciseEditXml(c.edit->state.getChildWithName("NDAW_MIDI_SOURCES"))->toString().toStdString());
+        const auto sources = c.edit->state.getChildWithName("NDAW_MIDI_SOURCES");
+        rows.push_back(sources.isValid() ? Json(preciseEditXml(sources)->toString().toStdString()) : Json(nullptr));
         return rows;
     }
     static Json readiness(Commands& c)

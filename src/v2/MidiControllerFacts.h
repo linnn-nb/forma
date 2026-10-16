@@ -17,4 +17,7 @@ struct MidiControllerEventReference
 // or serialize the full collection. Both full and paged queries share each fact.
 std::vector<MidiControllerEventReference> midiControllerReferences(tracktion::engine::MidiClip&);
 nlohmann::json midiControllerFact(tracktion::engine::MidiClip&, const MidiControllerEventReference&);
+// L1 mutation only, inside the caller's validated native Undo transaction.
+// Freeze every legacy key before changing any controller's source time.
+void persistMidiControllerIdentities(tracktion::engine::MidiClip&, juce::UndoManager&);
 } // namespace ndaw::v2::detail

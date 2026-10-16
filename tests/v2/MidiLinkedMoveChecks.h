@@ -93,6 +93,89 @@ void linkedMoveRender(Commands& c, const juce::File& file)
               pcm.getMagnitude(1, 0, 288000) > 1e-5f,
           "both real moved instrument channels contain decoded PCM, not a fabricated playback receipt");
 }
+void testLinkedMidiMixedClocks(const juce::File& root)
+{
+    Commands c(false, std::make_unique<Storage>(root.getChildFile("mixed-clock-prefs")));
+    run(c, Json::array({op("tempo.event.create", {{"beat_position", 4.0}, {"bpm", 90.0}}),
+                        op("track.create", {{"ref", "$a"}, {"name", "Sample MIDI"}, {"type", "midi"}}),
+                        op("track.create", {{"ref", "$b"}, {"name", "Musical instrument"}, {"type", "instrument"}}),
+                        op("midi.clip.create", {{"track", "$a"},
+                                                {"ref", "$ca"},
+                                                {"name", "Sample source"},
+                                                {"position_samples", 60037},
+                                                {"length_samples", 24000}}),
+                        op("midi.clip.create", {{"track", "$b"},
+                                                {"ref", "$cb"},
+                                                {"name", "Musical source"},
+                                                {"position_samples", 60037},
+                                                {"length_samples", 24000}}),
+                        op("midi.note.add", {{"clip", "$ca"},
+                                             {"pitch", 60},
+                                             {"velocity", 80},
+                                             {"position_samples", 61000},
+                                             {"length_samples", 4000}}),
+                        op("midi.note.add", {{"clip", "$cb"},
+                                             {"pitch", 64},
+                                             {"velocity", 80},
+                                             {"position_samples", 61000},
+                                             {"length_samples", 4000}})}));
+    auto q = c.query();
+    const std::array<std::string, 2> tracks{q["tracks"][0]["id"], q["tracks"][1]["id"]};
+    const std::string source = q["tracks"][0]["clips"][0]["id"];
+    run(c, "midi.clip.timebase.set", {{"clip", source}, {"basis", "samples"}});
+    Json segments = Json::array();
+    for (const auto& t : q["tracks"])
+        segments.push_back({{"track", t["id"]},
+                            {"source", playlists(c, t["id"])["active"]},
+                            {"clip", t["clips"][0]["id"]},
+                            {"start_samples", 60037},
+                            {"end_samples", 84037}});
+    auto created =
+        run(c, "playlist.comp.linked.create", {{"track", tracks[0]}, {"name", "Mixed clocks"}, {"segments", segments}});
+    auto linked = members(created);
+    run(c, "playlist.select", {{"track", tracks[0]}, {"playlist", linked.at(tracks[0])}});
+    const auto before = RecordingTestAccess::native(c);
+    const auto anchor = c.query()["tracks"][0]["clips"][0]["id"];
+    std::string error;
+    try
+    {
+        c.makePlan("human", Json::array({op("midi.clip.move", {{"clip", anchor}, {"position_samples", 108037}})}));
+    }
+    catch (const std::exception& e)
+    {
+        error = e.what();
+    }
+    check(error.find("time bases produce different destination ranges") != std::string::npos &&
+              RecordingTestAccess::native(c) == before,
+          "actual mixed sample/beat sources reject a Tempo-crossing move before their paired windows diverge");
+    auto moved = run(c, "midi.clip.move", {{"clip", anchor}, {"position_samples", 60517}});
+    c.undo(moved["plan_id"]);
+    check(RecordingTestAccess::native(c) == before,
+          "aligned mixed-clock movement within one Tempo segment is reversible");
+    Json swaps = Json::array();
+    q = c.query();
+    for (size_t n = 0; n < 2; ++n)
+        swaps.push_back({{"clip", q["tracks"][n]["clips"][0]["id"]},
+                         {"from_track", tracks[n]},
+                         {"to_track", tracks[1 - n]},
+                         {"position_samples", 60037}});
+    auto swapped = run(c, "clips.relocate", {{"moves", swaps}});
+    const auto after = RecordingTestAccess::native(c);
+    check(playlists(c, tracks[1])["active"] == linked.at(tracks[0]) &&
+              playlists(c, tracks[0])["active"] == linked.at(tracks[1]),
+          "native MIDI and instrument tracks can exchange complete Comp Playlists without changing stable identities");
+    const auto file = root.getChildFile("Linked-MIDI-Track-Swap.tracktionedit");
+    c.save(file);
+    Commands cold(false, std::make_unique<Storage>(root.getChildFile("mixed-clock-cold")));
+    cold.open(file);
+    check(RecordingTestAccess::native(cold) == after, "MIDI/instrument swap and time bases survive cold project load");
+    cold.undo(swapped["plan_id"]);
+    check(RecordingTestAccess::native(cold) == before, "cold original Undo restores sample and musical source owners");
+    cold.redo();
+    check(RecordingTestAccess::native(cold) == after, "cold original Redo restores the native track swap");
+    result["mixed_clock_policy"] = {{"divergent_move_rejection", error},
+                                    {"swap_file", file.getFullPathName().toStdString()}};
+}
 void testLinkedMidiMoves(ndaw::desktop::Workspace& w, const juce::File& root, const std::array<std::string, 2>& tracks,
                          const std::map<std::string, std::string>& linked, bool samples)
 {
@@ -173,6 +256,9 @@ void testLinkedMidiMoves(ndaw::desktop::Workspace& w, const juce::File& root, co
         {
             const auto saved = juce::parseXML(c.uiState().at("keymap_xml").get<std::string>());
             juce::ApplicationCommandManager checkMappings;
+            juce::ApplicationCommandInfo action(121);
+            action.setInfo("Nudge", "Nudge", "Edit", 0);
+            checkMappings.registerCommand(action);
             return saved && checkMappings.getKeyMappings()->restoreFromXml(*saved) &&
                    checkMappings.getKeyMappings()->findCommandForKeyPress(custom) == 121;
         },
@@ -333,6 +419,8 @@ void testLinkedMidiMoves(ndaw::desktop::Workspace& w, const juce::File& root, co
     check(RecordingTestAccess::native(c) == native,
           "qualification leaves both original recorded members and original MIDI sources unchanged");
     RecordingTestAccess::refresh(w);
+    if (!samples)
+        testLinkedMidiMixedClocks(root);
     result["movement"] = {{"basis", samples ? "samples" : "beats"},
                           {"moved_file", moveFile.getFullPathName().toStdString()},
                           {"nudge_file", nudgeFile.getFullPathName().toStdString()},

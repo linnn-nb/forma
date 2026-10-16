@@ -77,6 +77,15 @@ Json midiControllerFact(te::MidiClip& clip, const MidiControllerEventReference& 
 {
     return facts(clip, event);
 }
+void persistMidiControllerIdentities(te::MidiClip& clip, juce::UndoManager& undo)
+{
+    require(juce::MessageManager::getInstance()->isThisTheMessageThread(),
+            "MIDI controller identity writes require the message thread");
+    const auto originals = events(clip); // Resolve all duplicate ordinals before writing any key.
+    for (const auto& event : originals)
+        if (!event.native->state.hasProperty(keyProperty))
+            event.native->state.setProperty(keyProperty, juce::String(event.key.substr(prefix(clip).size())), &undo);
+}
 } // namespace detail
 void validateMidiControllerIDs(te::Edit& edit)
 {
