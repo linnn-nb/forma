@@ -44,9 +44,11 @@ void addLinkedCurves(Commands& c, const std::array<std::string, 2>& tracks, std:
     setup.push_back(run(c, operations)["plan_id"]);
 }
 std::vector<LinkedCurveProbe> linkedCurveProbes(Commands& c, const Json& clips,
-                                                const std::map<std::string, std::string>& destinations, int64_t delta)
+                                                const std::map<std::string, std::string>& destinations, int64_t delta,
+                                                double tail = 0.)
 {
     std::vector<LinkedCurveProbe> probes;
+    std::map<std::string, std::vector<std::pair<double, double>>> affected;
     for (const auto& [id, clip] : clips.items())
     {
         const std::string from = clip["track"], to = destinations.contains(from) ? destinations.at(from) : from;
@@ -55,7 +57,10 @@ std::vector<LinkedCurveProbe> linkedCurveProbes(Commands& c, const Json& clips,
         const auto selected = c.automationEditBasis(from);
         const bool musical = selected == "beats" || (selected == "auto" && clip["timebase"] == "beats");
         const double beatDelta = linkedBeat(first) - linkedBeat(low);
-        const double end = musical && first != low ? linkedSeconds(linkedBeat(high) + beatDelta) : high + first - low;
+        const double end =
+            musical && first != low ? linkedSeconds(linkedBeat(high + tail) + beatDelta) : high + tail + first - low;
+        affected[from].push_back({low, high});
+        affected[to].push_back({first, end});
         for (const auto& parameter : {"volume", "Low-pass gain"})
         {
             const auto sourceLane = curveLane(c, from, parameter), targetLane = curveLane(c, to, parameter);
@@ -65,7 +70,7 @@ std::vector<LinkedCurveProbe> linkedCurveProbes(Commands& c, const Json& clips,
                 times.push_back(first + (end - first) * i / 100.);
             // Independently sample both sides of the discontinuity and Tempo break.
             for (double source : {93000. / 48000, 2.})
-                if (source > low && source < high)
+                if (source > low && source < high + tail)
                 {
                     const double at = musical ? linkedSeconds(linkedBeat(source) + beatDelta) : first + source - low;
                     for (int side : {-1, 0, 1})
@@ -80,6 +85,18 @@ std::vector<LinkedCurveProbe> linkedCurveProbes(Commands& c, const Json& clips,
             }
         }
     }
+    // Retained gaps, exterior curves and both sides of an unselected step are independent controls.
+    for (const auto& [owner, windows] : affected)
+        for (const auto& parameter : {"volume", "Low-pass gain"})
+        {
+            const auto lane = curveLane(c, owner, parameter);
+            for (double time :
+                 {.125, .75, 93000. / 48000 - 1. / 48000, 93000. / 48000, 93000. / 48000 + 1. / 48000, 2., 4.5})
+                if (std::none_of(windows.begin(), windows.end(),
+                                 [&](const auto& w) { return time >= w.first - 1. / 48000 && time <= w.second; }))
+                    probes.push_back({owner, lane, time, RecordingTestAccess::value(c, owner, lane, time),
+                                      RecordingTestAccess::span(c, owner, lane)});
+        }
     return probes;
 }
 void checkLinkedCurveProbes(Commands& c, const std::vector<LinkedCurveProbe>& probes)
@@ -116,6 +133,14 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
         c, Json::array(
                {op("plugin.insert", {{"track", tracks[0]}, {"type", te::EqualiserPlugin::xmlTypeName}}),
                 op("plugin.insert", {{"track", tracks[1]}, {"type", te::EqualiserPlugin::xmlTypeName}})}))["plan_id"]);
+    for (const auto& track : tracks)
+    {
+        const auto query = c.automationQuery(track);
+        for (const auto& lane : query["lanes"])
+            if (lane["parameter"] == "Low-pass gain" && !lane["tempo_follows"].get<bool>())
+                setup.push_back(run(c, "automation.plugin_tempo.set",
+                                    {{"track", track}, {"parameter", lane["id"]}, {"enabled", true}})["plan_id"]);
+    }
     addLinkedCurves(c, tracks, setup, false);
     if (!c.editingOptions()["automation_follows_edit"].get<bool>())
         setup.push_back(run(c, "session.automation_follows_edit.set", {{"enabled", true}})["plan_id"]);
@@ -271,7 +296,18 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
 
     RecordingTestAccess::bind(w, root, tracks[0]);
     const std::map<std::string, std::string> adjacent{{tracks[0], tracks[1]}, {tracks[1], destinations[0]}};
-    const auto adjacentProbes = linkedCurveProbes(c, clips, adjacent, 0);
+    key(w, 285);
+    wait([&] { return c.editingOptions()["relocation_tail_samples"] == 24000; },
+         "actual continuation key selects the explicit half-second policy");
+    setup.push_back(RecordingTestAccess::tip(c));
+    const auto adjacentProbes = linkedCurveProbes(c, clips, adjacent, 0, .5);
+    RecordingTestAccess::refresh(w);
+    const auto selectedRect = area->clipRect(clips.at(anchor), 0);
+    const auto selectedPoint = selectedRect.getCentre().toFloat();
+    area->mouseDown(mouse(*area, selectedPoint));
+    area->mouseUp(mouse(*area, selectedPoint));
+    wait([&] { return c.uiState()["object_selection"].size() == 4; },
+         "actual timeline selection restores the complete Comp before vertical migration");
     key(w, 642);
     juce::Button* accept = nullptr;
     wait(
