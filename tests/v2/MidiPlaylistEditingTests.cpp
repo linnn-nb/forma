@@ -271,6 +271,13 @@ int main(int argc, char** argv)
                             seq.addChild(te::MidiControllerEvent::createControllerEvent(
                                              tracktion::BeatPosition::fromBeats(beat), 1, value << 7),
                                          -1, nullptr);
+                        // Both physical notes end before the Comp window boundary while
+                        // the pedals remain held. A note-only active list loses this state.
+                        for (auto [type, beat, value] : std::vector<std::tuple<int, double, int>>{
+                                 {64, .5, 127}, {66, 1.25, 127}, {64, 6.5, 0}, {66, 6.5, 0}})
+                            seq.addChild(te::MidiControllerEvent::createControllerEvent(
+                                             tracktion::BeatPosition::fromBeats(beat), type, value << 7),
+                                         -1, nullptr);
                         const juce::uint8 bytes[]{0x7d, 0x12, 0x34};
                         auto msg = juce::MidiMessage::createSysExMessage(bytes, 3);
                         for (double beat : {.125, 5., 8.})
@@ -398,6 +405,12 @@ int main(int argc, char** argv)
                                               {"frame", frame}});
                         else if (event.isController() && event.getControllerNumber() == 1)
                             events.push_back({{"kind", "cc"}, {"value", event.getControllerValue()}, {"frame", frame}});
+                        else if (event.isController() &&
+                                 (event.getControllerNumber() == 64 || event.getControllerNumber() == 66))
+                            events.push_back({{"kind", "pedal"},
+                                              {"controller", event.getControllerNumber()},
+                                              {"value", event.getControllerValue()},
+                                              {"frame", frame}});
                         else if (event.isSysEx())
                             events.push_back({{"kind", "sysex"}, {"frame", frame}});
                     }
@@ -436,6 +449,20 @@ int main(int argc, char** argv)
         check(std::none_of(played.begin(), played.end(),
                            [](const Json& e) { return e["kind"] == "on" && e["pitch"] == 50; }),
               "hidden original note inside replacement does not play");
+        for (const int pedal : {64, 66})
+            for (const int64_t boundary : {begin, end})
+            {
+                const auto found = std::count_if(played.begin(), played.end(),
+                                                 [&](const Json& e)
+                                                 {
+                                                     return e["kind"] == "pedal" && e["controller"] == pedal &&
+                                                            e["value"] == 0 &&
+                                                            std::abs(e["frame"].get<int64_t>() - (boundary - 1)) <= 1;
+                                                 });
+                result["pedal_boundary_measurements"].push_back(
+                    {{"controller", pedal}, {"expected_frame", boundary - 1}, {"matches", found}});
+                check(found == 1, "Comp cut releases each actually held pedal once within the one-frame budget");
+            }
         for (int n = 0; n < 2; ++n)
         {
             const auto post = item(c, tracks[n], mains[n])["clips"].back()["id"];

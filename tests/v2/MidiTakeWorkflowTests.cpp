@@ -172,9 +172,9 @@ struct Feed
     std::atomic<uint64_t> request{0}, observed{0}, measured{0};
     std::atomic<float> peak{0};
     std::thread thread;
-    explicit Feed(te::HostedAudioDeviceInterface& h)
+    explicit Feed(te::HostedAudioDeviceInterface& h, bool usePedals = false)
         : thread(
-              [this, &h]
+              [this, &h, usePedals]
               {
                   juce::AudioBuffer<float> b(2, 256);
                   juce::MidiBuffer midi;
@@ -196,6 +196,13 @@ struct Feed
                               if (at >= pos && at < pos + 256)
                                   midi.addEvent(m, int(at - pos));
                           };
+                          if (usePedals)
+                          {
+                              add(6000, juce::MidiMessage::controllerEvent(1, 64, 127));
+                              add(9600, juce::MidiMessage::controllerEvent(1, 66, 127));
+                              add(215000, juce::MidiMessage::controllerEvent(1, 64, 0));
+                              add(216000, juce::MidiMessage::controllerEvent(1, 66, 0));
+                          }
                           if (punchPattern.load())
                           {
                               // Actual pre/in/post capture; held notes cross both Punch boundaries.
@@ -360,12 +367,14 @@ int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
     const bool punch = argc > 2 && std::string(argv[2]) == "punch";
+    const bool pedals = argc > 2 && std::string(argv[2]) == "pedals";
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile(
         juce::String(punch ? "MIDI-Punch-Comp-" : "MIDI-Take-Workflow-") + juce::Uuid().toString());
     root.createDirectory();
     result = {
         {"root", root.getFullPathName().toStdString()},
         {"capture_mode", punch ? "punch" : "loop"},
+        {"pedals", pedals},
         {"budgets",
          {{"input_samples", 256}, {"mouse_samples", 1}, {"ui_ms", 5000}, {"capture_ms", 15000}, {"render_ms", 10000}}}};
     int code = 0;
@@ -377,7 +386,7 @@ int main(int argc, char** argv)
         auto& w = window.editor();
         auto& c = RecordingTestAccess::commands(w);
         auto& h = RecordingTestAccess::host(c);
-        Feed feed(h);
+        Feed feed(h, pedals);
         std::string input;
         wait(
             [&]
@@ -532,8 +541,24 @@ int main(int argc, char** argv)
         const std::array<int64_t, 2> candidateEnd{punch ? 156119 : 191119, punch ? 190119 : 110119};
         const auto source = RecordingTestAccess::source(c, 0);
         const auto sourceHash = midi_loop::fingerprint(source);
-        check(sourceHash == receipt["midi_sources"][0]["hash"].get<std::string>() && source.getNumChildren() == 11,
-              "candidate evidence refers to all eleven actual input events and the receipt's original checksum");
+        check(sourceHash == receipt["midi_sources"][0]["hash"].get<std::string>() &&
+                  source.getNumChildren() == (pedals ? 15 : 11),
+              "candidate evidence refers to all actual input events and the receipt's original checksum");
+        if (pedals)
+        {
+            std::vector<std::string> bytes;
+            for (auto event : source)
+            {
+                const auto raw = event["bytes"].toString().removeCharacters(" \t").toLowerCase();
+                if (raw.startsWith("b040") || raw.startsWith("b042"))
+                    bytes.push_back(raw.toStdString());
+            }
+            auto expected = std::vector<std::string>{"b0407f", "b0427f", "b04000", "b04200"};
+            std::sort(bytes.begin(), bytes.end());
+            std::sort(expected.begin(), expected.end());
+            result["captured_pedal_bytes"] = bytes;
+            check(bytes == expected, "immutable recorded input contains each actual pedal-on/off MIDI message once");
+        }
         const std::string punchResult = punch ? captured["active"].get<std::string>() : std::string{};
         const auto punchState = punch ? RecordingTestAccess::listState(c, punchResult) : juce::ValueTree{};
         const auto manualBefore = RecordingTestAccess::listState(c, take);
