@@ -281,6 +281,14 @@ void testLinkedMidiCurves(ndaw::desktop::Workspace& w, const juce::File& root, c
     Scope restricted;
     restricted.targets = {tracks[0], tracks[1]};
     rejects([&] { c.review(plan, restricted); }, "source-only scope cannot authorize destination curve replacement");
+    const auto actual = curveLane(c, tracks[0], "Low-pass gain");
+    const auto parameterChange =
+        run(c, "plugin.parameter",
+            {{"plugin", actual.substr(0, actual.find("::"))}, {"parameter", "Low-pass gain"}, {"value", 1.}});
+    rejects([&] { c.commit(plan); }, "a real human plugin base edit still invalidates an older migration Plan");
+    c.undo(parameterChange["plan_id"]);
+    check(tempoFrame(c) == beforeRelocation, "real parameter edit Undo restores all explicit bases and curve facts");
+    plan = relocatePlan();
     auto migrated = c.commit(plan);
     checkLinkedCurveProbes(c, relocateProbes);
     const auto relocated = tempoFrame(c);
