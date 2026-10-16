@@ -1,3 +1,5 @@
+2026-10-16 关联Comp共享自动化增量复用既有L1曲线搬运/迁移器，无新引擎/SDK/RT处理。迁移封定使用显式参数与完整曲线，排除瞬时显示读数；源/目标插件Tempo策略作为事实进入预览并沿用目标设置。原生检查器在待确认时展开预览、隐藏冲突的插件控件；GUI只发命令和订阅事实。新轨道选择绑定命令回执真实ID，独立GUI回归使用自有偏好目录。实际范围见VERIFICATION.md首节。
+
 2026-10-16 MIDI Tempo/Meter 增量：`MidiTempoRemap` 是 L1 的 message-thread 准备器，冻结旧速度图、活动/非活动 Playlist 和真实参数曲线；先在预览计算完整映射，再与既有 EditTimecodeRemapperSnapshot 配合，在同一原 UndoManager 事务恢复准备后的 MIDI/曲线并重建关联布局。无第二 Edit、播放图、引擎、服务或 SDK 改动。原始捕获与采样 origin 保留，普通音频图继续由 Tracktion 处理。
 
 插件曲线的 TimeBase 由 SDK 构造；Tempo 跟随选择写原生插件 remapOnTempoChange，影响插件全部参数，GUI/快捷键只发统一命令。面板不伪造拍基字段。64 MiB 准备/65536事件与8 MiB单序列预算在非 RT 线程验证；不是完整大工程或回调性能资格。当前测试与演示见 VERIFICATION.md 首节。

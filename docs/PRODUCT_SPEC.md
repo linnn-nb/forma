@@ -1,3 +1,5 @@
+2026-10-16：关联MIDI Comp可随实际音量/EQ曲线整组移动和跨轨迁移；预览说明源/目标Tempo策略与共享Playlist曲线，并展开检查器。修复等待预览时误报失效及新建Folder仍选旧轨；24套19057项，实际范围见VERIFICATION.md首节，非完整P1/产品或实体制作资格。
+
 2026-10-16：活动/非活动MIDI Playlist支持按原时基修改Tempo/Meter；自动化检查器可选择整插件保持秒位置或跟随速度，同一命令层与原Undo/保存历史。实际20套10011项；本增量范围与操作见VERIFICATION.md首节，不是完整P1或产品验收通过。
 
 2026-10-16：MIDI关联Comp可整组Grabber/Nudge和跨轨预览迁移，原Clip/Playlist与Take保留，目标原播放列表可整组恢复。音乐/采样时基各按原生映射；跨Tempo后的对应窗口不一致时整笔解释拒绝。自定义Nudge键可保存重开，原Undo/Redo保持。当前实际资格见VERIFICATION.md；Tempo改图、更多关联自动化组合、物理制作和完整P1仍待完成。

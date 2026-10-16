@@ -1,3 +1,25 @@
+# 关联 Comp 共享自动化当前验证（2026-10-16）
+
+结论：录得的多轨 MIDI Comp 已与实际音量/EQ曲线共同验证整组移动、跨轨迁移、原历史、冷重开与原生GUI；同时修复自动化读数造成的迁移预览误失效，以及新建轨道仍绑定旧选轨。最终 **24/24 套、19057 项通过，342.36秒**。这是所列P1增量，不是完整产品、实体输入/听评或全插件/RT资格。
+
+- **P1-MIDI-LINKED-AUTOMATION-01** → `AutomationMove.cpp` / `RelocationAutomation.cpp` / `ClipRelocation.cpp` / `ui/WorkspaceGrabber.cpp`；`MidiLinkedCurveChecks.h`与`MidiLinkedCompTests.cpp`、CTest `forma_midi_linked_automation_loop/punch`。48k/256真实hosted两轨Loop音乐时基4499项、Punch采样时基4498项；完整关联闭包跨120/90BPM、音量/EQ弯曲与阶跃、显式不同曲线时基、跟随关闭、Nudge、源/目标都有原曲线的整组迁移、半秒尾随、相邻重叠归属的GUI预览/确认/原Undo均执行。
+- 冻结实际源曲线数值后，用独立分段Tempo算术反算目标位置；间隙/区间外、阶跃与Tempo点两侧同时核对。最大误差1.1920928955078125e-7原生参数范围，低于原4e-7预算；MIDI事件1采样、UI5秒、录音15秒、WAV10秒、每例CTest120秒预算保持。跟随关闭实际留曲线；不同编辑基准不会偷改MIDI时基。默认2秒尾随冲突应拒绝，片段范围与0.5秒是明确用户策略，不假称检测到尾音长度。
+- 迁移预览列出源/目标真实插件Tempo策略；今后Tempo改图使用目标插件设置，未改写它。Playlist共用轨道自动化，恢复原播放只恢复演奏，原迁移Undo才整笔恢复曲线。原生检查器展开预览、隐藏冲突插件控件，首屏说明策略差异；实际异步接受后才报告提交。参数/槽位仍要求实际匹配，未新增工具或Agent权限。
+- **真实缺陷修复**：等待确认时的原生current_value/display回读曾改变状态封定，导致原工程事实未变仍报“迁移预览已失效”。现只从封定排除瞬时读数，保留显式参数、定义、全曲线、来源/目标/路由和revision；真实人工EQ基础值修改仍使旧Plan失败，撤销后可重新规划。原生GUI截图前后等待及实际接受均通过，未重试点击或放宽时限。
+- **新轨选取修复** → `ui/Workspace.cpp` / `TrackWorkspaceTests.cpp`：新建Folder时清空selected会被持久旧选轨覆盖，成员控件不可用；现按成功回执实际track ID更新选轨与L1 UI状态。新Folder选择、成员、整组删除/Undo、Edit/Mix与小窗口25项；MIDI变换面板24项通过。两项旧GUI回归改用自有偏好目录。
+- 独立Python核对八份实际工程、128个原始曲线点搬运身份/数值/位置、八个尾随副本来源、完整关联布局及四份原始录音来源SHA。四份MIDI WAV均48k双声道PCM24/288000帧、两声道非零；原音频Loop→Punch→Comp→交叉淡化→导出98项，保存重开后两份192000帧WAV的PCM逐字节相同。FourOsc随机相位不作逐位恢复或用户听评声明。
+- 其余回归覆盖原自动化DSP/面板、持久历史、采样MIDI/普通移动/精度、单轨和关联Comp、Tempo/Meter、音频Playlist、Grabber/迁移/格式与迁移曲线；完整分项在qualification JSON。NativeDAW、CLI与受影响目标构建exit0，deep/strict本地签名通过；唯一App SHA256 `2b7fdd4d919d9da265a41d061c706d0a8374ba227ea0a32283131e4175172b06`，非发行公证。无新SDK/RT代码、依赖、服务或App副本/DMG/tar；20份既有补丁沿用配置审计，本轮无额外fresh replay，未重启用户PID44913。
+
+证据：`evidence/P1/midi-linked-automation-qualification.json`、`linked-midi-automation-preview.png`（真实原生组件快照，非OS截图）、`build-v2-tracktion/midi-linked-curves-final.xml/.log`与`midi-linked-curves-independent-final.log`。早期漏重新选取的夹具失败、GUI实际预览误失效、首批23/24的Folder选轨红项均保留于first/controls/accept-diagnostic/before-selection输出；没有用后一次通过抹去失败。
+
+亲手试：保存并退出当前工程后，打开唯一 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app` 和音乐时基 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-GUI.tracktionedit`（采样版 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-GUI.tracktionedit`）。选当前关联成员：F8拖动、逗号/句号Nudge，Cmd+Ctrl+Option+↑/↓跨轨，核对展开的变更预览后接受；Ctrl+Option+A切换自动化跟随。CmdZ/ShiftCmdZ，CmdS后重开；自动化页可查看真实音量/EQ曲线和目标Tempo策略。演示保存了相邻整组迁移与0.5秒尾随，原Undo仍在；hosted测试输入新录须换真实设备，并非音乐作品。
+
+复验：先构建`ndaw_midi_linked_comp_tests`确认exit0，再 `ctest --test-dir build-v2-tracktion -R '^forma_midi_linked_automation_' --output-on-failure`。用户已确认主界面可操作；本轮未重复尝试超时桌面接口。原生窗口程序化输入不替代OS实体键鼠/听评。
+
+下一项：快捷键编辑器前台按键捕获、保存和实际调用。关联曲线增量收口；全插件/变速/混合家族/MPE/循环/量化/Groove、实体完整制作、长时/断连/过载、旧键位焦点/性能A15.84%>15%/分析超时/读取能力全量/RT SDK锁分配/Windows/视频/环绕/发行仍未完成。M2/M3冻结，M4/M5暂缓，完整架构范围保持。
+
+以下为历史批次，当前状态以本节与NEXT_STEPS.md为准。
+
 # MIDI Playlist Tempo / Meter 当前验证（2026-10-16）
 
 结论：活动及非活动 MIDI Playlist 已统一按原时基重映射；真实音量/EQ 可在原生面板选择插件级跟随策略。最终 **20/20 套、10011 项通过，275.64 秒**。这是 P1 的一个增量，不代表完整产品、实体输入/听评、所有插件/时基组合或 RT 性能资格。

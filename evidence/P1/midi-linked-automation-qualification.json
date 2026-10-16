@@ -1,0 +1,538 @@
+{
+  "result": "passed_with_explicit_scope",
+  "code_commit": "e822f4f51c26aca85be0f9b79ed62427aee93e30",
+  "tests": {
+    "tracktion_native_midi_transform_workspace": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/M1/midi-transform-workspace-tests.json",
+      "sha256": "da4b78e9847399c545ea05d97fbdeea10440d7a564f188a51c867ae353f9b140",
+      "checks": 24,
+      "seconds": 4.09952
+    },
+    "tracktion_automation_audio": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/M1/automation-tests.json",
+      "sha256": "1b2869ca29abd55504282ed5931763a14104dce1844d2086ac49f51b6b11dbca",
+      "checks": 59,
+      "seconds": 15.6969
+    },
+    "tracktion_native_automation_workspace": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/M1/automation-workspace-tests.json",
+      "sha256": "b84449d21823ed40c23c12a62f062fabc6ee53bd325d697d3dcaa1a9e55080dd",
+      "checks": 27,
+      "seconds": 10.0568
+    },
+    "forma_persistent_native_history": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/persistent-history-tests.json",
+      "sha256": "48d0da6a097dc2a6975b7e4e4cbe6d9c288f086fa496af505c6d581b3d84649a",
+      "checks": 86,
+      "seconds": 37.845
+    },
+    "tracktion_native_track_workspace": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/M1/track-workspace-tests.json",
+      "sha256": "cad923983da20a70d1f01d0abf27d4e06e71d4dfe1e6e5699577e923446b74d3",
+      "checks": 25,
+      "seconds": 4.9887
+    },
+    "forma_native_sample_midi": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/sample-midi-tests.json",
+      "sha256": "0a69d03436e7044d8ecba5f291bd4729f85b26e51d52b4e782f1e8dddfdf47a8",
+      "checks": 1190,
+      "seconds": 12.2022
+    },
+    "forma_native_midi_clip_move": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-move-tests.json",
+      "sha256": "ca4e101ffb04babf4cca2f18ffe67dba18a4b31744367b2f60e4849559eed3bc",
+      "checks": 1926,
+      "seconds": 13.7732
+    },
+    "forma_native_midi_precision": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/native-midi-precision.json",
+      "sha256": "61e5747ae50ec720f8ab3c4b1f46b89021370b273ea4bb8cd4d39e0ff12424e2",
+      "checks": 300,
+      "seconds": 1.07882
+    },
+    "forma_midi_playlist_editing": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-playlist-tests.json",
+      "sha256": "990acbc2e92251c42f4d5830568d42476a53a41170259daa86c7ad9438f390cd",
+      "checks": 155,
+      "seconds": 23.2279
+    },
+    "forma_midi_linked_comp_loop": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-comp-loop.json",
+      "sha256": "9bf6fbf3ea82712affae040ab079cecb0e822313386044b5df1980e6bae48fd6",
+      "checks": 209,
+      "seconds": 14.578
+    },
+    "forma_midi_linked_move_loop": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-move-loop.json",
+      "sha256": "8b3012caf1835693de3a8c2a5a4949d177ad5a1f0f869c23103ddb3e21d9d18d",
+      "checks": 324,
+      "seconds": 20.9777
+    },
+    "forma_midi_playlist_tempo_loop": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-playlist-tempo-loop.json",
+      "sha256": "c7b3273bbc3e3cd6929b1970a0e625f939444e709da00f8165162c87af8e1663",
+      "checks": 721,
+      "seconds": 17.132
+    },
+    "forma_midi_linked_automation_loop": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-automation-loop.json",
+      "sha256": "7e025860d068900baa51c1149104c2fe78aea82a6fca64dd7fa7e91ab4aec4a5",
+      "checks": 4499,
+      "seconds": 23.5502
+    },
+    "forma_midi_linked_comp_punch": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-comp-punch.json",
+      "sha256": "94fad269cddda4372cb866f28c032d768e0490b62720b8a3f3f1ae84f5a4690e",
+      "checks": 204,
+      "seconds": 11.5009
+    },
+    "forma_midi_linked_move_punch": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-move-punch.json",
+      "sha256": "c84e0cad355788364d89d42b130c5b98b575d9b362f27193f06a46fd25e43e6c",
+      "checks": 315,
+      "seconds": 18.3889
+    },
+    "forma_midi_playlist_tempo_punch": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-playlist-tempo-punch.json",
+      "sha256": "d7519bb30590d60ac97e270fe5ed6646f717294f0fac04ad46d4324281682dfb",
+      "checks": 908,
+      "seconds": 15.0276
+    },
+    "forma_midi_linked_automation_punch": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-automation-punch.json",
+      "sha256": "c37e85569f22749865cd3624b18747bd99d3f75fa6f2334ec7eb8fdcf80710a5",
+      "checks": 4498,
+      "seconds": 21.4675
+    },
+    "forma_playlist_editing": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-playlist-editing-tests.json",
+      "sha256": "99e105e3fd7915d08a6051aa547ba5998cfa73f7f22728cc8b437ba683a797a1",
+      "checks": 227,
+      "seconds": 17.1704
+    },
+    "forma_production_chain": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-production-chain-tests.json",
+      "sha256": "5f3b7710baff51460db9540c26e33425f4ed374a81bba3b893d8dd287f659e3a",
+      "checks": 98,
+      "seconds": 13.4053
+    },
+    "forma_native_grabber": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-grabber-tests.json",
+      "sha256": "2565cbfff2f0cef5a7f1a362ab332ebc582ab2969dedd1ab68fea59af6065041",
+      "checks": 179,
+      "seconds": 5.26245
+    },
+    "forma_native_relocation": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-relocation-tests.json",
+      "sha256": "bba0cfce3e042e26971ab02460193797b56d1bd8e093ef1e122c7b95f84e7fac",
+      "checks": 79,
+      "seconds": 4.29603
+    },
+    "forma_project_document": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-project-document-tests.json",
+      "sha256": "f2da7d6af983d2b120d7662f541f0853e9c14094ae5e467c5888e037442109da",
+      "checks": 80,
+      "seconds": 8.33687
+    },
+    "forma_linked_comp_relocation": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-linked-relocation-tests.json",
+      "sha256": "d2228ee70cd89aec357ca989c40c06f185485fd5184bcafeb0cb7695497a8cbf",
+      "checks": 328,
+      "seconds": 19.3888
+    },
+    "forma_relocation_automation": {
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p3-relocation-automation-tests.json",
+      "sha256": "6c2e999f05296b137d5c6d48886b7c951baf8a8b04510e3dd0d8b1ef0ba39c17",
+      "checks": 2596,
+      "seconds": 8.83203
+    }
+  },
+  "project_files": [
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-Moved.tracktionedit",
+      "sha256": "1141b20fc37d9a6b63150ac0d7eb480fa4fb8625cdb5fb5f5c7ffd1d7a811a68",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-Nudge.tracktionedit",
+      "sha256": "1f24b7c812931de79638d8dd27513c75305ba0e460781fd48fc66b090ad3acd7",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-Relocated.tracktionedit",
+      "sha256": "084ac5f64a50ce81e12a8c41016349e977bb69e28bb727df417af09feccaa56e",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-GUI.tracktionedit",
+      "sha256": "2723e255b391e178d1a6b36c1a10ed46cf81aa206b99170413ae2b5f5ea8a0a3",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-Moved.tracktionedit",
+      "sha256": "f708fdb39a4c1436ba58ef88284d9a9d3a0517c72747b53e2537466393bb2ecc",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-Nudge.tracktionedit",
+      "sha256": "f7878f822e8452225837a2367fd306a51b8a27c7604fe557619c9bc85eca5f01",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-Relocated.tracktionedit",
+      "sha256": "b6531b68bb17afd49afc80782e06d90ecaa24591d908498e857957c8f61cae87",
+      "strict_native_reference_compared": true
+    },
+    {
+      "groups": 1,
+      "members": 2,
+      "pieces": 4,
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-GUI.tracktionedit",
+      "sha256": "24f2d2e4e5ad70b10e4a9f23fc8744e0bac58ad5e7bebbd1527de6c2111af10a",
+      "strict_native_reference_compared": true
+    }
+  ],
+  "audio_files": [
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Curves-Moved.wav",
+      "sha256": "be7f0476081b5d07e51dffcbececdedc8eac3d7f9e71ee4bfd0a3a05869a2715",
+      "pcm_sha256": "8a2e3c3508ad46db07abfb80bfb3cf2c919b435c9c651a3306ebc4ddd9da2b82",
+      "frames": 288000,
+      "rate": 48000,
+      "channels": 2,
+      "pcm_bits": 24,
+      "channel_peaks": [
+        678934,
+        769675
+      ]
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Curves-Relocated.wav",
+      "sha256": "903617436d7238c0de55b310eff4751be82f1eb0b4034f8b15096640a390ceb6",
+      "pcm_sha256": "065622b168c3cc713122148f9fc50cce4c2921ca447a23f88fc1e31b05efd662",
+      "frames": 288000,
+      "rate": 48000,
+      "channels": 2,
+      "pcm_bits": 24,
+      "channel_peaks": [
+        435667,
+        435667
+      ]
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Curves-Moved.wav",
+      "sha256": "ea89fb89825e93097ba4d83893fde58637111ee18e2ca7c5619d570dd8ea8d3c",
+      "pcm_sha256": "51083f9aaafc71631aafea3870e9e8e7e7b222acc02739a84ef7a909c4bb9e2a",
+      "frames": 288000,
+      "rate": 48000,
+      "channels": 2,
+      "pcm_bits": 24,
+      "channel_peaks": [
+        669200,
+        752757
+      ]
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Curves-Relocated.wav",
+      "sha256": "9a07c7e0d4913d52f767433fa89fcff2d34a38b8c3668b8b5cc44d6aee9979b5",
+      "pcm_sha256": "e1d25eccc13801882716f671b2bc2b7c1e89d09f0a04f474edcc5e10be62b50b",
+      "frames": 288000,
+      "rate": 48000,
+      "channels": 2,
+      "pcm_bits": 24,
+      "channel_peaks": [
+        625540,
+        625540
+      ]
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-c79495f397574cac9972a7b09b620058/04-final.wav",
+      "sha256": "2d20a458d68ad8ba1bb833bec417d4dacc5e326fa907c1436051e5b19205b106",
+      "pcm_sha256": "813a4c2adffc8781dfc0e146a652cc822e61243e5a9aaa58d22e57b6ecb394f9",
+      "frames": 192000,
+      "rate": 48000,
+      "channels": 2,
+      "pcm_bits": 24,
+      "channel_peaks": [
+        1569775,
+        1569775
+      ]
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-c79495f397574cac9972a7b09b620058/05-reopened.wav",
+      "sha256": "faf8673b34eab91265c1dfc3a33af8b9c5562ab96298eb18de94105d4306ba2a",
+      "pcm_sha256": "813a4c2adffc8781dfc0e146a652cc822e61243e5a9aaa58d22e57b6ecb394f9",
+      "frames": 192000,
+      "rate": 48000,
+      "channels": 2,
+      "pcm_bits": 24,
+      "channel_peaks": [
+        1569775,
+        1569775
+      ]
+    }
+  ],
+  "curve_files": [
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-Moved.tracktionedit",
+      "lanes": 4,
+      "points": 2016,
+      "tail_copies": 0,
+      "tail_copy_provenance": [],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-Nudge.tracktionedit",
+      "lanes": 4,
+      "points": 2273,
+      "tail_copies": 0,
+      "tail_copy_provenance": [],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-Relocated.tracktionedit",
+      "lanes": 8,
+      "points": 2736,
+      "tail_copies": 0,
+      "tail_copy_provenance": [],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-MIDI-Automation-GUI.tracktionedit",
+      "lanes": 8,
+      "points": 2375,
+      "tail_copies": 4,
+      "tail_copy_provenance": [
+        {
+          "id": "08151036c02b40b9b046d63b0b4333a7",
+          "original": "288f15b5c9a54cf8be10cc6342cdd2cd"
+        },
+        {
+          "id": "89c260d00b4744ef90cedb613a8a45e7",
+          "original": "a610b7cbfcbd4995bff89b1900e47196"
+        },
+        {
+          "id": "5f9310e8955045858a2794b6a13dadb9",
+          "original": "07fa29f466934c388b841d882c46b323"
+        },
+        {
+          "id": "5ed12f2239d44c8583b6581defd35229",
+          "original": "7f4c2a61a491403c812a197d6963afae"
+        }
+      ],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-Moved.tracktionedit",
+      "lanes": 4,
+      "points": 2112,
+      "tail_copies": 0,
+      "tail_copy_provenance": [],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-Nudge.tracktionedit",
+      "lanes": 4,
+      "points": 2273,
+      "tail_copies": 0,
+      "tail_copy_provenance": [],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-Relocated.tracktionedit",
+      "lanes": 8,
+      "points": 2831,
+      "tail_copies": 0,
+      "tail_copy_provenance": [],
+      "transported_original_points_checked": 16
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-MIDI-Automation-GUI.tracktionedit",
+      "lanes": 8,
+      "points": 2375,
+      "tail_copies": 4,
+      "tail_copy_provenance": [
+        {
+          "id": "7b14a68b850e4f9587184bba01f14ec7",
+          "original": "0b436447391645e69b2b3e6c68d2d4e0"
+        },
+        {
+          "id": "d4f59e8835224b13a162bfa5220a5772",
+          "original": "235a2d142e1c402a94fcbd72a557c2ee"
+        },
+        {
+          "id": "82092490fbf0411eab465d8ab8d041ec",
+          "original": "f911ea11f5fd41cf8b6b7d52ae17e200"
+        },
+        {
+          "id": "92162c93c608403282b7965f93d21a67",
+          "original": "ca6b9cfd89b04333906dd59ff587cba8"
+        }
+      ],
+      "transported_original_points_checked": 16
+    }
+  ],
+  "junit": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-final.xml",
+    "sha256": "b1b8f50555ff256a17dc5665fbc7347aae8d4456ad4c5a9ed8af9ed57e025dc1",
+    "tests": 24,
+    "seconds": 342.28371999999996
+  },
+  "cases": [
+    {
+      "mode": "loop",
+      "basis": "beats",
+      "checks": 4499,
+      "relative_curve_error": 1.1920928955078125e-07,
+      "native_range_tolerance": 4e-07,
+      "source_window_probes": "independent pre-edit native values mapped with piecewise Tempo arithmetic; retained gaps and both step sides; C++ checks",
+      "preview_image": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-fc8c36dbe6354455a30655e5493834e7/Linked-Curve-Migration-Preview.png",
+      "preview_sha256": "093b6686bbd9fa29af2074af46c67ba1834510c056419a944f36e4e7abf90074"
+    },
+    {
+      "mode": "punch",
+      "basis": "samples",
+      "checks": 4498,
+      "relative_curve_error": 1.1920928955078125e-07,
+      "native_range_tolerance": 4e-07,
+      "source_window_probes": "independent pre-edit native values mapped with piecewise Tempo arithmetic; retained gaps and both step sides; C++ checks",
+      "preview_image": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-715d055597c947048dfa359a22c6730c/Linked-Curve-Migration-Preview.png",
+      "preview_sha256": "5bef2bc023cc92e129a872c22096c01b48f3f78d9725c8e44aa44ae5f037b4b6"
+    }
+  ],
+  "original_sources": [
+    {
+      "id": "midi:08d391c279b244b3a23c8994a409bbc4:1013",
+      "sha256": "ac27942bd44e7822cb3d2c07bdde93c194208d4b12faa21a54f6664050f8f03d",
+      "events": 11,
+      "kind": "loop"
+    },
+    {
+      "id": "midi:08d391c279b244b3a23c8994a409bbc4:1017",
+      "sha256": "aa3147663e9252984be264e4fb657f6c3dcfff50256ba836e9fafa02a2557599",
+      "events": 11,
+      "kind": "loop"
+    },
+    {
+      "id": "midi-punch:dcdd6e8ec68b4520bee69f57550051bd:1013",
+      "sha256": "d858ffd26e1f326d435e210a9f8e6a78f106df7d4f5f2df0c1229bff851d9d3c",
+      "events": 11,
+      "kind": "punch"
+    },
+    {
+      "id": "midi-punch:dcdd6e8ec68b4520bee69f57550051bd:1017",
+      "sha256": "69a48334cda7ce50653caa965a65129deba4bfbf9db449c7ef13d7458b8c3463",
+      "events": 11,
+      "kind": "punch"
+    }
+  ],
+  "production_chain_pcm_equal": true,
+  "tests_count": 24,
+  "checks": 19057,
+  "app": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "sha256": "2b7fdd4d919d9da265a41d061c706d0a8374ba227ea0a32283131e4175172b06",
+    "local_signing_only": true,
+    "user_process_restarted": false
+  },
+  "scope": "macOS arm64; actual hosted MIDI Loop/Punch, linked Comp and real native volume/EQ curves; movement, migration and shared-track policy, original Undo/Redo, cold files, programmatic native GUI and actual WAV; not physical input, human audition, all plugins, RT performance or complete P1",
+  "environment": {
+    "os": "macOS 26.6.2",
+    "architecture": "arm64",
+    "hosted_recording_sample_rate": 48000,
+    "hosted_buffer_frames": 256,
+    "physical_input_qualified": false
+  },
+  "budgets": {
+    "curve_error_relative_native_range": 4e-07,
+    "event_time_samples": 1,
+    "ui_ms": 5000,
+    "recording_ms": 15000,
+    "render_ms": 10000,
+    "ctest_per_case_seconds": 120
+  },
+  "build_outputs": {
+    "midi-linked-curves-configure.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-configure.log",
+      "sha256": "54e4f03c758ae11ca6ada871758c0d86f3dc0fd0c389e34977686ed9fbab4601",
+      "exit_code": 0
+    },
+    "midi-linked-curves-build.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-build.log",
+      "sha256": "6c96cf2ad69d56dcb4c7fc9ed9c4958c6721139f583e245ca9559bf08f727e1c",
+      "exit_code": 0
+    },
+    "midi-linked-curves-readout-build.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-readout-build.log",
+      "sha256": "91dd629fd3249044b2a670343cbe14ef8bbe787548513a59dfa09514bf417e52",
+      "exit_code": 0
+    },
+    "midi-linked-curves-selection-build.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-selection-build.log",
+      "sha256": "64ab91e6e97c9727ae9099a6844ae35bc03d2b151e9776f075e6c7e1463d56ca",
+      "exit_code": 0
+    },
+    "midi-linked-curves-final-build.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-final-build.log",
+      "sha256": "476383f0e92bb948d3a53b26c153702a627e674d6091c8cf83c8ba73b866aaee",
+      "exit_code": 0
+    },
+    "midi-linked-curves-preview-regression-build.log": {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-preview-regression-build.log",
+      "sha256": "1bdd3f4d3249d54dd992864e59fa1b9d4462f39f4e742a8ca0ab7c15e5a460fa",
+      "exit_code": 0
+    }
+  },
+  "prior_red_outputs": [
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-first.xml",
+      "sha256": "1492b185fed703844bf37ca52c806db7019232d2da7f77a8f535805728fb26c0"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-controls.xml",
+      "sha256": "8f47a69f7193d3006b0377194d1bb0bd79de18a5d342bed1ad43f1af310d110b"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-accept-diagnostic.xml",
+      "sha256": "b21ecb4c6bf1fcaf11a1833711f9396e0a182e2b95839aac4674a5611f72e132"
+    },
+    {
+      "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-linked-curves-before-selection.xml",
+      "sha256": "2e34e9729f18070c7e546cc986f09d6e79d838b7c4875c52b2f94b182eafdbd8"
+    }
+  ],
+  "sdk": {
+    "tracktion": "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98",
+    "juce": "37c894f83d379179b2070d437ccd0f1cd9af9576",
+    "juce_version": "8.0.13",
+    "existing_audited_patches": 20,
+    "sdk_bytes_changed_this_increment": false,
+    "fresh_patch_replay_this_increment": false
+  },
+  "key_screenshot": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/P1/linked-midi-automation-preview.png",
+    "sha256": "093b6686bbd9fa29af2074af46c67ba1834510c056419a944f36e4e7abf90074",
+    "type": "native component snapshot, programmatic GUI test, not OS desktop screenshot"
+  }
+}

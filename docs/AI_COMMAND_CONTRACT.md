@@ -1,3 +1,7 @@
+2026-10-16 关联共享曲线：`clips.relocate` 的真实 transfer 预览增加 source_tempo_follows / destination_tempo_follows，保留目标插件设置，差异先展示再由用户接受。Playlist 恢复只切换片段；轨道自动化仍共享，整笔迁移Undo才恢复曲线。普通MIDI整组移动仍经原编译闭包与automation.clips.move派生操作，不增加工具或权限。
+
+迁移状态封定排除插件参数瞬时 current_value/display；它们会随只读自动化回读改变。显式基础值、实际参数定义、完整曲线、来源/目标、路由和revision仍封定，真实人工参数改动继续使旧Plan失效。GUI新建轨道依据成功回执的实际track ID绑定选区，经L1 UI状态保存，不能清空选择后猜对象。
+
 2026-10-16 Tempo/Meter：既有速度/拍号命令预览增加 `midi_remap`（所有活动/非活动原生 MIDI 窗口）和 `automation_remap`（实际参数、秒位置/跟随策略、前后位置），事实与旧图在 message thread 准备并在一个原 UndoManager 事务提交；原始捕获哈希及 origin 中原 SEQUENCE 不变，当前采样基事件按映射更新。已有 MIDI 时不混合内容/片段写入与改图，同一 Plan 保持预检/执行范围一致。
 
 新增本地 human 独立停止态命令 `automation.plugin_tempo.set(track, parameter, enabled)`：parameter 必须为实际枚举 owner-ID::parameter-ID；由其插件持久化原生 remapOnTempoChange，预览列出该插件全部真实参数/点数，锁定/无效参数/Agent 拒绝。查询返回 tempo_follows 与 tempo_policy_configurable；GUI 和可自定义快捷键同入口，幂等/版本/权限/原 Undo 与保存沿用现有协议。未增加 MCP 权限或外部模型能力。测试 P1-MIDI-PLAYLIST-TEMPO，实际结果见 VERIFICATION.md。
