@@ -1,3 +1,5 @@
+2026-10-16 Loop输出修复仅L0时钟调度，无新增Agent工具/参数/权限、L1域命令或持久字段。Loop/音符仍经原human Plan，原Undo/Redo和实际文件重开共享同一Edit；实际命令键与输出资格、原生精度差距见MIDI_LOOP_OUTPUT.md及VERIFICATION.md。
+
 2026-10-16 本地recordingReadiness新增只读loop_capture_constraints：device_sample_rate、buffer_frames、range_device_frames、minimum_device_frames，单位是实际设备样本，不是工程固定48k采样。minimum=max(51,buffer+1)，录音前严格复核；没有扩大Agent录音/文件写权限或新增MCP工具。MIDI v1原始来源Hash算法/字段不变，XML数字标准读取修复不重写来源或伪造新录音成功。Playlist仍独立Plan，声音隔离的track.mute与Take选择分别提交；每项原Undo不混同文件副作用。实际回执/范围见VERIFICATION.md。
 
 2026-10-16 Punch候选组合没有新Agent命令、权限或参数：实际完整Take/原始来源进入既有playlistAudition与playlist.promote，保存重开保留原Plan/Undo，CC/SysEx完整SEQ和来源SHA不变。默认键268/269与172/173分离只影响L5分派及原UI键图，不新增Edit事务或MCP能力；OS前台失败不得绕过保护或用旧成功回执。P1-MIDI-PUNCH-COMP-03与U-P0-SHORTCUT-02的真实终态见VERIFICATION.md。

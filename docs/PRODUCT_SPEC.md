@@ -1,3 +1,5 @@
+2026-10-16：修复短Loop回放折返块的MIDI输出错位。四种圈长/Tempo组合、保存重开后的实际输出与原Loop Undo/Redo键已验证，另一轨实际FourOsc可试听；17套3516项通过。NOTE b/l冷读有1–2 ULP差异未解决，物理输出/监听/完整P1仍待验；操作MIDI_LOOP_OUTPUT.md，当前证据VERIFICATION.md。
+
 2026-10-16：支持设备缓冲约束内的Audio/MIDI短Loop；实际125/128/500/512ms混合录音、空Take、原始圈末NoteOff、录得音符编辑、原Undo/Redo、保存冷重开/改视图后CmdS与隔离乐器导出已验证。录音面板显示当前设备阈值，替代固定两秒提示；修复来源指纹XML读回末位误差。14种受影响套分批2093项通过，不是完整P1/产品、实体输入/听评或实时性能资格；最短257帧实际捕获及更多设备尚待验。操作见MIDI_LOOP_WORKFLOW.md，当前证据见VERIFICATION.md。
 
 2026-10-16：Punch完整Take可与前次录音做候选分段试听/局部采用并真实导出，原Main两侧、完整Punch结果、原始事件与历史保持；同一测试程序的Loop/Punch组合各200项。琴键缩放默认改CtrlOptionShift↑/↓，全轨高CtrlOption↑/↓保持，旧重复键定向迁移。当前7套787项通过、快捷键编辑器测试未取得系统前台仍失败；不是完整P0/P1/产品或实体听评资格。代码、操作与实际回执见MIDI_COMP_WORKFLOW.md、VERIFICATION.md。

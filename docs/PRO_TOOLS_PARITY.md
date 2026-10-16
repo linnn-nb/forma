@@ -1,3 +1,5 @@
+2026-10-16 本表仍仅作交互/工作流参考：Forma短Loop实际回放MIDI折返时序已在48k/256四例、初始/重开各8圈测过，共512事件、派发≤1帧；不声称Pro Tools实机行为或性能对齐。实现原生EditPlaybackContext/MidiOutputDeviceInstanceInjectingNode及审计补丁，测试MidiLoopOutputTests，证据VERIFICATION.md。状态部分实现；NOTE精度、物理端口/监听/时码与完整P1未完成。
+
 2026-10-16 本表继续作为交互/工作流参考，非完成度门槛。Forma在Tracktion生产路径实测125/128/500/512ms Audio/MIDI短Loop、空Take与来源/原历史恢复，录音最低范围由设备缓冲和原生单块折返约束决定；不据此声称Pro Tools模式/音质/性能对齐。代码RecordingCommands/MidiLoopCapture/PlaylistCommands/RecordingPanel及scrub-context审计补丁，测试ShortLoopRecordingTests，回执见VERIFICATION.md与evidence/P1/summary.md。状态：部分实现；实时折返MIDI输出、物理设备/听评与完整P1待验，无新外部依赖。
 
 本表继续作为交互与工作流参考，不是完成度门槛。2026-10-15：音频范围Shuffle从零点删除的合法Plan误拒已修，原Undo/重开/自定义Delete键通过本地native-peer回归；并非Pro Tools实机或全工作流对齐。代码EditGroupCommands，测试AutomationShuffleTests/GroupsWorkspaceTests；当前状态/边界见VERIFICATION.md、evidence/P3/summary.md，无新依赖。

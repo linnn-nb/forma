@@ -1,3 +1,5 @@
+2026-10-16 Loop输出时钟不引入新存储能力。当前专项保留原Loop Undo/Redo、输出轨全部身份与整数音符事实及重开后实际1帧输出资格；完整精确Clip XML显示NOTE b/l有1–2 ULP读回变化，仍是未解决缺陷，不能以整数相同宣称原生浮点逐字恢复。来源池v1 Hash修复保持，通用NOTE精确读取须覆盖当前/非活动/Undo/Redo；细节MIDI_LOOP_OUTPUT.md、VERIFICATION.md。
+
 2026-10-16 短Loop不引入新持久字段/能力：既有midi.loop-capture v1的正长度Take、空SEQUENCE、源圈号/时间/SHA和原历史保持。新验收覆盖125/128/500/512ms、空中间圈、精确原始NoteOff圈末和Redo-only冷重开。来源Hash的数字算法不变；XML17位字符串经标准正确舍入读回，修复原JUCE var显示解析造成的末位Hash误差。原Main完整精确XML与整数样本/身份严格比较，三项派生拍数差异单列；具体证据见VERIFICATION.md。
 
 2026-10-16 Punch Take局部候选组合实测200项：完整NDAW_MIDI_PUNCH_SOURCE/TAKE、原Punch Playlist/CC/SysEx、窗口和原Undo/Redo冷重开保持。沿用midi.punch-capture v1、midi.playlist-editing v1及Comp来源能力，不新增格式。两组旧重复琴键默认只在真实读取的键图双方都重复时迁移，并持久化规范图；唯一自定义与明确解绑的真实Save/Open已有专项，未把未提交草稿保存为工程对象。

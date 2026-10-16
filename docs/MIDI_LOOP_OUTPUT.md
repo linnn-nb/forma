@@ -1,6 +1,6 @@
 # 循环播放 MIDI 输出时序
 
-本项修复播放时折返块的输出调度；不改变录音来源、音符或原有 Loop 编辑事务。当前实测状态以 VERIFICATION.md 首节为准。
+本项修复播放时折返块的输出调度；不改变录音来源、音符或原有 Loop 编辑事务。四例初始/重开共512个实际输出事件，最大派发误差1帧；17套3516项通过，原生NOTE末位读回差异仍未解决。完整实测状态以 VERIFICATION.md 首节为准。
 
 生产路径在同一音频块内可能先处理圈尾，再处理下一圈圈头，还可能在 Tempo 变化处拆段。输出队列用未折回的播放采样时钟；只在显示、音乐事件生成和 MIDI 时码内容中使用折回后的工程位置。MidiOutputDeviceInstanceInjectingNode、整个设备块的 dispatch 和物理端口计时器必须使用同一队列时钟，不能按最后一段工程时间重新解释整块事件。时码生成器追加的相对偏移只转换一次，不重定时前段已排入的消息。
 
@@ -8,6 +8,10 @@
 
 固定专项负载：48 kHz / 256 帧，非零起点 37，6000 / 6144 帧圈长，恒速 / 第 0.127 拍变为 90 BPM，共四例；每例四音符覆盖圈头、圈尾、跨尾和 Tempo 附近，各八圈，保存重开再八圈。一轨真实 hosted MIDI 输出，另一轨 FourOsc 只用于实际发声与试听。每阶段精确 64 个音符事件、无重复/遗漏，当前块内偏移必须位于 [0,256)，相对已知期望派发误差至多一帧。普通 NoteOff 原生提前约 5 帧，折返主动释放在最后一帧，分别建模；不是把原始 NoteOff 改早。观察器最多 4096 条，操作/播放 5 秒、CTest 60 秒。
 
-范围限制：hosted 输出是自动化测试设备，不是物理端口证据；其线程按固定块进度推进，不是 XRUN 或 CPU 性能基准。物理 USB/DIN MIDI、系统调度抖动、声学往返、外部乐器 PDC、MIDI Clock/MTC、变速/反向/多重折返、其它采样率/缓冲、长期运行和主观听评单独验收。随机相位 FourOsc 的幅度起音不替代事件时间戳，不能声称音频逐位一致。
+范围限制：hosted 输出是自动化测试设备，不是物理端口证据；其线程按固定块进度推进，不是 XRUN 或 CPU 性能基准。物理 USB/DIN MIDI、系统调度抖动、声学往返、外部乐器 PDC、实时输入监听折返、MIDI Clock/MTC、变速/反向/多重折返、其它采样率/缓冲、长期运行和主观听评单独验收。随机相位 FourOsc 的幅度起音不替代事件时间戳，不能声称音频逐位一致。
 
 重开额外记录精确原生 Clip XML。部分 NOTE b/l 在原生对象构造后有末位浮点差异；此项与来源池哈希修复不同。保留前后 XML 与事实，严格核对身份、整数位置/长度、音高/力度和重开后的实际输出；不把该结果包装成全部原生浮点字节完全保持。通用精确读取仍列在 BACKLOG。
+
+本机演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-9711c757c867421fbbb6c57cdb885f42/Loop-Output.tracktionedit`。保存现有工程并重启唯一App后打开，选Loop Audition轨，按T放大约六次看125ms范围，Space试听；另一轨的hosted MIDI输出须更换为用户实际端口。
+
+重建专项：`cmake --build build-v2-tracktion --target NativeDAW ndaw_midi_loop_output_tests -j 2` 后运行 `ctest --test-dir build-v2-tracktion -R '^forma_midi_loop_output_' --output-on-failure`；新输出位于忽略build目录，不需要打包DMG。

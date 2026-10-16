@@ -35,4 +35,4 @@
 - 每级只保留evidence/<级别>/summary.md和关键输出/截图；中间输出在忽略build。里程碑验收才打DMG，不制造源码tar包。
 - 付费、上传音频、系统安全修改、覆盖用户原媒体须授权；提交/推送现有公开仓库已授权。有效源媒体不得覆盖。
 
-文档入口：docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md、docs/MIDI_PUNCH_WORKFLOW.md、docs/MIDI_COMP_WORKFLOW.md及evidence/P1、P2、P3/summary.md。
+文档入口：docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_LOOP_OUTPUT.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md、docs/MIDI_PUNCH_WORKFLOW.md、docs/MIDI_COMP_WORKFLOW.md及evidence/P1、P2、P3/summary.md。

@@ -1,3 +1,5 @@
+2026-10-16 Loop输出：同一SDK/JUCE pin，新增midi-output-clock补丁与原scrub-context协作，20份/50文件已fresh apply/逐字/reverse，无新依赖/授权/证书。17套3516项通过，仅hosted回放输出与实际FourOsc声音；NOTE b/l 1–2 ULP冷读未修，物理端口/实时输入监听折返/时码/PDC/RT资源待验。旧焦点/性能A/分析/Windows/视频/环绕/发行等缺口保留。
+
 2026-10-16 短Loop与指纹：无新增依赖/授权/证书/服务。原scrub-context SDK补丁增加本产品连续录音的设备缓冲门槛，Tracktion/JUCE pin不变；19补丁47文件实际fresh apply/逐字匹配/reverse通过。SourceNumber修复仅非RT来源数字读取，原v1 Hash算法保持。当前14种套最新终态2093项通过；257帧仅预检、<缓冲/多重折返、其它设备/采样率、实时MIDI折返/声学延迟/实体输入/听评仍待验。旧焦点、性能A15.84%>15%、分析超时、RT SDK锁分配、长时/Windows/视频/环绕/发行差距保留。
 
 2026-10-16 Punch候选/默认键：无新依赖、SDK字节、授权、服务、签名身份或实时回调工作；SDK19补丁47文件沿用CMake核对，本轮无fresh replay。真实hosted Punch组合200项、Loop200项和轨高/琴键默认归属/迁移41项通过。快捷键编辑器测试foreground=false/peer=false，原保护正确报告未获得前台；实际原因未证实，保留失败及实体键鼠待验，不把用户主工程可操作当成功。旧短Loop/复杂MIDI/PDC/耐久/实体端口/听评、性能A/分析/RT/Windows/视频/环绕/发行差距保持。

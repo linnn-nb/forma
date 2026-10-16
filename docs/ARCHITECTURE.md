@@ -1,3 +1,5 @@
+2026-10-16 MIDI输出折返：注入节点、整块dispatch与MidiNoteDispatcher计时器使用原生未折回播放采样时钟，音乐/时码内容保持折回位置，时码只偏移本段新消息；scrub-context与新增midi-output-clock审计补丁共20份50文件，pin不变。未新增RT分配/锁/等待、引擎/服务/IPC或持久格式。实际512事件的1帧资格及NOTE末位读回缺口见MIDI_LOOP_OUTPUT.md、VERIFICATION.md；不外推物理MIDI/实时输入监听/时码/PDC/性能。
+
 2026-10-16 短Loop：L1 RecordingCommands按当前设备采样率/缓冲校验范围并返回loop_capture_constraints，Audio/MIDI Take构建只保留有效正范围。既有scrub-context补丁在原生Transport/message thread对本产品连续源策略放开两秒门槛，仍限制单块最多一次折返和原生50采样门槛；无新增RT回调工作或引擎。MIDI v1来源数字指纹在非RT用classic-locale标准读取原XML，保留原SHA算法/字节/版本，修复JUCE显示解析的末位误差。RecordingPanel读取同一阈值，实际125/128/500/512ms混合录音/空圈/隔离乐器/历史/保存资格见MIDI_LOOP_WORKFLOW.md与VERIFICATION.md。
 
 2026-10-16 Punch/候选与默认键：P1-MIDI-PUNCH-COMP-03使用同一production hosted捕获、原L1 Promote/Undo与原生试听组合，完整来源/事件/历史及真实WAV已执行，不增加引擎、SDK或实时处理。L5注册表的琴键268/269改CtrlOptionShift↑/↓，轨高172/173原键保持；restoreShortcuts只迁移双方确实重复的旧默认，规范化仍经L1 UI子树保存。实际几何/保存迁移41项通过，OS前台捕获失败保留；边界见VERIFICATION.md。

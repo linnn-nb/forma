@@ -1,0 +1,410 @@
+{
+  "result": "passed_output_with_explicit_precision_gap",
+  "code_commit": "786469f1a2a3cfefc7fdc736feebbd28463daf97",
+  "machine": {
+    "architecture": "Apple Silicon arm64",
+    "audio_device": "production native hosted test interface",
+    "sample_rate": 48000,
+    "buffer_frames": 256
+  },
+  "batches": [
+    {
+      "junit": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/loop-output-fixed.xml",
+      "sha256": "9ff3493f1d485b24784da85b3ace53971802f383688ee0602bd13cdc624f6e1e",
+      "tests": 4,
+      "seconds": 10.25203
+    },
+    {
+      "junit": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/loop-output-regressions.xml",
+      "sha256": "c4104838b02f64d572877d512e123e1c4eb4a81db644dda1add1afe4bebcc33b",
+      "tests": 13,
+      "seconds": 215.22044000000002
+    }
+  ],
+  "tests": {
+    "forma_midi_loop_output_6000_constant": {
+      "result": "passed",
+      "checks": 184,
+      "seconds": 3.33207,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_loop_output_tests_artefacts/Release/ndaw_midi_loop_output_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-loop-output-6000-constant.json",
+        "6000",
+        "constant"
+      ],
+      "report_sha256": "8b91d9638a44897f9be076c02b6a28ec329052b6cb3653f75e792e9920abd745"
+    },
+    "forma_midi_loop_output_6000_tempo": {
+      "result": "passed",
+      "checks": 184,
+      "seconds": 2.28416,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_loop_output_tests_artefacts/Release/ndaw_midi_loop_output_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-loop-output-6000-tempo.json",
+        "6000",
+        "tempo"
+      ],
+      "report_sha256": "b9e96c010a69f46c4a0d290fd2c1ca3ed0cb556bda1476596f4578f3d4be9d4c"
+    },
+    "forma_midi_loop_output_6144_constant": {
+      "result": "passed",
+      "checks": 184,
+      "seconds": 2.27332,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_loop_output_tests_artefacts/Release/ndaw_midi_loop_output_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-loop-output-6144-constant.json",
+        "6144",
+        "constant"
+      ],
+      "report_sha256": "754d8a38f0f252840623e3dc46cc6dcd783be77595068ef80c4a64575e384948"
+    },
+    "forma_midi_loop_output_6144_tempo": {
+      "result": "passed",
+      "checks": 184,
+      "seconds": 2.36248,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_loop_output_tests_artefacts/Release/ndaw_midi_loop_output_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-loop-output-6144-tempo.json",
+        "6144",
+        "tempo"
+      ],
+      "report_sha256": "43652169d370468276bce608d5889839dc2e9c46623515d6bab04536643d7e8c"
+    },
+    "forma_persistent_native_history": {
+      "result": "passed",
+      "checks": 86,
+      "seconds": 36.5917,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_persistent_history_tests_artefacts/Release/ndaw_persistent_history_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/persistent-history-tests.json"
+      ],
+      "report_sha256": "4a5a306663f4a09378bb91ca75b5bda351904b36616b517b49c5b5cd349a5bb1"
+    },
+    "forma_native_scrub": {
+      "result": "passed",
+      "checks": 543,
+      "seconds": 28.7038,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_scrub_tests_artefacts/Release/ndaw_scrub_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/scrub-tests.json"
+      ],
+      "report_sha256": "e24b7f2592d73f4628f65935f6f237e1f07f84c873e29e72107a949a5c52c214"
+    },
+    "forma_native_midi_timing": {
+      "result": "passed",
+      "checks": 324,
+      "seconds": 19.995,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_timing_tests_artefacts/Release/ndaw_midi_timing_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/evidence/U/midi-timing-tests.json",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/midi-timing-demos"
+      ],
+      "report_sha256": "7281b19236ebc006fce39d801689d8408181a1be039b2c9040c1d403dc3ff0a9"
+    },
+    "forma_midi_loop_recording": {
+      "result": "passed",
+      "checks": 169,
+      "seconds": 16.7975,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_loop_recording_tests_artefacts/Release/ndaw_midi_loop_recording_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-loop-tests.json"
+      ],
+      "report_sha256": "9c3fdf9f8569015d81c822824a12f301f79be0f828c545aec55dbd1d6e36e8bc"
+    },
+    "forma_short_loop_6000": {
+      "result": "passed",
+      "checks": 126,
+      "seconds": 6.89158,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_short_loop_recording_tests_artefacts/Release/ndaw_short_loop_recording_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/short-loop-6000.json",
+        "6000"
+      ],
+      "report_sha256": "fdb9c640a433c64a9603d6fc1f771fa58b78bc4ce0d5982e59efe82dbed9078a"
+    },
+    "forma_short_loop_6144": {
+      "result": "passed",
+      "checks": 128,
+      "seconds": 6.11718,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_short_loop_recording_tests_artefacts/Release/ndaw_short_loop_recording_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/short-loop-6144.json",
+        "6144"
+      ],
+      "report_sha256": "3d811361b91de9eef6d89d926124e3779b8390b5aa958d0eca73e8fb2d647fcd"
+    },
+    "forma_short_loop_24000": {
+      "result": "passed",
+      "checks": 126,
+      "seconds": 7.00397,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_short_loop_recording_tests_artefacts/Release/ndaw_short_loop_recording_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/short-loop-24000.json",
+        "24000"
+      ],
+      "report_sha256": "9ff0727bfd4c946f23c68e8c8e066ce8151b3ecb7638b473e62a3ae61de5f42e"
+    },
+    "forma_short_loop_24576": {
+      "result": "passed",
+      "checks": 128,
+      "seconds": 7.03321,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_short_loop_recording_tests_artefacts/Release/ndaw_short_loop_recording_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/short-loop-24576.json",
+        "24576"
+      ],
+      "report_sha256": "5b40e2438cd11ad28c7bdb447b02bee4479b9d24770bf6fd7c13ce6985acc035"
+    },
+    "forma_midi_punch_recording": {
+      "result": "passed",
+      "checks": 497,
+      "seconds": 24.7793,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_punch_recording_tests_artefacts/Release/ndaw_midi_punch_recording_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-punch-tests.json"
+      ],
+      "report_sha256": "8e456c9ddd15672504524ccdd4c2fa6be503a087c44339e18f3495ef0b6f8bb3"
+    },
+    "forma_midi_take_workflow": {
+      "result": "passed",
+      "checks": 200,
+      "seconds": 14.4465,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_take_workflow_tests_artefacts/Release/ndaw_midi_take_workflow_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-take-workflow-tests.json"
+      ],
+      "report_sha256": "4a532371a2785e247b77ae87ae02b022ffa912fa656d813a8061661c6457ad38"
+    },
+    "forma_midi_punch_comp": {
+      "result": "passed",
+      "checks": 200,
+      "seconds": 10.6247,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_take_workflow_tests_artefacts/Release/ndaw_midi_take_workflow_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-punch-comp-tests.json",
+        "punch"
+      ],
+      "report_sha256": "45cdd48d9ca729e08ccd82704b8af0d02742896d8a243f769b544c2b4b773380"
+    },
+    "forma_midi_playlist_editing": {
+      "result": "passed",
+      "checks": 155,
+      "seconds": 23.4006,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_midi_playlist_editing_tests_artefacts/Release/ndaw_midi_playlist_editing_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-midi-playlist-tests.json"
+      ],
+      "report_sha256": "ffdad3958fa956fb3d3aa94704aa7f9c95864e68701ca97488f65be7aecdad1a"
+    },
+    "forma_production_chain": {
+      "result": "passed",
+      "checks": 98,
+      "seconds": 12.8354,
+      "command": [
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/ndaw_production_chain_tests_artefacts/Release/ndaw_production_chain_tests",
+        "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/p1-production-chain-tests.json"
+      ],
+      "report_sha256": "968d79b37129d316446805f1ca4a6164d764fb210fc2a4197223ca80116c7108"
+    }
+  },
+  "distinct_suites": 17,
+  "checks": 3516,
+  "cases": [
+    {
+      "test": "forma_midi_loop_output_6000_constant",
+      "metrics": {
+        "initial": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 0,
+          "offset_max": 249,
+          "voiced_blocks": 188
+        },
+        "reopened": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 0,
+          "offset_max": 249,
+          "voiced_blocks": 187
+        }
+      },
+      "native_xml_equal": false,
+      "unresolved_native_note_precision": [
+        {
+          "note_id": "1016",
+          "attribute": "b",
+          "before": "0.00070833333333333317",
+          "after": "0.00070833333333333295",
+          "ulp_difference": 2.0
+        },
+        {
+          "note_id": "1017",
+          "attribute": "l",
+          "before": "0.0062500000000000056",
+          "after": "0.0062500000000000047",
+          "ulp_difference": 1.0
+        }
+      ],
+      "session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-9711c757c867421fbbb6c57cdb885f42/Loop-Output.tracktionedit",
+      "session_sha256": "919eaf62b207ff406f180564fb4bf43ca33d21881e41aa2c8a36630c2ac30283"
+    },
+    {
+      "test": "forma_midi_loop_output_6000_tempo",
+      "metrics": {
+        "initial": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 7,
+          "offset_max": 255,
+          "voiced_blocks": 188
+        },
+        "reopened": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 7,
+          "offset_max": 255,
+          "voiced_blocks": 187
+        }
+      },
+      "native_xml_equal": false,
+      "unresolved_native_note_precision": [
+        {
+          "note_id": "1017",
+          "attribute": "b",
+          "before": "0.00070833333333333317",
+          "after": "0.00070833333333333295",
+          "ulp_difference": 2.0
+        }
+      ],
+      "session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-b02ed133302446fc8204a5b2a72044f0/Loop-Output.tracktionedit",
+      "session_sha256": "805eb353083970a19cf1710b7b70dc80e480f9a757e0f907760ac6dc0a890ae6"
+    },
+    {
+      "test": "forma_midi_loop_output_6144_constant",
+      "metrics": {
+        "initial": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 0,
+          "offset_max": 255,
+          "voiced_blocks": 185
+        },
+        "reopened": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 0,
+          "offset_max": 255,
+          "voiced_blocks": 184
+        }
+      },
+      "native_xml_equal": false,
+      "unresolved_native_note_precision": [
+        {
+          "note_id": "1016",
+          "attribute": "b",
+          "before": "0.00070833333333333317",
+          "after": "0.00070833333333333295",
+          "ulp_difference": 2.0
+        },
+        {
+          "note_id": "1017",
+          "attribute": "l",
+          "before": "0.0062500000000000056",
+          "after": "0.0062500000000000047",
+          "ulp_difference": 1.0
+        }
+      ],
+      "session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-34ab03e4ad63461baf5123b764c39033/Loop-Output.tracktionedit",
+      "session_sha256": "c33a2c59fceac357138b41fc28d89a86ea88f59fd7bebde27d07f898df1fea98"
+    },
+    {
+      "test": "forma_midi_loop_output_6144_tempo",
+      "metrics": {
+        "initial": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 0,
+          "offset_max": 255,
+          "voiced_blocks": 185
+        },
+        "reopened": {
+          "independent_events": 64,
+          "maximum_error_frames": 1,
+          "offset_min": 0,
+          "offset_max": 255,
+          "voiced_blocks": 184
+        }
+      },
+      "native_xml_equal": false,
+      "unresolved_native_note_precision": [
+        {
+          "note_id": "1017",
+          "attribute": "b",
+          "before": "0.00070833333333333317",
+          "after": "0.00070833333333333295",
+          "ulp_difference": 2.0
+        }
+      ],
+      "session": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-627b4a1d89ee4957b7502c18130dc806/Loop-Output.tracktionedit",
+      "session_sha256": "039047c90b525fd3a749407ca512f557669e144d98195f08add13cc300dc1f17"
+    }
+  ],
+  "audio_chain": {
+    "pcm_max_error": 0.0,
+    "independent_pcm_equal": true,
+    "wavs": [
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-9fa4d23cd22249aea1105f69aec610d0/04-final.wav",
+        "sha256": "d5c45c4f6b1ee311d726cfa0722f4a25b2466c9560d0e830240a16327a7d95db",
+        "channels": 2,
+        "pcm_bits": 24,
+        "sample_rate": 48000,
+        "frames": 192000
+      },
+      {
+        "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P1-Production-Chain-9fa4d23cd22249aea1105f69aec610d0/05-reopened.wav",
+        "sha256": "ca26244eff6724e9dd74be6829b8d99841bbce108b622c13a933659ed7f5b8c2",
+        "channels": 2,
+        "pcm_bits": 24,
+        "sample_rate": 48000,
+        "frames": 192000
+      }
+    ]
+  },
+  "sdk_replay": {
+    "result": "passed",
+    "pin": "0d4d77c8c9defa6ec2aec6454f634e77bbd13f98",
+    "patches": 20,
+    "files": 50,
+    "scope": "fresh apply, exact qualified source bytes, reverse to original; no duplicate SDK checkout retained",
+    "patch_sha256": {
+      "tracktion-midi-loop-capture.patch": "941e41ec584ee2b0157d08ea67a014a1a32d83a8cc593e1d7dc1c1445e6d6810",
+      "tracktion-midi-event-boundaries.patch": "0fd06bd50f3f12c3bd9d0d17c844ae5fb50315399b4d3edc9b44b2df406b77f9",
+      "tracktion-serialization-parameters.patch": "dc52ab7afbba5cc5795778558ac29903b85c0e9ba33c024e198979a297c0a293",
+      "tracktion-user-parameter-boundary.patch": "956dff743054be56251e4f285ae8bed1d2b61706100c987eb42ab639b0e6daf8",
+      "tracktion-automation-readback.patch": "0d91bf987e04f311fe50766fb1b228e067248d5f6cb92b34186a4956c2c984b2",
+      "tracktion-clip-order-boundary.patch": "bc74d77cf74c700e6a994ab1b12b4b8c620cefba3c70d25351d4c40548061d79",
+      "tracktion-recording-status.patch": "465502c1a274b4a35373f90737e8c924295ce36d69d8496494e43c6a2d3496de",
+      "tracktion-render-bus-only.patch": "7ac0951e07f35599d621b6b28852637d9f4908ae61648bd18fa650d76178d2af",
+      "tracktion-absolute-source-phase.patch": "1517f51de80a771e91039dc78907f0cb9488179aecf263d26a72188d544e1c5e",
+      "tracktion-initial-midi-scan.patch": "ca33d3f5ae5f7185727d312038f18d709c21406001e252488babadb334162174",
+      "tracktion-scrub-context.patch": "ae5e055a27fc3e573db654167c0a0ebd4d00c0884ebc450d65d634c236c0e20f",
+      "tracktion-midi-output-clock.patch": "3a70bc16693d1605f18b6d20ddf648e212a6c99f399e9052485287d642dcee12",
+      "tracktion-four-osc-flush.patch": "6a2980ebaee32987f95b5af557fd0327ac0563f6d6153d160e410d9787a65a2d",
+      "tracktion-reverb-wet-tail.patch": "6f79b8d589bfaa722fa5dfbc024e76cb6dae820524c16dc450754d71f8cea804",
+      "tracktion-audio-worker-priority.patch": "3c848c64060f01eac284727c273e550bb3b48dce4bc052f69d157db0f66caea4",
+      "tracktion-persistent-freeze-cache.patch": "4aa25b8accb01a95ea4bbe94e3c77b95fdef0a47babcc409fc65099fafed6b43",
+      "tracktion-warp-render-result.patch": "e21ef051300e642a23b405efabbac4f3c9d75fe84fc9908dda0408a3b212291a",
+      "tracktion-elastic-windows.patch": "66a709dc452d1cf407a4d10af25c5ca3e929fa1dec0ef991604711e4255d30fc",
+      "tracktion-prepared-source-lifetime.patch": "e1908f600c764e24c690a8908ca22fd0072289583bab9d5f7ae19ed3f4f3ba1a",
+      "tracktion-prepared-fader-automation.patch": "92a8464f04d68e4024bb2b750cbc175e0305fdef6b55038eafe6a6cdc0de4baf"
+    }
+  },
+  "app": {
+    "path": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "sha256": "757247e951d3866bfa386a1310be58a24ffcaeb6dc819f062e73828908c8e76f",
+    "local_signature_verified": true,
+    "release_notarized": false
+  },
+  "scope": "actual playback MIDI timestamps, isolated actual synth output, original Loop Undo/Redo after file reopen; not exact native NOTE floating bytes, physical MIDI/input monitoring, acoustic latency, MIDI Clock/MTC, PDC, varispeed, performance, complete P1 or complete product"
+}

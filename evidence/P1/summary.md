@@ -1,22 +1,20 @@
-# 短Loop、空圈与来源指纹当前验证（2026-10-16）
+# Loop 折返 MIDI 输出当前验证（2026-10-16）
 
-结论：b4c3137接通设备缓冲约束内的Audio/MIDI短圈，9395ca2修复来源数值XML读回的指纹误差；abadfe7/eab8637补齐实际混合捕获、空Take、原历史/保存和隔离乐器声音。14种受影响套按最新终态分批2093项通过；原14/14为192.04秒，录音面板补验4/4为27.40秒，不是全仓、完整P1/产品、实体输入/听评或实时性能资格。
+结论：786469f 修复实际回放在同一设备块内折返后的 MIDI 派发错位；ed912d9 建立专项。当前17套、3516项通过（新专项4/4，10.25秒；受影响回归13/13，215.24秒）。不是全仓、完整P1/产品、物理端口、监听延迟或实时资源资格。
 
-- **P1-SHORTLOOP-01**：48k/256、Instrument+Audio同步、非零起点37，实际125/128/500/512ms循环，各≥4整圈+尾圈（夹具上限32圈）。1/50/255/256设备样本真实拒绝，257只预检通过，实际最短圈捕获仍待验。录音范围需严格大于设备缓冲且>50设备样本，来自原生每块最多一次折返/初始50样本门槛；不是任意两秒限制。其它采样率/缓冲、短于处理块与多重折返不外推。
-- L1 RecordingCommands返回loop_capture_constraints的实际设备采样率/缓冲/范围/最短帧数；Audio/MIDI Take构建接受有效正范围。既有scrub-context审计补丁只在本产品连续源策略启用时替换原生Transport两秒门槛，未改其它宿主默认。RecordingPanel按当前阈值显示设备样本数，四项负例均检查实际中文提示257；没有新增实时回调工作、服务或引擎。
-- 每次真实录得6条MIDI输入，独立已知字节/实际投递帧与原始未折回时间核对。128/512ms原始NoteOff精确在圈末，前圈音符到末端，第二圈保留真实空SEQUENCE，无伪短音；第三圈保留独立音符、CC和SysEx。输入原256帧预算、对齐时刻/片段1帧、UI5秒/捕获15秒/渲染10秒/CTest120秒保持。原生播放NoteOff提前0.0001秒的行为不被此原始捕获断言掩盖。
-- 整次混合录音一笔原Undo/Redo，Redo-only保存/冷重开原历史、全部稳定Take/来源和原Main精确XML检查。下一/上一Take、空圈选择、录得音符编辑/键盘UndoRedo、短循环模式与范围冷重开均执行。先实际水平缩放再CmdS，要求新文件SHA变化、已知版本回执匹配及再次冷开UI状态，不接受沿用原文件Hash作保存成功。
-- 音频单份连续PCM24原文件覆盖所有圈，全部样本误差2.421438694e−8（固定2e−7预算），Undo/Redo不改媒体SHA。静音音频轨后另渲染空/所选MIDI Take：四个空圈峰值0，所选FourOsc实际非零音频；重开后同样检查。不是用音频轨的恒值信号冒充乐器发声，随机相位合成器不作逐位PCM声明。
-- **来源指纹修复**：失败现场来源前后完整精确XML完全相同，JUCE var字符串→double解析改变末位，v1数字哈希不同；独立Python正确舍入还原原SHA。非RT MidiLoopCapture的sourceNumber使用classic-locale标准读取，保留原哈希算法/事件/字节/版本，不改坏哈希来迎合读取。四种真实来源经冷Undo/Redo、保存、独立Python解析均匹配原SHA；同时回归MIDI Punch497/候选200。
-- 冷Main比较的另外三个差异仅为content_start_beat、start_beat和note.start_beat派生拍数末位。完整精确原生XML逐字相同；现在同时严格核对全部整数采样/身份/音符与其余查询字段，三个派生差异原样记录。未放宽采样或来源哈希预算，也未通过改全局SDK浮点读取掩盖差异。原short-loop-first/precision等4/4红、具体诊断和后续通过分开保留。
-- 当前检查：短圈126/128/126/128共508；AudioLoop51、MIDILoop169、writer故障49、MIDIPunch497、Loop候选200/Punch候选200、MIDI Comp155、音频完整制作链98、持久历史86、工程格式80，共2093。原音频Loop→Punch→Take/Comp→交叉淡化→导出重开PCM最大差0。历史快捷键编辑器前台失败保留，本轮未重复运行或计入通过。
-- 独立stdlib检查18份实际WAV：每圈原始mono连续录音、三份stereo短圈导出，以及两份192000帧音频链输出；真实48k/PCM24、完整data/时长/声道/SHA/峰值/RMS、空圈零PCM和音频链data逐字节一致。四份原始MIDI v1来源SHA另按原XML独立重算，完全匹配。不是响度、True Peak、实体端口、听评或XRUN资格。
-- NativeDAW/CLI及所需目标构建exit0；唯一App本地deep/strict通过，SHA256 `dc62b31223c2a66c539a5e582da3a77bd67770606161a4242779910fff4d122e`，非发行公证。Tracktion/JUCE pin不变，19补丁47文件从锁定原始字节fresh apply、精确比较和reverse通过；无新依赖/证书。用户PID44913未重启，无新DMG/tar/应用副本，测试进程已结束。
+- **P1-MIDI-LOOP-OUTPUT-01**：48k/256、起点37、6000/6144帧圈长，恒速/0.127拍改90BPM四例；每例初始8圈、实际文件重开后8圈。四音符覆盖圈头/圈尾/跨尾/Tempo附近；输出轨严格核对64事件/阶段与全部身份、整数位置/长度、音高/力度，重开后原Loop Undo/Redo仍执行，L/Space/Undo/Redo键先核对实际命令归属。
+- 修复前6000帧的真实输出出现5920帧等越界缓冲内偏移，事件偏差可达5888帧。Node注入、设备整块dispatch和物理输出计时器改用同一个未折回播放时钟；音乐位置/时码内容仍用折回工程时间。时码追加偏移只转本段新消息，不重定时已排队的前段。无新引擎/服务/IPC，也无新增分配、锁或等待；已有SDK实时锁/分配仍未资格。
+- 当前四例×两阶段独立重算512个实际输出事件，全部一一匹配且无重复/遗漏；最大派发误差1帧，偏移全在[0,256)。普通NoteOff原生提前约5帧，折返主动释放在最后1帧，按真实LoopingMidiNode两条路径分别预定，不放宽1帧派发预算或改原始捕获时间。UI/完成5秒、CTest60秒、观察槽4096保持。
+- 并行FourOsc轨实际输出非零音频，每阶段184–188个有声设备块，仅作发声/试听依据；不从随机相位PCM起音推断MIDI事件，不作逐位音频一致性或用户听评声明。
+- **未解决的精度差异**：四例重开后输出轨NOTE b/l有1–2 ULP变化；前后完整精确Clip XML及各字段差异原样保存。整数音符事实与实际输出时序保持，原Loop Undo/Redo已验；这不是来源池Hash修复，也不能写成所有原生音符浮点字节保持。原严格XML断言失败保留，新专项明确按采样时序资格；通用精确读取继续在BACKLOG，当前/非活动/历史须整体修复。
+- 受影响回归：历史86、Scrub543、MIDI时间映射324、原MIDILoop169、四个短圈508、MIDIPunch497、Loop候选200、Punch候选200、MIDI Comp155、音频完整制作链98，另新输出736，共3516。Loop→Punch→Take/Comp→交叉淡化→WAV链重开最大PCM差0；独立stdlib读取两份真实48k/PCM24/双声道/192000帧文件，data逐字节相同。
+- SDK/JUCE pin未变，无新依赖/许可/证书。20补丁/50源码fresh apply、逐字比对与reverse通过。NativeDAW/CLI和受影响目标实际重新编译/链接exit0，唯一App本地deep/strict签名通过，SHA256 `757247e951d3866bfa386a1310be58a24ffcaeb6dc819f062e73828908c8e76f`；非签名发行/公证。用户PID44913保持，未新建DMG/tar/App副本或再次请求桌面读取。
+- 原first-build缺播放头头文件、初次观察未等待设备配置、81无默认键、普通/折返NoteOff期望混淆，以及精确XML失败分别保留在忽略build日志；真正旧生产错位在policy-baseline的6000两例中独立保留。证据聚合器首次将本地JUnit时间误当UTC，修正时区后按批次起止核验每份新鲜JSON；没有重跑已通过套来覆盖红项。
 
-索引`build-v2-tracktion/short-loop-current-results.json`，逐项取最终JUnit与新鲜JSON；主要批次short-loop-final / short-loop-panel-qualified，SDK为short-loop-sdk-replay.json。精简持久回执`evidence/P1/short-loop-qualification.json`，已查看的原生组件快照short-loop-takes.png（非OS桌面截图）。早期所有失败与Main/来源精确XML诊断在忽略build日志保留；不让后续成功JSON替代早期红项。
+当前证据：`evidence/P1/loop-output-qualification.json`，完整新JSON/原始事件与精度XML在build-v2-tracktion/midi-loop-output-*.json，JUnit为loop-output-fixed / loop-output-regressions，早期红项为loop-output-before / ready / baseline / policy-baseline / aligned-baseline，SDK为loop-output-sdk-replay.json。独立复核输出loop-output-independent-corrected.log。详见MIDI_LOOP_OUTPUT.md。
 
-亲手试：先保存当前工程、重启唯一`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Short-Loop-6144-beb36812442e4c49a639a3f7a843581a/Short-Loop.tracktionedit`，选Short Loop Keys，Option+L，把面板缩放条拖右看短Take；Option+]选空Take2，Option+[返回音符Take1，关闭面板后空格播放，CmdZ/ShiftCmdZ、CmdS保留原历史。演示音频轨是恒值诊断源且默认静音，只听实际FourOsc音符；新录须换真实输入并待命，hosted引用不是实体端口。操作/约束见MIDI_LOOP_WORKFLOW.md。
+亲手试：保存当前工程并重启唯一Forma.app，打开 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Loop-Output-9711c757c867421fbbb6c57cdb885f42/Loop-Output.tracktionedit`。选Loop Audition实际FourOsc轨，T水平放大约6次看125ms范围，Space循环试听；L切换Loop，CmdZ/ShiftCmdZ恢复原设置，CmdS保存并重开。另一个MIDI输出轨若端口不存在须选实际端口；hosted测试端口不冒充用户硬件。此演示不要求安装外部插件或网络。
 
-本捕获增量收口。下一项是循环折返块实时MIDI输出时序；采样时间戳/原生NoteOff提前/插件PDC与实际声学延迟分别验收，再推进MIDI多轨关联Comp。最短实际捕获/其它设备/短于缓冲/空中间多圈与更多CC表达、长时/故障/PDC/实体输入/听评，旧焦点/性能A15.84%>15%/分析超时/RT SDK锁分配/Windows/视频/环绕/发行等仍未完成；M2/M3冻结，M4/M5暂缓，完整架构范围保持。
+下一项P1是MIDI多轨关联Comp，沿用v1/音频关联行为与真实Loop/Punch来源，整组预览/局部采用/Undo/保存/键盘一起实现。物理USB/DIN/实时输入监听折返、MIDI Clock/MTC、PDC/变速/其它设备与负载/长时/听评、257帧实际捕获，以及原快捷键前台、性能A15.84%>15%、分析超时、RT SDK锁分配、Windows/视频/环绕/发行等仍待做。M2/M3冻结、M4/M5暂缓，完整架构范围不缩减。
 
-历史证据见docs/VERIFICATION.md和Git历史。
+历史验证见docs/VERIFICATION.md和Git历史。
