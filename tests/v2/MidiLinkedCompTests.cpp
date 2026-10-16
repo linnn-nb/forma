@@ -13,6 +13,26 @@ namespace ndaw::v2
 class RecordingTestAccess
 {
 public:
+    static void refresh(ndaw::desktop::Workspace& w)
+    {
+        w.refresh();
+    }
+    static Json native(Commands& c)
+    {
+        (void)c.query();
+        Json rows = Json::array();
+        for (auto* t : te::getAudioTracks(*c.edit))
+        {
+            juce::ValueTree state("TRACK");
+            state.setProperty("id", t->itemID.toString(), nullptr);
+            for (auto node : t->state)
+                if (node.hasType("MIDICLIP") || node.hasType("NDAW_PLAYLISTS"))
+                    state.addChild(node.createCopy(), -1, nullptr);
+            rows.push_back(preciseEditXml(state)->toString().toStdString());
+        }
+        rows.push_back(preciseEditXml(c.edit->state.getChildWithName("NDAW_MIDI_SOURCES"))->toString().toStdString());
+        return rows;
+    }
     static Json readiness(Commands& c)
     {
         return c.recordingReadiness();
@@ -360,10 +380,12 @@ void refuse(Commands& c, const juce::XmlElement& xml, const juce::File& file)
     check(facts(c) == before && token == c.sessionToken(), "failed Open keeps the actual current project");
 }
 } // namespace
+#include "MidiLinkedMoveChecks.h"
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
     const bool punch = argc > 2 && std::string(argv[2]) == "punch";
+    const bool moving = argc > 3 && std::string(argv[3]) == "move";
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile("MIDI-Linked-" + juce::Uuid().toString());
     root.createDirectory();
     result = {{"root", root.getFullPathName().toStdString()},
@@ -472,6 +494,19 @@ int main(int argc, char** argv)
             run(c, "track.arm", {{"track", tracks[n]}, {"enabled", false}});
             run(c, "playlist.select", {{"track", tracks[n]}, {"playlist", main[n]}});
         }
+        if (moving && punch)
+            for (int n = 0; n < 2; ++n)
+            {
+                std::set<std::string> lists{sources[n][0], sources[n][1], main[n]};
+                for (const auto& list : lists)
+                {
+                    run(c, "playlist.select", {{"track", tracks[n]}, {"playlist", list}});
+                    const auto source = c.query();
+                    for (const auto& clip : source["tracks"][n]["clips"])
+                        run(c, "midi.clip.timebase.set", {{"clip", clip["id"]}, {"basis", "samples"}});
+                }
+                run(c, "playlist.select", {{"track", tracks[n]}, {"playlist", main[n]}});
+            }
         const std::array<std::pair<int64_t, int64_t>, 2> ranges{{{60037, 84037}, {108119, 132119}}};
         Json segments = Json::array();
         for (int n = 0; n < 2; ++n)
@@ -540,6 +575,8 @@ int main(int argc, char** argv)
         rejects([&] { run(c, "tempo.event.create", {{"beat_position", 8.0}, {"bpm", 110.0}}); },
                 "unqualified Tempo remapping explicitly refuses a linked MIDI set");
         check(facts(c) == active, "rejected independent timing edits preserve all linked members");
+        if (moving)
+            testLinkedMidiMoves(w, root, tracks, linked, punch);
         run(c, "playlist.lock", {{"track", tracks[1]}, {"playlist", linked.at(tracks[1])}, {"locked", true}});
         rejects([&] { run(c, "playlist.comp.restore", {{"track", tracks[0]}, {"playlist", linked.at(tracks[0])}}); },
                 "locked partner prevents a half-restored set");
