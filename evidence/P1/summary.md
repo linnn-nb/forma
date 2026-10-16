@@ -1,3 +1,11 @@
+# CLI与P1历史桌面补验（2026-10-16，当前）
+
+CLI生产修复ce78075、回归fc32fba：统一错误JSON、严格参数、独立结果fd/诊断流及关闭后交付。原普通probe/6Serum stdout本来已纯JSON，原SDK日志在stderr；实际红项是错误结果stdout为空，已复现并修复。真实CLI136项/CTest1/1，6真实Serum复验141项（重复136+新增5），原SHA保持；真实WAV全样本增益误差1.19294e-7≤2e-6。另有5.2秒真实CoreAudio短播放，48k512扬声器、253440输出帧、XRUN0；不外推大型工程性能。
+
+上一轮历史修复已补OS桌面：完整保存退出、旧2冷开/实际原UndoRedo保持.75s、新3另存/CmdS备份、新进程Open守卫冷开/原UndoRedo保持1s、恢复9原Plan/2片段/77385/F8/停止，完整原生事实和全部新raw STEP/SHA保持；文件/回执独立51项。当前新版PID61601，绑定CLI-Protocol-a0d5ef6d0b8a/GUI-History-Before.tracktionedit。无新应用副本/DMG/tar，原文件和媒体保留。
+
+OS坐标拖选仍无回执，转Backlog，不能称完整P1/产品。下一项踏板跨Comp切点的真实输出检查；其它架构/性能/RT/设备/听评/平台/发行差距保留。磁盘满后只清理16个可重建测试程序，保留全部媒体和工程。详见cli-protocol-qualification.json、VERIFICATION.md首节与CLI.md；下面旧状态以本段为准。
+
 # P1 历史边界增量（2026-10-16，当前）
 
 P1-HISTORY-RUNTIME-01：运行时游标/SDK写入信息与编辑delta分离，Loop/Punch等仍原Undo；新增schema3/history.runtime-boundary v1，旧1/2先原始验证再内存迁移。源码e12d438，唯一App/CLI构建与本地验签通过，未公证。

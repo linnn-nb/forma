@@ -1,3 +1,5 @@
+2026-10-16 实桌面补验已完成：另存完整副本并正常退出，打开新版后定位0.75s、CmdZ/ShiftCmdZ保持当前游标；CmdS保存/备份后真实冷进程用CmdO打开schema3，定位1s后原Undo/Redo仍保持。已恢复77385样本、F8及原9个Plan/2片段；当前新版PID61601可继续操作。演示当前绑定文件为build-v2-tracktion/CLI-Protocol-a0d5ef6d0b8a/GUI-History-Before.tracktionedit；原始项目另有完整副本，未覆盖媒体。下方旧“GUI未执行/旧进程未重启”由本段替代。
+
 # 历史与播放头（2026-10-16）
 
 新版保存格式要求支持schema3的Forma；旧文件会先核验再迁移，原媒体保留。唯一新版App已构建并本地签名；本轮桌面工具未取得窗口，因此没有重启仍在运行的旧进程，也没有宣称新版OS桌面验收。

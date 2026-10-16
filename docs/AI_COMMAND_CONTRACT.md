@@ -1,3 +1,5 @@
+2026-10-16 CLI-JSON-01：本地ndaw的stdout为单一JSON结果（commands原数组保持），受控异常/用法分别退出1/2并返回结构化错误；SDK/普通C/C++/子进程/退出日志走stderr，完整关闭后发布。输出失败74/无回执不能标成功；既有播放/扫描资格失败仍按原Schema+非零退出判断。CLI读取磁盘，不冒充运行中Edit查询；MCP、L1命令/actor/权限/Schema不变。用法及限制见CLI.md。
+
 2026-10-16：history.retention.schema=3描述本地编辑历史格式，不是新的Agent计划/权限版本。GUI与AI的原Undo/Redo保持当前播放头；Loop/Punch等编辑设置仍跟随事务。运行时位置与SDK最后写入信息随当前工程保存，不追加到旧Plan；旧文件原始完整性先验证，格式能力与兼容限制见PROJECT_FORMAT.md。命令ID/schema、actor/revision/确认/幂等及恢复回执边界不变。
 
 2026-10-16 关联共享曲线：`clips.relocate` 的真实 transfer 预览增加 source_tempo_follows / destination_tempo_follows，保留目标插件设置，差异先展示再由用户接受。Playlist 恢复只切换片段；轨道自动化仍共享，整笔迁移Undo才恢复曲线。普通MIDI整组移动仍经原编译闭包与automation.clips.move派生操作，不增加工具或权限。

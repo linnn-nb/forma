@@ -109,3 +109,5 @@ Forma Studio's original source is licensed under AGPL-3.0-only. Tracktion Engine
 Forma 仍是开发版。P1 音频 Loop→Punch→Take/Comp→交叉淡化→导出主链路已通过；完整发布听评、多输入/耐久与 MIDI Loop/Punch 仍未完成。P2 当前已接通原生旁链首版，Freeze/原地 Bounce首版已接通并继续综合资格，Stems和偏好设置尚未完成。P0 各项已测与未测范围以 [最新验证记录](docs/VERIFICATION.md) 为准。性能 A 的主线程预算、实体交互计时、Windows、多轨硬件与持续可靠性仍未通过完整验收；固定本地签名不是发行签名公证。
 
 既有 Agent 网关和音频分析保留在菜单中，此阶段停止扩充。内部 CMake 目标与旧工程元数据仍使用 NativeDAW 名称，macOS 应用名为 Forma，Bundle ID 为 `org.forma.daw`。同时查看两个开发窗口时可用 `--no-mcp` 启动检查实例，避免占用正在使用的本地网关；普通启动方式不变。
+
+本地CLI的JSON回执、退出码和诊断流用法见[CLI文档](docs/CLI.md)；正在运行的工程仍通过既有MCP入口访问。

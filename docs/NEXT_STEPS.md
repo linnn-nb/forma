@@ -1,13 +1,13 @@
 # 下一步（2026-10-16）
 
-持久历史边界增量已收口：明确运行时字段不再追加旧Step，原Undo/Redo、Loop/Punch及保存冷开保留；schema1/2原始校验后迁移，新保存schema3由history.runtime-boundary v1保护。9套665项、两实际旧工程152项（含重复基础107）及独立135项通过。不是完整P1/产品，详细证据见VERIFICATION.md首节。
+CLI回执增量已收口：生产ce78075、回归fc32fba；136项+6真实Serum复验141项（含重复136），实际96000帧双声道增益误差1.19294e-7≤2e-6，原工程/媒体保持。短真实设备播放48k512/XRUN0。历史schema3已补实桌面保存/原UndoRedo/CmdS备份/真实新进程打开，独立51项；不是完整P1或产品。
 
-1. **下一项：修复CLI日志混入stdout的JSON协议问题。** 复现真实ndaw probe/inspect/render/错误路径，保证stdout一份可直接解析的JSON，日志走stderr；保留真实非零失败退出，不为此解冻M2/M3或新增服务。覆盖真实插件/SDK日志来源，不只重定向std::cout模板测试。
-2. 波形拖选→局部Comp的OS桌面资格仍待定位：既有AX标题/按键可用，坐标拖动无回执；尚不能归责应用或工具。本轮工具cgWindowNotFound后列应用超时，旧PID90105仍活跃，未强行重启。用户暂不便测试，不重复催参与，不堆大量CLI代替GUI。同边界两轮后入BACKLOG。
-3. 继续完整P1/P2/P3与架构范围：性能A15.84%>15%、分析超时、读取能力全量、RT SDK锁分配、实体MIDI/多设备/硬件延迟PDC/耐久/断连过载/听评、Windows/视频/环绕/发行尚未完成。M2/M3冻结，M4/M5暂缓。
+1. **下一项：P1 MIDI Comp的踏板跨切点状态。** 先读MidiPlaylistState/原生MidiNode与既有捕获/Comp输出测试。qualify目前保留完整CC但没有踏板跨切点专项，不能仅据完整SEQ声称正确。用实际hosted输入录得Take，在CC64 Sustain/CC66 Sostenuto保持期间切换不同Take/候选窗口，检查原生输出与尾部释放/停止/循环，不先假设SDK有错；复现缺口后按L1/同Undo/原媒体/保存冷开/可改键规则实现。预算先声明并保留1采样事件与既有PCM容差，不扩到未测MPE/RPN/Groove所有语义。
+2. OS波形拖选/局部Comp资格已到同边界两轮，转BACKLOG：F7和原生AX有效，但两种坐标拖动无选择回执；尚不能归责应用或工具。当前不再反复堆CLI替代或催暂不便测试的用户；获得可核验原生指针输入时继续，不从产品范围移除。
+3. 继续完整P1/P2/P3与架构：性能A15.84%>15%、分析超时、读取能力全量、RT SDK锁分配、实体MIDI/多设备/硬件延迟PDC/耐久/断连过载/听评、Windows/视频/环绕/发行尚未完成。M2/M3冻结、M4/M5暂缓。
 
-唯一新版App：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，已本地签名/未公证；本轮没有重启旧进程，不能把磁盘新版冒称运行中新版。用户原工程未替换，无新App副本/DMG/tar。
+唯一App：build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app，仍4e2cd73a…本地签名/未公证。已正常退出旧90105和第一新进程47275，当前61601运行新版。用户Warp Comp完整轨道/9原Plan/77385/停止/F8/无输入已恢复，当前保存路径为保留现场的新副本CLI-Protocol-a0d5ef6d0b8a/GUI-History-Before.tracktionedit；原旧项目未覆盖。
 
-本轮可演示工程：build-v2-tracktion/P1-History-3800f5f275c8/Warp-Comp-Migrated.tracktionedit及Microphone-Comp-Migrated.tracktionedit（9/22原Plan）。先保存并正常退出旧Forma、重新启动唯一新版，再打开；移动播放头后CmdZ/ShiftCmdZ保持当前定位，CmdS/关闭重开仍可原UndoRedo。新格式旧版会拒绝，既有原文件和源媒体保留。操作见P1_DESKTOP_WORKFLOW.md首节。
+CLI：build-v2-tracktion/ndaw_artefacts/Release/ndaw。协议及退出码见CLI.md；新保存仍schema3/history.runtime-boundary v1，旧读者拒绝，正常Save保留独立旧版。构建/失败/测试/GUI和短设备证据见VERIFICATION.md首节、evidence/P1/cli-protocol-qualification.json。
 
-磁盘此前清理仅168个可重建测试程序；不要删除build下被工程引用的真实录音/派生媒体。本轮只构建受影响目标，未制造源码包或安装包。
+磁盘约652MiB：本轮再次写满，仅删除16个未运行的可重建测试可执行文件，记录在CLI-Protocol目录；媒体/源码/工程/日志/SDK/CLI/唯一App均保留。只构建受影响目标，禁止重新生成所有测试程序或制作新包；不要删除build下被工程引用的媒体。真实音频/工程/原始查询不上网。

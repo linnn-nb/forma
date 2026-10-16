@@ -1,3 +1,26 @@
+# CLI回执与历史实桌面补验（2026-10-16，当前）
+
+CLI-JSON-01已收口：真实缺陷是失败/用法结果仅在stderr，stdout为空。**修复前普通probe及六个真实Serum查询已是纯JSON，SDK启动/清理日志也已在stderr**，此前“Cleaning up混入stdout”未在分流复现，不能照搬为已证根因。现补统一错误回执，并在JUCE启动前保留不继承的私有结果描述符，将普通stdout转stderr；关闭Engine后才交付一份JSON。L1命令/MCP/音频引擎/SDK/RT路径不变，CLI仍读取磁盘而非现场Edit。
+
+| 范围与状态 | 代码/证据 | 真实结果 |
+| --- | --- | --- |
+| CLI协议：已验证本机 | CLI.cpp、CliOutput.h；cli_protocol_tests.py/CTest forma_cli_json_protocol | 136项、1/1、8.29秒；实际probe/无参/注册表数组、缺失/损坏/用法/多余参数/扫描错误、nan/inf/截尾数字、真实analyse与两份96000帧立体声PCM24 WAV、已存在文件拒绝、旧v1预览/导入/schema3冷开及原Undo。全样本-6dB误差1.1929371668e-7≤2e-6，原媒体/旧文件哈希保持。 |
+| 普通库输出故障：已验证测试通道 | CliOutputProbe.cpp使用生产Output类，是独立非DAW测试程序 | C++流、printf、fd1、析构/atexit、exec子进程日志在stderr，结果fd未泄露；无结果/退出码不符返回failed，读端关闭实际退出74。不是声称真实插件打印了这些测试文本，也不是恶意进程内代码沙箱。 |
+| 真实第三方：已验证所列工程 | 实际《霓潮》只读inspect | 141项复验含重复136+新增5；实际载入6个Serum/7轨，源SHA保持9d9d65205691c82450bd9233fbe3db64d40f03a26f90a9b3d3f03fd681563cd2。未重扫/认证所有插件，未改原工程或上传音频。 |
+| 异步设备回执：已验证短负载 | 正式ndaw devices/play、真实JSON与报告文件 | 内置扬声器48k/512、无输入，5.2秒检查窗，进程5.703秒，253440输出帧、495回调、峰0.022997、XRUN0；stdout与真实落盘播放报告一致，退出0。只是短受控源，不是大型工程/耐久/物理往返或主观听评。 |
+| P1历史OS补验：已验证所列动作 | 唯一App、实际CmdQ/CmdO/CmdS/CmdZ/ShiftCmdZ/定位面板；只读query、原始文件/备份审计51项 | 正常完整另存/退出、从旧schema2冷开，0.75s原Undo/Redo不改游标；新schema3另存及CmdS备份，再次新进程经原生Open守卫打开，定位1s后原UndoRedo保持。9原Plan/2片段和所有完整轨道事实、原Undo目标保留；新保存/退出/各备份的全部raw STEP/SHA完全相同。已恢复77385样本、F8、停止，当前61601运行新版，绑定本轮新副本。 |
+| OS坐标拖选：仍待验证 | F7已生效，两尺度拖动/只读选择回执 | [450,350]→[550,350]及[900,700]→[1100,700]无选择/编辑回执。未区分应用输入与工具坐标路径；不改代码猜原因，不以AX/组件合成输入冒充OS拖选。本边界两轮后转BACKLOG，不阻塞其它范围。 |
+
+首次普通CLI编译因macOS sigemptyset宏不能加::失败，已改正，最终build exit0；原受控失败red日志保存，首小回归8项通过后扩至136/141。CLI二进制SHA `043bad4b1e30f33205eb1db5b667b8d2f8390a7509303665d81729b073b74c9c`。新增Python3仅为CTest开发依赖，不是应用运行依赖。Windows代码分支未实机执行。返回码0/1/2/74和无回执语义见CLI.md。
+
+App沿用上一轮已构建签名的4e2cd73a…，本轮没有改GUI/引擎生产代码或新建App副本；deep/strict复核通过，非发行公证。旧90105、第一新进程47275已正常退出；工具在退出/打开中曾拒绝过期状态，刷新后观察到真实空会话r0，再由正式CmdO/保存守卫打开指定文件，核验新session/r26，未沿用旧Edit假通过。当前61601/9Plan/r28/位置77385/无录放，扬声器48k512。原《霓潮》及音频、旧Warp项目未覆盖。
+
+证据：evidence/P1/cli-protocol-qualification.json；本地cli-protocol-first.xml/.log、cli-protocol-serum-tests.json/.log、CLI-Protocol-a0d5ef6d0b8a/async-device-qualification.json、gui-history-qualification.json与实际新工程/备份。当前可操作文件GUI-History-Before.tracktionedit；它是保留现场的新副本，不冒充原路径未改变。无新DMG/tar，真实音频与原始查询仅留本机。
+
+磁盘再次降至约104MiB，zsh创建here document失败，文档写入未开始。仅清理16个未运行的可重建CMake测试可执行文件574114272字节，保留全部工程/媒体/源码/日志/SDK/CLI及唯一App；清单second-rebuildable-binary-cleanup.json。实际可用恢复约652MiB，仍不足以随意重建所有测试或制作安装包。
+
+下一项转P1 MIDI Comp的CC64/CC66踏板跨切点语义：先检查真实SDK输出状态/采样边界，复现再修，不从完整SEQ保存推断发声正确。OS坐标资格保留Backlog；性能A15.84%>15%、分析超时、读取能力全量、RT锁分配、实体MIDI/多设备/PDC/延迟/耐久/听评、Windows/视频/环绕/发行与完整架构仍未完成。M2/M3冻结、M4/M5暂缓。以下旧“当前/下一项/未重启/GUI未执行”由本节及NEXT_STEPS替代。
+
 # 持久历史与运行时状态分离（2026-10-16，当前）
 
 结论：P1-HISTORY-RUNTIME-01已在明确范围验证。定位、原生播放/停止、保存及冷开后的原Undo/Redo不再把播放头、SDK时间/最后写入信息追加到旧步骤；循环/Punch/预备拍/节拍器继续可撤销。**受影响9套最新终态665项通过**：主批8/8、101.69秒，保存补批1/1、3.21秒；不是一次9/9或完整产品验收。

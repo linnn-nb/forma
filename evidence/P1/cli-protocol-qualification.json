@@ -1,0 +1,142 @@
+{
+  "result": "verified_increment",
+  "date": "2026-10-16",
+  "code_commit": "ce78075",
+  "test_commit": "fc32fba",
+  "requirement": "CLI-JSON-01 and P1-HISTORY-RUNTIME-01 OS qualification",
+  "baseline": {
+    "probe_and_actual_six_serum_stdout": "already strict JSON before this fix; SDK startup/cleanup logs were stderr",
+    "verified_defect": "missing project and usage failures had empty stdout, exit1/2 and stderr only",
+    "hypothetical_library_printing": "tested separately with explicit protocol test executable, not misreported as a real-plugin defect"
+  },
+  "implementation": {
+    "result_after_shutdown": true,
+    "one_preserved_private_output_descriptor": true,
+    "raw_stdout_routes_to_stderr": true,
+    "child_cannot_inherit_result_descriptor": true,
+    "bounded_EINTR_retries": 64,
+    "invalid_arity_flag_and_gain_rejected": true,
+    "new_engine_sdk_bytes_services_RT_work": false,
+    "exit_codes": {
+      "success": 0,
+      "execution_or_existing_qualification_failure": 1,
+      "usage": 2,
+      "output_io": 74
+    },
+    "limits": "in-process malicious code can access descriptors; not a security sandbox. Signals, crashes, unavailable output or startup IO may have no JSON; nonzero/no receipt is never success."
+  },
+  "tests": {
+    "ctest": {
+      "junit": "build-v2-tracktion/cli-protocol-first.xml",
+      "passed": 1,
+      "total": 1,
+      "seconds": 8.29,
+      "checks": 136,
+      "report": "build-v2-tracktion/cli-protocol-tests.json",
+      "sha256": "ad9e766bdc3a9d30116cd19039b54309c870e983a09791f45f87c4b4ed675255"
+    },
+    "actual_external_project": {
+      "checks": 141,
+      "repeated_baseline_checks": 136,
+      "additional_checks": 5,
+      "tracks": 7,
+      "loaded_real_serum": 6,
+      "source_sha256": "9d9d65205691c82450bd9233fbe3db64d40f03a26f90a9b3d3f03fd681563cd2",
+      "source_not_modified": true,
+      "report": "build-v2-tracktion/cli-protocol-serum-tests.json",
+      "sha256": "f7254dd335f004be12971f0437f08c8e6ddc67703eb91bc3ed6663263cba921e"
+    },
+    "actual_audio": {
+      "frames": 96000,
+      "channels": 2,
+      "sample_rate": 48000,
+      "output_bits": 24,
+      "full_gain_pcm_max_error": 1.1929371667926403e-07,
+      "tolerance": 2e-06,
+      "original_media_unchanged": true
+    },
+    "channel_probe": "production Output header in an explicit non-DAW test program; C/C++/fd/teardown/atexit/exec-child/no-result/mismatched-status/closed-consumer checks",
+    "actual_device_play": {
+      "device": "MacBook Pro扬声器",
+      "sample_rate": 48000.0,
+      "buffer_frames": 512,
+      "passed": true,
+      "xruns": 0,
+      "processed_output_frames": 253440,
+      "peak": 0.02299700677394867,
+      "wall_ms": 5702.989292,
+      "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/CLI-Protocol-a0d5ef6d0b8a/async-device-qualification.json",
+      "sha256": "1070ef826e3ebe0f5f16844efe755c5a64da26af4a714de67a99c1b29bf5c763",
+      "scope": "short controlled source via real native output; not large-session performance, physical roundtrip or subjective listening"
+    }
+  },
+  "GUI_history": {
+    "checks": 51,
+    "report": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/CLI-Protocol-a0d5ef6d0b8a/gui-history-qualification.json",
+    "sha256": "518fe62f51f1f205bb94b709a197d4d431deee85387b08362e621c614d77fa5b",
+    "real_native_steps": [
+      "Save As complete copy",
+      "normal CmdQ and save full exit copy",
+      "fresh native process loads legacy2 project",
+      "set cursor36000; original CmdZ/ShiftCmdZ preserve cursor",
+      "native Save As schema3; return to zero and CmdS with independent prior file",
+      "normal exit, confirmed old process exit0",
+      "new PID61601 observed empty; native CmdO/save guard opens exact schema3 file",
+      "set cursor48000; original CmdZ/ShiftCmdZ preserve cursor",
+      "restore cursor77385, F8 and CmdS"
+    ],
+    "original_plan_count": 9,
+    "all_raw_STEPS_and_hashes_stable_across_new_saves": true,
+    "whole_track_facts_and_original_undo_state_verified": true,
+    "restored": {
+      "plans": 9,
+      "clips": 2,
+      "position_samples": 77385,
+      "revision": 28,
+      "history_schema": 3,
+      "file": "build-v2-tracktion/CLI-Protocol-a0d5ef6d0b8a/GUI-History-Before.tracktionedit"
+    },
+    "app_pid": 61601,
+    "mouse": "two coordinate scales produced no selection receipt; remains unverified, no speculative UI change"
+  },
+  "artifacts": {
+    "CLI": "build-v2-tracktion/ndaw_artefacts/Release/ndaw",
+    "CLI_sha256": "043bad4b1e30f33205eb1db5b667b8d2f8390a7509303665d81729b073b74c9c",
+    "app": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app",
+    "app_sha256": "4e2cd73a3789f8606d5a53a9fa54aeb4fa1c38798ef683c1dc0ca6d36561dd33",
+    "codesign_deep_strict_exit": 0,
+    "notarized": false,
+    "new_DMG_tar_or_app_copy": false
+  },
+  "preserved_failures": [
+    {
+      "log": "cli-protocol-red.log",
+      "result": "failure",
+      "reason": "missing-project stdout had no JSON; normal probe already passed"
+    },
+    {
+      "log": "cli-protocol-build.log",
+      "reason": "macOS sigemptyset is a macro and cannot use global qualifier; corrected before successful second build"
+    },
+    {
+      "scope": "OS GUI",
+      "reason": "initial lookup failed; later native observation restored. Intermediate stale-window actions were rejected, state refreshed; no stale Edit used as successful open"
+    }
+  ],
+  "remaining": [
+    "OS waveform drag and local Comp qualification pending; two-round boundary moved to backlog",
+    "MIDI Comp sustain/sostenuto and stateful controller cuts require exact output inspection before completion claims",
+    "performance A15.84%>15%, analysis timeout, full reader closure, RT SDK locks/allocations, physical MIDI/latency/PDC/multidevice/endurance/listening",
+    "Windows/video/surround/release/full product incomplete; M2/M3 frozen, M4/M5 deferred",
+    "disk space remains about652MiB; only selected targets may be rebuilt, no new packages"
+  ],
+  "privacy": "audio, actual projects, raw plugin query output and native desktop data remain local; only compact qualification is committed",
+  "cleanup": {
+    "scope": "inactive reproducible CMake test executables only; no media, project, source, SDK, production CLI or unique app removed",
+    "count": 16,
+    "removed_bytes": 574114272,
+    "free_before": 109740032,
+    "free_after": 683847680,
+    "manifest": "build-v2-tracktion/CLI-Protocol-a0d5ef6d0b8a/second-rebuildable-binary-cleanup.json"
+  }
+}
