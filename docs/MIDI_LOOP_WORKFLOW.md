@@ -1,3 +1,5 @@
+2026-10-16 实时输出专项预先预算：48k/256，非零37采样起点，6000/6144采样Loop，恒速/第0.127拍变90BPM共四例，各实际8圈并保存重开再8圈。四个音符覆盖圈头/圈尾/跨尾/Tempo附近；输出派发1帧、原生普通NoteOff提前5帧与折返主动释放末样本1帧独立记录（LoopingMidiNode实际两条路径），UI/播放完成5秒、CTest60秒、固定4096事件观察槽。测试直接读取hosted设备输出及原生未折回时钟，不从离线音频或游标推断；物理端口/声学时延/时钟/PDC/变速/RT资源另验。未执行结果不得写通过。
+
 # MIDI 循环录音（2026-10-16）
 
 MIDI / Instrument 轨复用 Tracktion 原生循环录音器。停止后，每圈成为独立、可编辑的 MIDI Take Playlist；原 Main 保留。当前支持短圈、真实空Take、锁定/Comp/Promote及Punch；各功能按MIDI_COMP_WORKFLOW.md、MIDI_PUNCH_WORKFLOW.md与VERIFICATION.md的具体资格开放，不代表完整P1或产品。
