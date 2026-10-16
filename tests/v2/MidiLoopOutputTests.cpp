@@ -366,6 +366,8 @@ int main(int argc, char** argv)
         result["clip_before_save"] = originalXml;
         result["clip_after_open"] = RecordingTestAccess::clipXml(c);
         result["native_xml_equal"] = RecordingTestAccess::clipXml(c) == originalXml;
+        check(result["native_xml_equal"].get<bool>(),
+              "complete native Clip XML survives actual file reopen without NOTE precision drift");
         result["sample_facts_before"] = original;
         result["sample_facts_after"] = sampleFacts(c);
         check(sampleFacts(c) == original && c.query()["transport_settings"]["loop_enabled"],
