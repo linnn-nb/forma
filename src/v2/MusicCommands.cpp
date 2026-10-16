@@ -1,4 +1,5 @@
 #include "SampleMidiMap.h"
+#include "MidiTempoRemap.h"
 #include <nativedaw/v2/EngineCommands.h>
 #include <limits>
 
@@ -597,13 +598,26 @@ Json Commands::validateMusicPlan(const Json& operations) const
         diff.push_back(controllerChange(operations[0]["args"]));
         return diff;
     }
+    std::unique_ptr<midi_tempo::Snapshot> midiTempo;
     if (std::any_of(operations.begin(), operations.end(),
                     [](const Json& op)
                     {
                         const std::string cmd = op.at("command");
                         return cmd.starts_with("tempo.") || cmd.starts_with("meter.");
                     }))
-        (void)sampleMidiTempoSnapshot(); // Validate unsupported sources before any native write.
+    {
+        midiTempo = std::make_unique<midi_tempo::Snapshot>(*edit, seq);
+        if (!midiTempo->empty())
+            for (const auto& op : operations)
+            {
+                const auto cmd = op.at("command").get<std::string>();
+                require(
+                    !cmd.starts_with("midi.") && !cmd.starts_with("playlist.") && !cmd.starts_with("clip.") &&
+                        !cmd.starts_with("clips.") && !cmd.starts_with("timeline.clips.") && cmd != "track.delete" &&
+                        cmd != "session.import_legacy",
+                    "Tempo/Meter mapping of existing MIDI requires a transaction separate from timeline or MIDI edits");
+            }
+    }
     size_t operationIndex = 0;
     for (auto* t : te::getAudioTracks(*edit))
     {
@@ -742,6 +756,8 @@ Json Commands::validateMusicPlan(const Json& operations) const
             diff.push_back({{"command", cmd}, {"event", key}, {"before_beat", previous.inBeats()}, {"after", a}});
             const auto previousSequence = seq;
             seq = sequence();
+            if (midiTempo)
+                diff.back()["midi_remap"] = midiTempo->preview(seq);
             for (auto& [_, c] : clips)
                 if (!c.beats)
                 {
@@ -803,6 +819,8 @@ Json Commands::validateMusicPlan(const Json& operations) const
             }
             const auto previousSequence = seq;
             seq = sequence();
+            if (midiTempo)
+                diff.push_back({{"command", cmd}, {"after", a}, {"midi_remap", midiTempo->preview(seq)}});
             for (auto& [_, c] : clips)
                 if (!c.beats)
                 {
@@ -1016,7 +1034,7 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
     {
         const bool isTempo = cmd.starts_with("tempo."), creating = cmd.ends_with("create"),
                    removing = cmd.ends_with("delete");
-        const auto sampleMidi = sampleMidiTempoSnapshot();
+        const midi_tempo::Snapshot midiTempo(*edit, seq.getInternalSequence());
         te::EditTimecodeRemapperSnapshot snap;
         snap.savePreChangeState(*edit);
         juce::ValueTree state;
@@ -1072,13 +1090,13 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
         }
         seq.updateTempoData();
         snap.remapEdit(*edit);
-        remapSampleMidiTempo(sampleMidi);
+        midiTempo.apply(seq.getInternalSequence());
         objects.push_back({{"id", id(state)}, {"kind", isTempo ? "tempo" : "meter"}, {"deleted", removing}});
         return;
     }
     if (cmd == "tempo.set" || cmd == "meter.set")
     {
-        const auto sampleMidi = sampleMidiTempoSnapshot();
+        const midi_tempo::Snapshot midiTempo(*edit, seq.getInternalSequence());
         te::EditTimecodeRemapperSnapshot snap;
         snap.savePreChangeState(*edit);
         auto beat = seq.toBeats(time(a.at("position_samples")));
@@ -1114,7 +1132,7 @@ void Commands::executeMusicOperation(const std::string& cmd, const Json& input, 
             edit->createNewItemID().writeID(state, &um);
         seq.updateTempoData();
         snap.remapEdit(*edit);
-        remapSampleMidiTempo(sampleMidi);
+        midiTempo.apply(seq.getInternalSequence());
         objects.push_back({{"id", id(state)}, {"kind", cmd == "tempo.set" ? "tempo" : "meter"}});
         return;
     }

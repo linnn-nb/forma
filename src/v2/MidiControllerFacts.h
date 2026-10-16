@@ -20,4 +20,5 @@ nlohmann::json midiControllerFact(tracktion::engine::MidiClip&, const MidiContro
 // L1 mutation only, inside the caller's validated native Undo transaction.
 // Freeze every legacy key before changing any controller's source time.
 void persistMidiControllerIdentities(tracktion::engine::MidiClip&, juce::UndoManager&);
+nlohmann::json midiControllerStateKeys(const juce::ValueTree&);
 } // namespace ndaw::v2::detail

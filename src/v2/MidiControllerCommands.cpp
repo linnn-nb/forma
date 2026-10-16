@@ -69,6 +69,29 @@ bool newKey(const std::string& id, const std::string& p)
 } // namespace
 namespace detail
 {
+Json midiControllerStateKeys(const juce::ValueTree& clip)
+{
+    Json result = Json::array();
+    std::map<std::string, int> occurrences;
+    std::set<std::string> seen;
+    int index = 0;
+    for (auto event : clip.getChildWithName(te::IDs::SEQUENCE))
+    {
+        if (event.hasType(te::IDs::CONTROL))
+        {
+            auto token = event[keyProperty].toString().toStdString();
+            if (token.empty())
+            {
+                const auto hash = digest(event);
+                token = "legacy:" + hash + ":" + std::to_string(occurrences[hash]++);
+            }
+            require(seen.insert(token).second, "duplicate stored MIDI controller identity");
+            result.push_back({{"index", index}, {"token", token}});
+        }
+        ++index;
+    }
+    return result;
+}
 std::vector<MidiControllerEventReference> midiControllerReferences(te::MidiClip& clip)
 {
     return events(clip);
