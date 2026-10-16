@@ -114,6 +114,16 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
     auto& c = RecordingTestAccess::commands(w);
     const auto original = tempoFrame(c);
     auto added = run(c, "plugin.insert", {{"track", tracks[0]}, {"type", te::EqualiserPlugin::xmlTypeName}});
+    std::vector<Json> initialPolicies;
+    for (const auto& t : tracks)
+    {
+        const auto query = c.automationQuery(t);
+        for (const auto& lane : query["lanes"])
+            if ((lane["parameter"] == "volume" || lane["parameter"] == "Low-pass gain") &&
+                lane["tempo_follows"] == true)
+                initialPolicies.push_back(run(c, "automation.plugin_tempo.set",
+                                              {{"track", t}, {"parameter", lane["id"]}, {"enabled", false}}));
+    }
     Json points = Json::array();
     for (const auto& t : tracks)
     {
@@ -152,6 +162,7 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
         c.makePlan("human", Json::array({op("automation.plugin_tempo.set",
                                             {{"track", tracks[0]}, {"parameter", eqLane}, {"enabled", true}})}));
     const auto policyPreview = c.preview(policyPlan);
+    result["plugin_tempo_policy_preview"] = policyPreview;
     check(policyPreview["automation_changes"][0]["affected"].size() > 1 &&
               policyPreview["automation_changes"][0]["before"] == false &&
               policyPreview["automation_changes"][0]["after"] == true,
@@ -312,6 +323,8 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
     c.undo();
     c.undo(eqPolicy["plan_id"]);
     c.undo(curveReceipt["plan_id"]);
+    for (auto p = initialPolicies.rbegin(); p != initialPolicies.rend(); ++p)
+        c.undo((*p)["plan_id"]);
     c.undo(added["plan_id"]);
     check(tempoFrame(c) == original,
           "Tempo qualification leaves every original recorded source and inactive Playlist unchanged");
