@@ -1,0 +1,189 @@
+{
+  "qualified_at_utc": "2026-10-16T04:19:24.354202+00:00",
+  "code_commit": "aa08583a898f67e9cc0e6a12b9494fc865114fc5",
+  "production_change_commit": "3e0db6e",
+  "environment": {
+    "os": "macOS 26.6.2 (25G83)",
+    "architecture": "arm64"
+  },
+  "result": "passed_in_current_environment",
+  "scope": "shortcut search entry, actual foreground/native-peer capture, keymap conflict and Undo/Redo, actual registered command dispatch, file save/cold reopen; not full P0/P1/product or physical audio/listening qualification",
+  "automated": {
+    "suites": 4,
+    "checks": 180,
+    "elapsed_seconds": 7.9,
+    "junit": "build-v2-tracktion/keyboard-focus-final.xml",
+    "receipts": [
+      {
+        "test": "forma_native_keyboard_settings",
+        "checks": 93,
+        "seconds": 1.53362,
+        "report": "build-v2-tracktion/keyboard-settings-tests.json",
+        "report_sha256": "9dd79d4076c1e1b1194d6e0ef5b25c0e71a325e4b62f72bd178bf87051ccc527",
+        "report_mtime_utc": "2026-10-16T04:18:03.444981+00:00",
+        "receipt": {
+          "checks": 93,
+          "initial_activation": {
+            "foreground": false,
+            "native_peer_focused": false
+          },
+          "result": "passed",
+          "scope": "actual native peer capture, command registry, key Undo/Redo, conflicts and L1 save/reopen; no audio/hardware claim"
+        }
+      },
+      {
+        "test": "forma_workspace_shortcuts",
+        "checks": 41,
+        "seconds": 1.10096,
+        "report": "build-v2-tracktion/workspace-shortcuts-tests.json",
+        "report_sha256": "32b528d72813b978d3ab043b47d32bc96e8ac6d2c4bc1b08132a7d8b11cc5677",
+        "report_mtime_utc": "2026-10-16T04:18:04.591146+00:00",
+        "receipt": {
+          "checks": 41,
+          "closed_context": {
+            "actual": 172,
+            "expected": 172,
+            "handled": true,
+            "piano_enabled": false,
+            "track_enabled": true
+          },
+          "default_collisions": [],
+          "open_context": {
+            "actual": 268,
+            "expected": 268,
+            "handled": true,
+            "note_height_after": 17.5,
+            "note_height_before": 14.0,
+            "tracks_changed": false
+          },
+          "result": "passed",
+          "root": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Shortcut-Routes-ae5f90e8bdcc4cc990b67c45f9b6272e",
+          "scope": "actual native peer, shared key mapping in open/closed piano contexts, geometry and Save/Open; not OS key delivery, hardware or foreground capture qualification",
+          "ui_budget_ms": 5000
+        }
+      },
+      {
+        "test": "forma_native_window_focus",
+        "checks": 29,
+        "seconds": 3.81027,
+        "report": "evidence/U/window-focus-tests.json",
+        "report_sha256": "3aea058173896f66e797defc504444982032c94febeeb5bf03bd67ff129bb7a7",
+        "report_mtime_utc": "2026-10-16T04:18:01.917249+00:00",
+        "receipt": {
+          "checks": 29,
+          "result": "passed",
+          "scope": "production WorkspaceWindow and actual Edit/Undo/key map on native peers; physical startup requires desktop verification"
+        }
+      },
+      {
+        "test": "forma_native_transport_controls",
+        "checks": 17,
+        "seconds": 1.44045,
+        "report": "evidence/U/transport-tests.json",
+        "report_sha256": "0c982a09afd0d5a264e944a9bc9aec10551c1674bb095346f298da742a2b0719",
+        "report_mtime_utc": "2026-10-16T04:17:58.144776+00:00",
+        "receipt": {
+          "checks": 17,
+          "click_pcm": {
+            "block_size": 256,
+            "frames": 48000,
+            "left_peak": 0.45447924733161926,
+            "left_rms": 0.015402278862893581,
+            "right_peak": 0.45447924733161926,
+            "right_rms": 0.015402278862893581,
+            "sample_rate": 48000
+          },
+          "result": "passed",
+          "scope": "actual Tracktion Edit and click graph, recorder CountIn, UndoManager, session save/reopen and production GUI controls; CoreAudio hardware playback not tested",
+          "test": "U-P0-TRANSPORT-01"
+        }
+      }
+    ]
+  },
+  "desktop": {
+    "receipt": {
+      "checks": 17,
+      "file": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Keyboard-Desktop-03c73624ea484f83b7aadca0585ddb47/Keyboard-Desktop.tracktionedit",
+      "native_key_injection_in_fixture": false,
+      "result": "passed",
+      "root": "/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Keyboard-Desktop-03c73624ea484f83b7aadca0585ddb47",
+      "saved_sha256": "b045a3da10a048a87319b3389fee167238cf97babfac1d983680d54857f9ede0",
+      "scope": "external OS desktop gestures on owned native workspaces, actual command mapping and file reload; no physical audio, human listening or complete product claim",
+      "stage": "completed",
+      "stage_deadline_ms": 300000
+    },
+    "execution": {
+      "tested_commit": "f4595a608b4aa0dd04f3aade872055ebb81936ab",
+      "test_executable_sha256": "005398158454584c04b53609391292c359b0f9e898db09d3a15a0cff0b37cfa8",
+      "report_sha256": "fc1994753f15161f3ea0016bb11f942568a35c200f1eb304ec11790c8a2ffdee",
+      "input_route": "mcp__cua_repl OS desktop input, not direct peer key injection",
+      "observed_steps": [
+        "Ctrl+Shift+K opened settings and focused 搜索快捷键",
+        "typing Grid without clicking search filtered Grid / F4",
+        "native Ctrl+Shift+Cmd+F11 captured and applied",
+        "UI Undo restored F4; Redo restored custom chord",
+        "F2 selected Slip; custom chord selected Grid",
+        "first window closed; harness saved actual file and opened a new workspace",
+        "after file reopen F2 selected Slip; custom chord selected Grid",
+        "second window closed; harness validated history, file hash, original Undo and Redo"
+      ],
+      "original_user_session": {
+        "pid": 44913,
+        "project": "Warp Comp",
+        "observed_revision": 20,
+        "captured_candidate_cancelled": true,
+        "original_grid_binding_after_cancel": "F4",
+        "restarted": false
+      }
+    },
+    "source_difference_since_desktop_test": "Only two desktop test window captions changed from middle-dot to ASCII hyphen; production UI code unchanged. Subsequent window-focus fixture correction did not change this desktop harness."
+  },
+  "independent_saved_file": {
+    "sha256": "b045a3da10a048a87319b3389fee167238cf97babfac1d983680d54857f9ede0",
+    "grid_binding": [
+      {
+        "commandId": "74",
+        "description": "Grid 绝对网格",
+        "key": "ctrl + shift + command + F11"
+      }
+    ],
+    "edit_mode": "grid",
+    "history_cursor": 1,
+    "history_step_count": 1,
+    "tracks": 1
+  },
+  "build": {
+    "production_log": "build-v2-tracktion/keyboard-focus-ready-build.log",
+    "regression_confirm_log": "build-v2-tracktion/keyboard-regressions-confirm-build.log",
+    "focus_fixture_build_log": "build-v2-tracktion/keyboard-focus-fixture-build.log",
+    "observed_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "app": "build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app/Contents",
+    "executable_sha256": "ddf971ce5ba4b89658dcfab1962b0fcea9dc19c6d9420fd3fd3460344bcb6721",
+    "local_deep_strict_signature_verified": true,
+    "notarized": false
+  },
+  "retained_failures": [
+    {
+      "path": "build-v2-tracktion/keyboard-focus-ready.xml",
+      "reason": "New search-input test began in background; fixture now explicitly activates and waits actual foreground + own native-peer before typing. Original one-second capture deadline remains."
+    },
+    {
+      "path": "build-v2-tracktion/keyboard-focus-before-range-fixture.xml",
+      "reason": "3/4 first regression; stale separation range correctly opened Crossfade rather than per-clip Fade. Fixture now clears range through L1 and waits actual clip-header selection."
+    },
+    {
+      "path": "build-v2-tracktion/keyboard-desktop-harness-build.log",
+      "reason": "Initial harness compile errors corrected before desktop acceptance."
+    }
+  ],
+  "historical_environment_failure": "Old foreground=false/native-peer=false timeout did not recur: unchanged current baseline already passed 81 checks. Current passing qualification does not establish the historical timeout root cause.",
+  "unchanged_scope": [
+    "No SDK/RT changes, dependency version changes, new audio device session, service, certificate, DMG, tar or App copy.",
+    "Original user Forma PID44913 / Warp Comp was not restarted or replaced. Desktop candidate was cancelled; original Grid remained F4.",
+    "Performance A 15.84% > 15%, analysis timeout, RT SDK locks/allocations, physical P1 production/listening, Windows/video/surround/release remain unqualified; M2/M3 frozen, M4/M5 deferred."
+  ]
+}

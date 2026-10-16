@@ -1,3 +1,22 @@
+# 快捷键编辑器当前验证（2026-10-16）
+
+结论：打开快捷键面板后可直接搜索，按键捕获在实际前台/native peer/组件焦点就绪后开始；保存重开后的按键实际调用通过。当前 **4/4套、180项、7.90秒**，另有 **17项真实OS桌面操作检查**。仅关闭本环境的快捷键增量，不宣称完整P0/P1/产品或历史环境超时根因已证明。
+
+- **P0-KEYBOARD-FOCUS** → `src/v2/ui/KeyboardSettings.h/.cpp`，`tests/v2/KeyboardSettingsTests.cpp`、`KeyboardDesktopChecks.h`：面板显示后延后到实际可焦点时聚焦搜索，避免被toFront覆盖；捕获保持原1秒时限，检查Process、自己的native peer及实际组件焦点，不抢另一个窗口/子控件。隐藏、取消清掉待办。普通GUI测试先实际激活并等待前台，再通过native peer输入；初始background诊断保留。无新L1工程命令/权限/SDK/RT变更。
+- 当前四套：键位93、默认/上下文路由41、原生窗口焦点29、点击/预备拍/走带17。键位更改、添加/移除、冲突取消/重分配、过期会话/映射拒绝、本地键位Undo/Redo、实际命令ID解析与调用、L1保存冷重开已测；新报告先写running、失败写failed，避免旧成功JSON遮盖当前红项。
+- 外部桌面工具在自有原生窗口实际按CtrlShiftK→直接输入Grid→更改→CtrlShiftCmdF11→应用，界面Undo恢复F4/Redo恢复新键；F2切Slip、新键切Grid。关闭窗口后实际保存并新建Workspace冷开，再执行F2/新键；全程夹具不注入键或写映射。原工程Undo只撤轨、不撤键位，Redo恢复；17项/真实exit0。桌面测于f4595a6，之后该夹具仅改两处窗口标题的中点乱码，不扩大资格。
+- 独立Python读取真实`Keyboard-Desktop.tracktionedit`：SHA256 `b045a3da10a048a87319b3389fee167238cf97babfac1d983680d54857f9ede0`，JUCE十六进制commandId=74对应十进制116/Grid，按键`ctrl + shift + command + F11`，模式grid，1轨/原工程历史1步保持。键位Undo/Redo独立于工程历史；保存文件副作用不冒充Undo。
+- 保留失败：旧环境foreground=false/peer=false在当前未改代码基线已81项通过，不能把未复现旧故障写成已查明；新增搜索测试首次后台失败以真实激活前置修正，不放宽时限。首批回归3/4：分离后旧选区覆盖接缝，正确打开Crossfade，旧夹具却找单片段Fade；现经L1清范围、实际点击片段并等待选择回执后再测焦点，原Undo/Redo/媒体/其它窗口焦点断言保留，生产淡化行为未改。初次桌面夹具编译失败日志也保留。
+- 构建exit0及本地deep/strict验签通过；唯一App二进制SHA256 `ddf971ce5ba4b89658dcfab1962b0fcea9dc19c6d9420fd3fd3460344bcb6721`，非发行公证。用户PID44913/Warp Comp未重启或替换；原窗口仅捕获候选并取消，Grid仍F4。无新App副本/DMG/tar/证书/设备配置。
+
+证据：`evidence/U/keyboard-focus-qualification.json`；原始当前输出`build-v2-tracktion/keyboard-focus-final.xml/.log`、`keyboard-desktop-current.json/.log`、`keyboard-desktop-execution.json`；失败`keyboard-focus-ready.*`、`keyboard-focus-before-range-fixture.*`、`keyboard-desktop-harness-build.log`均保留。旧报告资格仅按本节明确范围更新。
+
+亲手试：先保存并退出当前运行的旧进程，再打开唯一`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；CtrlShiftK后直接输入Grid，选更改并按新组合键→应用，面板Undo/Redo；返回工程实际触发新键，CmdS后重开再试。自有演示文件`build-v2-tracktion/Keyboard-Desktop-03c73624ea484f83b7aadca0585ddb47/Keyboard-Desktop.tracktionedit`已保存上述新键，不含音频素材。
+
+下一项：利用已恢复的桌面连接，在独立工程实机验收Loop→Punch→Take/Comp→交叉淡化→导出，核对原Undo/Redo、保存重开与快捷键；先检查可用真实输入，输入/听评不以hosted源代替。性能A15.84%>15%、分析超时、其它读取能力全量、RT SDK锁/分配、硬件耐久、Windows/视频/环绕/发行仍未完成；M2/M3冻结，M4/M5暂缓，完整架构范围保持。
+
+以下为历史批次，当前资格以上述范围与NEXT_STEPS.md为准。
+
 # 关联 Comp 共享自动化当前验证（2026-10-16）
 
 结论：录得的多轨 MIDI Comp 已与实际音量/EQ曲线共同验证整组移动、跨轨迁移、原历史、冷重开与原生GUI；同时修复自动化读数造成的迁移预览误失效，以及新建轨道仍绑定旧选轨。最终 **24/24 套、19057 项通过，342.36秒**。这是所列P1增量，不是完整产品、实体输入/听评或全插件/RT资格。
