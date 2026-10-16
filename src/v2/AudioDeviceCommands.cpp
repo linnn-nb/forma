@@ -281,6 +281,7 @@ Json Commands::audioDeviceControl(const Json& args)
         audioConfiguration["actual"] = before;
         audioConfiguration["revision"] = revision;
         audioConfiguration["configuration_ms"] = juce::Time::getMillisecondCounterHiRes() - began;
+        invalidateFacts(); // A new receipt does not advance Edit's revision.
         return audioConfiguration;
     }
     closePluginEditors(true);
@@ -417,6 +418,7 @@ void Commands::finishAudioConfiguration()
                 restoreInputAssignments();
                 synchroniseExternalParameters();
                 audioConfiguration["graph_prepared"] = true;
+                invalidateFacts();
                 return;
             }
             synchroniseExternalParameters();
@@ -447,6 +449,9 @@ void Commands::finishAudioConfiguration()
     audioConfiguration["actual"] = setupFacts(manager);
     audioConfiguration["engine_format"] = {{"sample_rate", dm.getSampleRate()}, {"buffer_frames", dm.getBlockSize()}};
     audioConfiguration["preparation_ms"] = now - audioConfigurationStarted;
+    // Terminal readiness is independent of Edit's ValueTree. Notify the GUI
+    // and invalidate warm preparing/readiness facts without another revision.
+    invalidateFacts();
     if (recordingCapture.is_null() &&
         (midiConfiguration.is_null() || midiConfiguration.value("state", std::string{}) != "requested"))
         stopTimer();
