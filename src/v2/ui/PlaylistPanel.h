@@ -3,6 +3,7 @@
 #include "Waveforms.h"
 #include "PanelTextEditor.h"
 #include "ClipHeader.h"
+#include "ShortcutKeys.h"
 namespace ndaw::desktop
 {
 class PlaylistPanel final : public juce::Component
@@ -897,7 +898,8 @@ private:
                 const int command = key == juce::KeyPress::escapeKey ? 524
                                     : key == juce::KeyPress::returnKey
                                         ? enterCommand
-                                        : manager->getKeyMappings()->findCommandForKeyPress(key);
+                                        : manager->getKeyMappings()->findCommandForKeyPress(
+                                              shortcutKey(key, *manager->getKeyMappings()));
                 if ((command >= 515 && command <= 537) || command == 580)
                 {
                     manager->invokeDirectly(command, false);

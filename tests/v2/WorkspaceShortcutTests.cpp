@@ -80,7 +80,6 @@ void persistMap(Workspace& w, Commands& c)
             if (!xml)
                 return false;
             xml->removeAttribute("formaCommands");
-            xml->removeAttribute("formaNativeShiftKeys");
             return xml->toString() == w.uiCommands().getKeyMappings()->createXml(false)->toString();
         },
         "actual map notification reaches L1 before save");

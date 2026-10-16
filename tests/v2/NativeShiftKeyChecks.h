@@ -3,91 +3,61 @@ namespace
 {
 void qualifyNativeShiftKeys(Workspace& workspace, Commands& commands, const juce::File& root)
 {
-#if JUCE_MAC
     auto* mappings = workspace.uiCommands().getKeyMappings();
     constexpr int three =
         juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::shiftModifier | juce::ModifierKeys::altModifier;
-    for (const auto [id, character] : std::vector<std::pair<int, int>>{{525, '!'},
-                                                                       {526, '@'},
-                                                                       {527, '#'},
-                                                                       {528, '$'},
-                                                                       {529, '%'},
-                                                                       {530, '^'},
-                                                                       {531, '&'},
-                                                                       {532, '*'},
-                                                                       {533, '('},
-                                                                       {534, '<'},
-                                                                       {535, '>'},
-                                                                       {536, ')'}})
-        check(mappings->findCommandForKeyPress(juce::KeyPress(character, three, 0)) == id,
-              "actual Cocoa shifted character resolves to its intended Playlist action");
-    const auto tracks = commands.query()["tracks"], history = commands.query()["history"];
-    const auto snapshot = [&]
+    // Pure resolver checks consume the raw/base-key protocol, not invented native
+    // events. Real Cocoa translation is separately exercised through OS input.
+    for (const auto [id, raw, base] : std::vector<std::tuple<int, int, int>>{{525, '!', '1'},
+                                                                             {526, '@', '2'},
+                                                                             {527, '#', '3'},
+                                                                             {528, 0xa5, '4'},
+                                                                             {529, '%', '5'},
+                                                                             {530, '^', '6'},
+                                                                             {531, '&', '7'},
+                                                                             {532, '*', '8'},
+                                                                             {533, '(', '9'},
+                                                                             {534, '<', ','},
+                                                                             {535, '>', '.'},
+                                                                             {536, ')', '0'}})
     {
-        auto xml = mappings->createXml(false);
-        juce::StringArray ids;
-        for (int i = 0; i < workspace.uiCommands().getNumCommands(); ++i)
-            ids.add(juce::String(workspace.uiCommands().getCommandForIndex(i)->commandID));
-        xml->setAttribute("formaCommands", ids.joinIntoString(","));
-        return xml;
-    };
-    auto initial = snapshot();
-    initial->setAttribute("formaNativeShiftKeys", 1);
-    const juce::KeyPress old('8', three, 0), actual('*', three, 0);
-    const juce::KeyPress custom(juce::KeyPress::F11Key, juce::ModifierKeys::ctrlModifier, 0);
-    mappings->clearAllKeyPresses(532);
-    mappings->addKeyPress(532, old);
-    mappings->clearAllKeyPresses(533);
-    mappings->addKeyPress(533, custom);
-    mappings->clearAllKeyPresses(536);
-    mappings->clearAllKeyPresses(525);
-    mappings->addKeyPress(525, juce::KeyPress('1', three, 0));
-    mappings->addKeyPress(100, juce::KeyPress('!', three, 0));
-    auto legacy = snapshot(); // Intentionally predates the native-character marker.
-    commands.updateUiState({{"keymap_xml", legacy->toString().toStdString()}}, commands.sessionToken());
-    const auto saved = root.getChildFile("Legacy-Native-Shift.tracktionedit");
+        const auto key = resolveShortcutKey(juce::KeyPress(raw, three, 0), *mappings, base);
+        check(mappings->findCommandForKeyPress(key) == id,
+              "layout base-key fallback resolves the intended registered Playlist action");
+    }
+    const auto before = commands.query();
+    const juce::KeyPress symbol('*', three, 0), digit('8', three, 0);
+    const auto original = mappings->getKeyPressesAssignedToCommand(100);
+    mappings->addKeyPress(100, symbol);
+    check(resolveShortcutKey(symbol, *mappings, '8') == symbol &&
+              mappings->findCommandForKeyPress(resolveShortcutKey(symbol, *mappings, '8')) == 100,
+          "an existing literal symbol binding retains priority over default digit fallback");
+    check(resolveShortcutKey(symbol, *mappings, 0) == symbol,
+          "absent native layout evidence cannot invent a different key identity");
+    persistMap(workspace, commands);
+    const auto saved = root.getChildFile("Native-Shortcut-Identity.tracktionedit");
     commands.saveAs(saved);
     workspace.openSession(saved);
-    check(mappings->findCommandForKeyPress(actual) == 532 && !mappings->containsMapping(532, old),
-          "real Save/Open upgrades an exact legacy digit default to the actual Cocoa character");
-    check(mappings->getKeyPressesAssignedToCommand(533).size() == 1 && mappings->containsMapping(533, custom) &&
-              mappings->getKeyPressesAssignedToCommand(536).isEmpty(),
-          "legacy migration preserves custom and explicitly unbound audition keys");
-    check(mappings->containsMapping(525, juce::KeyPress('1', three, 0)) &&
-              mappings->findCommandForKeyPress(juce::KeyPress('!', three, 0)) == 100,
-          "legacy migration cannot steal an existing custom command binding");
-    persistMap(workspace, commands);
-    auto migrated = juce::parseXML(text(commands.uiState()["keymap_xml"].get<std::string>()));
-    check(migrated && migrated->getIntAttribute("formaNativeShiftKeys") == 1,
-          "normalized native mapping carries its marker in the actual saved UI state");
-    mappings->clearAllKeyPresses(532);
-    mappings->addKeyPress(532, old);
-    auto explicitMap = snapshot();
-    explicitMap->setAttribute("formaNativeShiftKeys", 1);
-    commands.updateUiState({{"keymap_xml", explicitMap->toString().toStdString()}}, commands.sessionToken());
-    const auto literal = root.getChildFile("Explicit-Native-Shift.tracktionedit");
-    commands.saveAs(literal);
-    workspace.openSession(literal);
-    check(mappings->containsMapping(532, old) && !mappings->containsMapping(532, actual),
-          "a marked explicit literal binding is not silently rewritten on reopen");
-    commands.updateUiState({{"keymap_xml", initial->toString().toStdString()}}, commands.sessionToken());
-    const auto restored = root.getChildFile("Restored-Native-Shift.tracktionedit");
-    commands.saveAs(restored);
-    workspace.openSession(restored);
+    check(mappings->containsMapping(100, symbol) && mappings->containsMapping(532, digit),
+          "real Save/Open preserves both explicit symbol and original default binding bytes");
+    check(mappings->findCommandForKeyPress(resolveShortcutKey(symbol, *mappings, '8')) == 100,
+          "reopened literal custom binding still wins without silent migration or reassignment");
+    mappings->removeKeyPress(100, mappings->getKeyPressesAssignedToCommand(100).indexOf(symbol));
+    check(mappings->getKeyPressesAssignedToCommand(100) == original &&
+              mappings->findCommandForKeyPress(resolveShortcutKey(symbol, *mappings, '8')) == 532,
+          "removing only the literal custom key restores the original layout-derived default");
     const auto after = commands.query();
-    result["native_shift_history"] = {{"before", history}, {"after", after["history"]}};
-    check(after["tracks"] == tracks && mappings->findCommandForKeyPress(actual) == 532,
-          "all mapping migrations preserve complete engine facts and restore the real native default");
-    check(after["history"]["undo"] == history["undo"] && after["history"]["redo"] == history["redo"] &&
-              after["history"]["retention"]["retained_steps"] == history["retention"]["retained_steps"] &&
-              after["history"]["retention"]["discarded_steps"] == history["retention"]["discarded_steps"],
-          "mapping migration preserves original Plan entries and retained history (encoded storage may change)");
-    commands.undo(history["undo"]["plan_id"]);
-    check(commands.query()["tracks"].empty() && mappings->findCommandForKeyPress(actual) == 532,
-          "original project Undo still removes its tracks and leaves native shortcut preferences intact");
+    result["native_shift_history"] = {{"before", before["history"]}, {"after", after["history"]}};
+    check(after["tracks"] == before["tracks"] && after["history"]["undo"] == before["history"]["undo"] &&
+              after["history"]["redo"] == before["history"]["redo"] &&
+              after["history"]["retention"]["retained_steps"] == before["history"]["retention"]["retained_steps"],
+          "native key preferences preserve complete engine facts and original Plan history");
+    commands.undo(before["history"]["undo"]["plan_id"]);
+    check(commands.query()["tracks"].empty() && mappings->containsMapping(532, digit),
+          "original project Undo changes its tracks and leaves shortcut preferences intact");
     commands.redo();
-    check(commands.query()["tracks"] == tracks && commands.query()["history"]["undo"] == history["undo"],
-          "original project Redo restores all real track facts and original Plan after shortcut migration");
-#endif
+    check(commands.query()["tracks"] == before["tracks"] &&
+              commands.query()["history"]["undo"] == before["history"]["undo"],
+          "original Redo restores the same real track facts and Plan after key save/reopen");
 }
 } // namespace

@@ -1,5 +1,4 @@
 #include "Workspace.h"
-#include <string_view>
 namespace ndaw::desktop
 {
 namespace
@@ -12,23 +11,6 @@ struct Entry
     int key = 0;
     int modifiers = 0;
 };
-int defaultKeyCode(int key, int modifiers)
-{
-#if JUCE_MAC
-    // JUCE's Cocoa peer uses charactersIgnoringModifiers, which retains Shift.
-    // Encode printable defaults as the actual shifted US/ABC characters, just
-    // as the native key editor captures them. Custom bindings remain literal.
-    if ((modifiers & juce::ModifierKeys::shiftModifier) != 0)
-    {
-        constexpr std::string_view plain = "0123456789,.[]";
-        constexpr std::string_view shifted = ")!@#$%^&*(<>{}";
-        const auto index = plain.find(char(key));
-        if (key > 0 && key < 128 && index != std::string_view::npos)
-            return shifted[index];
-    }
-#endif
-    return key;
-}
 const std::vector<Entry>& entries()
 {
     constexpr int cmd = juce::ModifierKeys::commandModifier, shift = juce::ModifierKeys::shiftModifier;
@@ -558,7 +540,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
         {
             info.setInfo(text(e.title), text(e.title), text(e.category), 0);
             if (e.key)
-                info.addDefaultKeypress(defaultKeyCode(e.key, e.modifiers), e.modifiers);
+                info.addDefaultKeypress(e.key, e.modifiers);
             if (id == editCommand::smart)
                 info.addDefaultKeypress('7', juce::ModifierKeys::commandModifier);
             if (id == editCommand::nudgeBack || id == editCommand::nudgeForward)
@@ -1838,7 +1820,6 @@ std::unique_ptr<juce::XmlElement> Workspace::shortcutSnapshot()
         for (const auto& entry : entries())
             known.add(juce::String(entry.id));
         xml->setAttribute("formaCommands", known.joinIntoString(","));
-        xml->setAttribute("formaNativeShiftKeys", 1);
     }
     return xml;
 }
@@ -1897,21 +1878,6 @@ bool Workspace::restoreShortcuts(const juce::XmlElement& xml)
                     mappings->addKeyPress(secondary, replacement);
         }
     }
-    if (!xml.hasAttribute("formaNativeShiftKeys"))
-        for (const auto& entry : entries())
-        {
-            const int native = defaultKeyCode(entry.key, entry.modifiers);
-            const juce::KeyPress old(entry.key, entry.modifiers, 0), replacement(native, entry.modifiers, 0);
-            const auto keys = mappings->getKeyPressesAssignedToCommand(entry.id);
-            // Only replace a single exact old default, never an explicit unbind,
-            // extra/custom binding or a key already owned by another command.
-            if (native != entry.key && keys.size() == 1 && keys[0] == old &&
-                mappings->findCommandForKeyPress(replacement) == 0)
-            {
-                mappings->removeKeyPress(entry.id, 0);
-                mappings->addKeyPress(entry.id, replacement);
-            }
-        }
     return true;
 }
 void Workspace::changeListenerCallback(juce::ChangeBroadcaster* source)

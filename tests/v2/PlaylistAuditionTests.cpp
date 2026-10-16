@@ -370,12 +370,8 @@ int main(int argc, char** argv)
         check(w.uiCommands().invokeDirectly(80, false) && !c.playlistAuditionStatus().value("active", false),
               "global Space command stops an active Playlist audition");
         const auto key = juce::KeyPress(
-#if JUCE_MAC
-            '*',
-#else
-            '8',
-#endif
-            juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier, 0);
+            '8', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier,
+            0);
         check(w.uiCommands().getKeyMappings()->findCommandForKeyPress(key) == 532,
               "source audition has an actual remappable shortcut");
         for (int id = 532; id <= 537; ++id)

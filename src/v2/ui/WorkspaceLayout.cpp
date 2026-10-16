@@ -434,7 +434,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return true;
     if (key == juce::KeyPress::escapeKey && editArea.cancelClipGesture())
         return true;
-    return commandManager.getKeyMappings()->keyPressed(key, this);
+    auto& mappings = *commandManager.getKeyMappings();
+    return mappings.keyPressed(shortcutKey(key, mappings), this);
 }
 
 void Workspace::paint(juce::Graphics& g)

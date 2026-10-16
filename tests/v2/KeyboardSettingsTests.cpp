@@ -228,7 +228,6 @@ int runSuite(const juce::StringArray& args)
                 if (!xml)
                     return false;
                 xml->removeAttribute("formaCommands");
-                xml->removeAttribute("formaNativeShiftKeys");
                 return xml->toString() == keys->createXml(false)->toString();
             },
             "key map ready before native save");

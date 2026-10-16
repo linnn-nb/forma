@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "KeyboardSettings.h"
+#include "ShortcutKeys.h"
 namespace ndaw::desktop
 {
 KeyboardSettings::KeyboardSettings(juce::ApplicationCommandManager& m, std::function<void()> close,
@@ -332,15 +333,15 @@ bool KeyboardSettings::keyPressed(const juce::KeyPress& key)
     }
     if (capturing)
     {
-        candidate = key;
-        const auto conflict = mappings.findCommandForKeyPress(key);
-        auto message = text("按键：") + key.getTextDescription();
+        candidate = shortcutKey(key, mappings);
+        const auto conflict = mappings.findCommandForKeyPress(candidate);
+        auto message = text("按键：") + candidate.getTextDescription();
         if (conflict != 0 && conflict != selected)
             message += text("\n\n已分配给：") + manager.getNameOfCommand(conflict) +
                        text("\n重新分配将移除该操作的此按键。其他绑定保留。");
         captureMessage.setText(message, juce::dontSendNotification);
         accept.setButtonText(text(conflict != 0 && conflict != selected ? "重新分配" : "应用"));
-        accept.setEnabled(key.isValid());
+        accept.setEnabled(candidate.isValid());
         return true;
     }
     // Panel keys cannot edit the session or start transport.
