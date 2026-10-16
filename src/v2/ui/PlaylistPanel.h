@@ -88,7 +88,7 @@ public:
         }
         buttons.at(521)->setTooltip(text("将尚未登记的完整源片段登记为 Take；Loop/Punch Take 已登记，无需重复。"));
         buttons.at(580)->setTooltip(
-            text("只提升候选清单所选段到当前 TARGET；原 Take 与目标区间外内容保留。多轨关联候选须整组处理。"));
+            text("提升所选区间到 TARGET；多轨候选同时提升各轨匹配的同一区间，原 Take 与区间外内容保留。"));
         status.setComponentID("playlist.status");
     }
     void connect(juce::ApplicationCommandManager& manager)
@@ -213,9 +213,18 @@ public:
             const int row = draftList.getSelectedRow();
             if (row < 0 || row >= int(draft.size()) || draft[size_t(row)]["source"] == data["target"])
                 return false;
+            std::set<std::string> members, selectedMembers;
+            const auto& selected = draft[size_t(row)];
             for (const auto& segment : draft)
-                if (segment["track"] != track)
-                    return false; // Never partially accept a multi-track candidate.
+            {
+                members.insert(segment["track"].get<std::string>());
+                if (segment["start_samples"] == selected["start_samples"] &&
+                    segment["end_samples"] == selected["end_samples"])
+                    if (!selectedMembers.insert(segment["track"].get<std::string>()).second)
+                        return false;
+            }
+            if (members.size() > 1)
+                return members == selectedMembers;
             for (const auto& list : data["items"])
                 if (list["id"] == data["target"])
                     return !list.value("locked", false) && list.value("linked_set", std::string{}).empty();
@@ -341,8 +350,6 @@ public:
                 std::set<std::string> members;
                 for (const auto& s : draft)
                     members.insert(s["track"].get<std::string>());
-                if (data.value("midi", false) && members.size() > 1)
-                    throw std::runtime_error("MIDI候选请在同一轨道选取；多轨关联Comp待完成");
                 cmd = members.size() > 1 ? "playlist.comp.linked.create" : "playlist.comp.create";
                 a["track"] = draft[0]["track"];
                 a["name"] = candidateName.getText().toStdString();
@@ -395,12 +402,28 @@ public:
             if (id == 580)
             {
                 const auto segment = draft[size_t(draftList.getSelectedRow())];
-                cmd = "playlist.promote";
-                a.update({{"source", segment["source"]},
-                          {"target", data["target"]},
-                          {"clip", segment["clip"]},
-                          {"start_samples", segment["start_samples"]},
-                          {"end_samples", segment["end_samples"]}});
+                std::set<std::string> members;
+                for (const auto& entry : draft)
+                    members.insert(entry["track"].get<std::string>());
+                if (members.size() > 1)
+                {
+                    cmd = "playlist.comp.linked.promote";
+                    a["track"] = draft[0]["track"];
+                    a["segments"] = Json::array();
+                    for (const auto& entry : draft)
+                        if (entry["start_samples"] == segment["start_samples"] &&
+                            entry["end_samples"] == segment["end_samples"])
+                            a["segments"].push_back(entry);
+                }
+                else
+                {
+                    cmd = "playlist.promote";
+                    a.update({{"source", segment["source"]},
+                              {"target", data["target"]},
+                              {"clip", segment["clip"]},
+                              {"start_samples", segment["start_samples"]},
+                              {"end_samples", segment["end_samples"]}});
+                }
             }
             if (id == 521)
             {
@@ -425,7 +448,7 @@ public:
                 status.setText(text("候选已创建 · 原播放和目标保留 · 整份候选一次 Undo。"), juce::dontSendNotification);
             }
             if (id == 580)
-                status.setText(text("选段已提升到 TARGET · 原 Take 保留 · 可一次撤销；未提交草稿已清空。"),
+                status.setText(text("所选区间已提升到各轨 TARGET · 原 Take 保留 · 整笔可一次撤销；草稿已清空。"),
                                juce::dontSendNotification);
             if (id == 529 || id == 530)
                 status.setText(text(id == 529 ? "整组已恢复原播放 · 可一次撤销" : "整组关联已解除 · 音频不变 · 可撤销"),

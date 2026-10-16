@@ -722,6 +722,21 @@ Json Commands::makePlanImpl(const std::string& actor, Json ops, const Json& shuf
         }
         else if (cmd.starts_with("playlist."))
         {
+            if (cmd == "playlist.comp.linked.promote")
+            {
+                require(a.at("segments").is_array() && a.at("segments").size() >= 2 && a.at("segments").size() <= 64,
+                        "Linked promotion requires 2..64 explicit segments");
+                Json targets = Json::object();
+                for (const auto& segment : a.at("segments"))
+                {
+                    const std::string id = segment.at("track");
+                    auto* owner = track(id);
+                    require(owner != nullptr, "Linked promotion track no longer exists");
+                    targets[id] = playlistQuery(*owner).at("target");
+                }
+                require(!a.contains("targets") || a.at("targets") == targets, "Linked TARGET changed since planning");
+                a["targets"] = std::move(targets);
+            }
             const auto fingerprint =
                 cmd.starts_with("playlist.crossfade") ? crossfadeMediaFingerprint(a) : playlistMediaFingerprint(a);
             if (a.contains("media_fingerprint"))

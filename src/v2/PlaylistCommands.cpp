@@ -64,10 +64,17 @@ void validatePlaylists(te::Edit& edit)
             for (auto [member, candidate] : members)
             {
                 require(tracks.insert(member).second, "duplicate linked Comp member track");
-                require(int(candidate.getProperty("linked_schema")) == 1 &&
+                const int schema = candidate.getProperty("linked_schema");
+                require((schema == 1 || schema == 2) && schema == int(list.getProperty("linked_schema")) &&
                             Json::parse(value(candidate, "linked_members")) == memberIDs,
                         "unsupported linked Comp schema or missing member");
                 auto lists = member->state.getChildWithName("NDAW_PLAYLISTS");
+                require(schema != 2 || int(lists.getProperty("midi_link_schema")) == 1,
+                        "MIDI linked Comp reader marker is missing");
+                for (auto clip : playlist_links::active(*member) == candidate ? member->state : candidate)
+                    if (te::Clip::isClipState(clip))
+                        require(schema == 2 ? clip.hasType(te::IDs::MIDICLIP) : clip.hasType(te::IDs::AUDIOCLIP),
+                                "linked Comp source family disagrees with its schema");
                 auto original = findList(lists, value(candidate, "restore_playlist"));
                 require(original.isValid() && original != candidate && value(original, "linked_set").empty(),
                         "linked Comp original Playlist is missing or linked");
@@ -77,7 +84,8 @@ void validatePlaylists(te::Edit& edit)
                 active += playlist_links::active(*member) == candidate;
                 Json actual = Json::array();
                 for (auto clip : geometry)
-                    actual.push_back({clip["start"], clip["length"]});
+                    actual.push_back(schema == 2 ? Json::array({clip.at("start_samples"), clip.at("length_samples")})
+                                                 : Json::array({clip.at("start"), clip.at("length")}));
                 std::sort(actual.begin(), actual.end());
                 if (ranges.is_null())
                     ranges = actual;

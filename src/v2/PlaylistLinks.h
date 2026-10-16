@@ -55,7 +55,18 @@ inline Json layout(te::AudioTrack& t, juce::ValueTree list)
     const bool playing = active(t) == list;
     auto append = [&](juce::ValueTree c)
     {
-        if (te::Clip::isClipState(c))
+        if (te::Clip::isClipState(c) && int(list.getProperty("linked_schema", 1)) == 2)
+        {
+            const auto first = std::llround(double(c["start"]) * 48000.);
+            const auto end = std::llround((double(c["start"]) + double(c["length"])) * 48000.);
+            result.push_back({{"id", value(c, "id")},
+                              {"kind", c.getType().toString().toStdString()},
+                              {"start_samples", first},
+                              {"length_samples", end - first},
+                              {"source_offset_samples", std::llround(double(c["offset"]) * 48000.)},
+                              {"time_basis", int(c.getProperty("sync", 0))}});
+        }
+        else if (te::Clip::isClipState(c))
             result.push_back({{"id", value(c, "id")},
                               {"source", value(c, "source")},
                               {"start", double(c.getProperty("start"))},

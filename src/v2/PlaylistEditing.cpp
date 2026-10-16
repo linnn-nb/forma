@@ -102,7 +102,11 @@ Json linkedCandidates(const Json& a)
                   [](const Json& a, const Json& b) { return a["start_samples"] < b["start_samples"]; });
         Json ranges = Json::array();
         for (const auto& segment : segments)
+        {
+            if (!ranges.empty())
+                require(ranges.back()[1] <= segment["start_samples"], "Linked Comp selected ranges overlap");
             ranges.push_back({segment["start_samples"], segment["end_samples"]});
+        }
         if (reference.is_null())
             reference = ranges;
         require(reference == ranges, "Every linked track must have the same selected sample ranges");
@@ -192,6 +196,40 @@ juce::ValueTree sliced(te::Edit& edit, juce::ValueTree c, int64_t begin, int64_t
         copy.setProperty("offset", double(c.getProperty("offset")) + (begin - start) / 48000., nullptr);
     }
     return copy;
+}
+Json promotionChange(te::Edit& edit, te::AudioTrack& track, const Json& a, bool linked)
+{
+    juce::ValueTree source;
+    for (auto c : clipsFor(track, a.at("source")))
+        if (str(c, "id") == a.at("clip").get<std::string>())
+            source = c;
+    require(source.isValid(), "source clip no longer exists in Playlist");
+    qualifySlice(edit, source);
+    require(a.at("source") != a.at("target"), "source and target Playlists must differ");
+    auto target = listFor(track, a.at("target"));
+    require(target.isValid(), "target Playlist no longer exists");
+    require(!bool(target.getProperty("locked", false)) && (linked || str(target, "linked_set").empty()),
+            "target Playlist is locked or linked; detach before editing");
+    const int64_t begin = a.at("start_samples"), end = a.at("end_samples");
+    require(begin >= frame(source, "start") && end > begin && end <= frame(source, "start") + frame(source, "length"),
+            "selection must lie inside one source clip");
+    Json affected = Json::array();
+    for (auto c : clipsFor(track, a.at("target")))
+        if (frame(c, "start") < end && frame(c, "start") + frame(c, "length") > begin)
+        {
+            require(!bool(c.getProperty("ndaw_locked", false)), "Comp intersects a locked target clip");
+            qualifySlice(edit, c);
+            affected.push_back(str(c, "id"));
+        }
+    return {{"command", "playlist.promote"},
+            {"track", a.at("track")},
+            {"source", a.at("source")},
+            {"target", a.at("target")},
+            {"source_clip", a.at("clip")},
+            {"start_samples", begin},
+            {"end_samples", end},
+            {"replaced_clips", affected},
+            {"outside_range", "preserved"}};
 }
 } // namespace
 std::pair<juce::ValueTree, Json> Commands::preparePlaylistAudition(const Json& args) const
@@ -382,6 +420,16 @@ void Commands::registerPlaylistCommands(Json& r)
              {"required", {"track", "source", "clip", "start_samples", "end_samples"}},
              {"additionalProperties", false}}}}}},
         {"name", "segments"});
+    const auto linkedSegments = r.back()["schema"]["properties"]["segments"];
+    add("playlist.comp.linked.promote",
+        {{"segments", linkedSegments},
+         {"targets",
+          {{"type", "object"},
+           {"minProperties", 2},
+           {"maxProperties", 64},
+           {"additionalProperties", {{"type", "string"}}}}}},
+        {"segments", "targets"});
+    r.back()["test"] = "P1-MIDI-LINKED-COMP-01";
     for (auto cmd : {"playlist.comp.restore", "playlist.comp.detach"})
         add(cmd, {{"playlist", string}}, {"playlist"});
 }
@@ -521,57 +569,62 @@ std::string Commands::playlistMediaFingerprint(const Json& a) const
     auto* t = track(a.at("track"));
     require(t && (trackType(*t) == "audio" || trackType(*t) == "midi" || trackType(*t) == "instrument"),
             "Playlist requires an audio, MIDI or instrument track");
-    if (trackType(*t) != "audio")
+    // One sealed footprint for every source, TARGET and linked playback partner.
+    std::map<std::string, Json> clips;
+    std::map<std::string, std::string> audioHashes;
+    bool hasMidi = false;
+    auto append = [&](te::AudioTrack& owner, const std::string& list)
     {
-        Json content = Json::array();
-        for (const char* key : {"playlist", "source", "target"})
-            if (a.contains(key))
-                for (auto clip : clipsFor(*t, a.at(key)))
-                    content.push_back({str(clip, "id"), midi_playlist::hash(clip)});
-        if (a.contains("segments"))
-            for (const auto& segment : candidateSegments(a))
-                for (auto clip : clipsFor(*t, segment.at("source")))
-                    if (str(clip, "id") == segment.at("clip").get<std::string>())
-                        content.push_back({str(clip, "id"), midi_playlist::hash(clip)});
-        content.push_back({"tempo", midi_playlist::hash(edit->tempoSequence.getState())});
-        const auto bytes = content.dump();
-        return juce::SHA256(bytes.data(), bytes.size()).toHexString().toStdString();
-    }
-    std::set<std::string> paths;
+        for (auto c : clipsFor(owner, list))
+        {
+            Json evidence;
+            if (c.hasType(te::IDs::MIDICLIP))
+            {
+                hasMidi = true;
+                evidence = {{"midi_state", midi_playlist::hash(c)}};
+            }
+            else
+            {
+                auto file = media(*edit, c);
+                const auto path = file.getFullPathName().toStdString();
+                if (!audioHashes.contains(path))
+                    audioHashes[path] = file.existsAsFile() ? mediaHash(file) : "missing";
+                evidence = {{"path", path}, {"media_hash", audioHashes.at(path)}};
+            }
+            const auto key = owner.itemID.toString().toStdString() + ":" + list + ":" + str(c, "id");
+            clips[key] = std::move(evidence);
+        }
+    };
     for (const char* key : {"playlist", "source", "target"})
         if (a.contains(key))
-            for (auto c : clipsFor(*t, a[key]))
-                paths.insert(media(*edit, c).getFullPathName().toStdString());
+            append(*t, a.at(key));
     if (a.contains("playlist"))
     {
-        for (auto list : {listFor(*t, a["playlist"]), playlist_links::active(*t)})
+        auto requested = listFor(*t, a.at("playlist"));
+        for (auto list : {requested, playlist_links::active(*t)})
             for (auto [member, linked] : playlist_links::members(*edit, list))
                 for (const char* key : {"id", "restore_playlist"})
-                    for (auto c : clipsFor(*member, str(linked, key)))
-                        paths.insert(media(*edit, c).getFullPathName().toStdString());
-    }
-    if (a.contains("playlist"))
+                    append(*member, str(linked, key));
         for (bool restoring : {false, true})
-            for (auto [member, destination] :
-                 playlist_links::playback(*edit, *t, listFor(*t, a["playlist"]), restoring))
-                for (auto c : clipsFor(*member, destination))
-                    paths.insert(media(*edit, c).getFullPathName().toStdString());
-    if (a.contains("segments"))
-        for (const auto& s : candidateSegments(a, !a["segments"].empty() && a["segments"][0].contains("track")))
-        {
-            auto* member = s.contains("track") ? track(s["track"]) : t;
-            require(member && trackType(*member) == "audio", "Linked Comp track no longer exists");
-            for (auto c : clipsFor(*member, s["source"]))
-                if (str(c, "id") == s["clip"].get<std::string>())
-                    paths.insert(media(*edit, c).getFullPathName().toStdString());
-        }
-    Json hashes = Json::array();
-    for (const auto& path : paths)
-    {
-        juce::File f{juce::String(path)};
-        hashes.push_back({path, f.existsAsFile() ? mediaHash(f) : "missing"});
+            for (auto [member, destination] : playlist_links::playback(*edit, *t, requested, restoring))
+                append(*member, destination);
     }
-    const auto bytes = hashes.dump();
+    if (a.contains("segments"))
+        for (const auto& segment :
+             candidateSegments(a, !a.at("segments").empty() && a.at("segments")[0].contains("track")))
+        {
+            auto* owner = segment.contains("track") ? track(segment.at("track")) : t;
+            require(owner && (trackType(*owner) == "audio" || trackType(*owner) == "midi" ||
+                              trackType(*owner) == "instrument"),
+                    "Linked Comp track no longer exists");
+            append(*owner, segment.at("source"));
+            if (a.contains("targets"))
+                append(*owner, a.at("targets").at(owner->itemID.toString().toStdString()));
+        }
+    Json footprint = {{"clips", clips}};
+    if (hasMidi)
+        footprint["tempo"] = midi_playlist::hash(edit->tempoSequence.getState());
+    const auto bytes = footprint.dump();
     return juce::SHA256(bytes.data(), bytes.size()).toHexString().toStdString();
 }
 Json Commands::validatePlaylistPlan(const Json& ops) const
@@ -641,6 +694,11 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         const auto& a = op["args"];
         if (!cmd.starts_with("playlist."))
         {
+            if (cmd.starts_with("tempo."))
+                for (auto* owner : te::getAudioTracks(*edit))
+                    for (auto list : owner->state.getChildWithName("NDAW_PLAYLISTS"))
+                        require(int(list.getProperty("linked_schema", 1)) != 2,
+                                "Detach MIDI linked Comp before changing Tempo");
             if (cmd.starts_with("midi."))
             {
                 if (a.contains("track"))
@@ -675,10 +733,6 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
         auto* t = track(a["track"]);
         require(t && (trackType(*t) == "audio" || trackType(*t) == "midi" || trackType(*t) == "instrument"),
                 "Playlist requires an audio, MIDI or instrument track");
-        if (trackType(*t) != "audio")
-            require(cmd != "playlist.comp.linked.create" && cmd != "playlist.comp.restore" &&
-                        cmd != "playlist.comp.detach",
-                    "Linked multi-track MIDI Comp requires separate qualification");
         require(a.at("media_fingerprint") == playlistMediaFingerprint(a), "Playlist media changed since planning");
         auto existing = [&](const char* key)
         {
@@ -697,8 +751,11 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
             for (auto [id, segments] : grouped.items())
             {
                 auto* member = track(id);
-                require(member && trackType(*member) == "audio" && !activePlaylistLocked(*member),
-                        "Linked Comp member must be unlocked audio");
+                require(member && (trackType(*member) == "audio") == (trackType(*t) == "audio") &&
+                            (trackType(*member) == "audio" || trackType(*member) == "midi" ||
+                             trackType(*member) == "instrument") &&
+                            !activePlaylistLocked(*member),
+                        "Linked Comp members must be unlocked tracks of the same audio or MIDI family");
                 for (const auto& segment : segments)
                 {
                     require(!bool(listFor(*member, segment["source"]).getProperty("locked", false)),
@@ -718,6 +775,52 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                             {"playback_changed", false},
                             {"target_changed", false},
                             {"gaps", "silence"}});
+            continue;
+        }
+        if (cmd == "playlist.comp.linked.promote")
+        {
+            const auto grouped = linkedCandidates(a);
+            require(a.at("targets").is_object() && a.at("targets").size() == grouped.size(),
+                    "Linked TARGET map is incomplete");
+            Json tracks = Json::array(), changes = Json::array();
+            for (auto [id, segments] : grouped.items())
+            {
+                auto* member = track(id);
+                require(member && (trackType(*member) == "audio") == (trackType(*t) == "audio") &&
+                            (trackType(*member) == "audio" || trackType(*member) == "midi" ||
+                             trackType(*member) == "instrument"),
+                        "Linked promotion requires tracks of the same audio or MIDI family");
+                const auto targetID = a.at("targets").at(id).get<std::string>();
+                require(playlistQuery(*member).at("target") == targetID, "Linked TARGET changed since planning");
+                auto target = listFor(*member, targetID);
+                require(target.isValid(), "Linked TARGET no longer exists");
+                for (auto [partner, list] : playlist_links::members(*edit, target))
+                {
+                    const auto peer = partner->itemID.toString().toStdString();
+                    require(grouped.contains(peer) && a.at("targets").at(peer) == str(list, "id"),
+                            "Linked promotion must include the complete TARGET set");
+                    require(Json::parse(str(list, "linked_layout")) == playlist_links::layout(*partner, list),
+                            "Linked TARGET geometry changed outside its transaction");
+                }
+                for (const auto& segment : segments)
+                {
+                    require(!bool(listFor(*member, segment.at("source")).getProperty("locked", false)),
+                            "Linked Comp source Playlist is locked");
+                    auto child = segment;
+                    child["track"] = id;
+                    child["target"] = targetID;
+                    for (auto clip : clipsFor(*member, segment.at("source")))
+                        if (str(clip, "id") == segment.at("clip").get<std::string>())
+                            require(!bool(clip.getProperty("ndaw_locked", false)), "Linked Comp source clip is locked");
+                    changes.push_back(promotionChange(*edit, *member, child, true));
+                }
+                tracks.push_back(id);
+            }
+            diff.push_back({{"command", cmd},
+                            {"linked_tracks", tracks},
+                            {"changes", changes},
+                            {"targets", a.at("targets")},
+                            {"outside_range", "preserved"}});
             continue;
         }
         if (a.contains("playlist"))
@@ -819,32 +922,7 @@ Json Commands::validatePlaylistPlan(const Json& ops) const
                         "source Playlist or clip is locked");
             }
             if (cmd == "playlist.promote")
-            {
-                require(a["source"] != a["target"], "source and target Playlists must differ");
-                auto target = existing("target");
-                require(!bool(target.getProperty("locked", false)) && str(target, "linked_set").empty(),
-                        "target Playlist is locked or linked; detach before editing");
-                const int64_t begin = a["start_samples"], end = a["end_samples"];
-                require(begin >= frame(source, "start") && end > begin &&
-                            end <= frame(source, "start") + frame(source, "length"),
-                        "selection must lie inside one source clip");
-                Json affected = Json::array();
-                for (auto c : clipsFor(*t, a["target"]))
-                    if (frame(c, "start") < end && frame(c, "start") + frame(c, "length") > begin)
-                    {
-                        require(!bool(c.getProperty("ndaw_locked", false)), "Comp intersects a locked target clip");
-                        qualifySlice(*edit, c);
-                        affected.push_back(str(c, "id"));
-                    }
-                diff.push_back({{"command", cmd},
-                                {"source", a["source"]},
-                                {"target", a["target"]},
-                                {"source_clip", a["clip"]},
-                                {"start_samples", begin},
-                                {"end_samples", end},
-                                {"replaced_clips", affected},
-                                {"outside_range", "preserved"}});
-            }
+                diff.push_back(promotionChange(*edit, *t, a, false));
         }
         if (cmd != "playlist.promote" && cmd != "playlist.comp.create")
         {
@@ -912,6 +990,31 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
         elastic_state::remap(result, str(c, "id"));
         return result;
     };
+    if (cmd == "playlist.comp.linked.promote")
+    {
+        std::map<std::string, juce::ValueTree> linkedTargets;
+        const auto grouped = linkedCandidates(a);
+        for (auto [id, segments] : grouped.items())
+        {
+            auto& member = *track(id);
+            auto memberLists = ensurePlaylists(member);
+            if (trackType(member) != "audio")
+                memberLists.setProperty("midi_link_schema", 1, &um);
+            const auto targetID = a.at("targets").at(id).get<std::string>();
+            auto target = listFor(member, targetID);
+            if (!str(target, "linked_set").empty())
+                linkedTargets[id] = target;
+            for (auto segment : segments)
+            {
+                segment["track"] = id;
+                segment["target"] = targetID;
+                executePlaylistOperation("playlist.promote", segment, objects);
+            }
+        }
+        for (auto [id, list] : linkedTargets)
+            list.setProperty("linked_layout", juce::String(playlist_links::layout(*track(id), list).dump()), &um);
+        return;
+    }
     if (cmd == "playlist.comp.linked.create")
     {
         const auto set = juce::Uuid().toString();
@@ -928,7 +1031,10 @@ void Commands::executePlaylistOperation(const std::string& cmd, const Json& a, J
                                      {{"track", id}, {"name", a["name"]}, {"segments", segments}}, objects);
             auto list = listFor(member, objects[first]["id"]);
             list.setProperty("linked_set", set, &um);
-            list.setProperty("linked_schema", 1, &um);
+            const bool midiMember = trackType(member) != "audio";
+            if (midiMember)
+                memberLists.setProperty("midi_link_schema", 1, &um);
+            list.setProperty("linked_schema", midiMember ? 2 : 1, &um);
             list.setProperty("linked_members", juce::String(memberIDs.dump()), &um);
             list.setProperty("restore_playlist", memberLists.getProperty("active"), &um);
             list.setProperty("linked_layout", juce::String(playlist_links::layout(member, list).dump()), &um);
