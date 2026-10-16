@@ -1,3 +1,5 @@
+2026-10-16 MIDI窗口契约：playlist.promote / playlist.comp.create仍是同一L1 Plan/原Undo；窗口保留完整源，实际入点恢复来源按键/踏板上下文（重触发），不是丢弃所有窗口前事件。原Main在替换范围内不触发，在右侧入点恢复其来源持续状态；不伪称理解或恢复插件私有voice/包络/相位。Stop/取消是走带与输出副作用，不生成假工程Undo；cancelled不代表物理MIDI接收端ACK。当前hosted首后续缓冲与快速重启输出有实测，实体/并发资格另列。完整范围见MIDI_COMP_WORKFLOW.md。
+
 2026-10-16 CLI-JSON-01：本地ndaw的stdout为单一JSON结果（commands原数组保持），受控异常/用法分别退出1/2并返回结构化错误；SDK/普通C/C++/子进程/退出日志走stderr，完整关闭后发布。输出失败74/无回执不能标成功；既有播放/扫描资格失败仍按原Schema+非零退出判断。CLI读取磁盘，不冒充运行中Edit查询；MCP、L1命令/actor/权限/Schema不变。用法及限制见CLI.md。
 
 2026-10-16：history.retention.schema=3描述本地编辑历史格式，不是新的Agent计划/权限版本。GUI与AI的原Undo/Redo保持当前播放头；Loop/Punch等编辑设置仍跟随事务。运行时位置与SDK最后写入信息随当前工程保存，不追加到旧Plan；旧文件原始完整性先验证，格式能力与兼容限制见PROJECT_FORMAT.md。命令ID/schema、actor/revision/确认/幂等及恢复回执边界不变。

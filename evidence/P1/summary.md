@@ -1,3 +1,13 @@
+# 当前：踏板来源上下文与停止（2026-10-16）
+
+d6147f0 / P1-MIDI-PEDAL-02：普通MIDI窗口恢复完整来源持续音，CC66按捕获次序重触发，原SEQ/来源不改。普通Stop、试听取消首后续缓冲有真实MIDI关闭；立即重启时旧关闭先于新NoteOn。Main替换区间排除与右侧来源上下文分别验证，事件≤1采样。
+
+最终9/9、2380项/77.29秒；5份真实FourOsc WAV另经Python独立PCM24解码，3份RMS≈0.02035、2份峰值0，原Undo/冷开/Redo恢复。实际Loop/Punch/hosted捕获/原源哈希/可改native peer键同批通过；不是实体/听评/全RT或完整P1。21补丁56文件fresh apply/字节/reverse通过。
+
+唯一App已构建本地deep strict签名，SHA cb366d5688170b27c3b633f5b2f5fa460d00f956ac86451b760193aca0326ab9，未公证；61601正常完整另存后退出；84585新构建已通过原生Open恢复Warp Comp/2片段/9原Plan/r29/77385/停止，完整事实/历史保持，新session确认。演示 `build-v2-tracktion/MIDI-Comp-f71e43c0242b40fa9e1a2a27a62d2444/Sostenuto-Comp.tracktionedit`，另存/恢复保护后打开、Space，Option+L选Comp/对照，当前Redo为无踏板对照，ShiftCmdZ/CmdZ可比较。
+
+此模块两轮增量收口；动态Clip循环/变体/MPE/Groove/同音私有voice/硬件/并发/其它插件与其它架构缺口保留。下一项P2真实外部插件Freeze/原地Bounce/Stems，先核对缓存/处理版本。详情VERIFICATION首节；本地报告midi-pedal-chase-qualification.json，日志 `build-v2-tracktion/Pedal-Chase-f2e618cff08e`。
+
 # 当前：MIDI踏板释放（2026-10-16）
 
 P1-MIDI-PEDAL-01 / 代码18dff95：修复seconds/beat两原生路径的切点/循环漏关，独立CC64/66、真实缓冲采样偏移、准备图源ID/状态保持；原媒体/SEQ/Plan/Undo格式不改。最终9/9、67.80秒、2204项；详细表、失败与固定预算见VERIFICATION.md首节。21补丁55文件fresh apply/逐字节/reverse通过。

@@ -1,3 +1,5 @@
+2026-10-16：L0扩展原生MIDI播放准备：保留播放用负时间历史，非实时构建持续音区间索引/踏板沿/预留消息存储，入点只读重触发；原SEQ、媒体与L1 Edit/Plan格式不改。MidiOutputDeviceInstance记录实际接受的通道，回收请求输出释放；hosted以32位无锁原子屏障串联回调前/回调中的停止和新图，输入MIDI不接收输出重设。无新引擎/服务/IPC；21补丁56文件fresh replay已验。全SDK RT锁/分配和硬件排队未由此解决，见VERIFICATION.md首节。
+
 2026-10-16 MIDI踏板增量：L0原生MidiNode/LoopingMidiNode跟踪实际输出的CC64/66，状态只在播放路径读写，非实时准备共享到替换图；固定两个通道掩码，不新增服务、引擎或IPC。L1仍是唯一Edit写入口，所有CC/Comp/历史沿用原Plan；不改持久源或工程格式。SDK新增审计patch，21补丁55文件fresh apply/逐字节/reverse通过；全局RT分配/锁资格未由此获得。范围见MIDI_COMP_WORKFLOW.md及VERIFICATION.md首节。
 
 2026-10-16 CLI进程边界：主函数先保留不继承的结果描述符，将普通stdout转到stderr，再进入原JUCEApplication生命周期；仅一次结果在引擎完整关闭后写私有输出。CLI继续经L1操作独立本地Edit，MCP仍是运行中Edit的入口，没有新服务/SDK字节或RT处理。P1历史schema3已补实桌面冷开/CmdZ/Redo/CmdS资格，详见VERIFICATION.md首节。

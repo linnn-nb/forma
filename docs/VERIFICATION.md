@@ -1,4 +1,27 @@
-# MIDI Comp踏板释放增量（2026-10-16，当前）
+# MIDI踏板上下文/停止增量（2026-10-16，当前）
+
+代码 **d6147f0**，P1-MIDI-PEDAL-02限定范围已验证；最终9/9、2380项、77.29秒（不累加重跑）。完整P1、实体MIDI、听评、全RT和产品尚未验收。
+
+| 执行 | 最终结果 | 证明范围 |
+|---|---|---|
+| forma_midi_pedal_boundaries | 812项 / 0.03秒 | 两原生节点/通道1和16，已松键踏板声追逐，CC66捕获键→踏板→后到键顺序；原切点/8圈/静音/seek/kill/图替换，事件≤1采样 |
+| forma_midi_playlist_editing | 227项 / 28.43秒 | 生产EnginePlayer / hosted MIDI输出的Stop/取消首后续缓冲CC64/66关闭；未等回调便重新试听，旧关闭在新NoteOn前；Main区间排除/右侧源上下文及旧于半拍padding的持续音、原Undo/冷开/键位/WAV |
+| Take / Punch / 踏板录得Take | 200 / 200 / 201项 | 真实hosted输入、完整来源哈希、原编辑事务/重开/自定义native peer键、实际WAV；输出重设未注入输入 |
+| 四个Loop输出 | 各185项 | 6000/6144帧×固定/变Tempo、8圈、原生Clip XML、原Undo/冷开/事件≤1采样；原NoteOff提前5帧不改 |
+| Python独立PCM24解码 | 5份通过 | 全部双声道48k/48000帧；3份持续音RMS≈0.02035、2份无踏板峰值0；与原生测量最大RMS差≈4.55426e-10≤既有2e-6，未作随机相位逐位比较 |
+| 锁定源码重建审计 | 21补丁56文件一致，reverse还原 | 完整CMake diff检查与fresh逐文件apply/字节对照通过；不是仅确认子模块SHA |
+
+根因：旧追逐仅处理未松键的音符，播放序列又裁掉较早结束的音符与踏板沿；取消试听直接回收图，没有后续空时间线回调来关闭MIDI。现播放准备保留负时间历史/区间索引，CC66先捕获原键，源事实不写；原生输出回收有通道请求；无踏板长音Stop专项新增实际NoteOff回执，不能靠踏板开启掩盖普通按键漏停，hosted用原子前后屏障，普通停止空时间线释放按键与踏板也修复。prepared消息存储在非实时准备，不新增服务或固定IPC；整个SDK RT锁/分配/截止时间尚未资格。
+
+语义明确而非放宽断言：原Main音符禁止在替换区间触发；右侧Main重新进入时恢复自身完整持续上下文。旧全时间线排除断言失败后改为严格区间排除，并新增精确右侧on/off恢复断言，1采样预算未变。源前SysEx不追逐。CC对照在完整源副本修改，不绕过隐藏区间保护；副作用WAV保留，不假称Undo删除文件。
+
+初始红项/普通Stop空输出/取消空输出、旧过宽断言及全部关键输出保存在 `build-v2-tracktion/Pedal-Chase-f2e618cff08e`；本地精简报告 `evidence/P1/midi-pedal-chase-qualification.json`，独立音频审计 independent-wav.json。先构建NativeDAW/ndaw与四个MIDI受影响目标exit0，再执行 `ctest --test-dir build-v2-tracktion -R '^forma_midi_(pedal_boundaries|playlist_editing|pedal_take_comp|take_workflow|punch_comp|loop_output_)' --output-on-failure`。
+
+唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA256 `cb366d5688170b27c3b633f5b2f5fa460d00f956ac86451b760193aca0326ab9`，本地deep/strict通过、未公证。旧PID61601经本次完整另存成功后正常退出；新PID84585已运行该二进制，经原生CmdO/保存保护打开User-Before-Restart.tracktionedit。实际新session/r29，Warp Comp/2片段/9原Plan/77385/停止；完整轨道/历史/选择/Tempo/走带事实与重启前精确一致，未仅沿用旧查询。保存副本9条原STEP、SHA256 011d9402bc61aafdb3d913b329952f5f33bf30e139e44d156f6741689b8a27e8，本地restart-qualification.json保留本次正常退出/原生Open回执。新演示 `build-v2-tracktion/MIDI-Comp-f71e43c0242b40fa9e1a2a27a62d2444/Sostenuto-Comp.tracktionedit`；步骤与上下文政策见MIDI_COMP_WORKFLOW首节。无新包/应用副本或用户音频上传。
+
+未由此通过：私有包络/相位/重复同音voice、动态Clip循环/变体、Groove/量化/MPE Comp、物理端口/硬件队列/并发/所有插件、听评/全RT/Windows。两轮增量收口，剩余在BACKLOG；下一项P2外部插件链路。
+
+# 历史：MIDI Comp踏板释放增量（2026-10-16，18dff95）
 
 生产与测试提交 **18dff95**；P1-MIDI-PEDAL-01仍为部分实现。最终9/9 CTest通过，67.80秒，共2204个检查（仅此最终批次，不累加重跑）；不是完整P1、听评、RT或产品验收。
 

@@ -1,13 +1,13 @@
 # 下一步（2026-10-16）
 
-本轮P1踏板释放增量收口：代码18dff95，最终9/9、2204项/67.80秒；两原生路径切点/循环、原生kill/mute/seek/图重建，真实hosted输入→Take/Comp→原Undo/冷开/可改键/WAV已验。不是完整踏板或P1/产品，范围/失败见VERIFICATION.md首节。
+踏板两轮增量收口：d6147f0，最终9/9/2380项/77.29秒；源上下文/CC66捕获顺序/普通Stop/试听取消与快速重启、真实hosted来源、原Undo/冷开/键位/五份独立WAV已验。不是完整P1/产品，范围与失败见VERIFICATION.md首节。
 
-1. **下一项：踏板保持旧音的入点追逐与生产Stop回执。** 本轮是该边界第一轮；第二轮先实际输出复现“键已松、踏板保持”切入后旧音缺失与CC66锁存顺序，用原生图/实际乐器测量再修，保留1采样/原NoteOff5帧/既有PCM及UI5秒、录入15秒、WAV10秒预算。生产Stop/取消要收实际控制器输出，不用native kill冒充。原源/同一Plan/原Undo/冷开/可改键保持。更多边界按AGENTS收口，不无限扩大。
-2. OS波形拖选/局部Comp资格仍在BACKLOG：两轮无OS选择回执，不推断应用/工具原因，不再堆CLI替代或催暂不便测试的用户。实际快捷键捕获/调用此前资格与本轮native peer分开。
-3. 继续完整P1/P2/P3及架构：性能A15.84%>15%、分析超时、读取能力全量、全RT锁/分配、实体MIDI/多设备/硬件延迟PDC/耐久/断连过载/听评、Windows/视频/环绕/发行尚未完成。M2/M3冻结，M4/M5暂缓。
+1. **下一项：P2真实第三方插件Freeze→原地Bounce→Stems。** 先审查现有实现/报告，核对处理源与引擎实现版本如何进入缓存状态哈希：已有冻结文件应保留声音，新渲染和分析缓存必须区分实际处理实现，不先假设缺陷。枚举本机真实AU/VST3/版本/参数，用可运行且已授权插件建立独立制作工程；不覆盖用户项目/原始媒体。命令/GUI共用原Plan，原UndoRedo/冷开/可改键、路由/插件状态、实际WAV与Stems共同验证；随机插件不冒充逐位一致，先沿用现有P2预算，不默降负载/容差。M2/M3仍冻结，M4/M5暂缓。
+2. 本MIDI模块已两轮：剩余动态Clip循环/变体、Groove/量化/MPE Comp、同音私有voice、实体端口/硬件队列/并发/其它乐器/听评/全RT留BACKLOG，不再无限追加。普通窗口按每个来源完整键/踏板上下文重触发，不还原私有包络/相位；SysEx仍只在窗口内调度。
+3. OS拖选保持此前两轮无回执状态，不推断应用/工具原因，不堆CLI替代或催暂不便测试的用户。完整P1/P2/P3及架构、性能A15.84%>15%、分析超时、全读取能力/RT、实体设备/延迟PDC/耐久/故障、Windows/视频/环绕/发行仍未完成。
 
-唯一App：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；SHA `1a143302d04d14110f5db18168e8064801e62d94f008f0f0dec9eaa84b4b826e`，本地签名未公证。当前PID61601仍旧二进制；下次正常保存退出后启动新版，不伪称已加载。只读确认Warp Comp/2片段/9原Plan/r28/77385/停止、无新测试工程替换用户现场。当前副本路径仍CLI-Protocol-a0d5ef6d0b8a/GUI-History-Before.tracktionedit，原用户项目未覆盖。
+唯一App：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`；SHA `cb366d5688170b27c3b633f5b2f5fa460d00f956ac86451b760193aca0326ab9`，本地签名未公证。旧61601已完整另存成功并正常退出；新84585运行唯一新App，经原生Open打开Pedal-Chase-f2e618cff08e/User-Before-Restart.tracktionedit，新session/r29；Warp Comp/2片段/9原Plan/77385/停止，完整轨道/历史/选择/Tempo/走带事实与重启前相同。原用户文件未覆盖，当前绑定上述新保存副本。
 
-演示：`build-v2-tracktion/MIDI-Take-Workflow-5dc9b28c04d448529c4ef42e61974c2b/MIDI-Take-Workflow.tracktionedit`。这是已知MIDI输入的真实录音/合成器测试，不是音乐作品或听评；亲手步骤见MIDI_COMP_WORKFLOW.md首节。CLI路径仍build-v2-tracktion/ndaw_artefacts/Release/ndaw。
+演示：`build-v2-tracktion/MIDI-Comp-f71e43c0242b40fa9e1a2a27a62d2444/Sostenuto-Comp.tracktionedit`。Space回放，Option+L选Sostenuto cut-in / No-pedal control；当前Redo切到无踏板对照，ShiftCmdZ/CmdZ比较，CmdS保存。它是已知测试演奏，不是作品或人工听评。CLI仍build-v2-tracktion/ndaw_artefacts/Release/ndaw。
 
-磁盘约899MiB，本轮未删源码/媒体/工程或新增安装包；只构建选定目标，禁止重建所有测试程序或删除build下媒体。证据指针build-v2-tracktion/pedal-comp-current-root.txt；本地报告evidence/P1/midi-pedal-qualification.json。Tracktion/JUCE pin不变，21补丁/55文件fresh replay已验，SDK脏内容按patch保存，不能提交子模块gitlink。
+磁盘约846MiB；本轮仅清理4个未运行可重建测试程序145123808字节，清单在build-v2-tracktion/pedal-chase-inactive-test-cleanup.json。保留所有源码、媒体、工程、日志、唯一App；只构建选定目标，不重建所有测试或打新包。证据指针build-v2-tracktion/pedal-chase-current-root.txt；21补丁56文件已fresh replay，SDK脏内容按patch保存，不提交子模块gitlink。

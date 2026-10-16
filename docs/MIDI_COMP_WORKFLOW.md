@@ -1,3 +1,17 @@
+## 踏板入点上下文与停止（2026-10-16，当前限定资格）
+
+P1-MIDI-PEDAL-02 / d6147f0：进入每个普通MIDI窗口时，恢复该来源仍持续的按键/CC64/CC66状态；已松键但被踏板保持的音符会重触发后补松键，CC66先锁存原本已捕获的键，再补其它仍按住的键。源SEQ与捕获不裁剪、不重写，只在非实时构建播放历史/索引和消息存储。私有合成器的包络、相位及同音多次叠加的每个voice不能由MIDI恢复，不宣称逐位还原。[JUCE行为参考](https://docs.juce.com/master/classjuce_1_1MPEInstrument.html)。
+
+**Comp政策明确：** 替换区间内禁止原Main音符触发；重新进入右侧Main时，恢复该Main来源的持续上下文，包括其此前已松键但仍在踏板下的声音。旧测试“原Main音符在整段时间线都不能触发”过宽，现分别验证区间排除及右侧精确恢复，仍≤1采样；未放宽容差。SysEx仍只调度可见窗口内事件，不重放未知历史指令。
+
+普通停止在空时间线回调释放按键与踏板；试听取消/回收原生输出时，按该输出实际接受过的通道请求CC64/66关闭及All Notes Off。hosted用原子请求：回调前请求先于新图音符，在回调中到达的请求在该缓冲结束前发出；避免消息线程写回调数组。最终实际两类Stop均在首个后续256帧缓冲收到关闭，快速Stop→Start的旧释放先于新NoteOn。通道级关闭影响同一输出/通道；物理端口接收、排队时限和并发压力仍待实测。
+
+演示：`build-v2-tracktion/MIDI-Comp-f71e43c0242b40fa9e1a2a27a62d2444/Sostenuto-Comp.tracktionedit`。正常保存退出并重启唯一Forma.app后打开，Space回放1秒附近开始的持续音；Option+L看Sostenuto cut-in与No-pedal control，切换可比较；当前Comp对应的原比较选择在Redo中，ShiftCmdZ切无踏板对照、CmdZ返回，CmdS保存。原演奏和无踏板源副本都保留，CC修改只在完整源副本的可播放区间执行，未绕过隐藏事件编辑保护。它是已知测试演奏，不是作品或人工听评。
+
+最终9/9、2380项/77.29秒；5份真实FourOsc PCM24 WAV经独立Python解码，持音RMS≈0.02035、无踏板峰值0，原Undo/冷开/Redo恢复，数值差≈4.55426e-10。source/原历史/可改native peer键与Loop/Punch/WAV受影响回归同批通过。预算48k256、事件1采样、原NoteOff5采样、UI5秒、录入15秒、WAV10秒保持；Stop预算为首个后续缓冲。
+
+此模块已到两轮边界，当前增量收口。动态Clip循环/变体仍走原生后备；Groove/量化/MPE的Comp仍受原资格限制；同音多voice、实体MIDI/其它乐器/硬件队列/并发/听评/全RT与Windows不由此外推，继续留BACKLOG。完整P1/产品未验收；下一项P2真实外部插件冻结/印刻/Stems。
+
 ## 踏板跨切点（2026-10-16，部分实现）
 
 已修复“按键先松开、踏板仍保持”时切点漏发关闭消息：CC64 / CC66 分别记录实际发出的状态，片段末尾和循环末尾在最后一个真实采样释放；静音及跳离片段在下一缓冲起点释放。图重建保留原 MIDI source ID 和踏板状态，不修改源 SEQUENCE 或捕获来源。开关阈值依据 [MIDI Association](https://midi.org/midi-1-0-control-change-messages)；原始 14-bit 存储与实际 7-bit 消息仍分开。
