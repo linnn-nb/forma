@@ -4,6 +4,24 @@
 using namespace ndaw::v2;
 namespace
 {
+class Storage final : public te::PropertyStorage
+{
+public:
+    Storage()
+        : PropertyStorage("Forma owned MIDI transform tests"),
+          root(juce::File::getSpecialLocation(juce::File::tempDirectory)
+                   .getChildFile("forma-midi-transform-" + juce::Uuid().toString()))
+    {
+        root.createDirectory();
+    }
+    juce::File getAppPrefsFolder() override
+    {
+        return root;
+    }
+
+private:
+    juce::File root;
+};
 int checks = 0;
 void check(bool b, const char* s)
 {
@@ -93,7 +111,7 @@ int main(int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI gui;
     try
     {
-        ndaw::desktop::Workspace w(false);
+        ndaw::desktop::Workspace w(false, std::make_unique<Storage>());
         w.setVisible(true);
         w.setSize(1120, 700);
         choose(w, "track.type", 3);

@@ -440,11 +440,20 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
                     recordInspector = false;
                     pianoMode = false;
                 }
-                commands.commit(commands.makePlan("human", ops));
-                selected.clear();
+                const auto receipt = commands.commit(commands.makePlan("human", ops));
+                const auto& objects = receipt.at("objects");
+                const auto created = std::find_if(objects.begin(), objects.end(),
+                                                  [](const Json& object) { return object["kind"] == "track"; });
+                if (created == objects.end())
+                    throw std::runtime_error("新增轨道没有返回实际对象；请检查编辑历史");
+                selected = created->at("id").get<std::string>();
+                selectedClip.clear();
+                pluginSelection = 0;
+                lastPluginIDs.clear();
+                Json selectionPatch{{"selection_tracks", Json::array({selected})}, {"object_selection", Json::array()}};
                 if (type == "midi" || type == "instrument")
-                    commands.updateUiState({{"workspace", "edit"}, {"midi_dock", true}, {"midi_clip", ""}},
-                                           commands.sessionToken());
+                    selectionPatch.update({{"workspace", "edit"}, {"midi_dock", true}, {"midi_clip", ""}});
+                commands.updateUiState(selectionPatch, commands.sessionToken());
                 message(type == "midi"         ? text("已建 MIDI 轨 · 未加载乐器，不会发声；可插入 FourOsc")
                         : type == "instrument" ? text("已建 FourOsc 乐器轨 · 空白四小节 MIDI 片段 · 增益 −12 dB")
                                                : text("已新增 ") + text(type) + text(" 轨道 · 可撤销"));
