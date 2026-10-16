@@ -1137,7 +1137,8 @@ public:
                           !c.value("move_locked", c.value("locked", false)) &&
                           toolGesture == EditingModel::Gesture::move) ||
                          (c["kind"] == "midi" && c.value("sample_mapping_available", false) &&
-                          !c.value("locked", false) &&
+                          !c.value(toolGesture == EditingModel::Gesture::move ? "move_locked" : "locked",
+                                   c.value("locked", false)) &&
                           (toolGesture == EditingModel::Gesture::move || toolGesture == EditingModel::Gesture::left ||
                            toolGesture == EditingModel::Gesture::right))) &&
                         !facts.value("playing", false))
