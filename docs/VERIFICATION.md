@@ -1,3 +1,24 @@
+# MIDI Playlist Tempo / Meter 当前验证（2026-10-16）
+
+结论：活动及非活动 MIDI Playlist 已统一按原时基重映射；真实音量/EQ 可在原生面板选择插件级跟随策略。最终 **20/20 套、10011 项通过，275.64 秒**。这是 P1 的一个增量，不代表完整产品、实体输入/听评、所有插件/时基组合或 RT 性能资格。
+
+- **P1-MIDI-PLAYLIST-TEMPO** → `src/v2/MidiTempoRemap.*`、`MusicCommands.cpp`、`AutomationCommands.cpp` / `AutomationPanel.h`、`ui/WorkspaceCommands.cpp`；测试 `MidiPlaylistTempoChecks.h` / `MidiLinkedCompTests.cpp`。真实 hosted 两轨48k/256录入，Loop音乐时基721项、Punch采样时基908项，分别覆盖12/14个活动/非活动窗口与42/90个完整事件。原捕获、所有 Note / CC / Pitch / SysEx 与关联身份保留；音乐源事件 XML 不变，采样源按新拍位置保持绝对时间。
+- 120→100、120→120.001的小改图、4/8拍号；全列表预览、远端锁定/单轨 Scope 拒绝、幂等、原 Undo/Redo、Redo-only、保存冷重开及实际 GUI 事件/键均执行。独立分段 Tempo 算术误差≤1采样；未改原生端点保持原 double。准备64MiB、单序列65536事件/8MiB、UI5秒、录音15秒、单WAV10秒、CTest每例120秒预算保持。
+- 插件原生 remapOnTempoChange 经统一 human 停止态命令、参数面板和可自定义键647写入；预览明确列出整插件实际参数。测试显式设置音量与EQ跟随、另一轨固定秒位置，首点62000→74400/62000；切换本身点不移动，原 Undo/Redo 与冷文件保持。不存在的参数和 Agent 写入拒绝。没有虚构可写的曲线 timeBase；SDK 原生轨道插件曲线是固定时间构造，当前没有宣称原生拍曲线资格。
+- 独立Python核对八个实际工程的完整关联布局、窗口、完整事件及真实曲线点/值/ID和策略，四份原始来源从实际文件复算SHA保持。两份真实MIDI WAV为48k双声道PCM24/288000帧且两声道非零；完整音频Loop→Punch→Comp→交叉淡化→导出回归98项，保存重开后两份192000帧WAV的PCM逐字节一致。FourOsc随机相位不作逐位音频或用户听评声明。
+- 其余回归包含原始自动化DSP/面板86项、持久历史86、采样MIDI1190、普通移动1926、精度300、单轨MIDI Playlist155、原关联Loop/Punch209/204、关联移动324/315、音频Playlist227、Grabber179、普通迁移79、格式80、关联迁移328、迁移自动化2596。全部来自本批新JUnit和新报告，未用旧成功遮盖红项。
+- NativeDAW、CLI和受影响目标构建exit0，本地deep/strict签名通过；唯一App SHA256 `a355e36d89fec61533450d1917827ac23a1db4658d77b966b0c09bfcf9c47da8`，非发行公证。原20份SDK补丁/50文件沿用配置审计，没有本轮SDK字节修改或额外fresh replay。用户PID44913未重启，无新DMG/tar/App副本。
+
+证据：`evidence/P1/midi-playlist-tempo-qualification.json`、`build-v2-tracktion/midi-playlist-tempo-final.xml/.log`、`midi-playlist-tempo-independent-final.log`。早期编译/用错plugin.insert参数/误假定插件默认跟随关闭的红项保留；错误的可写曲线时基测试夹具已移除，改为实际原生策略命令和控件，不放宽预算。独立复核脚本初版变量遮蔽与错误CLI目标日志也保留。
+
+亲手试：先保存当前工程再重启唯一 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，打开音乐时基 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-1fbf7f69f38f4e3eaab741e02fcf2be0/MIDI-Playlists-GUI-Tempo.tracktionedit` 或采样时基 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-f10c86eb1f5349d4810349478c5f47ce/MIDI-Playlists-GUI-Tempo.tracktionedit`。选轨→右侧「自动化」→选音量/EQ→「速度图」选择保持秒位置/跟随速度（影响整插件）；默认Cmd+Ctrl+Option+Shift+F10切换，可改键。速度标尺编辑/应用、CmdZ/ShiftCmdZ，CmdS后重开；保存文件是GUI提交后的100BPM版本，保留原Undo。Option+L仍可切换原Main/Take/Comp。新录音须把hosted测试输入替换成真实设备。
+
+复验：先构建 `ndaw_midi_linked_comp_tests` 并确认exit0，再 `ctest --test-dir build-v2-tracktion -R '^forma_midi_playlist_tempo_' --output-on-failure`。程序化原生窗口输入不是OS实体键鼠验证；用户已确认主界面可操作，本轮未重复尝试超时桌面接口。
+
+下一项：关联Comp整组移动/迁移与真实音量/插件共享自动化的完整联动；本Tempo增量收口。混合音频/MIDI家族、MPE/循环/量化/Groove、全插件/变速组合、实体录音/监听/听评、长期稳定性、旧键位焦点/性能A15.84%>15%/分析超时/RT SDK锁分配、Windows/视频/环绕/发行仍未完成。M2/M3冻结，M4/M5暂缓，最终架构范围保留。
+
+以下为历史批次，状态以本节及 NEXT_STEPS.md 为准。
+
 # MIDI 关联 Comp 移动 / 迁移当前验证（2026-10-16）
 
 结论：a2494c3/496c0a9接通完整MIDI关联闭包与原生移动/迁移；0c2d1bc保留采样重映射时的旧CC/Pitch身份，8ebf880接通实际Grabber，368c702补齐拍号保护。最终16/16、8296项通过，231.31秒；不是完整P1/产品、实体输入/端口/听评、全部新关联曲线组合或RT性能资格。

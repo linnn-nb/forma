@@ -1,3 +1,7 @@
+2026-10-16 Tempo/Meter：既有速度/拍号命令预览增加 `midi_remap`（所有活动/非活动原生 MIDI 窗口）和 `automation_remap`（实际参数、秒位置/跟随策略、前后位置），事实与旧图在 message thread 准备并在一个原 UndoManager 事务提交；原始捕获哈希及 origin 中原 SEQUENCE 不变，当前采样基事件按映射更新。已有 MIDI 时不混合内容/片段写入与改图，同一 Plan 保持预检/执行范围一致。
+
+新增本地 human 独立停止态命令 `automation.plugin_tempo.set(track, parameter, enabled)`：parameter 必须为实际枚举 owner-ID::parameter-ID；由其插件持久化原生 remapOnTempoChange，预览列出该插件全部真实参数/点数，锁定/无效参数/Agent 拒绝。查询返回 tempo_follows 与 tempo_policy_configurable；GUI 和可自定义快捷键同入口，幂等/版本/权限/原 Undo 与保存沿用现有协议。未增加 MCP 权限或外部模型能力。测试 P1-MIDI-PLAYLIST-TEMPO，实际结果见 VERIFICATION.md。
+
 2026-10-16 MIDI整组移动/迁移复用human的midi.clip.move与clips.relocate，无新工具/权限。首次和重编译都必须展开全部关联片段/已有Edit组，来源/目标Scope完整，位置单位仍48k工程采样；混合时基造成对应目标窗口不同则整笔拒绝。迁移预览含稳定Playlist、源留空、目标原播放保留和目标实际路由/处理链；确认后单原Undo。旧CC/Pitch临时ID在采样重映射之前于同一事务持久化，重试不重复，原始捕获Hash不变。测试P1-MIDI-LINKED-MOVE-01，当前结果见VERIFICATION.md。
 
 2026-10-16 NOTE精确读取是L1载入修复，没有新增命令、工具、权限或域事务。原Plan/Undo/Redo不变，当前树及历史中的原生音符位置b/长度l在完整性校验后精确解码，避免SDK字符串转double时末位漂移；不转换插件参数或原始来源中的数字文本。文件失败仍先拒绝，不覆盖当前Edit；恢复仍不宣称恢复Undo。测试P1-MIDI-PRECISION-01，实际资格见VERIFICATION.md。

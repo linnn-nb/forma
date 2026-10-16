@@ -1,3 +1,7 @@
+2026-10-16 MIDI Tempo/Meter 增量：`MidiTempoRemap` 是 L1 的 message-thread 准备器，冻结旧速度图、活动/非活动 Playlist 和真实参数曲线；先在预览计算完整映射，再与既有 EditTimecodeRemapperSnapshot 配合，在同一原 UndoManager 事务恢复准备后的 MIDI/曲线并重建关联布局。无第二 Edit、播放图、引擎、服务或 SDK 改动。原始捕获与采样 origin 保留，普通音频图继续由 Tracktion 处理。
+
+插件曲线的 TimeBase 由 SDK 构造；Tempo 跟随选择写原生插件 remapOnTempoChange，影响插件全部参数，GUI/快捷键只发统一命令。面板不伪造拍基字段。64 MiB 准备/65536事件与8 MiB单序列预算在非 RT 线程验证；不是完整大工程或回调性能资格。当前测试与演示见 VERIFICATION.md 首节。
+
 2026-10-16 MIDI关联移动：L1扩展现有组编译/完整成员闭包至MIDICLIP，统一检查相同采样位移及目标几何；音乐片段保留源拍事件和拍长度，采样片段复用SampleMidiProjection。跨轨仍走clips.relocate同一Plan/Undo，迁移稳定Playlist/Clip并保留目标原播放，目的容器补齐既有MIDI读取标记。SampleMidiProjection在原事务内冻结旧CC/Pitch身份后改时间，原始SEQ/来源不改。L5 Grabber仅按move_locked开放移动，独立编辑锁不放宽。无新引擎/SDK/RT路径。Tempo改图及全部曲线组合仍待资格。
 
 2026-10-16 NOTE精度：L1 NativeMidiNumbers在打开/恢复的离线ValueTree上，将明确的原生MIDICLIP/SEQUENCE/NOTE b/l按classic locale正确舍入为double；支持活动/非活动Playlist和历史属性/结构镜像。原文件封装、历史SHA和delta链先校验，再转换，之后才构造SDK对象；不在实时路径工作，不遍历插件、原始来源和origin等不透明分支。没有第二套模型、SDK补丁或新服务。16数值向量/三次冷开/真实恢复及四个循环输出严格XML已通过，完整结果见VERIFICATION.md。

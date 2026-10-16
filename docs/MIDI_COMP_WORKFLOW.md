@@ -1,6 +1,16 @@
+# MIDI Playlist 的速度图与自动化（2026-10-16）
+
+已接通活动和非活动 Main / Take / Comp 的 Tempo 与拍号重映射，保留原始捕获与整组关联。音乐时基保留完整源拍事件；采样时基保留完整事件的绝对时刻。每次改图仍是一笔原生 Undo 事务。当前专项 Loop / Punch 1629 项通过，最终回归与实际演示文件以 VERIFICATION.md 首节为准，不代表完整 P1 或实体设备资格。
+
+选轨 → 右侧「自动化」→ 选真实插件参数 → 「速度图」可选保持秒位置或跟随速度。**设置影响同一插件全部参数曲线**，不是只影响当前参数；切换本身不移动点，后续修改 Tempo / 拍号才映射。新建插件可能已有跟随策略，以面板实际查询为准。停止录放时可改；默认 Command+Control+Option+Shift+F10 切换，支持键位自定义；CmdZ / ShiftCmdZ 撤销重做，CmdS 保存原历史。此设置与「自动化跟随片段编辑」分开。
+
+用速度标尺双击事件，或既有速度事件面板修改并应用；先预检所有列表、来源、关联范围及锁定状态，再提交。受限来源、半组权限、对应区间分歧整笔拒绝，不能通过解除关联绕过未资格的重映射。窗口外 Note / CC / Pitch / SysEx 仍保留；第三方插件与所有变速组合不由此推断通过。
+
+以下为工作流与执行前预算，历史数字按对应批次保留。
+
 2026-10-16 Tempo/Meter专项预算（执行前）：48k/256，同一生产hosted Loop音乐时基和Punch采样时基两轨来源；改图覆盖活动/非活动Main、Take、候选和迁移后成员。音乐源拍及完整SEQ保留，采样事件绝对时刻保持≤1采样；同时测120→120.001的小改图（不继承SDK 1ms跳过门槛）、4/8拍号、原UndoRedo/Redo-only/保存冷开与实际GUI可改键。原始来源SHA不变；完整关联范围不同、锁定/过期/不完整权限或不支持样本源预检拒绝。准备64MiB、每Clip事件65536/8MiB，UI5秒、单WAV10秒、CTest每例120秒，非RT执行，不放宽已有预算。
 
-2026-10-16 MIDI关联Comp：点击任一成员会选择完整成员闭包；F8拖动，逗号/句号按Nudge单位整组横移。停止录放后，Command+Control+Option+↑/↓请求移至相邻可见轨道，或向兼容轨拖放；松手看预览，接受后是一笔原Undo。MIDI只进入midi/instrument；迁移保留Playlist/Clip ID与原Take，源轨留空，目标原播放保留为可整组恢复的非活动列表。音乐时基保留源拍与拍长度，采样时基移事件绝对时间；相同采样位移后对应窗口不同则整笔拒绝，不静默改时基。自定义Nudge、保存重开/原UndoRedo、实际音符/CC/Pitch与WAV见P1-MIDI-LINKED-MOVE-01、VERIFICATION.md。Tempo改图与全部新关联自动化组合尚未资格。
+2026-10-16 MIDI关联Comp：点击任一成员会选择完整成员闭包；F8拖动，逗号/句号按Nudge单位整组横移。停止录放后，Command+Control+Option+↑/↓请求移至相邻可见轨道，或向兼容轨拖放；松手看预览，接受后是一笔原Undo。MIDI只进入midi/instrument；迁移保留Playlist/Clip ID与原Take，源轨留空，目标原播放保留为可整组恢复的非活动列表。音乐时基保留源拍与拍长度，采样时基移事件绝对时间；相同采样位移后对应窗口不同则整笔拒绝，不静默改时基。自定义Nudge、保存重开/原UndoRedo、实际音符/CC/Pitch与WAV见P1-MIDI-LINKED-MOVE-01、VERIFICATION.md。Tempo/Meter改图及音量/EQ跟随策略的当前资格见本文首节；整组移动/迁移与全部共享曲线组合仍待验证。
 
 2026-10-16 MIDI关联移动专项预算（执行前）：同一48k/256生产hosted Loop音乐时基/Punch采样时基录入，两轨四个实际片段；整组横移48000帧跨Tempo点，原生事件独立分段Tempo算术误差≤1采样，音乐源NOTE double保持，原来源SHA/完整布局与原UndoRedo/冷重开严格恢复。真实时间线选中/拖动、Nudge自定义键保存重开及迁移预览确认一起验证；6秒实际WAV≤10秒，UI/取消/回执5秒，每例CTest120秒，保留原录音15秒预算。迁移保持Playlist/Clip ID，目标原播放留存可恢复；不资格Tempo改图、实体输入/听评或RT性能。
 
@@ -40,7 +50,7 @@ MIDI 切片保留完整 SEQUENCE、CC、SysEx、源偏移和来源记录，仅�
 
 L1 `MidiPlaylistState.h` / `PlaylistEditing.cpp` 校验并生成窗口/来源；`PlaylistAudition.cpp` 复用同一 Engine 的只读快照和既有原生 MIDI 节点，非实时准备、明确停止回收，不新增引擎或实时 MIDI 过滤器。`midi.playlist-editing` v1 保护活动/非活动与历史中的新语义。锁定在 L1 拒绝音符、CC、片段边界、插入和剪贴板写入，GUI 读取相同锁定状态。
 
-循环播放片段、播放量化、Groove、MPE/嵌套音符表达、关联MIDI整组移动/Tempo重映射与复杂旁链/硬件插入试听尚待实现或资格；受限来源明确拒绝。实体 MIDI 端口、私有插件、听评与长期稳定性不从 hosted 测试外推。完整架构目标保留。
+循环播放片段、播放量化、Groove、MPE/嵌套音符表达、混合音频/MIDI家族与复杂旁链/硬件插入试听尚待实现或资格；受限来源明确拒绝。实体 MIDI 端口、私有插件、听评与长期稳定性不从 hosted 测试外推。完整架构目标保留。
 
 旧默认键的六组冲突已修：跨轨尾随改为 Command+Control+Option+Shift+0/1/2/5，琴键高度复位改为 Control+Option+Shift+R，新建 Comp 改为 Command+Control+Option+Shift+C。只迁移确实重复的旧映射；用户单独指定或清空的键位保留。真实归属与旧工程迁移见专项测试。另两组轨高/琴键缩放冲突已实测修复：轨高保留CtrlOption↑/↓，琴键改CtrlOptionShift↑/↓；只迁移确实重复的旧映射。当前注册表默认键归属审查无重复，实际轨高/琴键开关上下文已验；这不代表所有命令的OS按键/焦点都已验证，快捷键编辑器前台捕获仍失败。
 
@@ -56,6 +66,6 @@ Punch组合演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW
 
 多轨操作：来源轨道下拉或“下一来源”切换，每轨同一区间拖选后“加入候选”；“创建关联Comp”保留原播放，“用于播放/恢复整组原播放/解除Comp关联”处理完整成员。试听草稿所选范围会包括其它成员的匹配段。点候选行、“提升候选选段”一次改各轨当前TARGET；想改已关联TARGET，须先在各轨设置对应成员目标。任何不完整或锁定配对都会解释失败。L1权限仅human/local_gui，未开Agent越权入口。
 
-关联布局以工程采样记载，原音符/控制器/来源仍是完整原生MIDI；当前关联内容/位置独立编辑和Tempo改图需先解除关联。整组移动/跨轨/Tempo重映射、混合音频/MIDI家族等继续纳入范围，不伪称已完成。原生NOTE末位精度已按本文开头专项预算修复，当前完整回归见VERIFICATION.md。
+关联布局以工程采样记载，原音符/控制器/来源仍是完整原生MIDI；独立内容/边界编辑仍受关联保护；整组移动/跨轨和Tempo/Meter映射已按当前专项开放，未资格来源/混合家族明确拒绝。原生NOTE末位精度已按本文开头专项预算修复，当前完整回归见VERIFICATION.md。
 
 当前多轨演示：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-3649a9ec21ac4d98a6a652634a6f0d71/MIDI-Linked-Comp.tracktionedit`，Punch版本`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-28324383957d4ac3875be8d00ec2cdda/MIDI-Linked-Comp.tracktionedit`。原始音符均为已知输入测试，FourOsc可直接试听，非实体键盘或用户听评。重建ndaw_midi_linked_comp_tests后运行`ctest --test-dir build-v2-tracktion -R '^forma_midi_linked_comp_' --output-on-failure`，两例各120秒截止。

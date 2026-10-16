@@ -1,3 +1,5 @@
+2026-10-16 Tempo/Meter 与插件跟随策略没有新持久化格式：使用原生 MIDI start/length/offset、SEQUENCE 和插件 remapOnTempoChange，沿用现有采样源 origin、CC 稳定键、关联 layout 与原历史。当前/非活动及原 Undo/Redo 均由已有读取能力校验；没有伪造可写的曲线 timeBase 字段。每个原生曲线的 timeBase 是 SDK 构造常量；面板设置的是插件级跟随开关。
+
 2026-10-16 MIDI关联移动/迁移沿用midi.linked-comp v1的采样布局与完整成员/restore记录，不新增schema；目的NDAW_PLAYLISTS补齐midi_link_schema=1及midi_edit_schema=1。原Take留在源轨，转移的Comp/Clip保留原有origin_track等来源字段；原轨留空Playlist而非删除。采样移动沿用midi.sample-origin v1，CC/Pitch的既有ndaw_cc_key在改b之前固化；历史Undo可移除首次新增键，源池/原SEQ哈希算法不改。当前/非活动/原历史均由既有能力闭包保护。
 
 2026-10-16 NOTE b/l冷读精度已修复：NativeMidiNumbers仅处理真实原生MIDI路径及历史镜像，保留正确舍入的binary64（专项0 ULP，含次正规数/负零）；先核验原文档/历史SHA/链和能力，再解码，未知或损坏数字拒绝后保留当前会话。插件、原始来源、origin数据不转换；没有新字段/能力/格式版本，也不更新旧Hash以掩盖问题。已验活动/非活动、现代属性和结构Undo/Redo、schema1历史、三次冷开、实际恢复；恢复快照仍undo_restored=false。只据此资格NOTE b/l，未外推全部SDK数值字段。下面带日期的差异记录是修复前状态，当前完整结果见VERIFICATION.md。
