@@ -1282,6 +1282,8 @@ add_test(NAME forma_latency_routing COMMAND ndaw_latency_routing_tests "${CMAKE_
 set_tests_properties(forma_latency_routing PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 add_test(NAME forma_latency_workspace COMMAND ndaw_latency_routing_tests "${CMAKE_BINARY_DIR}/p2-latency-workspace-tests.json" --gui)
 set_tests_properties(forma_latency_workspace PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+add_test(NAME forma_latency_hosted COMMAND ndaw_latency_routing_tests "${CMAKE_BINARY_DIR}/p2-latency-hosted-tests.json" --hosted)
+set_tests_properties(forma_latency_hosted PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 juce_add_console_app(ndaw_preferences_tests PRODUCT_NAME "ndaw_preferences_tests")
 target_sources(ndaw_preferences_tests PRIVATE tests/v2/PreferencesTests.cpp)
 target_link_libraries(ndaw_preferences_tests PRIVATE ndaw_ui)

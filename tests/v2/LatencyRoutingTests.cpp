@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "Workspace.h"
 #include "WorkspaceWindow.h"
+#include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <fstream>
 #include <iostream>
 using namespace ndaw::v2;
@@ -9,6 +10,17 @@ namespace ndaw::v2
 class AudioDeviceTestAccess
 {
 public:
+    static te::Engine& engine(Commands& c)
+    {
+        return c.engine;
+    }
+    static int graphLatency(Commands& c)
+    {
+        auto* context = c.edit->getCurrentPlaybackContext();
+        if (!context)
+            throw std::runtime_error("native playback context absent");
+        return context->getLatencySamples();
+    }
     static void nativeAttack(Commands& c, const std::string& id, float value)
     {
         auto* p = dynamic_cast<te::ExternalPlugin*>(c.processor(id));
@@ -507,6 +519,141 @@ void qualify(const juce::File& root, const juce::File& source, const juce::File&
     check(diff(ref, sidechain(root, main, key, 5)) <= 2e-6,
           "actual changed receiver latency preserves complete detector audio");
 }
+struct Played
+{
+    juce::AudioBuffer<float> pcm;
+    int latency = 0;
+};
+void writeCaptured(const juce::File& file, const juce::AudioBuffer<float>& pcm)
+{
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::OutputStream> stream(file.createOutputStream());
+    auto writer = wav.createWriterFor(
+        stream, juce::AudioFormatWriterOptions{}.withSampleRate(48000).withNumChannels(2).withBitsPerSample(24));
+    check(writer && writer->writeFromAudioSampleBuffer(pcm, 0, pcm.getNumSamples()),
+          "actual hosted output writes PCM only after processing");
+}
+Played play(Commands& c, const juce::File& root, const char* phase, bool loop,
+            std::initializer_list<juce::File> sources)
+{
+    te::HostedAudioDeviceInterface::Parameters params;
+    params.sampleRate = 48000;
+    params.blockSize = 512;
+    params.inputChannels = 0;
+    params.outputChannels = 2;
+    te::test_utilities::EnginePlayer device(AudioDeviceTestAccess::engine(c), params);
+    auto& engine = AudioDeviceTestAccess::engine(c);
+    auto& host = engine.getDeviceManager().getHostedAudioDeviceInterface();
+    c.seek(loop ? 37 : 0);
+    c.play();
+    wait(
+        [&]
+        {
+            for (auto source : sources)
+                if (!engine.getAudioFileManager().cache.hasMappedReader(te::AudioFile(engine, source), 0))
+                    return false;
+            return true;
+        },
+        "actual playback source mappings become ready before capture");
+    Played output;
+    output.latency = AudioDeviceTestAccess::graphLatency(c);
+    const int count = loop ? 8 * 24113 : frames;
+    const int blocks = (count + output.latency + 511) / 512;
+    output.pcm.setSize(2, blocks * 512);
+    juce::AudioBuffer<float> block(2, 512);
+    juce::MidiBuffer midi;
+    midi.ensureSize(4096);
+    std::vector<double> durations;
+    durations.reserve(size_t(blocks));
+    const auto began = juce::Time::getMillisecondCounterHiRes();
+    for (int n = 0; n < blocks; ++n)
+    {
+        block.clear();
+        midi.clear();
+        const auto start = juce::Time::getMillisecondCounterHiRes();
+        host.processBlock(block, midi);
+        durations.push_back((juce::Time::getMillisecondCounterHiRes() - start) * 1000);
+        for (int ch = 0; ch < 2; ++ch)
+            output.pcm.copyFrom(ch, n * 512, block, ch, 0, 512);
+    }
+    const auto status = c.deviceStatus();
+    c.stop();
+    const auto elapsed = juce::Time::getMillisecondCounterHiRes() - began;
+    const auto path = root.getChildFile("hosted-" + juce::String(++serial) + ".wav");
+    writeCaptured(path, output.pcm);
+    std::sort(durations.begin(), durations.end());
+    const auto misses =
+        std::count_if(durations.begin(), durations.end(), [](double us) { return us > 1e6 * 512 / 48000; });
+    measurements.push_back({{"case", phase},
+                            {"file", path.getFullPathName().toStdString()},
+                            {"frames", output.pcm.getNumSamples()},
+                            {"graph_latency", output.latency},
+                            {"device", status},
+                            {"process_max_us", durations.back()},
+                            {"process_p99_us", durations[size_t((durations.size() - 1) * .99)]},
+                            {"deadline_exceeded", misses},
+                            {"capture_ms", elapsed},
+                            {"sha256", Commands::mediaHash(path)}});
+    check(elapsed < 10000, "actual hosted capture meets ten second budget");
+    check(misses == 0, "each measured hosted processBlock meets the fixed 512-frame deadline");
+    return output;
+}
+void aligned(const Played& expected, const Played& actual, int count, const char* name)
+{
+    double error = 0;
+    for (int ch = 0; ch < 2; ++ch)
+        for (int n = 0; n < count; ++n)
+            error = std::max(error, std::abs(double(expected.pcm.getSample(ch, n + expected.latency)) -
+                                             actual.pcm.getSample(ch, n + actual.latency)));
+    discovery.push_back({{"case", name},
+                         {"maximum_pcm_difference", error},
+                         {"expected_latency", expected.latency},
+                         {"actual_latency", actual.latency},
+                         {"compared_frames", count}});
+    check(error <= 2e-6, name);
+}
+void hosted(const juce::File& root, const juce::File& source, const juce::File& negative, const juce::File& main,
+            const juce::File& key)
+{
+    for (bool loop : {false, true})
+    {
+        const int count = loop ? 8 * 24113 : frames;
+        Commands c(false, std::make_unique<Storage>(root.getChildFile(loop ? "hosted-loop" : "hosted-linear")));
+        base(c, source);
+        const auto t = named(c, "Delayed");
+        if (loop)
+        {
+            run(c, "session.range.set", {{"start_samples", 37}, {"end_samples", 24150}});
+            run(c, "transport.loop.set", {{"enabled", true}});
+        }
+        const auto ref = play(c, root, loop ? "loop direct reference" : "direct reference", loop, {source});
+        check(ref.pcm.getMagnitude(0, ref.pcm.getNumSamples()) > .01f,
+              "reference production playback has actual audio");
+        const auto p = insert(c, t, descriptor(c, "AUPeakLimiter"));
+        const auto delayed = play(c, root, loop ? "loop AU96" : "AU96", loop, {source});
+        check(delayed.latency == 96, "actual playback graph reports real 96-sample AU latency");
+        aligned(ref, delayed, count, "reported graph latency aligns complete actual playback with reference");
+        const auto before = c.query();
+        AudioDeviceTestAccess::nativeAttack(c, p["id"], .5f);
+        wait([&] { return c.query()["revision"].get<uint64_t>() > before["revision"].get<uint64_t>(); },
+             "native changed state is captured before starting actual playback");
+        const auto tx = c.query()["native_plugin_states"]["last_capture"];
+        const auto dynamic = play(c, root, loop ? "loop AU732" : "AU732", loop, {source});
+        check(dynamic.latency == 732, "actual playback graph reports changed 732-sample latency");
+        aligned(ref, dynamic, count, "changed AU delay aligns complete actual playback including loop boundaries");
+        const auto saved = root.getChildFile(loop ? "PDC-Hosted-Loop.tracktionedit" : "PDC-Hosted.tracktionedit");
+        c.save(saved);
+        c.open(saved);
+        aligned(ref, play(c, root, "hosted cold latency", loop, {source}), count,
+                "cold playback retains actual dynamic latency and complete signal");
+        c.undo(tx["plan_id"]);
+        aligned(ref, play(c, root, "hosted original Undo", loop, {source}), count,
+                "original native Undo restores actual playback signal");
+        c.redo();
+        aligned(ref, play(c, root, "hosted original Redo", loop, {source}), count,
+                "original native Redo restores actual playback signal");
+    }
+}
 } // namespace
 int main(int argc, char** argv)
 {
@@ -540,6 +687,8 @@ int main(int argc, char** argv)
             probe(root, source);
         else if (argc > 2 && std::string(argv[2]) == "--gui")
             workspace(root, source, main, key);
+        else if (argc > 2 && std::string(argv[2]) == "--hosted")
+            hosted(root, source, negative, main, key);
         else
             qualify(root, source, negative, main, key);
         int i = 0;
@@ -556,8 +705,9 @@ int main(int argc, char** argv)
     report["checks"] = checks;
     report["discovery"] = discovery;
     report["measurements"] = measurements;
-    report["scope"] = "actual AU and production graph; 48k stereo offline; no physical, all-plugin or "
-                      "realtime qualification";
+    report["scope"] =
+        "actual AU and production graph; 48k stereo offline or manually-clocked hosted; no physical, all-plugin or "
+        "realtime qualification";
     write();
     return report["status"] == "passed" ? 0 : 1;
 }
