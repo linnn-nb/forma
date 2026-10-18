@@ -1,3 +1,5 @@
+2026-10-18 P2-EXTERNAL-PRINT-01：已补AU EQ/Serum VST3实际Freeze/Bounce/Stems、保存重开/原UndoRedo/自定义native peer键与PCM限定资格；新产物可追溯工程/实现版本，旧冻结媒体不重渲染。安静VST3导出后的实际准备率缓存与首通知捕获已修。不是所有第三方、私有DSP状态、实体听评/键盘/PDC或完整P2通过；见RENDER_PROVENANCE.md。
+
 2026-10-16 P1-MIDI-PEDAL-02：普通MIDI Comp入点能恢复来源踏板持续音与CC66捕获顺序；普通Stop和试听取消/快速重启的hosted输出实测，原源/UndoRedo/冷开/可改键及真实WAV保持。Comp按完整来源上下文恢复，非插件DSP状态快照；动态Clip循环/MPE/同音多voice/实体/全RT等仍保留。当前限定增量收口，完整P1/产品未验收；下一项P2真实外部插件链路。
 
 2026-10-16 P1-MIDI-PEDAL-01（部分）：MIDI Comp的CC64/CC66切点和循环释放已修，原Take/Comp/UndoRedo/保存重开/可改键及真实WAV有自动回归。踏板持续旧音的入点重建、CC66锁存追逐、生产Stop实际输出/实体MIDI/听评仍待补，不将完整SEQ或原生kill当作完整踏板工作流。代码/验收对应见MIDI_COMP_WORKFLOW.md与VERIFICATION.md首节。

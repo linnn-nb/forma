@@ -6,6 +6,7 @@
 - C++20/CMake；原创AGPLv3、Tracktion GPLv3，依赖锁定与许可证保留。SDK修改以审计patch保存，不提交脏子模块指针。
 - Save Copy不重绑路径；Save As/打开成功才绑定实际文件字节版本，普通Save先核对并保留独立旧版。文件写入不伪称工程Undo，失败不能沿用旧成功回执。
 - 新增持久音频/编辑语义须登记工程读取能力；保存覆盖当前/非活动/Undo/Redo，禁止靠旧读者忽略的字段防误读。实际格式与迁移规则见 docs/PROJECT_FORMAT.md。
+- Freeze/Bounce媒体不能因升级自动重渲染；新Print/Stems绑定工程与实现哈希。插件保存块与运行时私有状态分开验证，不能由不透明块哈希推断DSP语义。
 - te::Edit为唯一工程事实来源，只有L1命令层在message thread写入；后台/MCP经不透明CommandQueue Client投递，不接受JSON伪造身份。
 - 每个Plan一个UndoManager事务；actor/revision/幂等/权限/预览/回执保留。多轨编辑封定全部来源/TARGET和完整关联闭包。旁路人工参数变化由L1捕获。
 - 原生派生排序在原Plan/录音事务关闭或失败回滚前排空；录音目标/写盘线程失效必须failed，历史录音摘要不得冒充新执行。
@@ -42,4 +43,4 @@
 - 每级只保留evidence/<级别>/summary.md和关键输出/截图；中间输出在忽略build。里程碑验收才打DMG，不制造源码tar包。
 - 付费、上传音频、系统安全修改、覆盖用户原媒体须授权；提交/推送现有公开仓库已授权。有效源媒体不得覆盖。
 
-文档入口：docs/CLI.md、docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_LOOP_OUTPUT.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md、docs/MIDI_PUNCH_WORKFLOW.md、docs/MIDI_COMP_WORKFLOW.md及evidence/P1、P2、P3/summary.md。
+文档入口：docs/CLI.md、docs/PRODUCT_SPEC.md、docs/ARCHITECTURE.md、docs/AI_COMMAND_CONTRACT.md、docs/VERIFICATION.md、docs/DEPENDENCIES_AND_BLOCKERS.md、docs/NEXT_STEPS.md、docs/BACKLOG.md；制作流程见docs/MIDI_LOOP_WORKFLOW.md、docs/MIDI_LOOP_OUTPUT.md、docs/MIDI_CC_WORKFLOW.md、docs/WARP_WORKFLOW.md、docs/ELASTIC_AUDIO.md、docs/RENDER_PROVENANCE.md、docs/MIDI_PUNCH_WORKFLOW.md、docs/MIDI_COMP_WORKFLOW.md及evidence/P1、P2、P3/summary.md。

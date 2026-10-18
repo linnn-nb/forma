@@ -1,3 +1,13 @@
+# 当前：外部插件印刻与来源（2026-10-18）
+
+211b680：实际AUNBandEQ1.6.0 AU与Serum1.3.6.8 VST3完成Freeze→Bounce→Stems，原Undo/Redo、保存冷开、实际native peer自定义键/原生面板及真实PCM共同通过。新回执/manifest绑定工程与实现；旧冻结文件不自动重渲染。同步VST3实际48000/缓存44100已修，首次后续真实参数通知记human并可Undo。
+
+最终同批6/6、774项/274.65秒，原帧数/2e-6/10秒/20秒/2秒预算保持。六份独立PCM24/WAV检查：Master差0、Stem重建差1.1921e-7；所有SHA/manifest链与169输入实现摘要匹配。历史冻结另15项，新读者真实音频与原工程/缓存SHA保持。不是全仓/所有插件/私有DSP相位/OS键盘/听评/RT/PDC/Windows或完整P2资格。
+
+演示VST3：`build-v2-tracktion/P2-External-Print-1808a2345fce48408160af67835bb885/VST3/External-Production.tracktionedit`（短测试演奏）；AU：`build-v2-tracktion/P2-External-Print-1808a2345fce48408160af67835bb885/AU/External-Production.tracktionedit`。CtrlOption F/B/R/S为这两个工程实际持久自定义键，默认键和步骤见RENDER_PROVENANCE.md；原生产窗口未被替换，新App须正常重启使用。本地开发签名未公证，App SHA `7f6343134e7cdcf353efdfee60e9487fa9c4382b732826ed72745ac565ac71e7`，没有新包或用户音频上传。
+
+实际运行时getStateInformation块与保存引用分别记录，Serum运行时字节有变化；完整捕获块提交和冷开一致，不伪称已理解私有语义。最终日志/报告 `build-v2-tracktion/P2-External-Qualified-20261018T124111Z`，早期失败仍在p2-external-resume-*；两轮增量收口，更多边界BACKLOG，下一项路由/旁链PDC。
+
 # P2 原生主流程资格收尾（2026-10-14）
 
 结论：Release与固定本地deep/strict签名通过；9套1251项在185.68秒内通过，随后偏好真实焦点快捷键修复专项44项3.76秒通过。不是全仓回归、全部P2组合、听评/耐久或发行通过。源码1ca46a5/c1d9225/8684509；当前唯一二进制SHA256 `7fba1a51c592adcae67e7ff819889269511eb01a2c995b77f610d220107cddbf`。无新DMG/预览包。

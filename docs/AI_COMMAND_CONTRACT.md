@@ -1,3 +1,5 @@
+2026-10-18：原track.freeze / track.bounce.in_place / export.stems.publish Plan和一事务Undo保持。新渲染回执/真实manifest提供render_implementation、edit_snapshot_sha256与联合processing_chain_hash；保存引用刷新不等于新工具执行完成，也不等于理解不透明私有DSP状态。外部原生准备率/映射改变使事实/版本失效，首个后续真实参数通知仍记human。MCP/AI权限和工具未扩张，M2/M3冻结。
+
 2026-10-16 MIDI窗口契约：playlist.promote / playlist.comp.create仍是同一L1 Plan/原Undo；窗口保留完整源，实际入点恢复来源按键/踏板上下文（重触发），不是丢弃所有窗口前事件。原Main在替换范围内不触发，在右侧入点恢复其来源持续状态；不伪称理解或恢复插件私有voice/包络/相位。Stop/取消是走带与输出副作用，不生成假工程Undo；cancelled不代表物理MIDI接收端ACK。当前hosted首后续缓冲与快速重启输出有实测，实体/并发资格另列。完整范围见MIDI_COMP_WORKFLOW.md。
 
 2026-10-16 CLI-JSON-01：本地ndaw的stdout为单一JSON结果（commands原数组保持），受控异常/用法分别退出1/2并返回结构化错误；SDK/普通C/C++/子进程/退出日志走stderr，完整关闭后发布。输出失败74/无回执不能标成功；既有播放/扫描资格失败仍按原Schema+非零退出判断。CLI读取磁盘，不冒充运行中Edit查询；MCP、L1命令/actor/权限/Schema不变。用法及限制见CLI.md。

@@ -1,3 +1,5 @@
+2026-10-18 L1渲染来源：TrackPrint/StemExport共用RenderIdentity，将实际Edit快照与构建实现摘要绑定，新manifest持久化；已生成音频按原哈希保留，不因升级自动重渲染。CMake生成头仅RenderIdentity.cpp使用，不以Git HEAD作DSP版本。ExternalCommands在message thread同步实际准备采样率/参数布局并刷新版本/事实；不新增RT处理、引擎/SDK补丁/服务或权限。实际范围及不透明状态界限见RENDER_PROVENANCE.md。
+
 2026-10-16：L0扩展原生MIDI播放准备：保留播放用负时间历史，非实时构建持续音区间索引/踏板沿/预留消息存储，入点只读重触发；原SEQ、媒体与L1 Edit/Plan格式不改。MidiOutputDeviceInstance记录实际接受的通道，回收请求输出释放；hosted以32位无锁原子屏障串联回调前/回调中的停止和新图，输入MIDI不接收输出重设。无新引擎/服务/IPC；21补丁56文件fresh replay已验。全SDK RT锁/分配和硬件排队未由此解决，见VERIFICATION.md首节。
 
 2026-10-16 MIDI踏板增量：L0原生MidiNode/LoopingMidiNode跟踪实际输出的CC64/66，状态只在播放路径读写，非实时准备共享到替换图；固定两个通道掩码，不新增服务、引擎或IPC。L1仍是唯一Edit写入口，所有CC/Comp/历史沿用原Plan；不改持久源或工程格式。SDK新增审计patch，21补丁55文件fresh apply/逐字节/reverse通过；全局RT分配/锁资格未由此获得。范围见MIDI_COMP_WORKFLOW.md及VERIFICATION.md首节。

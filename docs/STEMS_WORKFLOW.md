@@ -1,3 +1,5 @@
+2026-10-18：AU/VST3印刻后的两轨+Master实际批次已验证，manifest新增render_implementation及edit_snapshot_sha256并纳入processing_chain_hash。六份独立PCM24解码、Master差0，分轨相加差1.1921e-7≤2e-6；Undo仅恢复记录、保留真实文件。更多范围及源/引擎版本界限见RENDER_PROVENANCE.md。
+
 2026-10-14资格更新：桌面已解锁。Stems整批发布/保存重开/原UndoRedo及真实WAV复核、偏好应用/独立历史/全进程重启已实体执行。最新9套1251项及后续偏好焦点专项44项通过；Cmd Return目录按钮拦截已修复并在实际键盘上复验。不是全部格式/第三方/耐久或完整发行通过。以evidence/P2/summary.md最新记录为准，以下失败保留作历史。
 
 # Stems 批量导出（2026-10-14）

@@ -1,4 +1,25 @@
-# MIDI踏板上下文/停止增量（2026-10-16，当前）
+# 外部插件印刻与渲染来源（2026-10-18，当前）
+
+**211b680 / P2-EXTERNAL-PRINT-01：限定范围已验证，完整P2/产品未验收。** 最终同批6/6、774检查、274.65秒，不累加之前失败或重跑。无新真实麦克风、OS键盘、听评、RT/耐久、硬件PDC或Windows资格。
+
+| 套件 | 检查 | 真实秒数 |
+|---|---:|---:|
+| tracktion_external_plugin_audio | 63 | 20.08 |
+| tracktion_external_plugin_automation | 87 | 25.39 |
+| forma_print | 77 | 21.64 |
+| forma_print_graph | 148 | 65.03 |
+| forma_stems | 123 | 87.31 |
+| forma_external_print_chain | 276 | 55.19 |
+
+新专项276项：AUNBandEQ AU/Serum VST3实际加载与枚举参数，PRE混响Aux/主输出保持、Freeze/Bounce/还原、原UndoRedo/保存冷开、自定义native peer键、实际WAV/Stems；同步渲染后安静VST3采样率缓存修复及首次无gesture原生通知/Undo。所有旧数值/时限预算保持，详见RENDER_PROVENANCE.md。保存块完整保留并冷开核对；Serum运行时不透明块有字节变化，记录差异而不声称私有DSP状态或相位逐位一致。
+
+独立Python六WAV的格式/帧数/SHA/manifest链哈希通过，Master误差0、Stem重建差1.1920928955078125e-7。169输入/实际SDK diff/编译配置独立重算实现哈希匹配生成头和App；历史冻结另15项，原工程/缓存SHA保持、原缓存声音比较≤2e-6。
+
+构建NativeDAW/ndaw、外部宿主/自动化和P2受影响目标exit0，本地deep/strict签名通过、未公证。唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `7f6343134e7cdcf353efdfee60e9487fa9c4382b732826ed72745ac565ac71e7`；未声称已在新生产进程运行，旧用户窗口未被强退或换工程。演示与操作见RENDER_PROVENANCE.md。
+
+失败保留：非法Aux/尚未真实promote的MIDI音频导入夹具被正确拒绝；先前AU准备回调污染测试基线，改查原生范围而非放宽参数比较；同步VST3实际48000/缓存44100红项已修；后台分析导出试验未达P2的10秒预算，已撤回，不外推M3；运行时私有块不等于保存引用，改为完整捕获/提交/冷开资格并保留差异。日志 `p2-external-resume-*` 和本轮精简索引 `build-v2-tracktion/P2-External-Qualified-20261018T124111Z`。本模块两轮边界收口，剩余进BACKLOG；下一项路由/旁链PDC。
+
+# 历史：MIDI踏板上下文/停止增量（2026-10-16，d6147f0）
 
 代码 **d6147f0**，P1-MIDI-PEDAL-02限定范围已验证；最终9/9、2380项、77.29秒（不累加重跑）。完整P1、实体MIDI、听评、全RT和产品尚未验收。
 

@@ -1,3 +1,5 @@
+2026-10-18：真实AU EQ与Serum VST3的Freeze→Bounce→Stems、原历史/冷开/可改native peer按键与实际PCM已补限定资格。新产物记录工程与实现哈希，旧缓存不因升级重渲染；保存块与运行时私有状态分开核对。不是全部插件/实体听评/PDC或完整P2，详情见RENDER_PROVENANCE.md与VERIFICATION.md首节。
+
 # Freeze、原地 Bounce 与缓存重定位（2026-10-14）
 
 原生音频、MIDI/FourOsc乐器、直连Aux、发送Aux、PRE/POST发送和内置压缩器旁链的明确组合已通过实际音频与工程资格；9个受影响套件655项通过。实体缓存重定位、快捷键、保存重开、原Undo/Redo、CoreAudio播放和完整尾音导出已验。第三方插件、多声道、长项目资源与完整P2仍未验收。
