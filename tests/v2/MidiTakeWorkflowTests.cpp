@@ -3,6 +3,7 @@
 #include "ProjectDocument.h"
 #include "MidiLoopState.h"
 #include "MidiPlaylistState.h"
+#include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -12,6 +13,18 @@ namespace ndaw::v2
 class RecordingTestAccess
 {
 public:
+    static te::Engine& engine(Commands& c)
+    {
+        return c.engine;
+    }
+    static te::EditPlaybackContext* context(Commands& c)
+    {
+        return c.edit->getCurrentPlaybackContext();
+    }
+    static uint64_t displayedRevision(ndaw::desktop::Workspace& w)
+    {
+        return w.workspaceRevision;
+    }
     static Json readiness(Commands& c)
     {
         return c.recordingReadiness();
@@ -362,11 +375,249 @@ void selectRange(juce::Component& canvas, int row, int64_t first, int64_t last)
     canvas.mouseDrag(mouse(canvas, b, true));
     canvas.mouseUp(mouse(canvas, b));
 }
+Json currentClip(Commands& c, const std::string& id)
+{
+    const auto q = c.query();
+    for (const auto& t : q["tracks"])
+        for (const auto& clip : t["clips"])
+            if (clip["id"] == id)
+                return clip;
+    throw std::runtime_error("recorded target clip missing");
+}
+void ccKey(ndaw::desktop::Workspace& w, int id)
+{
+    wait([&] { return enabled(w, id); }, "recorded CC command is enabled", 2000);
+    const auto* map = w.uiCommands().getKeyMappings();
+    const auto keys = map->getKeyPressesAssignedToCommand(id);
+    check(!keys.isEmpty() && map->findCommandForKeyPress(keys[0]) == id,
+          "recorded CC key resolves to its claimed command ID");
+    w.grabKeyboardFocus();
+    wait([&] { return w.getPeer() && w.getPeer()->isFocused() && w.hasKeyboardFocus(true); },
+         "recorded CC native peer and component have actual focus", 2000);
+    check(w.getPeer()->handleKeyPress(keys[0]), "recorded CC shortcut enters actual native peer");
+}
+void recordedControllers(ndaw::desktop::Workspace& w, Commands& c, const juce::File& root, const std::string& track,
+                         const std::string& main)
+{
+    const auto playlistsBefore = playlists(c, track);
+    check(playlistsBefore["active"] == main && item(c, track, main)["clips"].size() == 3,
+          "CC integration starts from the actual recorded and accepted three-window Comp");
+    const std::string id = item(c, track, main)["clips"][1]["id"];
+    const auto original = currentClip(c, id);
+    const auto raw = RecordingTestAccess::source(c, 0);
+    const auto hash = midi_loop::fingerprint(raw);
+    Json sourceLists = Json::array();
+    for (const auto& list : playlistsBefore["items"])
+        if (list["id"] != main)
+            sourceLists.push_back(list);
+    wait([&] { return RecordingTestAccess::displayedRevision(w) == c.query()["revision"]; },
+         "timeline actually displays the current recorded Comp revision", 2000);
+    auto* caption = dynamic_cast<juce::Button*>(visible(w, "clip.select:" + juce::String(id)));
+    check(caption, "accepted middle Comp has an actual native timeline caption");
+    if (auto* viewport = caption->findParentComponentOfClass<juce::Viewport>())
+    {
+        viewport->setViewPosition(std::max(0, caption->getX() - 60), std::max(0, caption->getY() - 40));
+        check(viewport->getViewArea().contains(caption->getBounds().getCentre()),
+              "actual timeline Comp caption is visible before its native click");
+    }
+    caption->triggerClick();
+    wait(
+        [&]
+        {
+            const auto ui = c.uiState();
+            for (const auto& object : ui["object_selection"])
+                if (object["id"] == id)
+                    return true;
+            return false;
+        },
+        "timeline caption notification selects the actual recorded Comp", 2000);
+    ccKey(w, 574);
+    auto* panel = visible(w, "midi.cc.panel");
+    auto* selector = dynamic_cast<juce::ComboBox*>(visible(w, "midi.cc.controller"));
+    check(panel && selector, "actual recorded Comp opens the native CC panel");
+    selector->setSelectedId(2, juce::sendNotificationSync);
+    wait([&] { return !enabled(w, 275); }, "unchanged recorded controller lane disables native Apply", 2000);
+    const auto noChange = c.query();
+    check(!w.uiCommands().invokeDirectly(275, false) && c.query()["revision"] == noChange["revision"] &&
+              c.query()["history"] == noChange["history"],
+          "disabled unchanged recorded lane cannot manufacture an edit receipt");
+    auto* curve = visible(w, "midi.cc.curve");
+    auto* beat = dynamic_cast<juce::TextEditor*>(visible(w, "midi.cc.source_beat"));
+    auto* value = dynamic_cast<juce::TextEditor*>(visible(w, "midi.cc.value"));
+    auto* set = dynamic_cast<juce::Button*>(visible(w, "midi.cc.set"));
+    check(curve && beat && value && set, "native recorded controller fields and curve exist");
+    for (auto [fraction, level] : std::vector<std::pair<double, int>>{{.35, 17}, {.65, 103}})
+    {
+        const juce::Point<float> point(float(42 + fraction * (curve->getWidth() - 54)),
+                                       float(12 + (1 - level / 127.) * (curve->getHeight() - 42)));
+        curve->mouseDown(mouse(*curve, point));
+        curve->mouseUp(mouse(*curve, point));
+        const double source = original["start_beat"].get<double>() - original["content_start_beat"].get<double>() +
+                              original["length_beats"].get<double>() * fraction;
+        beat->setText(juce::String(source, 17), false);
+        value->setText(juce::String(level), false);
+        set->triggerClick();
+        wait([&] { return beat->getText() == juce::String(source, 12) && value->getText() == juce::String(level); },
+             "single native Set notification accepts exact recorded CC fields", 2000);
+    }
+    check(currentClip(c, id) == original, "recorded CC curve remains a draft before actual acceptance");
+    ccKey(w, 275);
+    wait([&]
+         { return !panel->isVisible() && currentClip(c, id)["controller_events"] != original["controller_events"]; },
+         "native accept has a real controller edit receipt", 2000);
+    const auto edited = currentClip(c, id), after = c.query()["tracks"];
+    const std::string editID = c.query()["history"]["undo"]["plan_id"];
+    Json expected = Json::array();
+    for (const auto& e : edited["controller_events"])
+        if (e["type"] == 1 && (e["value"] == 17 || e["value"] == 103))
+            expected.push_back(e);
+    check(expected.size() == 2 && edited["notes"] == original["notes"] &&
+              edited["sysex_count"] == original["sysex_count"],
+          "real accepted recorded CC points preserve all original notes and SysEx");
+    for (auto old : original["controller_events"])
+    {
+        const auto found = std::find_if(edited["controller_events"].begin(), edited["controller_events"].end(),
+                                        [&](const auto& e) { return e["id"] == old["id"]; });
+        if (old["type"] == 1)
+            old["identity_persisted"] = true; // First actual lane edit freezes its existing identity.
+        check(found != edited["controller_events"].end() && *found == old,
+              "all original CC and pitch events retain exact time, value, metadata and identity");
+    }
+    for (const auto& list : sourceLists)
+        check(item(c, track, list["id"]) == list, "editing Comp CC preserves each original recorded Take and Playlist");
+    check(midi_loop::fingerprint(RecordingTestAccess::source(c, 0)) == hash &&
+              RecordingTestAccess::source(c, 0).isEquivalentTo(raw),
+          "recorded CC edit preserves complete immutable input events and source hash");
+    ccKey(w, 6);
+    wait([&] { return currentClip(c, id) == original; }, "native CC Undo restores complete recorded Comp window", 2000);
+    ccKey(w, 7);
+    wait([&] { return c.query()["tracks"] == after; }, "native CC Redo restores exact original controller identities",
+         2000);
+    auto* maps = w.uiCommands().getKeyMappings();
+    const juce::KeyPress custom(
+        juce::KeyPress::F10Key,
+        juce::ModifierKeys::commandModifier | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier, 0);
+    maps->removeKeyPress(custom);
+    maps->clearAllKeyPresses(574);
+    maps->addKeyPress(574, custom);
+    wait(
+        [&]
+        {
+            return c.uiState()["keymap_xml"].get<std::string>().find(custom.getTextDescription().toStdString()) !=
+                   std::string::npos;
+        },
+        "recorded CC custom key is acknowledged by persistent L1 UI state", 2000);
+    const auto saved = root.getChildFile("Recorded-CC-Comp.tracktionedit");
+    c.saveAs(saved);
+    render(c, root.getChildFile("Recorded-CC-Accepted.wav"));
+    {
+        Commands cold(false, std::make_unique<Storage>(root.getChildFile("cold-cc")));
+        cold.open(saved);
+        sameProjectTracks(after, cold.query()["tracks"]);
+        check(midi_loop::fingerprint(RecordingTestAccess::source(cold, 0)) == hash &&
+                  currentClip(cold, id)["controller_events"] == edited["controller_events"],
+              "cold recorded Comp restores full capture source and controller facts exactly");
+        te::HostedAudioDeviceInterface::Parameters params;
+        params.sampleRate = 48000;
+        params.blockSize = 256;
+        params.inputChannels = 0;
+        params.outputChannels = 2;
+        te::test_utilities::EnginePlayer device(RecordingTestAccess::engine(cold), params);
+        RecordingTestAccess::engine(cold).getDeviceManager().rescanMidiDeviceList();
+        std::string output;
+        wait(
+            [&]
+            {
+                const auto status = cold.deviceStatus();
+                for (const auto& port : status["midi_outputs"])
+                    if (port["kind"] == "hosted_test")
+                        output = port["id"];
+                return !output.empty();
+            },
+            "actual MIDI output exists for recorded CC verification");
+        cold.configureMidiDevice("output", output, true);
+        wait([&] { return cold.deviceStatus()["midi_configuration"]["state"] == "applied"; },
+             "actual recorded CC MIDI output is enabled");
+        Json ops = Json::array({op("track.output", {{"track", track}, {"target", output}}),
+                                op("transport.loop.set", {{"enabled", false}})});
+        const auto q = cold.query();
+        for (const auto& p : q["tracks"][0]["plugins"])
+            ops.push_back(op("plugin.bypass", {{"plugin", p["id"]}, {"bypassed", true}}));
+        const auto routing = run(cold, ops);
+        cold.seek(0);
+        cold.play();
+        Json messages = Json::array();
+        const auto until = juce::Time::getMillisecondCounterHiRes() + 10000;
+        bool complete = false;
+        for (int n = 0; n < 1200 && juce::Time::getMillisecondCounterHiRes() < until; ++n)
+        {
+            juce::AudioBuffer<float> input(0, 256);
+            juce::MidiBuffer midi;
+            device.process(input, midi);
+            auto* context = RecordingTestAccess::context(cold);
+            const auto sync = context ? context->getSyncPoint() : std::optional<te::SyncPoint>{};
+            if (sync && context->isPlaying())
+            {
+                const auto block = std::llround(sync->time.inSeconds() * 48000.) - 256;
+                for (auto e : midi)
+                {
+                    const auto m = e.getMessage();
+                    if (m.isController() && m.getControllerNumber() == 1)
+                        messages.push_back({{"value", m.getControllerValue()}, {"frame", block + e.samplePosition}});
+                }
+                if (block >= edited["start_samples"].get<int64_t>() + edited["length_samples"].get<int64_t>() + 512)
+                {
+                    complete = true;
+                    break;
+                }
+            }
+        }
+        cold.stop();
+        result["recorded_cc"]["messages"] = messages;
+        result["recorded_cc"]["expected"] = expected;
+        check(complete, "actual recorded CC output completes within original ten-second window");
+        for (const auto& e : expected)
+        {
+            int matches = 0;
+            for (const auto& m : messages)
+                if (m["value"] == e["value"] &&
+                    std::abs(m["frame"].get<int64_t>() - e["position_samples"].get<int64_t>()) <= 1)
+                    ++matches;
+            check(matches == 1, "each edited recorded CC reaches actual native output once within one sample");
+        }
+        cold.undo(routing["plan_id"]);
+        cold.undo(editID);
+        check(currentClip(cold, id) == original, "cold original CC Undo restores original recorded sequence");
+        cold.redo();
+        check(currentClip(cold, id)["controller_events"] == edited["controller_events"],
+              "cold original CC Redo restores exact raw controller values and identities");
+        render(cold, root.getChildFile("Recorded-CC-Reopened.wav"));
+    }
+    w.openSession(saved);
+    check(maps->findCommandForKeyPress(custom) == 574, "actual recorded CC custom shortcut survives GUI reopen");
+    ccKey(w, 574);
+    wait([&] { return visible(w, "midi.cc.panel") && !enabled(w, 275); },
+         "cold custom shortcut opens the actual unchanged recorded CC panel", 2000);
+    const auto beforeCancel = c.query();
+    w.grabKeyboardFocus();
+    wait([&] { return w.getPeer() && w.getPeer()->isFocused() && w.hasKeyboardFocus(true); },
+         "recorded CC cancellation owns actual native focus", 2000);
+    // Escape is a panel-context dispatch, intentionally not a global key binding.
+    check(w.getPeer()->handleKeyPress(juce::KeyPress(juce::KeyPress::escapeKey)),
+          "native Escape enters the visible recorded controller context");
+    wait([&] { return !visible(w, "midi.cc.panel"); }, "native contextual Escape closes recorded CC panel", 2000);
+    check(c.query()["tracks"] == beforeCancel["tracks"] && c.query()["history"] == beforeCancel["history"] &&
+              c.query()["revision"] == beforeCancel["revision"],
+          "native recorded CC cancellation preserves complete objects, history and revision");
+    result["recorded_cc"]["source_hash"] = hash;
+    result["recorded_cc"]["file"] = saved.getFullPathName().toStdString();
+}
 } // namespace
 int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
-    const bool punch = argc > 2 && std::string(argv[2]) == "punch";
+    const bool punch = argc > 2 && (std::string(argv[2]) == "punch" || std::string(argv[2]) == "punch-cc");
+    const bool controllers = argc > 2 && (std::string(argv[2]) == "cc" || std::string(argv[2]) == "punch-cc");
     const bool pedals = argc > 2 && std::string(argv[2]) == "pedals";
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile(
         juce::String(punch ? "MIDI-Punch-Comp-" : "MIDI-Take-Workflow-") + juce::Uuid().toString());
@@ -377,6 +628,9 @@ int main(int argc, char** argv)
         {"pedals", pedals},
         {"budgets",
          {{"input_samples", 256}, {"mouse_samples", 1}, {"ui_ms", 5000}, {"capture_ms", 15000}, {"render_ms", 10000}}}};
+    result["result"] = "running";
+    if (argc > 1)
+        std::ofstream(argv[1]) << result.dump(2);
     int code = 0;
     try
     {
@@ -717,6 +971,8 @@ int main(int argc, char** argv)
         check(image && png.writeImageToStream(w.createComponentSnapshot(w.getLocalBounds()), *image),
               "actual recorded Take comparison panel snapshot is written");
         key(w, 524);
+        if (controllers)
+            recordedControllers(w, c, root, track, main);
         result["result"] = "passed";
         result["scope"] = "actual production hosted MIDI input capture, native peer keys and actual synth output; no "
                           "physical keyboard/MIDI port or listening claim";

@@ -332,6 +332,8 @@ bool Workspace::keyPressed(const juce::KeyPress& key)
         return commandManager.invokeDirectly(277, false);
     if (warpPanel && warpPanel->isVisible() && key == juce::KeyPress::escapeKey)
         return commandManager.invokeDirectly(277, false);
+    if (controllerPanel && controllerPanel->isVisible() && key == juce::KeyPress::escapeKey)
+        return commandManager.invokeDirectly(277, false);
     if (playlistPanel && playlistPanel->isVisible() && key == juce::KeyPress::escapeKey)
     {
         playlistPanel->execute(524);

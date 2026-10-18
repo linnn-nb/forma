@@ -1180,6 +1180,9 @@ add_test(NAME forma_midi_punch_comp COMMAND ndaw_midi_take_workflow_tests "${CMA
 set_tests_properties(forma_midi_punch_comp PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 add_test(NAME forma_midi_pedal_take_comp COMMAND ndaw_midi_take_workflow_tests "${CMAKE_BINARY_DIR}/p1-midi-pedal-take-comp-tests.json" pedals)
 set_tests_properties(forma_midi_pedal_take_comp PROPERTIES TIMEOUT 120 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+add_test(NAME forma_midi_recorded_cc COMMAND ndaw_midi_take_workflow_tests "${CMAKE_BINARY_DIR}/p3-recorded-cc-tests.json" cc)
+add_test(NAME forma_midi_punch_cc COMMAND ndaw_midi_take_workflow_tests "${CMAKE_BINARY_DIR}/p3-punch-cc-tests.json" punch-cc)
+set_tests_properties(forma_midi_recorded_cc forma_midi_punch_cc PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 
 juce_add_console_app(ndaw_midi_pedal_boundary_tests PRODUCT_NAME "ndaw_midi_pedal_boundary_tests")
 target_sources(ndaw_midi_pedal_boundary_tests PRIVATE tests/v2/MidiPedalBoundaryTests.cpp)
