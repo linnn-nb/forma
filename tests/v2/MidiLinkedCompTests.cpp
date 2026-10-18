@@ -4,6 +4,7 @@
 #include "OwnedEditFixture.h"
 #include "MidiLoopState.h"
 #include "MidiPlaylistState.h"
+#include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -13,6 +14,14 @@ namespace ndaw::v2
 class RecordingTestAccess
 {
 public:
+    static te::Engine& engine(Commands& c)
+    {
+        return c.engine;
+    }
+    static te::EditPlaybackContext* context(Commands& c)
+    {
+        return c.edit->getCurrentPlaybackContext();
+    }
     static juce::ValueTree state(Commands& c)
     {
         return c.edit->state.createCopy();
@@ -451,6 +460,7 @@ int main(int argc, char** argv)
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile("MIDI-Linked-" + juce::Uuid().toString());
     root.createDirectory();
     result = {{"root", root.getFullPathName().toStdString()},
+              {"result", "running"},
               {"mode", punch ? "punch" : "loop"},
               {"budgets",
                {{"sample_rate", 48000},
@@ -460,6 +470,8 @@ int main(int argc, char** argv)
                 {"ui_ms", 5000},
                 {"capture_ms", 15000},
                 {"render_ms", 10000}}}};
+    if (argc > 1)
+        std::ofstream(argv[1]) << result.dump(2);
     int code = 0;
     try
     {

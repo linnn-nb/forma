@@ -107,12 +107,151 @@ Json tempoFrame(Commands& c)
             {"tempo", preciseEditXml(state.getChildWithName("TEMPOSEQUENCE"))->toString().toStdString()},
             {"curves", RecordingTestAccess::curves(c)}};
 }
+void verifyTempoControllerOutput(Commands& c, const std::string& track, const Json& ids, const char* label)
+{
+    const auto before = tempoFrame(c), live = liveMidi(c);
+    Json expected = Json::array();
+    int64_t end = 0;
+    for (const auto& [_, clip] : live.items())
+        if (clip["track"] == track)
+            for (const auto& event : clip["controller_events"])
+                if (std::find(ids.begin(), ids.end(), event["id"]) != ids.end())
+                {
+                    expected.push_back(event);
+                    end = std::max(end, event["position_samples"].get<int64_t>() + 1024);
+                    check(event["raw_value"].get<int>() % 128 == 37,
+                          "Tempo and cold reopen retain controller low bits separately from 7-bit wire values");
+                }
+    check(expected.size() == 2, "both stable edited CC identities resolve after actual cold mapping");
+    te::HostedAudioDeviceInterface::Parameters params;
+    params.sampleRate = 48000;
+    params.blockSize = 256;
+    params.inputChannels = 0;
+    params.outputChannels = 2;
+    te::test_utilities::EnginePlayer device(RecordingTestAccess::engine(c), params);
+    RecordingTestAccess::engine(c).getDeviceManager().rescanMidiDeviceList();
+    std::string output;
+    wait(
+        [&]
+        {
+            const auto status = c.deviceStatus();
+            for (const auto& port : status["midi_outputs"])
+                if (port["kind"] == "hosted_test")
+                    output = port["id"];
+            return !output.empty();
+        },
+        "mapped controller verification enumerates an actual hosted MIDI output");
+    c.configureMidiDevice("output", output, true);
+    wait([&] { return c.deviceStatus()["midi_configuration"]["state"] == "applied"; },
+         "mapped controller output configuration actually applies");
+    Json operations = Json::array(
+        {op("track.output", {{"track", track}, {"target", output}}), op("transport.loop.set", {{"enabled", false}})});
+    const auto q = c.query();
+    for (const auto& t : q["tracks"])
+        if (t["id"] == track)
+            for (const auto& p : t["plugins"])
+                operations.push_back(op("plugin.bypass", {{"plugin", p["id"]}, {"bypassed", true}}));
+    const auto route = run(c, operations);
+    c.seek(0);
+    c.play();
+    Json messages = Json::array();
+    const auto until = juce::Time::getMillisecondCounterHiRes() + 10000;
+    bool complete = false;
+    juce::AudioBuffer<float> input(0, 256);
+    juce::MidiBuffer midi;
+    for (int n = 0; n < 1600 && juce::Time::getMillisecondCounterHiRes() < until; ++n)
+    {
+        const double streamStart = RecordingTestAccess::engine(c).getDeviceManager().getCurrentStreamTime();
+        device.process(input, midi);
+        auto* context = RecordingTestAccess::context(c);
+        const auto sync = context ? context->getSyncPoint() : std::optional<te::SyncPoint>{};
+        if (sync && context->isPlaying())
+        {
+            // SyncPoint ends this processed reference range; DeviceManager's
+            // wall stream can lead/lag it during context preparation. No fitted
+            // shift or compensation for MIDI/plugin defects is applied here.
+            const auto block = std::llround(sync->time.inSeconds() * 48000.) - input.getNumSamples();
+            for (auto event : midi)
+            {
+                const auto m = event.getMessage();
+                if (m.isController() && m.getControllerNumber() == 1)
+                {
+                    messages.push_back({{"value", m.getControllerValue()}, {"frame", block + event.samplePosition}});
+                    result["mapped_cc_clock"][label].push_back({{"stream_start", streamStart},
+                                                                {"block", block},
+                                                                {"sync_reference", sync->referenceSamplePosition},
+                                                                {"sync_time", sync->time.inSeconds()},
+                                                                {"event_offset", event.samplePosition}});
+                }
+            }
+            if (block >= end)
+            {
+                complete = true;
+                break;
+            }
+        }
+    }
+    c.stop();
+    result["mapped_cc_output"][label] = {{"expected", expected}, {"messages", messages}};
+    check(complete, "actual mapped CC output finishes within the original 10-second window");
+    for (const auto& e : expected)
+    {
+        int matches = 0;
+        for (const auto& m : messages)
+            if (m["value"] == e["value"] &&
+                std::abs(m["frame"].get<int64_t>() - e["position_samples"].get<int64_t>()) <= 1)
+                ++matches;
+        check(matches == 1, "each Tempo/Meter mapped CC reaches actual native output once within one sample");
+    }
+    c.undo(route["plan_id"]);
+    check(tempoFrame(c) == before, "temporary MIDI verification routing restores complete original mapped project");
+}
 void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
                            const std::array<std::string, 2>& tracks, const std::map<std::string, std::string>& linked,
                            bool samples)
 {
     auto& c = RecordingTestAccess::commands(w);
     const auto original = tempoFrame(c);
+    const auto capturePool = RecordingTestAccess::state(c).getChildWithName("NDAW_MIDI_SOURCES").createCopy();
+    const auto sourcePlaylist = c.query()["tracks"][0]["playlists"]["active"];
+    const auto editable =
+        run(c, "playlist.create",
+            {{"track", tracks[0]}, {"source", sourcePlaylist}, {"name", "Editable CC Comp"}, {"role", "comp"}});
+    const auto selectedCopy =
+        run(c, "playlist.select", {{"track", tracks[0]}, {"playlist", editable["objects"][0]["id"]}});
+    std::vector<Json> ccEdits;
+    Json editedControllers = Json::array();
+    const auto ccStart = liveMidi(c);
+    int number = 0;
+    for (const auto& [id, clip] : ccStart.items())
+        if (clip["track"] == tracks[0])
+        {
+            Json points = Json::array();
+            for (const auto& event : clip["controller_events"])
+                if (event["type"] == 1)
+                    points.push_back({{"id", event["id"]},
+                                      {"source_beat", event["source_beat"]},
+                                      {"raw_value", event["raw_value"]}});
+            const std::string key = "cc:" + id + ":new:" + juce::Uuid().toString().toStdString();
+            const int value = number++ ? 103 : 17;
+            points.push_back(
+                {{"id", key},
+                 {"source_beat", clip["start_beat"].get<double>() - clip["content_start_beat"].get<double>() +
+                                     .37 * clip["length_beats"].get<double>()},
+                 {"raw_value", (value << 7) + 37}});
+            std::sort(points.begin(), points.end(), [](const auto& a, const auto& b)
+                      { return a["source_beat"].template get<double>() < b["source_beat"].template get<double>(); });
+            ccEdits.push_back(run(
+                c, "midi.cc.replace",
+                {{"clip", id}, {"controller", 1}, {"state_hash", clip["controller_state_hash"]}, {"points", points}}));
+            editedControllers.push_back(key);
+        }
+    check(editedControllers.size() == 2, "editable copy of actual recorded Comp receives two persistent 14-bit CC "
+                                         "edits without unlocking linked sources");
+    const auto main = c.query()["tracks"][0]["playlists"]["active"];
+    const auto ccAlternate =
+        run(c, "playlist.create",
+            {{"track", tracks[0]}, {"source", main}, {"name", "CC edited alternate"}, {"role", "comp"}});
     auto added = run(c, "plugin.insert", {{"track", tracks[0]}, {"type", te::EqualiserPlugin::xmlTypeName}});
     std::vector<Json> initialPolicies;
     for (const auto& t : tracks)
@@ -271,11 +410,13 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
         cold.open(file);
         check(tempoFrame(cold) == changed,
               "actual cold file load preserves all native MIDI/Playlist state and actual volume/EQ curves");
+        verifyTempoControllerOutput(cold, tracks[0], editedControllers, "tempo");
         cold.undo(receipt["plan_id"]);
         check(tempoFrame(cold) == baseline,
               "one cold original Undo restores every active/inactive MIDI clip and all curves");
         cold.redo();
         check(tempoFrame(cold) == changed, "one cold original Redo restores full Tempo mapping and curves");
+        linkedMoveRender(cold, root.getChildFile("Tempo-Mapped-Reopened.wav"));
     }
     c.undo(receipt["plan_id"]);
     check(tempoFrame(c) == baseline, "warm Tempo Undo restores full original map and native states");
@@ -301,6 +442,7 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
         cold.redo();
         check(tempoFrame(cold) == meterState,
               "cold original Redo restores Meter mapping across active and inactive Playlists");
+        verifyTempoControllerOutput(cold, tracks[0], editedControllers, "meter");
         cold.undo();
         check(tempoFrame(cold) == baseline, "cold original Meter Undo retains all source identities and native curves");
     }
@@ -326,8 +468,15 @@ void testMidiPlaylistTempo(ndaw::desktop::Workspace& w, const juce::File& root,
     for (auto p = initialPolicies.rbegin(); p != initialPolicies.rend(); ++p)
         c.undo((*p)["plan_id"]);
     c.undo(added["plan_id"]);
+    c.undo(ccAlternate["plan_id"]);
+    for (auto p = ccEdits.rbegin(); p != ccEdits.rend(); ++p)
+        c.undo((*p)["plan_id"]);
+    c.undo(selectedCopy["plan_id"]);
+    c.undo(editable["plan_id"]);
     check(tempoFrame(c) == original,
           "Tempo qualification leaves every original recorded source and inactive Playlist unchanged");
+    check(RecordingTestAccess::state(c).getChildWithName("NDAW_MIDI_SOURCES").isEquivalentTo(capturePool),
+          "Tempo, MIDI CC edits and their exact original Undo retain the complete immutable capture pool");
     RecordingTestAccess::refresh(w);
     result["tempo_mapping"] = {{"basis", samples ? "samples" : "beats"},
                                {"mapped_file", file.getFullPathName().toStdString()},
