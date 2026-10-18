@@ -144,16 +144,17 @@ void verifyTempoControllerOutput(Commands& c, const std::string& track, const Js
     c.configureMidiDevice("output", output, true);
     wait([&] { return c.deviceStatus()["midi_configuration"]["state"] == "applied"; },
          "mapped controller output configuration actually applies");
-    Json operations =
-        Json::array({op("track.output", {{"track", track}, {"target", output}}),
-                     op("transport.loop.set", {{"enabled", false}}), op("session.range.clear", Json::object())});
+    Json operations = Json::array({op("track.output", {{"track", track}, {"target", output}}),
+                                   op("transport.loop.set", {{"enabled", false}}),
+                                   op("session.range.set", {{"start_samples", 0}, {"end_samples", end}})});
     const auto q = c.query();
     for (const auto& t : q["tracks"])
         if (t["id"] == track)
             for (const auto& p : t["plugins"])
                 operations.push_back(op("plugin.bypass", {{"plugin", p["id"]}, {"bypassed", true}}));
     const auto route = run(c, operations);
-    check(c.timelineRange().is_null(), "full mapped MIDI verification clears the narrower saved playback selection");
+    check(c.timelineRange()["start_samples"] == 0 && c.timelineRange()["end_samples"] == end,
+          "mapped MIDI verification explicitly includes both points while preserving saved pre/post-roll modes");
     c.seek(0);
     c.play();
     Json messages = Json::array();
