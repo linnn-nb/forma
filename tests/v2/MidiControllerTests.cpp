@@ -178,6 +178,8 @@ int main(int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI init;
     const auto root = juce::File::getCurrentWorkingDirectory().getChildFile("CC-" + juce::Uuid().toString());
     root.createDirectory();
+    std::ofstream(argc > 1 ? argv[1] : "p3-cc-tests.json")
+        << Json({{"result", "running"}, {"fixture", root.getFullPathName().toStdString()}}).dump(2) << '\n';
     try
     {
         Workspace w(false, std::make_unique<Storage>(root.getChildFile("prefs")));
@@ -199,6 +201,12 @@ int main(int argc, char** argv)
                                                  {"position_samples", 0},
                                                  {"length_samples", 144000}})}));
         const std::string id = clip(c)["id"];
+        const auto emptyRevision = c.query()["revision"];
+        const auto emptyHistory = c.query()["history"];
+        rejects([&] { c.makePlan("human", Json::array({op("midi.cc.replace", args(c, Json::array()))})); },
+                "unchanged empty controller lane cannot create a phantom edit");
+        check(c.query()["revision"] == emptyRevision && c.query()["history"] == emptyHistory,
+              "rejected empty controller edit preserves revision and entire history");
         auto p = Json::array({point(id, 0, 0), point(id, 3, 127 << 7)});
         const auto before = clip(c), notes = before["notes"];
         const auto plan = c.makePlan("human", Json::array({op("midi.cc.replace", args(c, p))}));
@@ -217,6 +225,12 @@ int main(int argc, char** argv)
               "native production playback sequence emits actual 7-bit controller messages");
         check(messages[1]["seconds"] == 1.5, "native CC message time uses current Tempo map");
         check(c.commit(plan)["replayed"] && lane(c) == p, "idempotent retry never duplicates controllers");
+        const auto populated = c.query();
+        rejects([&] { c.makePlan("human", Json::array({op("midi.cc.replace", args(c, lane(c)))})); },
+                "unchanged populated lane cannot create a phantom edit");
+        check(c.query()["tracks"] == populated["tracks"] && c.query()["history"] == populated["history"] &&
+                  c.query()["revision"] == populated["revision"],
+              "unchanged populated lane retains actual objects, revision and history");
         c.undo(receipt["plan_id"]);
         check(lane(c).empty(), "one native Undo removes both actual CC points");
         c.redo();
@@ -249,7 +263,9 @@ int main(int argc, char** argv)
                 "channel-mode MIDI is not disguised as ordinary CC");
         rejects([&] { c.makePlan("agent:test", Json::array({op("midi.cc.replace", args(c, p))})); },
                 "frozen Agent surface cannot invoke new local controller command");
-        const auto stale = c.makePlan("human", Json::array({op("midi.cc.replace", args(c, p))}));
+        auto proposed = p;
+        proposed[1]["raw_value"] = 126 << 7;
+        const auto stale = c.makePlan("human", Json::array({op("midi.cc.replace", args(c, proposed))}));
         run(c, Json::array({op("track.gain", {{"track", c.query()["tracks"][0]["id"]}, {"db", -3}})}));
         rejects([&] { c.commit(stale); }, "interleaved human editing rejects stale CC plan");
         c.undo();

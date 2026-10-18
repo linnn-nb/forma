@@ -11,3 +11,9 @@
 代码：MidiControllerCommands.cpp、MidiControllerPanel.h、WorkspaceControllers.cpp、MidiEditor.h、WorkspaceCommands.cpp。测试MidiControllerTests.cpp：真实原生播放序列逐个核对128个7-bit值、原生时间戳、幂等/失效/拒绝、进口低位和未知元数据、窗口native peer焦点与注册键位、真实异步按钮回执、原UndoRedo/保存重开。不是实体MIDI端口、第三方插件响应或听感验证；线性显示对应生成的离散事件，未伪装连续MIDI信号。
 
 当前边界与原始日志见 ../evidence/P3/summary.md、BACKLOG.md。没有新增SDK、依赖、服务或实时处理；App仍是唯一Forma.app，本地签名不是发行公证。完整产品及P3保持未完成。
+
+## 2026-10-18 录得Take/Comp集成预算（实施前）
+
+沿用生产Hosted MIDI输入录制Loop/Punch→候选局部采用→当前Comp，编辑工作SEQ的CC1，保留原捕获池、原Take完整SEQ/来源SHA、其它音符/CC/Pitch/SysEx及窗口外事件。原GUI命令574/275、实际native peer映射、原UndoRedo、保存冷开/自定义键及真实MIDI输出和WAV共同核验；不解除锁或改原捕获源。
+
+保持原录音15秒、原GUI5秒（新增CC回执2秒）、render10秒、MIDI事件1采样/原静态序列1ns预算；新集成单套180秒，编译≤2任务、音频串行。插件随机相位不作逐位音频一致性宣称。无变更的Lane应拒绝空事务；源哈希/完整编辑状态保持，UI应用键禁用，新增媒体写入不是工程Undo。物理端口/实体键鼠/听评、复杂控制器与PDC瞬态仍未验。

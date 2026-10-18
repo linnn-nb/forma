@@ -977,7 +977,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
                     (id != 276 && warpPanel && warpPanel->isVisible()) ||
-                    (id != 276 && controllerPanel && controllerPanel->isVisible()) ||
+                    (id != 276 && controllerPanel && controllerPanel->isVisible() &&
+                     (id == 277 || controllerPanel->canApply())) ||
                     (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
                     (id != 276 && stemsPanel && stemsPanel->isVisible() && (id == 277 || stemsPanel->canApply())) ||
                     (id != 276 && preferencesPanel && preferencesPanel->isVisible() &&

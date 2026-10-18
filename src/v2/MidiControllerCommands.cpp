@@ -214,6 +214,7 @@ Json Commands::controllerChange(const Json& a) const
     const auto content = clip->getContentStartBeat().inBeats();
     const auto begin = clip->getStartBeat().inBeats(), end = clip->getEndBeat().inBeats();
     std::set<std::string> seen;
+    bool modified = false;
     double previous = -1;
     for (const auto& point : a.at("points"))
     {
@@ -228,6 +229,7 @@ Json Commands::controllerChange(const Json& a) const
         require(existing || (newKey(id, prefix(*clip)) && !allKeys.contains(id)), "CC身份失效或不属于当前片段/控制器");
         const bool changed = !existing || originals.at(id).native->getBeatPosition().inBeats() != beat ||
                              originals.at(id).native->getControllerValue() != value;
+        modified = modified || changed;
         require(!changed || (content + beat >= begin && content + beat < end), "CC修改超出片段可播放范围");
         const auto seconds = edit->tempoSequence.toTime(tracktion::BeatPosition::fromBeats(content + beat)).inSeconds();
         require(std::isfinite(seconds) && std::abs(seconds) <= te::Edit::maximumLength, "CC时间超出工程范围");
@@ -244,6 +246,7 @@ Json Commands::controllerChange(const Json& a) const
             require(at >= begin && at < end, "片段外隐藏CC必须保留");
             removed.push_back(id);
         }
+    require(modified || !removed.empty(), "CC未修改，不创建空编辑事务");
     return {{"command", "midi.cc.replace"},
             {"clip", a.at("clip")},
             {"controller", type},

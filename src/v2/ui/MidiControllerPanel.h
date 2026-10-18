@@ -243,6 +243,8 @@ public:
     }
     void execute()
     {
+        if (!canApply())
+            return;
         sortPoints();
         auto error =
             submit(Json::array({operation("midi.cc.replace", {{"clip", selectedClip["id"]},
@@ -252,6 +254,10 @@ public:
                    snapshot["revision"], snapshot["session_token"]);
         if (!error.empty())
             status.setText(text("未应用：") + text(error), juce::dontSendNotification);
+    }
+    bool canApply() const
+    {
+        return dirty;
     }
     void resized() override
     {
@@ -324,11 +330,15 @@ private:
         for (const auto& e : selectedClip["controller_events"])
             if (e["type"] == controller.getSelectedId() - 1)
                 points.push_back({{"id", e["id"]}, {"source_beat", e["source_beat"]}, {"raw_value", e["raw_value"]}});
+        baseline = points;
+        dirty = false;
         selected = -1;
         sortPoints();
         refreshFields();
         status.setText(text("单击添加、拖动修改；线性笔划生成实际CC事件 · 草稿尚未应用 · ⌘Return提交"),
                        juce::dontSendNotification);
+        if (manager)
+            manager->commandStatusChanged();
     }
     void sortPoints()
     {
@@ -367,10 +377,13 @@ private:
     }
     void changed()
     {
+        dirty = points != baseline;
         refreshFields();
         curve.repaint();
         status.setText(text("CC草稿 · ") + juce::String(int(points.size())) + text("个实际事件 · 未提交"),
                        juce::dontSendNotification);
+        if (manager)
+            manager->commandStatusChanged();
     }
     void deletePoint()
     {
@@ -404,7 +417,8 @@ private:
     }
     Submit submit;
     juce::ApplicationCommandManager* manager = nullptr;
-    Json snapshot, selectedClip, points = Json::array();
+    Json snapshot, selectedClip, points = Json::array(), baseline = Json::array();
+    bool dirty = false;
     double start = 0, end = 1, content = 0;
     int selected = -1;
     juce::Label title, status;
