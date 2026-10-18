@@ -1,0 +1,16 @@
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_NodeRenderContext.cpp b/modules/tracktion_engine/playback/graph/tracktion_NodeRenderContext.cpp
+index e0ca5a9..08fd725 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_NodeRenderContext.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_NodeRenderContext.cpp
+@@ -427,7 +427,10 @@ NodeRenderContext::WriteResult NodeRenderContext::writeAudioBlock (choc::buffer:
+     // Prepare buffer to use
+     auto blockSizeSamples = (int) block.getNumFrames();
+ 
+-    juce::AudioBuffer<float> buffer (block.data.channels, numOutputChans, blockSizeSamples);
++    // A latency-trimmed or tail-truncated view may begin inside its parent block.
++    // Respect that offset for the writer, meters and thumbnail receiver alike.
++    juce::AudioBuffer<float> buffer (block.data.channels, numOutputChans,
++                                      (int) block.data.offset, blockSizeSamples);
+ 
+     // Apply dithering and mag/rms analysis
+     if (r.ditheringEnabled && r.bitDepth < 32)
