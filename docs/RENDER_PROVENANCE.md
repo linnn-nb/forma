@@ -1,3 +1,5 @@
+2026-10-18 Hosted播放增量f80dec3/386dd6f：当前App实现摘要ab1de8a73a1f9702b3e7bdf63193385ad35cf67358951d60844aa7550326716f，170输入/SDK diff独立重算并核对App；新Print/Stems记录此实现，旧媒体/来源不重渲染。持续改变延迟的瞬态仍失败，不能因来源完整推断声音通过；见PDC_WORKFLOW/VERIFICATION首节。下面各旧实现仅对应当时资格。
+
 2026-10-18 后续PDC修复（c75cef1/f5f5ae7）：当前唯一App实现摘要23fe9e3a5daec84d553665a6754006be8d33b7d7169545f6538fa351069d9b2c，169输入/SDK diff独立重算并核对App字面值。新Print/Stems使用此实现来源；旧文件保留原来源/声音，不自动重渲染。下文4da7…是此前211b680资格的历史实现；新首块/动态AU限定结果见PDC_WORKFLOW.md。
 
 # 渲染来源与外部插件印刻（2026-10-18）

@@ -1,3 +1,5 @@
+2026-10-18 PDC播放增量：L1内部NativeLatency.h在message thread读取真实AU延迟，ExternalCommands执行前与NativePluginStates已通知变更共用；回调仍仅原子标记，opaque状态停止后入原human事务。deviceStatus只读SDK context报告，L5设备提示与插件/硬件报告分开，停止不可用；不是音频切换ACK。没有第二引擎/新服务/SDK字节或工程格式。Hosted静态通过，持续变化瞬态仍红，不能扩大资格；见PDC_WORKFLOW和VERIFICATION首节。
+
 2026-10-18 L1渲染来源：TrackPrint/StemExport共用RenderIdentity，将实际Edit快照与构建实现摘要绑定，新manifest持久化；已生成音频按原哈希保留，不因升级自动重渲染。CMake生成头仅RenderIdentity.cpp使用，不以Git HEAD作DSP版本。ExternalCommands在message thread同步实际准备采样率/参数布局并刷新版本/事实；不新增RT处理、引擎/SDK补丁/服务或权限。实际范围及不透明状态界限见RENDER_PROVENANCE.md。
 
 2026-10-16：L0扩展原生MIDI播放准备：保留播放用负时间历史，非实时构建持续音区间索引/踏板沿/预留消息存储，入点只读重触发；原SEQ、媒体与L1 Edit/Plan格式不改。MidiOutputDeviceInstance记录实际接受的通道，回收请求输出释放；hosted以32位无锁原子屏障串联回调前/回调中的停止和新图，输入MIDI不接收输出重设。无新引擎/服务/IPC；21补丁56文件fresh replay已验。全SDK RT锁/分配和硬件排队未由此解决，见VERIFICATION.md首节。

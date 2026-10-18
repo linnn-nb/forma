@@ -1,4 +1,32 @@
-# 插件延迟补偿与导出首块（2026-10-18，当前）
+# Hosted播放图与持续延迟变化（2026-10-18，当前，部分通过）
+
+**f80dec3 / 386dd6f：最终8/9套通过，已通过套件1005检查；完整持续延迟变化仍失败，属于发布阻断。** 同批183.55秒，不能称全绿/PDC完整/P2或产品完成。PDC本模块两轮收口，未通过内容保留在正常注册的CTest及BACKLOG，不禁用、不标预期成功、不裁过渡或放宽2e-6预算。
+
+| 套件 | 检查 | 真实秒数 | 状态 |
+|---|---:|---:|---|
+| tracktion_external_plugin_automation | 87 | 26.34 | 通过 |
+| forma_sidechain | 76 | 5.31 | 通过 |
+| forma_print | 77 | 14.92 | 通过 |
+| forma_print_graph | 148 | 42.05 | 通过 |
+| forma_stems | 123 | 48.52 | 通过 |
+| forma_latency_routing | 136 | 18.44 | 通过 |
+| forma_latency_workspace | 58 | 5.27 | 通过 |
+| forma_latency_hosted | 300 | 17.63 | 通过 |
+| forma_latency_live_change | 24后失败 | 5.04 | **失败：完整瞬态** |
+
+已完成：生产Hosted播放图的单路、反相并行、Aux/PRE/POST、旁通、旁链触发/接收轨有96/732采样AU延迟，非块对齐Loop（起37、长24113，8圈），原UndoRedo/冷开；39份实际WAV独立完整PCM/哈希/格式核对，35个全范围比较最大差1.1920928955078125e-07≤2e-6。只按SDK实际报告的全局延迟解释设备输出整体滞后，不搜索位移/拟合增益/丢弃首尾或Loop边界。采集buffer float32→WAV PCM24，不证明64-bit混音、插件其它精度或真实设备格式。
+
+生产功能：deviceStatus的playback_graph_latency分开报告混音图采样/ms与设备信息，停止后为不可用；正常保存退出后重启唯一App，开始播放并悬停顶部设备状态查看“混音处理报告延迟”。原生组件提示属性和实际播放状态已测，不冒充实体鼠标悬停/听评。L1 NativeLatency.h复用实际AU属性读取，NativePluginStates在message thread处理真实非自动化参数/状态通知，修复播放中SDK与图仍停96的情况；NativePluginStates回调仍仅标记；新增属性读取在message thread，SDK全RT仍未验。报告值是SDK context报告，不是音频瞬态完成ACK或物理往返测量。
+
+**P2-PDC-LIVE-01：仍失败。** 实际AUPeakLimiter非自动化Attack通过原生API在播放中改.5；下一块在异步派发前执行，持续记录直到图更新后另128块。原生/图96→732在110.202ms收敛，稳定尾段残差0，但完整过渡峰0.12353515625超2e-6；独立PCM确认设备帧65536–69851共4316帧残差。上述4316帧为虚拟采样时钟的数值残差，实体驱动与听评未执行。测试24个断言通过后严格瞬态断言仍红；文件 `build-v2-tracktion/P2-PDC-f45c477e822b41aab340f6473ce5c886/PDC-Live-Transition.wav` 保留。未做插件编辑器实体鼠标操作，也不能仅由抵消输出0推断没有短暂整体静音。
+
+手动驱动Hosted虚拟采样时钟，EnginePlayer为该测试关闭CPU静音阈值；不是CoreAudio/WASAPI/ASIO、设备XRUN、物理环回、听评、实时并发/容量或全部插件资格。固定48k双声道/512、每实际processBlock≤10.666667ms、准备/图通知≤2秒、采集≤10秒、专项≤180秒保持；GUI复制/消息与写盘不混入processBlock计时。live处理最大214.875us，仍不能证明RT驱动安全。
+
+Release NativeDAW/ndaw与受影响目标构建exit0；本地deep/strict签名通过、未公证。唯一App SHA `35db02d0b6b23c0147a37e583d85ee81e6ea518aab06ec8407f978a48f572ead`。旧PID84585未强退/换工程；测试进程已结束，不声称旧窗口已运行新代码。源码/媒体无上传、无新DMG/App副本。170输入独立实现摘要 `ab1de8a73a1f9702b3e7bdf63193385ad35cf67358951d60844aa7550326716f` 与生成头及App字面值匹配。SDK22补丁/57文件字节与上轮fresh replay一致，本轮无新SDK改动/重放；旧冻结媒体不重渲染。
+
+证据 `build-v2-tracktion/P2-PDC-Hosted-Partial-20261018T133532Z`，指针build-v2-tracktion/p2-pdc-hosted-current-root.txt。初始编译bool转String错误已修；live初版原生/图不收敛及后续完整瞬态失败原日志保留在p2-pdc-hosted-routes-live-1.log、p2-pdc-live-refreshed-tests.log。下一项按P3推进录得MIDI Take/Comp的CC曲线编辑与真实输出；PDC瞬态、更多路由/采样率/声道、硬件、旧性能A/分析/全RT/Windows/发行等仍列差距，不移出完整验收。
+
+# 历史：插件延迟补偿与导出首块（2026-10-18）
 
 **c75cef1 / f5f5ae7，P2-PDC-01限定范围已验证；完整P2/产品未验收。** 最终同批7/7、705检查、178.93秒；不累加重跑和旧失败。Apple M5 Pro/macOS26.6.2，48k双声道，实际AU AUPeakLimiter1.6.0。无新增物理设备/听评/OS键盘、实时回调/PDC/Windows或全部插件资格。
 

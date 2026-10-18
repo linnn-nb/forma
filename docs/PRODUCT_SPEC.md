@@ -1,3 +1,5 @@
+2026-10-18 P2-PDC-02：新增实际播放图报告/设备提示，补齐已通知变更后AU延迟报告与图未及时刷新的路径；Hosted静态/Loop/原Undo冷开限定资格已验（8/9套/通过1005项），持续变化过渡残差0.123535>2e-6仍是发布阻断，完整PDC/P2/产品未完成。见PDC_WORKFLOW.md、VERIFICATION.md首节；不伪称真实驱动/听评/瞬态通过。
+
 2026-10-18 P2-PDC-01：修复有延迟导出的首块偏移和AU动态延迟异步缓存；新增实际报告延迟检查器。实际96→732采样的并行/Aux/PRE/POST及内置接收旁链，原UndoRedo/冷开/native peer键和真实PCM限定资格已验；7/7/705项，完整P2、实时/物理PDC/全部第三方仍未验收。代码与证据见PDC_WORKFLOW.md、VERIFICATION.md首节。
 
 2026-10-18 P2-EXTERNAL-PRINT-01：已补AU EQ/Serum VST3实际Freeze/Bounce/Stems、保存重开/原UndoRedo/自定义native peer键与PCM限定资格；新产物可追溯工程/实现版本，旧冻结媒体不重渲染。安静VST3导出后的实际准备率缓存与首通知捕获已修。不是所有第三方、私有DSP状态、实体听评/键盘/PDC或完整P2通过；见RENDER_PROVENANCE.md。
