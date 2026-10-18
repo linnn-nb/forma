@@ -1,3 +1,13 @@
+# 2026-10-18 录得 Comp 的 CC 集成
+
+- `164c534`拒绝空CC事务并禁用无改动Apply；`18bfa28`补主窗口焦点Esc与真实Loop/Punch录得Comp的曲线编辑集成。只改L1/L5，未加引擎、依赖、SDK补丁或RT工作。
+- 本轮受影响 **5/5、1249项、67.81秒**；实际录音→局部Comp→CC1值17/103→原UndoRedo→冷重开→可改键→实际MIDI输出/WAV通过。源池、原Take完整SEQ/hash、音符/旧CC/Pitch/SysEx保留。完整产品仍未验收。
+- 独立4份PCM24/48k/双声道/144000帧WAV，非零有限；两模式输出时间误差[-1,0]采样。前后捕获池/非活动Playlist完整XML相同。随机相位不要求PCM逐位相等，没有实体端口或听评声明。
+- 当前索引 `build-v2-tracktion/p3-recorded-cc-current-results.json`，同前缀final.log/.xml、independent.json、identity.json和sign.log；红测/初次selection及无全局Esc假定的失败日志保留。源码与测量详情见docs/VERIFICATION.md、MIDI_CC_WORKFLOW.md。
+- 自有工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-a8b960af04c845cbaf648249009b5d13/Recorded-CC-Comp.tracktionedit`；Punch工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-Comp-c5dd7b6656fa460b903aaf32554648aa/Recorded-CC-Comp.tracktionedit`。选中间Comp，编辑/音乐菜单CC曲线，或工程内⌘⌃⌥F10；⌘Return提交，CmdZ/ShiftCmdZ，Esc取消，再另存重开。
+- 唯一App本地deep/strict签名通过、未公证，SHA `7c53ab44679e3ccf7cfd1c5082fdfdf5c1d141398a370d08a8dd29a3a19663ac`；旧84585未强退/替换工程，需正常保存退出再重启。SDK22/57字节保持，无新replay，无DMG/副本。实现SHA `5efb7d47fc362e01bca68ca3bcd200fca2a6bbec7d685c04b79e230d3f695d8a`。
+- **PDC完整瞬态仍发布阻断**，正常CTest保留，上轮残差0.123535>2e-6，本轮不重跑也不改判。性能/全RT、更多控制器/映射/端口/听评、Windows/发行等差距保留；下一项CC与Tempo/采样时基/非活动Playlist联动，按同模块第二轮边界推进。
+
 # 共享 Warp 渲染取消修复（2026-10-16）
 
 结论：`b0553c5`统一整数/浮点秒的处理链指纹；`e13aecc`修复单个片段关闭 Warp 时取消其它片段共用任务的问题。新增专项87项/6.38秒与受影响14/14套/243.10秒均通过，两批15套/1681项；不是全仓、完整产品、实体麦克风或人工听评验收。

@@ -1,3 +1,29 @@
+# 录得 MIDI Comp 的 CC 编辑（2026-10-18，当前限定资格）
+
+**164c534 / 18bfa28：本轮5/5套、1249项、67.81秒通过；完整产品仍未完成。** 无变更的CC Lane由L1拒绝，原生“应用”禁用；主窗口焦点下Esc正确分派给可见CC面板。实际Loop/Punch输入捕获→局部Comp采用→CC1草稿/提交→原UndoRedo→冷重开→MIDI输出与WAV已串联，不是硬编码AI结果。
+
+| 套件 | 检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| forma_native_midi_precision | 300 | 2.11 | 通过 |
+| forma_midi_recorded_cc | 266 | 17.16 | 通过 |
+| forma_midi_punch_cc | 266 | 14.24 | 通过 |
+| forma_midi_playlist_editing | 227 | 32.22 | 通过 |
+| forma_midi_controllers | 190 | 2.07 | 通过 |
+
+生产路径：`MidiControllerCommands.cpp`严格原状态/范围/身份校验不变，仅拒绝空编辑；`MidiControllerPanel.h`缓存草稿dirty，命令查询不复制4096点；`WorkspaceCommands.cpp`与`WorkspaceLayout.cpp`控制Apply/Esc；`MidiTakeWorkflowTests.cpp`新增cc/punch-cc两种真实Hosted输入/输出集成。每个Comp新增值17/103的两个CC1，原始音符/CC/Pitch/SysEx、隐藏事件、各原Take/Playlist和捕获来源池/hash保持；没有解除锁或重写原源。命令574/275、原UndoRedo及可改键通过实际native peer，Esc按上下文处理，未假定全局映射。测试注入原生组件事件不等于实体键鼠或物理MIDI。
+
+独立stdlib核验4份实际WAV均48k/双声道/PCM24/144000帧，非零有限PCM；两个模式的CC1实际输出误差均[-1,0]采样，保持原≤1采样预算。比较保存前后完整捕获池/非活动Playlist XML一致。原GUI5秒、新CC回执2秒、录音15秒/render10秒/新套180秒均未放宽。FourOsc随机相位不作重开逐位音频相等或CC1改变音色的听评宣称。
+
+真失败保留：p3-recorded-cc-red.log先复现空事务；旧stale测试本来提交未改值，现用真实改值继续检验过期Plan拒绝；新增测试初次借用临时facts、错误假定277有全局键均已纠正，selection/initial日志保留。没有私调选择回调、重发点击、固定等待兜底或移除断言。
+
+Release NativeDAW/ndaw与受影响目标构建exit0；唯一App `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `7c53ab44679e3ccf7cfd1c5082fdfdf5c1d141398a370d08a8dd29a3a19663ac`，本地deep/strict通过、未公证。旧PID84585未强退/换用户工程；正常保存退出再重启才使用本轮代码。新渲染实现 `5efb7d47fc362e01bca68ca3bcd200fca2a6bbec7d685c04b79e230d3f695d8a`，170输入/SDK diff独立重算且核对App字面值；原Freeze/媒体不重渲染。SDK22/57字节未变，本轮无新fresh replay。
+
+可亲手试：打开自有测试工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-a8b960af04c845cbaf648249009b5d13/Recorded-CC-Comp.tracktionedit` 或 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-Comp-c5dd7b6656fa460b903aaf32554648aa/Recorded-CC-Comp.tracktionedit`，选中间Comp片段，通过编辑/音乐菜单“CC曲线”打开；测试工程保存了⌘⌃⌥F10自定义键，⌘Return应用、CmdZ/ShiftCmdZ撤销重做，Esc取消。曲线包含实际录得的CC71和新点17/103。WAV是测试FourOsc素材，非完成歌曲/人工听评。
+
+当前证据索引 `build-v2-tracktion/p3-recorded-cc-current-results.json`；同前缀final.log/.xml、independent.json、identity.json、sign.log及两个测试JSON均保留。PDC的forma_latency_live_change仍正常注册且上轮完整过渡失败，本轮未重跑，不把5/5外推全仓。PDC瞬态、CC/Tempo/时基联动的更多边界、复杂RPN/NRPN/MPE/量化/循环、实体端口/听评、性能A/RT/耐久/Windows/视频/环绕/发行仍未完成；M2/M3冻结，M4/M5暂缓。
+
+# 历史
+
 # Hosted播放图与持续延迟变化（2026-10-18，当前，部分通过）
 
 **f80dec3 / 386dd6f：最终8/9套通过，已通过套件1005检查；完整持续延迟变化仍失败，属于发布阻断。** 同批183.55秒，不能称全绿/PDC完整/P2或产品完成。PDC本模块两轮收口，未通过内容保留在正常注册的CTest及BACKLOG，不禁用、不标预期成功、不裁过渡或放宽2e-6预算。

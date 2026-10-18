@@ -1,3 +1,5 @@
+2026-10-18 录得Comp的CC：L1现拒绝无实际事件差异的midi.cc.replace；L5仅缓存草稿dirty来控制Apply，Esc通过现有上下文命令277取消。工程写入/原Undo/历史恢复仍走唯一命令层，捕获池与工作SEQ分离；没有新SDK/RT路径/服务或第二事实来源。真实Loop/Punch/native peer/MIDI/WAV限定资格见VERIFICATION.md首节。
+
 2026-10-18 PDC播放增量：L1内部NativeLatency.h在message thread读取真实AU延迟，ExternalCommands执行前与NativePluginStates已通知变更共用；回调仍仅原子标记，opaque状态停止后入原human事务。deviceStatus只读SDK context报告，L5设备提示与插件/硬件报告分开，停止不可用；不是音频切换ACK。没有第二引擎/新服务/SDK字节或工程格式。Hosted静态通过，持续变化瞬态仍红，不能扩大资格；见PDC_WORKFLOW和VERIFICATION首节。
 
 2026-10-18 L1渲染来源：TrackPrint/StemExport共用RenderIdentity，将实际Edit快照与构建实现摘要绑定，新manifest持久化；已生成音频按原哈希保留，不因升级自动重渲染。CMake生成头仅RenderIdentity.cpp使用，不以Git HEAD作DSP版本。ExternalCommands在message thread同步实际准备采样率/参数布局并刷新版本/事实；不新增RT处理、引擎/SDK补丁/服务或权限。实际范围及不透明状态界限见RENDER_PROVENANCE.md。

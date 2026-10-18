@@ -1,13 +1,11 @@
 # 下一步（2026-10-18）
 
-PDC本模块两轮收口：f80dec3/386dd6f，最终8/9套/通过1005项/183.55秒；Hosted39份完整WAV/35比较最大差1.1920928955078125e-07。**持续变化过渡0.12353515625>2e-6仍为发布阻断**，正常注册的forma_latency_live_change保持失败；报告/图已在110.202ms收敛、稳定尾段0不能冒充瞬态通过。静态/Loop/原UndoRedo/冷开和只读图提示有明确资格，非完整PDC/P2/产品或RT/设备资格。
+录得Comp的CC首轮完成：164c534/18bfa28，实际Loop/Punch→局部Comp→CC1编辑→原UndoRedo→冷重开→可改键→真实MIDI/WAV；受影响5/5、1249项、67.81秒。空事务拒绝与原生Apply禁用、主窗口Esc已修。原捕获池/Take完整SEQ和hash保留，独立4份WAV与[-1,0]采样输出误差通过；不是全部P3/产品或实体端口/听评资格。
 
-1. **下一项：P3录得MIDI Take/Comp上的CC曲线编辑与真实输出。** 先读MIDI_CC_WORKFLOW、MidiControllerCommands和MidiPlaylist来源/锁定规则；检查现有bulk_transform_available对录得/Comp片段的实际边界，再补可撤销/原历史保存冷开/可改键的CC编辑。原捕获池/完整SEQ/来源SHA保留，不能靠解除锁或重写源冒充非破坏性编辑；实际原生MIDI输出/WAV与时间/值共同验，实施前设预算。已有合格场景保留，不推断复杂RPN/NRPN/MPE等通过。
-2. P2-PDC-LIVE-01及更多拓扑/采样率/声道/物理环回/RT/并发失效继续BACKLOG且保留发布阻断，不移出完整验收。外部印刻/踏板两轮边界不无限追加。M2/M3冻结，M4/M5暂缓。
-3. 不反复催用户手测或堆CLI替代OS证据；不上传音频/改用户原工程/设备设置，不造新DMG/App副本。旧性能A/分析/OS拖选/全读取能力/RT/耐久/Windows/视频/环绕/发行仍未完成。
+1. **下一项：P3 CC曲线与Tempo/采样时间基准、非活动Playlist联动（同模块第二轮）。** 先审查现有SampleMidi映射/稳定身份和NativeMidiNumbers只解NOTE的边界，复现真实差距再修改；原来源池、原SEQ/历史完整性不改、不靠放宽ULP/采样预算通过。保持原UndoRedo/保存冷开/自定义键和实际MIDI输出/WAV共同验证；其它复杂控制器/量化/Groove/MPE/实体端口继续保留，不无限延长边界。
+2. **P2-PDC-LIVE-01仍发布阻断。** 上轮报告/图110.202ms收敛、尾段0，但完整瞬态0.12353515625>2e-6；正常forma_latency_live_change保留失败，本轮不重跑或改判。更多拓扑/采样率/声道/物理环回/RT/故障留BACKLOG；PDC、印刻与踏板各自两轮边界已收口。
+3. M2/M3冻结，M4/M5暂缓；不催用户手测、不堆CLI代替OS证据，不改用户工程/原媒体/设备，不造DMG或应用副本。性能A15.84%>15%、分析实现失效/超时、OS拖选/全读取能力/RT/耐久/Windows/视频/环绕/发行仍未完成。
 
-唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `35db02d0b6b23c0147a37e583d85ee81e6ea518aab06ec8407f978a48f572ead`；本地deep/strict签名、未公证。旧PID84585未被强退/替换工程，须正常保存退出后重启；新播放时悬停设备状态可看混音处理报告，停止不可用，与插件/硬件报告分开。原生提示属性通过，非实体悬停/听评资格。
+唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `7c53ab44679e3ccf7cfd1c5082fdfdf5c1d141398a370d08a8dd29a3a19663ac`，本地deep/strict签名、未公证。旧PID84585未强退/换用户工程，正常保存退出后重启才用当前磁盘版本。当前170输入实现摘要 `5efb7d47fc362e01bca68ca3bcd200fca2a6bbec7d685c04b79e230d3f695d8a`，SDK22/57字节与此前fresh replay保持一致；旧冻结媒体不重渲染。
 
-证据指针build-v2-tracktion/p2-pdc-hosted-current-root.txt及p2-pdc-current-root.txt → `build-v2-tracktion/P2-PDC-Hosted-Partial-20261018T133532Z`。live失败源与WAV均保留，独立PCM确认帧65536–69851残差，native/graph732、尾段0。新实例170输入实现摘要 `ab1de8a73a1f9702b3e7bdf63193385ad35cf67358951d60844aa7550326716f` 独立重算并核对App字面值；SDK22/57字节匹配此前fresh replay，本轮无新重放；旧冻结媒体不重渲染。无残留测试进程。
-
-旧PDC原生快捷键工程与可听短Serum印刻演示见PDC_WORKFLOW.md/RENDER_PROVENANCE.md。PDC夹具是DC/门控/宽带数值信号，非音乐或听评素材。
+证据索引 `build-v2-tracktion/p3-recorded-cc-current-results.json`；实际自有Loop工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Take-Workflow-a8b960af04c845cbaf648249009b5d13/Recorded-CC-Comp.tracktionedit`，Punch `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Punch-Comp-c5dd7b6656fa460b903aaf32554648aa/Recorded-CC-Comp.tracktionedit`；选中间Comp通过编辑/音乐菜单CC曲线，测试工程键⌘⌃⌥F10，⌘Return、CmdZ/ShiftCmdZ和Esc。两份WAV在各自同目录，FourOsc测试素材非完成歌曲/听评。

@@ -1,3 +1,5 @@
+2026-10-18录得CC：当前App新渲染实现摘要 `5efb7d47fc362e01bca68ca3bcd200fca2a6bbec7d685c04b79e230d3f695d8a`，170输入及未变SDK diff已独立重算、核对生成头和App字面值；唯一App SHA `7c53ab44679e3ccf7cfd1c5082fdfdf5c1d141398a370d08a8dd29a3a19663ac`。新渲染绑定此实现，旧印刻/Freeze和捕获源保持不变。FourOsc随机相位不从来源完整推断音频逐位一致；PDC瞬态仍失败，见VERIFICATION首节。
+
 2026-10-18 Hosted播放增量f80dec3/386dd6f：当前App实现摘要ab1de8a73a1f9702b3e7bdf63193385ad35cf67358951d60844aa7550326716f，170输入/SDK diff独立重算并核对App；新Print/Stems记录此实现，旧媒体/来源不重渲染。持续改变延迟的瞬态仍失败，不能因来源完整推断声音通过；见PDC_WORKFLOW/VERIFICATION首节。下面各旧实现仅对应当时资格。
 
 2026-10-18 后续PDC修复（c75cef1/f5f5ae7）：当前唯一App实现摘要23fe9e3a5daec84d553665a6754006be8d33b7d7169545f6538fa351069d9b2c，169输入/SDK diff独立重算并核对App字面值。新Print/Stems使用此实现来源；旧文件保留原来源/声音，不自动重渲染。下文4da7…是此前211b680资格的历史实现；新首块/动态AU限定结果见PDC_WORKFLOW.md。
