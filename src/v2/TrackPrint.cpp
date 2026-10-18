@@ -4,6 +4,7 @@
 #include "NativePluginStates.h"
 #include "CheckedMedia.h"
 #include "SidechainGraph.h"
+#include "RenderIdentity.h"
 #include <filesystem>
 #include <juce_cryptography/juce_cryptography.h>
 #if JUCE_MAC
@@ -359,7 +360,7 @@ Json TrackPrint::prepare(const Json& args)
                      {"processing_chain_hash", ""}};
     // Bind the printed audio to the actual source graph, independently of its media hashes.
     const auto chain = captured.first.toXmlString().toStdString();
-    work->binding["processing_chain_hash"] = juce::SHA256(chain.data(), chain.size()).toHexString().toStdString();
+    work->binding.update(renderBinding(chain));
     for (const auto& source : warpSources)
         work->binding["sources"].push_back(source);
     isolate(*work->edit, args["track"]);

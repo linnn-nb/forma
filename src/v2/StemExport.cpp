@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "StemExport.h"
+#include "RenderIdentity.h"
 #include "CheckedMedia.h"
 #include "MasterAnalysis.h"
 #include <nativedaw/v2/ExportVerification.h>
@@ -375,9 +376,9 @@ Json StemExport::prepare(const Json& a)
     batch->binding = {
         {"batch_id", juce::Uuid().toString().toStdString()},
         {"configuration", a},
-        {"processing_chain_hash", juce::SHA256(text.toRawUTF8(), text.getNumBytesAsUTF8()).toHexString().toStdString()},
         {"source_scope", "active clip media and verified freeze caches; opaque plugin-internal assets are not "
                          "independently enumerated"}};
+    batch->binding.update(renderBinding(text.toStdString()));
     terminal = nullptr;
     try
     {
@@ -596,6 +597,8 @@ Json StemExport::ready(const std::string& key) const
                    {"configuration", c},
                    {"directory", batch->destination.getFullPathName().toStdString()},
                    {"processing_chain_hash", batch->binding["processing_chain_hash"]},
+                   {"render_implementation", batch->binding["render_implementation"]},
+                   {"edit_snapshot_sha256", batch->binding["edit_snapshot_sha256"]},
                    {"sources", batch->sourceHashes},
                    {"files", batch->files},
                    {"audio_verified", true},

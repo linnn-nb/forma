@@ -106,6 +106,7 @@ void Commands::synchroniseExternalParameters(te::ExternalPlugin* only)
 {
     checkThread();
     ParameterWriteGuard guard(*this);
+    bool changed = false;
     // Native preparation can change normalized values (e.g. AU frequency ranges
     // follow Nyquist). Reconcile owned lifecycle changes before queued SDK echoes;
     // never treat them as user gestures or reset an existing automation base.
@@ -113,6 +114,12 @@ void Commands::synchroniseExternalParameters(te::ExternalPlugin* only)
         if (auto* ext = dynamic_cast<te::ExternalPlugin*>(p); ext && (!only || ext == only))
             if (auto* instance = ext->getAudioPluginInstance())
             {
+                const auto key = ext->itemID.toString().toStdString();
+                const auto previous = externalPreparedRates.find(key);
+                const auto rate = instance->getSampleRate();
+                const bool mappingChanged = externalLayoutChanged(*ext);
+                changed |= previous == externalPreparedRates.end() || previous->second != rate || mappingChanged;
+                externalPreparedRates[key] = rate;
                 for (auto* parameter : ext->getAutomatableParameters())
                 {
                     auto id = parameter->paramID;
@@ -120,9 +127,21 @@ void Commands::synchroniseExternalParameters(te::ExternalPlugin* only)
                     if (id != juce::String(index) || index < 0 || index >= instance->getParameters().size() ||
                         parameter->getCurve().getNumPoints() != 0)
                         continue;
-                    parameter->setParameter(instance->getParameters()[index]->getValue(), juce::dontSendNotification);
+                    const auto value = instance->getParameters()[index]->getValue();
+                    changed |= parameter->getCurrentExplicitValue() != value;
+                    parameter->setParameter(value, juce::dontSendNotification);
                 }
             }
+    // A quiet VST3 can change rate without emitting a parameter notification.
+    // Publish the owned preparation now; never discard its first later human
+    // change as a delayed rate echo or leave query facts on the old AU mapping.
+    if (changed)
+    {
+        if (audioConfigurationPending())
+            invalidateFacts();
+        else
+            bumpRevision();
+    }
 }
 bool Commands::externalLayoutChanged(te::ExternalPlugin& ext)
 {
@@ -166,8 +185,9 @@ bool Commands::reconcileExternalPreparation(te::AutomatableParameter& parameter)
     if (previous != externalPreparedRates.end() && previous->second == rate && !mappingChanged)
         return false;
     externalPreparedRates[id] = rate;
+    const auto before = revision;
     synchroniseExternalParameters(ext);
-    if (!audioConfigurationPending())
+    if (revision == before && !audioConfigurationPending())
         bumpRevision();
     return true;
 }

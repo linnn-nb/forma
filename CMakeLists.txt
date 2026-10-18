@@ -93,6 +93,30 @@ if(NOT TE_DIFF STREQUAL TE_SORTED_DIFF)
   message(FATAL_ERROR "Tracktion local changes differ from the recorded patch")
 endif()
 add_subdirectory(third_party/tracktion_engine)
+# Rendering provenance is based on implementation bytes, not a moving Git HEAD
+# or documentation changes. Existing printed media remain immutable; this records
+# which implementation produced NEW artifacts. Only RenderIdentity.cpp includes
+# the generated header, so a changed fingerprint does not rebuild the SDK.
+file(GLOB FORMA_RENDER_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_SOURCE_DIR}/src/v2/*.cpp" "${CMAKE_SOURCE_DIR}/src/v2/*.h"
+  "${CMAKE_SOURCE_DIR}/include/nativedaw/v2/*.h"
+  "${CMAKE_SOURCE_DIR}/patches/juce-*.patch")
+list(SORT FORMA_RENDER_SOURCES)
+set(FORMA_RENDER_INPUT "forma-render/1\ntracktion=${TE_HEAD}\njuce=37c894f83d379179b2070d437ccd0f1cd9af9576\n")
+string(SHA256 FORMA_TE_PATCH_HASH "${TE_DIFF}")
+string(APPEND FORMA_RENDER_INPUT "sdk-patches=${FORMA_TE_PATCH_HASH}\n")
+foreach(FORMA_RENDER_SOURCE IN LISTS FORMA_RENDER_SOURCES)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FORMA_RENDER_SOURCE}")
+  file(SHA256 "${FORMA_RENDER_SOURCE}" FORMA_RENDER_SOURCE_HASH)
+  file(RELATIVE_PATH FORMA_RENDER_RELATIVE "${CMAKE_SOURCE_DIR}" "${FORMA_RENDER_SOURCE}")
+  string(APPEND FORMA_RENDER_INPUT "${FORMA_RENDER_RELATIVE}=${FORMA_RENDER_SOURCE_HASH}\n")
+endforeach()
+file(SHA256 "${CMAKE_CURRENT_LIST_FILE}" FORMA_RENDER_CMAKE_HASH)
+string(APPEND FORMA_RENDER_INPUT "cmake=${FORMA_RENDER_CMAKE_HASH}\n")
+string(APPEND FORMA_RENDER_INPUT "flags=${CMAKE_CXX_FLAGS}|${CMAKE_CXX_FLAGS_RELEASE}|${CMAKE_CXX_FLAGS_DEBUG}|${CMAKE_OSX_DEPLOYMENT_TARGET}|${CMAKE_CXX_STANDARD}\n")
+string(SHA256 FORMA_RENDER_IMPLEMENTATION_SHA "${FORMA_RENDER_INPUT}")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated")
+configure_file(cmake/RenderBuild.h.in generated/RenderBuild.h @ONLY)
 # libebur128 1.2.6 has an obsolete root minimum; compile its unmodified C sources directly.
 add_library(ndaw_ebur128 STATIC third_party/libebur128/ebur128/ebur128.c)
 target_include_directories(ndaw_ebur128 PUBLIC third_party/libebur128/ebur128)
@@ -109,6 +133,8 @@ target_sources(ndaw_engine PRIVATE src/v2/NativeMidiNumbers.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/MidiTempoRemap.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/ProjectFileStore.cpp src/v2/MidiLoopCapture.cpp src/v2/MidiPunchCapture.cpp)
 target_sources(ndaw_engine PRIVATE src/v2/SidechainCommands.cpp src/v2/TrackPrint.cpp src/v2/PrintCommands.cpp src/v2/StemExport.cpp src/v2/StemCommands.cpp)
+target_sources(ndaw_engine PRIVATE src/v2/RenderIdentity.cpp)
+target_include_directories(ndaw_engine PRIVATE "${CMAKE_BINARY_DIR}/generated")
 target_include_directories(ndaw_engine PUBLIC include .deps
   third_party/tracktion_engine/modules "${juce_SOURCE_DIR}/modules")
 target_compile_definitions(ndaw_engine PUBLIC
@@ -1242,6 +1268,12 @@ target_sources(ndaw_stems_tests PRIVATE tests/v2/StemsTests.cpp)
 target_link_libraries(ndaw_stems_tests PRIVATE ndaw_ui)
 add_test(NAME forma_stems COMMAND ndaw_stems_tests "${CMAKE_BINARY_DIR}/p2-stems-tests.json")
 set_tests_properties(forma_stems PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
+juce_add_console_app(ndaw_external_print_tests PRODUCT_NAME "ndaw_external_print_tests")
+target_sources(ndaw_external_print_tests PRIVATE tests/v2/ExternalPrintTests.cpp)
+target_include_directories(ndaw_external_print_tests PRIVATE src/v2 src/v2/ui)
+target_link_libraries(ndaw_external_print_tests PRIVATE ndaw_ui)
+add_test(NAME forma_external_print_chain COMMAND ndaw_external_print_tests "${CMAKE_BINARY_DIR}/p2-external-print-tests.json")
+set_tests_properties(forma_external_print_chain PROPERTIES TIMEOUT 180 FAIL_REGULAR_EXPRESSION "JUCE Assertion failure")
 juce_add_console_app(ndaw_preferences_tests PRODUCT_NAME "ndaw_preferences_tests")
 target_sources(ndaw_preferences_tests PRIVATE tests/v2/PreferencesTests.cpp)
 target_link_libraries(ndaw_preferences_tests PRIVATE ndaw_ui)
