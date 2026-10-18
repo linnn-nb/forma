@@ -16,6 +16,16 @@ bool supported(const te::Plugin& plugin)
            dynamic_cast<const te::ExternalPlugin*>(&plugin) || dynamic_cast<const te::ReverbPlugin*>(&plugin) ||
            dynamic_cast<const te::DelayPlugin*>(&plugin) || dynamic_cast<const te::FourOscPlugin*>(&plugin);
 }
+Json reportedLatency(te::ExternalPlugin& plugin)
+{
+    auto* native = plugin.getAudioPluginInstance();
+    const double rate = native ? native->getSampleRate() : 0;
+    return {{"available", native != nullptr},
+            {"samples", native ? Json(native->getLatencySamples()) : Json(nullptr)},
+            {"sample_rate", rate},
+            {"milliseconds", native && rate > 0 ? Json(native->getLatencySamples() * 1000.0 / rate) : Json(nullptr)},
+            {"scope", "native plugin report; not measured round-trip or verified graph compensation"}};
+}
 Json property(const char* type)
 {
     return {{"type", type}};
@@ -206,6 +216,7 @@ Json Commands::processorSummary(te::Plugin& plugin) const
             {"initialising", ext->isInitialisingAsync()},
             {"load_error", ext->getLoadError().toStdString()},
             {"latency_seconds", ext->getLatencySeconds()},
+            {"latency_report", reportedLatency(*ext)},
             {"private_state_interpreted", false}};
     }
     if (auto* delay = dynamic_cast<te::DelayPlugin*>(&plugin))
@@ -235,6 +246,11 @@ Json Commands::processorQuery(te::PluginList& list) const
             result["sidechain"] = sidechainQuery(*plugin);
             result["frozen"] = plugin->isFrozen();
             result["printed_bypass"] = bool(plugin->state.getProperty("ndaw_print_baked", false));
+            if (auto* ext = dynamic_cast<te::ExternalPlugin*>(plugin))
+            {
+                result["external"]["latency_seconds"] = ext->getLatencySeconds();
+                result["external"]["latency_report"] = reportedLatency(*ext);
+            }
             plugins.push_back(std::move(result));
             continue;
         }
@@ -265,6 +281,7 @@ Json Commands::processorQuery(te::PluginList& list) const
                            : loaded ? "loaded"
                                     : "missing"},
                 {"latency_seconds", ext->getLatencySeconds()},
+                {"latency_report", reportedLatency(*ext)},
                 {"host_mode", "in_process"},
                 {"fixed_ipc_latency_frames", 0},
                 {"has_editor", loaded && ext->getAudioPluginInstance()->hasEditor()},

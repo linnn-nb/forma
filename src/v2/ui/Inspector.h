@@ -9,6 +9,11 @@ public:
     {
         for (auto* c : std::initializer_list<juce::Component*>{&previous, &next, &pageLabel})
             addAndMakeVisible(c);
+        addAndMakeVisible(latencyLabel);
+        latencyLabel.setComponentID("plugin.latency.report");
+        latencyLabel.setFont(juce::FontOptions(12));
+        latencyLabel.setTooltip(
+            text("插件自身报告值；不是实测往返延迟或完整路由补偿验收。准备、旁通或参数变化后以引擎实际报告为准。"));
         previous.setComponentID("plugin.parameters.previous");
         next.setComponentID("plugin.parameters.next");
         pageLabel.setComponentID("plugin.parameters.page");
@@ -36,6 +41,20 @@ public:
         lastWriting = writing;
         lastMode = mode;
         lastNativeActive = nativeActive;
+        hasLatency = !plugin.is_null() && plugin.contains("external");
+        latencyLabel.setVisible(hasLatency);
+        if (hasLatency)
+        {
+            const auto report = plugin["external"].value("latency_report", Json::object());
+            const auto message = report.value("available", false)
+                                     ? text("插件报告延迟 · ") + juce::String(report["samples"].get<int>()) +
+                                           text(" 采样") +
+                                           (report["milliseconds"].is_number()
+                                                ? " / " + juce::String(report["milliseconds"].get<double>(), 2) + " ms"
+                                                : "")
+                                     : text("插件报告延迟 · 不可用");
+            latencyLabel.setText(message, juce::dontSendNotification);
+        }
         stopped = !playing;
         trackID = track;
         liveWrite = playing && writing && mode != "read";
@@ -103,7 +122,7 @@ public:
         next.setEnabled(page + 1 < pages && !nativeActive && !playing);
         pageLabel.setText(juce::String(page + 1) + "/" + juce::String(pages) + " \u00b7 " + juce::String(count),
                           juce::dontSendNotification);
-        setSize(width, std::max(40, int(rows.size()) * 70 + (paged ? 36 : 0)));
+        setSize(width, std::max(40, int(rows.size()) * 70 + (paged ? 36 : 0) + (hasLatency ? 32 : 0)));
         resized();
     }
     void resized() override
@@ -112,6 +131,9 @@ public:
         next.setBounds(getWidth() - 74, 2, 66, 28);
         pageLabel.setBounds(80, 2, getWidth() - 160, 28);
         int y = paged ? 36 : 0;
+        latencyLabel.setBounds(8, y, getWidth() - 16, 30);
+        if (hasLatency)
+            y += 32;
         for (auto& row : rows)
         {
             row->name.setBounds(10, y + 4, getWidth() - 125, 22);
@@ -227,14 +249,14 @@ private:
     }
     Writer write;
     std::string pluginID, trackID, rowSignature;
-    bool liveWrite = false, stopped = true, paged = false;
+    bool liveWrite = false, stopped = true, paged = false, hasLatency = false;
     int page = 0;
     Json lastPlugin = nullptr;
     bool lastPlaying = false, lastWriting = false, lastNativeActive = false;
     int lastWidth = 300;
     std::string lastTrack, lastMode;
     juce::TextButton previous{text("\u4e0a\u4e00\u9875")}, next{text("\u4e0b\u4e00\u9875")};
-    juce::Label pageLabel;
+    juce::Label pageLabel, latencyLabel;
     std::vector<std::unique_ptr<Row>> rows;
 };
 

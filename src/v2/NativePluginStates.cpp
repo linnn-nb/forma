@@ -77,6 +77,10 @@ struct NativePluginStates::Watch final : juce::AudioProcessorListener
     }
     void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& d) override
     {
+        // Read-only processor metadata is independent of ownership and Undo.
+        // The callback only publishes a lock-free flag; L1 refreshes on message thread.
+        if (d.latencyChanged)
+            latencyDirty.store(1, std::memory_order_relaxed);
         if (!isOwned())
         {
             uint32_t bits = (d.programChanged ? 1u : 0u) | (d.nonParameterStateChanged ? 2u : 0u);
@@ -99,6 +103,7 @@ struct NativePluginStates::Watch final : juce::AudioProcessorListener
     const juce::Thread::ThreadID mainThread;
     std::vector<bool> publicIndices;
     std::atomic<uint32_t> dirty{0}, suppress{0};
+    std::atomic<uint32_t> latencyDirty{1};
     std::atomic<int> programSelector{-1};
     bool selectingProgram = false;
     int programCandidate = -1;
@@ -449,6 +454,11 @@ void NativePluginStates::drain()
     for (auto& [target, wp] : watches)
     {
         auto& w = *wp;
+        if (w.latencyDirty.exchange(0, std::memory_order_relaxed))
+        {
+            owner.processorCache.erase(target);
+            owner.invalidateFacts();
+        }
         auto flags = w.dirty.load(std::memory_order_relaxed);
         bool programDrift = w.checkpoint && w.instance.getCurrentProgram() != w.checkpoint->program;
         // AU program notifications can be delayed echoes of an owned state restore.
