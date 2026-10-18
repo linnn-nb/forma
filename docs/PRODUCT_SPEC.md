@@ -1,3 +1,5 @@
+2026-10-18 P2-PDC-01：修复有延迟导出的首块偏移和AU动态延迟异步缓存；新增实际报告延迟检查器。实际96→732采样的并行/Aux/PRE/POST及内置接收旁链，原UndoRedo/冷开/native peer键和真实PCM限定资格已验；7/7/705项，完整P2、实时/物理PDC/全部第三方仍未验收。代码与证据见PDC_WORKFLOW.md、VERIFICATION.md首节。
+
 2026-10-18 P2-EXTERNAL-PRINT-01：已补AU EQ/Serum VST3实际Freeze/Bounce/Stems、保存重开/原UndoRedo/自定义native peer键与PCM限定资格；新产物可追溯工程/实现版本，旧冻结媒体不重渲染。安静VST3导出后的实际准备率缓存与首通知捕获已修。不是所有第三方、私有DSP状态、实体听评/键盘/PDC或完整P2通过；见RENDER_PROVENANCE.md。
 
 2026-10-16 P1-MIDI-PEDAL-02：普通MIDI Comp入点能恢复来源踏板持续音与CC66捕获顺序；普通Stop和试听取消/快速重启的hosted输出实测，原源/UndoRedo/冷开/可改键及真实WAV保持。Comp按完整来源上下文恢复，非插件DSP状态快照；动态Clip循环/MPE/同音多voice/实体/全RT等仍保留。当前限定增量收口，完整P1/产品未验收；下一项P2真实外部插件链路。

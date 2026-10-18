@@ -1,3 +1,5 @@
+2026-10-18 后续PDC修复（c75cef1/f5f5ae7）：当前唯一App实现摘要23fe9e3a5daec84d553665a6754006be8d33b7d7169545f6538fa351069d9b2c，169输入/SDK diff独立重算并核对App字面值。新Print/Stems使用此实现来源；旧文件保留原来源/声音，不自动重渲染。下文4da7…是此前211b680资格的历史实现；新首块/动态AU限定结果见PDC_WORKFLOW.md。
+
 # 渲染来源与外部插件印刻（2026-10-18）
 
 **P2-EXTERNAL-PRINT-01 已验证限定增量；完整P2及产品未验收。** Apple AUNBandEQ 1.6.0（AU）和 Xfer Serum 1.3.6.8（VST3）实际实例完成 Freeze→原地Bounce→Stems，含原Undo/Redo、保存冷开、自定义native peer按键和真实音频。不是实体OS按键或主观听评。

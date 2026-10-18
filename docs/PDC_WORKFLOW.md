@@ -1,12 +1,12 @@
 # 插件延迟补偿（2026-10-18）
 
-结论：P2-PDC-01限定的48k双声道离线与native peer界面流程已验证，完整P2/产品、物理往返/实时播放/全部插件尚未验收。首批静态63项通过；扩展专项当前136项/18.55秒，原生面板58项/4.60秒；受影响导出回归正在执行。预算为实施前声明值，没有裁测试或放宽容差。
+结论：P2-PDC-01限定的48k双声道离线与native peer界面流程已验证，完整P2/产品、物理往返/实时播放/全部插件尚未验收。首批静态63项通过；最终同批7/7、705项/178.93秒；其中新路由136项/17.02秒，原生面板58项/4.37秒。预算为实施前声明值，没有裁测试或放宽容差。
 
 ## 实际功能与亲手试
 
-使用唯一App正常重启后，选已加载的外部插件，在右侧插入/参数检查器查看“插件报告延迟”的采样数和毫秒数。它只表示插件报告，不代表硬件往返或完整图补偿验收。AUPeakLimiter实际枚举到的Attack Time不支持自动化，因此不虚构L1参数；原生编辑器变更由L1捕获为human不透明状态事务，可原Undo/Redo及保存冷开。
+使用唯一App正常重启后，选已加载的外部插件，在右侧插入/参数检查器查看“插件报告延迟”的采样数和毫秒数。它只表示插件报告，不代表硬件往返或完整图补偿验收。AUPeakLimiter实际枚举到的Attack Time不支持自动化，因此不虚构L1参数；原生参数通知由L1捕获为human不透明状态事务，可原Undo/Redo及保存冷开。本轮经真实实例API触发通知，未声称执行了插件编辑器实体鼠标操作。
 
-本轮原生演示工程：`build-v2-tracktion/P2-PDC-98e9ac137be64ff791c5f2fbddc8b191/PDC-Workspace.tracktionedit`。选Receiver，Ctrl Option Q打开真实旁链面板；Cmd Z恢复已保存的原旁链连接，Shift Cmd Z重做断开。自定义映射已保存，冷开后通过原生peer及实际焦点检查，再核对L1回执和WAV。工程内为数值测试DC/门控信号，不是音乐或试听素材；没有声称实体键盘、麦克风或用户听评。
+本轮原生演示工程：`build-v2-tracktion/P2-PDC-4637b506ea7243daab17e461f6c61529/PDC-Workspace.tracktionedit`。选Receiver，Ctrl Option Q打开真实旁链面板；Cmd Z恢复已保存的原旁链连接，Shift Cmd Z重做断开。自定义映射已保存，冷开后通过原生peer及实际焦点检查，再核对L1回执和WAV。工程内为数值测试DC/门控信号，不是音乐或试听素材；没有声称实体键盘、麦克风或用户听评。
 
 ## 已验证范围
 
@@ -26,7 +26,7 @@
 1. 旁链触发轨有96采样延迟时，旧导出前96采样写成0；写盘前图输出已正确。SDK `NodeRenderContext::writeAudioBlock` 忽略choc音频视图frame offset。`patches/tracktion-render-frame-offset.patch` 修正写盘/测量/缩略图共同起点。首块左右脉冲加入既定参考，不移动源或裁掉开头。临时诊断已移除。
 2. 原生AU非自动化参数改变DSP延迟后，异步属性事件尚未送达，立即渲染仍用JUCE旧96采样，真实DSP已为732，反相脉冲残留636采样差。`src/v2/ExternalCommands.cpp` 在message thread执行前校验，读取实际AU延迟属性并刷新原生缓存；失败/非法数值拒绝执行，不嵌套事件循环或猜等待时间。`NativePluginStates.cpp` 用原子元数据标记在message thread失效facts；`MixCommands.cpp`与`ui/Inspector.h`显示实际报告。无新增RT回调工作或固定IPC。
 
-22份SDK patch/57文件fresh apply、逐字匹配、reverse通过。失败保留在build的p2-pdc-test-1、diagnostic-1/2、dynamic-tests-1.log；最后一项明确为新动态场景失败，不能用早期静态成功覆盖。生产修复与测试：c75cef1及随后提交。
+22份SDK patch/57文件fresh apply、逐字匹配、reverse通过。失败保留在build的p2-pdc-test-1、diagnostic-1/2、dynamic-tests-1.log；最后一项明确为新动态场景失败，不能用早期静态成功覆盖。生产修复与测试：c75cef1 / f5f5ae7。独立Python32份WAV全样本/哈希/Peak/RMS通过，最大PCM差0。当前精简索引：build-v2-tracktion/P2-PDC-Qualified-20261018T131141Z。
 
 ## 实施前预算（保持）
 
@@ -36,3 +36,16 @@
 - 编译限2任务，音频测试顺序执行。独立工程，不改用户项目/原媒体/物理设备；硬件环回、听评、Windows及完整实时资格另验。
 
 生产图/PDC由唯一Tracktion引擎提供，L1/message thread为工程唯一写入口。报告值和真实信号对齐分别验证；实时路径不增加分配、锁、I/O或推理。
+
+## 重现
+
+先正常关闭测试应用；下面只扫描系统已有AU，不安装插件或改设备。仓库根目录使用已配置工具链：
+
+```sh
+build-v2-tracktion/ndaw_artefacts/Release/ndaw plugin-scan AudioUnit 'AudioUnit:Effects/aufx,lmtr,appl'
+build-v2-tracktion/ndaw_artefacts/Release/ndaw plugin-scan AudioUnit 'AudioUnit:Effects/aufx,dcmp,appl'
+cmake --build build-v2-tracktion --target ndaw_latency_routing_tests -j 2
+ctest --test-dir build-v2-tracktion -R '^forma_latency_(routing|workspace)$' --output-on-failure
+```
+
+GUI专项会创建并正常回收自有测试窗口，不打开用户工程；需要实际native peer焦点，不通过私调命令或放宽时限兜底。

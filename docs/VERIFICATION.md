@@ -1,4 +1,30 @@
-# 外部插件印刻与渲染来源（2026-10-18，当前）
+# 插件延迟补偿与导出首块（2026-10-18，当前）
+
+**c75cef1 / f5f5ae7，P2-PDC-01限定范围已验证；完整P2/产品未验收。** 最终同批7/7、705检查、178.93秒；不累加重跑和旧失败。Apple M5 Pro/macOS26.6.2，48k双声道，实际AU AUPeakLimiter1.6.0。无新增物理设备/听评/OS键盘、实时回调/PDC/Windows或全部插件资格。
+
+| 套件 | 检查 | 真实秒数 |
+|---|---:|---:|
+| tracktion_external_plugin_automation | 87 | 25.04 |
+| forma_sidechain | 76 | 5.46 |
+| forma_print | 77 | 20.68 |
+| forma_print_graph | 148 | 59.08 |
+| forma_stems | 123 | 47.28 |
+| forma_latency_routing | 136 | 17.02 |
+| forma_latency_workspace | 58 | 4.37 |
+
+真实修复：SDK写盘忽略choc子视图frame offset，造成有延迟导出首块错误；另有AU非自动化参数已改变DSP延迟，异步属性事件未送达时仍以旧缓存构图。前者保留实际视图偏移，后者在message thread执行前读取真实AU属性并刷新缓存；没有固定睡眠、嵌套事件循环、裁样本或调整源位置。检查器显示插件报告采样/ms，原子元数据刷新不产生Edit revision；报告值不冒充实测硬件往返。
+
+新路由136项：首块双声道脉冲、直接并行/Aux/PRE/POST反相抵消、旁链触发/接收轨分别有AU及旁通；实际Attack Time令原生报告96→732采样，超过512帧单块，原human状态事务/UndoRedo/保存冷开和完整PCM保持。原生面板58项：真实peer/组件焦点、映射ID核验、自定义CtrlOption Q、单次Apply回执、冷开原CmdZ/ShiftCmdZ及声音改变/恢复。原生参数通知经实际实例API触发，不声称插件编辑器实体鼠标操作。两个Apple AU都只枚举主立体声输入，旁链接收器是实际内置Compressor；不冒充第三方外部SC总线资格。
+
+独立Python32份真实PCM24 WAV完整192000个交错样本对照：首块脉冲/反相/门控参考及GUI撤销恢复，最大差0.0≤2e-6；各文件格式、帧数、SHA/Peak/RMS回执匹配。保留开头、尾部和门控跳变两侧，不拟合位移或增益。SDK22份补丁/57文件fresh apply/逐字比对/reverse通过；169输入独立实现摘要23fe9e3a5daec84d553665a6754006be8d33b7d7169545f6538fa351069d9b2c与生成头及App内字面值匹配。既有冻结/印刻媒体不重渲染，M2/M3未改。
+
+NativeDAW/ndaw、七套受影响目标Release构建exit0。本地deep/strict签名通过、未公证；唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `4c257ee8476c754d6b15ec7dbbdadcc9c1eb89630182b586ff1aab94f8b5e408`。旧生产PID84585未强退/换工程，不宣称它已运行本轮代码；正常保存退出后重启可见新报告。
+
+操作与范围见PDC_WORKFLOW.md；本轮原生演示 `build-v2-tracktion/P2-PDC-4637b506ea7243daab17e461f6c61529/PDC-Workspace.tracktionedit`：Receiver上CtrlOption Q，CmdZ恢复已保存的旁链连接、ShiftCmdZ断开；Key的AU检查器可看96采样。此为DC/门控数值测试源，非音乐/试听素材。源媒体哈希保持，无用户音频上传或新DMG/App副本。
+
+证据 `build-v2-tracktion/P2-PDC-Qualified-20261018T131141Z`，指针build-v2-tracktion/p2-pdc-current-root.txt。初始静态首96样本红项/写盘前诊断、立即动态渲染残留636采样红项保留在p2-pdc-test-1、diagnostic-1/2、dynamic-tests-1.log；临时诊断代码已移除。下一轮仅补生产Hosted播放图的实际动态补偿/Loop边界，先定预算；实时设备、硬件插入/物理环回、更多插件/声道/采样率、旁通连续性/所有并发与旧性能A等仍保留。
+
+# 历史：外部插件印刻与渲染来源（2026-10-18）
 
 **211b680 / P2-EXTERNAL-PRINT-01：限定范围已验证，完整P2/产品未验收。** 最终同批6/6、774检查、274.65秒，不累加之前失败或重跑。无新真实麦克风、OS键盘、听评、RT/耐久、硬件PDC或Windows资格。
 
