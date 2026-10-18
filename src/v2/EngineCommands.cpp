@@ -1847,6 +1847,15 @@ Json Commands::deviceStatus() const
         j["xruns"] = d->getXRunCount();
     }
     j["device_generation"] = audioDeviceGeneration();
+    auto* context = edit->getCurrentPlaybackContext();
+    const bool activeGraph = d && context && edit->getTransport().isPlaying();
+    const auto rate = d ? d->getCurrentSampleRate() : 0;
+    j["playback_graph_latency"] = {
+        {"available", activeGraph},
+        {"samples", activeGraph ? Json(context->getLatencySamples()) : Json(nullptr)},
+        {"sample_rate", rate},
+        {"milliseconds", activeGraph && rate > 0 ? Json(context->getLatencySamples() * 1000.0 / rate) : Json(nullptr)},
+        {"scope", "native playback graph report; excludes device latency and measured physical round-trip"}};
     return j;
 }
 Json Commands::outputMeters() const

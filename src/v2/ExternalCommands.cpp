@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <nativedaw/v2/EngineCommands.h>
-#if JUCE_MAC
-#include <AudioUnit/AudioUnit.h>
-#endif
+#include "NativeLatency.h"
 namespace ndaw::v2
 {
 namespace
@@ -206,26 +204,12 @@ void Commands::validateExternalRuntime() const
                     "external plugin unavailable or changed; bypass explicitly or restore/rescan its original module");
             require(!ext->isInitialisingAsync() && ext->getAudioPluginInstance() != nullptr,
                     "external plugin has not loaded; no audio success claim");
-#if JUCE_MAC
             // AU property events arrive later on the message loop. An immediate
             // render after a native non-automatable edit must not construct PDC
             // from JUCE's old cached latency while the AU already delays by more.
             // Refresh only processor metadata from the actual AU, outside RT;
             // ExternalPlugin::initialise reads it when preparing the next graph.
-            auto& native = *ext->getAudioPluginInstance();
-            if (auto* client = native.getAudioUnitClient())
-            {
-                Float64 seconds = 0;
-                UInt32 size = sizeof(seconds);
-                const auto status = AudioUnitGetProperty(client->getAudioUnitHandle(), kAudioUnitProperty_Latency,
-                                                         kAudioUnitScope_Global, 0, &seconds, &size);
-                const auto rate = native.getSampleRate();
-                require(status == noErr && size == sizeof(seconds) && std::isfinite(seconds) && seconds >= 0 &&
-                            std::isfinite(rate) && rate > 0 && seconds * rate <= std::numeric_limits<int>::max(),
-                        "AU latency query failed or invalid; audio graph not qualified for execution");
-                native.setLatencySamples(juce::roundToInt(seconds * rate));
-            }
-#endif
+            refreshNativeLatency(*ext->getAudioPluginInstance());
         }
 }
 } // namespace ndaw::v2

@@ -161,6 +161,12 @@ void fixture(const juce::File& f, int kind, float sign = 1)
                 v = ch == 0 ? .1f : .07f;
             if (kind == 2 && ((n >= 24037 && n < 48019) || (n >= 72023 && n < 86411)))
                 v = ch == 0 ? .3f : .1f;
+            if (kind == 3)
+            {
+                const auto index = uint32_t(n + ch * 1234567);
+                const auto bits = ((index * 1664525u + 1013904223u) ^ (index * 1103515245u + 12345u)) >> 16;
+                v = (int(bits & 255) - 128) / 2048.f;
+            }
             b.setSample(ch, n, v * sign);
         }
     check(w->writeFromAudioSampleBuffer(b, 0, frames), "known PCM actually writes");
@@ -534,7 +540,7 @@ void writeCaptured(const juce::File& file, const juce::AudioBuffer<float>& pcm)
           "actual hosted output writes PCM only after processing");
 }
 Played play(Commands& c, const juce::File& root, const char* phase, bool loop,
-            std::initializer_list<juce::File> sources)
+            std::initializer_list<juce::File> sources, std::function<void()> observe = {})
 {
     te::HostedAudioDeviceInterface::Parameters params;
     params.sampleRate = 48000;
@@ -577,6 +583,8 @@ Played play(Commands& c, const juce::File& root, const char* phase, bool loop,
             output.pcm.copyFrom(ch, n * 512, block, ch, 0, 512);
     }
     const auto status = c.deviceStatus();
+    if (observe)
+        observe();
     c.stop();
     const auto elapsed = juce::Time::getMillisecondCounterHiRes() - began;
     const auto path = root.getChildFile("hosted-" + juce::String(++serial) + ".wav");
@@ -596,6 +604,11 @@ Played play(Commands& c, const juce::File& root, const char* phase, bool loop,
                             {"sha256", Commands::mediaHash(path)}});
     check(elapsed < 10000, "actual hosted capture meets ten second budget");
     check(misses == 0, "each measured hosted processBlock meets the fixed 512-frame deadline");
+    check(status["playback_graph_latency"]["available"] &&
+              status["playback_graph_latency"]["samples"] == output.latency,
+          "production query reports actual playing graph latency separately from hardware");
+    check(!c.deviceStatus()["playback_graph_latency"]["available"].get<bool>(),
+          "stopped transport does not present a stale graph latency as active");
     return output;
 }
 void aligned(const Played& expected, const Played& actual, int count, const char* name)
@@ -652,7 +665,222 @@ void hosted(const juce::File& root, const juce::File& source, const juce::File& 
         c.redo();
         aligned(ref, play(c, root, "hosted original Redo", loop, {source}), count,
                 "original native Redo restores actual playback signal");
+        c.commit(
+            c.makePlan("human", Json::array({op("track.create", {{"name", "Direct"}, {"ref", "$d"}}),
+                                             op("clip.import", {{"track", "$d"},
+                                                                {"path", negative.getFullPathName().toStdString()},
+                                                                {"position_samples", 0}}),
+                                             op("track.create", {{"name", "Bus"}, {"type", "aux"}, {"ref", "$b"}})})));
+        const auto direct = named(c, "Direct"), bus = named(c, "Bus");
+        auto cancel = [&](const char* name)
+        {
+            auto actual = play(c, root, name, loop, {source, negative});
+            check(actual.pcm.getMagnitude(0, actual.pcm.getNumSamples()) <= 2e-6, name);
+        };
+        cancel("complete hosted parallel inverse signals cancel");
+        c.commit(c.makePlan("human", Json::array({op("track.output", {{"track", t}, {"target", bus}}),
+                                                  op("track.output", {{"track", direct}, {"target", bus}})})));
+        cancel("complete hosted Aux parallel signals cancel");
+        run(c, "track.output", {{"track", t}, {"target", "none"}});
+        const auto sent = run(c, "send.create", {{"track", t}, {"target", bus}, {"position", "pre"}, {"db", 0}});
+        cancel("complete hosted PRE send signals cancel");
+        const auto routes =
+            root.getChildFile(loop ? "PDC-Hosted-Loop-Aux.tracktionedit" : "PDC-Hosted-Aux.tracktionedit");
+        c.save(routes);
+        c.open(routes);
+        cancel("cold hosted send retains complete cancellation");
+        c.undo(sent["plan_id"]);
+        auto undone = play(c, root, "hosted send Undo actual output", loop, {source, negative});
+        auto inverse = ref;
+        inverse.pcm.applyGain(-1);
+        aligned(inverse, undone, count, "original send Undo restores complete opposite-polarity direct signal");
+        c.redo();
+        cancel("hosted send Redo restores complete cancellation");
+        const auto send = track(c, t)["sends"][0]["id"];
+        run(c, "send.position", {{"send", send}, {"position", "post"}});
+        cancel("complete hosted POST send signals cancel");
+        run(c, "plugin.bypass", {{"plugin", p["id"]}, {"bypassed", true}});
+        cancel("complete hosted bypassed latency signals cancel");
+
+        Played detector;
+        for (int mode : {0, 1, 2, 4, 5})
+        {
+            Commands sc(false, std::make_unique<Storage>(root.getChildFile("hosted-sc-" + juce::String(int(loop)) +
+                                                                           "-" + juce::String(mode))));
+            setupSidechain(sc, main, key, mode);
+            if (loop)
+            {
+                run(sc, "session.range.set", {{"start_samples", 37}, {"end_samples", 24150}});
+                run(sc, "transport.loop.set", {{"enabled", true}});
+            }
+            if (mode >= 4)
+            {
+                const auto owner = track(sc, named(sc, mode == 5 ? "Receiver" : "Key"));
+                for (const auto& plugin : owner["plugins"])
+                    if (plugin["type"] == "vst")
+                        AudioDeviceTestAccess::nativeAttack(sc, plugin["id"], .5f);
+                sc.query();
+            }
+            auto actual = play(sc, root,
+                               mode == 0   ? "hosted detector reference"
+                               : mode == 1 ? "hosted key96"
+                               : mode == 2 ? "hosted receiver96"
+                               : mode == 4 ? "hosted key732"
+                                           : "hosted receiver732",
+                               loop, {main, key});
+            if (mode == 0)
+                detector = std::move(actual);
+            else
+                aligned(detector, actual, count,
+                        "complete actual hosted detector audio aligns including every loop fold");
+        }
     }
+    using namespace ndaw::desktop;
+    WorkspaceWindow window(
+        std::make_unique<Workspace>(false, std::make_unique<Storage>(root.getChildFile("hosted-gui"))));
+    auto& w = window.editor();
+    window.showReady();
+    auto& c = AudioDeviceTestAccess::commands(w);
+    base(c, source);
+    insert(c, named(c, "Delayed"), descriptor(c, "AUPeakLimiter"));
+    run(c, "session.range.set", {{"start_samples", 37}, {"end_samples", 24150}});
+    run(c, "transport.loop.set", {{"enabled", true}});
+    play(c, root, "native GUI active graph report", true, {source},
+         [&]
+         {
+             wait(
+                 [&]
+                 {
+                     auto* label = dynamic_cast<juce::Label*>(component(w, "transport.audio.device"));
+                     return label && label->isShowing() && label->getTooltip().contains("96") &&
+                            label->getTooltip().contains("2.00");
+                 },
+                 "real native transport exposes the active graph report in its tooltip");
+         });
+    wait(
+        [&]
+        {
+            auto* label = dynamic_cast<juce::Label*>(component(w, "transport.audio.device"));
+            return label && !label->getTooltip().contains("2.00");
+        },
+        "native stopped status clears the previous active graph report");
+}
+void live(const juce::File& root)
+{
+    const auto source = root.getChildFile("Live-Noise.wav"), negative = root.getChildFile("Live-Reverse.wav");
+    fixture(source, 3);
+    fixture(negative, 3, -1);
+    const auto sourceHash = Commands::mediaHash(source), negativeHash = Commands::mediaHash(negative);
+    Commands c(false, std::make_unique<Storage>(root.getChildFile("live-prefs")));
+    base(c, source);
+    const auto p = insert(c, named(c, "Delayed"), descriptor(c, "AUPeakLimiter"));
+    c.commit(c.makePlan("human", Json::array({op("track.create", {{"name", "Direct"}, {"ref", "$d"}}),
+                                              op("clip.import", {{"track", "$d"},
+                                                                 {"path", negative.getFullPathName().toStdString()},
+                                                                 {"position_samples", 0}}),
+                                              op("session.range.set", {{"start_samples", 37}, {"end_samples", 24150}}),
+                                              op("transport.loop.set", {{"enabled", true}})})));
+    te::HostedAudioDeviceInterface::Parameters params;
+    params.sampleRate = 48000;
+    params.blockSize = 512;
+    params.inputChannels = 0;
+    params.outputChannels = 2;
+    te::test_utilities::EnginePlayer device(AudioDeviceTestAccess::engine(c), params);
+    auto& engine = AudioDeviceTestAccess::engine(c);
+    auto& host = engine.getDeviceManager().getHostedAudioDeviceInterface();
+    c.seek(37);
+    c.play();
+    wait(
+        [&]
+        {
+            return engine.getAudioFileManager().cache.hasMappedReader(te::AudioFile(engine, source), 0) &&
+                   engine.getAudioFileManager().cache.hasMappedReader(te::AudioFile(engine, negative), 0);
+        },
+        "live production sources are actually mapped before capture");
+    juce::AudioBuffer<float> output(2, 2048 * 512), block(2, 512);
+    juce::MidiBuffer midi;
+    midi.ensureSize(4096);
+    std::vector<double> durations;
+    durations.reserve(2048);
+    const auto before = AudioDeviceTestAccess::latency(c, p["id"]);
+    const auto began = juce::Time::getMillisecondCounterHiRes();
+    int captured = 0, readyBlock = -1;
+    double changeTime = 0, readyMs = -1;
+    for (int n = 0; n < 2048; ++n)
+    {
+        if (n == 128)
+        {
+            c.query();
+            check(c.realtimeState().playing, "transport is actually playing at the native latency edit");
+            changeTime = juce::Time::getMillisecondCounterHiRes();
+            AudioDeviceTestAccess::nativeAttack(c, p["id"], .5f);
+        }
+        block.clear();
+        midi.clear();
+        const auto start = juce::Time::getMillisecondCounterHiRes();
+        host.processBlock(block, midi);
+        durations.push_back((juce::Time::getMillisecondCounterHiRes() - start) * 1000);
+        for (int ch = 0; ch < 2; ++ch)
+            output.copyFrom(ch, n * 512, block, ch, 0, 512);
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(1);
+        captured = n + 1;
+        const auto graph = c.deviceStatus()["playback_graph_latency"];
+        if (n >= 128 && readyBlock < 0 && graph["available"].get<bool>() && graph["samples"] == 732)
+        {
+            readyBlock = n;
+            readyMs = juce::Time::getMillisecondCounterHiRes() - changeTime;
+        }
+        if (readyBlock >= 0 && n >= readyBlock + 128)
+            break;
+        if (n >= 128 && readyBlock < 0 && juce::Time::getMillisecondCounterHiRes() - changeTime >= 2000)
+            break;
+    }
+    output.setSize(2, captured * 512, true, false, true);
+    const auto after = AudioDeviceTestAccess::latency(c, p["id"]);
+    const auto status = c.deviceStatus();
+    c.stop();
+    const auto human = c.query()["native_plugin_states"]["last_capture"];
+    const auto path = root.getChildFile("PDC-Live-Transition.wav");
+    writeCaptured(path, output);
+    const double prefix = output.getMagnitude(0, 128 * 512),
+                 suffix = output.getMagnitude(128 * 512, output.getNumSamples() - 128 * 512),
+                 settled = output.getMagnitude(output.getNumSamples() - 64 * 512, 64 * 512);
+    std::sort(durations.begin(), durations.end());
+    Json failures = Json::array();
+    for (int n = 128 * 512; n < output.getNumSamples() && failures.size() < 32; ++n)
+        if (std::abs(output.getSample(0, n)) > 2e-6 || std::abs(output.getSample(1, n)) > 2e-6)
+            failures.push_back({{"frame", n}, {"left", output.getSample(0, n)}, {"right", output.getSample(1, n)}});
+    measurements.push_back({{"case", "continuous native latency transition"},
+                            {"file", path.getFullPathName().toStdString()},
+                            {"frames", output.getNumSamples()},
+                            {"sha256", Commands::mediaHash(path)},
+                            {"before", before},
+                            {"after", after},
+                            {"device", status},
+                            {"human", human},
+                            {"change_frame", 128 * 512},
+                            {"maximum_before", prefix},
+                            {"maximum_after", suffix},
+                            {"maximum_settled_tail", settled},
+                            {"ready_block", readyBlock},
+                            {"ready_ms", readyMs},
+                            {"first_failed_samples", failures},
+                            {"process_max_us", durations.back()},
+                            {"capture_ms", juce::Time::getMillisecondCounterHiRes() - began}});
+    check(Commands::mediaHash(source) == sourceHash && Commands::mediaHash(negative) == negativeHash,
+          "live native changes preserve both original source hashes");
+    check(prefix <= 2e-6, "wideband actual playing paths cancel before the latency change");
+    check(after["native_samples"] == 732 && status["playback_graph_latency"]["samples"] == 732,
+          "actual playing native and graph reports converge to the new latency");
+    check(readyBlock >= 128 && readyBlock < 2048 && captured >= readyBlock + 128,
+          "actual graph convergence is followed by a complete bounded observation window");
+    check(readyMs >= 0 && readyMs <= 2000, "actual native graph notification meets original two second budget");
+    check(juce::Time::getMillisecondCounterHiRes() - began < 10000, "live capture meets original ten second budget");
+    check(human["state"] == "committed" && human["actor"] == "human",
+          "stopping commits actual native state to human history");
+    check(durations.back() <= 1e6 * 512 / 48000, "all measured live hosted blocks meet original deadline");
+    check(settled <= 2e-6, "actual dynamic graph eventually restores complete parallel phase cancellation");
+    check(suffix <= 2e-6, "complete live latency transition retains parallel alignment without cropping samples");
 }
 } // namespace
 int main(int argc, char** argv)
@@ -689,6 +917,8 @@ int main(int argc, char** argv)
             workspace(root, source, main, key);
         else if (argc > 2 && std::string(argv[2]) == "--hosted")
             hosted(root, source, negative, main, key);
+        else if (argc > 2 && std::string(argv[2]) == "--live")
+            live(root);
         else
             qualify(root, source, negative, main, key);
         int i = 0;

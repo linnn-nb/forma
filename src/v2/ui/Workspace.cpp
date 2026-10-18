@@ -365,6 +365,7 @@ Workspace::Workspace(bool openDevice, std::unique_ptr<te::PropertyStorage> stora
     counter.setComponentID("transport.main_counter");
     counter.setFont(juce::FontOptions(25, juce::Font::bold));
     device.setFont(juce::FontOptions(11));
+    device.setComponentID("transport.audio.device");
     status.setFont(juce::FontOptions(12));
     previewText.setComponentID("legacy.report");
     previewText.setMultiLine(true);

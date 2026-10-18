@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "NativePluginStates.h"
+#include "NativeLatency.h"
 namespace ndaw::v2
 {
 namespace
@@ -468,6 +469,25 @@ void NativePluginStates::drain()
             flags = 0;
         }
         bool signalled = flags != 0 || programDrift;
+        if (signalled)
+        {
+            try
+            {
+                Commands::ParameterWriteGuard guard(owner);
+                if (refreshNativeLatency(w.instance))
+                {
+                    owner.processorCache.erase(target);
+                    owner.invalidateFacts();
+                }
+            }
+            catch (const std::exception& e)
+            {
+                fail(w, e);
+                if (active)
+                    owner.stop();
+                return;
+            }
+        }
         if (active)
         {
             w.seenPlayback = true;

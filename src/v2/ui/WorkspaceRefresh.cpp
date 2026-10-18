@@ -727,6 +727,12 @@ void Workspace::refresh()
                         : text("音频设备未打开")) +
                        "  · r" + juce::String(facts["revision"].get<uint64_t>()),
                    juce::dontSendNotification);
+    const auto graphLatency = d.value("playback_graph_latency", Json::object());
+    device.setTooltip(graphLatency.value("available", false)
+                          ? text("混音处理报告延迟：") + juce::String(graphLatency["samples"].get<int>()) +
+                                text(" 采样 / ") + juce::String(graphLatency["milliseconds"].get<double>(), 2) +
+                                text(" ms\n不含音频设备延迟，不是物理往返实测。")
+                          : text("开始播放后显示混音处理报告延迟；插件自身报告可在插入检查器查看。"));
     if (lastMeterRequest && d["output_meters"].value("reset_applied", uint64_t(0)) >= lastMeterRequest)
     {
         lastMeterRequest = 0;
