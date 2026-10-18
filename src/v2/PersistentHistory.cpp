@@ -807,6 +807,11 @@ void PersistentHistory::index(juce::ValueTree node)
 void PersistentHistory::patch(juce::ValueTree target, const juce::ValueTree& desired)
 {
     target.copyPropertiesFrom(desired, nullptr);
+    for (int i = 0; i < desired.getNumProperties(); ++i)
+    {
+        const auto key = desired.getPropertyName(i);
+        history_delta::setExactProperty(target, key, desired[key]);
+    }
     std::vector<juce::ValueTree> children;
     std::map<juce::String, int> ordinals;
     for (auto child : desired)

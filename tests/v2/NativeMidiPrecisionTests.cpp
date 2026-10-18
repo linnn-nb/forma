@@ -29,6 +29,14 @@ public:
                         rows.push_back({{"id", note->state[te::IDs::id].toString().toStdString()},
                                         {"b", std::bit_cast<uint64_t>(note->getStartBeat().inBeats())},
                                         {"l", std::bit_cast<uint64_t>(note->getLengthBeats().inBeats())}});
+        for (auto* track : te::getAudioTracks(*c.edit))
+            for (auto* clip : track->getClips())
+                if (auto* midi = dynamic_cast<te::MidiClip*>(clip))
+                    for (auto* cc : midi->getSequence().getControllerEvents())
+                        rows.push_back({{"clip", midi->itemID.toString().toStdString()},
+                                        {"type", cc->getType()},
+                                        {"value", cc->getControllerValue()},
+                                        {"b", std::bit_cast<uint64_t>(cc->getBeatPosition().inBeats())}});
         return rows;
     }
 };
@@ -98,6 +106,14 @@ Json bits(juce::ValueTree tree)
                                 {"b", std::bit_cast<uint64_t>(double(note["b"]))},
                                 {"l", std::bit_cast<uint64_t>(double(note["l"]))}});
             }
+            else if (note.hasType("CONTROL"))
+            {
+                check(note["b"].isDouble(), "native CC and pitch timestamps are typed doubles before SDK construction");
+                rows.push_back({{"clip", c["id"].toString().toStdString()},
+                                {"type", int(note["type"])},
+                                {"value", int(note["val"])},
+                                {"b", std::bit_cast<uint64_t>(double(note["b"]))}});
+            }
     };
     for (auto track : tree)
         if (track.hasType("TRACK"))
@@ -142,6 +158,12 @@ void codec()
         note.setProperty("b", values[i], nullptr);
         note.setProperty("l", values[(i + 1) % values.size()], nullptr);
         sequence.addChild(note, -1, nullptr);
+        juce::ValueTree control("CONTROL");
+        control.setProperty("b", values[i], nullptr);
+        control.setProperty("type", i % 2 ? 4101 : 1, nullptr);
+        control.setProperty("val", int(i * 977) & 16383, nullptr);
+        control.setProperty("l", "opaque-control-metadata", nullptr);
+        sequence.addChild(control, -1, nullptr);
     }
     clip.addChild(sequence, -1, nullptr);
     track.addChild(clip, -1, nullptr);
@@ -158,10 +180,21 @@ void codec()
     original.addChild(source, -1, nullptr);
     const auto expected = bits(original);
     auto loaded = parsed(original);
+    Json rawDrift = Json::array();
+    for (size_t i = 0; i < values.size(); ++i)
+    {
+        const auto raw = loaded.getChild(0).getChild(0).getChildWithName("SEQUENCE").getChild(int(2 * i + 1))["b"];
+        const auto actual = std::bit_cast<uint64_t>(double(raw)), wanted = std::bit_cast<uint64_t>(values[i]);
+        if (actual != wanted)
+            rawDrift.push_back({{"text", raw.toString().toStdString()}, {"before", wanted}, {"unprepared", actual}});
+    }
+    result["unprepared_controller_drift"] = rawDrift;
     const auto opaqueBefore = xml(loaded.getChild(0).getChildWithName("PLUGIN"));
     native_midi_numbers::prepareEdit(loaded);
     check(bits(loaded) == expected,
-          "16 finite binary64 vectors including subnormal and signed zero round-trip with zero ULP drift");
+          "native note/CC/pitch binary64 vectors including subnormal and signed zero have zero ULP drift");
+    check(loaded.getChild(0).getChild(0).getChildWithName("SEQUENCE").getChild(1)["l"].isString(),
+          "controller l is opaque metadata, not a note duration");
     check(xml(loaded.getChild(0).getChildWithName("PLUGIN")) == opaqueBefore &&
               xml(loaded.getChild(0).getChild(0).getChildWithName("NDAW_SAMPLE_MIDI_ORIGIN")) == xml(origin) &&
               xml(loaded.getChildWithName("NDAW_MIDI_SOURCES")) == xml(source),
@@ -170,23 +203,50 @@ void codec()
     auto seq = after.getChild(0).getChild(0).getChildWithName("SEQUENCE");
     seq.getChild(0).setProperty("b", values[2], nullptr);
     seq.getChild(0).setProperty("l", values[0], nullptr);
+    seq.getChild(3).setProperty("b", values[6], nullptr);
     seq.removeChild(1, nullptr);
     auto added = sequence.getChild(2).createCopy();
     added.setProperty("id", "999", nullptr);
     seq.addChild(added, -1, nullptr);
+    auto addedControl = sequence.getChild(1).createCopy();
+    addedControl.setProperty("b", values[7], nullptr);
+    seq.addChild(addedControl, -1, nullptr);
     auto delta = parsed(history_delta::difference(original, after));
     native_midi_numbers::prepareDelta(delta);
     history_delta::apply(loaded, delta, true);
+    if (bits(loaded) != bits(after))
+    {
+        result["codec_forward_diff"] = Json::diff(bits(after), bits(loaded));
+        result["codec_delta"] = xml(delta).toStdString();
+    }
     check(bits(loaded) == bits(after),
           "typed property and structural history images restore exact double bits forward");
     history_delta::apply(loaded, delta, false);
     check(bits(loaded) == expected, "typed history images restore exact double bits backward");
+    auto adjacent = original.createCopy();
+    auto event = adjacent.getChild(0).getChild(0).getChildWithName("SEQUENCE").getChild(1);
+    // Construct distinct native snapshots. JUCE's property setter may itself
+    // coalesce adjacent doubles; this tests history persistence, not that setter.
+    event.removeProperty("b", nullptr);
+    event.setProperty("b", std::nextafter(values[0], 1.), nullptr);
+    auto adjacentDelta = parsed(history_delta::difference(original, adjacent));
+    check(adjacentDelta.getNumChildren() > 0,
+          "one ULP native CC change is a real history delta even without reordering");
+    native_midi_numbers::prepareDelta(adjacentDelta);
+    history_delta::apply(loaded, adjacentDelta, true);
+    check(bits(loaded) == bits(adjacent), "adjacent-double CC delta restores exact forward timestamp");
+    history_delta::apply(loaded, adjacentDelta, false);
+    check(bits(loaded) == expected, "adjacent-double CC Undo restores the exact original timestamp");
     for (const char* text : {"", "0.1junk", "1,25", "nan", "inf", "1e10000", "1e-10000"})
     {
         auto bad = parsed(original);
         bad.getChild(0).getChild(0).getChildWithName("SEQUENCE").getChild(0).setProperty("b", text, nullptr);
         rejects([&] { native_midi_numbers::prepareEdit(bad); },
                 "malformed/nonfinite/out-of-range note number does not silently become zero");
+        bad = parsed(original);
+        bad.getChild(0).getChild(0).getChildWithName("SEQUENCE").getChild(1).setProperty("b", text, nullptr);
+        rejects([&] { native_midi_numbers::prepareEdit(bad); },
+                "malformed CC/pitch timestamps cannot silently become zero");
     }
     result["codec_vectors"] = expected;
 }
@@ -259,6 +319,16 @@ void project(const juce::File& root)
              {"velocity", 80},
              {"position_samples", p.first},
              {"length_samples", p.second}});
+    Json cc = Json::array();
+    for (double beat : {0.0062500000000000056, 0.012500000000000011, 0.1})
+        cc.push_back({{"id", "cc:" + clip + ":new:" + juce::Uuid().toString().toStdString()},
+                      {"source_beat", beat},
+                      {"raw_value", (17 << 7) + int(cc.size())}});
+    run(c, "midi.cc.replace",
+        {{"clip", clip},
+         {"controller", 1},
+         {"state_hash", c.query()["tracks"][0]["clips"][0]["controller_state_hash"]},
+         {"points", cc}});
     const std::string main = c.query()["tracks"][0]["playlists"]["active"];
     const auto copied = run(c, "playlist.create",
                             {{"track", track}, {"source", main}, {"name", "Inactive precise notes"}, {"role", "comp"}});
@@ -392,7 +462,10 @@ int main(int argc, char** argv)
         juce::File::getCurrentWorkingDirectory().getChildFile("MIDI-Precision-" + juce::Uuid().toString());
     root.createDirectory();
     result = {{"root", root.getFullPathName().toStdString()},
+              {"result", "running"},
               {"budgets", {{"ulp_error", 0}, {"reopen_rounds", 3}, {"recovery_io_ms", 5000}}}};
+    if (argc > 1)
+        std::ofstream(argv[1]) << result.dump(2);
     int code = 0;
     try
     {

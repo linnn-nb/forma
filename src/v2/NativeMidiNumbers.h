@@ -5,7 +5,7 @@ namespace ndaw::v2::native_midi_numbers
 {
 // Detached L1 state only, after the original bytes and history chain have been
 // authenticated. Never call from an audio callback or on a live Edit tree.
-// Only playable MIDICLIP/SEQUENCE/NOTE b/l are decoded. Opaque plugin/source/
+// Only playable MIDICLIP/SEQUENCE/NOTE b/l and CONTROL b are decoded. Opaque plugin/source/
 // extension data and all unrelated properties retain their original var values.
 void prepareEdit(juce::ValueTree);
 void prepareDelta(juce::ValueTree);

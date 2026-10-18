@@ -18,7 +18,8 @@ enum class Kind
     list,
     clip,
     sequence,
-    note
+    note,
+    control
 };
 void require(bool ok, const char* why)
 {
@@ -39,6 +40,8 @@ Kind childKind(Kind parent, const juce::String& name)
         return Kind::sequence;
     if (parent == Kind::sequence && name == "NOTE")
         return Kind::note;
+    if (parent == Kind::sequence && name == "CONTROL")
+        return Kind::control;
     return Kind::other;
 }
 double number(const juce::var& value)
@@ -47,39 +50,40 @@ double number(const juce::var& value)
     if (value.isString())
     {
         const auto text = value.toString();
-        require(text.length() <= 512, "MIDI note numeric text exceeds 512-character budget");
+        require(text.length() <= 512, "MIDI timing numeric text exceeds 512-character budget");
         std::istringstream input(text.toStdString());
         input.imbue(std::locale::classic());
         input >> result;
         // libc++ num_get reports ERANGE for a correctly rounded, nonzero
         // subnormal. Overflow, malformed input and underflow-to-zero still fail.
-        require(!input.bad() && (!input.fail() || std::fpclassify(result) == FP_SUBNORMAL), "invalid MIDI note number");
+        require(!input.bad() && (!input.fail() || std::fpclassify(result) == FP_SUBNORMAL),
+                "invalid MIDI timing number");
         if (input.fail())
             input.clear();
         input >> std::ws;
-        require(input.eof(), "invalid MIDI note number suffix");
+        require(input.eof(), "invalid MIDI timing number suffix");
     }
     else
     {
-        require(value.isDouble() || value.isInt() || value.isInt64(), "invalid MIDI note numeric type");
+        require(value.isDouble() || value.isInt() || value.isInt64(), "invalid MIDI timing numeric type");
         result = double(value);
     }
-    require(std::isfinite(result), "nonfinite MIDI note number");
+    require(std::isfinite(result), "nonfinite MIDI timing number");
     return result;
 }
-void fields(juce::ValueTree node)
+void fields(juce::ValueTree node, Kind kind)
 {
     for (const auto* key : {"b", "l"})
-        if (node.hasProperty(key))
+        if ((kind == Kind::note || juce::String(key) == "b") && node.hasProperty(key))
             node.setProperty(key, number(node[key]), nullptr);
 }
 void visit(juce::ValueTree node, Kind kind)
 {
     if (kind == Kind::other)
         return;
-    if (kind == Kind::note)
+    if (kind == Kind::note || kind == Kind::control)
     {
-        fields(node);
+        fields(node, kind);
         return; // MPE children, opaque origin records and other attributes are data.
     }
     for (auto child : node)
@@ -112,8 +116,8 @@ void prepareDelta(juce::ValueTree delta)
             continue;
         for (auto image : change)
         {
-            if (kind == Kind::note && (image.hasType("BEFORE") || image.hasType("AFTER")))
-                fields(image);
+            if ((kind == Kind::note || kind == Kind::control) && (image.hasType("BEFORE") || image.hasType("AFTER")))
+                fields(image, kind);
             if (image.hasType("ADD") || image.hasType("REMOVE"))
             {
                 require(image.getNumChildren() == 1, "invalid MIDI numeric child image");

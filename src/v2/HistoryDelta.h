@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #pragma once
 #include <nativedaw/v2/EngineCommands.h>
+#include <bit>
 
 namespace ndaw::v2::history_delta
 {
@@ -190,6 +191,44 @@ inline bool prefix(const Path& a, const Path& b)
     return a.size() <= b.size() && std::equal(a.begin(), a.end(), b.begin());
 }
 using Normalise = std::function<juce::ValueTree(juce::ValueTree)>;
+inline bool sameValue(const juce::var& a, const juce::var& b)
+{
+    // JUCE var compares doubles with an absolute epsilon. That can silently
+    // omit actual timestamp changes when anonymous events shift ordinal slots.
+    // Compare native double bytes; do not decode opaque strings or other types.
+    if (a.isDouble() && b.isDouble())
+        return std::bit_cast<uint64_t>(double(a)) == std::bit_cast<uint64_t>(double(b));
+    return a == b;
+}
+inline bool sameTree(juce::ValueTree a, juce::ValueTree b)
+{
+    if (a.getType() != b.getType() || a.getNumProperties() != b.getNumProperties() ||
+        a.getNumChildren() != b.getNumChildren())
+        return false;
+    for (int i = 0; i < a.getNumProperties(); ++i)
+    {
+        const auto key = a.getPropertyName(i);
+        if (!b.hasProperty(key) || !sameValue(a[key], b[key]))
+            return false;
+    }
+    for (int i = 0; i < a.getNumChildren(); ++i)
+        if (!sameTree(a.getChild(i), b.getChild(i)))
+            return false;
+    return true;
+}
+inline void setExactProperty(juce::ValueTree target, const juce::Identifier& key, const juce::var& value)
+{
+    const auto current = target[key];
+    if (current.isDouble() && value.isDouble() && !sameValue(current, value) && current == value)
+    {
+        // NamedValueSet also coalesces adjacent doubles. A temporary serialized
+        // value forces its supported type-change path without removing the key
+        // or changing property order. Replay is detached or stopped under L1;
+        // the final native double and both notifications stay in that replay.
+        target.setProperty(key, value.toString(), nullptr);
+    }
+    target.setProperty(key, value, nullptr);
+}
 inline juce::ValueTree image(juce::ValueTree n, const Normalise& normalise)
 {
     auto value = (normalise ? normalise(n) : n).createCopy();
@@ -208,7 +247,7 @@ inline juce::ValueTree difference(const juce::ValueTree& before, juce::ValueTree
     if (normalise)
         after = normalise(after);
     require(before.isValid() && after.hasType(before.getType()), "history scope identity changed");
-    if (!normalise && before.isEquivalentTo(after))
+    if (!normalise && sameTree(before, after))
         return juce::ValueTree("DELTA");
     juce::ValueTree result("DELTA"), change("CHANGE"), old("BEFORE"), next("AFTER");
     change.setProperty("path", juce::String(path.dump()), nullptr);
@@ -218,7 +257,7 @@ inline juce::ValueTree difference(const juce::ValueTree& before, juce::ValueTree
             names.insert(node.getPropertyName(i));
     Json changed = Json::array();
     for (const auto& name : names)
-        if (before.hasProperty(name) != after.hasProperty(name) || before[name] != after[name])
+        if (before.hasProperty(name) != after.hasProperty(name) || !sameValue(before[name], after[name]))
         {
             changed.push_back(name.toString().toStdString());
             if (before.hasProperty(name))
@@ -340,7 +379,7 @@ inline void apply(juce::ValueTree root, const juce::ValueTree& delta, bool forwa
                 require(name.is_string(), "invalid persistent property name");
                 const auto key = juce::Identifier(name.get<std::string>());
                 if (values.hasProperty(key))
-                    target.setProperty(key, values[key], nullptr);
+                    setExactProperty(target, key, values[key]);
                 else
                     target.removeProperty(key, nullptr);
             }
