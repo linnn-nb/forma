@@ -1,3 +1,38 @@
+# 当前：工程兼容性报告与印刻能力（2026-10-19）
+
+**dc7ea00：六种受影响CTest最新分两批444项通过，另历史冻结15项通过；不是一次六套全绿批次或完整产品资格。** 新增“文件→工程兼容性…”（默认⌘⌃⌥I，可改键）。它显示L1计算出的当前/非活动Playlist/保留UndoRedo要求、实际冻结/Bounce、原生旁链及限定引用提示。只读查看不改Edit/历史；被覆盖的编辑快捷键不作用于后面的工程。外部L1修改后提示刷新，原生异步刷新、Esc、自定义键保存重开及原Undo/Redo已验。没有新增M2/M3工具、权限、服务或RT处理。
+
+实际存储审查：TRACK.ndaw_freeze_*改变缓存寻址/时长，宿主PLUGIN.ndaw_print_baked与NDAW_BOUNCE/打印Playlist改变播放和恢复，新增audio.print.freeze-cache v1、audio.print.bounce-playlist v1。含任一能力的新保存采用FORMA_PROJECT schema2，覆盖当前、非活动和原Undo/Redo。原生旁链使用锁定TE的sidechainSourceID/CONNECTIONS/useSidechainTrigger，沿用实际API，没有为登记增加伪格式。插件子树/私有数据中的同名标签不当成宿主能力；直接宿主绕过标志及其属性delta单独识别。
+
+旧schema1写入器漏声明印刻：先验证原payload与完整历史，再为这两个已知v1遗漏允许有限迁移；其它能力/未来版本/损坏仍拒绝。原文件不改，报告注明补审，Save Copy保持原绑定，Save As/普通Save成功后绑定严格格式。新schema2漏声明拒绝并保留当前Edit/session/revision/历史。详情PROJECT_FORMAT.md、PROJECT_COMPATIBILITY.md。
+
+| 最新套件 | 检查 | 秒 |
+| --- | ---: | ---: |
+| forma_persistent_native_history | 86 | 39.038 |
+| forma_project_save | 64 | 3.449 |
+| forma_sidechain | 76 | 5.272 |
+| forma_print | 77 | 14.739 |
+| forma_project_document | 80 | 7.824 |
+| forma_project_compatibility | 61 | 8.793 |
+
+第一批5/6通过，新增专项在8项后因测试建轨缺必填ref拒绝；补齐夹具后单套1/1、61项通过。首次构建的新测试string/JSON比较错误已改为明确字符串解码；构建中因旧格式迁移审查主动终止的日志、编译/运行失败均保留。最终Release目标、修复专项和历史冻结目标构建exit0，不放宽原校验/负载/时限/PCM容差。
+
+历史互通：scripts/qualify_project_reader.py从精确352747790174d85f2636fdd289c19bdc56f4f63c取未改生产ProjectDocument.cpp/h、NativeEditXml.h编译。该历史格式读取器接受原生旁链schema1，明确拒绝冻结、Redo-only、Bounce-only、非活动打印四个schema2文件；其真实旧写入器输出四个漏声明的schema1文件，当前L1 CLI全部打开成功且原字节不改。只资格这个生产格式实现，不冒称旧整台DAW或任意版本兼容。
+
+实际历史冻结：旧P2-Print-Graph-97d7f716b7f64247975259731f94b70d/MIDI-Frozen.tracktionedit（早于实现摘要）在当前L1读出并渲染完整3秒，与原缓存经原推子/声像的独立轨道参考最大差0≤2e-6；原工程SHA86534a4b…、缓存SHAf3530d6a…保持。独立Python再核对两份完整PCM24数据完全相等。不是重渲染旧缓存后再比较。
+
+独立Python共核对5 WAV的实际RIFF/格式/采样率/声道/完整帧数与SHA、9现代工程schema/能力、4历史写入器文件SHA/遗漏，以及原PNG1440×880、2745色与卡片实际像素(32,35,41,255)。新两份印刻各72000帧，实际历史输出各144000帧。原生组件软件图是关键界面证据，不是OS截图、物理键盘或听评。SDK diff仍f063f92a…，与上轮23补丁58文件fresh资格字节一致，本轮未新重放SDK。
+
+唯一App：`build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `64a1286356fbeedf8f8f2e74f4d1aa53d058e1870eedbbb82222c032f20fa2bb`，本地deep/strict通过、未公证；CLI已构建。173输入实现SHA `3d9953e0f4ead5116db93000c113714e24347bd0e467ff4177bcbe061417c078` 独立重算匹配生成头、App字面值及新印刻回执。原PID84585未强退/换工程；旧进程正常保存退出后重启才用磁盘新代码。没有新包/App副本或音频上传。
+
+可运行自有测试示例：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P2-Compatibility-85612d6480d24316be671a914e09910d/Compatibility-Delivered.tracktionedit`，已含实际印刻音频与旁链；是测试正弦音，不是用户成曲/麦克风或听评。打开后从文件菜单查看报告；示例工程已保存自定义⌘⌃F18，默认新工程⌘⌃⌥I。
+
+当前索引build-v2-tracktion/p2-compatibility-current-results.json；关键输出p2-compatibility-{first,report}-tests.log/.xml、historical-reader.json、old-freeze.json、independent.json、identity.json；关键图evidence/P2/project-compatibility-native.png。可复现构建与CTest目标见CMake、历史读写命令见scripts/qualify_project_reader.py --help。
+
+下一轮只补组定义/发送路由等尚未审计的实际持久语义，并在真实需要时补要求/报告，随后本兼容模块两轮收口；不假定原生字段不兼容。PDC完整过渡0.12353515625>2e-6仍发布阻断，正常forma_latency_live_change未重跑/改判。性能A15.84%>15%、分析失效/超时、全部格式/RT/实体键鼠/设备/听评/耐久/Windows/视频/环绕/发行仍未完成；用户不便手测不重复催问。
+
+---
+
 # 瞬态来源→Take/Comp→交叉淡化→导出（2026-10-19，第二轮收口）
 
 **已实现继承Warp的只读来源视图和真实定位；检测源帧经完整Warp与当前窗口投影，不改写原测量。九种最新CTest分两批990项通过，十份完整WAV/四工程独立核验。** 实现1d39491、视野外定位/只读语义415691d。本模块到两轮边界，其余组合留BACKLOG；不代表完整P1/P3、实时或产品验收。

@@ -1,3 +1,5 @@
+2026-10-19 工程兼容性：L1 projectCompatibility只读扫描当前Edit及已保留历史要求，L5原生报告展示快照/版本失效，不写Edit或新增M2/M3工具。Print读取能力采用schema2，旧schema1两个已知v1遗漏在原payload/历史校验后有限迁移；原音频不重渲染。旁链沿用TE原生存储，插件不透明子树不解释。实际范围见PROJECT_FORMAT/PROJECT_COMPATIBILITY/VERIFICATION。
+
 2026-10-19 来源视图：L1从已保存源测量、原生完整Warp、当前窗口和项目起点派生onset_views；非活动/停用源也保留原证据。它不是第二模型，不写回Edit或改原source object_id。L5继承窗口只读，定位走L1深SHA/版本/对象/窗口验证及实际Transport ACK，视野滚动走既有UiState。数据/历史/音频原链保持，无新M2/M3工具、引擎、服务或SDK字节。新990项限定资格见VERIFICATION。
 
 2026-10-19 Warp瞬态草稿：L2复用单MasterAnalysis raw-source worker，非持久引用模式不写Edit/旧历史；L5只选候选并修改脱离树草稿，L1在clip.warp提交前校验真实运行时artifact的session/revision/object/media，证据与锚点同一Undo事务保存。新读取能力audio.warp.onset-evidence v1覆盖原历史；M2/M3工具冻结，无新线程/服务/引擎/模型/RT代码。行为和资格见WARP_WORKFLOW及VERIFICATION。
