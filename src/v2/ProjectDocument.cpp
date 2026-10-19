@@ -27,6 +27,10 @@ void add(Requirements& out, const std::string& id, int v)
 }
 void descriptor(const juce::String& type, juce::ValueTree node, Requirements& out, bool path = false)
 {
+    // These two existing group versions predate protected documents. Check the
+    // original history mirrors too, before an unsupported Redo can be installed.
+    if (type == "MIX_GROUPS" && node.hasProperty("schema"))
+        require(version(node["schema"]) <= 2, "工程组元数据版本不受支持，工程未打开");
     // Host-owned fields only. PLUGIN descendants and saved vendor blobs are
     // opaque; a direct host bypass flag is interpreted by our graph builder.
     if (type == "TRACK" && (node.hasProperty("ndaw_freeze_file") || node.hasProperty("ndaw_freeze_frames") ||

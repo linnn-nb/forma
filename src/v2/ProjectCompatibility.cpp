@@ -15,6 +15,34 @@ Json Commands::projectCompatibility() const
     for (const auto& [id, v] : current)
         required[id] = std::max(required[id], v);
     Json rows = Json::array(), prints = Json::array(), sidechains = Json::array(), issues = Json::array();
+    Json routes = Json::array(), targets = Json::array();
+    const auto groups = mixGroupsQuery();
+    for (auto* t : te::getAllTracks(*edit))
+        if (dynamic_cast<te::AudioTrack*>(t) || dynamic_cast<te::FolderTrack*>(t))
+        {
+            bool hidden = false;
+            for (auto* p = t->getParentTrack(); p; p = p->getParentTrack())
+                hidden |= bool(p->state.getProperty("ndaw_collapsed", false));
+            targets.push_back({{"kind", "track"},
+                               {"id", t->itemID.toString().toStdString()},
+                               {"name", t->getName().toStdString()},
+                               {"available", !hidden}});
+        }
+    for (const auto& group : groups)
+    {
+        bool visible = false;
+        for (const auto& t : targets)
+            if (t.at("kind") == "track" && t.at("available").get<bool>() &&
+                std::find(group.at("members").begin(), group.at("members").end(), t.at("id")) !=
+                    group.at("members").end())
+                visible = true;
+        targets.push_back({{"kind", "group"},
+                           {"id", group.at("id")},
+                           {"name", group.at("name")},
+                           {"available", group.at("missing_members").empty() && visible}});
+        if (!group.at("missing_members").empty())
+            issues.push_back("组成员缺失：" + group.at("name").get<std::string>() + "；原ID保留");
+    }
     bool supported = true;
     for (const auto& [id, v] : required)
     {
@@ -31,6 +59,26 @@ Json Commands::projectCompatibility() const
     }
     for (auto* t : te::getAudioTracks(*edit))
     {
+        auto routing = routingQuery(*t);
+        const auto stored = t->state.getProperty("ndaw_output_target").toString().toStdString();
+        routing["track"] = t->itemID.toString().toStdString();
+        routing["name"] = t->getName().toStdString();
+        routing["stored_output_target"] = stored;
+        routing["effective_target"] = routing.at("output").at("target");
+        if (auto* parent = dynamic_cast<te::FolderTrack*>(t->getParentTrack());
+            parent && parent->isSubmixFolder() && t->getOutput().usesDefaultAudioOut())
+            routing["effective_target"] = parent->itemID.toString().toStdString();
+        const bool missing =
+            !stored.empty() && stored.find_first_not_of("0123456789") == std::string::npos && !track(stored);
+        routing["stored_target_missing"] = missing;
+        if (missing)
+            issues.push_back("主输出轨道缺失：" + t->getName().toStdString() + " → " + stored +
+                             "；原ID保留，实际输出另列");
+        for (const auto& s : routing.at("sends"))
+            if (s.at("targets").size() != 1)
+                issues.push_back("发送目标" + std::string(s.at("targets").empty() ? "缺失：" : "歧义：") +
+                                 t->getName().toStdString() + "；原Bus保留");
+        routes.push_back(std::move(routing));
         const auto p = printQuery(*t);
         if (p["frozen"].get<bool>() || p["bounce_active"].get<bool>())
             prints.push_back(
@@ -60,6 +108,9 @@ Json Commands::projectCompatibility() const
             {"history", persistentHistory->status()},
             {"prints", prints},
             {"sidechains", sidechains},
+            {"routes", routes},
+            {"groups", groups},
+            {"navigation_targets", targets},
             {"issues", issues},
             {"media_hashes_checked", false},
             {"plugin_dsp_verified", false},
