@@ -1,3 +1,5 @@
+2026-10-19：原生CONTROL b（CC/Pitch时间）加入现有NOTE b/l的精确读回路径，原文档/完整SHA/历史链仍先核验；未知/损坏数字拒绝且保留原会话。HistoryDelta精确保留已存double及其回放，不改变schema3、delta字段/路径、能力、原Hash或不透明数据；这是已有数值的读取/恢复修复，没有新持久语义。归档0 ULP限定资格及所有未验setter边界见VERIFICATION当前节。
+
 # 工程格式与读取能力
 
 2026-10-16 当前：新增 `history.runtime-boundary v1`，对应持久历史 schema3；**新版所有正常工程保存（包括简单音频工程）均使用保护封装**，旧版须明确拒绝。仍读取 schema1/2 与无历史旧工程；原文件原封装、原STEP/BLOCK SHA、完整原始delta链先验证，通过后才在内存迁移，另存或普通保存时才写新格式。普通Save沿用独立旧版备份，不覆盖源媒体。

@@ -1,3 +1,12 @@
+# 2026-10-19 CC映射第二轮收口（执行10-18）
+
+- `852711b`修复原生CONTROL b精确冷读/原历史double差异；`5218b03`修复自动化分块MIDI时间未加回起点。测试范围前置条件后续`f2f2b35`/`ef34ec2`，不改产品选区或预后卷逻辑。
+- **11种最新CTest分批3944项通过，历史冻结另15项**。首批10/11、163.08秒、旧选区限制失败保留；最终受影响两套2/2、35.09秒。不是一次全绿、完整P3/产品或RT验收。
+- Loop音乐基/Punch采样基的可编辑Comp、非活动CC副本、Tempo/4/8、原UndoRedo/冷开/恢复、原注册键位与实际MIDI/WAV通过。保留关联来源锁定/完整SEQ/捕获池及hash。8个CC实际误差0或−1采样，14-bit低位37保留；6份WAV独立核验，旧冻结两份PCM完全一致。
+- SDK23补丁58文件fresh/reverse及字节核对通过；唯一App本地deep/strict验证、未公证，SHA `bb1dfe4e9c8306eee75f13dbc774cad597e763c88c3bea3badc9e28e03c908ea`，实现SHA `6e3ecfe811fab92bbabc52d499c40be7b2d5f8cbda6efccec8be624f1a3146f0`。旧84585未强退/改工程，无新包/应用副本。
+- 当前索引 `build-v2-tracktion/p3-cc-map-current-results.json`；详情与失败归因见docs/VERIFICATION.md当前节。自有演示工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-dd85414b26614e75a230960264b5ffae/MIDI-Playlists-GUI-Tempo.tracktionedit`，选“Editable CC Comp”片段打开CC曲线，原Take保留，CmdZ/Redo和另存重开。
+- PDC瞬态仍发布阻断，正常失败CTest保留，本批不重跑/改判。更多CC/原生setter极近double/实体端口/听评/RT/性能/平台/发行保持未完；按两轮规则不继续追加本模块边界。下一项瞬态锚点建议，M2/M3冻结、M4/M5暂缓。
+
 # 2026-10-18 录得 Comp 的 CC 集成
 
 - `164c534`拒绝空CC事务并禁用无改动Apply；`18bfa28`补主窗口焦点Esc与真实Loop/Punch录得Comp的曲线编辑集成。只改L1/L5，未加引擎、依赖、SDK补丁或RT工作。

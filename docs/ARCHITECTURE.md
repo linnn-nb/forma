@@ -1,3 +1,5 @@
+2026-10-19 CC精度/时序：L1在已校验脱离树读回原生CONTROL b，历史差异与回放精确保留已存double；原字段/能力/源池不变。L0 PluginNode把128帧自动化小块的局部MIDI时间还原到大块再合并，审计补丁23/58已重放。没有新服务/引擎/推理或RT分配锁；全RT资格仍未获得。实际边界见VERIFICATION首节。
+
 2026-10-18 录得Comp的CC：L1现拒绝无实际事件差异的midi.cc.replace；L5仅缓存草稿dirty来控制Apply，Esc通过现有上下文命令277取消。工程写入/原Undo/历史恢复仍走唯一命令层，捕获池与工作SEQ分离；没有新SDK/RT路径/服务或第二事实来源。真实Loop/Punch/native peer/MIDI/WAV限定资格见VERIFICATION.md首节。
 
 2026-10-18 PDC播放增量：L1内部NativeLatency.h在message thread读取真实AU延迟，ExternalCommands执行前与NativePluginStates已通知变更共用；回调仍仅原子标记，opaque状态停止后入原human事务。deviceStatus只读SDK context报告，L5设备提示与插件/硬件报告分开，停止不可用；不是音频切换ACK。没有第二引擎/新服务/SDK字节或工程格式。Hosted静态通过，持续变化瞬态仍红，不能扩大资格；见PDC_WORKFLOW和VERIFICATION首节。

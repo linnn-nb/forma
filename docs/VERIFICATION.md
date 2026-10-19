@@ -1,3 +1,37 @@
+# CC 的 Tempo/拍号映射与播放时序（2026-10-19复核，10-18执行）
+
+**852711b / 5218b03：11种受影响CTest最新结果分批通过3944项，历史冻结另15项；不是一次全绿批次或完整P3/产品验收。** 修复CC/Pitch冷读精度与原历史double差异被epsilon吞掉的问题，并修复实际开启自动化后的插件128帧分块MIDI提前。已验证Loop音乐基、Punch采样基的可编辑Comp副本、非活动CC副本、Tempo与4/8拍号变化、原UndoRedo/冷重开/恢复、真实MIDI与WAV。关联来源保持锁定，未解除守卫。
+
+| 套件 | 最新检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| forma_persistent_native_history | 86 | 38.00 | 通过 |
+| forma_history_runtime_boundary | 107 | 3.78 | 通过 |
+| tracktion_external_plugin_automation | 87 | 24.05 | 通过 |
+| forma_native_midi_precision | 681 | 1.88 | 通过 |
+| forma_midi_recorded_cc | 266 | 16.35 | 通过 |
+| forma_midi_punch_cc | 266 | 13.51 | 通过 |
+| forma_midi_playlist_editing | 227 | 30.04 | 通过 |
+| forma_midi_playlist_tempo_loop | 921 | 18.67 | 通过 |
+| forma_midi_playlist_tempo_punch | 1084 | 16.40 | 通过 |
+| forma_midi_controllers | 190 | 1.83 | 通过 |
+| forma_history_lookup | 29 | 4.29 | 通过 |
+
+首批p3-cc-map-final.xml为10/11、163.08秒，Loop拍号用例第一个事件位于保存的播放选区之前；清除选区后又暴露Punch预后卷须有选区的测试前置条件。最终只补跑共同受影响两套，p3-cc-map-range.xml为2/2、35.09秒。临时L1事务显式设置0到末事件后1024采样的测试范围，保留预后卷模式；结束Undo核对原选区和映射状态。旧失败输出全部保留，未裁掉事件、改源或放宽1采样预算。
+
+L1 NativeMidiNumbers仅在原文档/原SHA/历史链校验后解码原生NOTE b/l与CONTROL b，覆盖活动、非活动与属性/结构历史、三次冷开/schema1/恢复；源池、origin、插件不透明字符串不转换。独立原始var探测确认两种正常拍值漂移2/1 ULP，另有次正规数和负零向0变化；当前681项覆盖解码/归档0 ULP。HistoryDelta对已存double比较实际位；setExactProperty在JUCE会去重时走临时序列化类型再写原double，保留键/属性顺序，通知处于同一L1停止态或脱离树回放。格式、字段与读取能力不变；不能据此推断所有原生编辑setter或插件私有数值都0 ULP。
+
+L0新增tracktion-plugin-midi-subblocks.patch：PluginNode把插件收到的小块局部MIDI时间加回小块起点再合并。实际开启音量/EQ自动化、48k/256场景修复前CC提前128/129采样；修复后两种时基与Tempo/Meter共8个新CC实际输出误差均为0或−1采样，raw低位37与7-bit发送分开。仅遍历已有消息加时间，无新增分配/锁；不代表全SDK RT或任意插件生成MIDI已资格。曾尝试直接使用DeviceManager流时钟造成额外块差，已恢复实际处理块SyncPoint末端时钟，不做手工+128补偿。
+
+独立stdlib/Expat核验4份新WAV为PCM24/48k/双声道/288000帧（6秒），有限非零；Tempo/Meter与原Redo-only文件的完整捕获池XML相同。Expat保留ValueTree字面冒号名，未删字段或修改文件。历史冻结另2份PCM24/48k/双声道/144000帧完全相同，原工程及缓存SHA保持；无升级自动重渲染。FourOsc随机相位不宣称冷开PCM逐位相等或听评通过。
+
+NativeDAW/ndaw与受影响目标Release构建exit0；唯一App SHA `bb1dfe4e9c8306eee75f13dbc774cad597e763c88c3bea3badc9e28e03c908ea`，本地deep/strict验证、未公证。旧PID84585仍在，未强退/换用户工程。SDK pin/JUCE保持；23补丁58文件fresh apply/逐字节/reverse通过。170输入实现SHA `6e3ecfe811fab92bbabc52d499c40be7b2d5f8cbda6efccec8be624f1a3146f0` 独立重算并与App核对；旧冻结保留原媒体。没有新依赖/服务/上传/DMG/App副本。
+
+实际自有工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-dd85414b26614e75a230960264b5ffae/MIDI-Playlists-GUI-Tempo.tracktionedit`：保存当前工程并重启唯一App后打开，在“Editable CC Comp”选择片段查看CC1与Tempo面板，CmdZ/ShiftCmdZ，再另存重开；原捕获Take仍在。测试夹具FourOsc不是完成歌曲。CC原生peer/自定义键由本批CC专项覆盖；组合Tempo面板使用原注册命令派发，未外推实体键鼠/端口/听评。
+
+证据索引 `build-v2-tracktion/p3-cc-map-current-results.json`；同前缀red/code-diagnostic/copy/clock/selection/range日志、final.xml、range.xml、independent.json、legacy-freeze.json、legacy-independent.json、sdk-replay.json、identity-final.json、sign-current.log。**forma_latency_live_change仍正常注册、上轮完整瞬态失败，未在本批重跑或改判。** 本CC模块两轮边界收口，复杂控制器/更多处理链、原生setter极小差值、实体/RT/性能/耐久/Windows/视频/环绕/发行等继续BACKLOG；下一项弹力音频的瞬态锚点建议。M2/M3冻结、M4/M5暂缓，完整目标保持。
+
+# 历史
+
 # 录得 MIDI Comp 的 CC 编辑（2026-10-18，当前限定资格）
 
 **164c534 / 18bfa28：本轮5/5套、1249项、67.81秒通过；完整产品仍未完成。** 无变更的CC Lane由L1拒绝，原生“应用”禁用；主窗口焦点下Esc正确分派给可见CC面板。实际Loop/Punch输入捕获→局部Comp采用→CC1草稿/提交→原UndoRedo→冷重开→MIDI输出与WAV已串联，不是硬编码AI结果。
