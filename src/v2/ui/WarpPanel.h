@@ -40,7 +40,9 @@ public:
             {
                 if (selected < 0)
                     throw std::runtime_error("请选择锚点");
-                const double source = selected == 0 || selected == int(anchors.size()) - 1
+                const double storedSource = anchors[size_t(selected)]["source_time_seconds"];
+                const double source = selected == 0 || selected == int(anchors.size()) - 1 ||
+                                              sourceTime.getText().trim() == juce::String(storedSource, 12)
                                           ? anchors[size_t(selected)]["source_time_seconds"].get<double>()
                                           : number(sourceTime);
                 const auto output = number(outputTime);
@@ -106,7 +108,9 @@ public:
     }
     bool canAdopt() const
     {
-        return !pending && !adopted && !stale && !candidateButtons.isEmpty();
+        return !pending && !adopted && !stale &&
+               std::any_of(candidateButtons.begin(), candidateButtons.end(),
+                           [](const auto* box) { return box->getToggleState(); });
     }
     bool canApply() const
     {
@@ -202,11 +206,12 @@ public:
                     for (const auto& p : suggestions.at("items"))
                     {
                         auto* box = candidateButtons.add(new juce::ToggleButton(
-                            text("候选 · 源帧 ") + juce::String(p.at("source_frame").get<int64_t>()) + " · " +
-                            juce::String(p.at("clip_time_samples").get<double>() / 48., 3) + " ms · " + text("上升 ") +
+                            text("候选 · 源 ") + juce::String(p.at("source_time_seconds").get<double>(), 6) + " s · " +
+                            juce::String(p.at("source_frame").get<int64_t>()) + text(" 帧 · 能量上升 ") +
                             juce::String(p.at("rise_db").get<double>(), 1) + " dB"));
                         box->setComponentID(text("clip.warp.onset:") + juce::String(candidateButtons.size() - 1));
                         box->setToggleState(true, juce::dontSendNotification);
+                        box->onClick = [this] { controls(); };
                         box->addKeyListener(this);
                         candidateContent.addAndMakeVisible(box);
                     }
@@ -231,6 +236,8 @@ public:
                                juce::dontSendNotification);
             }
         }
+        else
+            return; // An unchanged completed receipt must not rebroadcast command status every UI tick.
         controls();
     }
     void adoptOnsets()

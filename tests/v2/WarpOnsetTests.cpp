@@ -222,6 +222,8 @@ int main(int argc, char** argv)
             const auto edited = clip(c);
             check(edited.at("warp").at("onset_evidence").size() == 1 && edited.at("warp").at("anchors") == points,
                   "one real L1 Warp transaction stores accepted source evidence and moved point");
+            check(edited.at("warp").at("onset_evidence")[0].at("object_id") == id,
+                  "accepted evidence retains actual analysed source object identity");
             c.undo(committed.at("plan_id"));
             check(clip(c) == original, "fresh Undo restores entire original geometry and evidence");
             c.redo();
@@ -229,13 +231,14 @@ int main(int argc, char** argv)
             const auto pcm = render(c, root);
             int first = -1;
             double stereo = 0;
-            // The manually delayed second onset is at 1.1 s clip-relative; retain the whole analysis window.
-            for (int n = int(1.02 * 48000); n < int(1.2 * 48000); ++n)
+            // Locate the threshold within the declared window around the exact moved project sample.
+            const double expectedOnset = points[2]["clip_time_samples"].get<double>() / 48000.;
+            for (int n = int((expectedOnset - .08) * 48000); n < int((expectedOnset + .1) * 48000); ++n)
                 if (first < 0 && std::abs(pcm.getSample(0, n)) > .05f)
                     first = n;
             for (int n = 0; n < pcm.getNumSamples(); ++n)
                 stereo = std::max(stereo, std::abs(double(pcm.getSample(1, n) - .5f * pcm.getSample(0, n))));
-            const double timingError = first / 48000. - 1.1;
+            const double timingError = first / 48000. - expectedOnset;
             check(first >= 0 && std::abs(timingError) <= .05,
                   "actual SoundTouch onset follows moved detected anchor within fifty milliseconds");
             check(stereo <= 2e-7, "actual rendered stereo relationship meets fixed tolerance");
@@ -256,6 +259,15 @@ int main(int argc, char** argv)
             check(clip(cold) == original, "independent Engine original Undo restores pre-detection project");
             cold.redo();
             check(clip(cold) == edited, "independent Engine original Redo restores accepted measured Warp");
+            run(cold, "clip.warp", {{"clip", id}, {"enabled", false}});
+            check(!clip(cold).at("warp").at("enabled").get<bool>() &&
+                      clip(cold).at("warp").at("onset_evidence") == edited.at("warp").at("onset_evidence"),
+                  "disabling Warp retains historical source measurements");
+            run(cold, "clip.warp", {{"clip", id}, {"enabled", true}, {"anchors", points}});
+            check(clip(cold) == edited, "reenabling manual Warp preserves accepted provenance without reanalysis");
+            cold.undo();
+            cold.undo();
+            check(clip(cold) == edited, "Undo reenable and disable restores original accepted Warp transaction");
             c.undo();
             check(clip(c) == original, "original persistent Undo removes measured Warp as one transaction");
             if (sr == 48000)
@@ -283,6 +295,8 @@ int main(int argc, char** argv)
                 meta.removeChild(meta.getChildWithName("PERSISTENT_HISTORY"), nullptr);
                 auto damage = [&](auto&& self, juce::ValueTree n) -> bool
                 {
+                    if (n.hasType("AUDIOCLIP"))
+                        n.setProperty("warpTime", false, nullptr);
                     if (n.hasType("NDAW_WARP_ONSETS"))
                     {
                         n.setProperty("sha256", "damaged", nullptr);
@@ -298,7 +312,16 @@ int main(int argc, char** argv)
                 check(invalidFile.replaceWithText(native.toXmlString()), "corrupted fixture is a real input file");
                 const auto beforeBadOpen = c.query();
                 const auto session = c.sessionToken();
-                rejects([&] { c.open(invalidFile); }, "damaged source evidence is rejected before adopting Edit");
+                bool refused = false;
+                try
+                {
+                    c.open(invalidFile);
+                }
+                catch (const std::exception& e)
+                {
+                    refused = std::string(e.what()).find("Warp瞬态") != std::string::npos;
+                }
+                check(refused, "damaged source evidence specifically rejects even disabled Warp before adopting Edit");
                 check(c.query().at("tracks") == beforeBadOpen.at("tracks") &&
                           c.query().at("history") == beforeBadOpen.at("history") && c.sessionToken() == session,
                       "failed evidence load preserves current tracks history and session");
@@ -308,6 +331,7 @@ int main(int argc, char** argv)
                                     {"source_hash", hash},
                                     {"receipt", receipt},
                                     {"mapping_error_samples", mappingError},
+                                    {"expected_onset_seconds", expectedOnset},
                                     {"onset_error_seconds", timingError},
                                     {"stereo_error", stereo},
                                     {"reopen_pcm_error", error},
@@ -377,6 +401,9 @@ int main(int argc, char** argv)
         wait([&] { return !panel->isVisible() && clip(c).at("warp").at("onset_evidence").size() == 1; },
              "GUI displays completion only after real commit receipt", 2000);
         const auto guiEdited = clip(c);
+        check(guiEdited.at("warp").at("anchors")[1].at("source_time_seconds").get<double>() ==
+                  (1.5 * 44100 + 37) / 44100.,
+              "moving only target time preserves detected source double exactly despite formatted numeric field");
         render(c, root);
         const auto guiFile = root.getChildFile("Transient-Warp-GUI.tracktionedit");
         c.save(guiFile);

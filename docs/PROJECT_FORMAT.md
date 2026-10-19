@@ -1,3 +1,5 @@
+2026-10-19 瞬态证据：新增 `audio.warp.onset-evidence v1`。`NDAW_WARP/NDAW_WARP_ONSETS`为schema=1、record（JSON历史测量数组）、sha256三个属性，无子节点，128KiB上限显式拒绝。每条测量保留原object_id、artifact_id、raw_source、媒体/处理哈希、原生源采样率/范围、检测器/条件/条件SHA、源帧事件与created_utc；当前位置由原生WARPMARKER决定。证据的SHA对record实际UTF-8字节计算。单Plan与锚点同存同撤销；停用Warp保留已测历史，重新启用亦保留，不能悄悄重写来源。当前/非活动与已编码Undo/Redo能力闭包继续保护旧读者；即使Warp关闭，损坏证据也拒绝加载。没有新增DSP算法或改写原媒体。
+
 2026-10-19：原生CONTROL b（CC/Pitch时间）加入现有NOTE b/l的精确读回路径，原文档/完整SHA/历史链仍先核验；未知/损坏数字拒绝且保留原会话。HistoryDelta精确保留已存double及其回放，不改变schema3、delta字段/路径、能力、原Hash或不透明数据；这是已有数值的读取/恢复修复，没有新持久语义。归档0 ULP限定资格及所有未验setter边界见VERIFICATION当前节。
 
 # 工程格式与读取能力

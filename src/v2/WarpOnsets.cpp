@@ -17,7 +17,8 @@ void record(const Json& r, const std::string& media)
 {
     const auto hash = [](const std::string& text)
     { return text.size() == 64 && text.find_first_not_of("0123456789abcdef") == std::string::npos; };
-    need(r.is_object() && r.size() == 10 && r.at("schema") == 1 && r.at("tap_point") == "raw_source" && hash(media) &&
+    need(r.is_object() && r.size() == 11 && r.at("schema") == 1 && r.at("tap_point") == "raw_source" && hash(media) &&
+             r.at("object_id").is_string() && !r.at("object_id").get<std::string>().empty() &&
              r.at("media_sha256") == media && r.at("artifact_id").is_string() &&
              !r.at("artifact_id").get<std::string>().empty() && r.at("processing_chain_hash").is_string() &&
              hash(r.at("processing_chain_hash")) && r.at("created_utc").is_string() &&
@@ -56,6 +57,7 @@ Json evidence(const Json& bound, const Json& receipt)
         if (e.at("kind") == "transient_candidate")
             events.push_back(e);
     Json r{{"schema", 1},
+           {"object_id", b.at("object_id")},
            {"artifact_id", receipt.at("artifact_id")},
            {"tap_point", "raw_source"},
            {"media_sha256", b.at("media_sha256")},

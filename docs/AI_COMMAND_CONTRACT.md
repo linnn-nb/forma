@@ -631,3 +631,7 @@ bands 声明半开 bin 分区 first_bin/end_bin、标称 lower/upper Hz、Nyquis
 `query_objects(collection=clip_plugins,target=clip,session_token,base_revision)` 分页枚举真实插件；parameters 继续以实际 plugin 为 target。clip 摘要明确 `clip_fx_count` / `clip_fx_collection` / `offline_clip_effects`，参数不塞入概要。artifact 声明实际插件ID、范围、源偏移、媒体SHA256、边界SHA256及整个已提交Edit链SHA256；未相关工程修改也保守使processed过期，原始源证据仍只绑定原媒体和测量条件。重试、取消、GUI定位、Undo和重开遵循现有分析与事务契约。
 
 循环、分组、warp、伸缩、反向、离线 ClipEffects派生媒体和第三方片段插件分析明确拒绝；后续能力仍保留。区间外混响/Delay尾音及从工程零点起的连续反馈历史未获保证。分析预算仍为一个worker、最长300秒、60秒截止和完整252 KiB；不能抢占SDK插件、系统I/O或message-thread图准备。
+
+### 本地Warp瞬态草稿（2026-10-19）
+
+`Commands::prepareWarpOnsets(clip,profile,session,revision)`是停止态本地GUI的只读证据入口，复用现有单MasterAnalysis工作线程；使用非持久引用模式，不写Edit/历史，不注册新MCP工具或扩大冻结M2/M3权限。接受草稿的已有human/local_gui独立`clip.warp`可带`onset_artifact`；L1只认当前运行时实际测量回执，重验session、revision、对象、媒体SHA和raw source tap，不接受客户端伪造的测量JSON。新测量/工程变化或重开后旧回执不能继续提交；已提交记录通过原Undo/Redo恢复，无需模型或再次分析。
