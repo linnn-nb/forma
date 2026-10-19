@@ -177,4 +177,69 @@ Json append(const Json& records, const Json& bound, const Json& receipt)
     need(result.dump().size() <= 128 * 1024, "本片段瞬态证据超过128KiB预算，未丢弃旧证据");
     return result;
 }
+Json views(const Json& records, const Json& anchors, const std::string& clip, int64_t start, int64_t begin,
+           int64_t length)
+{
+    Json result{{"available", anchors.size() >= 2},
+                {"media_checked", false},
+                {"can_locate", false},
+                {"records", records.size()},
+                {"items", Json::array()},
+                {"total", 0},
+                {"omitted", 0},
+                {"scope", "historical raw-source measurement through current Warp; not processed-audio evidence"}};
+    if (anchors.size() < 2)
+        return result;
+    need(start >= 0 && begin >= 0 && length > 0, "瞬态窗口范围损坏");
+    int total = 0;
+    for (const auto& r : records)
+        for (const auto& e : r.at("events"))
+        {
+            const int64_t frame = e.at("source_start_frame");
+            const double source = frame / r.at("source_sample_rate").get<double>();
+            for (size_t i = 1; i < anchors.size(); ++i)
+            {
+                const double a = anchors[i - 1].at("source_time_seconds"), b = anchors[i].at("source_time_seconds");
+                if (source < a || source >= b)
+                    continue;
+                const int64_t first = anchors[i - 1].at("clip_time_samples"), last = anchors[i].at("clip_time_samples");
+                const long double t = source == a ? first
+                                                  : first + (static_cast<long double>(source) - a) /
+                                                                (static_cast<long double>(b) - a) * (last - first);
+                if (t < begin || t >= begin + length)
+                    break; // Half-open: a cropped onset must not be moved to a window edge.
+                ++total;
+                if (result["items"].size() < 128)
+                {
+                    const auto local = std::clamp(int64_t(std::llround(t - begin)), int64_t(0), length - 1);
+                    const auto suffix =
+                        ":onset:" + r.at("artifact_id").get<std::string>() + ":" + std::to_string(frame);
+                    const std::string anchorID = "warp:" + clip + suffix;
+                    const auto accepted = std::find_if(anchors.begin(), anchors.end(),
+                                                       [&](const auto& p) { return p.at("id") == anchorID; });
+                    Json item{{"id", "warp:" + clip + ":evidence:" + r.at("artifact_id").get<std::string>() + ":" +
+                                         std::to_string(frame)},
+                              {"clip_id", clip},
+                              {"source_object_id", r.at("object_id")},
+                              {"artifact_id", r.at("artifact_id")},
+                              {"source_frame", frame},
+                              {"source_sample_rate", r.at("source_sample_rate")},
+                              {"source_time_seconds", source},
+                              {"clip_time_samples", local},
+                              {"position_samples", start + local},
+                              {"estimated", true},
+                              {"accepted_anchor", accepted != anchors.end()},
+                              {"anchor_source_corrected",
+                               accepted != anchors.end() && accepted->at("source_time_seconds") != source}};
+                    result["items"].push_back(std::move(item));
+                }
+                break;
+            }
+        }
+    std::sort(result["items"].begin(), result["items"].end(),
+              [](const auto& a, const auto& b) { return a.at("position_samples") < b.at("position_samples"); });
+    result["total"] = total;
+    result["omitted"] = total - int(result["items"].size());
+    return result;
+}
 } // namespace ndaw::v2::warp_onsets

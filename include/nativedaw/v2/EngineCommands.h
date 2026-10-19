@@ -197,6 +197,8 @@ public:
     Json analysisStatus();
     // Local raw-source draft on the existing single analysis worker; no Edit or history write.
     Json prepareWarpOnsets(const std::string& clip, const Json& profile, const std::string& session, uint64_t revision);
+    Json locateWarpOnset(const std::string& clip, const std::string& view, const std::string& session,
+                         uint64_t revision);
     Json legacyReports() const;
 
 private:

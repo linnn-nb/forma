@@ -560,6 +560,18 @@ Json Commands::queryPlaylists(const std::string& id) const
                 row["source_offset_seconds"] = row["warp"]["anchors"].front()["source_time_seconds"];
                 row["warp"]["render_hash"] = str(c.getChildWithName("NDAW_WARP"), "render_hash");
             }
+            const auto provenance = c.getChildWithName("NDAW_WARP");
+            if (bool(c[te::IDs::warpTime]) || provenance.getChildWithName("NDAW_WARP_ONSETS").isValid())
+            {
+                if (!bool(c[te::IDs::warpTime]))
+                    row["warp"] = {{"enabled", false}, {"anchors", Json::array()}};
+                row["warp"]["onset_evidence"] =
+                    warp_onsets::read(provenance.getChildWithName("NDAW_WARP_ONSETS"), str(provenance, "media_hash"));
+                row["warp"]["onset_views"] =
+                    warp_onsets::views(row["warp"]["onset_evidence"],
+                                       bool(c[te::IDs::warpTime]) ? warp_state::fullAnchors(c) : Json::array(),
+                                       str(c, "id"), frame(c, "start"), warp_state::windowStart(c), frame(c, "length"));
+            }
         }
     }
     return result;

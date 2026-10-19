@@ -13,8 +13,11 @@ public:
     {
         setComponentID("clip.warp.panel");
         for (auto* c : std::initializer_list<juce::Component*>{
-                 &title, &help, &surface, &choice, &sourceLabel, &sourceTime, &outputLabel, &outputTime, &setPoint,
-                 &add, &remove, &restore, &status, &apply, &cancel, &onsetProfile, &analyse, &adopt, &candidateView})
+                 &title,        &help,        &surface,    &choice,        &sourceLabel,
+                 &sourceTime,   &outputLabel, &outputTime, &setPoint,      &add,
+                 &remove,       &restore,     &status,     &apply,         &cancel,
+                 &onsetProfile, &analyse,     &adopt,      &candidateView, &measurementChoice,
+                 &locate})
             addAndMakeVisible(c);
         title.setText(text("Warp · SoundTouch"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
@@ -91,6 +94,10 @@ public:
         analyse.onClick = [this] { analyseOnsets(); };
         adopt.onClick = [this] { adoptOnsets(); };
         adopt.setEnabled(false);
+        measurementChoice.setComponentID("clip.warp.measurements");
+        locate.setComponentID("ui.command:652");
+        locate.onClick = [this] { locateMeasurement(); };
+        measurementChoice.onChange = [this] { controls(); };
     }
     using Analyse = std::function<Json(const std::string&, const Json&, const std::string&, uint64_t)>;
     void analysisCallbacks(Analyse start, std::function<void(const std::string&)> stop)
@@ -98,23 +105,53 @@ public:
         startAnalysis = std::move(start);
         stopAnalysis = std::move(stop);
     }
+    using Locator = std::function<Json(const std::string&, const std::string&, const std::string&, uint64_t)>;
+    void locator(Locator fn)
+    {
+        locateSource = std::move(fn);
+    }
+    bool canLocate() const
+    {
+        return bool(locateSource) && !pending && !stale && !adopted && measurementChoice.getSelectedId() > 0 &&
+               bound.contains("onset_views") && bound.at("onset_views").value("can_locate", false);
+    }
+    void locateMeasurement()
+    {
+        try
+        {
+            if (!canLocate())
+                throw std::runtime_error("当前历史测量不能定位");
+            const auto& view = bound.at("onset_views").at("items").at(size_t(measurementChoice.getSelectedId() - 1));
+            const auto receipt =
+                locateSource(bound.at("clip"), view.at("id"), snapshot.at("session_token"), snapshot.at("revision"));
+            if (receipt.at("state") != "located")
+                throw std::runtime_error("定位没有成功回执");
+            status.setText(text("已定位 ") + juce::String(receipt.at("position_samples").get<double>() / 48000., 6) +
+                               text(" s · 原媒体SHA已核验 · 历史原始源测量，未重新分析处理后音频"),
+                           juce::dontSendNotification);
+        }
+        catch (const std::exception& e)
+        {
+            status.setText(text("未定位：") + text(e.what()), juce::dontSendNotification);
+        }
+    }
     bool watchesAnalysis() const
     {
         return !ownedArtifact.empty();
     }
     bool canAnalyse() const
     {
-        return bool(startAnalysis) && !adopted && !stale;
+        return bool(startAnalysis) && !readOnly && !adopted && !stale;
     }
     bool canAdopt() const
     {
-        return !pending && !adopted && !stale &&
+        return !readOnly && !pending && !adopted && !stale &&
                std::any_of(candidateButtons.begin(), candidateButtons.end(),
                            [](const auto* box) { return box->getToggleState(); });
     }
     bool canApply() const
     {
-        return !pending && !stale;
+        return !readOnly && !pending && !stale;
     }
     void analyseOnsets()
     {
@@ -292,11 +329,35 @@ public:
         snapshot = facts;
         originalClip = clip;
         bound = warp;
+        readOnly = warp.value("inherited_window", false);
         anchors = warp.at("anchors");
+        title.setText(text(readOnly ? "Warp · 来源映射（只读）" : "Warp · SoundTouch"), juce::dontSendNotification);
+        help.setText(text(readOnly ? "此Comp片段复用完整来源Warp；这里只查看当前窗口与历史源测量。回来源Take编辑锚点。"
+                                     "\n选择检测标记后可定位当前工程位置；历史原始源测量不代表处理后音频重新分析。"
+                                   : "双击下方波形添加锚点；拖动改变时间，源位置保持。左右键微移10ms，Delete移除。\n首"
+                                     "源点固定、尾点可改；每段0.5–2倍。Cmd Return提交，Esc取消。"),
+                     juce::dontSendNotification);
         selected = 0;
         surface.wave.update(Json{{"tracks", Json::array({Json{{"clips", Json::array({clip})}}})}});
-        restore.setEnabled(warp.value("enabled", false));
-        status.setText(text("未提交草稿 · 原媒体保留 · 音频准备状态与设置事务分别回执"), juce::dontSendNotification);
+        restore.setEnabled(!readOnly && warp.value("enabled", false));
+        measurementChoice.clear(juce::dontSendNotification);
+        if (warp.contains("onset_views"))
+            for (const auto& p : warp.at("onset_views").at("items"))
+                measurementChoice.addItem(
+                    text("历史检测 · 源帧 ") + juce::String(p.at("source_frame").get<int64_t>()) + text(" → 工程 ") +
+                        juce::String(p.at("position_samples").get<double>() / 48000., 6) + " s" +
+                        text(p.at("accepted_anchor").get<bool>() ? " · 已用于锚点" : " · 未用于锚点"),
+                    measurementChoice.getNumItems() + 1);
+        measurementChoice.setSelectedId(measurementChoice.getNumItems() ? 1 : 0, juce::dontSendNotification);
+        status.setText(text(readOnly ? "只读来源视图 · 原Take与Comp保持 · 定位前复核媒体与工程版本"
+                                     : "未提交草稿 · 原媒体保留 · 音频准备状态与设置事务分别回执"),
+                       juce::dontSendNotification);
+        if (warp.contains("onset_views") && !warp.at("onset_evidence").empty())
+            status.setText(status.getText() + text("\n历史检测映射：") + juce::String(measurementChoice.getNumItems()) +
+                               " / " + juce::String(warp.at("onset_views").at("total").get<int>()) + text(" · 省略 ") +
+                               juce::String(warp.at("onset_views").at("omitted").get<int>()) +
+                               text(" · 未重新测量处理后音频"),
+                           juce::dontSendNotification);
         changed();
         controls();
     }
@@ -364,6 +425,12 @@ public:
         onsetProfile.setBounds(row.removeFromLeft(330));
         analyse.setBounds(row.removeFromLeft(130).reduced(4, 0));
         adopt.setBounds(row.removeFromLeft(160).reduced(4, 0));
+        if (bound.contains("onset_evidence") && !bound.at("onset_evidence").empty())
+        {
+            row = r.removeFromTop(32);
+            locate.setBounds(row.removeFromRight(130).reduced(4, 0));
+            measurementChoice.setBounds(row.reduced(0, 2));
+        }
         status.setBounds(r.removeFromBottom(48));
         candidateView.setBounds(r.reduced(0, 4));
         candidateContent.setSize(std::max(1, candidateView.getWidth() - 18), candidateButtons.size() * 26);
@@ -503,7 +570,7 @@ private:
             origin->moveKeyboardFocusToSibling(!key.getModifiers().isShiftDown());
             return true;
         }
-        return (id == 275 || id == 277 || id == 650 || id == 651) && manager->invokeDirectly(id, false);
+        return (id == 275 || id == 277 || id == 650 || id == 651 || id == 652) && manager->invokeDirectly(id, false);
     }
     void stopOwnedAnalysis()
     {
@@ -525,8 +592,13 @@ private:
     {
         analyse.setEnabled(canAnalyse());
         adopt.setEnabled(canAdopt());
-        onsetProfile.setEnabled(!pending && !adopted && !stale);
+        onsetProfile.setEnabled(!readOnly && !pending && !adopted && !stale);
         apply.setEnabled(canApply());
+        add.setEnabled(!readOnly);
+        const bool hasEvidence = bound.contains("onset_evidence") && !bound.at("onset_evidence").empty();
+        measurementChoice.setVisible(hasEvidence);
+        locate.setVisible(hasEvidence);
+        locate.setEnabled(canLocate());
         for (auto* box : candidateButtons)
             box->setEnabled(!adopted && !stale);
         if (manager)
@@ -575,10 +647,10 @@ private:
                 editor.invalidateAccessibilityHandler();
             }
         };
-        enableEditor(sourceTime, valid && index > 0 && index < int(anchors.size()) - 1);
-        enableEditor(outputTime, valid && index > 0);
-        setPoint.setEnabled(valid && index > 0);
-        remove.setEnabled(valid && index > 0 && index < int(anchors.size()) - 1);
+        enableEditor(sourceTime, !readOnly && valid && index > 0 && index < int(anchors.size()) - 1);
+        enableEditor(outputTime, !readOnly && valid && index > 0);
+        setPoint.setEnabled(!readOnly && valid && index > 0);
+        remove.setEnabled(!readOnly && valid && index > 0 && index < int(anchors.size()) - 1);
         sourceTime.setText(valid ? juce::String(anchors[size_t(index)]["source_time_seconds"].get<double>(), 12) : "",
                            false);
         outputTime.setText(
@@ -587,6 +659,8 @@ private:
     }
     void move(int64_t target)
     {
+        if (readOnly)
+            return;
         const size_t i = size_t(selected);
         const double left =
             anchors[i]["source_time_seconds"].get<double>() - anchors[i - 1]["source_time_seconds"].get<double>();
@@ -608,6 +682,8 @@ private:
     }
     void insert(int64_t t)
     {
+        if (readOnly)
+            return;
         if (anchors.size() >= 128)
             return;
         for (size_t i = 1; i < anchors.size(); ++i)
@@ -630,6 +706,8 @@ private:
     }
     void erase()
     {
+        if (readOnly)
+            return;
         if (selected > 0 && selected < int(anchors.size()) - 1)
         {
             anchors.erase(anchors.begin() + selected);
@@ -642,10 +720,13 @@ private:
         return getLocalBounds().withSizeKeepingCentre(std::min(920, getWidth() - 20), std::min(820, getHeight() - 20));
     }
     Submit submit;
+    Locator locateSource;
     Analyse startAnalysis;
     std::function<void(const std::string&)> stopAnalysis;
     std::string ownedArtifact;
-    bool pending = false, adopted = false, stale = false;
+    bool pending = false, adopted = false, stale = false, readOnly = false;
+    juce::ComboBox measurementChoice;
+    juce::TextButton locate{text("定位检测标记")};
     Json suggestions;
     juce::Component candidateContent;
     juce::Viewport candidateView;

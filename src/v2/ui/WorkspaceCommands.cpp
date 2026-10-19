@@ -215,6 +215,8 @@ const std::vector<Entry>& entries()
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {651, "Warp · 加入所选瞬态候选", "编辑", juce::KeyPress::F12Key,
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {652, "Warp · 定位所选检测标记", "编辑", juce::KeyPress::F10Key,
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {561, "所选效果器旁链…", "混音", 's', cmd | juce::ModifierKeys::altModifier},
         {562, "冻结 / 解冻所选轨道…", "轨道", 'f',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
@@ -941,6 +943,8 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
             if (id == 650 || id == 651)
                 active = warpPanel && warpPanel->isVisible() &&
                          (id == 650 ? warpPanel->canAnalyse() : warpPanel->canAdopt());
+            if (id == 652)
+                active = warpPanel && warpPanel->isVisible() && warpPanel->canLocate();
             if (id == 566)
                 active = !facts.value("playing", false) && pending.is_null() &&
                          facts.value("length_samples", int64_t(0)) > 0;
@@ -1343,12 +1347,14 @@ bool Workspace::perform(const InvocationInfo& invocation)
         invoke([&] { showWarp(); });
         return true;
     }
-    if ((id == 650 || id == 651) && warpPanel && warpPanel->isVisible())
+    if ((id == 650 || id == 651 || id == 652) && warpPanel && warpPanel->isVisible())
     {
         if (id == 650)
             warpPanel->analyseOnsets();
-        else
+        else if (id == 651)
             warpPanel->adoptOnsets();
+        else
+            warpPanel->locateMeasurement();
         return true;
     }
     if ((id == 275 || id == 277) && warpPanel && warpPanel->isVisible())

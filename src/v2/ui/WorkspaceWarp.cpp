@@ -19,7 +19,6 @@ void Workspace::showWarp()
     require(facts["revision"] == workspaceRevision, "界面工程版本已变化，请重新选择片段");
     const auto warp = commands.warpClip(clip.at("id"));
     require(warp.value("available", false), "片段的Warp来源记录不可用");
-    require(!warp.value("inherited_window", false), "此Comp片段继承来源Warp；请在来源Take编辑锚点");
     if (!warpPanel)
     {
         warpPanel = std::make_unique<WarpPanel>(
@@ -44,6 +43,9 @@ void Workspace::showWarp()
                 }
             });
         addChildComponent(*warpPanel);
+        warpPanel->locator(
+            [this](const std::string& clip, const std::string& view, const std::string& session, uint64_t revision)
+            { return commands.locateWarpOnset(clip, view, session, revision); });
         warpPanel->analysisCallbacks(
             [this](const std::string& clip, const Json& profile, const std::string& session, uint64_t revision)
             { return commands.prepareWarpOnsets(clip, profile, session, revision); },

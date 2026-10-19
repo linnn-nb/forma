@@ -141,6 +141,10 @@ Json Commands::warpFacts(te::WaveAudioClip& c) const
     else
         result["anchors"] = Json::array({point(prefix(c) + "start", sourceStart, 0),
                                          point(prefix(c) + "end", sourceEnd, result["length_samples"])});
+    const Json noAnchors = Json::array();
+    result["onset_views"] = warp_onsets::views(
+        result.at("onset_evidence"), enabled ? result.at("full_anchors") : noAnchors, c.itemID.toString().toStdString(),
+        std::llround(p.getStart().inSeconds() * rate), warp_state::windowStart(c.state), result.at("length_samples"));
     return result;
 }
 Json Commands::warpClip(const std::string& id) const
@@ -153,7 +157,36 @@ Json Commands::warpClip(const std::string& id) const
     result["path"] = c->getOriginalFile().getFullPathName().toStdString();
     result["media_hash"] = mediaHash(c->getOriginalFile());
     result["source_sample_rate"] = te::AudioFile(edit->engine, c->getOriginalFile()).getSampleRate();
+    if (result.contains("onset_views"))
+    {
+        result["onset_views"]["media_checked"] = true;
+        result["onset_views"]["can_locate"] =
+            result["onset_views"].at("available").get<bool>() &&
+            result.value("original_media_hash", std::string{}) == result.at("media_hash").get<std::string>();
+    }
     return result;
+}
+Json Commands::locateWarpOnset(const std::string& id, const std::string& view, const std::string& session,
+                               uint64_t version)
+{
+    checkThread();
+    require(session == sessionToken() && version == revision, "工程已变化，请重新打开Warp来源视图");
+    require(!edit->getTransport().isPlaying(), "请先停止走带再定位历史测量");
+    const auto checked = warpClip(id);
+    require(checked.at("onset_views").at("can_locate"), "原媒体已变化或Warp映射不可用，未定位");
+    const auto& items = checked.at("onset_views").at("items");
+    const auto found = std::find_if(items.begin(), items.end(), [&](const auto& p) { return p.at("id") == view; });
+    require(found != items.end(), "测量不在当前片段窗口或标记已失效，未定位");
+    const int64_t position = found->at("position_samples");
+    seek(position);
+    require(std::llround(edit->getTransport().getPosition().inSeconds() * rate) == position, "走带位置未接受定位请求");
+    return {{"state", "located"},
+            {"view", *found},
+            {"session_token", sessionToken()},
+            {"revision", revision},
+            {"position_samples", position},
+            {"source_sha256_verified", true},
+            {"measurement", "historical raw source"}};
 }
 Json Commands::prepareWarpOnsets(const std::string& id, const Json& profile, const std::string& session,
                                  uint64_t version)
