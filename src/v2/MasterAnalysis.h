@@ -12,7 +12,7 @@ class MasterAnalysis final : private juce::Timer
 public:
     explicit MasterAnalysis(Commands&);
     ~MasterAnalysis();
-    Json control(const std::string&, const Json&, const std::string& actor);
+    Json control(const std::string&, const Json&, const std::string& actor, bool retainReference = true);
     Json status();
     void reset();
     void prioritizePlayback(bool);

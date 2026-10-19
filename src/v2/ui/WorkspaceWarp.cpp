@@ -44,6 +44,15 @@ void Workspace::showWarp()
                 }
             });
         addChildComponent(*warpPanel);
+        warpPanel->analysisCallbacks(
+            [this](const std::string& clip, const Json& profile, const std::string& session, uint64_t revision)
+            { return commands.prepareWarpOnsets(clip, profile, session, revision); },
+            [this](const std::string& artifact)
+            {
+                const auto service = commands.analysisStatus();
+                if (service.at("busy").get<bool>() && service.at("request").at("artifact_id") == artifact)
+                    commands.analysisControl("cancel", {{"artifact_id", artifact}});
+            });
         warpPanel->connect(commandManager);
     }
     if (elasticPanel)

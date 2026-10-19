@@ -354,6 +354,7 @@ Json isolateClipState(juce::ValueTree& state, te::WaveAudioClip& clip)
 } // namespace
 struct MasterAnalysis::Job
 {
+    bool retainReference = true;
     std::unique_ptr<te::Edit> snapshot;
     std::unique_ptr<te::Edit::ScopedRenderStatus> renderStatus;
     juce::WavAudioFormat wav;
@@ -753,6 +754,7 @@ void MasterAnalysis::poll()
                        {"artifact_id", job->binding["artifact_id"]},
                        {"runtime", job->runtime()}};
         }
+    const bool retainReference = job->retainReference;
     const auto releaseBegan = now();
     job.reset();
     receipt["runtime"]["release_message_ms"] = now() - releaseBegan;
@@ -761,7 +763,7 @@ void MasterAnalysis::poll()
         receipt["current"] = current(receipt);
         // Measurement metadata is derived evidence, separate from edit facts and
         // Undo. Keep a bounded snapshot reference with the actual saved Edit.
-        if (receipt["binding"]["session_token"] == owner.sessionToken())
+        if (retainReference && receipt["binding"]["session_token"] == owner.sessionToken())
         {
             auto refs = owner.metadata.getOrCreateChildWithName("ANALYSISARTIFACTS", nullptr);
             refs.removeAllChildren(nullptr);
@@ -805,10 +807,13 @@ Json MasterAnalysis::status()
               {"events", 128},
               {"source_mapping_views", 128}}}};
 }
-Json MasterAnalysis::control(const std::string& command, const Json& args, const std::string& actor)
+Json MasterAnalysis::control(const std::string& command, const Json& args, const std::string& actor,
+                             bool retainReference)
 {
     const auto requestBegan = now();
     owner.checkThread();
+    require(retainReference || (command == "source" && actor == "human"),
+            "transient draft analysis is local raw source only");
     poll();
     if (command == "status")
     {
@@ -1067,6 +1072,7 @@ Json MasterAnalysis::control(const std::string& command, const Json& args, const
     if (raw)
     {
         auto work = std::make_unique<Job>();
+        work->retainReference = retainReference;
         work->actor = actor;
         work->started = requestBegan;
         work->pcm = sourceClip->getOriginalFile();

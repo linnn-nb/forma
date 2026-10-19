@@ -3,6 +3,7 @@
 #include <tracktion_engine/tracktion_engine.h>
 #include <juce_cryptography/juce_cryptography.h>
 #include <json.hpp>
+#include "WarpOnsets.h"
 namespace ndaw::v2::warp_state
 {
 using Json = nlohmann::json;
@@ -97,6 +98,8 @@ inline Json visibleAnchors(juce::ValueTree clip)
 }
 inline void validate(juce::ValueTree clip)
 {
+    const auto saved = clip.getChildWithName("NDAW_WARP");
+    (void)warp_onsets::read(saved.getChildWithName("NDAW_WARP_ONSETS"), saved["media_hash"].toString().toStdString());
     if (!bool(clip[te::IDs::warpTime]))
         return;
     const auto p = clip.getChildWithName("NDAW_WARP");

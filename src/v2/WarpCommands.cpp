@@ -4,6 +4,7 @@
 #include "WarpState.h"
 #include "ElasticState.h"
 #include "ClipFxWindows.h"
+#include "MasterAnalysis.h"
 namespace ndaw::v2
 {
 namespace
@@ -109,6 +110,8 @@ Json Commands::warpFacts(te::WaveAudioClip& c) const
     auto provenance = c.state.getChildWithName("NDAW_WARP");
     const bool enabled = c.getWarpTime();
     Json result{{"enabled", enabled}, {"available", !enabled || provenance.isValid()}, {"anchors", Json::array()}};
+    result["onset_evidence"] = warp_onsets::read(provenance.getChildWithName("NDAW_WARP_ONSETS"),
+                                                 provenance["media_hash"].toString().toStdString());
     if (enabled && !provenance.isValid())
         return result;
     const double sourceStart =
@@ -151,6 +154,32 @@ Json Commands::warpClip(const std::string& id) const
     result["media_hash"] = mediaHash(c->getOriginalFile());
     result["source_sample_rate"] = te::AudioFile(edit->engine, c->getOriginalFile()).getSampleRate();
     return result;
+}
+Json Commands::prepareWarpOnsets(const std::string& id, const Json& profile, const std::string& session,
+                                 uint64_t version)
+{
+    checkThread();
+    require(session == sessionToken() && version == revision, "工程已变化，请重新打开Warp");
+    const auto bound = warpClip(id);
+    require(bound.value("available", false) && !bound.value("inherited_window", false), "请回来源Take分析瞬态");
+    const double sr = bound.at("source_sample_rate");
+    const auto hop = std::max<int64_t>(1, std::llround(sr * .005));
+    const auto begin =
+        std::max<int64_t>(0, int64_t(std::floor(bound.at("source_start_seconds").get<double>() * sr)) - 4 * hop);
+    const auto end =
+        std::min<int64_t>(te::AudioFile(edit->engine, audioClip(id)->getOriginalFile()).getInfo().lengthInSamples,
+                          int64_t(std::ceil(bound.at("source_end_seconds").get<double>() * sr)));
+    if (!masterAnalysis)
+        masterAnalysis = std::make_unique<MasterAnalysis>(*this);
+    return masterAnalysis->control("source",
+                                   {{"session_token", session},
+                                    {"base_revision", version},
+                                    {"clip", id},
+                                    {"source_start_frame", begin},
+                                    {"source_end_frame", end},
+                                    {"profile", profile},
+                                    {"request_key", "warp-onsets:" + juce::Uuid().toString().toStdString()}},
+                                   "human", false);
 }
 Json Commands::warpChange(const Json& a) const
 {
@@ -236,6 +265,7 @@ Json Commands::warpChange(const Json& a) const
     }
     else
     {
+        require(!a.contains("onset_artifact"), "还原Warp不接受新瞬态证据");
         require(c->getWarpTime(), "所选片段没有启用Warp");
         require(!a.contains("anchors"), "还原Warp不接受新锚点");
         auto original = c->state.getChildWithName("NDAW_WARP");
@@ -253,6 +283,17 @@ Json Commands::warpChange(const Json& a) const
         after["warp"]["anchors"] =
             Json::array({point(prefix(*c) + "start", facts["source_start_seconds"], 0),
                          point(prefix(*c) + "end", facts["source_end_seconds"], after["length_samples"])});
+    }
+    if (a.contains("onset_artifact"))
+    {
+        require(masterAnalysis != nullptr, "瞬态检测不可用");
+        const auto receipt = masterAnalysis->status().at("receipt");
+        require(receipt.is_object() && receipt.at("artifact_id") == a.at("onset_artifact") &&
+                    receipt.at("binding").at("session_token") == sessionToken() &&
+                    receipt.at("binding").at("revision") == revision,
+                "瞬态检测已失效，请重新检测");
+        after["warp"]["onset_evidence"] =
+            warp_onsets::append(facts.at("onset_evidence"), warpClip(a.at("clip")), receipt);
     }
     require(after["fade_in_samples"].get<int64_t>() + after["fade_out_samples"].get<int64_t>() <=
                 after["length_samples"].get<int64_t>(),
@@ -310,6 +351,14 @@ void Commands::executeWarp(const Json& a)
             c.state.addChild(provenance, -1, &um);
         }
         auto& manager = c.getWarpTimeManager();
+        const auto& records = facts.at("onset_evidence");
+        if (!records.empty())
+        {
+            auto saved = provenance.getOrCreateChildWithName("NDAW_WARP_ONSETS", &um);
+            saved.setProperty("schema", 1, &um);
+            saved.setProperty("record", juce::String(records.dump()), &um);
+            saved.setProperty("sha256", juce::String(warp_onsets::digest(records)), &um);
+        }
         provenance.setProperty("render_hash", juce::String(facts["render_hash"].get<std::string>()), &um);
         auto markers = manager.state.getChildWithName(te::IDs::WARPMARKERS);
         markers.removeAllChildren(&um);

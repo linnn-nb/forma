@@ -902,6 +902,9 @@ void Workspace::timerCallback()
         exportPanel->update(commands.analysisStatus());
     if (analysisPanel && analysisPanel->isVisible())
         analysisPanel->update(commands.analysisStatus());
+    if (warpPanel && warpPanel->isVisible() && warpPanel->watchesAnalysis())
+        warpPanel->updateAnalysis(commands.analysisStatus(), commands.sessionToken(),
+                                  commands.queryFacts().at("revision"));
     if (recoveryPanel && recoveryPanel->isVisible())
         recoveryPanel->update(commands.recoveryStatus());
     if (newSessionPanel && newSessionPanel->isVisible())

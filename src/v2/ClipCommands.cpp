@@ -337,6 +337,7 @@ void Commands::registerClipCommands(Json& r)
     r.back()["units"]["pitch_semitones"] = "semitones, -12..12; independent of duration";
     add("clip.warp",
         {{"enabled", {{"type", "boolean"}}},
+         {"onset_artifact", id},
          {"anchors",
           {{"type", "array"},
            {"maxItems", 128},

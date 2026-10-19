@@ -195,6 +195,8 @@ public:
     static std::string mediaHash(const juce::File&);
     Json analysisControl(const std::string&, const Json&, const std::string& actor = "human");
     Json analysisStatus();
+    // Local raw-source draft on the existing single analysis worker; no Edit or history write.
+    Json prepareWarpOnsets(const std::string& clip, const Json& profile, const std::string& session, uint64_t revision);
     Json legacyReports() const;
 
 private:

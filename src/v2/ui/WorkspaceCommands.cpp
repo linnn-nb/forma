@@ -211,6 +211,10 @@ const std::vector<Entry>& entries()
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {574, "MIDI CC 控制器曲线…", "音乐", 'c',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {650, "Warp · 检测 / 停止瞬态", "编辑", juce::KeyPress::F11Key,
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
+        {651, "Warp · 加入所选瞬态候选", "编辑", juce::KeyPress::F12Key,
+         cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {561, "所选效果器旁链…", "混音", 's', cmd | juce::ModifierKeys::altModifier},
         {562, "冻结 / 解冻所选轨道…", "轨道", 'f',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
@@ -934,6 +938,9 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                                      [](const Json& c) { return c["kind"] == "midi"; });
             if (id == 560 || id == 573)
                 active = !mix && !facts.value("playing", false) && !selectedAudioClip().is_null();
+            if (id == 650 || id == 651)
+                active = warpPanel && warpPanel->isVisible() &&
+                         (id == 650 ? warpPanel->canAnalyse() : warpPanel->canAdopt());
             if (id == 566)
                 active = !facts.value("playing", false) && pending.is_null() &&
                          facts.value("length_samples", int64_t(0)) > 0;
@@ -976,7 +983,7 @@ void Workspace::getCommandInfo(juce::CommandID id, juce::ApplicationCommandInfo&
                     (id != 276 && fadesPanel && fadesPanel->isVisible()) ||
                     (id != 276 && crossfadePanel && crossfadePanel->isVisible()) ||
                     (id != 276 && elasticPanel && elasticPanel->isVisible()) ||
-                    (id != 276 && warpPanel && warpPanel->isVisible()) ||
+                    (id != 276 && warpPanel && warpPanel->isVisible() && (id == 277 || warpPanel->canApply())) ||
                     (id != 276 && controllerPanel && controllerPanel->isVisible() &&
                      (id == 277 || controllerPanel->canApply())) ||
                     (id != 276 && printPanel && printPanel->isVisible() && (id == 277 || printPanel->canApply())) ||
@@ -1334,6 +1341,14 @@ bool Workspace::perform(const InvocationInfo& invocation)
     if (id == 573)
     {
         invoke([&] { showWarp(); });
+        return true;
+    }
+    if ((id == 650 || id == 651) && warpPanel && warpPanel->isVisible())
+    {
+        if (id == 650)
+            warpPanel->analyseOnsets();
+        else
+            warpPanel->adoptOnsets();
         return true;
     }
     if ((id == 275 || id == 277) && warpPanel && warpPanel->isVisible())

@@ -2,6 +2,7 @@
 #pragma once
 #include "PanelTextEditor.h"
 #include "Waveforms.h"
+#include "WarpOnsets.h"
 namespace ndaw::desktop
 {
 class WarpPanel final : public juce::Component, private juce::KeyListener
@@ -11,9 +12,9 @@ public:
     explicit WarpPanel(Submit fn) : submit(std::move(fn)), surface(*this)
     {
         setComponentID("clip.warp.panel");
-        for (auto* c : std::initializer_list<juce::Component*>{&title, &help, &surface, &choice, &sourceLabel,
-                                                               &sourceTime, &outputLabel, &outputTime, &setPoint, &add,
-                                                               &remove, &restore, &status, &apply, &cancel})
+        for (auto* c : std::initializer_list<juce::Component*>{
+                 &title, &help, &surface, &choice, &sourceLabel, &sourceTime, &outputLabel, &outputTime, &setPoint,
+                 &add, &remove, &restore, &status, &apply, &cancel, &onsetProfile, &analyse, &adopt, &candidateView})
             addAndMakeVisible(c);
         title.setText(text("Warp · SoundTouch"), juce::dontSendNotification);
         title.setFont(juce::FontOptions(22, juce::Font::bold));
@@ -75,6 +76,189 @@ public:
         apply.onClick = [this] { execute(true); };
         cancel.onClick = [this] { setVisible(false); };
         sourceTime.onEscape = outputTime.onEscape = [this] { setVisible(false); };
+        onsetProfile.setComponentID("clip.warp.onset_profile");
+        onsetProfile.addItem(text("常规 · 上升12dB / 最低−36dBFS"), 1);
+        onsetProfile.addItem(text("灵敏 · 上升6dB / 最低−48dBFS"), 2);
+        onsetProfile.addItem(text("保守 · 上升18dB / 最低−24dBFS"), 3);
+        onsetProfile.setSelectedId(1, juce::dontSendNotification);
+        analyse.setComponentID("ui.command:650");
+        adopt.setComponentID("ui.command:651");
+        candidateView.setComponentID("clip.warp.onset_candidates");
+        candidateView.setViewedComponent(&candidateContent, false);
+        candidateView.setScrollBarsShown(true, false);
+        analyse.onClick = [this] { analyseOnsets(); };
+        adopt.onClick = [this] { adoptOnsets(); };
+        adopt.setEnabled(false);
+    }
+    using Analyse = std::function<Json(const std::string&, const Json&, const std::string&, uint64_t)>;
+    void analysisCallbacks(Analyse start, std::function<void(const std::string&)> stop)
+    {
+        startAnalysis = std::move(start);
+        stopAnalysis = std::move(stop);
+    }
+    bool watchesAnalysis() const
+    {
+        return !ownedArtifact.empty();
+    }
+    bool canAnalyse() const
+    {
+        return bool(startAnalysis) && !adopted && !stale;
+    }
+    bool canAdopt() const
+    {
+        return !pending && !adopted && !stale && !candidateButtons.isEmpty();
+    }
+    bool canApply() const
+    {
+        return !pending && !stale;
+    }
+    void analyseOnsets()
+    {
+        try
+        {
+            if (pending)
+            {
+                stopOwnedAnalysis();
+                status.setText(text("已请求取消 · 等待分析线程回执"), juce::dontSendNotification);
+                return;
+            }
+            if (!canAnalyse())
+                throw std::runtime_error("当前草稿不能重新检测；请提交或取消后重开");
+            const int mode = onsetProfile.getSelectedId();
+            Json profile{{"transient_rise_db", mode == 2   ? 6.
+                                               : mode == 3 ? 18.
+                                                           : 12.},
+                         {"transient_minimum_dbfs", mode == 2   ? -48.
+                                                    : mode == 3 ? -24.
+                                                                : -36.}};
+            const auto request =
+                startAnalysis(bound.at("clip"), profile, snapshot.at("session_token"), snapshot.at("revision"));
+            ownedArtifact = request.at("request").at("artifact_id");
+            pending = true;
+            clearCandidates();
+            analyse.setButtonText(text("停止检测"));
+            status.setText(text("正在测量原媒体 · 播放时自动让出资源 · 尚未修改工程"), juce::dontSendNotification);
+        }
+        catch (const std::exception& e)
+        {
+            status.setText(text(e.what()), juce::dontSendNotification);
+        }
+        controls();
+    }
+    void updateAnalysis(const Json& service, const std::string& session, uint64_t revision)
+    {
+        if (ownedArtifact.empty())
+            return;
+        if (session != snapshot.at("session_token").get<std::string>() || revision != snapshot.at("revision"))
+        {
+            stopOwnedAnalysis();
+            stale = true;
+            status.setText(text("工程版本已变化 · 草稿未提交，请取消后重新打开Warp"), juce::dontSendNotification);
+            controls();
+            return;
+        }
+        const auto& result = service.at("receipt");
+        if (service.at("busy").get<bool>())
+        {
+            if (service.at("request").at("artifact_id") != ownedArtifact)
+            {
+                stale = true;
+                pending = false;
+                status.setText(text("检测回执已被后续任务替换 · 请取消后重新打开Warp"), juce::dontSendNotification);
+                controls();
+                return;
+            }
+            if (pending && service.at("request").at("artifact_id") == ownedArtifact)
+                status.setText(text(service.at("pause").at("playback_requested").get<bool>()
+                                        ? "播放优先 · 检测已请求暂停"
+                                        : "正在测量原媒体 · 未提交工程"),
+                               juce::dontSendNotification);
+            return;
+        }
+        if (result.is_object() && result.value("artifact_id", std::string{}) == ownedArtifact &&
+            result.at("state") == "completed" && !result.value("current", false))
+        {
+            stale = true;
+            pending = false;
+            status.setText(text("原媒体或分析来源已变化 · 请取消后重新打开Warp"), juce::dontSendNotification);
+            controls();
+            return;
+        }
+        if (!result.is_object() || result.value("artifact_id", std::string{}) != ownedArtifact)
+        {
+            stale = true;
+            pending = false;
+            status.setText(text("检测回执已被后续任务替换 · 请取消后重新打开Warp"), juce::dontSendNotification);
+        }
+        else if (pending)
+        {
+            pending = false;
+            analyse.setButtonText(text("检测瞬态"));
+            if (result.at("state") == "completed" && result.value("current", false))
+            {
+                try
+                {
+                    suggestions = ndaw::v2::warp_onsets::candidates(bound, anchors, result);
+                    for (const auto& p : suggestions.at("items"))
+                    {
+                        auto* box = candidateButtons.add(new juce::ToggleButton(
+                            text("候选 · 源帧 ") + juce::String(p.at("source_frame").get<int64_t>()) + " · " +
+                            juce::String(p.at("clip_time_samples").get<double>() / 48., 3) + " ms · " + text("上升 ") +
+                            juce::String(p.at("rise_db").get<double>(), 1) + " dB"));
+                        box->setComponentID(text("clip.warp.onset:") + juce::String(candidateButtons.size() - 1));
+                        box->setToggleState(true, juce::dontSendNotification);
+                        box->addKeyListener(this);
+                        candidateContent.addAndMakeVisible(box);
+                    }
+                    status.setText(
+                        text("能量上升候选（估计）· 返回 ") + juce::String(suggestions.at("returned").get<int>()) +
+                            " / " + juce::String(suggestions.at("reported_total").get<int>()) + text(" · 片段内可用 ") +
+                            juce::String(candidateButtons.size()) + text(" · 勾选后加入；不会自动量化或判断演奏质量"),
+                        juce::dontSendNotification);
+                    resized();
+                }
+                catch (const std::exception& e)
+                {
+                    stale = true;
+                    status.setText(text(e.what()), juce::dontSendNotification);
+                }
+            }
+            else
+            {
+                ownedArtifact.clear();
+                status.setText(text("检测未完成：") +
+                                   text(result.value("error", result.at("state").get<std::string>())),
+                               juce::dontSendNotification);
+            }
+        }
+        controls();
+    }
+    void adoptOnsets()
+    {
+        try
+        {
+            if (!canAdopt())
+                throw std::runtime_error("没有可接受的当前候选");
+            Json selectedPoints = Json::array();
+            for (int i = 0; i < candidateButtons.size(); ++i)
+                if (candidateButtons[i]->getToggleState())
+                    selectedPoints.push_back(suggestions.at("items").at(size_t(i)));
+            const auto next = ndaw::v2::warp_onsets::insert(bound, anchors, selectedPoints);
+            const auto added = next.size() - anchors.size();
+            if (!added)
+                throw std::runtime_error("没有新增锚点；请勾选候选，重合或无法满足比例的点会跳过");
+            anchors = next;
+            adopted = true;
+            changed();
+            status.setText(text("草稿已加入 ") + juce::String(int(added)) +
+                               text(" 点 · 可手动拖动或改数值 · 提交后一次Undo；再次检测须重开面板"),
+                           juce::dontSendNotification);
+            controls();
+        }
+        catch (const std::exception& e)
+        {
+            status.setText(text(e.what()), juce::dontSendNotification);
+        }
     }
     void connect(juce::ApplicationCommandManager& owner)
     {
@@ -93,6 +277,11 @@ public:
     }
     void show(const Json& facts, const Json& clip, const Json& warp)
     {
+        stopOwnedAnalysis();
+        pending = adopted = stale = false;
+        ownedArtifact.clear();
+        clearCandidates();
+        analyse.setButtonText(text("检测瞬态"));
         snapshot = facts;
         originalClip = clip;
         bound = warp;
@@ -102,14 +291,19 @@ public:
         restore.setEnabled(warp.value("enabled", false));
         status.setText(text("未提交草稿 · 原媒体保留 · 音频准备状态与设置事务分别回执"), juce::dontSendNotification);
         changed();
+        controls();
     }
     void execute(bool enabled = true)
     {
         try
         {
+            if (!canApply())
+                throw std::runtime_error("请先结束检测；过期草稿须取消后重开");
             Json args{{"clip", bound.at("clip")}, {"enabled", enabled}, {"media_hash", bound.at("media_hash")}};
             if (enabled)
                 args["anchors"] = anchors;
+            if (enabled && adopted)
+                args["onset_artifact"] = ownedArtifact;
             auto error = submit(Json::array({operation("clip.warp", args)}), snapshot.at("revision"),
                                 snapshot.at("session_token"));
             if (!error.empty())
@@ -141,7 +335,7 @@ public:
     {
         auto r = card().reduced(24);
         title.setBounds(r.removeFromTop(36));
-        help.setBounds(r.removeFromTop(64));
+        help.setBounds(r.removeFromTop(52));
         surface.setBounds(r.removeFromTop(240));
         r.removeFromTop(12);
         auto row = r.removeFromTop(32);
@@ -155,11 +349,24 @@ public:
         outputLabel.setBounds(row.removeFromLeft(160));
         outputTime.setBounds(row.removeFromLeft(140).reduced(2, 10));
         setPoint.setBounds(row.reduced(4, 10));
-        status.setBounds(r.removeFromTop(60));
         row = r.removeFromBottom(32);
         cancel.setBounds(row.removeFromRight(100));
         apply.setBounds(row.removeFromRight(120).reduced(4, 0));
         restore.setBounds(row.removeFromLeft(170));
+        row = r.removeFromTop(32);
+        onsetProfile.setBounds(row.removeFromLeft(330));
+        analyse.setBounds(row.removeFromLeft(130).reduced(4, 0));
+        adopt.setBounds(row.removeFromLeft(160).reduced(4, 0));
+        status.setBounds(r.removeFromBottom(48));
+        candidateView.setBounds(r.reduced(0, 4));
+        candidateContent.setSize(std::max(1, candidateView.getWidth() - 18), candidateButtons.size() * 26);
+        for (int i = 0; i < candidateButtons.size(); ++i)
+            candidateButtons[i]->setBounds(0, i * 26, candidateContent.getWidth(), 26);
+    }
+    void visibilityChanged() override
+    {
+        if (!isVisible())
+            stopOwnedAnalysis();
     }
 
 private:
@@ -278,12 +485,45 @@ private:
         WarpPanel& owner;
         double dragScale = 1;
     };
-    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override
     {
         if (!manager || !isVisible())
             return false;
         const int id = key == juce::KeyPress::escapeKey ? 277 : manager->getKeyMappings()->findCommandForKeyPress(key);
-        return (id == 275 || id == 277) && manager->invokeDirectly(id, false);
+        if (key.isKeyCode(juce::KeyPress::tabKey) &&
+            (key.getModifiers().getRawFlags() & ~juce::ModifierKeys::shiftModifier) == 0)
+        {
+            origin->moveKeyboardFocusToSibling(!key.getModifiers().isShiftDown());
+            return true;
+        }
+        return (id == 275 || id == 277 || id == 650 || id == 651) && manager->invokeDirectly(id, false);
+    }
+    void stopOwnedAnalysis()
+    {
+        if (pending && stopAnalysis && !ownedArtifact.empty())
+            try
+            {
+                stopAnalysis(ownedArtifact);
+            }
+            catch (const std::exception&)
+            {
+            }
+    }
+    void clearCandidates()
+    {
+        candidateButtons.clear();
+        suggestions = nullptr;
+    }
+    void controls()
+    {
+        analyse.setEnabled(canAnalyse());
+        adopt.setEnabled(canAdopt());
+        onsetProfile.setEnabled(!pending && !adopted && !stale);
+        apply.setEnabled(canApply());
+        for (auto* box : candidateButtons)
+            box->setEnabled(!adopted && !stale);
+        if (manager)
+            manager->commandStatusChanged();
     }
     double sourceSpan() const
     {
@@ -392,9 +632,19 @@ private:
     }
     juce::Rectangle<int> card() const
     {
-        return getLocalBounds().withSizeKeepingCentre(std::min(880, getWidth() - 20), 640);
+        return getLocalBounds().withSizeKeepingCentre(std::min(920, getWidth() - 20), std::min(820, getHeight() - 20));
     }
     Submit submit;
+    Analyse startAnalysis;
+    std::function<void(const std::string&)> stopAnalysis;
+    std::string ownedArtifact;
+    bool pending = false, adopted = false, stale = false;
+    Json suggestions;
+    juce::Component candidateContent;
+    juce::Viewport candidateView;
+    juce::OwnedArray<juce::ToggleButton> candidateButtons;
+    juce::ComboBox onsetProfile;
+    juce::TextButton analyse{text("检测瞬态")}, adopt{text("加入所选候选")};
     juce::ApplicationCommandManager* manager = nullptr;
     Json snapshot, originalClip, bound, anchors = Json::array();
     int selected = -1;
