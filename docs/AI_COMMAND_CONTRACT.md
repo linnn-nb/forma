@@ -635,3 +635,7 @@ bands 声明半开 bin 分区 first_bin/end_bin、标称 lower/upper Hz、Nyquis
 ### 本地Warp瞬态草稿（2026-10-19）
 
 `Commands::prepareWarpOnsets(clip,profile,session,revision)`是停止态本地GUI的只读证据入口，复用现有单MasterAnalysis工作线程；使用非持久引用模式，不写Edit/历史，不注册新MCP工具或扩大冻结M2/M3权限。接受草稿的已有human/local_gui独立`clip.warp`可带`onset_artifact`；L1只认当前运行时实际测量回执，重验session、revision、对象、媒体SHA和raw source tap，不接受客户端伪造的测量JSON。新测量/工程变化或重开后旧回执不能继续提交；已提交记录通过原Undo/Redo恢复，无需模型或再次分析。
+
+### 已存Warp证据的当前视图（2026-10-19）
+
+warp.onset_evidence仍是原始测量事实；onset_views为当前Clip/完整Warp/窗口派生，只读且不落Edit。source_object_id与clip_id、source_frame与position_samples分别保留；accepted_anchor不把能量估计变成表演判断。预览只返回映射，media_checked=false/can_locate=false不能宣称已深验源；本地warpClip深验后可导航。L1 locateWarpOnset(clip,view,session,revision)复核当前活跃对象/视图及源SHA，再调用既有seek并校验真实位置；导航无编辑Undo，UI滚动仍走L1 UiState，保存保留滚动位置。继承窗口原Warp写入继续拒绝；工具注册表/冻结M2/M3权限未扩大。

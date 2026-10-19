@@ -1,3 +1,35 @@
+# 瞬态来源→Take/Comp→交叉淡化→导出（2026-10-19，第二轮收口）
+
+**已实现继承Warp的只读来源视图和真实定位；检测源帧经完整Warp与当前窗口投影，不改写原测量。九种最新CTest分两批990项通过，十份完整WAV/四工程独立核验。** 实现1d39491、视野外定位/只读语义415691d。本模块到两轮边界，其余组合留BACKLOG；不代表完整P1/P3、实时或产品验收。
+
+| 套件 | 最新检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| tracktion_source_analysis | 70 | 4.07 | 通过 |
+| forma_persistent_native_history | 86 | 53.57 | 通过 |
+| forma_production_chain | 98 | 14.17 | 通过 |
+| forma_warp | 157 | 24.53 | 通过 |
+| forma_warp_onsets | 133 | 11.74 | 通过 |
+| forma_warp_onset_comp | 221 | 27.50 | 通过 |
+| forma_warp_mix | 83 | 8.35 | 通过 |
+| forma_warp_comp | 62 | 8.46 | 通过 |
+| forma_project_document | 80 | 8.38 | 通过 |
+
+首批`p3-onset-comp-final.xml`9/9、161.48秒、986项；随后补视野外定位，`p3-onset-comp-reveal.xml`1/1、27.50秒、221项，按最新唯一套统计990项。不是最终代码一次九套全绿。首次`p3-onset-comp-first.log`98项后因5.5秒工程使用session模式请求6秒Stems而被正确拒绝；改为L1显式0–288000选区/selection模式，仍比较完整6秒，未裁边、放宽容差或隐藏失败。
+
+代码：`WarpOnsets.cpp::views`从历史源帧、完整锚点、窗口起点/长度和当前Clip起点生成脱离树视图（128条、完整计数/省略数）；`WarpCommands::locateWarpOnset`只在message thread校验session/revision、当前Clip、可见事件及深媒体SHA，再走原seek并核对实际Transport回执；`PlaylistEditing`对非活动/停用Warp也保留历史记录。`WarpPanel/WorkspaceWarp/WorkspaceCommands`提供只读继承窗口、真实选择器、可改命令652（默认⌘⌃⌥F10）及视野外滚动，倍率保持。继承窗口修改仍由L1拒绝，GUI只写既有命令/UiState；没有新引擎/服务/SDK补丁或M2/M3工具权限。
+
+`WarpOnsetCompTests`用48k/44.1k双声道PCM24真实6秒源、非零源偏移和非整数秒瞬态；人工将一锚点延后100ms，并移除另一锚点，原测量仍保留且标明未用于锚点。Take副本保留最初测量object_id，派生视图持当前clip_id。切点在实际瞬态：未淡化左2/右4事件，重叠后左3/右4，同源事件定位一致，半开区间不把裁掉的事件挪到边缘。原UndoRedo/停用再Undo/保存独立新Engine重开、源同大小同mtime篡改/失效版本/错Clip视图ID拒绝及自定义键F17保存重开通过。实际缩放/滚动命令把事件移出视野，native peer定位后窗口显示它且span不变；导航不改变工程历史/音频。
+
+完整0–6秒288000帧比较：两种源率的Comp/交叉淡化、独立新Engine输出与已处理Take参考最大差均1.1920928955078125e-7；原预算Comp/Stems2e-6、重开2e-7保持。两份真实Track/Master Stems各288000帧，全部样本参与，没有排除256样本或接缝。独立标准库RIFF/PCM24及无namespace Expat核验十WAV、四工程、16份来源记录校验和/原object_id、完整锚点→窗口→项目位置（≤1采样）和两份源SHA；派生onset_views未作为XML属性写入Edit。未把这当独立算法/听评、强制重建磁盘缓存或实时硬件证明。
+
+实际60秒源共享worker：其他面板作业在关闭Warp后继续并测量2880000帧；Warp自己的暂停作业关闭后为cancelled，实测54.628ms（预算2000ms），记录/历史/媒体不变。128条视图的132总数/4省略与128KiB拒绝另用明确脱离树资源夹具验证，未伪称22次真实分析或满载工程。
+
+证据`build-v2-tracktion/p3-onset-comp-current-results.json`、`p3-onset-comp-independent.json`、各批JUnit/完整失败日志与原源/工程/WAV；图`evidence/P3/warp-onset-comp-native.png`为实际原生组件软件栅格捕获，已查看并独立检查原文件像素。**纠正前轮归因：原0bbfb…NativeImage PNG也有完整不透明卡片/标题像素及1917种颜色；仅凭工具预览断言NativeImage只抓局部不成立。** 软件捕获与背景像素检查仍有效，但不宣称修复了NativeImage框架故障。OS鼠标/显示与用户听评另未验，不催不便手测的用户。
+
+唯一App/CLI Release与本地deep/strict通过，未公证；App SHA `9f6a012a32cb7e93dd7733ce49917c232d1e8a53c7cde53f961cc1993fdb86d9`；实现SHA `1e6df59a94da60bb26eb85d4f487f3f227cb835ba0e35b6271c5e6d2837d24c1`、172输入独立匹配，TE/JUCE pin不变、SDK23补丁58文件fresh/reverse通过。原84585保留，无新DMG/应用副本、模型、服务或上传。自有演示工程`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Warp-Onset-Comp-f900fefd820b4630a657ba697b7f4022/44100/Measured-Comp-Delivered.tracktionedit`，是测试脉冲音，不是歌曲/真实录音/听评。
+
+下一项转P2工程兼容性：审查印刻/冻结、旁链等未登记持久语义与旧读取器，再补明确需要的能力和可见报告；不能凭节点名字假设不兼容，不改旧冻结音频/不透明插件块。Warp/CC/PDC/印刻/踏板的两轮边界保留。**PDC完整过渡0.12353515625>2e-6仍发布阻断，正常失败测试保留，本批未重跑或改判。** 长源/音乐时基/多麦相位/其它源率、实体/听评/RT/性能A15.84%>15%、分析失效/超时、全读取能力/耐久/Windows/视频/环绕/发行与完整架构仍未完成。
+
 # Warp 瞬态建议第一轮（2026-10-19）
 
 **已接通真实源PCM检测→候选勾选→人工移动→L1预览/单事务→原Undo/Redo→保存/独立Engine重开→真实WAV。九种最新CTest分三批通过816项；不是一次全绿批次、完整P3或产品/RT验收。** 功能提交9de4ff8、精度/来源修正53ff2e8、回执/组件捕获测试f0d33c8。
@@ -14,7 +46,7 @@
 | forma_warp_comp | 62 | 8.78 | 通过 |
 | forma_project_document | 80 | 8.67 | 通过 |
 
-首批`p3-onsets-final.xml`为8/9、170.26秒：旧SourceAnalysisTests仍要求重开无Undo，和已有持久历史冲突。保持“旧分析不冒充当前成功”的检查，新增原Undo/Redo对完整增益前后轨道核验，运行/失败必须写当前回执；`p3-onsets-source-fix.xml`1/1、5.80秒、70项通过。最新`p3-onsets-capture.xml`1/1、13.70秒、133项，补充同步软件栅格完整原生组件捕获；先前NativeImage归档仅局部控件，不能作为界面证据。没有换源、放宽时限/误差或删除失败用例。首轮候选插入误用JSON initializer-list的失败保留`p3-onsets-first.log`，显式对象插入修复后通过。
+首批`p3-onsets-final.xml`为8/9、170.26秒：旧SourceAnalysisTests仍要求重开无Undo，和已有持久历史冲突。保持“旧分析不冒充当前成功”的检查，新增原Undo/Redo对完整增益前后轨道核验，运行/失败必须写当前回执；`p3-onsets-source-fix.xml`1/1、5.80秒、70项通过。最新`p3-onsets-capture.xml`1/1、13.70秒、133项，补充同步软件栅格完整原生组件捕获；当时仅据工具预览怀疑NativeImage抓取局部；第二轮独立检查原PNG像素后撤回该归因，未证明NativeImage故障。没有换源、放宽时限/误差或删除失败用例。首轮候选插入误用JSON initializer-list的失败保留`p3-onsets-first.log`，显式对象插入修复后通过。
 
 代码：`WarpOnsets.cpp/h`只处理脱离Edit的事实；`WarpCommands.cpp`唯一写入口、原`clip.warp`可带已验证`onset_artifact`；`MasterAnalysis`共用单线程，草稿不保存引用树/修改历史；`WarpState.h`和`ProjectDocument.cpp`保护新持久证据；`ui/WarpPanel.h`、`WorkspaceWarp/Refresh/Commands`提供原生候选列表与真实键位。冻结M2/M3无新工具/权限。`WarpOnsetTests.cpp`通过真实native peer校验自定义键650/651、候选子集、源坐标精确保留、接受/撤销/原历史重开；工程变化/假artifact/证据损坏（含关闭Warp）拒绝且保留当前会话，Redo-only仍声明读取能力。停用/重新启用保留测量，原撤销恢复。
 

@@ -1,10 +1,21 @@
+# 2026-10-19 瞬态来源链第二轮收口
+
+- 1d39491实现非活动/停用Warp的来源记录、完整Warp→Comp窗口→当前项目位置视图与只读继承窗口；415691d补当前/草稿区分、取消回执、视野外定位。命令652可改键/保存，定位前L1深验SHA/版本/对象；原记录不写成当前位置，继承锚点不可改。
+- 首批9/9、986项/161.48秒；定位补跑221项/27.50秒；九套最新990项通过（分批）。首次Stems范围拒绝保留，改显式6秒选区，没有缩负载/裁边/改容差。表与边界见VERIFICATION首节。
+- 48k/44.1k源，切在真实瞬态，窗口事件2+4→3+4；原UndoRedo/冷开/改键、停用源、篡改同size/mtime源、失效版本/错视图ID与真实Stems通过。完整PCM最大差一个PCM24量化级1.19209e-7；独立十WAV/四工程/16记录原SHA/源object_id及≤1采样映射通过。
+- 共享60秒源的其他作业完成2880000帧；关闭自己作业真实cancelled/54.628ms，原预算2秒与历史/源SHA保持。资源上限用脱离树夹具，非假分析回执。
+- ![当前原生只读来源视图的软件栅格捕获，非OS截图或听评](warp-onset-comp-native.png)
+- 原PNG像素核对纠正前轮NativeImage故障归因：原NativeImage卡片/标题数据完整，不能仅据预览诊断。当前软件捕获全图像素另核验；不代替OS鼠标/显示或听评。
+- 唯一App SHA `9f6a012a32cb7e93dd7733ce49917c232d1e8a53c7cde53f961cc1993fdb86d9`，本地deep/strict、非公证；实现 `1e6df59a94da60bb26eb85d4f487f3f227cb835ba0e35b6271c5e6d2837d24c1`/172输入，SDK23/58 fresh/reverse通过。无新SDK/依赖/引擎/服务/模型/上传/安装包；旧84585保留。
+- 证据索引build-v2-tracktion/p3-onset-comp-current-results.json。Warp两轮收口，下一项P2未覆盖持久语义/兼容性报告；PDC过渡0.123535>2e-6仍发布阻断，其他全部差距不改判。
+
 # 2026-10-19 Warp瞬态建议第一轮
 
 - 功能9de4ff8、精度/来源53ff2e8、测试f0d33c8。真实PCM→可勾选源时间候选→人工移动→clip.warp单事务→原UndoRedo/保存独立Engine重开/真实WAV；native peer验证可改键，源坐标不因显示舍入被改写。只读检测不改Edit/引用树/历史。
 - 九种最新CTest分三批816项通过；首批8/9（170.26s），旧Source测试无Undo预期已改为实际原Undo/Redo＋旧分析不冒充实时成功，70项补跑5.80s；新Warp133项13.70s。不是一次全绿或完整产品。完整表与失败过程见VERIFICATION首节。
 - 48k/44.1k实际PCM24；映射≤0.273采样，SoundTouch起音误差−22.354/−22.375ms（原预算50ms），声道1.78814e-7，独立Engine重开完整PCM差0。五WAV/四工程/两原媒体独立核验；独立产物来自132项运行，133项只改截图捕获，产品相同。
 - ![实际原生Warp候选面板的软件栅格捕获；非OS截图或听评](warp-onsets-native.png)
-- NativeImage最初只捕获局部，未作为通过图；同步SoftwareImageType加背景像素检查后通过并实际查看。本机native peer/组件键位与真实声音数值有回执；OS鼠标/硬件/人工听评未验，不催用户。原84585未强退或改工程。
+- 当时仅据预览推断NativeImage抓取局部；第二轮原PNG像素检查撤回该归因。SoftwareImageType与背景像素检查通过并实际查看，不再声称修复NativeImage框架故障。本机native peer/组件键位与真实声音数值有回执；OS鼠标/硬件/人工听评未验，不催用户。原84585未强退或改工程。
 - 证据索引build-v2-tracktion/p3-onsets-current-results.json；App/实现SHA、23补丁58文件fresh replay与原音频完整比较见VERIFICATION。本地签名不是公证；只有唯一App，无DMG或新App副本，无新依赖/模型/上传。
 - 下一轮补候选Warp与Playlist→Comp→交叉淡化→导出及失效/取消；长源/相位整理/听评/RT/压力仍未完成。PDC过渡0.123535>2e-6发布阻断保留；性能A、分析失效/超时、平台/发行/完整架构差距不改判。
 
