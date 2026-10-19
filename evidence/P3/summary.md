@@ -1,3 +1,13 @@
+# 2026-10-19 Warp瞬态建议第一轮
+
+- 功能9de4ff8、精度/来源53ff2e8、测试f0d33c8。真实PCM→可勾选源时间候选→人工移动→clip.warp单事务→原UndoRedo/保存独立Engine重开/真实WAV；native peer验证可改键，源坐标不因显示舍入被改写。只读检测不改Edit/引用树/历史。
+- 九种最新CTest分三批816项通过；首批8/9（170.26s），旧Source测试无Undo预期已改为实际原Undo/Redo＋旧分析不冒充实时成功，70项补跑5.80s；新Warp133项13.70s。不是一次全绿或完整产品。完整表与失败过程见VERIFICATION首节。
+- 48k/44.1k实际PCM24；映射≤0.273采样，SoundTouch起音误差−22.354/−22.375ms（原预算50ms），声道1.78814e-7，独立Engine重开完整PCM差0。五WAV/四工程/两原媒体独立核验；独立产物来自132项运行，133项只改截图捕获，产品相同。
+- ![实际原生Warp候选面板的软件栅格捕获；非OS截图或听评](warp-onsets-native.png)
+- NativeImage最初只捕获局部，未作为通过图；同步SoftwareImageType加背景像素检查后通过并实际查看。本机native peer/组件键位与真实声音数值有回执；OS鼠标/硬件/人工听评未验，不催用户。原84585未强退或改工程。
+- 证据索引build-v2-tracktion/p3-onsets-current-results.json；App/实现SHA、23补丁58文件fresh replay与原音频完整比较见VERIFICATION。本地签名不是公证；只有唯一App，无DMG或新App副本，无新依赖/模型/上传。
+- 下一轮补候选Warp与Playlist→Comp→交叉淡化→导出及失效/取消；长源/相位整理/听评/RT/压力仍未完成。PDC过渡0.123535>2e-6发布阻断保留；性能A、分析失效/超时、平台/发行/完整架构差距不改判。
+
 # 2026-10-19 CC映射第二轮收口（执行10-18）
 
 - `852711b`修复原生CONTROL b精确冷读/原历史double差异；`5218b03`修复自动化分块MIDI时间未加回起点。测试范围前置条件后续`f2f2b35`/`ef34ec2`，不改产品选区或预后卷逻辑。

@@ -1,3 +1,33 @@
+# Warp 瞬态建议第一轮（2026-10-19）
+
+**已接通真实源PCM检测→候选勾选→人工移动→L1预览/单事务→原Undo/Redo→保存/独立Engine重开→真实WAV。九种最新CTest分三批通过816项；不是一次全绿批次、完整P3或产品/RT验收。** 功能提交9de4ff8、精度/来源修正53ff2e8、回执/组件捕获测试f0d33c8。
+
+| 套件 | 最新检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| tracktion_source_analysis | 70 | 5.80 | 通过 |
+| tracktion_master_analysis | 47 | 23.57 | 通过 |
+| forma_persistent_native_history | 86 | 60.34 | 通过 |
+| forma_production_chain | 98 | 14.54 | 通过 |
+| forma_warp | 157 | 24.75 | 通过 |
+| forma_warp_onsets | 133 | 13.70 | 通过 |
+| forma_warp_mix | 83 | 8.97 | 通过 |
+| forma_warp_comp | 62 | 8.78 | 通过 |
+| forma_project_document | 80 | 8.67 | 通过 |
+
+首批`p3-onsets-final.xml`为8/9、170.26秒：旧SourceAnalysisTests仍要求重开无Undo，和已有持久历史冲突。保持“旧分析不冒充当前成功”的检查，新增原Undo/Redo对完整增益前后轨道核验，运行/失败必须写当前回执；`p3-onsets-source-fix.xml`1/1、5.80秒、70项通过。最新`p3-onsets-capture.xml`1/1、13.70秒、133项，补充同步软件栅格完整原生组件捕获；先前NativeImage归档仅局部控件，不能作为界面证据。没有换源、放宽时限/误差或删除失败用例。首轮候选插入误用JSON initializer-list的失败保留`p3-onsets-first.log`，显式对象插入修复后通过。
+
+代码：`WarpOnsets.cpp/h`只处理脱离Edit的事实；`WarpCommands.cpp`唯一写入口、原`clip.warp`可带已验证`onset_artifact`；`MasterAnalysis`共用单线程，草稿不保存引用树/修改历史；`WarpState.h`和`ProjectDocument.cpp`保护新持久证据；`ui/WarpPanel.h`、`WorkspaceWarp/Refresh/Commands`提供原生候选列表与真实键位。冻结M2/M3无新工具/权限。`WarpOnsetTests.cpp`通过真实native peer校验自定义键650/651、候选子集、源坐标精确保留、接受/撤销/原历史重开；工程变化/假artifact/证据损坏（含关闭Warp）拒绝且保留当前会话，Redo-only仍声明读取能力。停用/重新启用保留测量，原撤销恢复。
+
+实际双声道PCM24、6秒原媒体，源裁切0.5–5.5秒，六个非整数秒起音，48k/44.1k。源帧误差在5ms预算内；工程映射最大0.272109采样（≤1）；手动延后100ms的SoundTouch实际阈值起音误差−22.354/−22.375ms（≤50ms）；左右关系1.7881393432617188e-7（≤2e-7）；独立新Engine重开完整WAV差0（≤2e-7）。独立Engine可以复用已有磁盘缓存，未声称强制重新生成缓存或人耳评判。
+
+独立标准库RIFF/PCM24核验五份5秒/240000帧/48k/双声道WAV，完整PCM两对SHA相同，四个工程能力/原始record文本SHA及两份源媒体SHA通过。此独立核验指向132项运行的自有产物；后续133项只改测试截图捕获，产品实现相同。索引`build-v2-tracktion/p3-onsets-current-results.json`、`p3-onsets-independent.json`、各批JUnit/完整失败日志。图`evidence/P3/warp-onsets-native.png`为实际原生组件的软件栅格快照，非OS截图或人工验收替代。
+
+Release应用/CLI与受影响目标构建exit0；唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `59be31dd7798738ec39cda4c766c840bef95f1cc08eec929721f60000d932a7e`；本地deep/strict，未公证。实现SHA `cf0100672d4eeffe86755de4a2b49ba97bcd45b8701b42f5d5efba53052d1aa1`（172输入）独立核对；TE/JUCE pin、SDK23补丁58文件fresh apply/逐字节/reverse通过，无新增依赖/服务/上传/模型或安装包。
+
+可自试：正常保存退出旧进程后重启唯一App，打开自有测试工程`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Warp-Onsets-b4c90d7988e04adabe66306db3e3dd4c/Transient-Warp-GUI.tracktionedit`；选片段→⌘⌃⌥W→检测→勾选→加入→移动→⌘Return→⌘Z/⌘⇧Z，另存重开/导出。素材是测试脉冲音，不是成曲/真实麦克风/听评。原84585未强退/改工程，用户暂不便手测不催问；OS鼠标、实体输入与听评未执行。
+
+第二轮仅补与非活动Playlist/Comp来源、交叉淡化/导出链路的交叉资格及取消/源漂移边界；预先声明预算，同项两轮后其它边界收口BACKLOG。长素材/压力、自动节拍整理、多麦克风相位与复杂音乐听评未完成。**PDC完整切换峰值0.12353515625>2e-6仍发布阻断，正常失败测试保留，本批未重跑/改判。** 性能A15.84%>15%、分析实现失效/超时、全读取能力/RT/耐久/Windows/视频/环绕/发行及完整架构保持未完成。
+
 # CC 的 Tempo/拍号映射与播放时序（2026-10-19复核，10-18执行）
 
 **852711b / 5218b03：11种受影响CTest最新结果分批通过3944项，历史冻结另15项；不是一次全绿批次或完整P3/产品验收。** 修复CC/Pitch冷读精度与原历史double差异被epsilon吞掉的问题，并修复实际开启自动化后的插件128帧分块MIDI提前。已验证Loop音乐基、Punch采样基的可编辑Comp副本、非活动CC副本、Tempo与4/8拍号变化、原UndoRedo/冷重开/恢复、真实MIDI与WAV。关联来源保持锁定，未解除守卫。

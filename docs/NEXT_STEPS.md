@@ -1,12 +1,12 @@
 # 下一步（2026-10-19）
 
-CC两轮模块收口：852711b/5218b03，后续测试前置条件f2f2b35/ef34ec2。11种最新CTest分批3944项＋旧冻结15项通过；6WAV独立核验。实际Loop音乐基/Punch采样基、活动/非活动Comp CC、Tempo/4/8、原UndoRedo/冷开/恢复与真实MIDI输出已验。解码/归档0 ULP，8个CC输出0或−1采样；保留来源池、SEQ/hash与关联锁定，未宣称完整P3/产品。
+Warp瞬态第一轮已提交9de4ff8/53ff2e8/f0d33c8：真实检测→勾选→人工移动→单事务/原UndoRedo→保存独立Engine重开→WAV；九套最新分三批816项、五WAV/四工程/两源独立核验。当前资格见VERIFICATION；不是完整产品或完整P3。
 
-1. **下一项：弹力音频的瞬态锚点建议。** 先读WARP_WORKFLOW/WarpPanel与SourceFeatures现有瞬态候选实现；以真实媒体/源时间生成可检查草稿，经现有clip.warp预览/接受后回到真实SoundTouch链路。不得用检测点冒充听感；声明预算，实测原UndoRedo/保存冷开/可改键/原媒体hash与输出。复用现有组件，不扩M2/M3冻结工具权限或上传。
-2. CC更多联动、复杂RPN/NRPN/MPE/量化/Groove、原生编辑setter极近double行为、更多插件/实体端口/听评/RT/压力留BACKLOG，不无限延长两轮边界。PDC、外部印刻、踏板模块的两轮边界保持。
-3. **P2-PDC-LIVE-01仍发布阻断。** 上轮完整瞬态0.12353515625>2e-6；正常forma_latency_live_change保留失败，本批不重跑/改判。报告收敛/尾段0不代表声音通过。
-4. M2/M3冻结，M4/M5暂缓；性能A15.84%>15%、分析失效/超时、OS拖选/全读取能力/RT/耐久/Windows/视频/环绕/发行仍未完成。不催用户手测、不改原工程/媒体/设备、不造DMG或App副本。
+1. **下一项（本模块第二轮）：测得Warp锚点与既有Playlist→Comp→交叉淡化→导出链交叉验证。** 保留原Playlist与测量原object_id/源帧，非活动来源/派生窗口不能把测量位置当当前位置；验原UndoRedo/保存重开/可改键/真实音频。补取消、源改变与资源边界；先声明预算。复用现有组件与L1，不扩M2/M3工具权限、不上传、不下载模型。
+2. 此模块两轮后其余长源/并发压力、节拍/多麦相位整理和复杂听评明确留BACKLOG，继续完整架构；CC、PDC、印刻、踏板此前两轮边界保持。
+3. **P2-PDC-LIVE-01仍发布阻断。** 完整过渡0.12353515625>2e-6，正常forma_latency_live_change保留失败，本批未重跑/改判；报告收敛/尾段0不能替代声音通过。
+4. M2/M3冻结，M4/M5暂缓；性能A15.84%>15%、分析实现失效/超时、OS拖选/全读取能力/RT/耐久/Windows/视频/环绕/发行仍未完成。不催用户、不改原工程/媒体/设备、不造新包或App副本。
 
-唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `bb1dfe4e9c8306eee75f13dbc774cad597e763c88c3bea3badc9e28e03c908ea`，本地deep/strict、未公证。旧PID84585未强退或换工程，正常保存退出后重启才用磁盘新版。当前170输入实现 `6e3ecfe811fab92bbabc52d499c40be7b2d5f8cbda6efccec8be624f1a3146f0`，SDK23/58已实际fresh replay。旧冻结声音和原缓存SHA重验保持。
+唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `59be31dd7798738ec39cda4c766c840bef95f1cc08eec929721f60000d932a7e`，本地deep/strict、未公证。旧PID84585未强退，正常保存退出后重启才使用磁盘新版。实现SHA `cf0100672d4eeffe86755de4a2b49ba97bcd45b8701b42f5d5efba53052d1aa1`、172输入，SDK23/58实际fresh replay。
 
-证据索引 `build-v2-tracktion/p3-cc-map-current-results.json`；自有演示工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/MIDI-Linked-dd85414b26614e75a230960264b5ffae/MIDI-Playlists-GUI-Tempo.tracktionedit`，选Editable CC Comp片段打开CC/Tempo面板，原Take保留，CmdZ/ShiftCmdZ、另存重开。它是FourOsc测试素材，不是完成歌曲或听评证据。
+索引 `build-v2-tracktion/p3-onsets-current-results.json`；自有演示工程 `/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/Warp-Onsets-b4c90d7988e04adabe66306db3e3dd4c/Transient-Warp-GUI.tracktionedit`，实际测试脉冲音，不是成曲或听评。选片段打开Warp，检测/勾选/加入/移动/提交、⌘Z/⌘⇧Z/另存重开；检测和加入键可改并随工程保存。桌面鼠标与实体/听评仍未验；native peer键位/组件与PCM回执已验。

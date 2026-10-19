@@ -1,3 +1,5 @@
+2026-10-19补充参考：真实原媒体能量上升候选可转成Warp草稿锚点，经人工移动/原UndoRedo/保存重开/可改键/真实WAV限定验收；src/v2/WarpOnsets、WarpCommands、ui/WarpPanel及WarpOnsetTests，证据见VERIFICATION首节。状态仍“部分实现”：自动节拍整理、多麦相位、复杂音乐听评与Pro Tools实机行为对照未完成；不以此声明完整对齐，无新增外部依赖。本清单是参考，不是完成度门槛。
+
 2026-10-16 本表仅作交互/工作流参考。通用能力新增MIDI两轨关联候选、整组选用/恢复/解除和整组局部采用，参考v1/现音频关联行为，在Tracktion生产路径Loop/Punch实际录入、GUI键、声音与冷历史已验；不声称Pro Tools实机行为/音质/性能对齐。代码PlaylistEditing/PlaylistLinks/PlaylistPanel/ProjectDocument，测试MidiLinkedCompTests，状态部分实现；整组移动/Tempo、NOTE精度/物理端口/完整P1待做，证据VERIFICATION.md。
 
 2026-10-16 本表仍仅作交互/工作流参考：Forma短Loop实际回放MIDI折返时序已在48k/256四例、初始/重开各8圈测过，共512事件、派发≤1帧；不声称Pro Tools实机行为或性能对齐。实现原生EditPlaybackContext/MidiOutputDeviceInstanceInjectingNode及审计补丁，测试MidiLoopOutputTests，证据VERIFICATION.md。状态部分实现；NOTE精度、物理端口/监听/时码与完整P1未完成。

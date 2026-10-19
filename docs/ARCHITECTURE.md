@@ -1,3 +1,5 @@
+2026-10-19 Warp瞬态草稿：L2复用单MasterAnalysis raw-source worker，非持久引用模式不写Edit/旧历史；L5只选候选并修改脱离树草稿，L1在clip.warp提交前校验真实运行时artifact的session/revision/object/media，证据与锚点同一Undo事务保存。新读取能力audio.warp.onset-evidence v1覆盖原历史；M2/M3工具冻结，无新线程/服务/引擎/模型/RT代码。行为和资格见WARP_WORKFLOW及VERIFICATION。
+
 2026-10-19 CC精度/时序：L1在已校验脱离树读回原生CONTROL b，历史差异与回放精确保留已存double；原字段/能力/源池不变。L0 PluginNode把128帧自动化小块的局部MIDI时间还原到大块再合并，审计补丁23/58已重放。没有新服务/引擎/推理或RT分配锁；全RT资格仍未获得。实际边界见VERIFICATION首节。
 
 2026-10-18 录得Comp的CC：L1现拒绝无实际事件差异的midi.cc.replace；L5仅缓存草稿dirty来控制Apply，Esc通过现有上下文命令277取消。工程写入/原Undo/历史恢复仍走唯一命令层，捕获池与工作SEQ分离；没有新SDK/RT路径/服务或第二事实来源。真实Loop/Punch/native peer/MIDI/WAV限定资格见VERIFICATION.md首节。
