@@ -330,6 +330,7 @@ public:
         originalClip = clip;
         bound = warp;
         readOnly = warp.value("inherited_window", false);
+        cancel.setButtonText(text(readOnly ? "关闭" : "取消"));
         anchors = warp.at("anchors");
         title.setText(text(readOnly ? "Warp · 来源映射（只读）" : "Warp · SoundTouch"), juce::dontSendNotification);
         help.setText(text(readOnly ? "此Comp片段复用完整来源Warp；这里只查看当前窗口与历史源测量。回来源Take编辑锚点。"
@@ -457,8 +458,8 @@ private:
             auto original = sourceArea(), warped = outputArea();
             g.setColour(juce::Colour(0xff9aa9b7));
             g.drawText(text("原媒体 · 秒"), 12, 0, 140, 20, juce::Justification::left);
-            g.drawText(text("Warp草稿 · 片段内秒 · 源波形映射"), 12, 108, getWidth() - 24, 20,
-                       juce::Justification::left);
+            g.drawText(text(owner.readOnly ? "当前Warp · 片段内秒 · 源波形映射" : "Warp草稿 · 片段内秒 · 源波形映射"),
+                       12, 108, getWidth() - 24, 20, juce::Justification::left);
             Json raw{{"id", owner.originalClip["id"]}, {"gain_db", owner.originalClip.value("gain_db", 0.)}};
             raw["source_offset_seconds"] = owner.anchors.front()["source_time_seconds"];
             raw["speed_ratio"] = 1.;

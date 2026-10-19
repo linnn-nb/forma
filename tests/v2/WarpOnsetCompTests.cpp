@@ -148,6 +148,7 @@ juce::Component* find(juce::Component& c, const std::string& id)
 } // namespace
 namespace
 {
+Json cancellationEvidence;
 Json playlist(Commands& c, const std::string& track, const std::string& id)
 {
     const auto all = c.queryPlaylists(track);
@@ -308,6 +309,14 @@ void scenario(const juce::File& root, int sr)
     check(playlist(c, track, take) == preserved && c.query()["tracks"][0]["clips"] == after,
           "original Undo of source inspection sequence restores source Take and candidate exactly");
     AudioDeviceTestAccess::select(w, left);
+    w.uiCommands().invokeDirectly(103, false);
+    w.uiCommands().invokeDirectly(101, false);
+    w.uiCommands().invokeDirectly(101, false);
+    for (int step = 0; step < 16 && w.queryView().at("start_samples").get<int64_t>() <= centre; ++step)
+        w.uiCommands().invokeDirectly(105, false);
+    const auto offscreen = w.queryView();
+    check(offscreen.at("start_samples").get<int64_t>() > centre,
+          "actual registered zoom and scroll commands move measured onset outside visible timeline before locate");
     auto* keys = w.uiCommands().getKeyMappings();
     const juce::KeyPress locateKey(juce::KeyPress::F17Key,
                                    juce::ModifierKeys::commandModifier | juce::ModifierKeys::ctrlModifier, 0);
@@ -334,6 +343,11 @@ void scenario(const juce::File& root, int sr)
     check(window.getPeer()->handleKeyPress(locateKey), "actual native peer routes remapped evidence locate shortcut");
     wait([&] { return c.querySummary().at("position_samples") == centre; },
          "real Transport locates reprojected source onset in current Comp within two seconds", 2000);
+    const auto revealed = w.queryView();
+    check(revealed.at("start_samples").get<int64_t>() <= centre &&
+              revealed.at("start_samples").get<int64_t>() + revealed.at("span_samples").get<int64_t>() > centre &&
+              revealed.at("span_samples") == offscreen.at("span_samples"),
+          "evidence locate reveals offscreen target through L1 UI state without changing zoom span");
     check(c.query().at("revision") == beforeLocate.at("revision") &&
               c.query().at("history") == beforeLocate.at("history") && c.query()["tracks"][0]["clips"] == after,
           "source-evidence navigation cannot modify Edit history or Comp audio geometry");
@@ -475,6 +489,7 @@ void cancellation(const juce::File& root)
     check(c.analysisStatus().at("receipt").at("state") == "completed" &&
               c.analysisStatus().at("receipt").at("artifact_id") == foreign,
           "closing unrelated Warp panel did not secretly cancel another analysis job");
+    const auto foreignReceipt = c.analysisStatus().at("receipt");
     w.uiCommands().invokeDirectly(573, false);
     const auto before = c.query();
     const auto refs = AudioDeviceTestAccess::references(c);
@@ -487,14 +502,25 @@ void cancellation(const juce::File& root)
     w.uiCommands().invokeDirectly(277, false);
     wait([&] { return !c.analysisStatus().at("busy").get<bool>(); },
          "closing owning Warp panel obtains terminal cancellation within two seconds", 2000);
+    const double cancelledMs = juce::Time::getMillisecondCounterHiRes() - at;
     check(c.analysisStatus().at("receipt").at("state") == "cancelled" &&
-              c.analysisStatus().at("receipt").at("artifact_id") == owned &&
-              juce::Time::getMillisecondCounterHiRes() - at < 2000,
+              c.analysisStatus().at("receipt").at("artifact_id") == owned && cancelledMs < 2000,
           "cancelled owned measurement has real receipt rather than stale success");
     check(c.query().at("tracks") == before.at("tracks") && c.query().at("history") == before.at("history") &&
               c.query().at("revision") == before.at("revision") && AudioDeviceTestAccess::references(c) == refs &&
               Commands::mediaHash(media) == hash,
           "owned cancellation preserves complete Edit history original references and media");
+    cancellationEvidence = {{"source", media.getFullPathName().toStdString()},
+                            {"source_sha256", hash},
+                            {"foreign_job",
+                             {{"artifact_id", foreign},
+                              {"state", foreignReceipt.at("state")},
+                              {"measured_frames", foreignReceipt.at("frames")}}},
+                            {"owned_job",
+                             {{"artifact_id", owned},
+                              {"state", c.analysisStatus().at("receipt").at("state")},
+                              {"cancel_wall_ms", cancelledMs}}},
+                            {"cancel_budget_ms", 2000}};
 }
 } // namespace
 int main(int argc, char** argv)
@@ -529,6 +555,7 @@ int main(int argc, char** argv)
         report(Json{{"result", "passed"},
                     {"checks", checks},
                     {"measurements", measurements},
+                    {"cancellation", cancellationEvidence},
                     {"root", root.getFullPathName().toStdString()}});
         return 0;
     }

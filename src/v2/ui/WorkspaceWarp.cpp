@@ -45,7 +45,20 @@ void Workspace::showWarp()
         addChildComponent(*warpPanel);
         warpPanel->locator(
             [this](const std::string& clip, const std::string& view, const std::string& session, uint64_t revision)
-            { return commands.locateWarpOnset(clip, view, session, revision); });
+            {
+                const auto receipt = commands.locateWarpOnset(clip, view, session, revision);
+                const auto viewport = commands.uiState();
+                const int64_t position = receipt.at("position_samples"), start = viewport.at("start_samples"),
+                              span = viewport.at("span_samples");
+                if (position < start || position >= start + span)
+                {
+                    const int64_t maximum = std::llround(te::Edit::maximumLength * 48000.);
+                    commands.updateUiState(
+                        {{"start_samples", std::clamp(position - span / 4, int64_t(0), maximum - span)}}, session);
+                }
+                refresh();
+                return receipt;
+            });
         warpPanel->analysisCallbacks(
             [this](const std::string& clip, const Json& profile, const std::string& session, uint64_t revision)
             { return commands.prepareWarpOnsets(clip, profile, session, revision); },
