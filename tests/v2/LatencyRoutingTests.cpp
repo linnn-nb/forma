@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "Workspace.h"
 #include "WorkspaceWindow.h"
+#include <tracktion_graph/tracktion_graph.h>
+#include <tracktion_engine/playback/graph/tracktion_TracktionEngineNode.h>
+#include <tracktion_engine/playback/graph/tracktion_EditNodeBuilder.h>
+#include <tracktion_engine/playback/graph/tracktion_PluginNode.h>
 #include <tracktion_engine/testing/tracktion_EnginePlayer.h>
 #include <fstream>
 #include <iostream>
+#if JUCE_MAC
+#include <AudioUnit/AudioUnit.h>
+#endif
 using namespace ndaw::v2;
 namespace ndaw::v2
 {
@@ -20,6 +27,18 @@ public:
         if (!context)
             throw std::runtime_error("native playback context absent");
         return context->getLatencySamples();
+    }
+    static void
+    observeGraph(Commands& c,
+                 std::function<std::unique_ptr<tracktion::graph::Node>(te::OutputDevice&, const te::CreateNodeParams&,
+                                                                       std::unique_ptr<tracktion::graph::Node>)>
+                     callback)
+    {
+        auto* context = c.edit->getCurrentPlaybackContext();
+        if (!context)
+            throw std::runtime_error("live diagnostic playback context absent");
+        context->setInsertOptionalLastStageNodeForDeviceCallback(std::move(callback));
+        context->reallocate();
     }
     static void nativeAttack(Commands& c, const std::string& id, float value)
     {
@@ -67,6 +86,29 @@ public:
                 {"host_seconds", p->getLatencySeconds()},
                 {"inputs", buses},
                 {"native_parameters", parameters}};
+    }
+    static Json rawLatency(Commands& c, const std::string& id)
+    {
+        auto* p = dynamic_cast<te::ExternalPlugin*>(c.processor(id));
+        if (!p || !p->getAudioPluginInstance())
+            throw std::runtime_error("probe instance absent");
+        auto& native = *p->getAudioPluginInstance();
+        Json result{{"cached_samples", native.getLatencySamples()},
+                    {"host_seconds", p->getLatencySeconds()},
+                    {"graph_samples", graphLatency(c)}};
+#if JUCE_MAC
+        if (auto* client = native.getAudioUnitClient())
+        {
+            Float64 seconds = 0;
+            UInt32 size = sizeof(seconds);
+            const auto status = AudioUnitGetProperty(client->getAudioUnitHandle(), kAudioUnitProperty_Latency,
+                                                     kAudioUnitScope_Global, 0, &seconds, &size);
+            if (status != noErr || size != sizeof(seconds))
+                throw std::runtime_error("read-only native latency probe failed");
+            result["raw_samples"] = juce::roundToInt(seconds * native.getSampleRate());
+        }
+#endif
+        return result; // Read only; never refresh the host cache or dispatch events.
     }
 };
 } // namespace ndaw::v2
@@ -765,7 +807,100 @@ void hosted(const juce::File& root, const juce::File& source, const juce::File& 
         },
         "native stopped status clears the previous active graph report");
 }
-void live(const juce::File& root)
+// Diagnostic only: observe real summing inputs; never synthesize/shift/replace a
+// signal. The normal registered --live workload does not install this node.
+struct LivePathCapture
+{
+    juce::AudioBuffer<float> native{2, 2048 * 512}, compensated{2, 2048 * 512};
+    int frames = 0;
+    bool valid = true;
+};
+class LivePathProbe final : public tracktion::graph::Node
+{
+public:
+    LivePathProbe(std::unique_ptr<Node> input, std::shared_ptr<LivePathCapture> capture, std::string plugin)
+        : input(std::move(input)), capture(std::move(capture)), plugin(std::move(plugin))
+    {
+    }
+    tracktion::graph::NodeProperties getNodeProperties() override
+    {
+        return input->getNodeProperties();
+    }
+    std::vector<Node*> getDirectInputNodes() override
+    {
+        return {input.get()};
+    }
+    bool isReadyToProcess() override
+    {
+        return input->hasProcessed();
+    }
+    void prepareToPlay(const tracktion::graph::PlaybackInitialisationInfo&) override
+    {
+        find(*input);
+        if (!native || !compensated)
+            throw std::runtime_error("diagnostic actual parallel summing inputs absent");
+    }
+    void process(ProcessContext& pc) override
+    {
+        const auto source = input->getProcessedOutput();
+        const auto a = native->getProcessedOutput(), b = compensated->getProcessedOutput();
+        const int count = int(pc.numSamples), offset = capture->frames;
+        const bool valid = a.audio.getNumFrames() == pc.numSamples && b.audio.getNumFrames() == pc.numSamples &&
+                           a.audio.getNumChannels() == 2 && b.audio.getNumChannels() == 2 &&
+                           offset + count <= capture->native.getNumSamples();
+        capture->valid = capture->valid && valid;
+        for (choc::buffer::ChannelCount ch = 0; ch < pc.buffers.audio.getNumChannels(); ++ch)
+            for (choc::buffer::FrameCount n = 0; n < pc.numSamples; ++n)
+            {
+                pc.buffers.audio.getSample(ch, n) = source.audio.getSample(ch, n);
+                if (valid && ch < 2)
+                {
+                    capture->native.setSample(int(ch), offset + int(n), a.audio.getSample(ch, n));
+                    capture->compensated.setSample(int(ch), offset + int(n), b.audio.getSample(ch, n));
+                }
+            }
+        pc.buffers.midi.copyFrom(source.midi);
+        capture->frames += count;
+    }
+
+private:
+    bool contains(Node& node)
+    {
+        if (auto* p = dynamic_cast<te::PluginNode*>(&node);
+            p && p->getPlugin().itemID.toString().toStdString() == plugin)
+            return true;
+        for (auto* child : node.getDirectInputNodes())
+            if (contains(*child))
+                return true;
+        return false;
+    }
+    void find(Node& node)
+    {
+        const auto children = node.getDirectInputNodes();
+        // The outer sum can be (already nulled tracks + silent click). Find
+        // the innermost parallel join, before its cancellation, instead.
+        for (auto* child : children)
+            if (!native)
+                find(*child);
+        if (native)
+            return;
+        if (dynamic_cast<tracktion::graph::SummingNode*>(&node) && children.size() == 2)
+        {
+            const bool a = contains(*children[0]), b = contains(*children[1]);
+            if (a != b)
+            {
+                native = children[a ? 0 : 1];
+                compensated = children[a ? 1 : 0];
+                return;
+            }
+        }
+    }
+    std::unique_ptr<Node> input;
+    std::shared_ptr<LivePathCapture> capture;
+    std::string plugin;
+    Node *native = nullptr, *compensated = nullptr;
+};
+void live(const juce::File& root, bool diagnostic = false, bool requireContinuity = false)
 {
     const auto source = root.getChildFile("Live-Noise.wav"), negative = root.getChildFile("Live-Reverse.wav");
     fixture(source, 3);
@@ -790,6 +925,11 @@ void live(const juce::File& root)
     auto& host = engine.getDeviceManager().getHostedAudioDeviceInterface();
     c.seek(37);
     c.play();
+    auto paths = diagnostic ? std::make_shared<LivePathCapture>() : nullptr;
+    if (paths)
+        AudioDeviceTestAccess::observeGraph(
+            c, [paths, plugin = p["id"].get<std::string>()](auto&, const auto&, auto node)
+            { return std::make_unique<LivePathProbe>(std::move(node), paths, plugin); });
     wait(
         [&]
         {
@@ -806,6 +946,7 @@ void live(const juce::File& root)
     const auto began = juce::Time::getMillisecondCounterHiRes();
     int captured = 0, readyBlock = -1;
     double changeTime = 0, readyMs = -1;
+    Json trace = Json::array();
     for (int n = 0; n < 2048; ++n)
     {
         if (n == 128)
@@ -814,6 +955,10 @@ void live(const juce::File& root)
             check(c.realtimeState().playing, "transport is actually playing at the native latency edit");
             changeTime = juce::Time::getMillisecondCounterHiRes();
             AudioDeviceTestAccess::nativeAttack(c, p["id"], .5f);
+            if (diagnostic)
+                trace.push_back({{"block", n},
+                                 {"phase", "immediately_after_setter_before_process"},
+                                 {"latency", AudioDeviceTestAccess::rawLatency(c, p["id"])}});
         }
         block.clear();
         midi.clear();
@@ -822,7 +967,16 @@ void live(const juce::File& root)
         durations.push_back((juce::Time::getMillisecondCounterHiRes() - start) * 1000);
         for (int ch = 0; ch < 2; ++ch)
             output.copyFrom(ch, n * 512, block, ch, 0, 512);
+        if (diagnostic && n >= 128 && n < 160)
+            trace.push_back({{"block", n},
+                             {"phase", "after_process_before_dispatch"},
+                             {"peak", block.getMagnitude(0, 512)},
+                             {"latency", AudioDeviceTestAccess::rawLatency(c, p["id"])}});
         juce::MessageManager::getInstance()->runDispatchLoopUntil(1);
+        if (diagnostic && n >= 128 && n < 160)
+            trace.push_back({{"block", n},
+                             {"phase", "after_dispatch"},
+                             {"latency", AudioDeviceTestAccess::rawLatency(c, p["id"])}});
         captured = n + 1;
         const auto graph = c.deviceStatus()["playback_graph_latency"];
         if (n >= 128 && readyBlock < 0 && graph["available"].get<bool>() && graph["samples"] == 732)
@@ -842,6 +996,48 @@ void live(const juce::File& root)
     const auto human = c.query()["native_plugin_states"]["last_capture"];
     const auto path = root.getChildFile("PDC-Live-Transition.wav");
     writeCaptured(path, output);
+    Json pathReport = nullptr;
+    if (paths)
+    {
+        check(paths->valid && paths->frames == output.getNumSamples(),
+              "diagnostic captures both actual branches for every processed frame including Loop splits");
+        paths->native.setSize(2, paths->frames, true, false, true);
+        paths->compensated.setSize(2, paths->frames, true, false, true);
+        const auto a = root.getChildFile("PDC-Live-Native-Branch.wav"),
+                   b = root.getChildFile("PDC-Live-Compensated-Branch.wav");
+        writeCaptured(a, paths->native);
+        writeCaptured(b, paths->compensated);
+        double sumError = 0;
+        int firstActive = -1, commonZero = 0;
+        for (int n = 0; n < paths->frames; ++n)
+        {
+            bool silent = true;
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                const auto x = paths->native.getSample(ch, n), y = paths->compensated.getSample(ch, n);
+                silent = silent && x == 0 && y == 0;
+                sumError = std::max(sumError, std::abs(double(x + y) - output.getSample(ch, n)));
+            }
+            if (n >= 128 * 512 && firstActive < 0)
+            {
+                if (silent)
+                    ++commonZero;
+                else
+                    firstActive = n;
+            }
+        }
+        pathReport = {{"scope", "test-only read-only summing-input capture; no synthetic signal or shift"},
+                      {"native_file", a.getFullPathName().toStdString()},
+                      {"compensated_file", b.getFullPathName().toStdString()},
+                      {"native_sha256", Commands::mediaHash(a)},
+                      {"compensated_sha256", Commands::mediaHash(b)},
+                      {"frames", paths->frames},
+                      {"sum_error", sumError},
+                      {"common_zero_frames_after_change", commonZero},
+                      {"first_active_frame_after_change", firstActive},
+                      {"native_peak", paths->native.getMagnitude(128 * 512, paths->frames - 128 * 512)},
+                      {"compensated_peak", paths->compensated.getMagnitude(128 * 512, paths->frames - 128 * 512)}};
+    }
     const double prefix = output.getMagnitude(0, 128 * 512),
                  suffix = output.getMagnitude(128 * 512, output.getNumSamples() - 128 * 512),
                  settled = output.getMagnitude(output.getNumSamples() - 64 * 512, 64 * 512);
@@ -866,7 +1062,13 @@ void live(const juce::File& root)
                             {"ready_ms", readyMs},
                             {"first_failed_samples", failures},
                             {"process_max_us", durations.back()},
+                            {"read_only_diagnostic", trace},
+                            {"diagnostic_paths", pathReport},
                             {"capture_ms", juce::Time::getMillisecondCounterHiRes() - began}});
+    if (paths)
+        check(pathReport["sum_error"].get<double>() <= 2e-6 && pathReport["native_peak"].get<double>() > .01 &&
+                  pathReport["compensated_peak"].get<double>() > .01,
+              "real nonzero branches explain the entire null output; common zero interval reported separately");
     check(Commands::mediaHash(source) == sourceHash && Commands::mediaHash(negative) == negativeHash,
           "live native changes preserve both original source hashes");
     check(prefix <= 2e-6, "wideband actual playing paths cancel before the latency change");
@@ -881,6 +1083,9 @@ void live(const juce::File& root)
     check(durations.back() <= 1e6 * 512 / 48000, "all measured live hosted blocks meet original deadline");
     check(settled <= 2e-6, "actual dynamic graph eventually restores complete parallel phase cancellation");
     check(suffix <= 2e-6, "complete live latency transition retains parallel alignment without cropping samples");
+    if (requireContinuity)
+        check(pathReport["common_zero_frames_after_change"] == 0,
+              "actual parallel branches must not share a silent re-priming gap during the latency change");
 }
 } // namespace
 int main(int argc, char** argv)
@@ -919,6 +1124,10 @@ int main(int argc, char** argv)
             hosted(root, source, negative, main, key);
         else if (argc > 2 && std::string(argv[2]) == "--live")
             live(root);
+        else if (argc > 2 && std::string(argv[2]) == "--live-probe")
+            live(root, true);
+        else if (argc > 2 && std::string(argv[2]) == "--live-continuity")
+            live(root, true, true);
         else
             qualify(root, source, negative, main, key);
         int i = 0;

@@ -1,8 +1,18 @@
-# 插件延迟补偿（2026-10-18）
+# 插件延迟补偿（2026-10-19）
 
-当前第二轮：f80dec3/386dd6f，8/9套/已通过1005项，持续变化严格瞬态仍失败，不能称完整PDC通过。39份Hosted PCM最大差1.1920928955078125e-07≤2e-6；live原生/图732收敛约110.202ms，但过渡0.12353515625超预算；P2-PDC-LIVE-01发布阻断继续保留正常CTest。完整细节VERIFICATION.md首节，证据build-v2-tracktion/P2-PDC-Hosted-Partial-20261018T133532Z。正常重启后播放、悬停设备状态看图报告；停止不可用，不代表实测硬件往返。下文首轮离线资格按历史范围保留。
+**部分修复，P2-PDC-LIVE-01仍发布阻断。** 消息线程AU延迟交接已令原正常完整过渡残差0≤2e-6；但实际两个分支在切换时共同静音732采样/15.25ms，新正常连续性测试仍失败。原48k/双声道/512/非块对齐Loop和完整采集保持，不能把抵消0称为无间断声音、实体实时或完整PDC通过。
 
-结论：P2-PDC-01限定的48k双声道离线与native peer界面流程已验证，完整P2/产品、物理往返/实时播放/全部插件尚未验收。首批静态63项通过；最终同批7/7、705项/178.93秒；其中新路由136项/17.02秒，原生面板58项/4.37秒。预算为实施前声明值，没有裁测试或放宽容差。
+本轮同批7/8、通过套件788项/130.29秒，原human状态、Undo/Redo/冷开/原生peer键回归通过。代码NativePluginStates、tracktion-native-latency-handoff.patch、LatencyRoutingTests，原TE/JUCE pin不变、24补丁60文件fresh/reverse通过。详细根因、测试表及产物见VERIFICATION首节；索引build-v2-tracktion/p2-pdc-root-current-results.json。正常保存退出后重启唯一App才用磁盘新版；保留用户旧进程与工程。
+
+## 实际变化与限制
+
+原生AU setter返回时实际属性已732，旧缓存/图却96，直到异步派发才替换。L1只对非渲染重入、非录音/冻结/印刻的message-thread AU通知同步刷新既有SDK元数据并重建图；其它路径保留异步。音频回调新增的只有栈上lock-free深度标记，不是插件并发锁；全SDK实时安全未验收。
+
+原正常live不装探针；额外只读诊断在最内层并联汇合前采集两路，保留所有Loop子块。独立PCM24解码全131584帧与源/Loop/原生延迟映射误差0，真实两路峰均0.0625，帧65536–66267共同为0。因此持续切换仍有已测缺口。分析的是公开音频与实际报告，不解释专有AU内部状态。
+
+重现：先构建ndaw_latency_routing_tests并确认exit0，再串行运行 `ctest --test-dir build-v2-tracktion -R '^forma_latency_(live_change|live_continuity)$' --output-on-failure`。预期当前一项通过、一项真实失败；不得加WILL_FAIL或裁掉静音。没有测试实体驱动XRUN、物理环回、并发/压力或用户听评。
+
+以下为此前已验证的静态/Hosted工作流与历史预算，旧“当前失败”状态由上文更新，不能删除未通过范围。
 
 ## 实际功能与亲手试
 

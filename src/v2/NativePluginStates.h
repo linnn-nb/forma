@@ -3,7 +3,8 @@
 #include <nativedaw/v2/EngineCommands.h>
 namespace ndaw::v2
 {
-// L1 owns these checkpoints. The processor callback only sets lock-free flags.
+// L1 owns these checkpoints. Render/off-message callbacks only publish flags;
+// idle message-thread native edits may synchronously hand off latency metadata.
 class NativePluginStates final : private juce::Timer
 {
 public:
@@ -31,6 +32,7 @@ private:
     struct Snapshot;
     struct Watch;
     struct Action;
+    void refreshLiveLatency(Watch&);
     std::shared_ptr<Snapshot> read(Watch&, bool restoring = false);
     std::shared_ptr<Snapshot> before(Watch&);
     void apply(const std::string&, const Snapshot&);
@@ -42,6 +44,7 @@ private:
     std::map<std::string, std::shared_ptr<Snapshot>> parameterBefore;
     Json last = nullptr;
     bool draining = false;
+    bool refreshingLiveLatency = false;
     uint64_t reads = 0;
     double lastReadMs = 0, maxReadMs = 0;
 };

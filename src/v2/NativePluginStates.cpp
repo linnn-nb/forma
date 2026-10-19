@@ -42,8 +42,9 @@ struct NativePluginStates::Snapshot
 };
 struct NativePluginStates::Watch final : juce::AudioProcessorListener
 {
-    explicit Watch(te::ExternalPlugin& p)
-        : plugin(&p), instance(*p.getAudioPluginInstance()), mainThread(juce::Thread::getCurrentThreadId())
+    Watch(NativePluginStates& service, te::ExternalPlugin& p)
+        : service(service), plugin(&p), instance(*p.getAudioPluginInstance()),
+          mainThread(juce::Thread::getCurrentThreadId())
     {
         publicIndices.resize(size_t(instance.getParameters().size()), false);
         for (auto* a : p.getAutomatableParameters())
@@ -73,15 +74,24 @@ struct NativePluginStates::Watch final : juce::AudioProcessorListener
             return;
         }
         if (unmapped)
+        {
             dirty.fetch_or(index == programSelector.load(std::memory_order_relaxed) ? 1u : 4u,
                            std::memory_order_relaxed);
+            if (juce::Thread::getCurrentThreadId() == mainThread && !plugin->isProcessingAudio())
+                service.refreshLiveLatency(*this);
+        }
     }
     void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& d) override
     {
         // Read-only processor metadata is independent of ownership and Undo.
-        // The callback only publishes a lock-free flag; L1 refreshes on message thread.
+        // Render/off-message callbacks only publish a lock-free flag. The idle
+        // message-thread AU path can hand off known latency before returning.
         if (d.latencyChanged)
+        {
             latencyDirty.store(1, std::memory_order_relaxed);
+            if (juce::Thread::getCurrentThreadId() == mainThread && !plugin->isProcessingAudio())
+                service.refreshLiveLatency(*this);
+        }
         if (!isOwned())
         {
             uint32_t bits = (d.programChanged ? 1u : 0u) | (d.nonParameterStateChanged ? 2u : 0u);
@@ -99,7 +109,8 @@ struct NativePluginStates::Watch final : juce::AudioProcessorListener
         if (programCandidate >= 0)
             programSelector.store(programCandidate, std::memory_order_relaxed);
     }
-    te::Plugin::Ptr plugin;
+    NativePluginStates& service;
+    te::ExternalPlugin::Ptr plugin;
     juce::AudioPluginInstance& instance;
     const juce::Thread::ThreadID mainThread;
     std::vector<bool> publicIndices;
@@ -294,7 +305,7 @@ void NativePluginStates::sync(bool checkpoint, const std::set<std::string>& targ
             auto found = watches.find(key);
             if (found == watches.end())
             {
-                auto w = std::make_unique<Watch>(*ext);
+                auto w = std::make_unique<Watch>(*this, *ext);
                 w->suppress.store(uint32_t(owner.ownedParameterWrites), std::memory_order_relaxed);
                 try
                 {
@@ -443,6 +454,42 @@ void NativePluginStates::publish(Watch& w, std::shared_ptr<Snapshot> old, std::s
     w.dirty.store(0, std::memory_order_relaxed);
     w.invalidated = false;
     w.error = nullptr;
+}
+void NativePluginStates::refreshLiveLatency(Watch& watch)
+{
+    owner.checkThread();
+#if JUCE_MAC
+    if (!watch.instance.getAudioUnitClient())
+        return;
+#else
+    return;
+#endif
+    if (refreshingLiveLatency || draining || owner.ownedParameterWrites > 0 || !owner.recordingCapture.is_null() ||
+        !owner.edit->getTransport().isPlaying() || !owner.edit->getTransport().isAllowedToReallocate() ||
+        watch.plugin->isProcessingAudio() || watch.plugin->isFrozen() ||
+        bool(watch.plugin->state.getProperty("ndaw_print_baked", false)))
+        return;
+    juce::ScopedValueSetter<bool> updating(refreshingLiveLatency, true);
+    try
+    {
+        Commands::ParameterWriteGuard guard(owner);
+        refreshNativeLatency(watch.instance);
+        if (watch.plugin->refreshLatencyFromInstance())
+        {
+            // Existing graph preparation/publication on the message thread,
+            // before returning to the UI caller. No event pump or state read.
+            if (auto* context = owner.edit->getCurrentPlaybackContext())
+                context->reallocate();
+            owner.processorCache.erase(id(*watch.plugin));
+            owner.invalidateFacts();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        // Do not tear down an editor while it is notifying parameter listeners.
+        // Existing drain will surface the genuine failure and handle stopping.
+        fail(watch, e);
+    }
 }
 void NativePluginStates::drain()
 {

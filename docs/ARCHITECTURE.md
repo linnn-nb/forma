@@ -1,3 +1,9 @@
+2026-10-19 PDC交接增量：只在L1 NativePluginStates的message-thread、空闲原生AU通知路径刷新真实延迟与SDK元数据，再用既有EditPlaybackContext重建/发布图；非主线程和render通知仍只置原子标记。SDK ExternalPlugin的栈上processingDepth为lock-free重入检测，不能当并发互斥或全RT资格；记录为tracktion-native-latency-handoff.patch，唯一引擎、原actor/revision/停止后human状态事务不变。VST、录音/冻结/印刻不走本次同步捷径。
+
+相对对齐已测通过，真实共同静音15.25ms仍失败，不引入停止/静音遮掩或第二引擎；整个PDC发布阻断保留。测试只读分支探针不进入App或统一工具层，M2/M3不变；具体资格见VERIFICATION/PDC_WORKFLOW首节。
+
+---
+
 2026-10-19 兼容第二轮：L1直接从原生组/主输出/Aux槽位查询报告，不借全queryFacts触发插件捕获；L5定位复验版本与成员，只写原UiState并核对选择/滚动回执。ProjectDocument同时预检历史的未知组schema；原Group/Route协议不变，无新RT/引擎/服务/M2M3工具。五套425项限定资格见VERIFICATION，模块两轮收口。
 
 2026-10-19 工程兼容性：L1 projectCompatibility只读扫描当前Edit及已保留历史要求，L5原生报告展示快照/版本失效，不写Edit或新增M2/M3工具。Print读取能力采用schema2，旧schema1两个已知v1遗漏在原payload/历史校验后有限迁移；原音频不重渲染。旁链沿用TE原生存储，插件不透明子树不解释。实际范围见PROJECT_FORMAT/PROJECT_COMPATIBILITY/VERIFICATION。

@@ -1,0 +1,65 @@
+diff --git a/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp b/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp
+index ba77f68..be784a2 100644
+--- a/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp
++++ b/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp
+@@ -1372,8 +1372,38 @@ void ExternalPlugin::prepareIncomingMidiMessages (MidiMessageArray& incoming, in
+     incoming.clear();
+ }
+ 
++bool ExternalPlugin::refreshLatencyFromInstance()
++{
++    TRACKTION_ASSERT_MESSAGE_THREAD
++    if (! isInstancePrepared.load (std::memory_order_acquire))
++        return false;
++
++    if (auto* pi = getAudioPluginInstance())
++        if (const auto samples = pi->getLatencySamples(); samples >= 0 && samples != latencySamples)
++        {
++            latencySamples = samples;
++            latencySeconds = samples / sampleRate;
++            return true;
++        }
++
++    return false;
++}
++
+ void ExternalPlugin::applyToBuffer (const PluginRenderContext& fc)
+ {
++    // Covers manually clocked hosted renders on the message thread too. This
++    // is a re-entry guard, not a lock for synchronising plugin internals.
++    static_assert (std::atomic<uint32_t>::is_always_lock_free);
++    struct ProcessingActivity
++    {
++        std::atomic<uint32_t>& depth;
++        explicit ProcessingActivity (std::atomic<uint32_t>& value) noexcept : depth (value)
++        {
++            depth.fetch_add (1, std::memory_order_acq_rel);
++        }
++        ~ProcessingActivity() noexcept { depth.fetch_sub (1, std::memory_order_release); }
++    } activity (processingDepth);
++
+     if (! hasLoadedInstance.load (std::memory_order_acquire))
+         return;
+ 
+diff --git a/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.h b/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.h
+index 4ecc96d..b4c94f5 100644
+--- a/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.h
++++ b/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.h
+@@ -111,6 +111,9 @@ public:
+     bool isMissing() override;
+     bool isDisabled() override;
+     double getLatencySeconds() override     { return latencySeconds; }
++    // Message-thread metadata handoff; no parameter list or opaque state reload.
++    bool refreshLatencyFromInstance();
++    bool isProcessingAudio() const noexcept { return processingDepth.load (std::memory_order_acquire) != 0; }
+     bool noTail() override;
+     double getTailLength() const override;
+     void trackPropertiesChanged() override;
+@@ -208,6 +211,7 @@ private:
+     class LoadedInstance;
+     std::unique_ptr<LoadedInstance> loadedInstance;
+     std::atomic<bool> hasLoadedInstance { false }, isInstancePrepared { false }, isAsyncInitialising { false };
++    std::atomic<uint32_t> processingDepth { 0 };
+     bool deleteInstanceSynchronously = false;
+ 
+    #if TRACKTION_ENABLE_ARA

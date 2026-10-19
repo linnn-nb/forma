@@ -1,3 +1,19 @@
+# 当前：播放中AU延迟交接（2026-10-19，部分修复）
+
+**P2-PDC-LIVE-01仍发布阻断。** 消息线程已把实际AU延迟及时交给原生图，原正常完整过渡抵消测试从0.123535变成0；另测真实两路后确认共同静音732帧/15.25ms。新正常CTest `forma_latency_live_continuity` 仍失败，不标预期成功或放宽原预算；零残差不再冒充连续性。
+
+同批8套串行130.29秒：7/8、通过套件788项；原生opaque状态/自动化、原历史、静态路由/原生工作区/Hosted/原live通过，连续性29项后失败。原48k/512/Loop/完整区间/2e-6保持，正常live131584帧残差0、图8.7305ms收敛、processBlock最大157.708µs。只验证虚拟Hosted图，不是实体XRUN、RT并发或听评。
+
+只读AU探针明确原setter后raw732而缓存/图96；独立基线信号模型全PCM误差0。新探针最内层真实汇合点采两路，各峰0.0625；独立PCM24对源/Loop全帧误差0，两路帧65536–66267确为共同静音。初次误取已相消总线+click的失败、原红测试和编译失败均保留；修正后再构建测试。
+
+App/CLI Release及本地deep/strict通过、未公证。唯一App SHA40e758e0f3549f00c70c59c5859b41c133b30849612de83b8e4b13f0470e51b6；实现SHAc0cc277116d0ee92c37d8b5331cbf6811fc93c99d6f157c4cbf5e365f0be4997（173输入）独立重算匹配。TE/JUCE pin保持，新增审计交接补丁，24/60 fresh/reverse通过；不提交脏SDK指针。原84585保留，无新包/App副本/媒体上传。
+
+代码NativePluginStates、patches/tracktion-native-latency-handoff.patch和LatencyRoutingTests；当前索引build-v2-tracktion/p2-pdc-root-current-results.json，最终连续性WAV目录P2-PDC-b76f7e4578d14a60b52efa8cc7ba5061。详细断言/日志/产物及剩余静音见docs/VERIFICATION.md首节和PDC_WORKFLOW.md。继续核心静音根因，不扩矩阵；性能A/分析/硬件/RT/耐久/平台/发行等仍未完成。
+
+以下为历史证据。
+
+---
+
 # 当前：路由 / 组报告与导航（2026-10-19，两轮收口）
 
 8155595增加原生主输出/Pre/Post发送/编辑混音组报告及对象定位（⌘⌃⌥F8，可改键）。L1读取真实原生引用，缺失/歧义保留ID/Bus，旧报告不能定位；实际视图回执后关闭，原编辑历史保持。组schema2/稳定输出实现早于首个保护封装，发送为原生插件数据，不增加伪能力/格式版本。历史未知组版本现在在接管工程前拒绝。

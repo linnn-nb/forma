@@ -1,3 +1,48 @@
+# 当前：AU 延迟交接与真实过渡静音（2026-10-19）
+
+**部分修复，P2-PDC-LIVE-01仍为发布阻断。** 原正常注册的 `forma_latency_live_change` 完整区间残差已由0.12353515625降为0，未改2e-6或原负载。但对真实两路分别采集后发现共同静音732采样/15.25ms；新增正常注册的 `forma_latency_live_continuity` 保持失败，没有WILL_FAIL/禁用/裁样本。不能把零残差称为无间断播放、完整PDC或产品验收通过。
+
+## 根因与改动
+
+- 原源基线构建exit0，原CTest exit8：设备帧65536–71387共5852帧残差，稳定尾段为0。独立PCM24叠加模型逐样本误差0：已变AU路径先出现732帧零前缀，原补偿96持续到新图首块70656，新的732补偿再次预充。此模型是信号推断，不声称读取专有插件内部状态。
+- 只读探针：原生setter返回时AU实际属性已为732，JUCE缓存/TE/图仍96；原probe到block136派发后才收敛。基线及probe失败都保留，不能用新成功覆盖。
+- `src/v2/NativePluginStates.cpp/.h`：仅macOS AU、播放且允许重分配、非录音/冻结/印刻、非原生render重入的message-thread通知，刷新已有真实属性/SDK元数据并调用原生context.reallocate。不读opaque状态、不泵消息或睡眠；human原状态事务仍在正常停止时捕获。VST与其它线程/渲染回调继续原异步标记，不宣称已验证其动态延迟。
+- `patches/tracktion-native-latency-handoff.patch`：ExternalPlugin增加message-thread元数据交接和栈上lock-free processingDepth重入标记；后者不是互斥锁，也不证明任意并发插件安全。唯一Tracktion引擎与L1写入口保留，无固定IPC延迟。整个SDK实时安全仍未验收。
+- `tests/v2/LatencyRoutingTests.cpp`：诊断模式读取真实AU属性，额外只读Node在最终相消前采集两条实际分支；预分配，逐子块覆盖Loop分界，不生成/移位/替换信号。初次探针误取“已相消总线+静音click”而失败，已改为最内层并联汇合点并验证两路非零、和等于实际设备输出。原--live不安装该探针。
+
+## 同批最终结果
+
+显式配置及App/CLI/四个受影响测试目标Release构建exit0；8套串行130.29秒，**7/8，通过套件788项**。失败套件29项后在无共同静音断言失败，不能计作通过套件。
+
+| 正常注册套件 | 检查 | 秒 | 结果 |
+|---|---:|---:|---|
+| forma_persistent_native_history | 86 | 38.21 | 通过 |
+| tracktion_external_plugin_automation | 87 | 25.09 | 通过 |
+| tracktion_native_plugin_states | 92 | 20.61 | 通过 |
+| forma_latency_routing | 136 | 18.41 | 通过 |
+| forma_latency_workspace | 58 | 4.68 | 通过 |
+| forma_latency_hosted | 300 | 15.47 | 通过 |
+| forma_latency_live_change | 29 | 3.89 | 通过：完整相对对齐 |
+| forma_latency_live_continuity | 29后失败 | 3.91 | 失败：实际两路共同静音 |
+
+仍用48k/双声道/512、Loop起37长24113、第128块改变实际AUPeakLimiter1.6.0非自动化Attack Time至.5，完整采集到新图后128块；不停止、静音、移源或裁过渡使测试通过。正常live为131584帧，残差0，报告在block128/8.7305ms收敛，最大processBlock157.708µs，小于原10.666667ms；图预算2秒、采集10秒、套件180秒未变。Hosted虚拟采样时钟不能证明实体设备XRUN/往返/并发RT或听评。
+
+独立Python正确解码PCM24：失败连续性试验的两条真实分支全131584帧与实际源/已知Loop/原生96→732映射逐样本误差分别0，整个和与设备输出误差0。两路峰均0.0625；帧65536–66267确实共同为0、66268起恢复有声。这是**已测出的缺口**，不是连续性通过。原媒体SHA保持，原Undo/Redo/保存冷开/原生peer快捷键与状态回归通过；未执行实体键盘/鼠标或用户听评。
+
+## 产物、审计与日志
+
+唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，二进制SHA `40e758e0f3549f00c70c59c5859b41c133b30849612de83b8e4b13f0470e51b6`；本地deep/strict通过、未公证。173输入独立实现SHA `c0cc277116d0ee92c37d8b5331cbf6811fc93c99d6f157c4cbf5e365f0be4997` 与生成头/App字面值匹配。TE/JUCE pin不变；24patch/60文件fresh apply、字节核对、reverse通过，SDK diff SHA `79afe8c6ee1db817953496917627c2390f1a6ee15b5beed1d6e01f32e4bf2627`；脏SDK指针不提交。
+
+当前索引 `build-v2-tracktion/p2-pdc-root-current-results.json`，最终日志/JUnit为p2-pdc-root-final-tests.log/.xml（exit8）；独立完整PCM为p2-pdc-root-path-independent-final.json，SDK/身份/验签分别p2-pdc-root-sdk-replay-final.json、p2-pdc-root-identity-audit.log、p2-pdc-root-signature-final.log。原编译缺图头/字符串比较歧义、错误采集位置和原过渡失败日志均保留，修复后构建exit0再测。
+
+最终实际连续性文件目录 `build-v2-tracktion/P2-PDC-b76f7e4578d14a60b52efa8cc7ba5061/`（Transition/Native-Branch/Compensated-Branch三个WAV）；正常无探针目录P2-PDC-80acadbf44df40e993db63bac2b82f13。源码/媒体未上传，无新DMG或App副本；原84585及其工程/设备保留，正常保存退出再重启才用磁盘新版。
+
+磁盘最低114MiB，只清理23个未运行可重建测试程序，逻辑797496384字节，审计p2-pdc-root-rebuildable-cleanup.json；未删源码/媒体/工程/日志/唯一App，不把APFS其它回收归因于这797MB。下一项仍为既有PDC静音根因/切换策略，不追加插件或路由矩阵；性能A15.84%>15%、分析失效/超时、实体/RT/耐久/Windows/视频/环绕/发行和完整架构仍未完成，M2/M3冻结、M4/M5暂缓。
+
+以下“当前”为历史记录，以本节为准。
+
+---
+
 # 当前：路由 / 组报告与定位（2026-10-19，兼容模块第二轮收口）
 
 **8155595：五套受影响CTest同批5/5、425项/52.34秒通过。** 原生“文件→工程兼容性…”现在显示实际主输出、原稳定输出引用、Pre/Post发送目标/电平及Edit/Mix组成员。对象选择框可定位轨道或整组（默认⌘⌃⌥F8，可改键）：复核session/revision及完整成员后，用既有L1 UiState选择并滚动到可见行，收到实际视图回执才关闭报告。只改视图/选择；原编辑、Undo/Redo和媒体保持。保存重开、自定义⌘⌃F19、过期报告拒绝定位/刷新、原生异步动作已验。主入口仍⌘⌃⌥I，报告⌘R/Esc。
