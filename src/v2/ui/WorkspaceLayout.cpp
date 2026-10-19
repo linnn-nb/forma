@@ -23,6 +23,7 @@ juce::PopupMenu Workspace::getMenuForIndex(int index, const juce::String&)
         addMenuCommand(p, 44);
         addMenuCommand(p, 45);
         addMenuCommand(p, 40);
+        addMenuCommand(p, 653);
         p.addSeparator();
         addMenuCommand(p, 5);
         p.addSeparator();
@@ -314,6 +315,11 @@ void Workspace::filesDropped(const juce::StringArray& files, int, int)
 
 bool Workspace::keyPressed(const juce::KeyPress& key)
 {
+    if (projectCompatibilityPanel && projectCompatibilityPanel->isVisible())
+    {
+        projectCompatibilityPanel->keyPressed(key);
+        return true;
+    }
     if (exitPanel && exitPanel->isVisible())
         return exitPanel->keyPressed(key);
     if (preferencesPanel && preferencesPanel->isVisible() && key == juce::KeyPress::escapeKey)
@@ -500,6 +506,8 @@ void Workspace::resized()
         stemsPanel->setBounds(getLocalBounds());
     if (preferencesPanel)
         preferencesPanel->setBounds(getLocalBounds());
+    if (projectCompatibilityPanel)
+        projectCompatibilityPanel->setBounds(getLocalBounds());
     if (rollPanel)
         rollPanel->setBounds(getLocalBounds());
     if (musicEventPanel)

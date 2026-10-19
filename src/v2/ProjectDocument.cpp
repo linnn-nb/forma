@@ -27,6 +27,19 @@ void add(Requirements& out, const std::string& id, int v)
 }
 void descriptor(const juce::String& type, juce::ValueTree node, Requirements& out, bool path = false)
 {
+    // Host-owned fields only. PLUGIN descendants and saved vendor blobs are
+    // opaque; a direct host bypass flag is interpreted by our graph builder.
+    if (type == "TRACK" && (node.hasProperty("ndaw_freeze_file") || node.hasProperty("ndaw_freeze_frames") ||
+                            node.hasProperty("ndaw_freeze_hash") || node.hasProperty("ndaw_freeze_origin")))
+        add(out, "audio.print.freeze-cache", 1);
+    if ((type == "TRACK" && node.hasProperty("ndaw_bounce_active")) ||
+        (type == "PLUGIN" && node.hasProperty("ndaw_print_baked")) ||
+        (type == "PLAYLIST" && node["role"].toString() == "bounce"))
+        add(out, "audio.print.bounce-playlist", 1);
+    if (type == "NDAW_BOUNCE")
+        add(out, "audio.print.bounce-playlist", node.hasProperty("schema") ? version(node["schema"]) : 1);
+    if (type == "PLUGIN")
+        return;
     if (type == "NDAW_PLAYLISTS" && node.hasProperty("midi_link_schema"))
         add(out, "midi.linked-comp", version(node["midi_link_schema"]));
     if (type == "PLAYLIST" && node.hasProperty("linked_schema") && version(node["linked_schema"]) > 1)
@@ -81,7 +94,7 @@ const Requirements& supported()
         {"audio.elastic.proxy-window", 1}, {"audio.clipfx.full-input", 1},   {"audio.fade.inherited", 1},
         {"midi.sample-origin", 1},         {"playlist.comp.provenance", 1},  {"midi.loop-capture", 1},
         {"midi.punch-capture", 1},         {"midi.playlist-editing", 1},     {"midi.linked-comp", 1},
-        {"history.runtime-boundary", 1}};
+        {"history.runtime-boundary", 1},   {"audio.print.freeze-cache", 1},  {"audio.print.bounce-playlist", 1}};
     return features;
 }
 void collect(juce::ValueTree node, Requirements& out)
@@ -93,18 +106,26 @@ void collect(juce::ValueTree node, Requirements& out)
             add(out, "history.runtime-boundary", schema - 2);
         return; // Encoded entries are checked by PersistentHistory, not opaque text traversal.
     }
+    descriptor(node.getType().toString(), node, out);
     if (node.hasType("PLUGIN"))
         return;
-    descriptor(node.getType().toString(), node, out);
     if (node.hasType("CHANGE"))
     {
         const auto path = Json::parse(node["path"].toString().toStdString(), nullptr, false);
         require(path.is_array() && path.size() <= 128, "撤销历史的能力路径损坏");
-        for (const auto& part : path)
-            if (part.value("type", std::string{}) == "PLUGIN")
-                return;
-        for (const auto& part : path)
+        for (size_t i = 0; i < path.size(); ++i)
+            if (path[i].is_object() && path[i].value("type", std::string{}) == "PLUGIN")
+            {
+                if (i + 1 == path.size())
+                {
+                    descriptor("PLUGIN", node.getChildWithName("BEFORE"), out, true);
+                    descriptor("PLUGIN", node.getChildWithName("AFTER"), out, true);
+                }
+                return; // Never interpret vendor descendants or their child deltas.
+            }
+        for (size_t i = 0; i < path.size(); ++i)
         {
+            const auto& part = path[i];
             require(part.is_object() && part.contains("type") && part["type"].is_string(),
                     "撤销历史的能力路径类型损坏");
             const auto type = juce::String(part["type"].get<std::string>());
@@ -115,7 +136,7 @@ void collect(juce::ValueTree node, Requirements& out)
     for (auto child : node)
         collect(child, out);
 }
-void validate(const Requirements& actual, const std::optional<Requirements>& declared)
+void validate(const Requirements& actual, const std::optional<Requirements>& declared, bool legacyPrint)
 {
     const auto check = [](const Requirements& features)
     {
@@ -133,6 +154,9 @@ void validate(const Requirements& actual, const std::optional<Requirements>& dec
     for (const auto& [id, v] : actual)
     {
         const auto found = declared->find(id);
+        if (legacyPrint && found == declared->end() &&
+            (id == "audio.print.freeze-cache" || id == "audio.print.bounce-playlist") && v == 1)
+            continue; // Finite migration exception for the two audited schema1 omissions.
         require(found != declared->end() && found->second >= v, "工程能力声明遗漏或降级：" + id);
     }
 }
@@ -147,7 +171,9 @@ std::unique_ptr<juce::XmlElement> write(juce::ValueTree state, const Requirement
     if (actual.empty())
         return payload;
     auto envelope = std::make_unique<juce::XmlElement>("FORMA_PROJECT");
-    envelope->setAttribute("schema", 1);
+    envelope->setAttribute(
+        "schema",
+        actual.contains("audio.print.freeze-cache") || actual.contains("audio.print.bounce-playlist") ? 2 : 1);
     envelope->setAttribute("payload_sha256", digest(*payload));
     auto* requirements = envelope->createNewChildElement("REQUIRES");
     for (const auto& [id, v] : actual)
@@ -165,7 +191,9 @@ Document read(const juce::XmlElement& xml)
     const juce::XmlElement* payload = &xml;
     if (xml.hasTagName("FORMA_PROJECT"))
     {
-        require(version(xml.getStringAttribute("schema")) == 1, "工程封装版本不受支持，工程未打开");
+        const int schema = version(xml.getStringAttribute("schema"));
+        require(schema <= 2, "工程封装版本不受支持，工程未打开");
+        result.legacyPrintRequirements = schema == 1;
         require(xml.getNumChildElements() == 2, "工程封装必须只含能力声明和一个原生 Edit");
         const auto* features = xml.getChildByName("REQUIRES");
         payload = xml.getChildByName("EDIT");
@@ -180,6 +208,10 @@ Document read(const juce::XmlElement& xml)
                     "工程能力声明重复或损坏");
         }
         validate({}, result.declared);
+        if (schema == 1)
+            require(!result.declared->contains("audio.print.freeze-cache") &&
+                        !result.declared->contains("audio.print.bounce-playlist"),
+                    "印刻读取能力需要工程封装schema2");
         require(xml.getStringAttribute("payload_sha256") == digest(*payload), "工程数据校验失败，当前工程未替换");
     }
     require(payload->hasTagName("EDIT"), "文件不是 Forma 或原生 Edit 工程");
@@ -189,7 +221,7 @@ Document read(const juce::XmlElement& xml)
         require(version(info["schema"]) <= 2, "工程元数据版本不受支持，工程未打开");
     Requirements actual;
     collect(result.edit, actual);
-    validate(actual, result.declared);
+    validate(actual, result.declared, result.legacyPrintRequirements);
     return result;
 }
 } // namespace ndaw::v2::project_document

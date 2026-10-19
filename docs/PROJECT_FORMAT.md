@@ -1,3 +1,9 @@
+2026-10-19 印刻读取能力审查（限定实测完成，结果见 VERIFICATION 当前节）：冻结的自定义缓存路径/帧数与原地Bounce的插件跳过/原Playlist恢复是实际引擎语义，新增 `audio.print.freeze-cache v1`、`audio.print.bounce-playlist v1`。触发它们的新保存采用 `FORMA_PROJECT schema=2`；其它工程仍用schema1。新版覆盖当前、非活动Playlist和保留的原Undo/Redo。宿主直接PLUGIN.ndaw_print_baked属于已审计的宿主字段；PLUGIN子树/私有属性中的同名标签仍是不透明数据，不能扩大能力。
+
+旧schema1写入器已支持印刻音频，却漏声明这两个ID。新版先验证原payload和完整历史哈希/链，只为这两个已审计的v1遗漏允许旧格式读取；其它能力、未来版本和损坏仍拒绝。原文件不改，读取报告注明补审，下次保存升级schema2并写完整声明。schema1若已带新印刻声明则拒绝，不能把新严格格式伪称旧协议。此兼容规则不是防恶意篡改的签名协议，不能证明任意历史文件可信。既有冻结/印刻媒体不会因升级重渲染。
+
+旁链当前使用锁定Tracktion的 sidechainSourceID / CONNECTIONS / useSidechainTrigger，宿主设置直接调用原生API，没有新增持久语义或能力版本；仍执行现有循环路由校验。新的只读原生报告由L1 projectCompatibility生成，包含计算出的当前/历史要求、冻结/Bounce、实际旁链和限定引用提示，不声称验证了媒体哈希、插件DSP或实时性能。入口及测试见 PROJECT_COMPATIBILITY.md。
+
 2026-10-19第二轮没有新持久格式/能力：onset_views仅由现有NDAW_WARP_ONSETS历史源记录与原生完整Warp/窗口/Clip起点重算，不序列化当前投影、media_checked或can_locate，也不改原source object_id/源帧。现有audio.warp.onset-evidence v1继续保护活动/非活动/原历史；停用源保留记录但不宣称旧Warp仍生效。十WAV/四工程和原Undo冷开证据见VERIFICATION首节。印刻、旁链等其余持久语义读取能力仍未全审计，作为下一项。
 
 2026-10-19 瞬态证据：新增 `audio.warp.onset-evidence v1`。`NDAW_WARP/NDAW_WARP_ONSETS`为schema=1、record（JSON历史测量数组）、sha256三个属性，无子节点，128KiB上限显式拒绝。每条测量保留原object_id、artifact_id、raw_source、媒体/处理哈希、原生源采样率/范围、检测器/条件/条件SHA、源帧事件与created_utc；当前位置由原生WARPMARKER决定。证据的SHA对record实际UTF-8字节计算。单Plan与锚点同存同撤销；停用Warp保留已测历史，重新启用亦保留，不能悄悄重写来源。当前/非活动与已编码Undo/Redo能力闭包继续保护旧读者；即使Warp关闭，损坏证据也拒绝加载。没有新增DSP算法或改写原媒体。
@@ -51,7 +57,7 @@ schema3的完整current_hash仍包含实际原生Edit的所有属性。仅编辑
 
 ## 协议
 
-`FORMA_PROJECT` 的 `schema=1`，`payload_sha256` 绑定唯一 `EDIT` 子节点；另一子节点是非空 `REQUIRES`。清单最多64个不同的 `FEATURE`，每个带稳定 `id`（最多128字节）和正整数 `version`（最多六位）。未知必需 ID 或高于当前支持版本会拒绝；清单结构/版本/重复项同样检查。
+`FORMA_PROJECT` 当前读取schema1/2；新保存含印刻能力时用schema2，其余用schema1。`payload_sha256` 绑定唯一 `EDIT` 子节点；另一子节点是非空 `REQUIRES`。清单最多64个不同的 `FEATURE`，每个带稳定 `id`（最多128字节）和正整数 `version`（最多六位）。未知必需 ID 或高于当前支持版本会拒绝；清单结构/版本/重复项同样检查。旧schema1印刻遗漏的有限迁移见本页首段，schema2不得省略任何实际能力。
 
 校验以 XML 的语义结构编码：属性键排序、属性值原样字符串、子节点顺序及文本保留，SHA256 计算于明确的 JSON 编码。写出前仍由 NativeEditXml 保留有限 double 的往返精度；不会用显示格式截断参数或重写 opaque 插件数据。清单在结构/支持性检查之后必须覆盖实际能力；它是兼容要求，不是安装权限或命令授权。校验用于发现内容变化，不是数字签名、加密或发布认证。
 
@@ -65,6 +71,8 @@ schema3的完整current_hash仍包含实际原生Edit的所有属性。仅编辑
 | midi.sample-origin | 1 | NDAW_SAMPLE_MIDI_ORIGIN 的原事件/采样时间来源 |
 | playlist.comp.provenance | 1 | Take/Comp 来源轨道及迁移的 Playlist 来源 |
 | history.runtime-boundary | 1 | PERSISTENT_HISTORY schema3；运行时状态与编辑delta分开 |
+| audio.print.freeze-cache | 1 | TRACK.ndaw_freeze_*；自定义缓存位置/帧长/来源，含原历史 |
+| audio.print.bounce-playlist | 1 | NDAW_BOUNCE、PLAYLIST.role=bounce、TRACK.ndaw_bounce_active、宿主PLUGIN.ndaw_print_baked |
 
 清单是保守闭包，不承诺数学上的最小集合。例如对旧 Warp 原生锚点的历史属性变更，完整上下文不在单个增量中时要求当前完整映射能力2；不靠猜测降低要求。`NATIVEDAW` 元数据版本目前支持到2，未知未来版本拒绝。
 
@@ -86,4 +94,4 @@ ProjectDocumentTests 使用真实 PCM24 双声道、SoundTouch Warp、完整窗�
 
 ## 剩余范围
 
-本轮注册表明确覆盖上表七类语义；其它既有自定义语义（例如印刻、旁链和组定义）的能力版本覆盖尚未完成全量审计，不能据此宣称所有工程均已防止旧版误读。新增持久语义必须维护注册表并补当前、非活动和历史测试。此次没有实现通用有损降级、跨任意历史版本认证、批量升级界面或外部 DAW 工程交换。大型工程保存/打开的资源预算和长期存储故障、真实设备与听评、Windows/发布仍待验证；既有性能和工程差距继续保留。
+印刻/冻结的自定义读取能力及原生旁链存储已单独审查，版本与范围见本页首段；组定义及其余既有自定义语义尚未完成全量审计，不能据此宣称所有工程均已防止旧版误读。新增持久语义必须维护注册表并补当前、非活动和历史测试。此次没有实现通用有损降级、跨任意历史版本认证、批量升级界面或外部 DAW 工程交换。大型工程保存/打开的资源预算和长期存储故障、真实设备与听评、Windows/发布仍待验证；既有性能和工程差距继续保留。

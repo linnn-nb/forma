@@ -2,6 +2,22 @@
 #include "Workspace.h"
 namespace ndaw::desktop
 {
+void Workspace::showProjectCompatibility()
+{
+    const auto report = commands.projectCompatibility();
+    if (!projectCompatibilityPanel)
+    {
+        projectCompatibilityPanel =
+            std::make_unique<ProjectCompatibilityPanel>([this] { return commands.projectCompatibility(); });
+        addChildComponent(*projectCompatibilityPanel);
+    }
+    projectCompatibilityPanel->show(report);
+    projectCompatibilityPanel->setBounds(getLocalBounds());
+    projectCompatibilityPanel->setVisible(true);
+    projectCompatibilityPanel->toFront(true);
+    if (projectCompatibilityPanel->isShowing() && getPeer())
+        projectCompatibilityPanel->grabKeyboardFocus();
+}
 void Workspace::syncPreferencePaths()
 {
     const auto value = commands.preferences()["values"];

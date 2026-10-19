@@ -846,6 +846,8 @@ void Workspace::refresh()
         repaint();
     }
     workspaceRevision = boundRevision;
+    if (projectCompatibilityPanel && projectCompatibilityPanel->isVisible())
+        projectCompatibilityPanel->observe(commands.sessionToken(), boundRevision, commands.projectFile());
     commandManager.commandStatusChanged();
     updateRealtime();
 }

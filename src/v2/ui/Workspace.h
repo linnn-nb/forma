@@ -32,6 +32,7 @@
 #include "PrintPanel.h"
 #include "StemsPanel.h"
 #include "PreferencesPanel.h"
+#include "ProjectCompatibilityPanel.h"
 #include "PlaylistPanel.h"
 #include "ZoomPresets.h"
 #include "ZoomToggle.h"
@@ -74,6 +75,8 @@ public:
     ~Workspace() override;
     void chooseExport(bool selection);
     void showPreferences();
+    void showProjectCompatibility();
+    std::unique_ptr<ProjectCompatibilityPanel> projectCompatibilityPanel;
     void syncPreferencePaths();
     std::unique_ptr<PreferencesPanel> preferencesPanel;
     void showVerifiedExport(bool selection = false);

@@ -2034,6 +2034,7 @@ Json Commands::saveAs(const juce::File& destination)
     auto result = save(destination);
     projectPath = destination;
     projectHash = result.at("sha256");
+    legacyPrintAudit = false;
     result["operation"] = "save_as";
     result["state"] = "saved";
     result["reversible"] = false;
@@ -2050,6 +2051,7 @@ Json Commands::saveCurrent()
     auto result =
         project_files::replace(projectPath, projectHash, [this](const juce::File& staged) { return save(staged); });
     projectHash = result.at("sha256");
+    legacyPrintAudit = false;
     return result;
 }
 void Commands::open(const juce::File& source)
@@ -2070,7 +2072,10 @@ void Commands::open(const juce::File& source)
     auto document = project_document::read(*xml);
     auto loaded = std::move(document.edit);
     auto archive = PersistentHistory::read(loaded, source);
-    project_document::validate(archive.requirements, document.declared);
+    project_document::validate(archive.requirements, document.declared, document.legacyPrintRequirements);
+    const bool migratedPrint =
+        document.legacyPrintRequirements && (archive.requirements.contains("audio.print.freeze-cache") ||
+                                             archive.requirements.contains("audio.print.bounce-playlist"));
     native_midi_numbers::prepareEdit(loaded);
     stop();
     auto info = loaded.getChildWithName("NATIVEDAW");
@@ -2091,6 +2096,7 @@ void Commands::open(const juce::File& source)
     adoptEdit(std::move(candidate));
     edit->state.removeChild(reserve, nullptr);
     persistentHistory->install(std::move(archive));
+    legacyPrintAudit = migratedPrint;
     projectPath = source;
     projectHash = openedHash;
 }
@@ -2187,6 +2193,7 @@ void Commands::adoptEdit(std::unique_ptr<te::Edit> candidate)
     persistentHistory = std::make_unique<PersistentHistory>(*this);
     projectPath = juce::File{};
     projectHash.clear();
+    legacyPrintAudit = false;
 }
 std::string Commands::sessionToken() const
 {

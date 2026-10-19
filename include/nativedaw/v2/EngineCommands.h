@@ -135,6 +135,8 @@ public:
     Json saveAs(const juce::File&);
     Json saveCurrent();
     Json projectFile() const;
+    // Local read-only report. Does not flush, hash media, load plugins or repair state.
+    Json projectCompatibility() const;
     Json recoveryStatus() const;
     Json recoveryControl(const std::string&, const Json&);
     void open(const juce::File&);
@@ -204,6 +206,7 @@ public:
 private:
     juce::File projectPath;
     std::string projectHash;
+    bool legacyPrintAudit = false;
     void normaliseClipDeletion(Json&) const;
     void invalidateFacts();
     void changeListenerCallback(juce::ChangeBroadcaster*) override;

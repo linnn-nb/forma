@@ -27,6 +27,7 @@ const std::vector<Entry>& entries()
         {287, "跨轨自动化尾随：5秒", "编辑", '5',
          cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier | juce::ModifierKeys::shiftModifier},
         {41, "新建工程…", "文件", 'n', cmd},
+        {653, "工程兼容性…", "文件", 'i', cmd | juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::altModifier},
         {1, "导入音频…", "文件", 'i', cmd},
         {2, "打开工程…", "文件", 'o', cmd},
         {3, "保存工程", "文件", 's', cmd},
@@ -1075,12 +1076,19 @@ bool Workspace::perform(const InvocationInfo& invocation)
 {
     if (exitPanel && exitPanel->isVisible())
         return true;
+    if (projectCompatibilityPanel && projectCompatibilityPanel->isVisible() && invocation.commandID != 653)
+        return true; // Do not edit behind the read-only report.
     if (invocation.commandID == 575)
     {
         chooseSaveSessionAs();
         return true;
     }
     const auto id = invocation.commandID;
+    if (id == 653)
+    {
+        invoke([&] { showProjectCompatibility(); });
+        return true;
+    }
     if (id == 647)
     {
         if (autoInspector && automation.canToggleTempoPolicy())
