@@ -1,12 +1,12 @@
 # 下一步（2026-10-19）
 
-dc7ea00完成兼容性首轮：原生只读报告、印刻两项读取能力、schema2严格保存与旧schema1有限迁移；六套最新分两批444项、历史冻结15项、未改历史格式读写器5+4案例、独立媒体/工程/图像核验，见VERIFICATION。不是完整产品。
+8155595完成兼容模块第二轮：真实组/主输出/Pre/Post报告及导航、历史未来组版本预检；五套同批425项通过，完整PCM误差1.22e-7、六个原历史样例/七WAV独立核验，见VERIFICATION。没有新能力/封装版本、DSP或M2/M3工具；本模块两轮收口BACKLOG，不继续叠加兼容边界。
 
-1. **下一项：组定义/发送路由的持久语义与报告。** 先读现有组/路由序列化、历史和原生引擎行为，确认实际存在的自定义语义与旧读者差异；只补确实需要的读取要求，原生行为不增加伪版本。原生报告补可见范围，验证当前/非活动/原UndoRedo、旧格式迁移和真实声音/状态。此为兼容模块第二轮，完成后收口BACKLOG，转下一项制作能力；先声明预算，构建测试后提交。
-2. 原Freeze/Bounce音频、原媒体与插件不透明块不能因升级自动重渲染或改写；旧读取器覆盖不等于全版本认证。新report只读不进入Undo，原编辑/自定义键保留。用户不便手测，不催问、不改原工程/媒体/设备、不强退旧进程。
-3. **P2-PDC-LIVE-01仍发布阻断。** 完整过渡0.12353515625>2e-6，正常forma_latency_live_change保持失败，本轮未重跑/改判；报告或尾段不能替代完整声音。
-4. Warp/CC/PDC/印刻/踏板两轮边界保持，复杂处理/时基/多麦/听评/压力留完整验收。M2/M3冻结、M4/M5暂缓；性能A15.84%>15%、分析失效/超时、OS拖选/全读取能力/RT/耐久/Windows/视频/环绕/发行和完整架构仍未完成。
+1. **下一项：现有PDC发布阻断的根因修复。** 不追加插件/路由边界矩阵；先读PDC_WORKFLOW、现有forma_latency_live_change和原完整WAV/4316帧过渡，核对真实AU参数通知→报告→图替换→补偿延迟状态链。只在已有失败工作负载上定位/修复，保留原2e-6和完整区间，不以停止播放、裁过渡、改预期成功或新宽预算替代。先声明一轮资源预算并检查当前可运行夹具，构建exit0后实测；没有根因证据不宣称解决，也不无限追加边界。此前PDC边界扩展继续收口，此次只针对核心发布阻断。
+2. 兼容/组路由、Warp/CC/印刻/踏板等两轮边界保持；复杂组/文件夹/损坏JSON的全部历史语义、全部旧读者、长源与RT压力留完整验收。原冻结/Bounce音频、原媒体和插件opaque状态不能因升级自动重渲染或改写。
+3. **P2-PDC-LIVE-01仍发布阻断。** 当前完整过渡0.12353515625>2e-6，正常注册测试仍失败，本轮未重跑/改判。性能A15.84%>15%、分析失效/超时、OS输入/设备/听评/全RT/耐久/Windows/视频/环绕/发行与完整架构仍未完成；M2/M3工具冻结，M4/M5暂缓。
+4. 不催用户手测、不改其原工程/媒体/设备、不强退旧进程，不造新包/App副本。正常录音写盘故障已有真实RLIMIT与writer失败测试，不能把重做已有资格当新功能；新增验收须先检查当前实现与证据。
 
-唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `64a1286356fbeedf8f8f2e74f4d1aa53d058e1870eedbbb82222c032f20fa2bb`，本地deep/strict、未公证；CLI已构建。原84585保留，正常保存退出再重启才用磁盘新版。实现SHA `3d9953e0f4ead5116db93000c113714e24347bd0e467ff4177bcbe061417c078`，173输入；SDK23/58与上轮已重放字节一致，本轮无新SDK补丁或重放。
+唯一App `build-v2-tracktion/NativeDAW_artefacts/Release/Forma.app`，SHA `efd7aeab1cf21bc3bc1de6cbe89de7c514fc37804df6dee2c5ae9261a05db907`，本地deep/strict、未公证；CLI已构建。原84585保留，正常保存退出再重启才用磁盘新版。实现SHA `2e2a197471fcc45c05b1345b7a93fcb4c1234f9e79b2b9d5fd7fe4d11067a63b`，173输入；SDK23/58字节未变，本轮无新SDK重放。
 
-当前索引build-v2-tracktion/p2-compatibility-current-results.json；自有正弦测试示例`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P2-Compatibility-85612d6480d24316be671a914e09910d/Compatibility-Delivered.tracktionedit`。默认新工程文件菜单/⌘⌃⌥I；示例保存了自定义⌘⌃F18。报告⌘R刷新/Esc返回，原UndoRedo保持。原生peer/组件软件图资格不冒充OS输入、设备/听评。
+当前索引build-v2-tracktion/p2-routing-report-current-results.json；真实自有正弦测试工程`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P2-Routing-Report-0f9226ac7a254999a6072b3ee1fc575c/Routing-Report-Delivered.tracktionedit`。文件菜单/⌘⌃⌥I打开报告；选择Vocal pair，默认⌘⌃⌥F8定位（该示例保存了自定义⌘⌃F19）。只改视图选择，原UndoRedo保持；native peer/软件组件图不冒充实体输入/听评。

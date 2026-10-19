@@ -1,3 +1,35 @@
+# 当前：路由 / 组报告与定位（2026-10-19，兼容模块第二轮收口）
+
+**8155595：五套受影响CTest同批5/5、425项/52.34秒通过。** 原生“文件→工程兼容性…”现在显示实际主输出、原稳定输出引用、Pre/Post发送目标/电平及Edit/Mix组成员。对象选择框可定位轨道或整组（默认⌘⌃⌥F8，可改键）：复核session/revision及完整成员后，用既有L1 UiState选择并滚动到可见行，收到实际视图回执才关闭报告。只改视图/选择；原编辑、Undo/Redo和媒体保持。保存重开、自定义⌘⌃F19、过期报告拒绝定位/刷新、原生异步动作已验。主入口仍⌘⌃⌥I，报告⌘R/Esc。
+
+审查结论：Mix组schema2(cb1affe)和稳定输出ID(d9bc558)早于首个保护封装67652ce；该提交的实际MixGroupCommands已支持1/2，RoutingCommands已有restoreRoutingAssignments。发送使用原生AuxSend/AuxReturn、busNum和相对VolumeAndPan槽位。没有新增持久语义，因此不增加能力ID或封装版本。未改的352747790174d85f2636fdd289c19bdc56f4f63c生产格式读取器实际接受本轮交付工程（仅资格格式实现，不冒称整个旧DAW/DSP）。
+
+修复实际缺口：ProjectDocument.collect现在也在原历史镜像/属性路径检查MIX_GROUPS.schema，只接受既有1/2。旧L1载入流程对当前组版本已有检查，但历史的未来版本缺少前置保护。专项从头生成带原始有效SHA的外来生产者样例：历史schema1完整快照、schema2增量、schema3运行时分离各有组2正例与仅在Redo中的组3负例；六个样例的原条目SHA另经Python核对。组2均实际打开并原Redo/Undo，组3均由实际Open按预期原因拒绝，原Edit/session/revision精确保持。不是改坏现代工程后重算校验以冒充恢复成功。
+
+| 本批套件 | 检查 | 秒 |
+| --- | ---: | ---: |
+| tracktion_aux_routing | 41 | 15.135 |
+| forma_native_groups | 146 | 13.253 |
+| forma_project_document | 80 | 8.017 |
+| forma_project_compatibility | 61 | 8.797 |
+| forma_routing_report | 97 | 7.120 |
+
+新专项97项包括：真实Pre -6dB与Post -12dB/A轨-6dB的并行混音、组Mute与原Undo、原组定义Redo-only冷开、真实轨道重排后的稳定主输出、缺失组成员/输出/发送的historyless旧格式输入、原生报告定位及快捷键完整链。完整0..72000帧PCM最大误差1.2199208646552443e-7≤2e-6；不裁起止、不改既定容差。独立Python验证源及六个完整PCM24/48k/stereo输出、逐样本增益公式/静音、六个历史样例条目SHA和交付工程唯一history.runtime-boundary v1要求。缺引用时保留原ID/Bus，实际输出另列；不按序号重定向或伪造唯一发送目标。
+
+报告L1直接读原生树/组查询，不为了枚举导航对象调用会捕获插件旁路状态的完整queryFacts。缺失/隐藏对象的定位入口不会报告成功；第三方私有DSP、硬件设备健康、媒体内容Hash仍不属于报告的验证范围。路由文件夹的有效目标在代码中按既有原生继承规则列出，本批未单独资格复杂折叠/嵌套组/文件夹/其它缺引用组合，保留BACKLOG，不外推完整工程认证。
+
+构建：core目标exit0；首次多目标构建找不到刚加入的新CTest目标(exit2)，显式CMake重配后最终全部目标exit0，无CTest失败。原日志保留。固定2构建任务、串行音频；新专项120秒、原生动作2秒、单WAV10秒/72000帧、2e-6保持。没有新增SDK/RT代码、服务、模型、工具权限或上传。
+
+唯一App SHA `efd7aeab1cf21bc3bc1de6cbe89de7c514fc37804df6dee2c5ae9261a05db907`，本地deep/strict通过、未公证；CLI已构建。173输入实现SHA `2e2a197471fcc45c05b1345b7a93fcb4c1234f9e79b2b9d5fd7fe4d11067a63b` 独立重算并匹配App字面值。SDK diff仍f063f92a…，23补丁58文件与上轮已重放字节一致，本轮没有新SDK重放。关键原生组件软件图1440×880、2937色，原卡片像素已验；它不替代OS截图/实体按键/听评。旧84585保留，测试进程结束，未改用户工程/媒体或建立新包/App副本。
+
+可运行自有正弦测试工程：`/Users/lin/Projects/06-文档/04-Codex/2026-07-27/NativeDAW/build-v2-tracktion/P2-Routing-Report-0f9226ac7a254999a6072b3ee1fc575c/Routing-Report-Delivered.tracktionedit`；正常保存退出旧进程后以唯一App重开即可从文件菜单查看报告，选Vocal pair并定位。该工程已保存自定义定位⌘⌃F19；新工程默认⌘⌃⌥F8。源是明确的数值测试声音，不是用户成曲或听评。
+
+当前索引build-v2-tracktion/p2-routing-report-current-results.json；JUnit/测试日志p2-routing-report-first.xml / first-tests.log，独立核验independent.json、源码审查source-audit.json、旧格式读者old-reader.json、构建摘要identity.json；关键图evidence/P2/routing-report-native.png。代码/操作见PROJECT_COMPATIBILITY.md，原印刻schema2与旧schema1有限迁移不变。
+
+兼容性两轮到此收口，其余全读取能力/所有历史版本/复杂组路由与长工程留BACKLOG。下一轮不增加PDC边界矩阵，只处理现有发布阻断的完整过渡失败：0.12353515625>2e-6，正常forma_latency_live_change仍失败，本批未重跑/禁用/改判；不以尾段、停止播放或放宽预算替代原声音要求。性能A15.84%>15%、分析失效/超时、OS输入/设备/听评/全RT/耐久/Windows/视频/环绕/发行与完整架构仍未完成。M2/M3工具冻结、M4/M5暂缓；用户不便手测不催问。
+
+---
+
 # 当前：工程兼容性报告与印刻能力（2026-10-19）
 
 **dc7ea00：六种受影响CTest最新分两批444项通过，另历史冻结15项通过；不是一次六套全绿批次或完整产品资格。** 新增“文件→工程兼容性…”（默认⌘⌃⌥I，可改键）。它显示L1计算出的当前/非活动Playlist/保留UndoRedo要求、实际冻结/Bounce、原生旁链及限定引用提示。只读查看不改Edit/历史；被覆盖的编辑快捷键不作用于后面的工程。外部L1修改后提示刷新，原生异步刷新、Esc、自定义键保存重开及原Undo/Redo已验。没有新增M2/M3工具、权限、服务或RT处理。

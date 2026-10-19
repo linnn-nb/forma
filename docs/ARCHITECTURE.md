@@ -1,3 +1,5 @@
+2026-10-19 兼容第二轮：L1直接从原生组/主输出/Aux槽位查询报告，不借全queryFacts触发插件捕获；L5定位复验版本与成员，只写原UiState并核对选择/滚动回执。ProjectDocument同时预检历史的未知组schema；原Group/Route协议不变，无新RT/引擎/服务/M2M3工具。五套425项限定资格见VERIFICATION，模块两轮收口。
+
 2026-10-19 工程兼容性：L1 projectCompatibility只读扫描当前Edit及已保留历史要求，L5原生报告展示快照/版本失效，不写Edit或新增M2/M3工具。Print读取能力采用schema2，旧schema1两个已知v1遗漏在原payload/历史校验后有限迁移；原音频不重渲染。旁链沿用TE原生存储，插件不透明子树不解释。实际范围见PROJECT_FORMAT/PROJECT_COMPATIBILITY/VERIFICATION。
 
 2026-10-19 来源视图：L1从已保存源测量、原生完整Warp、当前窗口和项目起点派生onset_views；非活动/停用源也保留原证据。它不是第二模型，不写回Edit或改原source object_id。L5继承窗口只读，定位走L1深SHA/版本/对象/窗口验证及实际Transport ACK，视野滚动走既有UiState。数据/历史/音频原链保持，无新M2/M3工具、引擎、服务或SDK字节。新990项限定资格见VERIFICATION。
