@@ -388,8 +388,12 @@ int main(int argc, char** argv)
         {
             juce::PNGImageFormat png;
             juce::FileOutputStream image(root.getChildFile("Warp-Onsets-Native-Panel.png"));
-            check(image.openedOk() &&
-                      png.writeImageToStream(panel->createComponentSnapshot(panel->getLocalBounds()), image),
+            const auto snapshot =
+                panel->createComponentSnapshot(panel->getLocalBounds(), true, 1.f, juce::SoftwareImageType{});
+            const int top = (panel->getHeight() - std::min(820, panel->getHeight() - 20)) / 2;
+            check(snapshot.getPixelAt(panel->getWidth() / 2, top + 12) == ndaw::desktop::base(),
+                  "native component capture includes actual opaque card painting, not partial native-image backing");
+            check(image.openedOk() && png.writeImageToStream(snapshot, image),
                   "actual native component snapshot records current measured draft");
         }
         out->grabKeyboardFocus();
